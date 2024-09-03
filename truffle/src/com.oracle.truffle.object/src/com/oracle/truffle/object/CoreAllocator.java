@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -188,7 +188,7 @@ class CoreAllocator extends ShapeImpl.BaseAllocator {
         return locationForValue(value, useFinal, nonNull, 0);
     }
 
-    Location locationForValue(Object value, boolean useFinal, boolean nonNull, long putFlags) {
+    Location locationForValue(Object value, boolean useFinal, boolean nonNull, int putFlags) {
         if (Flags.isConstant(putFlags)) {
             return constantLocation(value);
         } else if (Flags.isDeclaration(putFlags)) {
@@ -226,7 +226,7 @@ class CoreAllocator extends ShapeImpl.BaseAllocator {
     }
 
     @Override
-    protected Location locationForValueUpcast(Object value, Location oldLocation, long putFlags) {
+    protected Location locationForValueUpcast(Object value, Location oldLocation, int putFlags) {
         assert !oldLocation.canStore(value);
 
         if (oldLocation instanceof ConstantLocation && Flags.isConstant(putFlags)) {

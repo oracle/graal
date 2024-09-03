@@ -5,6 +5,7 @@ local devkits = graal_common.devkits;
 local c = import 'common.jsonnet';
 local g = vm.compiler_gate;
 local utils = import '../../../ci/ci_common/common-utils.libsonnet';
+local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
 
 {
   local underscore(s) = std.strReplace(s, "-", "_"),
@@ -39,8 +40,14 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
     downloads +: if utils.contains(self.name, 'labsjdk-21') then {"ORACLEJDK_JAVA_HOME" : graal_common.jdks_data["oraclejdk21"]} else {}
   },
   libgraal_compiler_zgc:: self.libgraal_compiler_base(extra_vm_args=['-XX:+UseZGC']),
+  libgraal_compiler_singlegen_zgc:: self.libgraal_compiler_base(extra_vm_args=['-XX:+UseZGC', '-XX:-ZGenerational']),
   # enable economy mode building with the -Ob flag
-  libgraal_compiler_quickbuild:: self.libgraal_compiler_base(quickbuild_args=['-Ob']),
+  libgraal_compiler_quickbuild:: self.libgraal_compiler_base(quickbuild_args=['-Ob']) + {
+    environment+: {
+      # Exercise support for preventing build paths being embedded in libgraal.
+      ALLOW_ABSOLUTE_PATHS_IN_OUTPUT: 'false'
+    }
+  },
 
   libgraal_truffle_base(quickbuild_args=[], extra_vm_args=[], coverage=false): self.libgraal_build(['-J-esa', '-J-ea', '-esa', '-ea'] + quickbuild_args) + {
     environment+: {
@@ -49,12 +56,14 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
     },
     run+: [
       ['mx', '--env', vm.libgraal_env, 'gate', '--task', 'LibGraal Truffle'] + if coverage then g.jacoco_gate_args else [] +
-        if extra_vm_args != [] then ['--extra-vm-argument=' + std.join(" ", extra_vm_args)] else [],
+        ['--extra-vm-argument=' + std.join(" ", ['-DGCUtils.saveHeapDumpTo=.'] + extra_vm_args)],
     ],
     logs+: [
       '*/graal-compiler.log',
-      '*/graal-compiler-ctw.log'
+      '*/graal-compiler-ctw.log',
+      '*/gcutils_heapdump_*.hprof.gz'
     ],
+    components+: ["truffle"],
     timelimit: '1:00:00',
     teardown+: if coverage then [
       g.upload_coverage
@@ -64,22 +73,84 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
   # -ea assertions are enough to keep execution time reasonable
   libgraal_truffle: self.libgraal_truffle_base(),
   libgraal_truffle_zgc: self.libgraal_truffle_base(extra_vm_args=['-XX:+UseZGC']),
+  libgraal_truffle_singlegen_zgc: self.libgraal_truffle_base(extra_vm_args=['-XX:+UseZGC', '-XX:-ZGenerational']),
   # enable economy mode building with the -Ob flag
   libgraal_truffle_quickbuild: self.libgraal_truffle_base(['-Ob']),
 
   # Use economy mode for coverage testing
   libgraal_truffle_coverage: self.libgraal_truffle_base(['-Ob'], coverage=true),
 
+  # Gate for guestgraal
+  guestgraal_base(extra_vm_args=[]):: {
+    local pathsep = if self.os == "windows" then ";" else ":",
+    local guestgraal_env = std.strReplace(vm.libgraal_env, "libgraal", "guestgraal"),
+    run+: [
+      ['mx', '--env', guestgraal_env, 'build'],
+      ['set-export', 'JNIUTILS_PATH', ['mx', '--env', guestgraal_env, '--quiet', 'path', 'JNIUTILS']],
+      ['set-export', 'NATIVEBRIDGE_PATH', ['mx', '--env', guestgraal_env, '--quiet', 'path', 'NATIVEBRIDGE']],
+      ['set-export', 'GUESTGRAAL_LIBRARY_PATH', ['mx', '--env', guestgraal_env, '--quiet', 'path', 'GUESTGRAAL_LIBRARY']],
+    ] + (if vm.edition == "ee" then [
+      ['set-export', 'ENTERPRISE_GUESTGRAAL_LIBRARY_PATH', ['mx', '--env', guestgraal_env, '--quiet', 'path', 'ENTERPRISE_GUESTGRAAL_LIBRARY']]
+    ] else []) + [
+      ['mx', '--env', guestgraal_env, 'native-image', '-J-esa', '-J-ea', '-esa', '-ea',
+       '-p', '$JNIUTILS_PATH' + pathsep + '$NATIVEBRIDGE_PATH',
+       '-cp', '$GUESTGRAAL_LIBRARY_PATH' + pathsep + '$ENTERPRISE_GUESTGRAAL_LIBRARY_PATH',
+       '-H:+UnlockExperimentalVMOptions', '-H:+VerifyGraalGraphs', '-H:+VerifyPhases'],
+      ['mx', '--env', guestgraal_env, 'gate', '--task', std.join(",", self.tasks), '--extra-vm-argument=-XX:JVMCILibPath=$PWD/' + vm.vm_dir, '--extra-vm-argument=' + std.join(" ", extra_vm_args)]
+    ],
+    logs+: [
+      '*/graal-compiler.log',
+      '*/graal-compiler-ctw.log',
+    ],
+  },
+
+  guestgraal_compiler:: self.guestgraal_base(extra_vm_args=[]) + {
+    # LibGraal gate tasks currently expected to work
+    tasks: [
+      "LibGraal Compiler:Basic",
+      "LibGraal Compiler:FatalErrorHandling",
+      "LibGraal Compiler:OOMEDumping",
+      "LibGraal Compiler:SystemicFailureDetection",
+      "LibGraal Compiler:CompilationTimeout:JIT",
+      "LibGraal Compiler:CTW",
+      "LibGraal Compiler:DaCapo",
+      "LibGraal Compiler:ScalaDaCapo"
+    ] +
+    # Renaissance is missing the msvc redistributable on Windows [GR-50132]
+    if self.os == "windows" then [] else ["LibGraal Compiler:Renaissance"],
+    timelimit: '1:00:00',
+  },
+
+  guestgraal_truffle:: self.guestgraal_base(extra_vm_args=['-DGCUtils.saveHeapDumpTo=.']) + {
+    # Truffle LibGraal gate tasks
+    tasks: [
+      "LibGraal Truffle",
+      "LibGraal Compiler:CompilationTimeout:Truffle"
+    ],
+    environment+: {
+      # The Truffle TCK tests run as a part of Truffle TCK gate, tools tests run as a part of tools gate
+      TEST_LIBGRAAL_EXCLUDE: 'com.oracle.truffle.tck.tests.* com.oracle.truffle.tools.* com.oracle.truffle.regex.*'
+    },
+    logs+: [
+      '*/gcutils_heapdump_*.hprof.gz'
+    ],
+    timelimit: '1:00:00',
+  },
+
   # See definition of `gates` local variable in ../../compiler/ci_common/gate.jsonnet
-  local gates = {
+  local gate_jobs = {
     "gate-vm-libgraal_compiler-labsjdk-latest-linux-amd64": {},
-    "gate-vm-libgraal_truffle-labsjdk-latest-linux-amd64": {},
+    "gate-vm-libgraal_truffle-labsjdk-latest-linux-amd64": {} + galahad.exclude,
     "gate-vm-libgraal_compiler_zgc-labsjdk-latest-linux-amd64": {},
     "gate-vm-libgraal_compiler_quickbuild-labsjdk-latest-linux-amd64": {},
 
-    "gate-vm-libgraal_compiler-labsjdk-21-linux-amd64": {} + graal_common.mach5_target,
+    "gate-vm-libgraal_compiler-labsjdk-21-linux-amd64": {},
     "gate-vm-libgraal_truffle-labsjdk-21-linux-amd64": {},
+    "gate-vm-guestgraal_compiler-labsjdk-latest-linux-amd64": {},
+    "gate-vm-guestgraal_truffle-labsjdk-latest-linux-amd64": {},
   },
+
+  local gates = g.as_gates(gate_jobs),
 
   # See definition of `dailies` local variable in ../../compiler/ci_common/gate.jsonnet
   local dailies = {
@@ -89,7 +160,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
     "daily-vm-libgraal_compiler_quickbuild-labsjdk-21-linux-amd64": {},
     "daily-vm-libgraal_truffle_quickbuild-labsjdk-latest-linux-amd64": t("1:10:00"),
     "daily-vm-libgraal_truffle_quickbuild-labsjdk-21-linux-amd64": t("1:10:00"),
-  },
+  } + g.as_dailies(gate_jobs),
 
   # See definition of `weeklies` local variable in ../../compiler/ci_common/gate.jsonnet
   local weeklies = {
@@ -100,8 +171,10 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
   local monthlies = {},
 
   local svm_common(os_arch, jdk) =
-    local obj = c["svm_common_" + underscore(os_arch)];
-    if std.type(obj) == "function" then obj(jdk) else obj,
+    if (os_arch == 'windows-amd64') then
+      c.svm_common_windows_amd64(jdk)
+    else
+      c.svm_common,
 
   local all_os_arches = [
     "linux-amd64",
@@ -113,9 +186,9 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
 
   # Builds run on all platforms (platform = JDK + OS + ARCH)
   local all_platforms_builds = [
-    c["gate_vm_" + underscore(os_arch)] +
+    c.vm_base(os(os_arch), arch(os_arch), 'gate') +
     svm_common(os_arch, jdk) +
-    vm["custom_vm_" + os(os_arch)] +
+    vm.custom_vm +
     g.make_build(jdk, os_arch, task, extra_tasks=self, suite="vm",
                  include_common_os_arch=false,
                  jdk_name = "labsjdk",
@@ -133,7 +206,9 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
       "libgraal_compiler",
       "libgraal_truffle",
       "libgraal_compiler_quickbuild",
-      "libgraal_truffle_quickbuild"
+      "libgraal_truffle_quickbuild",
+      "guestgraal_compiler",
+      "guestgraal_truffle"
     ]
   ],
 
@@ -144,9 +219,9 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
 
   # Builds run on all platforms (platform = JDK + OS + ARCH) but Windows currently requires Windows server 2019
   local all_platforms_zgc_builds = [
-    adjust_windows_version(c["gate_vm_" + underscore(os_arch)]) +
+    adjust_windows_version(c.vm_base(os(os_arch), arch(os_arch), 'gate')) +
     svm_common(os_arch, jdk) +
-    vm["custom_vm_" + os(os_arch)] +
+    vm.custom_vm +
     g.make_build(jdk, os_arch, task, extra_tasks=self, suite="vm",
                  include_common_os_arch=false,
                  gates_manifest=gates,
@@ -161,14 +236,16 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
     for task in [
       "libgraal_compiler_zgc",
       "libgraal_truffle_zgc",
+      "libgraal_compiler_singlegen_zgc",
+      "libgraal_truffle_singlegen_zgc",
     ]
   ],
 
   # Coverage builds only on jdk21 (GR-46676)
   local coverage_jdk21_builds = [
-    c["gate_vm_" + underscore(os_arch)] +
+    c.vm_base(os(os_arch), arch(os_arch), 'gate') +
     svm_common(os_arch, jdk) +
-    vm["custom_vm_" + os(os_arch)] +
+    vm.custom_vm +
     g.make_build(jdk, os_arch, task, extra_tasks=self, suite="vm",
                  include_common_os_arch=false,
                  gates_manifest=gates,

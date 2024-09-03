@@ -31,28 +31,53 @@ import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
+import com.oracle.svm.core.code.FrameSourceInfo;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
+import com.oracle.svm.core.interpreter.InterpreterSupport;
+import com.oracle.svm.core.util.VMError;
 
 public abstract class JavaStackFrameVisitor extends StackFrameVisitor {
 
     @Override
-    public final boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame) {
-        if (deoptimizedFrame != null) {
-            for (DeoptimizedFrame.VirtualFrame frame = deoptimizedFrame.getTopFrame(); frame != null; frame = frame.getCaller()) {
-                if (!visitFrame(frame.getFrameInfo())) {
-                    return false;
-                }
-            }
-        } else {
-            CodeInfoQueryResult queryResult = CodeInfoTable.lookupCodeInfoQueryResult(codeInfo, ip);
-            for (FrameInfoQueryResult frameInfo = queryResult.getFrameInfo(); frameInfo != null; frameInfo = frameInfo.getCaller()) {
-                if (!visitFrame(frameInfo)) {
-                    return false;
-                }
+    public boolean visitRegularFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo) {
+        CodeInfoQueryResult queryResult = CodeInfoTable.lookupCodeInfoQueryResult(codeInfo, ip);
+        for (FrameInfoQueryResult frameInfo = queryResult.getFrameInfo(); frameInfo != null; frameInfo = frameInfo.getCaller()) {
+            if (!dispatchPossiblyInterpretedFrame(frameInfo, sp)) {
+                return false;
             }
         }
         return true;
     }
 
-    public abstract boolean visitFrame(FrameInfoQueryResult frameInfo);
+    @Override
+    protected boolean visitDeoptimizedFrame(Pointer originalSP, CodePointer deoptStubIP, DeoptimizedFrame deoptimizedFrame) {
+        for (DeoptimizedFrame.VirtualFrame frame = deoptimizedFrame.getTopFrame(); frame != null; frame = frame.getCaller()) {
+            if (!dispatchPossiblyInterpretedFrame(frame.getFrameInfo(), originalSP)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static FrameSourceInfo interpreterToInterpretedMethodFrame(FrameInfoQueryResult frameInfo, Pointer sp) {
+        InterpreterSupport interpreter = InterpreterSupport.singleton();
+        VMError.guarantee(interpreter.isInterpreterRoot(frameInfo.getSourceClass()));
+        return interpreter.getInterpretedMethodFrameInfo(frameInfo, sp);
+    }
+
+    protected final boolean dispatchPossiblyInterpretedFrame(FrameInfoQueryResult frameInfo, Pointer sp) {
+        if (InterpreterSupport.isEnabled() && InterpreterSupport.singleton().isInterpreterRoot(frameInfo.getSourceClass())) {
+            return visitFrame(interpreterToInterpretedMethodFrame(frameInfo, sp), sp);
+        } else {
+            return visitFrame(frameInfo, sp);
+        }
+    }
+
+    public boolean visitFrame(FrameSourceInfo frameInfo, @SuppressWarnings("unused") Pointer sp) {
+        return visitFrame(frameInfo);
+    }
+
+    public boolean visitFrame(@SuppressWarnings("unused") FrameSourceInfo frameInfo) {
+        throw VMError.shouldNotReachHere("override this method or visitFrame::(FrameSourceInfo,Pointer)");
+    }
 }

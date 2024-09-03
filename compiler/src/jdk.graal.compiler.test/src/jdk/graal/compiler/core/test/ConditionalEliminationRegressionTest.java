@@ -28,6 +28,9 @@ import static jdk.graal.compiler.core.common.type.StampFactory.objectNonNull;
 
 import java.util.List;
 
+import org.junit.Assert;
+import org.junit.Test;
+
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.debug.DebugContext;
@@ -61,29 +64,12 @@ import jdk.graal.compiler.phases.common.HighTierLoweringPhase;
 import jdk.graal.compiler.phases.common.inlining.InliningPhase;
 import jdk.graal.compiler.phases.common.inlining.policy.GreedyInliningPolicy;
 import jdk.graal.compiler.phases.util.GraphOrder;
-import org.junit.Assert;
-import org.junit.Test;
-
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.SpeculationLog;
 
 public class ConditionalEliminationRegressionTest extends GraalCompilerTest {
-
-    private final SpeculationLog speculationLog;
-
-    @SuppressWarnings("this-escape")
-    public ConditionalEliminationRegressionTest() {
-        speculationLog = getCodeCache().createSpeculationLog();
-    }
-
-    @Override
-    protected SpeculationLog getSpeculationLog() {
-        speculationLog.collectFailedSpeculations();
-        return speculationLog;
-    }
 
     @Override
     protected OptimisticOptimizations getOptimisticOptimizations() {
@@ -268,9 +254,9 @@ public class ConditionalEliminationRegressionTest extends GraalCompilerTest {
         new InliningPhase(new GreedyInliningPolicy(null), CanonicalizerPhase.create()).apply(g, getEagerHighTierContext());
 
         // get floating guards
-        new HighTierLoweringPhase(CanonicalizerPhase.create()).apply(g, getDefaultHighTierContext());
-
-        new FloatingReadPhase(CanonicalizerPhase.create()).apply(g, getDefaultMidTierContext());
+        CanonicalizerPhase c = createCanonicalizerPhase();
+        new HighTierLoweringPhase(c).apply(g, getDefaultHighTierContext());
+        new FloatingReadPhase(c).apply(g, getDefaultMidTierContext());
 
         for (Node n : g.getNodes()) {
             if (n instanceof MergeNode) {
@@ -288,7 +274,7 @@ public class ConditionalEliminationRegressionTest extends GraalCompilerTest {
         }
 
         g.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, g, "After creating guard phi");
-        new ConditionalEliminationPhase(false).apply(g, getDefaultMidTierContext());
+        new ConditionalEliminationPhase(c, false).apply(g, getDefaultMidTierContext());
 
         GraphOrder.assertSchedulableGraph(g);
     }

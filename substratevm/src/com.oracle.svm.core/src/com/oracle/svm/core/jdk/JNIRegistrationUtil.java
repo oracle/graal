@@ -65,10 +65,10 @@ public class JNIRegistrationUtil {
         return Platform.includedIn(Platform.WINDOWS.class);
     }
 
-    protected static void rerunClassInit(FeatureAccess access, String... classNames) {
+    protected static void initializeAtRunTime(FeatureAccess access, String... classNames) {
         RuntimeClassInitializationSupport classInitSupport = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
         for (String className : classNames) {
-            classInitSupport.rerunInitialization(clazz(access, className), "for JDK native code support via JNI");
+            classInitSupport.initializeAtRunTime(clazz(access, className), "for JDK native code support via JNI");
         }
     }
 

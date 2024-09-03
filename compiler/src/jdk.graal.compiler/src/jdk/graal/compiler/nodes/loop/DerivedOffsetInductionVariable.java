@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.nodes.loop;
 
+import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
@@ -34,13 +35,15 @@ import jdk.graal.compiler.nodes.calc.BinaryArithmeticNode;
 import jdk.graal.compiler.nodes.calc.IntegerConvertNode;
 import jdk.graal.compiler.nodes.calc.NegateNode;
 import jdk.graal.compiler.nodes.calc.SubNode;
+import jdk.graal.compiler.phases.common.util.LoopUtility;
+import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerExactArithmeticNode;
 
 public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
 
     protected final ValueNode offset;
     protected final BinaryArithmeticNode<?> value;
 
-    public DerivedOffsetInductionVariable(LoopEx loop, InductionVariable base, ValueNode offset, BinaryArithmeticNode<?> value) {
+    public DerivedOffsetInductionVariable(Loop loop, InductionVariable base, ValueNode offset, BinaryArithmeticNode<?> value) {
         super(loop, base);
         this.offset = offset;
         this.value = value;
@@ -69,25 +72,92 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
 
     @Override
     public boolean isConstantInit() {
-        return offset.isConstant() && base.isConstantInit();
+        try {
+            if (offset.isConstant() && base.isConstantInit()) {
+                constantInitSafe();
+                return true;
+            }
+        } catch (ArithmeticException e) {
+            // fall through to return false
+        }
+        return false;
     }
 
     @Override
     public boolean isConstantStride() {
+        if (isMaskedNegateStride()) {
+            if (base.isConstantStride()) {
+                try {
+                    LoopUtility.multiplyExact(IntegerStamp.getBits(offset.stamp(NodeView.DEFAULT)), base.constantStride(), -1);
+                    return true;
+                } catch (ArithmeticException e) {
+                    return false;
+                }
+            }
+        }
         return base.isConstantStride();
     }
 
     @Override
     public long constantInit() {
-        return op(base.constantInit(), offset.asJavaConstant().asLong());
+        return constantInitSafe();
+    }
+
+    private long constantInitSafe() throws ArithmeticException {
+        return opSafe(base.constantInit(), offset.asJavaConstant().asLong());
     }
 
     @Override
     public long constantStride() {
-        if (value instanceof SubNode && base.valueNode() == value.getY()) {
-            return -base.constantStride();
+        return constantStrideSafe();
+    }
+
+    private long constantStrideSafe() throws ArithmeticException {
+        if (isMaskedNegateStride()) {
+            return LoopUtility.multiplyExact(IntegerStamp.getBits(offset.stamp(NodeView.DEFAULT)), base.constantStride(), -1);
         }
         return base.constantStride();
+    }
+
+    /**
+     * Determine if the current induction variable's stride is actually one that represents a
+     * negation instead of a normal offset calculation. For example
+     *
+     * <pre>
+     * int i = 0;
+     * while (i < limit) {
+     *     int reversIv = off - i;
+     *     i++;
+     * }
+     * </pre>
+     *
+     * here {@code reverseIv} stride node is actually {@code i} negated since the IV is not
+     * {@code i op off} but {@code off op i} where {@code op} is a subtraction.
+     */
+    private boolean isMaskedNegateStride() {
+        return value instanceof SubNode && base.valueNode() == value.getY();
+    }
+
+    @Override
+    public boolean isConstantExtremum() {
+        try {
+            if (offset.isConstant() && base.isConstantExtremum()) {
+                constantExtremumSafe();
+                return true;
+            }
+        } catch (ArithmeticException e) {
+            // fall through to return false
+        }
+        return false;
+    }
+
+    @Override
+    public long constantExtremum() {
+        return constantExtremumSafe();
+    }
+
+    private long constantExtremumSafe() throws ArithmeticException {
+        return opSafe(base.constantExtremum(), offset.asJavaConstant().asLong());
     }
 
     @Override
@@ -118,26 +188,19 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
         return op(base.exitValueNode(), offset);
     }
 
-    @Override
-    public boolean isConstantExtremum() {
-        return offset.isConstant() && base.isConstantExtremum();
-    }
-
-    @Override
-    public long constantExtremum() {
-        return op(base.constantExtremum(), offset.asJavaConstant().asLong());
-    }
-
-    private long op(long b, long o) {
+    private long opSafe(long b, long o) throws ArithmeticException {
+        // we can use offset bits in this method because all operands (init, scale, stride and
+        // extremum) have by construction equal bit sizes
         if (value instanceof AddNode) {
-            return b + o;
+            return LoopUtility.addExact(IntegerStamp.getBits(offset.stamp(NodeView.DEFAULT)), b, o);
         }
         if (value instanceof SubNode) {
             if (base.valueNode() == value.getX()) {
-                return b - o;
+                return LoopUtility.subtractExact(IntegerStamp.getBits(offset.stamp(NodeView.DEFAULT)), b, o);
             } else {
-                assert base.valueNode() == value.getY() : Assertions.errorMessage(base, base.valueNode(), value, value.getY());
-                return o - b;
+                assert base.valueNode() == value.getY() || base instanceof BasicInductionVariable basic && basic.getOp() instanceof IntegerExactArithmeticNode : Assertions.errorMessage(base,
+                                base.valueNode(), value, value.getY());
+                return LoopUtility.subtractExact(IntegerStamp.getBits(offset.stamp(NodeView.DEFAULT)), b, o);
             }
         }
         throw GraalError.shouldNotReachHereUnexpectedValue(value); // ExcludeFromJacocoGeneratedReport
@@ -155,7 +218,8 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
             if (base.valueNode() == value.getX()) {
                 return MathUtil.sub(graph(), b, o, gvn);
             } else {
-                assert base.valueNode() == value.getY() : Assertions.errorMessage(base, base.valueNode(), value, value.getY());
+                assert base.valueNode() == value.getY() || base instanceof BasicInductionVariable basic && basic.getOp() instanceof IntegerExactArithmeticNode : Assertions.errorMessage(base,
+                                base.valueNode(), value, value.getY());
                 return MathUtil.sub(graph(), o, b, gvn);
             }
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,13 +64,22 @@ final class WeakKey<K> extends WeakReference<K> {
 
     @Override
     public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
         Object thisKey = get();
-        if (obj instanceof WeakKey) {
-            Object otherKey = ((WeakKey<?>) obj).get();
-            return (thisKey == null || otherKey == null) ? (this == obj) : thisKey.equals(otherKey);
-        } else {
+        if (thisKey == null) {
+            // If referent is null, only equal if this == obj.
             return false;
         }
+        Object otherKey;
+        if (obj instanceof WeakKey<?>) {
+            otherKey = ((WeakKey<?>) obj).get();
+        } else {
+            // Comparing against an unwrapped key.
+            otherKey = obj;
+        }
+        return thisKey.equals(otherKey);
     }
 
 }

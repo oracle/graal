@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm;
 
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
@@ -76,8 +77,8 @@ public abstract class LLVMMemMove {
          * @see LLVMMemMoveI64
          */
         @Specialization
-        protected Object doVoid(LLVMPointer dest, LLVMPointer source, long length, boolean isVolatile) {
-            memMove.executeWithTarget(dest, source, length);
+        protected Object doVoid(VirtualFrame frame, LLVMPointer dest, LLVMPointer source, long length, boolean isVolatile) {
+            memMove.executeWithTarget(frame, dest, source, length);
             return null;
         }
     }

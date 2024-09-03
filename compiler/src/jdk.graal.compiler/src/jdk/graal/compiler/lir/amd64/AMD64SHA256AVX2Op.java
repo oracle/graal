@@ -24,6 +24,12 @@
  */
 package jdk.graal.compiler.lir.amd64;
 
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.Above;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.AboveEqual;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.Below;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.Equal;
+import static jdk.graal.compiler.lir.amd64.AMD64LIRHelper.pointerConstant;
+import static jdk.graal.compiler.lir.amd64.AMD64LIRHelper.recordExternalAddress;
 import static jdk.vm.ci.amd64.AMD64.r10;
 import static jdk.vm.ci.amd64.AMD64.r11;
 import static jdk.vm.ci.amd64.AMD64.r12;
@@ -55,12 +61,6 @@ import static jdk.vm.ci.amd64.AMD64.xmm7;
 import static jdk.vm.ci.amd64.AMD64.xmm8;
 import static jdk.vm.ci.amd64.AMD64.xmm9;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.Above;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.AboveEqual;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.Below;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.Equal;
-import static jdk.graal.compiler.lir.amd64.AMD64LIRHelper.pointerConstant;
-import static jdk.graal.compiler.lir.amd64.AMD64LIRHelper.recordExternalAddress;
 
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
@@ -72,14 +72,13 @@ import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.lir.asm.ArrayDataPointerConstant;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
-
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/0487aa61c67de695d008af4fe75c2a3072261a6f/src/hotspot/cpu/x86/macroAssembler_x86_sha.cpp#L496-L1035",
-          sha1 = "f9283840deab5f199d600017cde5548f80ca0699")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/431d4f7e18369466eedd00926a5162a1461d0b25/src/hotspot/cpu/x86/macroAssembler_x86_sha.cpp#L496-L1035",
+          sha1 = "c285f012ac243eaa9c96716dbd2b0314b5dd14d7")
 // @formatter:on
 public final class AMD64SHA256AVX2Op extends AMD64LIRInstruction {
 
@@ -136,6 +135,9 @@ public final class AMD64SHA256AVX2Op extends AMD64LIRInstruction {
                         xmm8.asValue(),
                         xmm9.asValue(),
                         xmm10.asValue(),
+                        xmm11.asValue(),
+                        xmm12.asValue(),
+                        xmm13.asValue(),
         };
     }
 
@@ -705,5 +707,10 @@ public final class AMD64SHA256AVX2Op extends AMD64LIRInstruction {
     private static void addm(AMD64MacroAssembler masm, int disp, Register r1, Register r2) {
         masm.addl(r2, new AMD64Address(r1, disp));
         masm.movl(new AMD64Address(r1, disp), r2);
+    }
+
+    @Override
+    public boolean modifiesStackPointer() {
+        return true;
     }
 }

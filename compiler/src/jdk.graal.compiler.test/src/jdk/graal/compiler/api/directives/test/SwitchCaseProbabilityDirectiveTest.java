@@ -25,6 +25,9 @@
 
 package jdk.graal.compiler.api.directives.test;
 
+import org.junit.Assert;
+import org.junit.Test;
+
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.debug.DebugOptions;
@@ -34,9 +37,6 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.extended.IntegerSwitchNode;
 import jdk.graal.compiler.nodes.extended.SwitchCaseProbabilityNode;
 import jdk.graal.compiler.options.OptionValues;
-import org.junit.Assert;
-import org.junit.Test;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class SwitchCaseProbabilityDirectiveTest extends GraalCompilerTest {
@@ -136,6 +136,32 @@ public class SwitchCaseProbabilityDirectiveTest extends GraalCompilerTest {
         }
     }
 
+    public static int zeroProbabilityDeoptimize(int x) {
+        /*
+         * Total probability across branches should add up to 1, and if it doesn't an error should
+         * be thrown.
+         */
+        switch (x) {
+            case 100:
+                GraalDirectives.injectSwitchCaseProbability(0.25);
+                return 10;
+            case 200:
+                GraalDirectives.injectSwitchCaseProbability(0.25);
+                return 20;
+            case 300:
+                GraalDirectives.injectSwitchCaseProbability(0.25);
+                return 30;
+            case 400:
+                GraalDirectives.injectSwitchCaseProbability(0.25);
+                return 40;
+            default: {
+                GraalDirectives.injectSwitchCaseProbability(0);
+                GraalDirectives.deoptimize();
+                throw GraalError.shouldNotReachHere("Deoptimize");
+            }
+        }
+    }
+
     @Test(expected = GraalError.class)
     public void testMissingProbability() {
         OptionValues optionValues = new OptionValues(getInitialOptions(), DebugOptions.DumpOnError, false);
@@ -156,6 +182,7 @@ public class SwitchCaseProbabilityDirectiveTest extends GraalCompilerTest {
         NodeIterable<IntegerSwitchNode> switchNodes = graph.getNodes().filter(IntegerSwitchNode.class);
         Assert.assertEquals("IntegerSwitchNode count", 1, switchNodes.count());
         IntegerSwitchNode switchNode = switchNodes.first();
+        double defaultProbability = 0.1;
         for (int i = 0; i < switchNode.keyCount(); ++i) {
             double expectedProbability = Double.NaN;
             switch (switchNode.intKeyAt(i)) {
@@ -184,11 +211,24 @@ public class SwitchCaseProbabilityDirectiveTest extends GraalCompilerTest {
                 case 7:
                     expectedProbability = 0.2;
                     break;
+                case 100:
+                case 200:
+                case 300:
+                case 400:
+                    expectedProbability = 0.25;
+                    defaultProbability = 0.0;
+                    break;
                 default:
                     GraalError.shouldNotReachHereUnexpectedValue(switchNode.intKeyAt(i));
             }
             Assert.assertEquals(expectedProbability, switchNode.keyProbability(i), 0.001);
         }
-        Assert.assertEquals(0.1, switchNode.defaultProbability(), 0.001);
+        Assert.assertEquals(defaultProbability, switchNode.defaultProbability(), 0.001);
+    }
+
+    @Test
+    public void testZeroProbability() {
+        test("zeroProbabilityDeoptimize", 200);
+        test("zeroProbabilityDeoptimize", 99);
     }
 }

@@ -80,6 +80,10 @@ public abstract class AbstractProcessor extends javax.annotation.processing.Abst
         return doProcess(annotations, roundEnv);
     }
 
+    /**
+     * Implementations should claim their annotations by returning {@code true} to avoid extra
+     * annotation processing work.
+     */
     protected abstract boolean doProcess(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv);
 
     private final Map<String, TypeElement> types = new HashMap<>();
@@ -161,7 +165,7 @@ public abstract class AbstractProcessor extends javax.annotation.processing.Abst
     /**
      * Gets the {@link TypeElement} for a given class name.
      *
-     * @returns {@code null} if the class cannot be resolved
+     * @return {@code null} if the class cannot be resolved
      */
     public TypeElement getTypeElementOrNull(String className) {
         TypeElement type = types.get(className);
@@ -342,7 +346,7 @@ public abstract class AbstractProcessor extends javax.annotation.processing.Abst
      * Determines if a given exception is (most likely) caused by
      * <a href="https://bugs.eclipse.org/bugs/show_bug.cgi?id=367599">Bug 367599</a>.
      */
-    private static boolean isBug367599(Throwable t) {
+    protected static boolean isBug367599(Throwable t) {
         if (t instanceof FilerException) {
             for (StackTraceElement ste : t.getStackTrace()) {
                 if (ste.toString().contains("org.eclipse.jdt.internal.apt.pluggable.core.filer.IdeFilerImpl.create")) {

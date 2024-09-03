@@ -34,7 +34,6 @@ import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.ActualParameterTypeFlow;
 import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
-import com.oracle.graal.pointsto.flow.AllInstantiatedTypeFlow;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
@@ -43,7 +42,6 @@ import com.oracle.graal.pointsto.util.ConcurrentLightHashMap;
 import com.oracle.svm.common.meta.MultiMethod;
 
 import jdk.vm.ci.code.BytecodePosition;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public final class PointsToAnalysisMethod extends AnalysisMethod {
@@ -146,7 +144,7 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
 
     @Override
     public Iterable<? extends InvokeInfo> getInvokes() {
-        return getTypeFlow().getInvokes().getValues();
+        return getTypeFlow().getInvokes();
     }
 
     /**
@@ -193,15 +191,15 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
          * The receiver flow of the context insensitive invoke is the type flow of its declaring
          * class.
          */
-        AllInstantiatedTypeFlow receiverFlow = receiverType.getTypeFlow(bb, false);
+        var receiverFlow = receiverType.getTypeFlow(bb, false);
 
         actualParameters[0] = receiverFlow;
         for (int i = 1; i < actualParameters.length; i++) {
-            actualParameters[i] = new ActualParameterTypeFlow((AnalysisType) method.getSignature().getParameterType(i - 1, null));
+            actualParameters[i] = new ActualParameterTypeFlow(method.getSignature().getParameterType(i - 1));
         }
         ActualReturnTypeFlow actualReturn = null;
-        AnalysisType returnType = (AnalysisType) method.getSignature().getReturnType(null);
-        if (returnType.getStorageKind() == JavaKind.Object) {
+        AnalysisType returnType = method.getSignature().getReturnType();
+        if (bb.isSupportedJavaKind(returnType.getStorageKind())) {
             actualReturn = new ActualReturnTypeFlow(returnType);
         }
 
@@ -225,7 +223,7 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
      */
     private static void initContextInsensitiveInvoke(PointsToAnalysis bb, AnalysisMethod method, InvokeTypeFlow invoke) {
         AnalysisType receiverType = method.getDeclaringClass();
-        AllInstantiatedTypeFlow receiverFlow = receiverType.getTypeFlow(bb, false);
+        var receiverFlow = receiverType.getTypeFlow(bb, false);
         receiverFlow.addObserver(bb, invoke);
     }
 
@@ -246,24 +244,8 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
     }
 
     @Override
-    public boolean isImplementationInvokable() {
-        if (!getTypeFlow().flowsGraphCreated()) {
-            // flows for direct roots can be created later
-            return isDirectRootMethod();
-        } else {
-            /*
-             * If only a stub is ever created for this method, then it will not be invoked.
-             *
-             * However, for deopt targets it is possible for a root to temporarily be a stub before
-             * a full flow graph is created.
-             */
-            return !getTypeFlow().getMethodFlowsGraphInfo().isStub() || (isDirectRootMethod() && isDeoptTarget());
-        }
-    }
-
-    @Override
-    public void setReturnsAllInstantiatedTypes() {
-        super.setReturnsAllInstantiatedTypes();
-        assert !getTypeFlow().flowsGraphCreated() : "must call setReturnsAllInstantiatedTypes before typeflow is created";
+    public void setOpaqueReturn() {
+        super.setOpaqueReturn();
+        assert !getTypeFlow().flowsGraphCreated() : "must call setOpaqueReturn before typeflow is created";
     }
 }

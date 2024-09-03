@@ -34,6 +34,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define jio_fprintf fprintf
+
 #define VALUE_UNKNOWN           0
 #define VALUE_KEY               1
 #define VALUE_MAPID             2
@@ -107,7 +109,7 @@ getValueInRegistry(HKEY hKey,
 
     valSize = sizeof(val);
     ret = RegQueryValueExA(hKey, (char *) keyNames[keyIndex + 1], NULL,
-                           typePtr, val, &valSize);
+                           typePtr, (LPBYTE) val, &valSize);
     if (ret != ERROR_SUCCESS) {
         return ret;
     }
@@ -323,7 +325,7 @@ static int getWinTimeZone(char *winZoneName)
 
             size = sizeof(szValue);
             ret = getValueInRegistry(hSubKey, STD_NAME, &valueType,
-                                     szValue, &size);
+                                     (LPBYTE) szValue, &size);
             if (ret != ERROR_SUCCESS) {
                 /*
                  * NT 4.0 SP3 fails here since it doesn't have the "Std"

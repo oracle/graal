@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,10 +40,7 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
-import static org.hamcrest.CoreMatchers.containsString;
-import static org.hamcrest.CoreMatchers.not;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
 import java.lang.reflect.InvocationHandler;
@@ -108,16 +105,13 @@ public class HostObjectToStringTest extends AbstractHostAccessTest {
     @Test
     public void lambdaToString() {
         // HotSpot lambda classes have names like "pkg.HostClass$$Lambda$69/0x<hex-id>".
-        // We strip the "/0x<hex-id>" suffix from the name.
-        // On SVM, they are named "pkg.HostClass$$Lambda$<unique-hex-digest>", which we preserve.
+        // On SVM, they are named "pkg.HostClass$$Lambda$/0x<unique-hex-digest>", which we preserve.
         final Pattern allowedClassNamePattern = Pattern.compile("^[A-Za-z.$\\d]+$");
         final Supplier<String> supplier = () -> "ignored";
 
         setupEnv(HostAccess.EXPLICIT);
         Value value = context.asValue(supplier);
         String string = value.toString();
-        assertThat(string, not(containsString("/")));
-        assertThat(string, not(containsString("0x")));
         assertTrue(string, allowedClassNamePattern.matcher(string).matches());
     }
 

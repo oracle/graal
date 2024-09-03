@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.posix.darwin;
 
+import com.oracle.svm.core.util.BasedOnJDKFile;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.StackValue;
@@ -54,10 +55,7 @@ final class DarwinThreadCpuTimeSupport implements ThreadCpuTimeSupport {
         return getThreadCpuTime(machThread, includeSystemTime);
     }
 
-    /**
-     * Based on jdk-20-ga, see <a href=
-     * "https://github.com/openjdk/jdk20/blob/82749901b1497f524e53e47c45708c8e4a63c8b9/src/hotspot/os/bsd/os_bsd.cpp#L2314">os::thread_cpu_time</a>.
-     */
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+10/src/hotspot/os/bsd/os_bsd.cpp#L2429-L2454")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static long getThreadCpuTime(int machThread, boolean includeSystemTime) {
         CIntPointer sizePointer = UnsafeStackValue.get(Integer.BYTES);

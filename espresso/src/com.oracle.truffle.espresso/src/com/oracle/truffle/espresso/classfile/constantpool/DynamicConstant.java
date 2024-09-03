@@ -109,11 +109,11 @@ public interface DynamicConstant extends PoolConstant {
         }
 
         @Override
-        public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
+        public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, ObjectKlass accessingKlass) {
             Meta meta = accessingKlass.getMeta();
 
             // Condy constant resolving.
-            BootstrapMethodsAttribute bms = (BootstrapMethodsAttribute) ((ObjectKlass) accessingKlass).getAttribute(BootstrapMethodsAttribute.NAME);
+            BootstrapMethodsAttribute bms = (BootstrapMethodsAttribute) accessingKlass.getAttribute(BootstrapMethodsAttribute.NAME);
 
             assert (bms != null);
             // TODO(garcia) cache bootstrap method resolution
@@ -131,16 +131,14 @@ public interface DynamicConstant extends PoolConstant {
 
                 Object result = null;
                 if (!meta.getJavaVersion().java19OrLater()) {
-                    result = meta.java_lang_invoke_MethodHandleNatives_linkDynamicConstant.invokeDirect(
-                                    null,
+                    result = meta.java_lang_invoke_MethodHandleNatives_linkDynamicConstant.invokeDirectStatic(
                                     accessingKlass.mirror(),
                                     thisIndex,
                                     bootstrapmethodMethodHandle,
                                     fieldName, fieldType.mirror(),
                                     StaticObject.wrap(args, meta));
                 } else {
-                    result = meta.java_lang_invoke_MethodHandleNatives_linkDynamicConstant.invokeDirect(
-                                    null,
+                    result = meta.java_lang_invoke_MethodHandleNatives_linkDynamicConstant.invokeDirectStatic(
                                     accessingKlass.mirror(),
                                     bootstrapmethodMethodHandle,
                                     fieldName, fieldType.mirror(),

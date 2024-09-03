@@ -20,7 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-//TODO GR-43114 fix warnings
+
+/**
+ * Polyglot interop related classes.
+ */
+// TODO GR-43114 fix warnings
 @SuppressPackageWarnings({"truffle-inlining", "truffle-sharing", "truffle-neverdefault", "truffle-limit"})
 package com.oracle.truffle.espresso.runtime.dispatch;
 

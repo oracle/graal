@@ -30,9 +30,15 @@ import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Formatter;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
 import java.util.ServiceLoader;
+import java.util.Set;
+import java.util.regex.Pattern;
 
+import jdk.graal.compiler.debug.GraalError;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
@@ -43,29 +49,60 @@ import org.graalvm.collections.MapCursor;
  */
 public class OptionsParser {
 
-    private static volatile List<OptionDescriptors> cachedOptionDescriptors;
+    /**
+     * Info about libgraal options.
+     *
+     * @param descriptors set of compiler options available in libgraal. These correspond to the
+     *            reachable {@link OptionKey}s discovered during Native Image static analysis. This
+     *            field is only non-null when {@link OptionsParser} is loaded by the GuestGraal
+     *            class loader.
+     * @param enterpriseOptions {@linkplain OptionKey#getName() names} of enterprise options
+     */
+    public record LibGraalOptionsInfo(EconomicMap<String, OptionDescriptor> descriptors, Set<String> enterpriseOptions) {
+        public static LibGraalOptionsInfo create() {
+            return new LibGraalOptionsInfo(EconomicMap.create(), new HashSet<>());
+        }
+    }
+
+    /**
+     * Compiler options info available in libgraal. This field is only non-null when
+     * {@link OptionsParser} is loaded by the GuestGraal class loader.
+     */
+    private static LibGraalOptionsInfo libgraalOptions;
 
     /**
      * Gets an iterable of available {@link OptionDescriptors}.
      */
-    @ExcludeFromJacocoGeneratedReport("contains libgraal only path")
+    @ExcludeFromJacocoGeneratedReport("contains libgraal-only path")
     public static Iterable<OptionDescriptors> getOptionsLoader() {
-        if (IS_IN_NATIVE_IMAGE || cachedOptionDescriptors != null) {
-            return cachedOptionDescriptors;
+        if (IS_IN_NATIVE_IMAGE) {
+            return List.of(new OptionDescriptorsMap(Objects.requireNonNull(libgraalOptions.descriptors, "missing options")));
         }
-        /*
-         * The Graal module (i.e., jdk.graal.compiler) is loaded by the platform class loader.
-         * Modules that depend on and extend Graal are loaded by the app class loader. As such, we
-         * need to start the provider search at the app class loader instead of the platform class
-         * loader.
-         */
-        return ServiceLoader.load(OptionDescriptors.class, ClassLoader.getSystemClassLoader());
+        boolean inGuestGraal = libgraalOptions != null;
+        if (inGuestGraal && IS_BUILDING_NATIVE_IMAGE) {
+            /*
+             * Graal code is being run in the context of the GuestGraal loader while building
+             * libgraal so use the GuestGraal loader to load the OptionDescriptors.
+             */
+            ClassLoader myCL = OptionsParser.class.getClassLoader();
+            return ServiceLoader.load(OptionDescriptors.class, myCL);
+        } else {
+            /*
+             * The Graal module (i.e., jdk.graal.compiler) is loaded by the platform class loader.
+             * Modules that depend on and extend Graal are loaded by the app class loader so use it
+             * (instead of the platform class loader) to load the OptionDescriptors.
+             */
+            ClassLoader loader = ClassLoader.getSystemClassLoader();
+            return ServiceLoader.load(OptionDescriptors.class, loader);
+        }
     }
 
     @ExcludeFromJacocoGeneratedReport("only called when building libgraal")
-    public static void setCachedOptionDescriptors(List<OptionDescriptors> list) {
-        assert IS_BUILDING_NATIVE_IMAGE : "Used to pre-initialize the option descriptors during native image generation";
-        OptionsParser.cachedOptionDescriptors = list;
+    public static LibGraalOptionsInfo setLibgraalOptions(LibGraalOptionsInfo info) {
+        GraalError.guarantee(IS_BUILDING_NATIVE_IMAGE, "Can only set libgraal compiler options when building libgraal");
+        GraalError.guarantee(libgraalOptions == null, "Libgraal compiler options must be set exactly once");
+        OptionsParser.libgraalOptions = info;
+        return info;
     }
 
     /**
@@ -86,6 +123,23 @@ public class OptionsParser {
     }
 
     /**
+     * Parses an array of option settings of the form {@code "OptionKey=Value"} in {@code options},
+     * adding parsed options to {@code values}.
+     *
+     * @param options array of option setting strings (i.e., assignments of values to options).
+     * @param values the object in which to store the parsed values
+     * @param loader source of the available {@link OptionDescriptors}
+     * @throws IllegalArgumentException if there's a problem parsing any of {@code options}
+     */
+    public static void parseOptions(String[] options, EconomicMap<OptionKey<?>, Object> values, Iterable<OptionDescriptors> loader) {
+        EconomicMap<String, String> settings = EconomicMap.create();
+        for (String option : options) {
+            parseOptionSettingTo(option, settings);
+        }
+        parseOptions(settings, values, loader);
+    }
+
+    /**
      * Parses a given option setting string and adds the parsed key and value to {@code dst}.
      *
      * @param optionSetting a string matching the pattern {@code <name>=<value>}
@@ -96,6 +150,33 @@ public class OptionsParser {
             throw new IllegalArgumentException("Option setting has does not match the pattern <name>=<value>: " + optionSetting);
         }
         dst.put(optionSetting.substring(0, eqIndex), optionSetting.substring(eqIndex + 1));
+    }
+
+    /**
+     * Splits a list of option settings into an array of options. If {@code options} starts with a
+     * non-letter character, that character is used as the delimiter between options. Otherwise,
+     * whitespace is the delimiter.
+     *
+     * @param options string containing a separated list of option settings.
+     * @return an array of strings containing the individual parsed options.
+     * @throws IllegalArgumentException if a non-whitespace delimiter is used and the delimiter
+     *             appears repeated contiguously in {@code options}.
+     */
+    public static String[] splitOptions(String options) {
+        String sepRegex = "\\s+";
+        String toParse = options;
+        if (!options.isEmpty() && !Character.isLetter(options.charAt(0))) {
+            sepRegex = Pattern.quote(options.substring(0, 1));
+            toParse = options.substring(1);
+        }
+
+        String[] settings = toParse.split(sepRegex);
+        for (String optionSetting : settings) {
+            if (optionSetting.isEmpty()) {
+                throw new IllegalArgumentException(String.format("Delimiter '%s' is repeated contiguously in \"%s\"", options.charAt(0), options));
+            }
+        }
+        return settings;
     }
 
     /**
@@ -129,21 +210,20 @@ public class OptionsParser {
 
         OptionDescriptor desc = lookup(loader, name);
         if (desc == null) {
-            List<OptionDescriptor> matches = fuzzyMatch(loader, name);
             Formatter msg = new Formatter();
-            msg.format("Could not find option %s", name);
-            if (!matches.isEmpty()) {
-                msg.format("%nDid you mean one of the following?");
-                for (OptionDescriptor match : matches) {
-                    msg.format("%n    %s=<value>", match.getName());
+            if (name.equals("PrintGraphFile")) {
+                msg.format("Option PrintGraphFile has been removed - use PrintGraph=File instead");
+            } else {
+                List<OptionDescriptor> matches = fuzzyMatch(loader, name);
+                msg.format("Could not find option %s", name);
+                if (!matches.isEmpty()) {
+                    msg.format("%nDid you mean one of the following?");
+                    for (OptionDescriptor match : matches) {
+                        msg.format("%n    %s=<value>", match.getName());
+                    }
                 }
             }
-            IllegalArgumentException iae = new IllegalArgumentException(msg.toString());
-            if (isFromLibGraal(iae)) {
-                msg.format("%nIf %s is a libgraal option, it must be specified with '-Dlibgraal.%s' as opposed to '-Dgraal.%s'.", name, name, name);
-                iae = new IllegalArgumentException(msg.toString());
-            }
-            throw iae;
+            throw new IllegalArgumentException(msg.toString());
         }
 
         Object value = parseOptionValue(desc, uncheckedValue);
@@ -151,16 +231,9 @@ public class OptionsParser {
         desc.getOptionKey().update(values, value);
     }
 
-    private static boolean isFromLibGraal(Throwable t) {
-        for (StackTraceElement frame : t.getStackTrace()) {
-            if ("org.graalvm.libgraal.LibGraal".equals(frame.getClassName())) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /** Parses a given option value with a known descriptor. */
+    /**
+     * Parses a given option value with a known descriptor.
+     */
     public static Object parseOptionValue(OptionDescriptor desc, Object uncheckedValue) {
         Class<?> optionType = desc.getOptionValueType();
         Object value;
@@ -211,7 +284,7 @@ public class OptionsParser {
     }
 
     private static long parseLong(String v) {
-        String valueString = v.toLowerCase();
+        String valueString = v.toLowerCase(Locale.ROOT);
         long scale = 1;
         if (valueString.endsWith("k")) {
             scale = 1024L;
@@ -233,7 +306,7 @@ public class OptionsParser {
 
     /**
      * Compute string similarity based on Dice's coefficient.
-     *
+     * <p>
      * Ported from str_similar() in globals.cpp.
      */
     public static float stringSimilarity(String str1, String str2) {
@@ -281,5 +354,14 @@ public class OptionsParser {
             }
         }
         return found;
+    }
+
+    static boolean isEnterpriseOption(OptionDescriptor desc) {
+        if (IS_IN_NATIVE_IMAGE) {
+            return Objects.requireNonNull(libgraalOptions.enterpriseOptions, "missing options").contains(desc.getName());
+        }
+        Class<?> declaringClass = desc.getDeclaringClass();
+        String module = declaringClass.getModule().getName();
+        return module != null && module.contains("enterprise");
     }
 }

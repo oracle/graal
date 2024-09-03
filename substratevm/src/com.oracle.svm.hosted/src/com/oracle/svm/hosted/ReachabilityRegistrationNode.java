@@ -24,21 +24,21 @@
  */
 package com.oracle.svm.hosted;
 
+import com.oracle.graal.pointsto.util.AnalysisFuture;
+import com.oracle.svm.core.BuildPhaseProvider;
+import com.oracle.svm.core.ParsingReason;
+import com.oracle.svm.core.util.VMError;
+
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeCycles;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.NodeSize;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
-
-import com.oracle.graal.pointsto.util.AnalysisFuture;
-import com.oracle.svm.core.BuildPhaseProvider;
-import com.oracle.svm.core.ParsingReason;
-import com.oracle.svm.core.util.VMError;
 
 /**
  * Allows a custom callback to be executed when this node is reachable.
@@ -59,8 +59,8 @@ import com.oracle.svm.core.util.VMError;
  *
  * To use:
  * <ol>
- * <li>Create a subclass of {@link InvocationPlugin.RequiredInvocationPlugin} that is also a
- * decorator (override @{@link InvocationPlugin.RequiredInvocationPlugin#isDecorator()})</li>
+ * <li>Create a subclass of {@link RequiredInvocationPlugin} that is also a decorator
+ * (override @{@link RequiredInvocationPlugin#isDecorator()})</li>
  * <li>When applying the plugin, add this node to the graph with a @{link {@link Runnable} that
  * registers the metadata.}</li>
  * </ol>

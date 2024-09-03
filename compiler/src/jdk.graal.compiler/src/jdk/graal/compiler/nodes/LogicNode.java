@@ -28,7 +28,7 @@ import static jdk.graal.compiler.nodeinfo.InputType.Condition;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
 import jdk.graal.compiler.core.common.type.StampFactory;
-import jdk.graal.compiler.graph.Node.IndirectCanonicalization;
+import jdk.graal.compiler.graph.Node.IndirectInputChangedCanonicalization;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.ProfileData.BranchProbabilityData;
@@ -37,7 +37,7 @@ import jdk.graal.compiler.nodes.calc.FloatingNode;
 import jdk.vm.ci.meta.TriState;
 
 @NodeInfo(allowedUsageTypes = {Condition}, size = SIZE_1)
-public abstract class LogicNode extends FloatingNode implements IndirectCanonicalization {
+public abstract class LogicNode extends FloatingNode implements IndirectInputChangedCanonicalization {
 
     public static final NodeClass<LogicNode> TYPE = NodeClass.create(LogicNode.class);
 

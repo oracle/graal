@@ -85,4 +85,6 @@ typedef struct {
   uint8_t fCET_SS;
   uint8_t fF16C;
   uint8_t fAVX512_IFMA;
+  uint8_t fAVX_IFMA;
+  uint8_t fAPX_F;
 } CPUFeatures;

@@ -28,9 +28,6 @@ import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.R
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
 
 import org.graalvm.collections.EconomicMap;
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.options.OptionKey;
-import jdk.graal.compiler.options.OptionType;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -41,7 +38,6 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
@@ -50,12 +46,17 @@ import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.Counter;
+
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionType;
 
 public class RuntimeCodeCache {
 
@@ -192,7 +193,7 @@ public class RuntimeCodeCache {
         if (newTableSize < INITIAL_TABLE_SIZE) {
             newTableSize = INITIAL_TABLE_SIZE;
         }
-        NonmovableArray<UntetheredCodeInfo> newCodeInfos = NonmovableArrays.createWordArray(newTableSize);
+        NonmovableArray<UntetheredCodeInfo> newCodeInfos = NonmovableArrays.createWordArray(newTableSize, NmtCategory.Code);
         if (codeInfos.isNonNull()) {
             NonmovableArrays.arraycopy(codeInfos, 0, newCodeInfos, 0, NonmovableArrays.lengthOf(codeInfos));
             NonmovableArrays.releaseUnmanagedArray(codeInfos);
@@ -210,14 +211,14 @@ public class RuntimeCodeCache {
          */
         Deoptimizer.deoptimizeInRange(CodeInfoAccess.getCodeStart(info), CodeInfoAccess.getCodeEnd(info), false);
 
-        finishInvalidation(info, true);
+        finishInvalidation(info);
     }
 
     protected void invalidateNonStackMethod(CodeInfo info) {
         assert VMOperation.isGCInProgress() : "may only be called by the GC";
         prepareInvalidation(info);
         assert codeNotOnStackVerifier.verify(info);
-        finishInvalidation(info, false);
+        finishInvalidation(info);
     }
 
     private void prepareInvalidation(CodeInfo info) {
@@ -236,14 +237,14 @@ public class RuntimeCodeCache {
         }
     }
 
-    private void finishInvalidation(CodeInfo info, boolean notifyGC) {
+    private void finishInvalidation(CodeInfo info) {
         InstalledCodeObserverSupport.removeObservers(RuntimeCodeInfoAccess.getCodeObserverHandles(info));
-        finishInvalidation0(info, notifyGC);
+        finishInvalidation0(info);
         RuntimeCodeInfoHistory.singleton().logInvalidate(info);
     }
 
     @Uninterruptible(reason = "Modifying code tables that are used by the GC")
-    private void finishInvalidation0(CodeInfo info, boolean notifyGC) {
+    private void finishInvalidation0(CodeInfo info) {
         /*
          * Now it is guaranteed that the InstalledCode is not on the stack and cannot be invoked
          * anymore, so we can free the code and all metadata.
@@ -256,7 +257,7 @@ public class RuntimeCodeCache {
         numCodeInfos--;
         NonmovableArrays.setWord(codeInfos, numCodeInfos, WordFactory.nullPointer());
 
-        RuntimeCodeInfoAccess.freePartially(info, notifyGC);
+        RuntimeCodeInfoAccess.markAsInvalidated(info);
         assert verifyTable();
     }
 
@@ -297,20 +298,23 @@ public class RuntimeCodeCache {
 
             Pointer sp = readCallerStackPointer();
             JavaStackWalker.walkCurrentThread(sp, this);
-            if (SubstrateOptions.MultiThreaded.getValue()) {
-                for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
-                    if (vmThread == CurrentIsolate.getCurrentThread()) {
-                        continue;
-                    }
-                    JavaStackWalker.walkThread(vmThread, this);
+            for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
+                if (vmThread == CurrentIsolate.getCurrentThread()) {
+                    continue;
                 }
+                JavaStackWalker.walkThread(vmThread, this);
             }
             return true;
         }
 
         @Override
-        public boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo currentCodeInfo, DeoptimizedFrame deoptimizedFrame) {
+        public boolean visitRegularFrame(Pointer sp, CodePointer ip, CodeInfo currentCodeInfo) {
             assert currentCodeInfo != codeInfoToCheck : currentCodeInfo.rawValue();
+            return true;
+        }
+
+        @Override
+        protected boolean visitDeoptimizedFrame(Pointer originalSP, CodePointer deoptStubIP, DeoptimizedFrame deoptimizedFrame) {
             return true;
         }
     }

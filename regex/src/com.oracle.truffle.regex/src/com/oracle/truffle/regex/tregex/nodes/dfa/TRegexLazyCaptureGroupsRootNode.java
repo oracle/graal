@@ -80,7 +80,7 @@ public class TRegexLazyCaptureGroupsRootNode extends RegexBodyNode {
         } else {
             start = receiver.getStart();
         }
-        int[] result = (int[]) entryNode.execute(frame, receiver.getInput(), receiver.getFromIndex(), start, receiver.getEnd());
+        int[] result = (int[]) entryNode.execute(frame, receiver.getInput(), receiver.getFromIndex(), receiver.getEnd(), receiver.getRegionFrom(), receiver.getRegionTo(), start);
         if (CompilerDirectives.inInterpreter()) {
             RegexProfile profile = profiler.getRegexProfile();
             profile.profileCaptureGroupAccess(result[1] - result[0], result[1] - (receiver.getFromIndex() + 1));

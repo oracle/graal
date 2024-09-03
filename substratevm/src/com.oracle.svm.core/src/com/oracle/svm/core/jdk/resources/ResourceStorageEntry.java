@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,16 +28,22 @@ package com.oracle.svm.core.jdk.resources;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.core.BuildPhaseProvider;
+import com.oracle.svm.core.util.VMError;
+
 public final class ResourceStorageEntry extends ResourceStorageEntryBase {
 
     private final boolean isDirectory;
     private final boolean fromJar;
-    private final List<byte[]> data;
+    private List<byte[]> data;
 
     public ResourceStorageEntry(boolean isDirectory, boolean fromJar) {
         this.isDirectory = isDirectory;
         this.fromJar = fromJar;
-        this.data = new ArrayList<>();
+        this.data = List.of();
     }
 
     @Override
@@ -53,6 +59,29 @@ public final class ResourceStorageEntry extends ResourceStorageEntryBase {
     @Override
     public List<byte[]> getData() {
         return data;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    @Override
+    public void addData(byte[] datum) {
+        List<byte[]> newData = new ArrayList<>(data.size() + 1);
+        newData.addAll(data);
+        newData.add(datum);
+        /* Always use a compact, immutable data structure in the image heap. */
+        data = List.copyOf(newData);
+    }
+
+    /**
+     * Helper method that allows replacing the data entries of an existing resource after analysis
+     * but before the universe was built. This is only safe because byte[] is always discovered by
+     * the analysis and the data is "registered as immutable" in an after compilation hook (see
+     * usages of {@link #getData()}.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void replaceData(byte[]... replacementData) {
+        VMError.guarantee(BuildPhaseProvider.isAnalysisFinished(), "Replacing data of a resource entry before analysis finished. Register standard resource instead.");
+        VMError.guarantee(!BuildPhaseProvider.isCompilationFinished(), "Trying to replace data of a resource entry after compilation finished.");
+        this.data = List.of(replacementData);
     }
 
     @Override

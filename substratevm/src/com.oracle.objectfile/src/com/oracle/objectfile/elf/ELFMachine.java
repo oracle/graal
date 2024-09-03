@@ -29,6 +29,8 @@ import com.oracle.objectfile.ObjectFile.RelocationKind;
 import com.oracle.objectfile.ObjectFile.RelocationMethod;
 import com.oracle.objectfile.elf.ELFRelocationSection.ELFRelocationMethod;
 
+import java.util.Locale;
+
 /**
  * ELF machine type (incomplete). Each machine type also defines its set of relocation types.
  */
@@ -85,7 +87,7 @@ public enum ELFMachine/* implements Integral */ {
     abstract int flags();
 
     public static ELFMachine from(String s) {
-        switch (s.toLowerCase()) {
+        switch (s.toLowerCase(Locale.ROOT)) {
             case "amd64":
             case "x86_64":
                 return X86_64;

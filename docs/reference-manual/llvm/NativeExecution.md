@@ -17,8 +17,8 @@ Therefore, special care is needed to consider the interaction of this code with 
    - Installed signal handlers might behave differently than on native execution.
 * Process control and threading is done based on the following aspects:
     - GraalVM assumes it has full control over threading.
-    - Multi-threading is supported via the `pthreads` library (for example, `pthread_create`).
-    - Directly using process related syscalls like `clone`, `fork`, `vfork`, etc. is not supported.
+    - Multithreading is supported via the `pthreads` library (for example, `pthread_create`).
+    - Directly using process related syscalls such as `clone`, `fork`, `vfork`, etc. is not supported.
     - The `exec` function family is not supported.
 
 ## Memory Layout
@@ -60,14 +60,14 @@ Syscalls are virtualized and routed through appropriate GraalVM APIs.
 
 ## Polyglot Interaction Between Native Code and Managed Languages
 
-When using polyglot interoperability between LLVM languages (e.g., C/C++) and managed languages (e.g., JavaScript, Python, Ruby), some care must be taken with the manual memory management.
+When using polyglot interoperability between LLVM languages (for example, C/C++) and managed languages (such as JavaScript, Python, or Ruby), some care must be taken with the manual memory management.
 Note that this section only applies to the native mode of execution (the default).
 In managed mode (enabled with the `--llvm.managed` option and only available in Oracle GraalVM), the LLVM runtime itself behaves like a managed language, and the polyglot interaction is the same as between other managed languages.
 
 * Garbage collection policies to be considered:
     - Pointers to objects of managed languages are managed by a garbage collector, therefore they do not need to be freed manually.
-    - On the other hand, pointers to allocations from the LLVM code (e.g., `malloc`) are not under control of the garbage collector, so they need to be deallocated manually.
+    - On the other hand, pointers to allocations from the LLVM code (for example, `malloc`) are not under control of the garbage collector, so they need to be deallocated manually.
 * Unmanaged heap policies to be considered:
-    - Native memory (e.g., `malloc`, data sections, thread locals) is not under the control of a garbage collector.
+    - Native memory (for example, `malloc`, data sections, thread locals) is not under the control of a garbage collector.
     - Pointers to foreign objects controlled by the garbage collector can not be stored in native memory directly.
     - There are handle functions available to work around this limitation (see `graalvm/llvm/handles.h`).

@@ -39,14 +39,13 @@ import org.graalvm.nativeimage.Platforms;
 import sun.management.Util;
 
 public final class CodeCacheManagerMXBean implements MemoryManagerMXBean, NotificationEmitter {
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    CodeCacheManagerMXBean() {
-    }
-
     public static final String CODE_CACHE_CODE_AND_DATA_POOL = "runtime code cache (code and data)";
     public static final String CODE_CACHE_NATIVE_METADATA_POOL = "runtime code cache (native metadata)";
     public static final String CODE_CACHE_MANAGER = "code cache";
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public CodeCacheManagerMXBean() {
+    }
 
     @Override
     public String getName() {

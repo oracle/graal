@@ -33,11 +33,10 @@ import java.util.List;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 
-import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.core.common.RetryableBailoutException;
 import jdk.graal.compiler.core.common.calc.CanonicalCondition;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Graph.Mark;
@@ -80,7 +79,7 @@ import jdk.graal.compiler.nodes.extended.SwitchNode;
 import jdk.graal.compiler.nodes.loop.CountedLoopInfo;
 import jdk.graal.compiler.nodes.loop.DefaultLoopPolicies;
 import jdk.graal.compiler.nodes.loop.InductionVariable.Direction;
-import jdk.graal.compiler.nodes.loop.LoopEx;
+import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.loop.LoopFragment;
 import jdk.graal.compiler.nodes.loop.LoopFragmentInside;
 import jdk.graal.compiler.nodes.loop.LoopFragmentWhole;
@@ -92,6 +91,7 @@ import jdk.graal.compiler.nodes.util.IntegerHelper;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.util.EconomicSetNodeEventListener;
+import jdk.graal.compiler.phases.common.util.LoopUtility;
 
 public abstract class LoopTransformations {
 
@@ -99,7 +99,7 @@ public abstract class LoopTransformations {
         // does not need to be instantiated
     }
 
-    public static LoopFragmentInside peel(LoopEx loop) {
+    public static LoopFragmentInside peel(Loop loop) {
         loop.detectCounted();
         double frequencyBefore = loop.localLoopFrequency();
         AbstractBeginNode mainExit = null;
@@ -122,7 +122,7 @@ public abstract class LoopTransformations {
     }
 
     @SuppressWarnings("try")
-    public static void fullUnroll(LoopEx loop, CoreProviders context, CanonicalizerPhase canonicalizer) {
+    public static void fullUnroll(Loop loop, CoreProviders context, CanonicalizerPhase canonicalizer) {
         // assert loop.isCounted(); //TODO (gd) strengthen : counted with known trip count
         LoopBeginNode loopBegin = loop.loopBegin();
         StructuredGraph graph = loopBegin.graph();
@@ -171,10 +171,13 @@ public abstract class LoopTransformations {
         loop.loopBegin().graph().getOptimizationLog().report(LoopTransformations.class, "LoopFullUnroll", loop.loopBegin());
     }
 
-    public static void unswitch(LoopEx loop, List<ControlSplitNode> controlSplitNodeSet, boolean isTrivialUnswitch) {
-        ControlSplitNode firstNode = controlSplitNodeSet.iterator().next();
+    public static void unswitch(Loop loop, List<ControlSplitNode> controlSplitNodeSet, boolean isTrivialUnswitch) {
+        final ControlSplitNode firstNode = controlSplitNodeSet.iterator().next();
+        final StructuredGraph graph = firstNode.graph();
+
+        graph.getDebug().dump(DebugContext.VERBOSE_LEVEL, graph, "Before unswitching %s", controlSplitNodeSet);
+
         LoopFragmentWhole originalLoop = loop.whole();
-        StructuredGraph graph = firstNode.graph();
 
         if (!isTrivialUnswitch) {
             loop.loopBegin().incrementUnswitches();
@@ -227,7 +230,7 @@ public abstract class LoopTransformations {
         loop.loopBegin().graph().getOptimizationLog().withProperty("unswitches", loop.loopBegin().unswitches()).report(LoopTransformations.class, "LoopUnswitching", loop.loopBegin());
     }
 
-    public static void partialUnroll(LoopEx loop, EconomicMap<LoopBeginNode, OpaqueNode> opaqueUnrolledStrides) {
+    public static void partialUnroll(Loop loop, EconomicMap<LoopBeginNode, OpaqueNode> opaqueUnrolledStrides) {
         assert loop.loopBegin().isMainLoop();
         adaptCountedLoopExitProbability(loop.counted().getCountedExit(), loop.localLoopFrequency() / 2D);
         LoopFragmentInside newSegment = loop.inside().duplicate();
@@ -246,7 +249,7 @@ public abstract class LoopTransformations {
      * given that we create new loop exits after existing ones. Thus, we create a dedicated state
      * for the exit that can later be duplicated cleanly.
      */
-    public static void ensureExitsHaveUniqueStates(LoopEx loop) {
+    public static void ensureExitsHaveUniqueStates(Loop loop) {
         if (loop.loopBegin().graph().getGuardsStage() == GuardsStage.AFTER_FSA) {
             return;
         }
@@ -327,7 +330,7 @@ public abstract class LoopTransformations {
     // loop with final phi(s) and data flow patched to the "continue code".
     // The pre loop is constrained to one iteration for now and will likely
     // be updated to produce vector alignment if applicable.
-    public static PreMainPostResult insertPrePostLoops(LoopEx loop) {
+    public static PreMainPostResult insertPrePostLoops(Loop loop) {
         assert loop.loopBegin().loopExits().isEmpty() || loop.loopBegin().graph().isAfterStage(StageFlag.VALUE_PROXY_REMOVAL) ||
                         loop.counted().getCountedExit() instanceof LoopExitNode : "Can only unroll loops, if they have exits, if the counted exit is a regular loop exit " + loop;
         StructuredGraph graph = loop.loopBegin().graph();
@@ -651,7 +654,7 @@ public abstract class LoopTransformations {
         }
     }
 
-    private static void processPreLoopPhis(LoopEx preLoop, LoopExitNode mainLoopCountedExit, LoopFragmentWhole mainLoop, LoopFragmentWhole postLoop) {
+    private static void processPreLoopPhis(Loop preLoop, LoopExitNode mainLoopCountedExit, LoopFragmentWhole mainLoop, LoopFragmentWhole postLoop) {
         /*
          * Re-route values from the main loop to the post loop
          */
@@ -734,7 +737,7 @@ public abstract class LoopTransformations {
      * @return the unswitchable control split nodes grouped by condition meaning that every control
      *         split node within the same inner list share the same condition (the key for the map).
      */
-    public static EconomicMap<ValueNode, List<ControlSplitNode>> findUnswitchable(LoopEx loop) {
+    public static EconomicMap<ValueNode, List<ControlSplitNode>> findUnswitchable(Loop loop) {
         EconomicMap<ValueNode, List<ControlSplitNode>> controls = EconomicMap.create(Equivalence.IDENTITY);
         for (IfNode ifNode : loop.whole().nodes().filter(IfNode.class)) {
             if (loop.isOutsideLoop(ifNode.condition())) {
@@ -775,24 +778,24 @@ public abstract class LoopTransformations {
      * than before. A shared loop condition indicates that the graph isn't properly optimized, so
      * don't bother with partial unrolling, especially if it would break things.
      */
-    public static boolean countedLoopExitConditionHasMultipleUsages(LoopEx loop) {
+    public static boolean countedLoopExitConditionHasMultipleUsages(Loop loop) {
         LogicNode condition = loop.counted().getLimitTest().condition();
         return condition.hasMoreThanOneUsage();
     }
 
-    public static boolean strideAdditionOverflows(LoopEx loop) {
+    public static boolean strideAdditionOverflows(Loop loop) {
         final int bits = ((IntegerStamp) loop.counted().getLimitCheckedIV().valueNode().stamp(NodeView.DEFAULT)).getBits();
         long stride = loop.counted().getLimitCheckedIV().constantStride();
         try {
-            NumUtil.addExact(stride, stride, bits);
+            LoopUtility.addExact(bits, stride, stride);
             return false;
         } catch (ArithmeticException ae) {
             return true;
         }
     }
 
-    public static boolean isUnrollableLoop(LoopEx loop) {
-        if (!loop.isCounted() || !loop.counted().getLimitCheckedIV().isConstantStride() || !loop.loop().getChildren().isEmpty() || loop.loopBegin().loopEnds().count() != 1 ||
+    public static boolean isUnrollableLoop(Loop loop) {
+        if (!loop.isCounted() || !loop.counted().getLimitCheckedIV().isConstantStride() || !loop.getCFGLoop().getChildren().isEmpty() || loop.loopBegin().loopEnds().count() != 1 ||
                         loop.loopBegin().loopExits().count() > 1 || loop.counted().isInverted()) {
             // loops without exits can be unrolled, inverted loops cannot be unrolled without
             // protecting their first iteration
@@ -822,10 +825,10 @@ public abstract class LoopTransformations {
             // Flow-less loops to partial unroll for now. 3 blocks corresponds to an if that either
             // exits or continues the loop. There might be fixed and floating work within the loop
             // as well.
-            if (loop.loop().getBlocks().size() < 3) {
+            if (loop.getCFGLoop().getBlocks().size() < 3) {
                 return true;
             }
-            condition.getDebug().log(DebugContext.VERBOSE_LEVEL, "isUnrollableLoop %s too large to unroll %s ", loopBegin, loop.loop().getBlocks().size());
+            condition.getDebug().log(DebugContext.VERBOSE_LEVEL, "isUnrollableLoop %s too large to unroll %s ", loopBegin, loop.getCFGLoop().getBlocks().size());
         }
         return false;
     }

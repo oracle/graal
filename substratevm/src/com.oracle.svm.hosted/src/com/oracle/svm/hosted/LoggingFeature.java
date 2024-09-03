@@ -27,8 +27,6 @@ package com.oracle.svm.hosted;
 import java.lang.reflect.Field;
 import java.util.Optional;
 
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.options.OptionType;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -40,6 +38,9 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.util.ReflectionUtil;
+
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionType;
 
 @AutomaticallyRegisteredFeature
 public class LoggingFeature implements InternalFeature {
@@ -57,8 +58,6 @@ public class LoggingFeature implements InternalFeature {
     }
 
     private final boolean trace = LoggingFeature.Options.TraceLoggingFeature.getValue();
-
-    private boolean reflectionConfigured = false;
 
     private Field loggersField;
 
@@ -89,19 +88,18 @@ public class LoggingFeature implements InternalFeature {
     }
 
     @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        access.registerReachabilityHandler((a1) -> {
+            registerForReflection(a1.findClassByName("java.util.logging.ConsoleHandler"));
+            registerForReflection(a1.findClassByName("java.util.logging.SimpleFormatter"));
+        }, access.findClassByName("java.util.logging.Logger"));
+    }
+
+    @Override
     public void duringAnalysis(DuringAnalysisAccess a) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
 
         access.rescanRoot(loggersField);
-
-        if (!reflectionConfigured && access.getMetaAccess().optionalLookupJavaType(a.findClassByName("java.util.logging.Logger")).isPresent()) {
-            registerForReflection(a.findClassByName("java.util.logging.ConsoleHandler"));
-            registerForReflection(a.findClassByName("java.util.logging.SimpleFormatter"));
-
-            reflectionConfigured = true;
-
-            access.requireAnalysisIteration();
-        }
     }
 
     private void registerForReflection(Class<?> clazz) {

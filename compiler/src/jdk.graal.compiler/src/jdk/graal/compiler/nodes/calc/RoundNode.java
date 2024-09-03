@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -83,13 +83,17 @@ public final class RoundNode extends UnaryNode implements ArithmeticLIRLowerable
     }
 
     private static FloatStamp roundStamp(FloatStamp stamp, RoundingMode mode) {
+        if (stamp.isEmpty()) {
+            return stamp;
+        }
+
         double min = stamp.lowerBound();
         min = Math.min(min, round(mode, min));
 
         double max = stamp.upperBound();
         max = Math.max(max, round(mode, max));
 
-        return new FloatStamp(stamp.getBits(), min, max, stamp.isNonNaN());
+        return FloatStamp.create(stamp.getBits(), min, max, stamp.isNonNaN());
     }
 
     @Override

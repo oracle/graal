@@ -28,7 +28,7 @@ import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideE
 
 import java.util.Objects;
 
-import jdk.graal.compiler.graph.NodeSourcePosition;
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
@@ -43,7 +43,9 @@ import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
@@ -73,7 +75,7 @@ public class DeoptimizationRuntime {
             }
 
             if (action.doesInvalidateCompilation()) {
-                Deoptimizer.invalidateMethodOfFrame(sp, speculation);
+                Deoptimizer.invalidateMethodOfFrame(CurrentIsolate.getCurrentThread(), sp, speculation);
             } else {
                 Deoptimizer.deoptimizeFrame(sp, false, speculation);
             }
@@ -82,6 +84,12 @@ public class DeoptimizationRuntime {
                 Log.log().string("]").newline();
             }
 
+        } catch (Throwable t) {
+            /*
+             * If an error was thrown during this deoptimization stage we likely will be in an
+             * inconsistent state from which execution cannot proceed.
+             */
+            throw VMError.shouldNotReachHere(t);
         } finally {
             StackOverflowCheck.singleton().protectYellowZone();
         }

@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.sampler;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
@@ -36,7 +35,6 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.IsolateListenerSupport.IsolateListener;
 import com.oracle.svm.core.Isolates;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
@@ -44,10 +42,15 @@ import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.sampler.AbstractJfrExecutionSampler;
+import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.PlatformThreads.ThreadLocalKey;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
+
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionType;
 
 /**
  * This is the core class of the low overhead asynchronous execution sampler. It registers a SIGPROF
@@ -103,9 +106,6 @@ public abstract class SubstrateSigprofHandler extends AbstractJfrExecutionSample
     }
 
     @Override
-    protected abstract void updateInterval();
-
-    @Override
     protected void stopSampling() {
         assert VMOperation.isInProgressAtSafepoint();
         assert getSignalHandlerIsolate().isNonNull();
@@ -148,7 +148,17 @@ public abstract class SubstrateSigprofHandler extends AbstractJfrExecutionSample
 
     protected abstract void installSignalHandler();
 
-    protected abstract void uninstallSignalHandler();
+    protected void uninstallSignalHandler() {
+        /*
+         * Do not replace the signal handler with the default one because a signal might be pending
+         * for some thread (the default signal handler would print "Profiling timer expired" to the
+         * output).
+         */
+    }
+
+    protected abstract void install0(IsolateThread thread);
+
+    protected abstract void uninstall0(IsolateThread thread);
 
     @Uninterruptible(reason = "Prevent VM operations that modify thread-local execution sampler state.")
     private static void install(IsolateThread thread) {
@@ -156,9 +166,11 @@ public abstract class SubstrateSigprofHandler extends AbstractJfrExecutionSample
 
         if (ExecutionSamplerInstallation.isAllowed(thread)) {
             ExecutionSamplerInstallation.installed(thread);
+            singleton().install0(thread);
         }
     }
 
+    @Override
     @Uninterruptible(reason = "Prevent VM operations that modify thread-local execution sampler state.")
     protected void uninstall(IsolateThread thread) {
         assert thread == CurrentIsolate.getCurrentThread() || VMOperation.isInProgressAtSafepoint();
@@ -170,6 +182,7 @@ public abstract class SubstrateSigprofHandler extends AbstractJfrExecutionSample
              */
             storeIsolateThreadInNativeThreadLocal(WordFactory.nullPointer());
             ExecutionSamplerInstallation.uninstalled(thread);
+            uninstall0(thread);
         }
     }
 
@@ -178,34 +191,35 @@ public abstract class SubstrateSigprofHandler extends AbstractJfrExecutionSample
      */
     @Uninterruptible(reason = "The method executes during signal handling.", callerMustBe = true)
     protected static boolean tryEnterIsolate() {
-        if (SubstrateOptions.SpawnIsolates.getValue()) {
-            Isolate isolate = getSignalHandlerIsolate();
-            if (isolate.isNull()) {
-                /* It is not the initial isolate or the initial isolate already exited. */
-                return false;
-            }
-
-            /* Write isolate pointer (heap base) into register. */
-            CEntryPointSnippets.setHeapBase(Isolates.getHeapBase(isolate));
+        Isolate isolate = getSignalHandlerIsolate();
+        if (isolate.isNull()) {
+            /* It is not the initial isolate or the initial isolate already exited. */
+            return false;
         }
+
+        /* Write isolate pointer (heap base) into register. */
+        CEntryPointSnippets.setHeapBase(Isolates.getHeapBase(isolate));
 
         /* We are keeping reference to isolate thread inside OS thread local area. */
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            ThreadLocalKey key = singleton().keyForNativeThreadLocal;
-            IsolateThread thread = PlatformThreads.singleton().getUnmanagedThreadLocalValue(key);
-            if (thread.isNull()) {
-                /* Thread is not yet initialized or already detached from isolate. */
-                return false;
-            }
-
-            /* Write isolate thread pointer into register. */
-            WriteCurrentVMThreadNode.writeCurrentVMThread(thread);
+        ThreadLocalKey key = singleton().keyForNativeThreadLocal;
+        IsolateThread thread = PlatformThreads.singleton().getUnmanagedThreadLocalValue(key);
+        if (thread.isNull()) {
+            /* Thread is not yet initialized or already detached from isolate. */
+            return false;
         }
+
+        /* Write isolate thread pointer into register. */
+        WriteCurrentVMThreadNode.writeCurrentVMThread(thread);
         return true;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void storeIsolateThreadInNativeThreadLocal(IsolateThread isolateThread) {
         PlatformThreads.singleton().setUnmanagedThreadLocalValue(keyForNativeThreadLocal, isolateThread);
+    }
+
+    public static class Options {
+        @Option(help = "Print statistics collected during JFR-based execution sampler run.", type = OptionType.Expert)//
+        public static final RuntimeOptionKey<Boolean> JfrBasedExecutionSamplerStatistics = new RuntimeOptionKey<>(false);
     }
 }

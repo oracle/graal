@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.c.query;
 
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.InfoTreeVisitor;
+
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -46,9 +47,5 @@ public abstract class NativeInfoTreeVisitor extends InfoTreeVisitor {
 
     protected final int getSizeInBytes(ResolvedJavaType type) {
         return getSizeInBytes(type.getJavaKind());
-    }
-
-    protected final boolean isSigned(ResolvedJavaType type) {
-        return nativeLibs.isSigned(type);
     }
 }

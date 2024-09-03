@@ -79,7 +79,6 @@ import static jdk.graal.compiler.bytecode.Bytecodes.SIPUSH;
 import static jdk.graal.compiler.bytecode.Bytecodes.TABLESWITCH;
 
 import org.graalvm.collections.EconomicMap;
-import jdk.graal.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
@@ -354,7 +353,7 @@ public class BytecodeDisassembler {
             case LDC_W          :
             case LDC2_W         : {
                 int cpi = stream.readCPI();
-                Object constant = GraalServices.lookupConstant(cp, cpi, false);
+                Object constant = cp.lookupConstant(cpi, false);
                 String desc = null;
                 if (constant == null) {
                     desc = "<unresolved>";

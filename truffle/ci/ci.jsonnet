@@ -1,7 +1,8 @@
 {
   local common = import '../../ci/ci_common/common.jsonnet',
   local bench_hw = (import '../../ci/ci_common/bench-common.libsonnet').bench_hw,
-  local top_level_ci = (import '../../ci/ci_common/common-utils.libsonnet').top_level_ci,
+  local utils = import "../../ci/ci_common/common-utils.libsonnet",
+  local top_level_ci = utils.top_level_ci,
   local devkits = common.devkits,
 
   local darwin_amd64 = common.darwin_amd64,
@@ -18,8 +19,8 @@
   },
 
   local guard = {
-    guard: {
-      includes: ["<graal>/sdk/**", "<graal>/truffle/**", "**.jsonnet"] + top_level_ci,
+    guard+: {
+      includes+: ["<graal>/sdk/**", "<graal>/truffle/**", "**.jsonnet"] + top_level_ci,
     }
   },
 
@@ -55,7 +56,7 @@
     packages+: {
       maven: "==3.3.9"
     },
-    mx_cmd: ["mx", "-p", "../vm", "--dynamicimports", "/graal-js"],
+    mx_cmd: ["mx", "-p", "../vm", "--env", "ce", "--dynamicimports", "/graal-js", "--native-images=none"],
     run+: [
       ["set-export", "ROOT_DIR", ["pwd"]],
       self.mx_cmd + ["build"],
@@ -75,17 +76,13 @@
     packages+: {
       maven: "==3.3.9",
       ruby: ">=2.1.0",
-    } + (if self.arch == "aarch64" then {
-      "00:devtoolset": "==10", # GCC 10.2.1, make 4.2.1, binutils 2.35, valgrind 3.16.1
-    } else {
-      "00:devtoolset": "==11", # GCC 11.2, make 4.3, binutils 2.36, valgrind 3.17
-    }),
-    mx_cmd: ["mx", "-p", "../vm", "--dynamicimports", "/substratevm", "--native-images=none"],
+    },
+    mx_cmd: ["mx", "-p", "../vm", "--env", "ce", "--native-images=none"],
     run+: [
       ["set-export", "ROOT_DIR", ["pwd"]],
       self.mx_cmd + ["build"],
       ["mkdir", "mxbuild/tmp_mvn_repo"],
-      ["mx", "maven-install", "--all-suites", "--repo", "mxbuild/tmp_mvn_repo", "--version-string", self.mx_cmd + ["graalvm-version"]],
+      self.mx_cmd + ["maven-deploy", "--tags=public", "--all-suites", "--all-distribution-types", "--validate=full", "--licenses=EPL-2.0,PSF-License,GPLv2-CPE,ICU,GPLv2,BSD-simplified,BSD-new,UPL,MIT", "--version-string", self.mx_cmd + ["graalvm-version"], "--suppress-javadoc", "local", "file://$ROOT_DIR/mxbuild/tmp_mvn_repo"],
       ["set-export", "JAVA_HOME", self.mx_cmd + ["--quiet", "--no-warning", "graalvm-home"]],
       ["cd", "external_repos"],
       ["python", "populate.py"],
@@ -106,26 +103,25 @@
 
   local truffle_weekly = common.weekly + {notify_groups:: ["truffle"]},
 
-  builds: std.flattenArrays([
+  local _builds = std.flattenArrays([
       [
         linux_amd64  + jdk + sigtest + guard,
-        linux_amd64  + jdk + simple_tool_maven_project_gate + common.mach5_target,
-        # JDK latest only works on MacOS Ventura (GR-49652)
-        # darwin_amd64 + jdk + truffle_weekly + gate_lite + guard,
+        darwin_amd64 + jdk + truffle_weekly + gate_lite + guard,
         darwin_aarch64 + jdk + truffle_weekly + gate_lite + guard,
       ] for jdk in [common.oraclejdk21, common.oraclejdkLatest]
     ]) +
   [
-    # JDK latest only works on MacOS Ventura (GR-49652)
-    darwin_amd64 + common.oraclejdk21 + truffle_weekly + gate_lite + guard,
     # The simple_language_maven_project_gate uses native-image, so we must run on labsjdk rather than oraclejdk
     linux_amd64  + common.labsjdk21 + simple_language_maven_project_gate,
     linux_amd64  + common.labsjdkLatest + simple_language_maven_project_gate,
+    # The simple_tool_maven_project_gate builds compiler, so we must run on labsjdk rather than oraclejdk because of compiler module rename
+    linux_amd64  + common.labsjdk21 + simple_tool_maven_project_gate,
+    linux_amd64  + common.labsjdkLatest + simple_tool_maven_project_gate,
 
     linux_amd64 + common.oraclejdk21 + truffle_gate + guard + {timelimit: "45:00"},
     linux_amd64 + common.oraclejdkLatest + truffle_gate + guard + {environment+: {DISABLE_DSL_STATE_BITS_TESTS: "true"}},
 
-    truffle_common + linux_amd64 + common.oraclejdk17 + guard {
+    truffle_common + linux_amd64 + common.oraclejdk21 + guard {
       name: "gate-truffle-javadoc",
       run: [
         ["mx", "build"],
@@ -144,15 +140,9 @@
       ],
     },
 
-    truffle_common + windows_amd64 + common.oraclejdk21 + devkits["windows-jdk21"] + guard {
-      name: "gate-truffle-nfi-windows-21",
-      # TODO make that a full gate run
-      # currently, some truffle unittests fail on windows
-      run: [
-        ["mx", "build" ],
-        ["mx", "unittest", "--verbose" ],
-      ],
-    },
+    # TODO Run full gate on Windows GR-51441
+    windows_amd64 + gate_lite + common.oraclejdk21 + devkits["windows-jdk21"] + guard,
+    windows_amd64 + gate_lite + common.oraclejdkLatest + devkits["windows-jdkLatest"] + guard,
 
     truffle_common + linux_amd64 + common.oraclejdk21 + common.deps.eclipse + common.deps.jdt + guard + {
       name: "weekly-truffle-coverage-21-linux-amd64",
@@ -169,7 +159,7 @@
 
     # BENCHMARKS
 
-    bench_hw.x52 + common.labsjdkLatestCE + bench_common + {
+    bench_hw.e3 + common.labsjdkLatestCE + bench_common + {
       name: "bench-truffle-jmh",
       notify_groups:: ["truffle_bench"],
       run: [
@@ -189,5 +179,7 @@
       ],
       targets: ["gate"],
     },
-  ]
+  ],
+
+  builds: utils.add_defined_in(_builds, std.thisFile),
 }

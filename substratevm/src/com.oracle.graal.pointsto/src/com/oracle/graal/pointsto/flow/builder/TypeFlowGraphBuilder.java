@@ -32,14 +32,14 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import jdk.graal.compiler.nodes.ParameterNode;
-
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.typestate.PointsToStats;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.util.ClassUtil;
+
+import jdk.graal.compiler.nodes.ParameterNode;
 
 public class TypeFlowGraphBuilder {
     private final PointsToAnalysis bb;
@@ -140,6 +140,10 @@ public class TypeFlowGraphBuilder {
             workQueue.addLast(sinkBuilder);
             while (!workQueue.isEmpty()) {
                 TypeFlowBuilder<?> builder = workQueue.removeFirst();
+                if (!processed.add(builder)) {
+                    /* Skip if this builder was processed already. */
+                    continue;
+                }
                 /* Materialize the builder. */
                 TypeFlow<?> flow = builder.get();
 
@@ -149,9 +153,6 @@ public class TypeFlowGraphBuilder {
 
                 /* The retain reason is the sink from which it was reached. */
                 PointsToStats.registerTypeFlowRetainReason(bb, flow, (sinkBuilder.isBuildingAnActualParameter() ? "ActualParam=" : "") + ClassUtil.getUnqualifiedName(sinkBuilder.getFlowClass()));
-
-                /* Mark the builder as materialized. */
-                processed.add(builder);
 
                 /*
                  * Iterate over use and observer dependencies. Add them to the workQueue only if

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,14 +43,9 @@ package com.oracle.truffle.polyglot;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.lang.reflect.Method;
-import java.net.JarURLConnection;
-import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.URLConnection;
-import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.security.CodeSource;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -63,12 +58,16 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
+
+import org.graalvm.home.HomeFinder;
+import org.graalvm.polyglot.SandboxPolicy;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -83,7 +82,6 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.provider.TruffleLanguageProvider;
 import com.oracle.truffle.polyglot.EngineAccessor.AbstractClassLoaderSupplier;
 import com.oracle.truffle.polyglot.EngineAccessor.StrongClassLoaderSupplier;
-import org.graalvm.polyglot.SandboxPolicy;
 
 /**
  * Ahead-of-time initialization. If the JVM is started with {@link TruffleOptions#AOT}, it populates
@@ -274,7 +272,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         Map<String, Map<String, Supplier<InternalResourceCache>>> optionalResources = InternalResourceCache.loadOptionalInternalResources(suppliers);
         for (AbstractClassLoaderSupplier supplier : suppliers) {
             ClassLoader loader = supplier.get();
-            if (loader == null || !isValidLoader(loader)) {
+            if (loader == null) {
                 continue;
             }
             loadProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadLanguageImpl(p, caches, optionalResources));
@@ -320,15 +318,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         return first.providerAdapter.getProviderClass() == second.providerAdapter.getProviderClass();
     }
 
-    private static boolean isValidLoader(ClassLoader loader) {
-        try {
-            Class<?> truffleLanguageClassAsSeenByLoader = Class.forName(TruffleLanguage.class.getName(), true, loader);
-            return truffleLanguageClassAsSeenByLoader == TruffleLanguage.class;
-        } catch (ClassNotFoundException ex) {
-            return false;
-        }
-    }
-
+    @SuppressWarnings("deprecation")
     private static void loadLanguageImpl(ProviderAdapter providerAdapter, List<LanguageCache> into, Map<String, Map<String, Supplier<InternalResourceCache>>> optionalResources) {
         Class<?> providerClass = providerAdapter.getProviderClass();
         Module providerModule = providerClass.getModule();
@@ -357,16 +347,14 @@ final class LanguageCache implements Comparable<LanguageCache> {
                 }
             }
         }
-        String languageHome = getLanguageHomeImpl(id);
-        if (languageHome == null) {
-            URL url = providerClass.getClassLoader().getResource(className.replace('.', '/') + ".class");
-            if (url != null) {
-                try {
-                    languageHome = getLanguageHomeFromURLConnection(id, url.openConnection());
-                } catch (IOException ioe) {
-                }
-            }
-        }
+        /*
+         * We utilize the `HomeFinder#getLanguageHomes()` function because it works for legacy,
+         * standalone, and unchained builds. It's important to note that this code is never
+         * reachable during native image execution, and thus, using it doesn't introduce
+         * `ProcessProperties#getExecutableName` function in the generated native image.
+         */
+        Path languageHomePath = HomeFinder.getInstance().getLanguageHomes().get(id);
+        String languageHome = languageHomePath != null ? languageHomePath.toString() : null;
         String implementationName = reg.implementationName();
         String version = reg.version();
         TreeSet<String> characterMimes = new TreeSet<>();
@@ -382,6 +370,16 @@ final class LanguageCache implements Comparable<LanguageCache> {
         boolean interactive = reg.interactive();
         boolean internal = reg.internal();
         boolean needsAllEncodings = reg.needsAllEncodings();
+        if (!needsAllEncodings) {
+            if (providerModule.isNamed()) {
+                Optional<Module> jcodingsModule = providerModule.getLayer().findModule("org.graalvm.shadowed.jcodings");
+                needsAllEncodings = jcodingsModule.isPresent() && providerModule.canRead(jcodingsModule.get());
+            } else {
+                // If language is on the class path, assume needsAllEncodings=true.
+                // If jcodings is not actually available, it will be disabled either way.
+                needsAllEncodings = true;
+            }
+        }
         Set<String> servicesClassNames = new TreeSet<>(providerAdapter.getServicesClassNames());
         SandboxPolicy sandboxPolicy = reg.sandbox();
         Map<String, InternalResourceCache> resources = new HashMap<>();
@@ -400,39 +398,6 @@ final class LanguageCache implements Comparable<LanguageCache> {
                         servicesClassNames, reg.contextPolicy(), providerAdapter, reg.website(), sandboxPolicy, Collections.unmodifiableMap(resources)));
     }
 
-    private static String getLanguageHomeFromURLConnection(String languageId, URLConnection connection) {
-        if (connection instanceof JarURLConnection) {
-            /*
-             * The previous implementation used a `URL.getPath()`, but OS Windows is offended by
-             * leading slash and maybe other irrelevant characters. Therefore, for JDK 1.7+ a
-             * preferred way to go is URL -> URI -> Path.
-             *
-             * Also, Paths are more strict than Files and URLs, so we can't create an invalid Path
-             * from a random string like "/C:/". This leads us to the `URISyntaxException` for URL
-             * -> URI conversion and `java.nio.file.InvalidPathException` for URI -> Path
-             * conversion.
-             *
-             * For fixing further bugs at this point, please read http://tools.ietf.org/html/rfc1738
-             * http://tools.ietf.org/html/rfc2396 (supersedes rfc1738)
-             * http://tools.ietf.org/html/rfc3986 (supersedes rfc2396)
-             *
-             * http://url.spec.whatwg.org/ does not contain URI interpretation. When you call
-             * `URI.toASCIIString()` all reserved and non-ASCII characters are percent-quoted.
-             */
-            try {
-                URL url = ((JarURLConnection) connection).getJarFileURL();
-                if ("file".equals(url.getProtocol())) {
-                    Path path = Paths.get(url.toURI());
-                    Path parent = path.getParent();
-                    return parent != null ? parent.toString() : null;
-                }
-            } catch (URISyntaxException | FileSystemNotFoundException | IllegalArgumentException | SecurityException e) {
-                assert false : "Cannot locate " + languageId + " language home due to " + e.getMessage();
-            }
-        }
-        return null;
-    }
-
     private static String formatLanguageLocation(LanguageCache languageCache) {
         StringBuilder sb = new StringBuilder();
         sb.append("Language class ").append(languageCache.getClassName());
@@ -445,7 +410,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         return sb.toString();
     }
 
-    private static String getLanguageHomeImpl(String languageId) {
+    private static String getLanguageHomeFromSystemProperty(String languageId) {
         return toRealStringPath("org.graalvm.language." + languageId + ".home");
     }
 
@@ -620,7 +585,12 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
     String getLanguageHome() {
         if (languageHome == null) {
-            languageHome = getLanguageHomeImpl(id);
+            /*
+             * In the legacy build, the language home property is set by the GraalVMLocator at
+             * startup. We cannot use the HomeFinder#getLanguageHomes() function because it would
+             * make the ProcessProperties#getExecutableName() reachable.
+             */
+            languageHome = getLanguageHomeFromSystemProperty(id);
         }
         return languageHome;
     }

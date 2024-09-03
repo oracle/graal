@@ -43,7 +43,7 @@ final class JoinableExecutors {
     static ExecutorService newSingleThreadExecutor(ThreadFactory threadFactory) {
         return new JoinableThreadPoolExecutor(1, 1,
                         0L, TimeUnit.MILLISECONDS,
-                        new LinkedBlockingQueue<Runnable>(),
+                        new LinkedBlockingQueue<>(),
                         threadFactory);
     }
 

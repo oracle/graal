@@ -51,6 +51,7 @@ import java.util.function.Supplier;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import jdk.graal.compiler.test.SubprocessUtil;
 import org.graalvm.word.LocationIdentity;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -73,7 +74,6 @@ import jdk.graal.compiler.debug.DebugContext.Builder;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.PhiNode;
@@ -142,6 +142,10 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         return true;
     }
 
+    public static void main(String[] args) {
+
+    }
+
     public static String relativeFileName(String absolutePath) {
         int lastFileSeparatorIndex = absolutePath.lastIndexOf(File.separator);
         return absolutePath.substring(lastFileSeparatorIndex >= 0 ? lastFileSeparatorIndex : 0);
@@ -202,18 +206,9 @@ public class CheckGraalInvariants extends GraalCompilerTest {
          * Determines if {@code option} should be checked to ensure it has at least one usage.
          */
         public boolean shouldCheckUsage(OptionDescriptor option) {
-            Class<?> declaringClass = option.getDeclaringClass();
-            if (declaringClass.getName().equals("jdk.graal.compiler.truffle.TruffleCompilerOptions")) {
-                /*
-                 * These options are deprecated and will be removed in GraalVM 20.2.0. The
-                 * TruffleIntrinsifyFrameAccess option has no replacement and is unused.
-                 */
-                return false;
-            }
             if (option.getOptionKey().getClass().isAnonymousClass()) {
                 /*
-                 * Probably a derived option such as
-                 * jdk.graal.compiler.debug.DebugOptions.PrintGraphFile.
+                 * A derived option.
                  */
                 return false;
             }
@@ -228,6 +223,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
 
     @Test
     public void test() {
+        Assume.assumeFalse("JaCoCo causes failure", SubprocessUtil.isJaCoCoAttached()); // GR-50672
         assumeManagementLibraryIsLoadable();
         runTest(new InvariantsTool());
     }
@@ -242,7 +238,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         Plugins plugins = new Plugins(new InvocationPlugins());
         plugins.setClassInitializationPlugin(new DoNotInitializeClassInitializationPlugin());
         GraphBuilderConfiguration config = GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true).withUnresolvedIsError(true);
-        graphBuilderSuite.appendPhase(new GraphBuilderPhase(config));
+        graphBuilderSuite.appendPhase(new TestGraphBuilderPhase(config));
         HighTierContext context = new HighTierContext(providers, graphBuilderSuite, OptimisticOptimizations.NONE);
 
         Assume.assumeTrue(VerifyPhase.class.desiredAssertionStatus());
@@ -306,7 +302,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         OptionValues options = getInitialOptions();
         CompilerThreadFactory factory = new CompilerThreadFactory("CheckInvariantsThread");
         int availableProcessors = Runtime.getRuntime().availableProcessors();
-        ThreadPoolExecutor executor = new ThreadPoolExecutor(availableProcessors, availableProcessors, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), factory);
+        ThreadPoolExecutor executor = new ThreadPoolExecutor(availableProcessors, availableProcessors, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(), factory);
 
         List<String> errors = Collections.synchronizedList(new ArrayList<>());
 
@@ -344,6 +340,10 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         verifiers.add(new VerifyPluginFrameState());
         verifiers.add(new VerifyGraphUniqueUsages());
         verifiers.add(new VerifyEndlessLoops());
+        verifiers.add(new VerifyPhaseNoDirectRecursion());
+        verifiers.add(new VerifyStringCaseUsage());
+        verifiers.add(new VerifyMathAbs());
+        verifiers.add(new VerifyLoopInfo());
         VerifyAssertionUsage assertionUsages = null;
         boolean checkAssertions = tool.checkAssertions();
 

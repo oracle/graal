@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,6 +62,38 @@ import com.oracle.truffle.api.nodes.RootNode;
 
 @SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing"})
 public class UnsupportedSpecializationTest {
+
+    @Test
+    public void testNullNodesArray() {
+        var node = UnsupportedUncachedNodeGen.getUncached();
+        var ex = new UnsupportedSpecializationException(node, null);
+        Assert.assertNotNull(ex.getSuppliedValues());
+        Assert.assertNotNull(ex.getSuppliedNodes());
+        Assert.assertEquals(0, ex.getSuppliedValues().length);
+        Assert.assertEquals(0, ex.getSuppliedNodes().length);
+        Assert.assertSame(node, ex.getNode());
+        Assert.assertTrue(ex.getMessage(), ex.getMessage().contains("UnsupportedSpecializationTestFactory.UnsupportedUncachedNodeGen.Uncached"));
+
+        var ey = new UnsupportedSpecializationException(null, null, 42d);
+        Assert.assertNotNull(ey.getSuppliedValues());
+        Assert.assertNotNull(ey.getSuppliedNodes());
+        Assert.assertEquals(1, ey.getSuppliedValues().length);
+        Assert.assertEquals(1, ey.getSuppliedNodes().length);
+        Assert.assertEquals(null, ey.getSuppliedNodes()[0]);
+        Assert.assertEquals(42d, ey.getSuppliedValues()[0]);
+        Assert.assertNull(ey.getNode());
+        Assert.assertTrue(ey.getMessage(), ey.getMessage().contains("null"));
+    }
+
+    @Test
+    public void testNullValuesArray() {
+        var node = UnsupportedUncachedNodeGen.getUncached();
+        try {
+            Assert.assertNotNull(new UnsupportedSpecializationException(node, null, (Object[]) null));
+            Assert.fail("should have thrown NullPointerException");
+        } catch (NullPointerException npe) {
+        }
+    }
 
     @Test
     public void testUnsupported1() {

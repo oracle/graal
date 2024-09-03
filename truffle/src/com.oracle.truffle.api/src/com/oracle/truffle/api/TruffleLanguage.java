@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -486,7 +486,15 @@ public abstract class TruffleLanguage<C> {
          * </ul>
          *
          * @since 22.1
+         * @deprecated To enable all {@code TruffleString} encodings, it is sufficient to add the
+         *             {@code org.graalvm.shadowed.jcodings} module to the language's module-info
+         *             {@code requires} and ensure it is on the module path when languages are
+         *             loaded. If the module can be found, and at least one languages requires it,
+         *             all encodings are automatically enabled. When languages are loaded from the
+         *             class path (i.e. as an unnamed module), having jcodings on the class path is
+         *             enough to enable it.
          */
+        @Deprecated(since = "24.1")
         boolean needsAllEncodings() default false;
 
         /**
@@ -713,7 +721,7 @@ public abstract class TruffleLanguage<C> {
          *
          *         ExampleLocal(Env env, Thread thread) {
          *             this.env = env;
-         *             this.thread = new WeakReference<>(thread);
+         *             this.thread = new WeakReference&lt;&gt;(thread);
          *         }
          *
          *     }
@@ -762,7 +770,8 @@ public abstract class TruffleLanguage<C> {
      * Example usage of areOptionsCompatible if sharing of the language instances and parse caching
      * should be restricted by the script version option:
      *
-     * {@link TruffleLanguageSnippets.CompatibleLanguage#areOptionsCompatible}
+     * {@snippet file="com/oracle/truffle/api/TruffleLanguage.java"
+     * region="TruffleLanguageSnippets.CompatibleLanguage#areOptionsCompatible"}
      *
      * @param firstOptions the options used to create the first context, never <code>null</code>
      * @param newOptions the options that will be used for the new context, never <code>null</code>
@@ -815,9 +824,8 @@ public abstract class TruffleLanguage<C> {
      * do any complex operations. Just create the instance of the context, let the runtime system
      * register it properly. Should there be a need to perform complex initialization, override this
      * method and let the runtime call it <em>later</em> to finish any <em>post initialization</em>
-     * actions. Example:
-     *
-     * {@link TruffleLanguageSnippets.PostInitLanguage#createContext}
+     * actions. Example: {@snippet file="com/oracle/truffle/api/TruffleLanguage.java"
+     * region="TruffleLanguageSnippets.PostInitLanguage#createContext"}
      *
      * @param context the context created by
      *            {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env)}
@@ -877,7 +885,8 @@ public abstract class TruffleLanguage<C> {
      * <p>
      * Typical implementation looks like:
      *
-     * {@link TruffleLanguageSnippets.AsyncThreadLanguage#finalizeContext}
+     * {@snippet file="com/oracle/truffle/api/TruffleLanguage.java"
+     * region="TruffleLanguageSnippets.AsyncThreadLanguage#finalizeContext"}
      *
      * @see Registration#dependentLanguages() for specifying language dependencies.
      * @param context the context created by
@@ -1115,9 +1124,9 @@ public abstract class TruffleLanguage<C> {
      * successful for all pre-initialized languages the pre-initialized context is used, otherwise a
      * new context is created.
      * <p>
-     * Typical implementation looks like:
-     *
-     * {@link TruffleLanguageSnippets.PreInitializedLanguage#patchContext}
+     * Typical implementation looks like: {@snippet
+     * file="com/oracle/truffle/api/TruffleLanguage.java"
+     * region="TruffleLanguageSnippets.PreInitializedLanguage#patchContext"}
      *
      * @param context the context created by
      *            {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env)} during
@@ -1170,7 +1179,8 @@ public abstract class TruffleLanguage<C> {
          * the {@link #getSource()} references them, it is essential to name them. Example that uses
          * the argument names:
          *
-         * {@link TruffleLanguageSnippets#parseWithParams}
+         * {@snippet file="com/oracle/truffle/api/TruffleLanguage.java"
+         * region="TruffleLanguageSnippets#parseWithParams"}
          *
          * @return symbolic names for parameters of {@link CallTarget#call(java.lang.Object...)}
          * @since 0.22
@@ -1272,8 +1282,9 @@ public abstract class TruffleLanguage<C> {
      * method throws an {@link com.oracle.truffle.api.exception.AbstractTruffleException} the
      * exception interop messages may be executed without a context being entered.
      * <p>
-     * <b>Example multi-threaded language implementation:</b>
-     * {@link TruffleLanguageSnippets.MultiThreadedLanguage#initializeThread}
+     * <b>Example multi-threaded language implementation:</b> {@snippet
+     * file="com/oracle/truffle/api/TruffleLanguage.java"
+     * region="TruffleLanguageSnippets.MultiThreadedLanguage#initializeThread"}
      *
      * @param thread the thread that accesses the context for the first time.
      * @param singleThreaded <code>true</code> if the access is considered single-threaded,
@@ -1293,8 +1304,9 @@ public abstract class TruffleLanguage<C> {
      * {@link com.oracle.truffle.api.exception.AbstractTruffleException} the exception interop
      * messages may be executed without a context being entered.
      * <p>
-     * <b>Example multi-threaded language implementation:</b>
-     * {@link TruffleLanguageSnippets.MultiThreadedLanguage#initializeThread}
+     * <b>Example multi-threaded language implementation:</b> {@snippet
+     * file="com/oracle/truffle/api/TruffleLanguage.java"
+     * region="TruffleLanguageSnippets.MultiThreadedLanguage#initializeThread"}
      *
      * @param context the context that should be prepared for multi-threading.
      * @since 0.28
@@ -1316,8 +1328,9 @@ public abstract class TruffleLanguage<C> {
      * If this method throws an {@link com.oracle.truffle.api.exception.AbstractTruffleException}
      * the exception interop messages may be executed without a context being entered.
      * <p>
-     * <b>Example multi-threaded language implementation:</b>
-     * {@link TruffleLanguageSnippets.MultiThreadedLanguage#initializeThread}
+     * <b>Example multi-threaded language implementation:</b> {@snippet
+     * file="com/oracle/truffle/api/TruffleLanguage.java"
+     * region="TruffleLanguageSnippets.MultiThreadedLanguage#initializeThread"}
      *
      * @param context the context that is entered
      * @param thread the thread that accesses the context for the first time.
@@ -1412,6 +1425,8 @@ public abstract class TruffleLanguage<C> {
      * <li>Top scopes available in the {@link org.graalvm.polyglot polyglot API} as context
      * {@link Context#getBindings(String) bindings} object. Access to members of the bindings object
      * is applied to the returned scope object via interop.
+     * <li>Languages may expose other language scopes using a polyglot bindings builtin. E.g with
+     * {@link com.oracle.truffle.api.TruffleLanguage.Env#getScopePublic(LanguageInfo)}.
      * </ul>
      * <p>
      *
@@ -1668,10 +1683,11 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
-     * Returns the home location for this language. This corresponds to the directory in which the
-     * Jar file is located, if run from a Jar file. For an AOT compiled binary, this corresponds to
-     * the location of the language files in the default GraalVM distribution layout. executable or
-     * shared library.
+     * Returns the home location for this language or {@code null} if the language home is not set.
+     * Languages consumed from the Maven repository typically don't have a language home. For legacy
+     * graalvm or standalone builds the language home corresponds to the directory in which the Jar
+     * file is located, if run from a Jar file. For an AOT compiled binary, this corresponds to the
+     * location of the language files in the default GraalVM distribution layout.
      *
      * @since 19.0
      */
@@ -1918,8 +1934,9 @@ public abstract class TruffleLanguage<C> {
          * {@link ExecutorService#awaitTermination(long, java.util.concurrent.TimeUnit)} to detect
          * Thread termination as the polyglot thread may be cancelled before executing the executor
          * worker.<br/>
-         * A typical implementation looks like:
-         * {@link TruffleLanguageSnippets.AsyncThreadLanguage#finalizeContext}
+         * A typical implementation looks like: {@snippet file =
+         * "com/oracle/truffle/api/TruffleLanguage.java" region =
+         * "TruffleLanguageSnippets.AsyncThreadLanguage#finalizeContext"}
          * <p>
          * The {@link TruffleContext} can be either an inner context created by
          * {@link #newInnerContextBuilder(String...)}.{@link TruffleContext.Builder#build()
@@ -1946,10 +1963,9 @@ public abstract class TruffleLanguage<C> {
 
         /**
          * Creates a builder for threads that have access to the given context.
-         * 
+         *
          * @param runnable the runnable to run on the threads created by the builder.
          * @return the builder for threads that have access to the given context.
-         *
          * @since 23.0
          */
         public TruffleThreadBuilder newTruffleThreadBuilder(Runnable runnable) {
@@ -1990,7 +2006,9 @@ public abstract class TruffleLanguage<C> {
          * {@link ExecutorService#awaitTermination(long, java.util.concurrent.TimeUnit)} to detect
          * Thread termination as the system thread may be cancelled before executing the executor
          * worker.<br/>
-         * A typical implementation looks like: {@link TruffleLanguageSnippets.SystemThreadLanguage}
+         * A typical implementation looks like: {@snippet file =
+         * "com/oracle/truffle/api/TruffleLanguage.java" region =
+         * "TruffleLanguageSnippets.SystemThreadLanguage"}
          *
          * @param runnable the runnable to run on this thread.
          * @param threadGroup the thread group, passed on to the underlying {@link Thread}.
@@ -2460,20 +2478,43 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Returns <code>true</code> if polyglot evaluation is allowed, else <code>false</code>.
-         * Guest languages should hide or disable all polyglot evaluation builtins if this flag is
-         * set to <code>false</code>. Note that if polyglot evaluation access is disabled, then the
-         * {@link #getInternalLanguages() available languages list} only shows the current language,
-         * {@link Registration#dependentLanguages() dependent languages} and
-         * {@link Registration#internal() internal languages}.
          *
-         * @see org.graalvm.polyglot.Context.Builder#allowPolyglotAccess(org.graalvm.polyglot.PolyglotAccess)
          * @since 19.2
+         * @deprecated in 24.1 use {@link #isPolyglotEvalAllowed(LanguageInfo)
+         *             isPolyglotEvalAllowed(null) instead}. Note that language implementations
+         *             should now check whether polyglot eval is allowed also for individual
+         *             languages, as access could be denied only for an individual language.
          */
         @TruffleBoundary
+        @Deprecated
         public boolean isPolyglotEvalAllowed() {
+            return isPolyglotEvalAllowed(null);
+        }
+
+        /**
+         * Returns <code>true</code> if the current language is allowed to evaluate guest
+         * application provided code of the given language, else <code>false</code>. If this method
+         * returns <code>true</code> then the current language has permission to use
+         * {@link #parsePublic(Source, String...)} and {@link #getScopePublic(LanguageInfo)} for the
+         * given language. If the given language is <code>null</code> then this method will return
+         * <code>true</code> if polyglot access is allowed in principle, else <code>false</code>.
+         * Languages may want to call this method twice. Once with <code>null</code> to determine
+         * whether polyglot eval and scope based builtins should be available to the application at
+         * all and once with the concrete language just before the access.
+         * <p>
+         * The result of this method is safe to be cached per language context, it is guaranteed to
+         * not change for a context and target language combination.
+         *
+         * @see org.graalvm.polyglot.PolyglotAccess.Builder#allowEval(String, String) Embedders can
+         *      restrict polyglot eval access between certain languages.
+         * @see #parsePublic(Source, String...)
+         * @see #getScopePublic(LanguageInfo)
+         * @since 24.1
+         */
+        @TruffleBoundary
+        public boolean isPolyglotEvalAllowed(LanguageInfo targetLanguage) {
             try {
-                return LanguageAccessor.engineAccess().isPolyglotEvalAllowed(polyglotLanguageContext);
+                return LanguageAccessor.engineAccess().isPolyglotEvalAllowed(polyglotLanguageContext, targetLanguage);
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }
@@ -2527,7 +2568,10 @@ public abstract class TruffleLanguage<C> {
          * <code>source</code> to reference the actual parameters passed to
          * {@link CallTarget#call(java.lang.Object...)}.
          * <p>
-         * Compared to {@link #parsePublic(Source, String...)} this method provides also access to
+         * The suffix <code>internal</code> in the method name indicates that the result of this
+         * method is <b>not</b> safe to exposed to arbitrary guest code, by default. Use
+         * {@link #parsePublic(Source, String...)} for that purpose instead. Compared to
+         * {@link #parsePublic(Source, String...)} this method provides also access to
          * {@link TruffleLanguage.Registration#internal() internal} and dependent languages in
          * addition to public languages. For example, in JavaScript, a call to the eval builtin
          * should forward to {@link #parsePublic(Source, String...)} as it contains code provided by
@@ -2545,7 +2589,10 @@ public abstract class TruffleLanguage<C> {
          *            that can be referenced from the source
          * @return the call target representing the parsed result
          * @throws IllegalStateException if polyglot context associated with this environment is not
-         *             entered
+         *             entered, or if the language is neither a {@link #getPublicLanguages() public
+         *             language} nor an {@link #getInternalLanguages() internal language}.
+         * @throws IllegalArgumentException if the language is not allowed to evaluate code by the
+         *             current language
          * @see #parsePublic(Source, String...)
          * @since 19.2
          */
@@ -2569,10 +2616,10 @@ public abstract class TruffleLanguage<C> {
          * <code>source</code> to reference the actual parameters passed to
          * {@link CallTarget#call(java.lang.Object...)}.
          * <p>
-         * Compared to {@link #parseInternal(Source, String...)} this method does only provide
-         * access to non internal, non dependent, public languages. Public languages are configured
-         * by the embedder to be accessible to the guest language program. For example, in
-         * JavaScript, a call to the eval builtin should forward to
+         * The suffix <code>public</code> in the method name indicates that the result of this
+         * method is safe to be exposed by default to guest applications. Public languages are
+         * configured by the embedder to be accessible to the guest language program. For example,
+         * in JavaScript, a call to the eval builtin should forward to
          * {@link #parsePublic(Source, String...)} as it contains code provided by the guest
          * language user. Parsing regular expressions with the internal regular expression engine
          * should call {@link #parseInternal(Source, String...)} instead, as this is considered an
@@ -2582,13 +2629,21 @@ public abstract class TruffleLanguage<C> {
          * {@link Env#parseInternal(Source, String...)} instead of directly passing the Source to
          * the parser, in order to support code caching with {@link ContextPolicy#SHARED} and
          * {@link ContextPolicy#REUSE}.
+         * <p>
+         * Languages should check for {@link #isPolyglotEvalAllowed(LanguageInfo) eval permissions}
+         * for each {@link #getPublicLanguages() public language} prior to calling this method,
+         * otherwise {@link IllegalArgumentException} is thrown if not sufficient privileges are
+         * available.
          *
          * @param source the source to evaluate
          * @param argumentNames the names of {@link CallTarget#call(java.lang.Object...)} arguments
          *            that can be referenced from the source
          * @return the call target representing the parsed result
          * @throws IllegalStateException if polyglot context associated with this environment is not
-         *             entered
+         *             entered, or if the language is not a {@link #getPublicLanguages() public
+         *             language}
+         * @throws IllegalArgumentException if the language is not allowed to evaluate code by the
+         *             current language
          * @see #parseInternal(Source, String...)
          * @since 19.2
          */
@@ -2899,8 +2954,8 @@ public abstract class TruffleLanguage<C> {
          * @return {@link TruffleFile}
          * @throws UnsupportedOperationException when {@link URI} scheme is not supported
          * @throws IllegalArgumentException if preconditions on the {@code uri} do not hold.
-         * @throws FileSystemNotFoundException is the file system, identified by the {@code uri},
-         *             does not exist and cannot be created automatically
+         * @throws java.nio.file.FileSystemNotFoundException is the file system, identified by the
+         *             {@code uri}, does not exist and cannot be created automatically
          * @since 19.3.0
          */
         @TruffleBoundary
@@ -2962,8 +3017,8 @@ public abstract class TruffleLanguage<C> {
          * @since 19.3.0
          * @throws UnsupportedOperationException when {@link URI} scheme is not supported
          * @throws IllegalArgumentException if preconditions on the {@code uri} do not hold.
-         * @throws FileSystemNotFoundException is the file system, identified by the {@code uri},
-         *             does not exist and cannot be created automatically
+         * @throws java.nio.file.FileSystemNotFoundException is the file system, identified by the
+         *             {@code uri}, does not exist and cannot be created automatically
          * @see #getTruffleFileInternal(URI, Predicate)
          * @see #getPublicTruffleFile(java.net.URI)
          */
@@ -3043,8 +3098,8 @@ public abstract class TruffleLanguage<C> {
          * @throws UnsupportedOperationException when the {@link FileSystem} supports only
          *             {@link URI}
          * @throws IllegalArgumentException if preconditions on the {@code uri} do not hold.
-         * @throws FileSystemNotFoundException is the file system, identified by the {@code uri},
-         *             does not exist and cannot be created automatically
+         * @throws java.nio.file.FileSystemNotFoundException is the file system, identified by the
+         *             {@code uri}, does not exist and cannot be created automatically
          * @since 21.1.0
          * @see #getTruffleFileInternal(String, Predicate)
          * @see #getPublicTruffleFile(URI)
@@ -3719,6 +3774,100 @@ public abstract class TruffleLanguage<C> {
             return LanguageAccessor.engineAccess().getContextSandboxPolicy(this.polyglotLanguageContext);
         }
 
+        /**
+         * Returns the scope object of a non-null {@link #getPublicLanguages() public language}. The
+         * returned value follows the contract of {@link TruffleLanguage#getScope(Object)} of the
+         * other language, therefore it must be an
+         * {@link com.oracle.truffle.api.interop.InteropLibrary#isScope(Object) interop scope
+         * object} and may have
+         * {@link com.oracle.truffle.api.interop.InteropLibrary#hasScopeParent(Object) parent
+         * scopes}. The bindings object exposes all top scopes variables as flattened
+         * {@link com.oracle.truffle.api.interop.InteropLibrary#getMembers(Object) members}. In
+         * addition to being a scope the returned object may implement any number of the
+         * {@link com.oracle.truffle.api.interop.InteropLibrary interop traits}. The interop members
+         * of the returned object are typically writable, but that is not guaranteed.
+         * <p>
+         * The suffix <code>public</code> in the method name indicates that the result of this
+         * method is safe to be exposed by default to guest applications. For example, languages
+         * should use this method to implement the semantics of their polyglot bindings builtin, but
+         * is not limited to that.
+         * <p>
+         * All {@link #getPublicLanguages() public} languages with
+         * {@link #isPolyglotEvalAllowed(LanguageInfo) eval permissions} are accessible. If a
+         * language is not accessible then an {@link SecurityException} is thrown. The scope of the
+         * current language is always accessible, but it is recommended to use a language specific
+         * way to access symbols of the current language.
+         * <p>
+         * Languages should check for {@link #isPolyglotEvalAllowed(LanguageInfo) eval permissions}
+         * for each {@link #getPublicLanguages() public language} prior to calling this method,
+         * otherwise it might cause {@link SecurityException} if not sufficient privileges are
+         * available.
+         *
+         * @return the scope, or <code>null</code> if the requested language does not support such a
+         *         concept
+         * @throws IllegalStateException if polyglot context associated with this environment is not
+         *             entered
+         * @throws SecurityException if polyglot scope access is not enabled for this language.
+         * @see #getScopeInternal(LanguageInfo)
+         * @see #isPolyglotEvalAllowed(LanguageInfo)
+         * @see #getPolyglotBindings()
+         * @since 24.1
+         */
+        @TruffleBoundary
+        public Object getScopePublic(LanguageInfo language) throws IllegalArgumentException {
+            Objects.requireNonNull(language);
+            checkDisposed();
+            try {
+                Object result = LanguageAccessor.engineAccess().getScope(polyglotLanguageContext, language, false);
+                assert result == null || LanguageAccessor.interopAccess().isScopeObject(result) : String.format("%s is not a scope", result);
+                return result;
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
+        }
+
+        /**
+         * Returns the scope object of a non-null {@link #getInternalLanguages() internal language}.
+         * Works the same as {@link #getScopePublic(LanguageInfo)} but it also returns scopes of
+         * internal and dependent languages.
+         * <p>
+         * The suffix <code>internal</code> in the method name indicates that the result of this
+         * method is <b>not</b> safe to be exposed to arbitrary guest code, by default. Use
+         * {@link #getScopePublic(LanguageInfo)} for that purpose instead. For example, this method
+         * could be used to access a fixed set of symbols from the Truffle Native Interface, e.g. to
+         * load native language extensions. Languages may decide to expose scopes of internal
+         * languages to arbitrary guest code for testing purposes. Make sure this option is disabled
+         * by default and enabled using an {@link OptionCategory#INTERNAL internal} option only.
+         * <p>
+         * The scope of the current language is always accessible, but it is recommended to use a
+         * language specific way to access symbols of the current language.
+         * <p>
+         * It is recommended to only use this method for {@link LanguageInfo#isInternal() internal}
+         * or {@link TruffleLanguage.Registration#dependentLanguages() dependent languages}. For
+         * convenience, this method will also succeed for all accessible
+         * {@link #getPublicLanguages() public languages} with
+         * {@link #isPolyglotEvalAllowed(LanguageInfo) eval permissions}.
+         *
+         * @return the scope, or <code>null</code> if the requested language does not support such a
+         *         concept
+         * @throws IllegalStateException if polyglot context associated with this environment is not
+         *             entered
+         * @throws SecurityException if polyglot scope access is not enabled for this language.
+         * @see #getScopePublic(LanguageInfo)
+         * @since 24.1
+         */
+        @TruffleBoundary
+        public Object getScopeInternal(LanguageInfo language) {
+            checkDisposed();
+            try {
+                Object result = LanguageAccessor.engineAccess().getScope(polyglotLanguageContext, language, true);
+                assert result == null || LanguageAccessor.interopAccess().isScopeObject(result) : String.format("%s is not a scope", result);
+                return result;
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
+        }
+
         /*
          * For reflective use in tests.
          */
@@ -4189,7 +4338,7 @@ class TruffleLanguageSnippets {
         final List<Thread> startedThreads = new ArrayList<>();
     }
 
-    // @formatter:off
+    // @formatter:off // @replace regex='.*' replacement=''
     abstract
     class MyLanguage extends TruffleLanguage<Context> {
         @Override
@@ -4200,7 +4349,7 @@ class TruffleLanguageSnippets {
     }
 
     abstract
-    // BEGIN: TruffleLanguageSnippets.PostInitLanguage#createContext
+    // @start region="TruffleLanguageSnippets.PostInitLanguage#createContext"
     class PostInitLanguage extends TruffleLanguage<Context> {
         @Override
         protected Context createContext(Env env) {
@@ -4218,10 +4367,10 @@ class TruffleLanguageSnippets {
             context.mul = context.env.parsePublic(source);
         }
     }
-    // END: TruffleLanguageSnippets.PostInitLanguage#createContext
+    // @end region="TruffleLanguageSnippets.PostInitLanguage#createContext"
 
     abstract static
-    // BEGIN: TruffleLanguageSnippets.CompatibleLanguage#areOptionsCompatible
+    // @start region="TruffleLanguageSnippets.CompatibleLanguage#areOptionsCompatible"
     class CompatibleLanguage extends TruffleLanguage<Env> {
 
         @Option(help = "", category = OptionCategory.USER)
@@ -4240,7 +4389,7 @@ class TruffleLanguageSnippets {
             return new CompatibleLanguageOptionDescriptors();
         }
     }
-    // END: TruffleLanguageSnippets.CompatibleLanguage#areOptionsCompatible
+    // @end region="TruffleLanguageSnippets.CompatibleLanguage#areOptionsCompatible"
 
     static class CompatibleLanguageOptionDescriptors implements OptionDescriptors{
 
@@ -4258,7 +4407,7 @@ class TruffleLanguageSnippets {
 
         private final OptionKey<String> version = new OptionKey<>("2.0");
 
-        // BEGIN: TruffleLanguageSnippets.PreInitializedLanguage#patchContext
+        // @start region="TruffleLanguageSnippets.PreInitializedLanguage#patchContext"
         @Override
         protected boolean patchContext(Context context, Env newEnv) {
             if (!optionsAllowPreInitializedContext(context, newEnv)) {
@@ -4279,10 +4428,10 @@ class TruffleLanguageSnippets {
             final String newVersionValue = newEnv.getOptions().get(version);
             return Objects.equals(context.languageVersion, newVersionValue);
         }
-        // END: TruffleLanguageSnippets.PreInitializedLanguage#patchContext
+        // @end region="TruffleLanguageSnippets.PreInitializedLanguage#patchContext"
     }
 
-    // BEGIN: TruffleLanguageSnippets#parseWithParams
+    // @start region="TruffleLanguageSnippets#parseWithParams"
     public void parseWithParams(Env env) {
         Source multiply = Source.newBuilder("js",
                         "a * b",
@@ -4293,11 +4442,11 @@ class TruffleLanguageSnippets {
         Number ten = (Number) method.call(2, 5);
         assert 10 == ten.intValue();
     }
-    // END: TruffleLanguageSnippets#parseWithParams
+    // @end region="TruffleLanguageSnippets#parseWithParams"
 
 
     abstract
-    // BEGIN: TruffleLanguageSnippets.MultiThreadedLanguage#initializeThread
+    // @start region="TruffleLanguageSnippets.MultiThreadedLanguage#initializeThread"
     class MultiThreadedLanguage extends TruffleLanguage<Context> {
 
         @Override
@@ -4328,10 +4477,10 @@ class TruffleLanguageSnippets {
             // perform disposal actions for threads
         }
     }
-    // END: TruffleLanguageSnippets.MultiThreadedLanguage#initializeThread
+    // @end region="TruffleLanguageSnippets.MultiThreadedLanguage#initializeThread"
 
     abstract
-    // BEGIN: TruffleLanguageSnippets.AsyncThreadLanguage#finalizeContext
+    // @start region="TruffleLanguageSnippets.AsyncThreadLanguage#finalizeContext"
     class AsyncThreadLanguage extends TruffleLanguage<Context> {
 
         @Override
@@ -4382,10 +4531,10 @@ class TruffleLanguageSnippets {
             }
         }
     }
-    // END: TruffleLanguageSnippets.AsyncThreadLanguage#finalizeContext
+    // @end region="TruffleLanguageSnippets.AsyncThreadLanguage#finalizeContext"
 
     abstract static
-    // BEGIN: TruffleLanguageSnippets.SystemThreadLanguage
+    // @start region="TruffleLanguageSnippets.SystemThreadLanguage"
     class SystemThreadLanguage extends
             TruffleLanguage<SystemThreadLanguage.Context> {
 
@@ -4449,5 +4598,5 @@ class TruffleLanguageSnippets {
             }
         }
     }
-    // END: TruffleLanguageSnippets.SystemThreadLanguage
+    // @end region="TruffleLanguageSnippets.SystemThreadLanguage"
 }

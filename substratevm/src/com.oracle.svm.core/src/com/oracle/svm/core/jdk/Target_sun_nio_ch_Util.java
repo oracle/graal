@@ -25,16 +25,23 @@
 package com.oracle.svm.core.jdk;
 
 import java.io.FileDescriptor;
+import java.nio.Buffer;
 import java.nio.MappedByteBuffer;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 
 @TargetClass(className = "java.lang.foreign.MemorySegment")
 @SuppressWarnings("unused")
 final class Target_java_lang_foreign_MemorySegment {
+    @TargetElement(onlyWith = ForeignDisabled.class)
+    @Substitute
+    static Target_java_lang_foreign_MemorySegment ofBuffer(Buffer buffer) {
+        throw ForeignDisabledSubstitutions.fail();
+    }
 }
 
 @TargetClass(className = "java.nio.DirectByteBufferR")

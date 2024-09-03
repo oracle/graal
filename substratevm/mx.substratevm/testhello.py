@@ -201,7 +201,7 @@ def test():
                        r"#4%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, no_param_types_pattern, no_arg_values_pattern, package_pattern),
                        r"#5%scom\.oracle\.svm\.core\.JavaMainWrapper::doRun%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, param_types_pattern, arg_values_pattern, package_pattern),
                        r"#6%s(%s in )?com\.oracle\.svm\.core\.JavaMainWrapper::run%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern, package_pattern),
-                       r"#7%scom\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_%s%s %s"%(spaces_pattern, hex_digits_pattern, param_types_pattern, arg_values_pattern)
+                       r"#7%scom\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_%s%s %s"%(spaces_pattern, varname_pattern, param_types_pattern, arg_values_pattern)
                       ]
     if musl:
         # musl has a different entry point - drop the last two frames
@@ -447,7 +447,7 @@ def test():
                        r"#5%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, no_param_types_pattern, no_arg_values_pattern, package_pattern),
                        r"#6%scom\.oracle\.svm\.core\.JavaMainWrapper::doRun%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, param_types_pattern, arg_values_pattern, package_pattern),
                        r"#7%s(%s in )?com\.oracle\.svm\.core\.JavaMainWrapper::run%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern, package_pattern),
-                       r"#8%scom\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_%s%s %s"%(spaces_pattern, hex_digits_pattern, param_types_pattern, arg_values_pattern)
+                       r"#8%scom\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_%s%s %s"%(spaces_pattern, varname_pattern, param_types_pattern, arg_values_pattern)
                       ]
     if musl:
         # musl has a different entry point - drop the last two frames
@@ -900,7 +900,7 @@ def test():
     checker.check(exec_string, skip_fails=False)
     exec_string = execute("backtrace 3")
     rexp = [r"#0%shello\.Hello::lambda\$(static\$)?0%s %s at hello/Hello\.java:210"%(spaces_pattern, no_param_types_pattern, no_arg_values_pattern),
-            r"#1%s%s in hello\.Hello\$\$Lambda\$(%s/0x)?%s::get%s at hello/Hello\.java:238"%(spaces_pattern, address_pattern, digits_pattern, hex_digits_pattern, wildcard_pattern),
+            r"#1%s%s in hello\.Hello\$\$Lambda((\$%s/0x)|(\$)|(\.0x|/0x))?%s::get%s at hello/Hello\.java:238"%(spaces_pattern, address_pattern, digits_pattern, hex_digits_pattern, wildcard_pattern),
             r"#2%shello\.Hello::main%s %s at hello/Hello\.java:238"%(spaces_pattern, param_types_pattern, arg_values_pattern)]
     checker = Checker('backtrace in lambda', rexp)
     checker.check(exec_string, skip_fails=False)
@@ -1030,8 +1030,7 @@ def test():
     execute("continue")
 
     exec_string = execute("info args")
-    rexp = [r"this = 0x%s"%(hex_digits_pattern),
-            r"m1 = 0x%s"%(hex_digits_pattern), 
+    rexp = [r"m1 = 0x%s"%(hex_digits_pattern), 
             r"s = 1",
             r"ss1 = 0x%s"%(hex_digits_pattern),
             r"l = 123456789",

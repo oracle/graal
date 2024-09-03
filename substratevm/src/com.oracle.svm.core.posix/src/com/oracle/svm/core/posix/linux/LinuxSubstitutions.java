@@ -34,6 +34,8 @@ import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.linux.LinuxTime;
 import com.oracle.svm.core.util.TimeUtils;
 
+import java.util.Objects;
+
 @TargetClass(java.lang.System.class)
 final class Target_java_lang_System_Linux {
 
@@ -48,6 +50,7 @@ final class Target_java_lang_System_Linux {
 
     @Substitute
     public static String mapLibraryName(String libname) {
+        Objects.requireNonNull(libname);
         return "lib" + libname + ".so";
     }
 }

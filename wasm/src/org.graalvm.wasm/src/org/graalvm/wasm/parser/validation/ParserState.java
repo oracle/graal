@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import static java.lang.Integer.compareUnsigned;
 
 import org.graalvm.wasm.Assert;
 import org.graalvm.wasm.WasmType;
+import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.exception.Failure;
@@ -64,6 +65,7 @@ public class ParserState {
     private final RuntimeBytecodeGen bytecode;
 
     private int maxStackSize;
+    private boolean usesMemoryZero;
 
     public ParserState(RuntimeBytecodeGen bytecode) {
         this.valueStack = new ByteArrayList();
@@ -75,7 +77,7 @@ public class ParserState {
 
     /**
      * Pops a value from the stack if possible. Throws an error on stack underflow.
-     * 
+     *
      * @param expectedValueType The expectedValueType used for error generation.
      * @return The top of the stack or -1.
      */
@@ -100,7 +102,7 @@ public class ParserState {
      * are returned. If the number of values on the stack is greater or equal to the number of
      * expectedValueTypes, the values equal to the number of expectedValueTypes is popped from the
      * stack.
-     * 
+     *
      * @param expectedValueTypes Value types expected on the stack.
      * @return The maximum of available stack values smaller than the length of expectedValueTypes.
      */
@@ -116,7 +118,7 @@ public class ParserState {
 
     /**
      * Pops the maximum available values from the current stack frame.
-     * 
+     *
      * @return The maximum of available stack values.
      */
     private byte[] popAvailableUnchecked() {
@@ -132,7 +134,7 @@ public class ParserState {
 
     /**
      * Checks if two sets of value types are equivalent.
-     * 
+     *
      * @param expectedTypes The expected value types.
      * @param actualTypes The actual value types.
      * @return True if both are equivalent.
@@ -154,7 +156,7 @@ public class ParserState {
 
     /**
      * Pushes a value type onto the stack.
-     * 
+     *
      * @param valueType The value type that should be added.
      */
     public void push(byte valueType) {
@@ -164,7 +166,7 @@ public class ParserState {
 
     /**
      * Pushes all provided value types onto the stack.
-     * 
+     *
      * @param valueTypes The value types that should be added.
      */
     public void pushAll(byte[] valueTypes) {
@@ -175,7 +177,7 @@ public class ParserState {
 
     /**
      * Pops the topmost value type from the stack. Throws an error if the stack is empty.
-     * 
+     *
      * @return The value type on top of the stack or -1.
      * @throws WasmException If the stack is empty.
      */
@@ -185,7 +187,7 @@ public class ParserState {
 
     /**
      * Pops the topmost value type from the stack and checks if it is equivalent to the given value.
-     * 
+     *
      * @param expectedValueType The expected value type.
      * @return The value type on top of the stack.
      * @throws WasmException If the stack is empty or the value types do not match.
@@ -219,7 +221,7 @@ public class ParserState {
     /**
      * Pops the topmost value types from the stack and checks if they are equivalent to the given
      * set of value types.
-     * 
+     *
      * @param expectedValueTypes The expected value types.
      * @return The value types on top of the stack.
      * @throws WasmException If the stack is empty or the value types do not match.
@@ -334,7 +336,7 @@ public class ParserState {
     /**
      * Performs the necessary branch checks and adds the unconditional branch information to the
      * extra data array.
-     * 
+     *
      * @param branchLabel The target label.
      */
     public void addUnconditionalBranch(int branchLabel) {
@@ -348,7 +350,7 @@ public class ParserState {
     /**
      * Performs the necessary branch checks and adds the branch table information to the extra data
      * array.
-     * 
+     *
      * @param branchLabels The target labels.
      */
     public void addBranchTable(int[] branchLabels) {
@@ -370,7 +372,7 @@ public class ParserState {
 
     /**
      * Performs the necessary checks for a function return.
-     * 
+     *
      * @param multiValue If multiple return values are supported.
      */
     public void addReturn(boolean multiValue) {
@@ -385,7 +387,7 @@ public class ParserState {
 
     /**
      * Adds the index of an indirect call node to the extra data array.
-     * 
+     *
      * @param nodeIndex The index of the indirect call.
      */
     public void addIndirectCall(int nodeIndex, int typeIndex, int tableIndex) {
@@ -394,7 +396,7 @@ public class ParserState {
 
     /**
      * Adds the index of a direct call node to the extra data array.
-     * 
+     *
      * @param nodeIndex The index of the direct call.
      */
     public void addCall(int nodeIndex, int functionIndex) {
@@ -416,8 +418,15 @@ public class ParserState {
     }
 
     /**
+     * Adds the vector flag to the bytecode.
+     */
+    public void addVectorFlag() {
+        bytecode.add(Bytecode.VECTOR);
+    }
+
+    /**
      * Adds the given instruction and an i32 immediate value to the bytecode.
-     * 
+     *
      * @param instruction The instruction
      * @param value The immediate value
      */
@@ -427,7 +436,7 @@ public class ParserState {
 
     /**
      * Adds the given instruction and an i64 immediate value to the bytecode.
-     * 
+     *
      * @param instruction The instruction
      * @param value The immediate value
      */
@@ -436,8 +445,18 @@ public class ParserState {
     }
 
     /**
+     * Adds the given instruction and an i128 immediate value to the bytecode.
+     *
+     * @param instruction The instruction
+     * @param value The immediate value
+     */
+    public void addInstruction(int instruction, Vector128 value) {
+        bytecode.add(instruction, value);
+    }
+
+    /**
      * Adds the given instruction and two i32 immediate values to the bytecode.
-     * 
+     *
      * @param instruction The instruction
      * @param value1 The first immediate value
      * @param value2 The second immediate value
@@ -450,7 +469,7 @@ public class ParserState {
      * Adds the i8 or i32 version of the given instruction to the bytecode based on the given
      * immediate value. If the value fits into a signed i8 value, the i8 instruction and an i8 value
      * are added. Otherwise, the i32 instruction and an i32 value are added.
-     * 
+     *
      * @param instruction The i8 version of the instruction
      * @param value The immediate value.
      */
@@ -462,7 +481,7 @@ public class ParserState {
      * Adds the i8 or i64 version of the given instruction to the bytecode based on the given
      * immediate value. If the value fits into a signed i8 value, the i8 instruction and an i8 value
      * are added. Otherwise, the i64 instruction and i64 value are added.
-     * 
+     *
      * @param instruction The i8 version of the instruction
      * @param value The immediate value
      */
@@ -474,7 +493,7 @@ public class ParserState {
      * Adds the u8 or i32 version of the given instruction to the bytecode based on the given
      * immediate value. If the value fits into a u8 value, the u8 instruction and a u8 value are
      * added. Otherwise, the i32 instruction and an i32 value are added.
-     * 
+     *
      * @param instruction The u8 version of the instruction
      * @param value The immediate value
      */
@@ -484,33 +503,62 @@ public class ParserState {
 
     /**
      * Adds a memory instruction based on the given values and index type.
-     * 
+     *
      * @param baseInstruction The base version of the memory instruction
      * @param memoryIndex The index of the memory being accessed
      * @param value The immediate value
      * @param indexType64 If the index type is 64 bit.
      */
     public void addMemoryInstruction(int baseInstruction, int memoryIndex, long value, boolean indexType64) {
+        markMemoryUsed(memoryIndex);
         bytecode.addMemoryInstruction(baseInstruction, baseInstruction + 1, baseInstruction + 2, memoryIndex, value, indexType64);
     }
 
     /**
-     * Adds an atomic memory instruction based on the given values and index type.
+     * Adds an extended (atomic or vector) memory instruction based on the given values and index
+     * type.
      *
-     * @param instruction The atomic memory instruction
+     * @param instruction The extended memory instruction
      * @param memoryIndex The index of the memory being accessed
      * @param value The immediate value
      * @param indexType64 If the index type is 64 bit.
      */
-    public void addAtomicMemoryInstruction(int instruction, int memoryIndex, long value, boolean indexType64) {
-        bytecode.addAtomicMemoryInstruction(instruction, memoryIndex, value, indexType64);
+    public void addExtendedMemoryInstruction(int instruction, int memoryIndex, long value, boolean indexType64) {
+        markMemoryUsed(memoryIndex);
+        bytecode.addExtendedMemoryInstruction(instruction, memoryIndex, value, indexType64);
+    }
+
+    /**
+     * Adds a lane-indexed vector memory instruction based on the given values and index type.
+     *
+     * @param instruction The vector memory instruction
+     * @param memoryIndex The index of the memory being accessed
+     * @param value The immediate value
+     * @param indexType64 If the index type is 64 bit.
+     * @param laneIndex The lane index
+     */
+    public void addVectorMemoryLaneInstruction(int instruction, int memoryIndex, long value, boolean indexType64, byte laneIndex) {
+        markMemoryUsed(memoryIndex);
+        bytecode.addExtendedMemoryInstruction(instruction, memoryIndex, value, indexType64);
+        bytecode.add(laneIndex);
+    }
+
+    /**
+     * Adds a lane-indexed vector instruction (extract_lane or replace_lane).
+     *
+     * @param instruction The vector instruction
+     * @param laneIndex The lane index
+     */
+    public void addVectorLaneInstruction(int instruction, byte laneIndex) {
+        bytecode.add(instruction);
+        bytecode.add(laneIndex);
     }
 
     /**
      * Finishes the current control frame and removes it from the control frame stack.
      *
      * @param multiValue If multiple return values are supported.
-     * 
+     *
      * @throws WasmException If the number of return value types do not match with the remaining
      *             stack or the number of return values is greater than 1.
      */
@@ -532,7 +580,7 @@ public class ParserState {
 
     /**
      * Checks that the expected return types are actually on the value stack.
-     * 
+     *
      * @param frame The frame that is exited.
      * @param resultTypes The expected return types of the frame.
      */
@@ -583,7 +631,7 @@ public class ParserState {
 
     /**
      * Checks if the given parameter value types do match the current value types on the stack.
-     * 
+     *
      * @param paramTypes The expected value types.
      * @throws WasmException If the parameter value types and the vale types on the stack do not
      *             match.
@@ -601,7 +649,7 @@ public class ParserState {
 
     /**
      * Checks if the given label is a valid jump target.
-     * 
+     *
      * @param label The label which to jump to.
      * @throws WasmException If the label is out or reach.
      */
@@ -613,7 +661,7 @@ public class ParserState {
 
     /**
      * Checks if the value types of two different labels match.
-     * 
+     *
      * @param expectedTypes The expected value types.
      * @param actualTypes The value types that should be checked.
      * @throws WasmException If the provided sets of value types do not match.
@@ -626,7 +674,7 @@ public class ParserState {
 
     /**
      * Checks if the given function type is within range.
-     * 
+     *
      * @param typeIndex The function type.
      * @param max The number of available function types.
      * @throws WasmException If the given function type is greater or equal to the given maximum.
@@ -656,5 +704,15 @@ public class ParserState {
 
     public int maxStackSize() {
         return maxStackSize;
+    }
+
+    private void markMemoryUsed(int memoryIndex) {
+        if (memoryIndex == 0) {
+            usesMemoryZero = true;
+        }
+    }
+
+    public boolean usesMemoryZero() {
+        return usesMemoryZero;
     }
 }

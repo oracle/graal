@@ -37,9 +37,9 @@ import java.util.function.Predicate;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.nativeimage.Platforms;
-import jdk.graal.compiler.util.json.JSONParserException;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -47,6 +47,7 @@ import com.oracle.svm.core.configure.ConfigurationParser;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.truffle.tck.PermissionsFeature.AnalysisMethodNode;
 
+import jdk.graal.compiler.util.json.JsonParserException;
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -95,7 +96,7 @@ final class WhiteListParser extends ConfigurationParser {
         try {
             AnalysisType clazz = resolve(className);
             if (clazz == null) {
-                throw new JSONParserException("Class " + className + " not found");
+                throw new JsonParserException("Class " + className + " not found");
             }
 
             MapCursor<String, Object> cursor = data.getEntries();
@@ -155,7 +156,7 @@ final class WhiteListParser extends ConfigurationParser {
             }
         }
         if (!found) {
-            throw new JSONParserException("Method " + clazz.toJavaName() + "." + methodName + " not found");
+            throw new JsonParserException("Method " + clazz.toJavaName() + "." + methodName + " not found");
         }
     }
 
@@ -166,11 +167,11 @@ final class WhiteListParser extends ConfigurationParser {
             try {
                 AnalysisType clazz = resolve(typeName);
                 if (clazz == null) {
-                    throw new JSONParserException("Parameter type " + typeName + " not found");
+                    throw new JsonParserException("Parameter type " + typeName + " not found");
                 }
                 result.add(clazz);
             } catch (UnsupportedPlatformException unsupportedPlatform) {
-                throw new JSONParserException("Parameter type " + typeName + " is not available on active platform");
+                throw new JsonParserException("Parameter type " + typeName + " is not available on active platform");
             }
         }
         return result;
@@ -245,7 +246,7 @@ final class WhiteListParser extends ConfigurationParser {
         if (type.isInstance(obj)) {
             return type.cast(obj);
         }
-        throw new JSONParserException(errorMessage);
+        throw new JsonParserException(errorMessage);
     }
 
     private static <T> T castProperty(Object obj, Class<T> type, String propertyName) {
@@ -269,7 +270,7 @@ final class WhiteListParser extends ConfigurationParser {
         private final BigBang bb;
 
         SignaturePredicate(AnalysisType owner, List<? extends ResolvedJavaType> params, BigBang bb) {
-            this.owner = Objects.requireNonNull(owner, "Owner must be non null.").getWrappedWithResolve();
+            this.owner = OriginalClassProvider.getOriginalType(Objects.requireNonNull(owner, "Owner must be non null."));
             this.params = Objects.requireNonNull(params, "Params must be non null.");
             this.bb = Objects.requireNonNull(bb, "BigBang must be non null.");
         }

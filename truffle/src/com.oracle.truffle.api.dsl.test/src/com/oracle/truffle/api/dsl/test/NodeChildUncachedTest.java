@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,10 +40,10 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
+import org.hamcrest.MatcherAssert;
+import org.hamcrest.core.StringContains;
 import org.junit.Assert;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -117,19 +117,17 @@ public class NodeChildUncachedTest {
         Assert.assertEquals("executeWith(41)", 83, node.executeWith(41));
     }
 
-    @Rule public ExpectedException exception = ExpectedException.none();
-
     @Test
     public void testChildNotAvailable() {
-        exception.expectMessage("This getter method cannot be used for uncached node versions as it requires child nodes to be present.");
-        UncachedTestWithNodeGen.getUncached().getChild0();
+        AssertionError error = Assert.assertThrows(AssertionError.class, () -> UncachedTestWithNodeGen.getUncached().getChild0());
+        MatcherAssert.assertThat(error.getMessage(), StringContains.containsString("This getter method cannot be used for uncached node versions as it requires child nodes to be present."));
     }
 
     @Test
     public void testExecuteNotAvailable() {
-        exception.expectMessage("This execute method cannot be used for uncached node versions as it requires child nodes to be present. " +
-                        "Use an execute method that takes all arguments as parameters.");
-        UncachedTestWithNodeGen.getUncached().execute();
+        AssertionError error = Assert.assertThrows(AssertionError.class, () -> UncachedTestWithNodeGen.getUncached().execute());
+        MatcherAssert.assertThat(error.getMessage(), StringContains.containsString("This execute method cannot be used for uncached node versions as it requires child nodes to be present. " +
+                        "Use an execute method that takes all arguments as parameters."));
     }
 
     @NodeChild(value = "child0", type = TestBaseNode.class, uncached = "customGetUncached()")

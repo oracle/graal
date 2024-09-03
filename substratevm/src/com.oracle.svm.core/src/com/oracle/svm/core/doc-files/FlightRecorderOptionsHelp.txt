@@ -1,0 +1,29 @@
+Usage: -XX:FlightRecorderOptions=[option[=value][,...]]
+
+This option expects a comma separated list of key-value pairs. None of the options are mandatory. Possible option keys are as follows:
+
+globalbuffersize=512k      (Optional) Size of each global JFR buffer.
+                           This value cannot be changed once JFR has been initialized.
+                           The default value is determined by the value for memorysize.
+
+maxchunksize=12m           (Optional) Maximum size of each individual JFR data chunk.
+                           This value cannot be changed once JFR has been initialized.
+
+memorysize=10m             (Optional) Total size of all global JFR buffers.
+                           This value cannot be changed once JFR has been initialized.
+
+old-object-queue-size=256  (Optional) The maximum number of old objects to track when the JFR event
+                           OldObjectSample is enabled.
+
+repository=...             (Optional) Path to the location where JFR recordings are stored until they are
+                           written to a permanent file.
+                           The default location is the temporary directory for the operating system.
+
+stackdepth=64              (Optional) Stack depth for stack traces.
+                           Setting this value greater than the default may cause a performance degradation.
+                           This value cannot be changed once JFR has been initialized.
+
+threadbuffersize=8k        (Optional) Size of each thread-local JFR buffer.
+                           This value cannot be changed once JFR has been initialized.
+
+preserve-repository=false  (Optional) Preserve files stored in the disk repository after the process exits.

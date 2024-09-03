@@ -8,12 +8,26 @@ redirect_from: /reference-manual/native-image/DebugInfo/
 
 # Debug Info Feature
 
-To add debug information to a generated native image, provide the `-g` option to the `native-image` builder:
+### Table of Contents
+
+- [Introduction](#introduction)
+- [Source File Caching](#source-file-caching)
+- [Special Considerations for Debugging Java from GDB](#special-considerations-for-debugging-java-from-gdb)
+- [Identifying Source Code Location](#identifying-source-code-location)
+- [Configuring Source Paths in GNU Debugger](#configuring-source-paths-in-gnu-debugger)
+- [Checking Debug Info on Linux](#checking-debug-info-on-linux)
+- [Debugging with Isolates](#debugging-with-isolates)
+- [Debugging Helper Methods](#debugging-helper-methods)
+- [Special Considerations for using perf and valgrind](#special-considerations-for-using-perf-and-valgrind)
+
+## Introduction
+
+To build a native executable with debug information, provide the `-g` command-line option for `javac` when compiling the application, and then to the `native-image` builder:
 ```shell
+javac -g Hello.java
 native-image -g Hello
 ```
-
-The `-g` flag instructs `native-image` to generate debug information.
+This enables source-level debugging, and the debugger (GDB) then correlates machine instructions with specific source lines in Java files.
 The resulting image will contain debug records in a format the GNU Debugger (GDB) understands.
 Additionally, you can pass `-O0` to the builder which specifies that no compiler optimizations should be performed.
 Disabling all optimizations is not required, but in general it makes the debugging experience better.
@@ -22,10 +36,7 @@ Debug information is not just useful to the debugger. It can also be used by the
 
 By default, debug info will only include details of some of the values of parameters and local variables.
 This means that the debugger will report many parameters and local variables as being undefined. If you pass `-O0` to the builder then full debug information will be included.
-If you
-want more parameter and local variable information to be included when employing higher
-levels of optimization (`-O1` or, the default, `-O2`) you need to pass an extra command
-line flag to the `native-image` command
+If you want more parameter and local variable information to be included when employing higher levels of optimization (`-O1` or, the default, `-O2`) you need to pass an extra command line flag to the `native-image` command:
 
 ```shell
 native-image -g -H:+SourceLevelDebug Hello
@@ -38,7 +49,7 @@ and local variable information by passing flag `-H:+SourceLevelDebug` can cause 
 slightly differently and for some applications this can slow down execution.
 
 The basic `perf report` command, which displays a histogram showing percentage execution time in each Java method, only requires passing flags `-g` and `-H:+SourceLevelDebug` to the `native-image` command.
-However, more sophisticated uses of `perf` (i.e. `perf annotate`) and use of
+However, more sophisticated uses of `perf` (for example, `perf annotate`) and use of
 `valgrind` requires debug info to be supplemented with linkage symbols identifying compiled Java methods.
 Java method symbols are omitted from the generated native image by default but they can be retained achieved by passing one extra flag to the `native-image` command
 
@@ -53,17 +64,6 @@ resulting image file.
 
 > Note: Debug info support for `perf` and `valgrind` on Linux is an experimental feature.
 
-### Table of Contents
-
-- [Source File Caching](#source-file-caching)
-- [Special Considerations for Debugging Java from GDB](#special-considerations-for-debugging-java-from-gdb)
-- [Identifying Source Code Location](#identifying-source-code-location)
-- [Configuring Source Paths in GNU Debugger](#configuring-source-paths-in-gnu-debugger)
-- [Checking Debug Info on Linux](#checking-debug-info-on-linux)
-- [Debugging with Isolates](#debugging-with-isolates)
-- [Debugging Helper Methods](#debugging-helper-methods)
-- [Special Considerations for using perf and valgrind](#special-considerations-for-using-perf-and-valgrind)
-
 ## Source File Caching
 
 The `-g` option also enables caching of sources for any JDK runtime classes, GraalVM classes, and application classes which can be located when generating a native executable.
@@ -76,7 +76,7 @@ This local cache provides a convenient way of making just the necessary sources 
 
 The implementation tries to be smart about locating source files.
 It uses the current `JAVA_HOME` to locate the JDK src.zip when searching for JDK runtime sources.
-It also uses entries in the classpath to suggest locations for GraalVM source files and application source files (see below for precise details of the scheme used to identify source locations).
+It also uses entries on the class path to suggest locations for GraalVM source files and application source files (see below for precise details of the scheme used to identify source locations).
 However, source layouts do vary and it may not be possible to find all sources.
 Hence, users can specify the location of source files explicitly on the command line using option `DebugInfoSourceSearchPath`:
 
@@ -87,7 +87,6 @@ javac -cp apps/greeter/classes \
     --source-path apps/hello/src \
     -d apps/hello/classes org/my/hello/Hello.java
 native-image -g \
-    -H:-SpawnIsolates \
     -H:DebugInfoSourceSearchPath=apps/hello/src \
     -H:DebugInfoSourceSearchPath=apps/greeter/src \
     -cp apps/hello/classes:apps/greeter/classes org.my.hello.Hello
@@ -95,7 +94,7 @@ native-image -g \
 
 The `DebugInfoSourceSearchPath` option can be repeated as many times as required to notify all the target source locations.
 The value passed to this option can be either an absolute or relative path.
-It can identify either a directory, a source JAR, or a source ZIP file.
+It can identify either a directory, a source JAR file, or a source ZIP file.
 It is also possible to specify several source roots at once using a comma separator:
 
 ```shell
@@ -113,7 +112,6 @@ As an example, the following variant of the previous command specifies an absolu
 ```shell
 SOURCE_CACHE_ROOT=/tmp/$$/sources
 native-image -g \
-    -H:-SpawnIsolates \
     -H:DebugInfoSourceCacheRoot=$SOURCE_CACHE_ROOT \
     -H:DebugInfoSourceSearchPath=apps/hello/target/hello-sources.jar,apps/greeter/target/greeter-sources.jar \
     -cp apps/target/hello.jar:apps/target/greeter.jar \
@@ -124,8 +122,8 @@ The resulting cache directory will be something like `/tmp/1272696/sources`.
 If the source cache path includes a directory that does not yet exist, it will be created during population of the cache.
 
 Note that in all the examples above the `DebugInfoSourceSearchPath` options are actually redundant.
-In the first case, the classpath entries for _apps/hello/classes_ and _apps/greeter/classes_ will be used to derive the default search roots _apps/hello/src_ and _apps/greeter/src_.
-In the second case, the classpath entries for _apps/target/hello.jar_ and _apps/target/greeter.jar_ will be used to derive the default search roots _apps/target/hello-sources.jar_ and _apps/target/greeter-sources.jar_.
+In the first case, the class path entries for _apps/hello/classes/_ and _apps/greeter/classes/_ will be used to derive the default search roots _apps/hello/src/_ and _apps/greeter/src/_.
+In the second case, the class path entries for _apps/target/hello.jar_ and _apps/target/greeter.jar_ will be used to derive the default search roots _apps/target/hello-sources.jar_ and _apps/target/greeter-sources.jar_.
 
 ## Supported Features
 
@@ -156,10 +154,10 @@ So, for example in the DWARF debug info model `java.lang.String` identifies a C+
 This class layout type declares the expected fields like `hash` of type `int` and `value` of type `byte[]` and methods like `String(byte[])`, `charAt(int)`, etc. However, the copy constructor which appears in Java as `String(String)` appears in `gdb` with the signature `String(java.lang.String *)`.
 
 The C++ layout class inherits fields and methods from class (layout) type `java.lang.Object` using C++ public inheritance.
-The latter in turn inherits standard oop (ordinary object pointer) header fields from a special struct class named `_objhdr` which includes two fields. The first field is called
-`hub` and its type is `java.lang.Class *` i.e. it is a pointer to the object's
-class. The second field is called `idHash` and has type `int`. It stores an
-identity hashcode for the object.
+The latter in turn inherits standard oop (ordinary object pointer) header fields from a special struct class named `_objhdr` which includes up to two fields (depending on the VM configuration).
+The first field is called `hub` and its type is `java.lang.Class *` that is, it is a pointer to the object's class.
+The second field (optional) is called `idHash` and has type `int`.
+It stores an identity hashcode for the object.
 
 The `ptype` command can be used to print details of a specific type.
 Note that the Java type name must be specified in quotes because to escape the embedded `.` characters.
@@ -318,13 +316,13 @@ is an object reference and, if so,  what the object's class is.
 Given a valid object reference it is always possible to print the
 contents of the `String` referenced from the `hub`'s name field.
 
-Note that as a consequence, this allows every object observed by the debugger
-to be downcast to its dynamic type. i.e. even if the debugger only sees the static
-type of e.g. java.nio.file.Path we can easily downcast to the dynamic type, which
+Note that as a consequence, this enables every object observed by the debugger
+to be downcast to its dynamic type. That is, even if the debugger only sees the static
+type of (for example) java.nio.file.Path, we can easily downcast to the dynamic type, which
 might be a subtype such as `jdk.nio.zipfs.ZipPath`, thus making it possible to inspect
 fields that we would not be able to observe from the static type alone.
 First the value is cast to an object reference.
-Then a path expression is used to dereference through the the `hub` field and the `hub`'s name field to the `byte[]` value array located in the name `String`.
+Then a path expression is used to dereference through the `hub` field and the `hub`'s name field to the `byte[]` value array located in the name `String`.
 
 ```
 (gdb) print/x ((_objhdr *)$rdi)
@@ -395,7 +393,7 @@ end
 0x8779c8:	"[Ljava.lang.String;"
 ```
 
-The native image heap contains a unique hub object (i.e. instance of
+The native image heap contains a unique hub object (an instance of
 `java.lang.Class`) for every Java type that is included in the
 image. It is possible to refer to these class constants using the
 standard Java class literal syntax:
@@ -435,7 +433,7 @@ $9 = 0xc87b78 "long"
 (gdb) 
 ```
 
-Interface layouts are modelled as C++ union types.
+Interface layouts are modeled as C++ union types.
 The members of the union include the C++ layout types for all Java classes which implement the interface.
 
 ```
@@ -605,21 +603,21 @@ Retrieved files are cached under subdirectory _sources_, using the module name (
 For example, on Linux the source for `class java.util.HashMap` will be cached in file _sources/java.base/java/util/HashMap.java_.
 Debug info records for this class and its methods will identify this source file using the relative directory path _java.base/java/util_ and file name _HashMap.java_. On Windows things will be the same modulo use of `\` rather than `/` as the file separator.
 
-Sources for GraalVM classes are retrieved from ZIP files or source directories derived from entries in the classpath.
-Retrieved files are cached under subdirectory _sources_, using the package name of the associated class to define the directory hierarchy in which the source is located (e.g., class `com.oracle.svm.core.VM` has its source file cached at `sources/com/oracle/svm/core/VM.java`).
+Sources for GraalVM classes are retrieved from ZIP files or source directories derived from entries on the class path.
+Retrieved files are cached under subdirectory _sources_, using the package name of the associated class to define the directory hierarchy in which the source is located (for example, class `com.oracle.svm.core.VM` has its source file cached at `sources/com/oracle/svm/core/VM.java`).
 
-The lookup scheme for cached GraalVM sources varies depending upon what is found in each classpath entry.
+The lookup scheme for cached GraalVM sources varies depending upon what is found in each class path entry.
 Given a JAR file entry like _/path/to/foo.jar_, the corresponding file _/path/to/foo.src.zip_ is considered as a candidate ZIP file system from which source files may be extracted.
 When the entry specifies a directory like _/path/to/bar_, then directories _/path/to/bar/src_ and _/path/to/bar/src_gen_ are considered as candidates.
-Candidates are skipped when the ZIP file or source directory does not exist, or it does not contain at least one subdirectory hierarchy that matches one of the the expected GraalVM package hierarchies.
+Candidates are skipped when the ZIP file or source directory does not exist, or it does not contain at least one subdirectory hierarchy that matches one of the expected GraalVM package hierarchies.
 
-Sources for application classes are retrieved from source JAR files or source directories derived from entries in the classpath.
-Retrieved files are cached under subdirectory _sources_, using the package name of the associated class to define the directory hierarchy in which the source is located (e.g., class `org.my.foo.Foo` has its source file cached as `sources/org/my/foo/Foo.java`).
+Sources for application classes are retrieved from source JAR files or source directories derived from entries in the class path.
+Retrieved files are cached under subdirectory _sources_, using the package name of the associated class to define the directory hierarchy in which the source is located (for example, class `org.my.foo.Foo` has its source file cached as _sources/org/my/foo/Foo.java_).
 
-The lookup scheme for cached application sources varies depending upon what is found in each classpath entry.
-Given a JAR file entry like _/path/to/foo.jar_, the corresponding JAR _/path/to/foo-sources.jar_ is considered as a candidate ZIP file system from which source files may be extracted.
-When the entry specifies a dir like _/path/to/bar/classes_ or _/path/to/bar/target/classes_ then one of the directories
-_/path/to/bar/src/main/java_, _/path/to/bar/src/java_ or _/path/to/bar/src_ is selected as a candidate (in that order of preference).
+The lookup scheme for cached application sources varies depending upon what is found in each class path entry.
+Given a JAR file entry like _/path/to/foo.jar_, the corresponding JAR file _/path/to/foo-sources.jar_ is considered as a candidate ZIP file system from which source files may be extracted.
+When the entry specifies a directory like _/path/to/bar/classes/_ or _/path/to/bar/target/classes/_ then one of the directories
+_/path/to/bar/src/main/java/_, _/path/to/bar/src/java/_ or _/path/to/bar/src/_ is selected as a candidate (in that order of preference).
 Finally, the current directory in which the native executable is being run is also considered as a candidate.
 
 These lookup strategies are only provisional and may need extending in the future.
@@ -702,20 +700,20 @@ Windows support is still under development.
 
 ## Debugging with Isolates
 
-Enabling the use of [isolates](https://medium.com/graalvm/isolates-and-compressed-references-more-flexible-and-efficient-memory-management-for-graalvm-a044cc50b67e), by passing command line option `-H:-SpawnIsolates` to the `native-image` builder, affects the way ordinary object pointers (oops) are encoded.
+The use of [isolates](https://medium.com/graalvm/isolates-and-compressed-references-more-flexible-and-efficient-memory-management-for-graalvm-a044cc50b67e) in native image affects the way ordinary object pointers (oops) are encoded.
 In turn, that means the debug info generator has to provide `gdb` with information about how to translate an encoded oop to the address in memory, where the object data is stored.
 This sometimes requires care when asking `gdb` to process encoded oops vs decoded raw addresses.
 
-When isolates are disabled, oops are essentially raw addresses pointing directly at the object contents.
+If isolates were disabled, oops would essentially be raw addresses pointing directly at the object contents.
 This is generally the same whether the oop is embedded in a static/instance field or is referenced from a local or parameter variable located in a register or saved to the stack.
 It is not quite that simple because the bottom 3 bits of some oops may be used to hold "tags" that record certain transient properties of an object.
 However, the debug info provided to `gdb` means that it will remove these tag bits before dereferencing the oop as an address.
 
-By contrast, when isolates are enabled, oops references stored in static or instance fields are actually relative addresses, offsets from a dedicated heap base register (r14 on x86_64, r29 on AArch64), rather than direct addresses (in a few special cases the offset may also have some low tag bits set).
+With the use of isolates, oops references stored in static or instance fields are actually relative addresses, offsets from a dedicated heap base register (r14 on x86_64, r29 on AArch64), rather than direct addresses (in a few special cases the offset may also have some low tag bits set).
 When an "indirect" oop of this kind gets loaded during execution, it is almost always immediately converted to a "raw" address by adding the offset to the heap base register value.
 So, oops which occur as the value of local or parameter vars are actually raw addresses.
 
-> Note that on some operating systems enabling isolates causes problems with printing of objects when using a `gdb` release version 10 or earlier. It is currently recommended to disable use of isolates, by passing command line option `-H:-SpawnIsolates`, when generating debug info if your operating system includes one of these earlier releases. Alternatively, you may be able to upgrade your debugger to a later version.
+> Note that on some operating systems enabling isolates causes problems with printing of objects when using a `gdb` release version 10 or earlier. It is strongly recommended to upgrade your debugger to a later version.
 
 The DWARF info encoded into the image, when isolates are enabled, tells `gdb` to rebase indirect oops whenever it tries to dereference them to access underlying object data.
 This is normally automatic and transparent, but it is visible in the underlying type model that `gdb` displays when you ask for the type of objects.
@@ -791,7 +789,7 @@ $4 = {
 ```
 
 Since the indirect types inherit from the corresponding raw type it is possible to use an expression that identifies an indirect type pointer in almost all cases where an expression identifying a raw type pointer would work.
-The only case case where care might be needed is when casting a displayed numeric field value or displayed register value.
+The only case where care might be needed is when casting a displayed numeric field value or displayed register value.
 
 For example, if the indirect `hub` oop printed above is passed to `hubname_raw`, the cast to type Object internal to that command fails to force the required indirect oops translation.
 The resulting memory access fails:
@@ -902,15 +900,15 @@ Each instruction is prefaced with it's address in the program's code
 section.
 The disassembly interleaves the source lines from which the code is
 derived, 521-524 for the top level code and 207-209 for the code
-inlined from from `Objects.requireNonNull()`.
-Also, the start of the method is labelled with the name defined in the
+inlined from `Objects.requireNonNull()`.
+Also, the start of the method is labeled with the name defined in the
 DWARF debug info, `java.lang.String::String()`.
 However, the branch instruction `jbe` at address `0x519d6f` uses a
 very large offset from `graal_vm_locator_symbol`.
 The printed offset does identify the correct address relative to the
 location of the symbol.
 However, this fails to make clear that the target address actually
-lies within the compiled code range for method `String::String()` i.e. that thsi is a method-local branch.
+lies within the compiled code range for method `String::String()`, in other words that this is a method-local branch.
 
 Readability of the tool output is significantly improved if
 option `-H-DeleteLocalSymbols` is passed to the `native-image`
@@ -978,7 +976,7 @@ Executing command `perf annotate` will provide a disassembly listing
 for all methods and C functions in the image.
 It is possible to annotate a specific method by passing it's name as
 an argument to the perf annotate command.
-Note, however, that `perf` requries the mangled symbol name as
+Note, however, that `perf` requires the mangled symbol name as
 argument rather than the DWARF name.
 So, in order to annotate method `java.lang.String::String()` it is
 necessary to run command `perf annotate
@@ -988,12 +986,12 @@ The `valgrind` tool `callgrind` also requires local symbols to be
 retained in order to provide high quality output.
 When `callgrind` is used in combination with a viewer like
 `kcachegrind` it is possible to identify a great deal of valuable
-information about native image execution aand relate it back to
+information about native image execution and relate it back to
 specific source code lines.
 
 ### Call-graph recording with `perf record`
 
-Normally when perf does stack frame recording (i.e. when `--call-graph` is used), it uses frame pointers to recognize the individual stack frames.
+Normally when perf does stack frame recording (when `--call-graph` is used), it uses frame pointers to recognize the individual stack frames.
 This assumes that the executable that gets profiled actually preserves frame pointers whenever a function gets called.
 For native images, this can be achieved by using `-H:+PreserveFramePointer` as an image build argument.
 

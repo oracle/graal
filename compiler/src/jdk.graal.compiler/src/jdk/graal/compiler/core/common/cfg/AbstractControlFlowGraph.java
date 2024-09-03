@@ -24,7 +24,7 @@
  */
 package jdk.graal.compiler.core.common.cfg;
 
-import java.util.Collection;
+import jdk.graal.compiler.nodes.cfg.CFGVerifier;
 
 public interface AbstractControlFlowGraph<T extends BasicBlock<T>> {
 
@@ -53,7 +53,7 @@ public interface AbstractControlFlowGraph<T extends BasicBlock<T>> {
      */
     T[] getBlocks();
 
-    Collection<Loop<T>> getLoops();
+    int getNumberOfLoops();
 
     T getStartBlock();
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,11 +30,10 @@ import java.util.EnumSet;
 
 import org.graalvm.word.LocationIdentity;
 
-import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.type.StampFactory;
-import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
@@ -294,36 +293,48 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
         if (variant == ArrayIndexOfVariant.Table) {
             return this;
         }
-        if (arrayPointer.isJavaConstant() && ((ConstantNode) arrayPointer).getStableDimension() > 0 &&
+        if (ConstantReflectionUtil.isStableJavaArray(arrayPointer) &&
                         arrayOffset.isJavaConstant() &&
                         arrayLength.isJavaConstant() &&
                         fromIndex.isJavaConstant() &&
                         searchValuesConstant()) {
-            ConstantReflectionProvider provider = tool.getConstantReflection();
-            JavaConstant arrayConstant = arrayPointer.asJavaConstant();
-            JavaKind constantArrayKind = arrayPointer.stamp(NodeView.DEFAULT).javaType(tool.getMetaAccess()).getComponentType().getJavaKind();
-            int actualArrayLength = provider.readArrayLength(arrayConstant);
+            final ConstantReflectionProvider provider = tool.getConstantReflection();
+            final JavaConstant arrayConstant = arrayPointer.asJavaConstant();
+            final JavaKind constantArrayKind = arrayPointer.stamp(NodeView.DEFAULT).javaType(tool.getMetaAccess()).getComponentType().getJavaKind();
+            final int actualArrayLength = provider.readArrayLength(arrayConstant);
 
             // arrayOffset is given in bytes, scale it to the stride.
             long arrayBaseOffsetBytesConstant = arrayOffset.asJavaConstant().asLong();
             arrayBaseOffsetBytesConstant -= getArrayBaseOffset(tool.getMetaAccess(), arrayPointer, constantArrayKind);
-            long arrayOffsetConstant = arrayBaseOffsetBytesConstant / stride.value;
+            final long arrayOffsetConstantScaled = arrayBaseOffsetBytesConstant >> stride.log2;
 
-            int arrayLengthConstant = arrayLength.asJavaConstant().asInt();
-            assert arrayLengthConstant * stride.value <= actualArrayLength * constantArrayKind.getByteCount() : Assertions.errorMessageContext("arrayLengthConstant", arrayLengthConstant,
-                            "stride",
-                            stride.value, "actualLength", actualArrayLength);
+            final int arrayLengthConstant = arrayLength.asJavaConstant().asInt();
+            final int fromIndexConstant = fromIndex.asJavaConstant().asInt();
+            if (!ConstantReflectionUtil.boundsCheckTypePunned(arrayOffsetConstantScaled, arrayLengthConstant, stride, actualArrayLength, constantArrayKind) ||
+                            (fromIndexConstant < 0 || fromIndexConstant > arrayLengthConstant)) {
+                /*
+                 * One or more arguments is out of bounds for the given constant array.
+                 *
+                 * This may happen when this node is in a branch that won't be taken for the given
+                 * constant input values, but is still visible in the current compilation unit.
+                 * Since this isn't necessarily an error, we want to handle this case gracefully and
+                 * simply give up on trying to constant-fold. Explicit range checks preceding the
+                 * intrinsic call will take care of throwing an exception. Alternatively, we could
+                 * deoptimize here.
+                 */
+                return this;
+            }
+            final int arrayOffsetConstant = NumUtil.safeToInt(arrayOffsetConstantScaled);
 
-            int fromIndexConstant = fromIndex.asJavaConstant().asInt();
-            int[] valuesConstant = new int[searchValues.size()];
+            final int[] valuesConstant = new int[searchValues.size()];
             for (int i = 0; i < searchValues.size(); i++) {
                 valuesConstant[i] = searchValues.get(i).asJavaConstant().asInt();
             }
-            if (arrayLengthConstant * stride.value < GraalOptions.StringIndexOfConstantLimit.getValue(tool.getOptions())) {
+            if (ConstantReflectionUtil.shouldConstantFoldArrayOperation(tool, arrayLengthConstant)) {
                 switch (variant) {
                     case MatchAny:
                         for (int i = fromIndexConstant; i < arrayLengthConstant; i++) {
-                            int value = ConstantReflectionUtil.readTypePunned(provider, arrayConstant, constantArrayKind, stride, (int) (arrayOffsetConstant + i));
+                            int value = ConstantReflectionUtil.readTypePunned(provider, arrayConstant, constantArrayKind, stride, arrayOffsetConstant + i);
                             for (int searchValue : valuesConstant) {
                                 if (value == searchValue) {
                                     return ConstantNode.forInt(i);
@@ -333,7 +344,7 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
                         break;
                     case MatchRange:
                         for (int i = fromIndexConstant; i < arrayLengthConstant; i++) {
-                            int value = ConstantReflectionUtil.readTypePunned(provider, arrayConstant, constantArrayKind, stride, (int) (arrayOffsetConstant + i));
+                            int value = ConstantReflectionUtil.readTypePunned(provider, arrayConstant, constantArrayKind, stride, arrayOffsetConstant + i);
                             for (int j = 0; j < valuesConstant.length; j += 2) {
                                 if (valuesConstant[j] <= value && value <= valuesConstant[j + 1]) {
                                     return ConstantNode.forInt(i);
@@ -343,7 +354,7 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
                         break;
                     case WithMask:
                         for (int i = fromIndexConstant; i < arrayLengthConstant; i++) {
-                            int value = ConstantReflectionUtil.readTypePunned(provider, arrayConstant, constantArrayKind, stride, (int) (arrayOffsetConstant + i));
+                            int value = ConstantReflectionUtil.readTypePunned(provider, arrayConstant, constantArrayKind, stride, arrayOffsetConstant + i);
                             if ((value | valuesConstant[1]) == valuesConstant[0]) {
                                 return ConstantNode.forInt(i);
                             }
@@ -351,8 +362,8 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
                         break;
                     case FindTwoConsecutive:
                         for (int i = fromIndexConstant; i < arrayLengthConstant - 1; i++) {
-                            int v0 = ConstantReflectionUtil.readTypePunned(provider, arrayConstant, constantArrayKind, stride, (int) (arrayOffsetConstant + i));
-                            int v1 = ConstantReflectionUtil.readTypePunned(provider, arrayConstant, constantArrayKind, stride, (int) (arrayOffsetConstant + i + 1));
+                            int v0 = ConstantReflectionUtil.readTypePunned(provider, arrayConstant, constantArrayKind, stride, arrayOffsetConstant + i);
+                            int v1 = ConstantReflectionUtil.readTypePunned(provider, arrayConstant, constantArrayKind, stride, arrayOffsetConstant + i + 1);
                             if (v0 == valuesConstant[0] && v1 == valuesConstant[1]) {
                                 return ConstantNode.forInt(i);
                             }
@@ -360,8 +371,8 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
                         break;
                     case FindTwoConsecutiveWithMask:
                         for (int i = fromIndexConstant; i < arrayLengthConstant - 1; i++) {
-                            int v0 = ConstantReflectionUtil.readTypePunned(provider, arrayConstant, constantArrayKind, stride, (int) (arrayOffsetConstant + i));
-                            int v1 = ConstantReflectionUtil.readTypePunned(provider, arrayConstant, constantArrayKind, stride, (int) (arrayOffsetConstant + i + 1));
+                            int v0 = ConstantReflectionUtil.readTypePunned(provider, arrayConstant, constantArrayKind, stride, arrayOffsetConstant + i);
+                            int v1 = ConstantReflectionUtil.readTypePunned(provider, arrayConstant, constantArrayKind, stride, arrayOffsetConstant + i + 1);
                             if ((v0 | valuesConstant[2]) == valuesConstant[0] && (v1 | valuesConstant[3]) == valuesConstant[1]) {
                                 return ConstantNode.forInt(i);
                             }

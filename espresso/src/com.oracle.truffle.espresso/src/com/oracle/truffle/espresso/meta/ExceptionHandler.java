@@ -96,6 +96,14 @@ public final class ExceptionHandler {
     }
 
     /**
+     * Returns whether the given bci is covered by this exception handler. Equivalent to
+     * {@code getStartBCI() <= bci && bci < getEndBCI()}
+     */
+    public boolean covers(int bci) {
+        return startBCI <= bci && bci < endBCI;
+    }
+
+    /**
      * Returns the type of exception caught by this exception handler.
      */
     public Symbol<Type> getCatchType() {

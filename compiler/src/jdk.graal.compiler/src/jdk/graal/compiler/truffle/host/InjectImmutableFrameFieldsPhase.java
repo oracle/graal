@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,7 +34,6 @@ import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.PhaseSuite;
 import jdk.graal.compiler.phases.common.HighTierLoweringPhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
-
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -58,10 +57,12 @@ public final class InjectImmutableFrameFieldsPhase extends BasePhase<HighTierCon
             return;
         }
         ResolvedJavaType frameType = env.types().FrameWithoutBoxing;
+        ResolvedJavaType frameDescriptorType = env.types().FrameDescriptor;
         for (Node node : graph.getNodes()) {
             if (node instanceof LoadFieldNode) {
                 LoadFieldNode fieldNode = (LoadFieldNode) node;
-                if (isForcedImmutable(env, fieldNode.field(), frameType) && !fieldNode.getLocationIdentity().isImmutable()) {
+                if ((isForcedImmutable(env, fieldNode.field(), frameType) || isForcedImmutable(env, fieldNode.field(), frameDescriptorType)) &&
+                                !fieldNode.getLocationIdentity().isImmutable()) {
                     graph.replaceFixedWithFixed(fieldNode, graph.add(LoadFieldNode.createOverrideImmutable(fieldNode)));
                 }
             }

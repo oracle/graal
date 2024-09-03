@@ -38,6 +38,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 
+import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.jfr.JfrCheckpointType;
 import com.oracle.svm.core.jfr.JfrChunkFileWriter;
 import com.oracle.svm.core.jfr.JfrReservedEvent;
@@ -54,6 +55,8 @@ import com.oracle.svm.test.jfr.utils.poolparsers.GCWhenConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.MethodConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.ModuleConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.MonitorInflationCauseConstantPoolParser;
+import com.oracle.svm.test.jfr.utils.poolparsers.NmtCategoryConstantPoolParser;
+import com.oracle.svm.test.jfr.utils.poolparsers.OldObjectConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.PackageConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.StacktraceConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.SymbolConstantPoolParser;
@@ -90,6 +93,11 @@ public class JfrFileParser {
         addParser(JfrType.VMOperation, new VMOperationConstantPoolParser(this));
         addParser(JfrType.MonitorInflationCause, new MonitorInflationCauseConstantPoolParser(this));
         addParser(JfrType.GCWhen, new GCWhenConstantPoolParser(this));
+        addParser(JfrType.OldObject, new OldObjectConstantPoolParser(this));
+
+        if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
+            addParser(JfrType.NMTType, new NmtCategoryConstantPoolParser(this));
+        }
     }
 
     private void addParser(JfrType type, ConstantPoolParser parser) {

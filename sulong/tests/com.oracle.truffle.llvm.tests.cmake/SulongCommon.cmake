@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021, 2023, Oracle and/or its affiliates.
+# Copyright (c) 2021, 2024, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -82,7 +82,7 @@ if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
     # NOTE: the darwin linker refuses bundle bitcode if any of the dependencies do not have a bundle section.
     #   However, it does include the bundle if linked with -flto, although the warning still says otherwise.
     execute_process(COMMAND ${LLVM_CONFIG} --libdir OUTPUT_VARIABLE _llvm_config_libdir OUTPUT_STRIP_TRAILING_WHITESPACE)
-    set(EMBED_BC "-flto -Wl,-bitcode_bundle,-lto_library,${_llvm_config_libdir}/libLTO.dylib -Wno-everything")
+    set(EMBED_BC "-fuse-ld=lld -flto -Wl,-bitcode_bundle,-lto_library,${_llvm_config_libdir}/libLTO.dylib -Wno-everything")
 else()
     set(EMBED_BC "-fembed-bitcode")
 endif()

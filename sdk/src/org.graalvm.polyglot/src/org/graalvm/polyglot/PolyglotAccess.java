@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package org.graalvm.polyglot;
 
 import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -245,7 +246,7 @@ public final class PolyglotAccess {
          * more than two then all language evaluation combinations will be allowed. This method
          * potentially overrides already configured access rights with
          * {@link #allowEval(String, String)} or {@link #denyEval(String, String)}. The given
-         * language array must be <code>null</code> and individual languages must not be
+         * language array must be non <code>null</code> and individual languages must not be
          * <code>null</code>.
          *
          * @see #allowEval(String, String)
@@ -263,7 +264,12 @@ public final class PolyglotAccess {
                     languageAccess = EconomicSet.create();
                     evalAccess.put(language, languageAccess);
                 }
-                languageAccess.addAll(Arrays.asList(languages));
+                Set<String> filteredList = new LinkedHashSet<>(Arrays.asList(languages));
+                // filter current language if it is not the only language
+                if (filteredList.size() > 1) {
+                    filteredList.remove(language);
+                }
+                languageAccess.addAll(filteredList);
             }
             return this;
         }
@@ -276,7 +282,7 @@ public final class PolyglotAccess {
          * more than two then all language access combinations will be denied. This method
          * potentially overrides already configured access rights with
          * {@link #allowEval(String, String)} or {@link #denyEval(String, String)}. The given
-         * language array must be <code>null</code> and individual languages must not be
+         * language array must be non <code>null</code> and individual languages must not be
          * <code>null</code>.
          *
          * @see #denyEval(String, String)

@@ -24,6 +24,12 @@
  */
 package jdk.graal.compiler.lir.amd64;
 
+import static jdk.graal.compiler.lir.amd64.AMD64AESEncryptOp.AES_BLOCK_SIZE;
+import static jdk.graal.compiler.lir.amd64.AMD64AESEncryptOp.asXMMRegister;
+import static jdk.graal.compiler.lir.amd64.AMD64AESEncryptOp.keyShuffleMask;
+import static jdk.graal.compiler.lir.amd64.AMD64AESEncryptOp.loadKey;
+import static jdk.graal.compiler.lir.amd64.AMD64CounterModeAESCryptOp.newLabels;
+import static jdk.graal.compiler.lir.amd64.AMD64LIRHelper.recordExternalAddress;
 import static jdk.vm.ci.amd64.AMD64.r11;
 import static jdk.vm.ci.amd64.AMD64.rbx;
 import static jdk.vm.ci.amd64.AMD64.rsp;
@@ -44,12 +50,6 @@ import static jdk.vm.ci.amd64.AMD64.xmm7;
 import static jdk.vm.ci.amd64.AMD64.xmm8;
 import static jdk.vm.ci.amd64.AMD64.xmm9;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.graal.compiler.lir.amd64.AMD64AESEncryptOp.AES_BLOCK_SIZE;
-import static jdk.graal.compiler.lir.amd64.AMD64AESEncryptOp.asXMMRegister;
-import static jdk.graal.compiler.lir.amd64.AMD64AESEncryptOp.keyShuffleMask;
-import static jdk.graal.compiler.lir.amd64.AMD64AESEncryptOp.loadKey;
-import static jdk.graal.compiler.lir.amd64.AMD64CounterModeAESCryptOp.newLabels;
-import static jdk.graal.compiler.lir.amd64.AMD64LIRHelper.recordExternalAddress;
 
 import java.util.function.BiConsumer;
 
@@ -62,14 +62,13 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
-
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/d7b941640638b35f9ac1ef11cd6bf6ccb795c29a/src/hotspot/cpu/x86/stubGenerator_x86_64_aes.cpp#L1255-L1511",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/ce8399fd6071766114f5f201b6e44a7abdba9f5a/src/hotspot/cpu/x86/stubGenerator_x86_64_aes.cpp#L1363-L1619",
           sha1 = "e3481678a0bdb4d66c9b3641ba44a3559979aff5")
 // @formatter:on
 public final class AMD64CipherBlockChainingAESDecryptOp extends AMD64LIRInstruction {
@@ -379,5 +378,10 @@ public final class AMD64CipherBlockChainingAESDecryptOp extends AMD64LIRInstruct
         op.accept(xmmResult1, src);
         op.accept(xmmResult2, src);
         op.accept(xmmResult3, src);
+    }
+
+    @Override
+    public boolean modifiesStackPointer() {
+        return true;
     }
 }

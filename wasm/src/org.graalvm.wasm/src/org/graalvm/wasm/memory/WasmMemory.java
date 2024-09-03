@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,6 +54,7 @@ import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 
 import org.graalvm.wasm.EmbedderDataHolder;
+import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.api.WebAssembly;
 import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.constants.Sizes;
@@ -107,21 +108,6 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
      * This is different from {@link #declaredMaxSize()}, which can be higher.
      */
     protected final long maxAllowedSize;
-
-    /**
-     * Optional grow callback to notify the embedder.
-     */
-    private Object growCallback;
-
-    /**
-     * JS callback to implement part of memory.atomic.notify.
-     */
-    private Object notifyCallback;
-
-    /**
-     * JS callback to implement part of memory.atomic.waitN.
-     */
-    private Object waitCallback;
 
     /**
      * @see #hasIndexType64()
@@ -213,7 +199,12 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
         return shared;
     }
 
-    public abstract boolean grow(long extraPageSize);
+    /**
+     * Increases the size of the memory by the specified number of pages.
+     *
+     * @return The previous size of the memory if successful, otherwise {@code -1}.
+     */
+    public abstract long grow(long extraPageSize);
 
     /**
      * Shrinks this memory's size to its {@link #declaredMinSize()} initial size}, and sets all
@@ -253,6 +244,8 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
 
     public abstract long load_i64_32u(Node node, long address);
 
+    public abstract Vector128 load_i128(Node node, long address);
+
     public abstract void store_i32(Node node, long address, int value);
 
     public abstract void store_i64(Node node, long address, long value);
@@ -270,6 +263,8 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
     public abstract void store_i64_16(Node node, long address, short value);
 
     public abstract void store_i64_32(Node node, long address, int value);
+
+    public abstract void store_i128(Node node, long address, Vector128 value);
 
     public abstract int atomic_load_i32(Node node, long address);
 
@@ -524,7 +519,7 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
      * @param string the string to write
      * @param offset memory index where to write the string
      * @param length the maximum number of bytes to write, including the trailing null character
-     * @return the number of bytes written, including the trailing null character
+     * @return the number of bytes written
      */
     @CompilerDirectives.TruffleBoundary
     public final int writeString(Node node, String string, int offset, int length) {
@@ -617,10 +612,18 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
     }
 
     private void checkOffset(Node node, long byteOffset, int opLength, InlinedBranchProfile errorBranch) throws InvalidBufferOffsetException {
-        if (byteOffset < 0 || getBufferSize() - opLength < byteOffset) {
+        if (opLength < 0 || byteOffset < 0 || getBufferSize() - opLength < byteOffset) {
             errorBranch.enter(node);
             throw InvalidBufferOffsetException.create(byteOffset, opLength);
         }
+    }
+
+    @ExportMessage
+    final void readBuffer(long byteOffset, byte[] destination, int destinationOffset, int length,
+                    @Bind("$node") Node node,
+                    @Shared("errorBranch") @Cached InlinedBranchProfile errorBranch) throws InvalidBufferOffsetException {
+        checkOffset(node, byteOffset, length, errorBranch);
+        copyToBuffer(node, destination, byteOffset, destinationOffset, length);
     }
 
     @ExportMessage
@@ -807,40 +810,16 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
         store_i32_8(null, address, rawValue);
     }
 
-    public void setGrowCallback(Object growCallback) {
-        this.growCallback = growCallback;
-    }
-
-    public Object getGrowCallback() {
-        return growCallback;
-    }
-
     protected void invokeGrowCallback() {
         WebAssembly.invokeMemGrowCallback(this);
     }
 
-    public void setNotifyCallback(Object notifyCallback) {
-        this.notifyCallback = notifyCallback;
+    protected int invokeNotifyCallback(Node node, long address, int count) {
+        return WebAssembly.invokeMemNotifyCallback(node, this, address, count);
     }
 
-    public Object getNotifyCallback() {
-        return notifyCallback;
-    }
-
-    protected int invokeNotifyCallback(long address, int count) {
-        return WebAssembly.invokeMemNotifyCallback(this, address, count);
-    }
-
-    public void setWaitCallback(Object waitCallback) {
-        this.waitCallback = waitCallback;
-    }
-
-    public Object getWaitCallback() {
-        return waitCallback;
-    }
-
-    protected int invokeWaitCallback(long address, long expected, long timeout, boolean is64) {
-        return WebAssembly.invokeMemWaitCallback(this, address, expected, timeout, is64);
+    protected int invokeWaitCallback(Node node, long address, long expected, long timeout, boolean is64) {
+        return WebAssembly.invokeMemWaitCallback(node, this, address, expected, timeout, is64);
     }
 
     public abstract void close();
@@ -857,6 +836,13 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
 
     protected boolean outOfBounds(long offset, long length) {
         return length < 0 || offset < 0 || offset > getBufferSize() - length;
+    }
+
+    public final WasmMemory checkSize(long initialSize) {
+        if (byteSize() < initialSize * Sizes.MEMORY_PAGE_SIZE) {
+            throw CompilerDirectives.shouldNotReachHere("Memory size must not be less than initial size");
+        }
+        return this;
     }
 
     /**
@@ -881,6 +867,17 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
      * @throws IOException if writing the stream leads to an error.
      */
     public abstract void copyToStream(Node node, OutputStream stream, int offset, int length) throws IOException;
+
+    /**
+     * Copy data from memory into a byte[] array.
+     *
+     * @param node the node used for errors
+     * @param dst the output buffer
+     * @param srcOffset the offset in the memory
+     * @param dstOffset the offset in the byte[] array
+     * @param length the length of the data
+     */
+    public abstract void copyToBuffer(Node node, byte[] dst, long srcOffset, int dstOffset, int length);
 
     public boolean isUnsafe() {
         return false;

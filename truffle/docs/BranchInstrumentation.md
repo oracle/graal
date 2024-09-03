@@ -73,7 +73,7 @@ per-inline-site flag to `true`, and change the filter to focus only on
 `SLPropertyCacheNode`:
 
 ```shell
-mx --jdk jvmci sl -Dgraal.TruffleBackgroundCompilation=false \
+mx --jdk jvmci sl -Djdk.graal.TruffleBackgroundCompilation=false \
   --compiler.InstrumentBranchesPerInlineSite \
   --compiler.InstrumentBranches \
   '--compiler.InstrumentFilter=*.SLPropertyCacheNode.*' \

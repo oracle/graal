@@ -46,9 +46,10 @@ import com.oracle.svm.configure.filters.FilterConfigurationParser;
 import com.oracle.svm.configure.filters.HierarchyFilterNode;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.configure.trace.TraceProcessor;
-import com.oracle.svm.core.configure.ConfigurationFile;
-import com.oracle.svm.core.util.json.JsonWriter;
+import com.oracle.svm.core.configure.PredefinedClassesConfigurationParser;
 import com.oracle.svm.util.LogUtils;
+
+import jdk.graal.compiler.phases.common.LazyValue;
 
 public class ConfigurationGenerateCommand extends ConfigurationCommand {
     @Override
@@ -265,14 +266,12 @@ public class ConfigurationGenerateCommand extends ConfigurationCommand {
 
         try {
             omittedConfigurationSet = omittedCollection.loadConfigurationSet(ConfigurationFileCollection.FAIL_ON_EXCEPTION, null, null);
-            List<Path> predefinedClassDestDirs = new ArrayList<>();
+            List<LazyValue<Path>> predefinedClassDestDirs = new ArrayList<>();
             for (URI pathUri : outputCollection.getPredefinedClassesConfigPaths()) {
-                Path subdir = Files.createDirectories(Paths.get(pathUri).getParent().resolve(ConfigurationFile.PREDEFINED_CLASSES_AGENT_EXTRACTED_SUBDIR));
-                subdir = Files.createDirectories(subdir);
-                predefinedClassDestDirs.add(subdir);
+                predefinedClassDestDirs.add(PredefinedClassesConfigurationParser.directorySupplier(Paths.get(pathUri).getParent()));
             }
             Predicate<String> shouldExcludeClassesWithHash = omittedConfigurationSet.getPredefinedClassesConfiguration()::containsClassWithHash;
-            configurationSet = inputCollection.loadConfigurationSet(ConfigurationFileCollection.FAIL_ON_EXCEPTION, predefinedClassDestDirs.toArray(new Path[0]), shouldExcludeClassesWithHash);
+            configurationSet = inputCollection.loadConfigurationSet(ConfigurationFileCollection.FAIL_ON_EXCEPTION, predefinedClassDestDirs, shouldExcludeClassesWithHash);
         } catch (IOException e) {
             throw e;
         } catch (Throwable t) {
@@ -303,36 +302,7 @@ public class ConfigurationGenerateCommand extends ConfigurationCommand {
         if (outputCollection.isEmpty()) {
             LogUtils.warning("No outputs specified, validating inputs only.");
         }
-        for (URI uri : outputCollection.getReflectConfigPaths()) {
-            try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {
-                configurationSet.getReflectionConfiguration().printJson(writer);
-            }
-        }
-        for (URI uri : outputCollection.getJniConfigPaths()) {
-            try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {
-                configurationSet.getJniConfiguration().printJson(writer);
-            }
-        }
-        for (URI uri : outputCollection.getProxyConfigPaths()) {
-            try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {
-                configurationSet.getProxyConfiguration().printJson(writer);
-            }
-        }
-        for (URI uri : outputCollection.getResourceConfigPaths()) {
-            try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {
-                configurationSet.getResourceConfiguration().printJson(writer);
-            }
-        }
-        for (URI uri : outputCollection.getSerializationConfigPaths()) {
-            try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {
-                configurationSet.getSerializationConfiguration().printJson(writer);
-            }
-        }
-        for (URI uri : outputCollection.getPredefinedClassesConfigPaths()) {
-            try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {
-                configurationSet.getPredefinedClassesConfiguration().printJson(writer);
-            }
-        }
+        ConfigurationSet.writeConfigurationToAllPaths(outputCollection::getPaths, configurationSet::getConfiguration);
     }
 
     private static void parseFilterFiles(ComplexFilter filter, List<URI> filterFiles) {

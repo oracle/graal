@@ -46,6 +46,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ThreadLocalAction;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -80,6 +81,7 @@ import com.oracle.truffle.espresso.threads.ThreadsAccess;
 
 @GenerateNativeEnv(target = ManagementImpl.class, prependEnv = true)
 public final class Management extends NativeEnv {
+    private static final TruffleLogger LOGGER = TruffleLogger.getLogger(EspressoLanguage.ID, Management.class);
     // Partial/incomplete implementation disclaimer!
     //
     // This is a partial implementation of the {@link java.lang.management} APIs. Some APIs go
@@ -171,6 +173,11 @@ public final class Management extends NativeEnv {
 
         this.disposeManagementContext = getNativeAccess().lookupAndBindSymbol(mokapotLibrary, "disposeManagementContext",
                         NativeSignature.create(NativeType.VOID, NativeType.POINTER, NativeType.INT, NativeType.POINTER));
+    }
+
+    @Override
+    protected TruffleLogger getLogger() {
+        return LOGGER;
     }
 
     /**
@@ -377,7 +384,7 @@ public final class Management extends NativeEnv {
                 StaticObject stackTrace = Target_java_lang_Thread.getStackTrace(thread, actualMaxDepth, getContext(), node);
 
                 StaticObject threadInfo = meta.java_lang_management_ThreadInfo.allocateInstance(getContext());
-                init.invokeDirect( /* this */ threadInfo,
+                init.invokeDirectSpecial( /* this */ threadInfo,
                                 /* t */ thread,
                                 /* state */ threadStatus,
                                 /* lockObj */ lockObj,
@@ -431,7 +438,7 @@ public final class Management extends NativeEnv {
                             boolean isHeap = h.getType() == MemoryType.HEAP;
                             long usageThreshold = h.isUsageThresholdSupported() ? 0 : -1;
                             long gcThreshold = h.isCollectionUsageThresholdSupported() ? 0 : -1;
-                            return (StaticObject) meta.sun_management_ManagementFactory_createMemoryPool.invokeDirect(null, name, isHeap, usageThreshold, gcThreshold);
+                            return (StaticObject) meta.sun_management_ManagementFactory_createMemoryPool.invokeDirectStatic(name, isHeap, usageThreshold, gcThreshold);
                         });
                         MemoryPoolMXBean hostProbe = reverseMemoryPools.putIfAbsent(guestBean, hostBean);
                         assert hostProbe == null || hostProbe == hostBean;
@@ -498,12 +505,12 @@ public final class Management extends NativeEnv {
                             factory = h -> {
                                 getLogger().fine(() -> "GetMemoryManagers: creating " + h.getName());
                                 // TODO use GarbageCollectorExtImpl
-                                return (StaticObject) meta.sun_management_ManagementFactory_createGarbageCollector.invokeDirect(null, meta.toGuestString(h.getName()), StaticObject.NULL);
+                                return (StaticObject) meta.sun_management_ManagementFactory_createGarbageCollector.invokeDirectStatic(meta.toGuestString(h.getName()), StaticObject.NULL);
                             };
                         } else {
                             factory = h -> {
                                 getLogger().fine(() -> "GetMemoryManagers: creating " + h.getName());
-                                return (StaticObject) meta.sun_management_ManagementFactory_createMemoryManager.invokeDirect(null, meta.toGuestString(h.getName()));
+                                return (StaticObject) meta.sun_management_ManagementFactory_createMemoryManager.invokeDirectStatic(meta.toGuestString(h.getName()));
                             };
                         }
                         StaticObject guestBean = memoryManagers.computeIfAbsent(hostBean, factory);
@@ -570,7 +577,7 @@ public final class Management extends NativeEnv {
 
     private StaticObject asGuestUsage(MemoryUsage usage, Meta meta) {
         StaticObject guestUsage = meta.java_lang_management_MemoryUsage.allocateInstance(getContext());
-        getMemoryUsageInit().invokeDirect(guestUsage, usage.getInit(), usage.getUsed(), usage.getCommitted(), usage.getMax());
+        getMemoryUsageInit().invokeDirectSpecial(guestUsage, usage.getInit(), usage.getUsed(), usage.getCommitted(), usage.getMax());
         return guestUsage;
     }
 
@@ -617,34 +624,57 @@ public final class Management extends NativeEnv {
     @TruffleBoundary // Lots of SVM + Windows methods blocked for PE.
     public long GetLongAttribute(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject obj,
                     /* jmmLongAttribute */ int att) {
-        switch (att) {
-            case JMM_JVM_INIT_DONE_TIME_MS:
-                return TimeUnit.NANOSECONDS.toMillis(getContext().initDoneTimeNanos);
-            case JMM_CLASS_LOADED_COUNT:
-                return getRegistries().getLoadedClassesCount();
-            case JMM_CLASS_UNLOADED_COUNT:
-                return 0L;
-            case JMM_JVM_UPTIME_MS:
-                long elapsedNanos = System.nanoTime() - getContext().initDoneTimeNanos;
-                return TimeUnit.NANOSECONDS.toMillis(elapsedNanos);
-            case JMM_OS_PROCESS_ID:
-                return ProcessHandle.current().pid();
-            case JMM_THREAD_DAEMON_COUNT:
-                int daemonCount = 0;
-                ThreadsAccess threadAccess = getContext().getThreadAccess();
-                for (StaticObject t : getContext().getActiveThreads()) {
-                    if (threadAccess.isDaemon(t)) {
-                        ++daemonCount;
+        if (StaticObject.isNull(obj)) {
+            switch (att) {
+                case JMM_JVM_INIT_DONE_TIME_MS:
+                    return TimeUnit.NANOSECONDS.toMillis(getContext().initDoneTimeNanos);
+                case JMM_CLASS_LOADED_COUNT:
+                    return getRegistries().getLoadedClassesCount();
+                case JMM_CLASS_UNLOADED_COUNT:
+                    return 0L;
+                case JMM_JVM_UPTIME_MS:
+                    long elapsedNanos = System.nanoTime() - getContext().initDoneTimeNanos;
+                    return TimeUnit.NANOSECONDS.toMillis(elapsedNanos);
+                case JMM_OS_PROCESS_ID:
+                    return ProcessHandle.current().pid();
+                case JMM_THREAD_DAEMON_COUNT:
+                    int daemonCount = 0;
+                    ThreadsAccess threadAccess = getContext().getThreadAccess();
+                    for (StaticObject t : getContext().getActiveThreads()) {
+                        if (threadAccess.isDaemon(t)) {
+                            ++daemonCount;
+                        }
                     }
+                    return daemonCount;
+                case JMM_THREAD_PEAK_COUNT:
+                    return getContext().getPeakThreadCount();
+                case JMM_THREAD_LIVE_COUNT:
+                    return getContext().getActiveThreads().length;
+                case JMM_THREAD_TOTAL_COUNT:
+                    return getContext().getCreatedThreadCount();
+            }
+        } else {
+            MemoryManagerMXBean hostBean = reverseMemoryManagers.get(obj);
+            if (hostBean == null) {
+                LOGGER.warning(() -> "Unknown guest memory manager for object of type " + obj.getKlass());
+                return -1L;
+            }
+            switch (att) {
+                case JMM_GC_TIME_MS: {
+                    if (!(hostBean instanceof GarbageCollectorMXBean hostGCBean)) {
+                        LOGGER.warning(() -> "Not a GC bean, got a " + hostBean.getClass());
+                        return -1L;
+                    }
+                    return hostGCBean.getCollectionTime();
                 }
-                return daemonCount;
-
-            case JMM_THREAD_PEAK_COUNT:
-                return getContext().getPeakThreadCount();
-            case JMM_THREAD_LIVE_COUNT:
-                return getContext().getActiveThreads().length;
-            case JMM_THREAD_TOTAL_COUNT:
-                return getContext().getCreatedThreadCount();
+                case JMM_GC_COUNT: {
+                    if (!(hostBean instanceof GarbageCollectorMXBean hostGCBean)) {
+                        LOGGER.warning(() -> "Not a GC bean, got a " + hostBean.getClass());
+                        return -1L;
+                    }
+                    return hostGCBean.getCollectionCount();
+                }
+            }
         }
         getLogger().warning(() -> "Unknown long attribute: " + att);
         return -1L;

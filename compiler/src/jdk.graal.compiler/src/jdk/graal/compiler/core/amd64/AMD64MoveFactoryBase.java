@@ -25,15 +25,9 @@
 
 package jdk.graal.compiler.core.amd64;
 
-import static jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.QWORD;
-import static jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.WORD;
-
 import jdk.graal.compiler.lir.VirtualStackSlot;
 import jdk.graal.compiler.lir.amd64.AMD64LIRInstruction;
-import jdk.graal.compiler.lir.amd64.AMD64Move.AMD64PushPopStackMove;
 import jdk.graal.compiler.lir.gen.MoveFactory;
-
-import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 
@@ -47,18 +41,10 @@ public abstract class AMD64MoveFactoryBase extends MoveFactory {
 
     @Override
     public final AMD64LIRInstruction createStackMove(AllocatableValue result, AllocatableValue input) {
-        AMD64Kind kind = (AMD64Kind) result.getPlatformKind();
-        switch (kind.getSizeInBytes()) {
-            case 2:
-                return new AMD64PushPopStackMove(WORD, result, input);
-            case 8:
-                return new AMD64PushPopStackMove(QWORD, result, input);
-            default:
-                RegisterBackupPair backup = backupSlotProvider.getScratchRegister(input.getPlatformKind());
-                Register scratchRegister = backup.register;
-                VirtualStackSlot backupSlot = backup.backupSlot;
-                return createStackMove(result, input, scratchRegister, backupSlot);
-        }
+        RegisterBackupPair backup = backupSlotProvider.getScratchRegister(input.getPlatformKind());
+        Register scratchRegister = backup.register;
+        VirtualStackSlot backupSlot = backup.backupSlot;
+        return createStackMove(result, input, scratchRegister, backupSlot);
     }
 
     public abstract AMD64LIRInstruction createStackMove(AllocatableValue result, AllocatableValue input, Register scratchRegister, AllocatableValue backupSlot);

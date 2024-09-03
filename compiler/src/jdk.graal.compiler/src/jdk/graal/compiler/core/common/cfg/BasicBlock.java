@@ -98,6 +98,15 @@ public abstract class BasicBlock<T extends BasicBlock<T>> {
         this.cfg = cfg;
     }
 
+    public void resetDominators() {
+        dominator = AbstractControlFlowGraph.INVALID_BLOCK_ID;
+        firstDominated = AbstractControlFlowGraph.INVALID_BLOCK_ID;
+        dominatedSibling = AbstractControlFlowGraph.INVALID_BLOCK_ID;
+        domDepth = 0;
+        domNumber = AbstractControlFlowGraph.INVALID_BLOCK_ID;
+        maxChildDomNumber = AbstractControlFlowGraph.INVALID_BLOCK_ID;
+    }
+
     public void setDominatorNumber(int domNumber) {
         this.domNumber = domNumber;
     }
@@ -240,11 +249,11 @@ public abstract class BasicBlock<T extends BasicBlock<T>> {
     }
 
     public void setIndirectBranchTarget() {
-        this.indirectBranchTarget = true;
+        indirectBranchTarget = true;
     }
 
     public boolean isIndirectBranchTarget() {
-        return this.indirectBranchTarget;
+        return indirectBranchTarget;
     }
 
     @Override
@@ -262,7 +271,7 @@ public abstract class BasicBlock<T extends BasicBlock<T>> {
 
     public abstract boolean isExceptionEntry();
 
-    public abstract Loop<T> getLoop();
+    public abstract CFGLoop<T> getLoop();
 
     public abstract int getLoopDepth();
 
@@ -284,6 +293,10 @@ public abstract class BasicBlock<T extends BasicBlock<T>> {
     public abstract double getRelativeFrequency();
 
     public abstract T getDominator(int distance);
+
+    public abstract boolean canUseBlockAsSpillTarget();
+
+    public abstract void setCanUseBlockAsSpillTarget(boolean canUseBlockAsSpillTarget);
 
     /**
      * Determine if this block is modifiable in the context of its {@link AbstractControlFlowGraph}.

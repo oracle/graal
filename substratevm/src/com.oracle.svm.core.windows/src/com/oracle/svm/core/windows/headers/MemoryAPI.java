@@ -69,10 +69,23 @@ public class MemoryAPI {
     @CConstant
     public static native int PAGE_WRITECOPY();
 
+    @CConstant
+    public static native int FILE_MAP_READ();
+
+    @CConstant
+    public static native int FILE_MAP_WRITE();
+
     /** Creates or opens a named or unnamed file mapping object for a specified file. */
     @CFunction(transition = NO_TRANSITION)
     public static native HANDLE CreateFileMappingW(HANDLE hFile, PointerBase lpFileMappingAttributes, int flProtect,
                     int dwMaximumSizeHigh, int dwMaximumSizeLow, WCharPointer lpName);
+
+    /**
+     * Maps a view of a file mapping into the address space of a calling process.
+     */
+    @CFunction(transition = NO_TRANSITION)
+    public static native Pointer MapViewOfFile(HANDLE hFileMappingObject, int dwDesiredAccess, int dwFileOffsetHigh,
+                    int dwFileOffsetLow, UnsignedWord dwNumberOfBytesToMap);
 
     /** Unmaps a mapped view of a file from the calling process's address space. */
     @CFunction(transition = NO_TRANSITION)

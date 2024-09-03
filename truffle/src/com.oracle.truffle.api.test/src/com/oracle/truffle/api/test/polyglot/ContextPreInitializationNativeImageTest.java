@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -129,6 +129,10 @@ public class ContextPreInitializationNativeImageTest {
         somTest.testShapeAllocatedOnContextPreInit();
     }
 
+    /**
+     * This test checks that the Static Object Model can be used at image built time for context
+     * pre-initialization.
+     */
     @Test
     public void somObjectAllocatedOnContextPreInit() throws Exception {
         // only supported in AOT
@@ -138,7 +142,19 @@ public class ContextPreInitializationNativeImageTest {
     }
 
     static class StaticObjectModelTest {
+
+        private static final Object OBJECT_VALUE = "value";
+
+        private final StaticProperty booleanProperty;
+        private final StaticProperty byteProperty;
+        private final StaticProperty shortProperty;
+        private final StaticProperty charProperty;
+        private final StaticProperty intProperty;
         private final StaticProperty longProperty;
+        private final StaticProperty floatProperty;
+        private final StaticProperty doubleProperty;
+        private final StaticProperty objectProperty;
+
         private final StaticShape<DefaultStaticObjectFactory> staticShape;
         private final Object staticObject;
 
@@ -146,12 +162,38 @@ public class ContextPreInitializationNativeImageTest {
             assertTrue(env.isPreInitialization());
 
             StaticShape.Builder builder = StaticShape.newBuilder(language);
+            booleanProperty = new DefaultStaticProperty("booleanProperty");
+            byteProperty = new DefaultStaticProperty("byteProperty");
+            shortProperty = new DefaultStaticProperty("shortProperty");
+            charProperty = new DefaultStaticProperty("charProperty");
+            intProperty = new DefaultStaticProperty("intProperty");
             longProperty = new DefaultStaticProperty("longProperty");
+            floatProperty = new DefaultStaticProperty("floatProperty");
+            doubleProperty = new DefaultStaticProperty("doubleProperty");
+            objectProperty = new DefaultStaticProperty("objectProperty");
+
+            builder.property(booleanProperty, boolean.class, false);
+            builder.property(byteProperty, byte.class, false);
+            builder.property(shortProperty, short.class, false);
+            builder.property(charProperty, char.class, false);
+            builder.property(intProperty, int.class, false);
             builder.property(longProperty, long.class, false);
+            builder.property(floatProperty, float.class, false);
+            builder.property(doubleProperty, double.class, false);
+            builder.property(objectProperty, Object.class, false);
+
             staticShape = builder.build();
             staticObject = staticShape.getFactory().create();
 
+            setVolatileBooleanProperty(booleanProperty, staticObject, Boolean.TRUE);
+            setVolatileByteProperty(byteProperty, staticObject, Byte.MAX_VALUE);
+            setVolatileShortProperty(shortProperty, staticObject, Short.MAX_VALUE);
+            setVolatileCharProperty(charProperty, staticObject, Character.MAX_VALUE);
+            setVolatileIntProperty(intProperty, staticObject, Integer.MAX_VALUE);
             setVolatileLongProperty(longProperty, staticObject, Long.MAX_VALUE);
+            setVolatileFloatProperty(floatProperty, staticObject, Float.MAX_VALUE);
+            setVolatileDoubleProperty(doubleProperty, staticObject, Double.MAX_VALUE);
+            setVolatileObjectProperty(objectProperty, staticObject, OBJECT_VALUE);
 
             try {
                 Field primitive = staticObject.getClass().getDeclaredField("primitive");
@@ -163,22 +205,110 @@ public class ContextPreInitializationNativeImageTest {
 
         void testShapeAllocatedOnContextPreInit() throws Exception {
             Object newStaticObject = staticShape.getFactory().create();
+            setVolatileBooleanProperty(booleanProperty, newStaticObject, Boolean.TRUE);
+            setVolatileByteProperty(byteProperty, newStaticObject, Byte.MAX_VALUE);
+            setVolatileShortProperty(shortProperty, newStaticObject, Short.MAX_VALUE);
+            setVolatileCharProperty(charProperty, newStaticObject, Character.MAX_VALUE);
+            setVolatileIntProperty(intProperty, newStaticObject, Integer.MAX_VALUE);
             setVolatileLongProperty(longProperty, newStaticObject, Long.MAX_VALUE);
+            setVolatileFloatProperty(floatProperty, newStaticObject, Float.MAX_VALUE);
+            setVolatileDoubleProperty(doubleProperty, newStaticObject, Double.MAX_VALUE);
+            setVolatileObjectProperty(objectProperty, newStaticObject, OBJECT_VALUE);
+            getVolatileBooleanProperty(booleanProperty, newStaticObject);
+            getVolatileByteProperty(byteProperty, newStaticObject);
+            getVolatileShortProperty(shortProperty, newStaticObject);
+            getVolatileCharProperty(charProperty, newStaticObject);
+            getVolatileIntProperty(intProperty, newStaticObject);
             getVolatileLongProperty(longProperty, newStaticObject);
+            getVolatileFloatProperty(floatProperty, newStaticObject);
+            getVolatileDoubleProperty(doubleProperty, newStaticObject);
+            getVolatileObjectProperty(objectProperty, newStaticObject);
             alignedOffset(longProperty);
         }
 
         void testObjectAllocatedOnContextPreInit() throws Exception {
+            getVolatileBooleanProperty(booleanProperty, staticObject);
+            getVolatileByteProperty(byteProperty, staticObject);
+            getVolatileShortProperty(shortProperty, staticObject);
+            getVolatileCharProperty(charProperty, staticObject);
+            getVolatileIntProperty(intProperty, staticObject);
             getVolatileLongProperty(longProperty, staticObject);
+            getVolatileFloatProperty(floatProperty, staticObject);
+            getVolatileDoubleProperty(doubleProperty, staticObject);
+            getVolatileObjectProperty(objectProperty, staticObject);
             alignedOffset(longProperty);
+        }
+
+        static void setVolatileBooleanProperty(StaticProperty booleanProperty, Object staticObject, boolean value) {
+            booleanProperty.setBooleanVolatile(staticObject, value);
+        }
+
+        static void setVolatileByteProperty(StaticProperty byteProperty, Object staticObject, byte value) {
+            byteProperty.setByteVolatile(staticObject, value);
+        }
+
+        static void setVolatileShortProperty(StaticProperty shortProperty, Object staticObject, short value) {
+            shortProperty.setShortVolatile(staticObject, value);
+        }
+
+        static void setVolatileCharProperty(StaticProperty charProperty, Object staticObject, char value) {
+            charProperty.setCharVolatile(staticObject, value);
+        }
+
+        static void setVolatileIntProperty(StaticProperty intProperty, Object staticObject, int value) {
+            intProperty.setIntVolatile(staticObject, value);
         }
 
         static void setVolatileLongProperty(StaticProperty longProperty, Object staticObject, long value) {
             longProperty.setLongVolatile(staticObject, value);
         }
 
+        static void setVolatileFloatProperty(StaticProperty floatProperty, Object staticObject, float value) {
+            floatProperty.setFloatVolatile(staticObject, value);
+        }
+
+        static void setVolatileDoubleProperty(StaticProperty doubleProperty, Object staticObject, double value) {
+            doubleProperty.setDoubleVolatile(staticObject, value);
+        }
+
+        static void setVolatileObjectProperty(StaticProperty objectProperty, Object staticObject, Object value) {
+            objectProperty.setObjectVolatile(staticObject, value);
+        }
+
+        static void getVolatileBooleanProperty(StaticProperty booleanProperty, Object staticObject) {
+            assertEquals(Boolean.TRUE, booleanProperty.getBooleanVolatile(staticObject));
+        }
+
+        static void getVolatileByteProperty(StaticProperty byteProperty, Object staticObject) {
+            assertEquals(Byte.MAX_VALUE, byteProperty.getByteVolatile(staticObject));
+        }
+
+        static void getVolatileShortProperty(StaticProperty shortProperty, Object staticObject) {
+            assertEquals(Short.MAX_VALUE, shortProperty.getShortVolatile(staticObject));
+        }
+
+        static void getVolatileCharProperty(StaticProperty charProperty, Object staticObject) {
+            assertEquals(Character.MAX_VALUE, charProperty.getCharVolatile(staticObject));
+        }
+
+        static void getVolatileIntProperty(StaticProperty intProperty, Object staticObject) {
+            assertEquals(Integer.MAX_VALUE, intProperty.getIntVolatile(staticObject));
+        }
+
         static void getVolatileLongProperty(StaticProperty longProperty, Object staticObject) {
             assertEquals(Long.MAX_VALUE, longProperty.getLongVolatile(staticObject));
+        }
+
+        static void getVolatileFloatProperty(StaticProperty floatProperty, Object staticObject) {
+            assertEquals(Float.MAX_VALUE, floatProperty.getFloatVolatile(staticObject), 0);
+        }
+
+        static void getVolatileDoubleProperty(StaticProperty doubleProperty, Object staticObject) {
+            assertEquals(Double.MAX_VALUE, doubleProperty.getDoubleVolatile(staticObject), 0);
+        }
+
+        static void getVolatileObjectProperty(StaticProperty objectProperty, Object staticObject) {
+            assertEquals(OBJECT_VALUE, objectProperty.getObjectVolatile(staticObject));
         }
 
         static void alignedOffset(StaticProperty longProperty) throws Exception {

@@ -68,7 +68,7 @@ public abstract class GraphState {
     /**
      * Original graph from which the per-benchmark invocation {@link #graph} is cloned.
      */
-    private final StructuredGraph originalGraph;
+    protected final StructuredGraph originalGraph;
 
     /**
      * The graph processed by the benchmark.

@@ -29,10 +29,6 @@ import java.io.StringWriter;
 import java.nio.file.Path;
 import java.util.List;
 
-import jdk.graal.compiler.debug.MethodFilter;
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.options.OptionValues;
-
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisElement;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -42,21 +38,25 @@ import com.oracle.graal.pointsto.reports.ObjectTreePrinter;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+
+import jdk.graal.compiler.debug.MethodFilter;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionValues;
 
 public final class ReachabilityTracePrinter {
     public static final String PATH_MESSAGE_PREFIX = "See the generated report for a complete reachability trace: ";
 
     public static class Options {
         @Option(help = "Print a trace and abort the build process if any type matching the specified pattern becomes reachable.")//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> AbortOnTypeReachable = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
+        public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> AbortOnTypeReachable = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
         @Option(help = "Print a trace and abort the build process if any method matching the specified pattern becomes reachable.")//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> AbortOnMethodReachable = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
+        public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> AbortOnMethodReachable = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
         @Option(help = "Print a trace and abort the build process if any field matching the specified pattern becomes reachable.")//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> AbortOnFieldReachable = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
+        public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> AbortOnFieldReachable = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
     }
 
     public static void report(String imageName, OptionValues options, String reportsPath, BigBang bb) {
@@ -119,13 +119,9 @@ public final class ReachabilityTracePrinter {
                 continue;
             }
 
-            if (type.isAllocated()) {
-                String header = "Type " + type.toJavaName() + " is marked as allocated";
-                String trace = AnalysisElement.ReachabilityTraceBuilder.buildReachabilityTrace(bb, type.getAllocatedReason(), header);
-                writer.println(trace);
-            } else if (type.isInHeap()) {
-                String header = "Type " + type.toJavaName() + " is marked as in-heap";
-                String trace = AnalysisElement.ReachabilityTraceBuilder.buildReachabilityTrace(bb, type.getInHeapReason(), header);
+            if (type.isInstantiated()) {
+                String header = "Type " + type.toJavaName() + " is marked as instantiated";
+                String trace = AnalysisElement.ReachabilityTraceBuilder.buildReachabilityTrace(bb, type.getInstantiatedReason(), header);
                 writer.println(trace);
             } else {
                 String header = "Type " + type.toJavaName() + " is marked as reachable";

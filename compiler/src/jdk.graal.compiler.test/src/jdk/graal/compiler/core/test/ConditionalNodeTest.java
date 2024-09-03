@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package jdk.graal.compiler.core.test;
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
+import org.junit.Assert;
 import org.junit.Test;
 
 public class ConditionalNodeTest extends GraalCompilerTest {
@@ -114,6 +115,26 @@ public class ConditionalNodeTest extends GraalCompilerTest {
     public void test4() {
         test("conditionalTest4", this, 0);
         test("conditionalTest4", this, 1);
+    }
+
+    public static int conditionalTest5(double x, double y) {
+        return x == y ? 0 : 1;
+    }
+
+    @Test
+    public void test5() {
+        Assert.assertEquals(0, test("conditionalTest5", 0.0, 0.0).returnValue);
+        Assert.assertEquals(1, test("conditionalTest5", 0.0, 1.0).returnValue);
+    }
+
+    public static int conditionalTest6(double x, double y) {
+        return x == y ? 1 : 0;
+    }
+
+    @Test
+    public void test6() {
+        Assert.assertEquals(1, test("conditionalTest6", 0.0, 0.0).returnValue);
+        Assert.assertEquals(0, test("conditionalTest6", 0.0, 1.0).returnValue);
     }
 
     int a;

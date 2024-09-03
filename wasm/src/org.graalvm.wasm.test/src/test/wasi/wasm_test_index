@@ -3,9 +3,12 @@ args-sizes-get
 proc-exit
 environ-get
 environ-sizes-get
+fd_advise-file
 fd_prestat_get
 fd_prestat_dir_name
 fd_read-stdin
+fd_read-stdin-eof
+fd_read-stdin-multi
 fd_seek-file
 fd_fdstat_get-file
 fd_filestat_get-file

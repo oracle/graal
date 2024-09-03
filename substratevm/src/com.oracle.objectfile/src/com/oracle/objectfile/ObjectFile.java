@@ -46,13 +46,12 @@ import java.util.TreeSet;
 import java.util.function.Consumer;
 import java.util.stream.StreamSupport;
 
-import jdk.graal.compiler.debug.DebugContext;
-
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.objectfile.elf.ELFObjectFile;
 import com.oracle.objectfile.macho.MachOObjectFile;
 import com.oracle.objectfile.pecoff.PECoffObjectFile;
 
+import jdk.graal.compiler.debug.DebugContext;
 import sun.nio.ch.DirectBuffer;
 
 /**
@@ -255,6 +254,11 @@ public abstract class ObjectFile {
         DIRECT_4,
         DIRECT_8,
         /**
+         * The relocation's symbol provides an address whose image-base-relative value (plus addend)
+         * supplies the fixup bytes.
+         */
+        ADDR32NB_4,
+        /**
          * The index of the object file section containing the relocation's symbol supplies the
          * fixup bytes. (used in CodeView debug information)
          */
@@ -371,6 +375,7 @@ public abstract class ObjectFile {
                     return 2;
                 case DIRECT_4:
                 case PC_RELATIVE_4:
+                case ADDR32NB_4:
                 case SECREL_4:
                     return 4;
                 case AARCH64_R_AARCH64_ADR_PREL_PG_HI21:
@@ -522,10 +527,13 @@ public abstract class ObjectFile {
     // convenience overrides when specifying neither segment nor segment name
 
     public Section newUserDefinedSection(String name, ElementImpl impl) {
-        final Segment segment = getOrCreateSegment(null, name, false, false);
         final int alignment = getWordSizeInBytes();
-        final Section result = newUserDefinedSection(segment, name, alignment, impl);
-        return result;
+        return newUserDefinedSection(name, alignment, impl);
+    }
+
+    public Section newUserDefinedSection(String name, int alignment, ElementImpl impl) {
+        Segment segment = getOrCreateSegment(null, name, false, false);
+        return newUserDefinedSection(segment, name, alignment, impl);
     }
 
     public Section newDebugSection(String name, ElementImpl impl) {
@@ -1557,8 +1565,8 @@ public abstract class ObjectFile {
         Map<LayoutDecision, ArrayList<LayoutDecision>> removedEdgesDependingOn = new HashMap<>();
         Map<LayoutDecision, ArrayList<LayoutDecision>> removedEdgesDependedOnBy = new HashMap<>();
         for (LayoutDecision l : allDecisions) {
-            removedEdgesDependingOn.put(l, new ArrayList<LayoutDecision>());
-            removedEdgesDependedOnBy.put(l, new ArrayList<LayoutDecision>());
+            removedEdgesDependingOn.put(l, new ArrayList<>());
+            removedEdgesDependedOnBy.put(l, new ArrayList<>());
         }
 
         // 2. run Kahn's algorithm

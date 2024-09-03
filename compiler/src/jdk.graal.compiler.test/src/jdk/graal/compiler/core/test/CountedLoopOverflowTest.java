@@ -39,7 +39,6 @@ import org.junit.Test;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.SpeculationLog;
 
 /**
  * Test to verify that overflowing loops are not detected as counted. This is done by using a
@@ -48,12 +47,6 @@ import jdk.vm.ci.meta.SpeculationLog;
  *
  */
 public class CountedLoopOverflowTest extends GraalCompilerTest {
-    private final SpeculationLog speculationLog;
-
-    @SuppressWarnings("this-escape")
-    public CountedLoopOverflowTest() {
-        speculationLog = getCodeCache().createSpeculationLog();
-    }
 
     public static void snippetDown() {
         int i = Integer.MIN_VALUE + 56;
@@ -89,12 +82,6 @@ public class CountedLoopOverflowTest extends GraalCompilerTest {
             }
             break;
         }
-    }
-
-    @Override
-    protected SpeculationLog getSpeculationLog() {
-        speculationLog.collectFailedSpeculations();
-        return speculationLog;
     }
 
     @Override

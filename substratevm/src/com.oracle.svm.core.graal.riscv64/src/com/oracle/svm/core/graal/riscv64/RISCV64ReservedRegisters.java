@@ -34,11 +34,11 @@ import jdk.vm.ci.riscv64.RISCV64;
 
 public final class RISCV64ReservedRegisters extends ReservedRegisters {
 
-    public static final Register THREAD_REGISTER_CANDIDATE = RISCV64.x23;
+    public static final Register THREAD_REGISTER = RISCV64.x23;
     public static final Register HEAP_BASE_REGISTER_CANDIDATE = RISCV64.x27;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     RISCV64ReservedRegisters() {
-        super(RISCV64.x2, THREAD_REGISTER_CANDIDATE, HEAP_BASE_REGISTER_CANDIDATE);
+        super(RISCV64.x2, THREAD_REGISTER, HEAP_BASE_REGISTER_CANDIDATE);
     }
 }

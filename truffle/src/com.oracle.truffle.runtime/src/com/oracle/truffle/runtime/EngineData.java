@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.runtime;
 
-import static com.oracle.truffle.runtime.OptimizedTruffleRuntime.getRuntime;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.ArgumentTypeSpeculation;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.BackgroundCompilation;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.Compilation;
@@ -78,6 +77,7 @@ import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraceTransferTo
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraversingQueueFirstTierBonus;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraversingQueueFirstTierPriority;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraversingQueueWeightingBothTiers;
+import static com.oracle.truffle.runtime.OptimizedTruffleRuntime.getRuntime;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -85,12 +85,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.logging.Level;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.SandboxPolicy;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -107,8 +107,6 @@ import com.oracle.truffle.runtime.debug.StatisticsListener;
  * engine. One-to-one relationship with a polyglot Engine instance.
  */
 public final class EngineData {
-
-    private static final AtomicLong engineCounter = new AtomicLong();
 
     int splitLimit;
     int splitCount;
@@ -164,6 +162,7 @@ public final class EngineData {
     @CompilationFinal public int callAndLoopThresholdInInterpreter;
     @CompilationFinal public int callThresholdInFirstTier;
     @CompilationFinal public int callAndLoopThresholdInFirstTier;
+    @CompilationFinal public long interpreterCallStackHeadRoom;
 
     // Cached parsed CompileOnly includes and excludes
     private volatile Pair<List<String>, List<String>> parsedCompileOnly;
@@ -176,16 +175,31 @@ public final class EngineData {
      */
     private volatile Map<Class<?>, Object> engineLocals;
 
-    EngineData(Object polyglotEngine, OptionValues runtimeOptions, Function<String, TruffleLogger> loggerFactory) {
+    EngineData(Object polyglotEngine, OptionValues runtimeOptions, Function<String, TruffleLogger> loggerFactory, SandboxPolicy sandboxPolicy) {
         Objects.requireNonNull(polyglotEngine);
         Objects.requireNonNull(runtimeOptions);
         this.polyglotEngine = polyglotEngine;
-        this.id = engineCounter.incrementAndGet();
+        this.id = OptimizedRuntimeAccessor.ENGINE.getEngineId(polyglotEngine);
         this.loggerFactory = loggerFactory;
-        this.loadOptions(runtimeOptions);
+        this.loadOptions(runtimeOptions, sandboxPolicy);
 
         // the splittingStatistics requires options to be initialized
         this.splittingStatistics = new TruffleSplittingStrategy.SplitStatisticsData();
+    }
+
+    public static IllegalArgumentException sandboxPolicyException(SandboxPolicy sandboxPolicy, String reason, String fix) {
+        Objects.requireNonNull(sandboxPolicy);
+        Objects.requireNonNull(reason);
+        Objects.requireNonNull(fix);
+        String spawnIsolateHelp;
+        if (sandboxPolicy.isStricterOrEqual(SandboxPolicy.ISOLATED)) {
+            spawnIsolateHelp = " If you switch to a less strict sandbox policy you can still spawn an isolate with an isolated heap using Builder.option(\"engine.SpawnIsolate\",\"true\").";
+        } else {
+            spawnIsolateHelp = "";
+        }
+        String message = String.format("The validation for the given sandbox policy %s failed. %s " +
+                        "In order to resolve this %s or switch to a less strict sandbox policy using Builder.sandbox(SandboxPolicy).%s", sandboxPolicy, reason, fix, spawnIsolateHelp);
+        return new IllegalArgumentException(message);
     }
 
     public void preinitializeContext() {
@@ -198,6 +212,10 @@ public final class EngineData {
 
     public Object getEngineLock() {
         return OptimizedRuntimeAccessor.ENGINE.getEngineLock(this.polyglotEngine);
+    }
+
+    public Object getEngineLogHandler() {
+        return OptimizedRuntimeAccessor.ENGINE.getEngineLogHandler(this.polyglotEngine);
     }
 
     @SuppressWarnings("unchecked")
@@ -235,12 +253,14 @@ public final class EngineData {
 
     void onEngineCreated(Object engine) {
         assert this.polyglotEngine == engine;
+        getRuntime().onEngineCreated(this);
         getRuntime().getEngineCacheSupport().onEngineCreated(this);
     }
 
-    void onEnginePatch(OptionValues newRuntimeOptions, Function<String, TruffleLogger> newLoggerFactory) {
+    void onEnginePatch(OptionValues newRuntimeOptions, Function<String, TruffleLogger> newLoggerFactory, SandboxPolicy sandboxPolicy) {
         this.loggerFactory = newLoggerFactory;
-        loadOptions(newRuntimeOptions);
+        loadOptions(newRuntimeOptions, sandboxPolicy);
+        getRuntime().onEngineCreated(this);
         getRuntime().getEngineCacheSupport().onEnginePatch(this);
     }
 
@@ -262,7 +282,7 @@ public final class EngineData {
         this.polyglotEngine = null;
     }
 
-    private void loadOptions(OptionValues options) {
+    private void loadOptions(OptionValues options, SandboxPolicy sandboxPolicy) {
         this.engineOptions = options;
 
         // splitting options
@@ -309,7 +329,7 @@ public final class EngineData {
         this.traceTransferToInterpreter = options.get(TraceTransferToInterpreter);
         this.traceDeoptimizeFrame = options.get(TraceDeoptimizeFrame);
         this.compilationFailureAction = options.get(CompilationFailureAction);
-        validateOptions();
+        validateOptions(sandboxPolicy);
         parsedCompileOnly = null;
 
         Map<String, String> compilerOptionValues = OptimizedTruffleRuntime.CompilerOptionsDescriptors.extractOptions(engineOptions);
@@ -325,6 +345,8 @@ public final class EngineData {
         if (compilationFailureAction == ExceptionAction.ExitVM) {
             options.put("compiler.DiagnoseFailure", "true");
         } else if (compilationFailureAction == ExceptionAction.Diagnose) {
+            options.put("compiler.DiagnoseFailure", "true");
+        } else if (compilationFailureAction == ExceptionAction.Throw) {
             options.put("compiler.DiagnoseFailure", "true");
         }
         if (TruffleOptions.AOT && traceTransferToInterpreter) {
@@ -415,7 +437,12 @@ public final class EngineData {
         return (Collection<OptimizedCallTarget>) OptimizedRuntimeAccessor.ENGINE.findCallTargets(polyglotEngine);
     }
 
-    private void validateOptions() {
+    private void validateOptions(SandboxPolicy sandboxPolicy) {
+        if (sandboxPolicy.isStricterOrEqual(SandboxPolicy.CONSTRAINED) && compilationFailureAction != ExceptionAction.Silent && compilationFailureAction != ExceptionAction.Print) {
+            throw OptimizedRuntimeAccessor.ENGINE.createPolyglotEngineException(
+                            sandboxPolicyException(sandboxPolicy, "The engine.CompilationFailureAction option is set to " + compilationFailureAction.name() + ", but must be set to Silent or Print.",
+                                            "use the default value (Silent) by removing Builder.option(\"engine.CompilationFailureAction\", ...) or set it to Print"));
+        }
         if (compilationFailureAction == ExceptionAction.Throw && backgroundCompilation) {
             getEngineLogger().log(Level.WARNING, "The 'Throw' value of the 'engine.CompilationFailureAction' option requires the 'engine.BackgroundCompilation' option to be set to 'false'.");
         }

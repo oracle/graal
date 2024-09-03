@@ -75,8 +75,7 @@ class WindowsSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
         }
     }
 
-    private static final CEntryPointLiteral<CFunctionPointer> HANDLER_LITERAL = CEntryPointLiteral.create(WindowsSubstrateSegfaultHandler.class,
-                    "handler", ErrHandlingAPI.EXCEPTION_POINTERS.class);
+    private static final CEntryPointLiteral<CFunctionPointer> HANDLER_LITERAL = CEntryPointLiteral.create(WindowsSubstrateSegfaultHandler.class, "handler", ErrHandlingAPI.EXCEPTION_POINTERS.class);
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class)
@@ -94,7 +93,11 @@ class WindowsSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
             dump(exceptionInfo, context);
             throw shouldNotReachHere();
         }
-        /* Nothing we can do. */
+
+        /*
+         * Attach failed - nothing we need to do. If there is no other OS-level exception handler
+         * installed, then Windows will abort the process.
+         */
         return ErrHandlingAPI.EXCEPTION_CONTINUE_SEARCH();
     }
 

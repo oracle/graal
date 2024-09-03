@@ -26,8 +26,6 @@ package com.oracle.svm.truffle.api;
 
 import java.lang.ref.WeakReference;
 
-import jdk.graal.compiler.core.common.CompilationIdentifier;
-import jdk.graal.compiler.truffle.TruffleCompilerImpl;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
@@ -44,6 +42,8 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.truffle.compiler.OptimizedAssumptionDependency;
 import com.oracle.truffle.compiler.TruffleCompilable;
 
+import jdk.graal.compiler.core.common.CompilationIdentifier;
+import jdk.graal.compiler.truffle.TruffleCompilerImpl;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -199,7 +199,7 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
         this.entryPoint = 0;
 
         UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(WordFactory.pointer(this.address));
-        assert untetheredInfo.isNonNull() && untetheredInfo.notEqual(CodeInfoTable.getImageCodeInfo());
+        assert untetheredInfo.isNonNull() && !UntetheredCodeInfoAccess.isAOTImageCode(untetheredInfo);
 
         Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
         try { // Indicates to GC that the code can be freed once there are no activations left
@@ -239,7 +239,7 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
             return false; // not valid
         }
         UntetheredCodeInfo info = CodeInfoTable.lookupCodeInfo(WordFactory.pointer(entryPoint));
-        return info.isNonNull() && info.notEqual(CodeInfoTable.getImageCodeInfo()) &&
+        return info.isNonNull() && !UntetheredCodeInfoAccess.isAOTImageCode(info) &&
                         UntetheredCodeInfoAccess.getTier(info) == TruffleCompilerImpl.LAST_TIER_INDEX;
     }
 

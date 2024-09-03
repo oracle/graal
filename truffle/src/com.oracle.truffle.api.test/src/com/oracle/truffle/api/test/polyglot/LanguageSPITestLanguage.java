@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,22 +40,19 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import static org.junit.Assert.assertSame;
 
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
-import org.junit.BeforeClass;
-
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.LanguageSPITestLanguage.LanguageContext;
-import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 @TruffleLanguage.Registration(id = LanguageSPITestLanguage.ID, name = LanguageSPITestLanguage.ID, version = "1.0", contextPolicy = ContextPolicy.SHARED)
 public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> {
@@ -72,12 +69,6 @@ public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> {
         Env env;
         Map<String, Object> config;
 
-    }
-
-    @BeforeClass
-    public static void beforeClass() {
-        // shared static state
-        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
     }
 
     public LanguageSPITestLanguage() {

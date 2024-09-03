@@ -12,17 +12,18 @@
     ],
     targets: ["gate"],
     timelimit: "30:00",
-    guard: {
-        includes: ["<graal>/sdk/**", "**.jsonnet"] + utils.top_level_ci,
+    guard+: {
+        includes+: ["<graal>/sdk/**", "**.jsonnet"] + utils.top_level_ci,
     }
   },
 
-  builds: [
+  local _builds = [
     common.linux_amd64  + common.oraclejdkLatest + sdk_gate + common.deps.eclipse + common.deps.jdt,
-    common.linux_amd64  + common.oraclejdk21 + sdk_gate + common.deps.eclipse + common.deps.jdt + common.mach5_target,
-    # JDK latest only works on MacOS Ventura (GR-49652)
-    # common.darwin_amd64 + common.oraclejdkLatest + sdk_gate,
+    common.linux_amd64  + common.oraclejdk21 + sdk_gate + common.deps.eclipse + common.deps.jdt,
+    common.darwin_amd64 + common.oraclejdkLatest + sdk_gate,
     common.darwin_aarch64 + common.oraclejdkLatest + sdk_gate,
-    common.darwin_amd64 + common.oraclejdk21 + sdk_gate + common.mach5_target,
-  ]
+    common.darwin_amd64 + common.oraclejdk21 + sdk_gate,
+  ],
+
+  builds: utils.add_defined_in(_builds, std.thisFile),
 }

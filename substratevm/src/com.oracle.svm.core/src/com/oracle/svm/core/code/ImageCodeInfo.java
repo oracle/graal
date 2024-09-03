@@ -24,32 +24,33 @@
  */
 package com.oracle.svm.core.code;
 
+import java.util.EnumSet;
 import java.util.List;
 
-import jdk.graal.compiler.word.Word;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.ComparableWord;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
-import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.c.CIsolateData;
-import com.oracle.svm.core.c.CIsolateDataFactory;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
+import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.util.VMError;
 
-public class ImageCodeInfo {
-    public static final String CODE_INFO_NAME = "image code";
+import jdk.graal.compiler.word.Word;
 
-    private final CIsolateData<CodeInfoImpl> runtimeCodeInfo = CIsolateDataFactory.createStruct("runtimeCodeInfo", CodeInfoImpl.class);
+public class ImageCodeInfo implements MultiLayeredImageSingleton, UnsavedSingleton {
+    public static final String CODE_INFO_NAME = "image code";
 
     @Platforms(Platform.HOSTED_ONLY.class) //
     private final HostedImageCodeInfo hostedImageCodeInfo = new HostedImageCodeInfo();
@@ -60,19 +61,22 @@ public class ImageCodeInfo {
     @UnknownPrimitiveField(availability = AfterCompilation.class) private UnsignedWord dataOffset;
     @UnknownPrimitiveField(availability = AfterCompilation.class) private UnsignedWord dataSize;
     @UnknownPrimitiveField(availability = AfterCompilation.class) private UnsignedWord codeAndDataMemorySize;
+    @UnknownPrimitiveField(availability = AfterCompilation.class) private int methodTableFirstId;
 
     private final Object[] objectFields;
     @UnknownObjectField(availability = AfterCompilation.class) byte[] codeInfoIndex;
     @UnknownObjectField(availability = AfterCompilation.class) byte[] codeInfoEncodings;
     @UnknownObjectField(availability = AfterCompilation.class) byte[] referenceMapEncoding;
     @UnknownObjectField(availability = AfterCompilation.class) byte[] frameInfoEncodings;
-    @UnknownObjectField(availability = AfterCompilation.class) Object[] frameInfoObjectConstants;
-    @UnknownObjectField(availability = AfterCompilation.class) Class<?>[] frameInfoSourceClasses;
-    @UnknownObjectField(availability = AfterCompilation.class) String[] frameInfoSourceMethodNames;
+    @UnknownObjectField(availability = AfterCompilation.class) Object[] objectConstants;
+    @UnknownObjectField(availability = AfterCompilation.class) Class<?>[] classes;
+    @UnknownObjectField(availability = AfterCompilation.class) String[] memberNames;
+    @UnknownObjectField(availability = AfterCompilation.class) String[] otherStrings;
+    @UnknownObjectField(availability = AfterCompilation.class) byte[] methodTable;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     ImageCodeInfo() {
-        NonmovableObjectArray<Object> objfields = NonmovableArrays.createObjectArray(Object[].class, CodeInfoImpl.OBJFIELDS_COUNT);
+        NonmovableObjectArray<Object> objfields = NonmovableArrays.createObjectArray(Object[].class, CodeInfoImpl.OBJFIELDS_COUNT, NmtCategory.Code);
         NonmovableArrays.setObject(objfields, CodeInfoImpl.NAME_OBJFIELD, CODE_INFO_NAME);
         // The image code info is never invalidated, so we consider it as always tethered.
         NonmovableArrays.setObject(objfields, CodeInfoImpl.TETHER_OBJFIELD, new CodeInfoTether(true));
@@ -82,48 +86,50 @@ public class ImageCodeInfo {
 
     @Uninterruptible(reason = "Executes during isolate creation.")
     CodeInfo prepareCodeInfo() {
-        CodeInfoImpl info = runtimeCodeInfo.get();
-        assert info.getCodeStart().isNull() : "already initialized";
+        ImageCodeInfo[] imageCodeInfos = MultiLayeredImageSingleton.getAllLayers(ImageCodeInfo.class);
+        ImageCodeInfoStorage[] runtimeCodeInfos = MultiLayeredImageSingleton.getAllLayers(ImageCodeInfoStorage.class);
+        int size = imageCodeInfos.length;
+        for (int i = 0; i < size; i++) {
+            ImageCodeInfo imageCodeInfo = imageCodeInfos[i];
+            CodeInfoImpl codeInfoImpl = runtimeCodeInfos[i].getData();
+            CodeInfoImpl nextCodeInfoImpl = i + 1 < size ? runtimeCodeInfos[i + 1].getData() : WordFactory.nullPointer();
 
-        info.setObjectFields(NonmovableArrays.fromImageHeap(objectFields));
-        info.setCodeStart(codeStart);
-        info.setCodeSize(codeSize);
-        info.setDataOffset(dataOffset);
-        info.setDataSize(dataSize);
-        info.setCodeAndDataMemorySize(codeAndDataMemorySize);
-        info.setCodeInfoIndex(NonmovableArrays.fromImageHeap(codeInfoIndex));
-        info.setCodeInfoEncodings(NonmovableArrays.fromImageHeap(codeInfoEncodings));
-        info.setStackReferenceMapEncoding(NonmovableArrays.fromImageHeap(referenceMapEncoding));
-        info.setFrameInfoEncodings(NonmovableArrays.fromImageHeap(frameInfoEncodings));
-        info.setFrameInfoObjectConstants(NonmovableArrays.fromImageHeap(frameInfoObjectConstants));
-        info.setFrameInfoSourceClasses(NonmovableArrays.fromImageHeap(frameInfoSourceClasses));
-        info.setFrameInfoSourceMethodNames(NonmovableArrays.fromImageHeap(frameInfoSourceMethodNames));
+            ImageCodeInfo.prepareCodeInfo0(imageCodeInfo, codeInfoImpl, nextCodeInfoImpl);
+        }
+        return runtimeCodeInfos[0].getData();
+    }
 
-        return info;
+    @Uninterruptible(reason = "Executes during isolate creation.")
+    private static void prepareCodeInfo0(ImageCodeInfo imageCodeInfo, CodeInfoImpl infoImpl, CodeInfo next) {
+        assert infoImpl.getCodeStart().isNull() : "already initialized";
+
+        infoImpl.setObjectFields(NonmovableArrays.fromImageHeap(imageCodeInfo.objectFields));
+        infoImpl.setCodeStart(imageCodeInfo.codeStart);
+        infoImpl.setCodeSize(imageCodeInfo.codeSize);
+        infoImpl.setDataOffset(imageCodeInfo.dataOffset);
+        infoImpl.setDataSize(imageCodeInfo.dataSize);
+        infoImpl.setCodeAndDataMemorySize(imageCodeInfo.codeAndDataMemorySize);
+        infoImpl.setCodeInfoIndex(NonmovableArrays.fromImageHeap(imageCodeInfo.codeInfoIndex));
+        infoImpl.setCodeInfoEncodings(NonmovableArrays.fromImageHeap(imageCodeInfo.codeInfoEncodings));
+        infoImpl.setStackReferenceMapEncoding(NonmovableArrays.fromImageHeap(imageCodeInfo.referenceMapEncoding));
+        infoImpl.setFrameInfoEncodings(NonmovableArrays.fromImageHeap(imageCodeInfo.frameInfoEncodings));
+        infoImpl.setObjectConstants(NonmovableArrays.fromImageHeap(imageCodeInfo.objectConstants));
+        infoImpl.setClasses(NonmovableArrays.fromImageHeap(imageCodeInfo.classes));
+        infoImpl.setMemberNames(NonmovableArrays.fromImageHeap(imageCodeInfo.memberNames));
+        infoImpl.setOtherStrings(NonmovableArrays.fromImageHeap(imageCodeInfo.otherStrings));
+        infoImpl.setMethodTable(NonmovableArrays.fromImageHeap(imageCodeInfo.methodTable));
+        infoImpl.setMethodTableFirstId(imageCodeInfo.methodTableFirstId);
+        infoImpl.setIsAOTImageCode(true);
+        infoImpl.setNextImageCodeInfo(next);
     }
 
     /**
-     * Use {@link CodeInfoTable#getImageCodeInfo()} and {@link CodeInfoAccess#getCodeStart} instead.
-     * This method is intended only for the early stages of VM initialization when
-     * {@link #prepareCodeInfo()} has not yet run.
+     * Use {@link CodeInfoTable#getImageCodeInfo} and {@link CodeInfoAccess#getCodeStart} instead.
+     * This method is intended only for VM-internal usage.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public CodePointer getCodeStart() {
         return codeStart;
-    }
-
-    /**
-     * Use {@link CodeInfoTable#getImageCodeInfo()} and
-     * {@link CodeInfoAccess#getStackReferenceMapEncoding} instead. This method is intended only for
-     * the early stages of VM initialization when {@link #prepareCodeInfo()} has not yet run.
-     */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public NonmovableArray<Byte> getStackReferenceMapEncoding() {
-        return NonmovableArrays.fromImageHeap(referenceMapEncoding);
-    }
-
-    public boolean walkImageCode(MemoryWalker.Visitor visitor) {
-        return visitor.visitCode(CodeInfoTable.getImageCodeInfo(), ImageSingletons.lookup(CodeInfoMemoryWalker.class));
     }
 
     public HostedImageCodeInfo getHostedImageCodeInfo() {
@@ -131,7 +137,12 @@ public class ImageCodeInfo {
     }
 
     public List<Integer> getTotalByteArrayLengths() {
-        return List.of(codeInfoIndex.length, codeInfoEncodings.length, referenceMapEncoding.length, frameInfoEncodings.length);
+        return List.of(codeInfoIndex.length, codeInfoEncodings.length, referenceMapEncoding.length, frameInfoEncodings.length, methodTable.length);
+    }
+
+    @Override
+    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+        return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
     }
 
     /**
@@ -241,33 +252,63 @@ public class ImageCodeInfo {
         }
 
         @Override
-        public NonmovableObjectArray<Object> getFrameInfoObjectConstants() {
-            return NonmovableArrays.fromImageHeap(frameInfoObjectConstants);
+        public NonmovableObjectArray<Object> getObjectConstants() {
+            return NonmovableArrays.fromImageHeap(objectConstants);
         }
 
         @Override
-        public void setFrameInfoObjectConstants(NonmovableObjectArray<Object> array) {
-            frameInfoObjectConstants = NonmovableArrays.getHostedArray(array);
+        public void setObjectConstants(NonmovableObjectArray<Object> array) {
+            objectConstants = NonmovableArrays.getHostedArray(array);
         }
 
         @Override
-        public NonmovableObjectArray<Class<?>> getFrameInfoSourceClasses() {
-            return NonmovableArrays.fromImageHeap(frameInfoSourceClasses);
+        public NonmovableObjectArray<Class<?>> getClasses() {
+            return NonmovableArrays.fromImageHeap(classes);
         }
 
         @Override
-        public void setFrameInfoSourceClasses(NonmovableObjectArray<Class<?>> array) {
-            frameInfoSourceClasses = NonmovableArrays.getHostedArray(array);
+        public void setClasses(NonmovableObjectArray<Class<?>> array) {
+            classes = NonmovableArrays.getHostedArray(array);
         }
 
         @Override
-        public NonmovableObjectArray<String> getFrameInfoSourceMethodNames() {
-            return NonmovableArrays.fromImageHeap(frameInfoSourceMethodNames);
+        public NonmovableObjectArray<String> getMemberNames() {
+            return NonmovableArrays.fromImageHeap(memberNames);
         }
 
         @Override
-        public void setFrameInfoSourceMethodNames(NonmovableObjectArray<String> array) {
-            frameInfoSourceMethodNames = NonmovableArrays.getHostedArray(array);
+        public void setMemberNames(NonmovableObjectArray<String> array) {
+            memberNames = NonmovableArrays.getHostedArray(array);
+        }
+
+        @Override
+        public NonmovableObjectArray<String> getOtherStrings() {
+            return NonmovableArrays.fromImageHeap(otherStrings);
+        }
+
+        @Override
+        public void setOtherStrings(NonmovableObjectArray<String> array) {
+            otherStrings = NonmovableArrays.getHostedArray(array);
+        }
+
+        @Override
+        public NonmovableArray<Byte> getMethodTable() {
+            return NonmovableArrays.fromImageHeap(methodTable);
+        }
+
+        @Override
+        public void setMethodTable(NonmovableArray<Byte> methods) {
+            methodTable = NonmovableArrays.getHostedArray(methods);
+        }
+
+        @Override
+        public int getMethodTableFirstId() {
+            return methodTableFirstId;
+        }
+
+        @Override
+        public void setMethodTableFirstId(int methodId) {
+            methodTableFirstId = methodId;
         }
 
         @Override
@@ -373,6 +414,26 @@ public class ImageCodeInfo {
         @Override
         public boolean getAllObjectsAreInImageHeap() {
             throw VMError.shouldNotReachHere("not supported for image code");
+        }
+
+        @Override
+        public void setIsAOTImageCode(boolean value) {
+            throw VMError.shouldNotReachHere("not supported for image code");
+        }
+
+        @Override
+        public boolean getIsAOTImageCode() {
+            return true;
+        }
+
+        @Override
+        public void setNextImageCodeInfo(CodeInfo next) {
+            throw VMError.shouldNotReachHere("not supported during image generation");
+        }
+
+        @Override
+        public CodeInfo getNextImageCodeInfo() {
+            throw VMError.shouldNotReachHere("not supported during image generation");
         }
 
         @Override

@@ -24,11 +24,6 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import jdk.graal.compiler.api.directives.GraalDirectives;
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.replacements.ReplacementsUtil;
-import jdk.graal.compiler.word.ObjectAccess;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.LocationIdentity;
@@ -51,6 +46,11 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.replacements.ReplacementsUtil;
+import jdk.graal.compiler.word.ObjectAccess;
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.code.CodeUtil;
 
 /**
@@ -64,8 +64,9 @@ import jdk.vm.ci.code.CodeUtil;
  */
 public final class ObjectHeaderImpl extends ObjectHeader {
     private static final UnsignedWord UNALIGNED_BIT = WordFactory.unsigned(0b00001);
-    private static final UnsignedWord REMEMBERED_SET_BIT = WordFactory.unsigned(0b00010);
-    private static final UnsignedWord FORWARDED_BIT = WordFactory.unsigned(0b00100);
+    private static final UnsignedWord REMSET_OR_MARKED1_BIT = WordFactory.unsigned(0b00010);
+    private static final UnsignedWord FORWARDED_OR_MARKED2_BIT = WordFactory.unsigned(0b00100);
+    private static final UnsignedWord MARKED_BITS = REMSET_OR_MARKED1_BIT.or(FORWARDED_OR_MARKED2_BIT);
 
     /**
      * Optional: per-object identity hash code state to avoid a fixed field, initially implicitly
@@ -90,13 +91,13 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         numAlignmentBits = CodeUtil.log2(ConfigurationValues.getObjectLayout().getAlignment());
         int numMinimumReservedBits = 3;
         VMError.guarantee(numMinimumReservedBits <= numAlignmentBits, "Minimum set of reserved bits must be provided by object alignment");
-        if (hasFixedIdentityHashField()) {
-            numReservedBits = numMinimumReservedBits;
-        } else {
+        if (isIdentityHashFieldOptional()) {
             VMError.guarantee(ReferenceAccess.singleton().haveCompressedReferences(), "Ensures hubs (at the start of the image heap) remain addressable");
             numReservedBits = numMinimumReservedBits + 2;
             VMError.guarantee(numReservedBits <= numAlignmentBits || hasShift(),
                             "With no shift, forwarding references are stored directly in the header (with 64-bit, must be) and we cannot use non-alignment header bits");
+        } else {
+            numReservedBits = numMinimumReservedBits;
         }
         numReservedExtraBits = numReservedBits - numAlignmentBits;
         reservedBitsMask = (1 << numReservedBits) - 1;
@@ -136,20 +137,22 @@ public final class ObjectHeaderImpl extends ObjectHeader {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
-    public void initializeHeaderOfNewObject(Pointer objectPointer, Word encodedHub) {
+    public void initializeHeaderOfNewObject(Pointer objectPointer, Word encodedHub, boolean isArrayLike) {
         ObjectLayout ol = ConfigurationValues.getObjectLayout();
+        boolean isIdentityHashFieldInObjectHeader = ol.isIdentityHashFieldInObjectHeader() || ol.isIdentityHashFieldAtTypeSpecificOffset() && isArrayLike;
         if (getReferenceSize() == Integer.BYTES) {
             dynamicAssert(encodedHub.and(WordFactory.unsigned(0xFFFFFFFF00000000L)).isNull(), "hub can only use 32 bits");
-            if (ol.hasFixedIdentityHashField()) {
-                dynamicAssert(ol.getFixedIdentityHashOffset() == getHubOffset() + 4, "assumed layout to optimize initializing write");
+            if (isIdentityHashFieldInObjectHeader) {
+                /* Use a single 64-bit write to initialize the hub and the identity hashcode. */
+                dynamicAssert(ol.getObjectHeaderIdentityHashOffset() == getHubOffset() + 4, "assumed layout to optimize initializing write");
                 objectPointer.writeLong(getHubOffset(), encodedHub.rawValue(), LocationIdentity.INIT_LOCATION);
             } else {
                 objectPointer.writeInt(getHubOffset(), (int) encodedHub.rawValue(), LocationIdentity.INIT_LOCATION);
             }
         } else {
             objectPointer.writeWord(getHubOffset(), encodedHub, LocationIdentity.INIT_LOCATION);
-            if (ol.hasFixedIdentityHashField()) {
-                objectPointer.writeInt(ol.getFixedIdentityHashOffset(), 0, LocationIdentity.INIT_LOCATION);
+            if (isIdentityHashFieldInObjectHeader) {
+                objectPointer.writeInt(ol.getObjectHeaderIdentityHashOffset(), 0, LocationIdentity.INIT_LOCATION);
             }
         }
     }
@@ -158,10 +161,11 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     @Override
     public boolean hasOptionalIdentityHashField(Word header) {
         if (GraalDirectives.inIntrinsic()) {
-            ReplacementsUtil.staticAssert(!hasFixedIdentityHashField(), "use only when fields are not fixed");
+            ReplacementsUtil.staticAssert(isIdentityHashFieldOptional(), "use only when hashcode fields are optional");
         } else {
-            VMError.guarantee(!hasFixedIdentityHashField(), "use only when fields are not fixed");
+            VMError.guarantee(isIdentityHashFieldOptional(), "use only when hashcode fields are optional");
         }
+
         UnsignedWord inFieldState = IDHASH_STATE_IN_FIELD.shiftLeft(IDHASH_STATE_SHIFT);
         return header.and(IDHASH_STATE_BITS).equal(inFieldState);
     }
@@ -169,7 +173,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void setIdentityHashInField(Object o) {
         assert VMOperation.isGCInProgress();
-        VMError.guarantee(!hasFixedIdentityHashField());
+        VMError.guarantee(isIdentityHashFieldOptional());
         UnsignedWord oldHeader = readHeaderFromObject(o);
         UnsignedWord inFieldState = IDHASH_STATE_IN_FIELD.shiftLeft(IDHASH_STATE_SHIFT);
         UnsignedWord newHeader = oldHeader.and(IDHASH_STATE_BITS.not()).or(inFieldState);
@@ -195,11 +199,12 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     @Override
     public void setIdentityHashFromAddress(Pointer ptr, Word currentHeader) {
         if (GraalDirectives.inIntrinsic()) {
-            ReplacementsUtil.staticAssert(!hasFixedIdentityHashField(), "must always access field");
+            ReplacementsUtil.staticAssert(isIdentityHashFieldOptional(), "use only when hashcode fields are optional");
         } else {
-            VMError.guarantee(!hasFixedIdentityHashField());
-            assert !hasIdentityHashFromAddress(currentHeader);
+            assert isIdentityHashFieldOptional() : "use only when hashcode fields are optional";
+            assert !hasIdentityHashFromAddress(currentHeader) : "must not already have a hashcode";
         }
+
         UnsignedWord fromAddressState = IDHASH_STATE_FROM_ADDRESS.shiftLeft(IDHASH_STATE_SHIFT);
         UnsignedWord newHeader = currentHeader.and(IDHASH_STATE_BITS.not()).or(fromAddressState);
         writeHeaderToObject(ptr.toObjectNonNull(), newHeader);
@@ -216,14 +221,18 @@ public final class ObjectHeaderImpl extends ObjectHeader {
 
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static boolean hasIdentityHashFromAddressInline(Word header) {
-        if (hasFixedIdentityHashField()) {
-            return false;
+    public static boolean hasIdentityHashFromAddressInline(Word header) {
+        if (GraalDirectives.inIntrinsic()) {
+            ReplacementsUtil.staticAssert(isIdentityHashFieldOptional(), "use only when hashcode fields are optional");
+        } else {
+            assert isIdentityHashFieldOptional();
         }
+
         UnsignedWord fromAddressState = IDHASH_STATE_FROM_ADDRESS.shiftLeft(IDHASH_STATE_SHIFT);
         return header.and(IDHASH_STATE_BITS).equal(fromAddressState);
     }
 
+    @AlwaysInline(value = "Helper method that needs to be optimized away.")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void dynamicAssert(boolean condition, String msg) {
         if (GraalDirectives.inIntrinsic()) {
@@ -259,7 +268,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
             result = result.shiftLeft(numReservedExtraBits);
         }
         if (rememberedSet) {
-            result = result.or(REMEMBERED_SET_BIT);
+            result = result.or(REMSET_OR_MARKED1_BIT);
         }
         if (unaligned) {
             result = result.or(UNALIGNED_BIT);
@@ -297,19 +306,17 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         long header = hubOffsetFromHeapBase << numReservedExtraBits;
         VMError.guarantee((header >>> numReservedExtraBits) == hubOffsetFromHeapBase, "Hub is too far from heap base for encoding in object header");
         assert (header & reservedBitsMask) == 0 : "Object header bits must be zero initially";
-        if (HeapImpl.usesImageHeapCardMarking()) {
-            if (obj.getPartition() instanceof ChunkedImageHeapPartition partition) {
-                if (partition.isWritable()) {
-                    header |= REMEMBERED_SET_BIT.rawValue();
-                }
-                if (partition.usesUnalignedObjects()) {
-                    header |= UNALIGNED_BIT.rawValue();
-                }
-            } else {
-                assert obj.getPartition() instanceof FillerObjectDummyPartition;
+        if (obj.getPartition() instanceof ChunkedImageHeapPartition partition) {
+            if (partition.isWritable() && HeapImpl.usesImageHeapCardMarking()) {
+                header |= REMSET_OR_MARKED1_BIT.rawValue();
             }
+            if (partition.usesUnalignedObjects()) {
+                header |= UNALIGNED_BIT.rawValue();
+            }
+        } else {
+            assert obj.getPartition() instanceof FillerObjectDummyPartition;
         }
-        if (!hasFixedIdentityHashField()) {
+        if (isIdentityHashFieldOptional()) {
             header |= (IDHASH_STATE_IN_FIELD.rawValue() << IDHASH_STATE_SHIFT);
         }
         return header;
@@ -339,13 +346,48 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setRememberedSetBit(Object o) {
         UnsignedWord oldHeader = readHeaderFromObject(o);
-        UnsignedWord newHeader = oldHeader.or(REMEMBERED_SET_BIT);
+        assert oldHeader.and(FORWARDED_OR_MARKED2_BIT).equal(0);
+        UnsignedWord newHeader = oldHeader.or(REMSET_OR_MARKED1_BIT);
         writeHeaderToObject(o, newHeader);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean hasRememberedSet(UnsignedWord header) {
-        return header.and(REMEMBERED_SET_BIT).notEqual(0);
+        return header.and(REMSET_OR_MARKED1_BIT).notEqual(0);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void setMarked(Object o) {
+        if (!SerialGCOptions.useCompactingOldGen()) { // not guarantee(): always folds, prevent call
+            throw VMError.shouldNotReachHere("Only for compacting GC.");
+        }
+        UnsignedWord header = readHeaderFromObject(o);
+        assert header.and(FORWARDED_OR_MARKED2_BIT).equal(0) : "forwarded or already marked";
+        /*
+         * The remembered bit is already set if the object was in the old generation before, or
+         * unset if it was only just absorbed from the young generation, in which case we set it.
+         */
+        writeHeaderToObject(o, header.or(MARKED_BITS));
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void unsetMarkedAndKeepRememberedSetBit(Object o) {
+        UnsignedWord header = readHeaderFromObject(o);
+        assert isMarkedHeader(header);
+        writeHeaderToObject(o, header.and(FORWARDED_OR_MARKED2_BIT.not()));
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean isMarked(Object o) {
+        return isMarkedHeader(readHeaderFromObject(o));
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean isMarkedHeader(UnsignedWord header) {
+        if (!SerialGCOptions.useCompactingOldGen()) {
+            throw VMError.shouldNotReachHere("Only for compacting GC.");
+        }
+        return header.and(MARKED_BITS).equal(MARKED_BITS);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -356,16 +398,16 @@ public final class ObjectHeaderImpl extends ObjectHeader {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isForwardedHeader(UnsignedWord header) {
-        return header.and(FORWARDED_BIT).notEqual(0);
+        return header.and(MARKED_BITS).equal(FORWARDED_OR_MARKED2_BIT);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    Object getForwardedObject(Pointer ptr) {
+    public Object getForwardedObject(Pointer ptr) {
         return getForwardedObject(ptr, readHeaderFromPointer(ptr));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    Object getForwardedObject(Pointer ptr, UnsignedWord header) {
+    public Object getForwardedObject(Pointer ptr, UnsignedWord header) {
         assert isForwardedHeader(header);
         if (ReferenceAccess.singleton().haveCompressedReferences()) {
             if (hasShift()) {
@@ -411,7 +453,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         }
 
         assert getHeaderBitsFromHeader(result).equal(0);
-        return result.or(FORWARDED_BIT);
+        return result.or(FORWARDED_OR_MARKED2_BIT);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -427,7 +469,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     }
 
     @Fold
-    static boolean hasFixedIdentityHashField() {
-        return ConfigurationValues.getObjectLayout().hasFixedIdentityHashField();
+    static boolean isIdentityHashFieldOptional() {
+        return ConfigurationValues.getObjectLayout().isIdentityHashFieldOptional();
     }
 }

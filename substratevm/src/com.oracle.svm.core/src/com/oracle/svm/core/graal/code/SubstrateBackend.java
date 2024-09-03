@@ -28,6 +28,19 @@ import static com.oracle.svm.core.util.VMError.intentionallyUnimplemented;
 
 import java.lang.reflect.Method;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.LocationIdentity;
+
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.graal.nodes.ComputedIndirectCallTargetNode;
+import com.oracle.svm.core.graal.snippets.CFunctionSnippets;
+import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.core.nodes.CFunctionPrologueDataNode;
+import com.oracle.svm.core.thread.VMThreads.StatusSupport;
+import com.oracle.svm.core.util.VMError;
+
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
@@ -43,19 +56,6 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.tiers.SuitesProvider;
 import jdk.graal.compiler.phases.util.Providers;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.LocationIdentity;
-
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
-import com.oracle.svm.core.graal.nodes.ComputedIndirectCallTargetNode;
-import com.oracle.svm.core.graal.snippets.CFunctionSnippets;
-import com.oracle.svm.core.meta.SharedMethod;
-import com.oracle.svm.core.nodes.CFunctionPrologueDataNode;
-import com.oracle.svm.core.thread.VMThreads.StatusSupport;
-import com.oracle.svm.core.util.VMError;
-
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.RegisterValue;
@@ -70,11 +70,16 @@ public abstract class SubstrateBackend extends Backend {
          * instructions in the compilation.
          */
         PROLOGUE_START(true),
+        PROLOGUE_PUSH_RBP(true),
         PROLOGUE_DECD_RSP(true),
+        PROLOGUE_SET_FRAME_POINTER(true),
         PROLOGUE_SAVED_REGS(true),
         PROLOGUE_END(true),
+        FRAME_POINTER_SPILLED(true),
+        FRAME_POINTER_RELOADED(true),
         EPILOGUE_START(false),
         EPILOGUE_INCD_RSP(true),
+        EPILOGUE_POP_RBP(true),
         EPILOGUE_END(true);
 
         final boolean isMarkAfter;
@@ -149,7 +154,7 @@ public abstract class SubstrateBackend extends Backend {
     }
 
     public CompilationResult newCompilationResult(CompilationIdentifier compilationIdentifier, String name) {
-        return new CompilationResult(compilationIdentifier, name) {
+        return new SharedCompilationResult(compilationIdentifier, name) {
             @Override
             public void close(OptionValues options) {
                 /*
@@ -161,7 +166,7 @@ public abstract class SubstrateBackend extends Backend {
     }
 
     @Override
-    public RegisterAllocationConfig newRegisterAllocationConfig(RegisterConfig registerConfig, String[] allocationRestrictedTo) {
+    public RegisterAllocationConfig newRegisterAllocationConfig(RegisterConfig registerConfig, String[] allocationRestrictedTo, Object stub) {
         RegisterConfig registerConfigNonNull = registerConfig == null ? getCodeCache().getRegisterConfig() : registerConfig;
         return new RegisterAllocationConfig(registerConfigNonNull, allocationRestrictedTo);
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,9 +43,7 @@ package com.oracle.truffle.api.strings.test;
 import static com.oracle.truffle.api.strings.test.Encodings.J_CODINGS_MAP;
 import static com.oracle.truffle.api.strings.test.Encodings.toEnumName;
 
-import java.util.Arrays;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.StreamSupport;
@@ -60,7 +58,8 @@ public class TruffleStringEncodingsEnumGenerator {
      * Generator for {@link TruffleString.Encoding}. To run, execute the following mx command.
      *
      * <pre>
-     *     mx java -cp `mx paths truffle:TRUFFLE_API`:`mx paths truffle:TRUFFLE_TEST`:`mx paths sdk:GRAAL_SDK` com.oracle.truffle.api.strings.test.TruffleStringEncodingsEnumGenerator
+     *     mx java -cp `mx paths truffle:TRUFFLE_API`:`mx paths truffle:TRUFFLE_TEST`:`mx paths sdk:COLLECTIONS`:`mx paths truffle:TRUFFLE_JCODINGS` \
+     *     com.oracle.truffle.api.strings.test.TruffleStringEncodingsEnumGenerator
      * </pre>
      */
     public static void main(String[] args) {
@@ -72,72 +71,108 @@ public class TruffleStringEncodingsEnumGenerator {
         int ascii = 4;
         int bytes = 5;
         int firstUnsupported = 6;
-        Set<String> supported = new HashSet<>(Arrays.asList("UTF-32", "UTF-32LE", "UTF-32BE", "UTF-16", "UTF-16LE", "UTF-16BE", "UTF-8", "ISO-8859-1", "US-ASCII", "ASCII-8BIT"));
+        Set<String> supported = Set.of("UTF-32", "UTF-32LE", "UTF-32BE", "UTF-16", "UTF-16LE", "UTF-16BE", "UTF-8", "ISO-8859-1", "US-ASCII", "ASCII-8BIT");
         long lastID = J_CODINGS_MAP.size() - supported.size() + firstUnsupported;
         int utf32Unsupported = (int) lastID;
         int utf16Unsupported = (int) (lastID + 1);
         System.out.println("/* directly supported encodings */");
-        System.out.printf("/**\n" +
-                        "         * UTF-32LE. Directly supported if the current system is little-endian.\n" +
-                        "         *\n" +
-                        "         * @since 22.1\n" +
-                        "         */\n" +
-                        "        UTF_32LE(littleEndian() ? %d : %d, \"UTF_32LE\", littleEndian() ? 2 : 0, littleEndian()),\n" +
-                        "        /**\n" +
-                        "         * UTF-32BE. Directly supported if the current system is big-endian.\n" +
-                        "         *\n" +
-                        "         * @since 22.1\n" +
-                        "         */\n" +
-                        "        UTF_32BE(littleEndian() ? %d : %d, \"UTF_32BE\", littleEndian() ? 0 : 2, bigEndian()),\n" +
-                        "        /**\n" +
-                        "         * UTF-16LE. Directly supported if the current system is little-endian.\n" +
-                        "         *\n" +
-                        "         * @since 22.1\n" +
-                        "         */\n" +
-                        "        UTF_16LE(littleEndian() ? %d : %d, \"UTF_16LE\", littleEndian() ? 1 : 0, false),\n" +
-                        "        /**\n" +
-                        "         * UTF-16BE. Directly supported if the current system is big-endian.\n" +
-                        "         *\n" +
-                        "         * @since 22.1\n" +
-                        "         */\n" +
-                        "        UTF_16BE(littleEndian() ? %d : %d, \"UTF_16BE\", littleEndian() ? 0 : 1, false),\n",
+        System.out.printf("""
+                        /**
+                         * UTF-32LE. Directly supported if the current system is little-endian.
+                         *
+                         * @since 22.1
+                         */
+                        UTF_32LE(littleEndian() ? %d : %d, "UTF-32LE", littleEndian() ? 2 : 0, littleEndian()),
+                        /**
+                         * UTF-32BE. Directly supported if the current system is big-endian.
+                         *
+                         * @since 22.1
+                         */
+                        UTF_32BE(littleEndian() ? %d : %d, "UTF-32BE", littleEndian() ? 0 : 2, bigEndian()),
+                        /**
+                         * UTF-16LE. Directly supported if the current system is little-endian.
+                         *
+                         * @since 22.1
+                         */
+                        UTF_16LE(littleEndian() ? %d : %d, "UTF-16LE", littleEndian() ? 1 : 0, false),
+                        /**
+                         * UTF-16BE. Directly supported if the current system is big-endian.
+                         *
+                         * @since 22.1
+                         */
+                        UTF_16BE(littleEndian() ? %d : %d, "UTF-16BE", littleEndian() ? 0 : 1, false),
+                        """,
                         utf32, utf32Unsupported, utf32Unsupported, utf32,
                         utf16, utf16Unsupported, utf16Unsupported, utf16);
-        System.out.println("/**\n * ISO_8859_1, also known as LATIN-1, which is equivalent to the ASCII + LATIN-1 Supplement\n * Unicode block.\n *\n * @since 22.0\n */");
-        printInitializer(J_CODINGS_MAP.get("ISO_8859_1"), latin1);
-        System.out.println("/**\n * UTF-8.\n *\n * @since 22.0\n */");
-        printInitializer(J_CODINGS_MAP.get("UTF_8"), utf8);
-        System.out.println("/**\n * US-ASCII.\n *\n * @since 22.0\n */");
-        printInitializer(J_CODINGS_MAP.get("US_ASCII"), ascii);
-        System.out.println("/**\n" +
-                        "         * Special \"encoding\" BYTES: This encoding is identical to US_ASCII, but treats all values\n" +
-                        "         * outside the ascii range as valid codepoints as well. Caution: no codepoint mappings are\n" +
-                        "         * defined for non-ascii values in this encoding, so {@link SwitchEncodingNode} will replace\n" +
-                        "         * all of them with {@code '?'} when converting from or to BYTES! To preserve all bytes and\n" +
-                        "         * \"reinterpret\" a BYTES string in another encoding, use {@link ForceEncodingNode}.\n" +
-                        "         *\n" +
-                        "         * @since 22.0\n" +
-                        "         */");
-        printInitializer(J_CODINGS_MAP.get("BYTES"), bytes);
+        System.out.println("""
+                        /**
+                         * ISO-8859-1, also known as LATIN-1, which is equivalent to US-ASCII + the LATIN-1
+                         * Supplement Unicode block.
+                         *
+                         * @since 22.1
+                         */""");
+        printInitializer(J_CODINGS_MAP.get("ISO_8859_1"), latin1, 0);
+        System.out.println("""
+                        /**
+                         * UTF-8.
+                         *
+                         * @since 22.1
+                         */""");
+        printInitializer(J_CODINGS_MAP.get("UTF_8"), utf8, 0);
+        System.out.println("""
+                        /**
+                         * US-ASCII, which maps only 7-bit characters.
+                         *
+                         * @since 22.1
+                         */""");
+        printInitializer(J_CODINGS_MAP.get("US_ASCII"), ascii, 0);
+        System.out.println("""
+                        /**
+                         * Special "encoding" BYTES: This encoding is identical to US-ASCII, but treats all values
+                         * outside the us-ascii range as valid codepoints as well. Caution: no codepoint mappings
+                         * are defined for non-us-ascii values in this encoding, so {@link SwitchEncodingNode} will
+                         * replace all of them with {@code '?'} when converting from or to BYTES! To preserve all
+                         * bytes and "reinterpret" a BYTES string in another encoding, use
+                         * {@link ForceEncodingNode}.
+                         *
+                         * @since 22.1
+                         */""");
+        printInitializer(J_CODINGS_MAP.get("BYTES"), bytes, 0);
+        System.out.println();
         System.out.println("/* encodings supported by falling back to JCodings */");
+        System.out.println();
         int firstNonAsciiCompatible = printInitializerExotic(e -> e.isAsciiCompatible() && !supported.contains(e.toString()), firstUnsupported);
         System.out.println("/* non-ascii-compatible encodings */");
         int last = printInitializerExotic(e -> !e.isAsciiCompatible() && !supported.contains(e.toString()), firstNonAsciiCompatible);
         if (last > utf16Unsupported || last > utf32Unsupported) {
             throw new IllegalStateException("overlapping ids!");
         }
+
+        System.out.println();
         printCompatibilityMethod(7, firstNonAsciiCompatible);
         printCompatibilityMethod(8, latin1 + 1);
         printCompatibilityMethod(16, utf16 + 1);
         printCompatibilityMethod(32, utf32 + 1);
-        System.out.printf("static boolean isSupported(int encoding) {\nreturn encoding < %d;\n}\n", firstUnsupported);
-        System.out.printf("static boolean isUnsupported(int encoding) {\nreturn encoding >= %d;\n}\n", firstUnsupported);
+        System.out.printf("""
+                        static boolean isSupported(int encoding) {
+                            return encoding < %d;
+                        }
+                        """, firstUnsupported);
+        System.out.printf("""
+                        static boolean isUnsupported(int encoding) {
+                            return encoding >= %d;
+                        }
+                        """, firstUnsupported);
         // Checkstyle: resume
     }
 
     private static void printCompatibilityMethod(int bits, int threshold) {
         // Checkstyle: stop
-        System.out.printf("static boolean is%dBitCompatible(int encoding) {\nreturn encoding < %d;\n}\n", bits, threshold);
+        System.out.printf("""
+                        static boolean is%dBitCompatible(int encoding) {
+                            return encoding < %d;
+                        }
+                        """, bits, threshold);
         // Checkstyle: resume
     }
 
@@ -155,7 +190,13 @@ public class TruffleStringEncodingsEnumGenerator {
 
     private static void printInitializer(Encoding e, int i) {
         // Checkstyle: stop
-        System.out.printf("%s(%d, \"%s\"),\n", toEnumName(e.toString()), i, toEnumName(e.toString()));
+        System.out.printf("%s(%d, \"%s\", %s),\n", toEnumName(e.toString()), i, e.toString(), e.isFixedWidth());
+        // Checkstyle: resume
+    }
+
+    private static void printInitializer(Encoding e, int i, int naturalStride) {
+        // Checkstyle: stop
+        System.out.printf("%s(%d, \"%s\", %d, %s),\n", toEnumName(e.toString()), i, e.toString(), naturalStride, e.isFixedWidth());
         // Checkstyle: resume
     }
 }

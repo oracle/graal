@@ -24,9 +24,7 @@
  */
 package com.oracle.truffle.tools.profiler.impl;
 
-import static com.oracle.truffle.tools.profiler.impl.CPUSamplerCLI.GATHER_HIT_TIMES;
-import static com.oracle.truffle.tools.profiler.impl.CPUSamplerCLI.SAMPLE_CONTEXT_INITIALIZATION;
-
+import java.io.File;
 import java.lang.reflect.Method;
 
 import org.graalvm.options.OptionDescriptors;
@@ -61,9 +59,18 @@ public class CPUSamplerInstrument extends TruffleInstrument {
      * @since 0.30
      */
     public static final String ID = "cpusampler";
+    private static final ProfilerToolFactory<CPUSampler> factory = getDefaultFactory();
     static final String VERSION = "0.5.0";
     private CPUSampler sampler;
-    private static final ProfilerToolFactory<CPUSampler> factory = getDefaultFactory();
+
+    /*
+     * Guest languages could change the working directory of the current process, The JVM assumes
+     * that the working directory does not change. When this assumption is broken relative file
+     * paths no longer work correctly. For this reason we save the absolute path to the output file
+     * at the very start so that we avoid issues of broken relative paths See GR-36526 for more
+     * context.
+     */
+    private String absoluteOutputPath;
 
     @SuppressWarnings("unchecked")
     private static ProfilerToolFactory<CPUSampler> getDefaultFactory() {
@@ -106,9 +113,12 @@ public class CPUSamplerInstrument extends TruffleInstrument {
             sampler.setDelay(options.get(CPUSamplerCLI.DELAY_PERIOD));
             sampler.setStackLimit(options.get(CPUSamplerCLI.STACK_LIMIT));
             sampler.setFilter(getSourceSectionFilter(env));
-            sampler.setGatherSelfHitTimes(options.get(GATHER_HIT_TIMES));
-            sampler.setSampleContextInitialization(options.get(SAMPLE_CONTEXT_INITIALIZATION));
+            sampler.setGatherSelfHitTimes(options.get(CPUSamplerCLI.GATHER_HIT_TIMES));
+            sampler.setSampleContextInitialization(options.get(CPUSamplerCLI.SAMPLE_CONTEXT_INITIALIZATION));
+            sampler.setGatherAsyncStackTrace(options.get(CPUSamplerCLI.GATHER_ASYNC_STACK_TRACE));
             sampler.setCollecting(true);
+            String outputPath = CPUSamplerCLI.getOutputPath(options);
+            absoluteOutputPath = (outputPath != null) ? new File(outputPath).getAbsolutePath() : null;
         }
         env.registerService(sampler);
     }
@@ -142,7 +152,7 @@ public class CPUSamplerInstrument extends TruffleInstrument {
         OptionValues options = env.getOptions();
         CPUSamplerCLI.EnableOptionData enableOptionData = options.get(CPUSamplerCLI.ENABLED);
         if (enableOptionData.enabled) {
-            CPUSamplerCLI.handleOutput(env, sampler);
+            CPUSamplerCLI.handleOutput(env, sampler, absoluteOutputPath);
         }
     }
 

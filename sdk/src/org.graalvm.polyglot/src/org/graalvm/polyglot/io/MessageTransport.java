@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,22 +41,87 @@
 package org.graalvm.polyglot.io;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.URI;
-import java.nio.ByteBuffer;
-import java.nio.channels.Channels;
-import java.nio.channels.WritableByteChannel;
-
-import org.graalvm.polyglot.Engine;
 
 /**
  * Allows to take over transport of message communication initiated by an instrument. Implement this
  * interface to provide a transport of message communication. When an instrument is about to create
  * a server endpoint, it calls the {@link MessageTransport#open(URI, MessageEndpoint)} method with
- * the server URI.
- * <p>
- * Usage example: {@link MessageTransportSnippets#example}
+ * the server URI. Usage example:
+ * 
+ * <pre>
+ * class RoutedServer implements MessageEndpoint {
+ *
+ *     private final MessageEndpoint remoteEndpoint;
+ *     private final OutputStream routerOut = getRouterOutputStream();
+ *     private final WritableByteChannel routerOutChannel;
+ *
+ *     RoutedServer(MessageEndpoint remoteEndpoint) {
+ *         this.remoteEndpoint = remoteEndpoint;
+ *         this.routerOutChannel = Channels.newChannel(routerOut);
+ *         new Thread(() -> {
+ *             try {
+ *                 runInputLoop();
+ *             } catch (IOException ex) {
+ *             }
+ *         }).start();
+ *     }
+ *
+ *     &#64;Override
+ *     public void sendText(String text) throws IOException {
+ *         routerOut.write(text.getBytes());
+ *         routerOut.flush();
+ *     }
+ *
+ *     &#64;Override
+ *     public void sendBinary(ByteBuffer data) throws IOException {
+ *         routerOutChannel.write(data);
+ *         routerOut.flush();
+ *     }
+ *
+ *     &#64;Override
+ *     public void sendPing(ByteBuffer data) throws IOException {
+ *         remoteEndpoint.sendPong(data);
+ *     }
+ *
+ *     &#64;Override
+ *     public void sendPong(ByteBuffer data) throws IOException {
+ *         // Did we send ping?
+ *     }
+ *
+ *     &#64;Override
+ *     public void sendClose() throws IOException {
+ *         routerOut.close();
+ *     }
+ *
+ *     private void runInputLoop() throws IOException {
+ *         try (InputStream routerIn = getRouterInputStream()) {
+ *             byte[] buf = new byte[1024];
+ *             ByteBuffer bb = ByteBuffer.wrap(buf);
+ *             int l;
+ *             while ((l = routerIn.read(buf)) > 0) {
+ *                 bb.limit(l);
+ *                 remoteEndpoint.sendBinary(bb);
+ *                 bb.rewind();
+ *             }
+ *         } finally {
+ *             remoteEndpoint.sendClose();
+ *         }
+ *     }
+ * }
+ *
+ * Engine.newBuilder().serverTransport(
+ *                 (uri, peerEndpoint) -> {
+ *                     if (denyHost.equals(uri.getHost())) {
+ *                         throw new MessageTransport.VetoException("Denied access.");
+ *                     } else if (routedURI.equals(uri)) {
+ *                         return new RoutedServer(peerEndpoint);
+ *                     } else {
+ *                         // Permit instruments to setup the servers themselves
+ *                         return null;
+ *                     }
+ *                 }).build();
+ * </pre>
  *
  * @see org.graalvm.polyglot.Engine.Builder#serverTransport(MessageTransport)
  * @see org.graalvm.polyglot.Context.Builder#serverTransport(MessageTransport)
@@ -101,99 +166,5 @@ public interface MessageTransport {
 
         private static final long serialVersionUID = 3493487569356378902L;
 
-    }
-}
-
-@SuppressWarnings("all")
-class MessageTransportSnippets {
-
-    final URI routedURI = URI.create("");
-    final String denyHost = "";
-
-    private InputStream getRouterInputStream() {
-        return null;
-    }
-
-    private OutputStream getRouterOutputStream() {
-        return null;
-    }
-
-    public void example() {
-        // @formatter:off
-        // BEGIN: MessageTransportSnippets#example
-        class RoutedServer implements MessageEndpoint {
-
-            private final MessageEndpoint remoteEndpoint;
-            private final OutputStream routerOut = getRouterOutputStream();
-            private final WritableByteChannel routerOutChannel;
-
-            RoutedServer(MessageEndpoint remoteEndpoint) {
-                this.remoteEndpoint = remoteEndpoint;
-                this.routerOutChannel = Channels.newChannel(routerOut);
-                new Thread(() -> {
-                        try {
-                            runInputLoop();
-                        } catch (IOException ex) {
-                        }
-                }).start();
-            }
-
-            @Override
-            public void sendText(String text) throws IOException {
-                routerOut.write(text.getBytes());
-                routerOut.flush();
-            }
-
-            @Override
-            public void sendBinary(ByteBuffer data) throws IOException {
-                routerOutChannel.write(data);
-                routerOut.flush();
-            }
-
-            @Override
-            public void sendPing(ByteBuffer data) throws IOException {
-                remoteEndpoint.sendPong(data);
-            }
-
-            @Override
-            public void sendPong(ByteBuffer data) throws IOException {
-                // Did we send ping?
-            }
-
-            @Override
-            public void sendClose() throws IOException {
-                routerOut.close();
-            }
-
-            private void runInputLoop() throws IOException {
-                try (InputStream routerIn = getRouterInputStream()) {
-                    byte[] buf = new byte[1024];
-                    ByteBuffer bb = ByteBuffer.wrap(buf);
-                    int l;
-                    while ((l = routerIn.read(buf)) > 0) {
-                        bb.limit(l);
-                        remoteEndpoint.sendBinary(bb);
-                        bb.rewind();
-                    }
-                } finally {
-                    remoteEndpoint.sendClose();
-                }
-            }
-        }
-
-        Engine.newBuilder().serverTransport(
-            (uri, peerEndpoint) -> {
-                if (denyHost.equals(uri.getHost())) {
-                    throw new MessageTransport.VetoException("Denied access.");
-                } else if (routedURI.equals(uri)) {
-                    return new RoutedServer(peerEndpoint);
-                } else {
-                    // Permit instruments to setup the servers themselves
-                    return null;
-                }
-            }
-        ).build();
-        // END: MessageTransportSnippets#example
-        // @formatter:on
     }
 }

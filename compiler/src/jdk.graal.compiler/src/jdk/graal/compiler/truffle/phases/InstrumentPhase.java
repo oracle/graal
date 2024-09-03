@@ -38,7 +38,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.TypeReference;
 import jdk.graal.compiler.debug.MethodFilter;
@@ -57,7 +56,6 @@ import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.truffle.KnownTruffleTypes;
 import jdk.graal.compiler.truffle.TruffleCompilerOptions;
 import jdk.graal.compiler.truffle.TruffleTierContext;
-
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -66,10 +64,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public abstract class InstrumentPhase extends BasePhase<TruffleTierContext> {
     private final Instrumentation instrumentation;
-    protected final SnippetReflectionProvider snippetReflection;
 
-    public InstrumentPhase(SnippetReflectionProvider snippetReflection, Instrumentation instrumentation) {
-        this.snippetReflection = snippetReflection;
+    public InstrumentPhase(Instrumentation instrumentation) {
         this.instrumentation = instrumentation;
 
     }
@@ -104,7 +100,7 @@ public abstract class InstrumentPhase extends BasePhase<TruffleTierContext> {
 
     @Override
     protected void run(StructuredGraph graph, TruffleTierContext context) {
-        JavaConstant tableConstant = snippetReflection.forObject(instrumentation.getAccessTable());
+        JavaConstant tableConstant = context.getSnippetReflection().forObject(instrumentation.getAccessTable());
         try {
             instrumentGraph(graph, context, tableConstant);
         } catch (Exception e) {

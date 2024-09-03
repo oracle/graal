@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -50,7 +50,7 @@ public final class MachOLibraryLocator extends LibraryLocator {
     private final List<String> rPaths;
 
     public MachOLibraryLocator(MachOFile machOFile, Source source) {
-        if (source.isInternal()) {
+        if (source != null && source.isInternal()) {
             // internal sources don't have an accessible rpath
             this.rPaths = Collections.emptyList();
         } else {

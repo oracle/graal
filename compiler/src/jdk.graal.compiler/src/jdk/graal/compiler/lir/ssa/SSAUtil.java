@@ -67,7 +67,7 @@ import jdk.vm.ci.meta.Value;
  *   JUMP ~[v1|i, v2|i] destination: B2 -> B1
  * ________________________________________________
  *
- * B1 <- B0,B2
+ * B1 &lt;- B0,B2
  *   [v3|i, v4|i] = LABEL
  *   ...
  * </pre>

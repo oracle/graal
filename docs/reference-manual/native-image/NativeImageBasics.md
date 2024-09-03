@@ -183,9 +183,9 @@ This created a `String` object for the `message` field and stored it inside the 
 Static analysis is a process that determines which program elements (classes, methods and fields) are used by an application.
 These elements are also referred to as **reachable code**.
 The analysis itself has two parts:
- - Scanning the bytecodes of a method to determine what other elements are reachable from it.
- - Scanning the root objects in the native image heap (i.e., static fields) to determine which classes are reachable from them.
-It starts from the entry points of the application (i.e., the `main` method).
+ - Scanning the bytecode of a method to determine what other elements are reachable from it.
+ - Scanning the root objects in the native image heap (such as static fields) to determine which classes are reachable from them.
+It starts from the entry points of the application (the `main` method).
 The newly discovered elements are iteratively scanned until further scanning yields no additional changes in element's reachability.
 
 Only **reachable** elements are included in the final image.

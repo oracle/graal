@@ -27,21 +27,25 @@ package com.oracle.svm.core.jni.access;
 import java.lang.reflect.Modifier;
 
 import org.graalvm.collections.EconomicSet;
-import jdk.graal.compiler.nodes.NamedLocationIdentity;
-import jdk.graal.compiler.word.BarrieredAccess;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.code.RuntimeMetadataDecoderImpl;
+import com.oracle.svm.core.graal.nodes.LoadOpenTypeWorldDispatchTableStartingOffset;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.nodes.NamedLocationIdentity;
+import jdk.graal.compiler.word.BarrieredAccess;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
@@ -51,7 +55,14 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 public final class JNIAccessibleMethod extends JNIAccessibleMember {
     public static final int STATICALLY_BOUND_METHOD = -1;
     public static final int VTABLE_OFFSET_NOT_YET_COMPUTED = -2;
+    public static final int INTERFACE_TYPEID_CLASS_TABLE = -1;
+    public static final int INTERFACE_TYPEID_NOT_YET_COMPUTED = -2;
+    public static final int INTERFACE_TYPEID_UNNEEDED = -3;
     public static final int NEW_OBJECT_INVALID_FOR_ABSTRACT_TYPE = -1;
+
+    public static JNIAccessibleMethod negativeMethodQuery(JNIAccessibleClass jniClass) {
+        return new JNIAccessibleMethod(jniClass, RuntimeMetadataDecoderImpl.NEGATIVE_FLAG_MASK);
+    }
 
     @Platforms(HOSTED_ONLY.class)
     public static ResolvedJavaField getCallVariantWrapperField(MetaAccessProvider metaAccess, CallVariant variant, boolean nonVirtual) {
@@ -75,6 +86,8 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember {
     private final int modifiers;
     @UnknownPrimitiveField(availability = ReadyForCompilation.class)//
     private int vtableOffset = VTABLE_OFFSET_NOT_YET_COMPUTED;
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class)//
+    private int interfaceTypeID = INTERFACE_TYPEID_NOT_YET_COMPUTED;
     @UnknownPrimitiveField(availability = ReadyForCompilation.class)//
     private CodePointer nonvirtualTarget;
     @UnknownPrimitiveField(availability = ReadyForCompilation.class)//
@@ -100,18 +113,33 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember {
         this.modifiers = modifiers;
     }
 
-    @AlwaysInline("Work around an issue with the LLVM backend with which the return value was accessed incorrectly.")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean isNegative() {
+        return (modifiers & RuntimeMetadataDecoderImpl.NEGATIVE_FLAG_MASK) != 0;
+    }
+
+    @AlwaysInline("Work around an issue with the LLVM backend with which the return value was accessed incorrectly.")
+    @Uninterruptible(reason = "Must not throw any exceptions.", callerMustBe = true)
     CodePointer getCallWrapperAddress() {
         return callWrapper;
     }
 
     @AlwaysInline("Work around an issue with the LLVM backend with which the return value was accessed incorrectly.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     CodePointer getJavaCallAddress(Object instance, boolean nonVirtual) {
         if (!nonVirtual) {
-            assert vtableOffset != JNIAccessibleMethod.VTABLE_OFFSET_NOT_YET_COMPUTED;
-            if (vtableOffset != JNIAccessibleMethod.STATICALLY_BOUND_METHOD) {
-                return BarrieredAccess.readWord(instance.getClass(), vtableOffset, NamedLocationIdentity.FINAL_LOCATION);
+            if (SubstrateOptions.closedTypeWorld()) {
+                assert vtableOffset != JNIAccessibleMethod.VTABLE_OFFSET_NOT_YET_COMPUTED;
+                if (vtableOffset != JNIAccessibleMethod.STATICALLY_BOUND_METHOD) {
+                    return BarrieredAccess.readWord(instance.getClass(), vtableOffset, NamedLocationIdentity.FINAL_LOCATION);
+                }
+            } else {
+                assert vtableOffset != JNIAccessibleMethod.VTABLE_OFFSET_NOT_YET_COMPUTED;
+                if (vtableOffset != STATICALLY_BOUND_METHOD) {
+                    long tableStartingOffset = LoadOpenTypeWorldDispatchTableStartingOffset.createOpenTypeWorldLoadDispatchTableStartingOffset(instance.getClass(), interfaceTypeID);
+
+                    return BarrieredAccess.readWord(instance.getClass(), WordFactory.pointer(tableStartingOffset + vtableOffset), NamedLocationIdentity.FINAL_LOCATION);
+                }
             }
         }
         return nonvirtualTarget;
@@ -134,11 +162,14 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember {
     }
 
     @Platforms(HOSTED_ONLY.class)
-    public void finishBeforeCompilation(EconomicSet<Class<?>> hidingSubclasses, int vtableEntryOffset, CodePointer nonvirtualEntry, PointerBase newObjectEntry, CodePointer callWrapperEntry,
-                    CodePointer varargs, CodePointer array, CodePointer valist, CodePointer varargsNonvirtual, CodePointer arrayNonvirtual, CodePointer valistNonvirtual) {
-        assert this.vtableOffset == VTABLE_OFFSET_NOT_YET_COMPUTED && (vtableEntryOffset == STATICALLY_BOUND_METHOD || vtableEntryOffset >= 0);
+    public void finishBeforeCompilation(EconomicSet<Class<?>> hidingSubclasses, int vtableOffsetEntry, int interfaceTypeIDEntry, CodePointer nonvirtualEntry, PointerBase newObjectEntry,
+                    CodePointer callWrapperEntry, CodePointer varargs, CodePointer array, CodePointer valist, CodePointer varargsNonvirtual, CodePointer arrayNonvirtual,
+                    CodePointer valistNonvirtual) {
+        assert this.vtableOffset == VTABLE_OFFSET_NOT_YET_COMPUTED && (vtableOffsetEntry == STATICALLY_BOUND_METHOD || vtableOffsetEntry >= 0);
+        assert this.interfaceTypeID == INTERFACE_TYPEID_NOT_YET_COMPUTED && interfaceTypeIDEntry != INTERFACE_TYPEID_NOT_YET_COMPUTED;
 
-        this.vtableOffset = vtableEntryOffset;
+        this.vtableOffset = vtableOffsetEntry;
+        this.interfaceTypeID = interfaceTypeIDEntry;
         this.nonvirtualTarget = nonvirtualEntry;
         this.newObjectTarget = newObjectEntry;
         this.callWrapper = callWrapperEntry;

@@ -64,6 +64,7 @@ public @interface TruffleToLibGraal {
     enum Id {
         DoCompile,
         GetCompilerConfigurationFactoryName,
+        GetCompilerVersion,
         GetDataPatchesCount,
         GetExceptionHandlersCount,
         GetInfopoints,
@@ -87,5 +88,9 @@ public @interface TruffleToLibGraal {
         PendingTransferToInterpreterOffset,
         PurgePartialEvaluationCaches,
         Shutdown;
+
+        public String getMethodName() {
+            return Character.toLowerCase(name().charAt(0)) + name().substring(1);
+        }
     }
 }

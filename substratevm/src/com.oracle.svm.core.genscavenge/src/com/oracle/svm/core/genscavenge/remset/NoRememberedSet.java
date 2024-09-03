@@ -26,7 +26,6 @@ package com.oracle.svm.core.genscavenge.remset;
 
 import java.util.List;
 
-import jdk.graal.compiler.nodes.gc.BarrierSet;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -40,12 +39,13 @@ import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.GreyToBlackObjectVisitor;
 import com.oracle.svm.core.genscavenge.Space;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
-import com.oracle.svm.core.genscavenge.graal.SubstrateNoBarrierSet;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.util.HostedByteBufferPointer;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.nodes.gc.BarrierSet;
+import jdk.graal.compiler.nodes.gc.NoBarrierSet;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
@@ -56,7 +56,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 public final class NoRememberedSet implements RememberedSet {
     @Override
     public BarrierSet createBarrierSet(MetaAccessProvider metaAccess) {
-        return new SubstrateNoBarrierSet();
+        return new NoBarrierSet();
     }
 
     @Override
@@ -100,7 +100,7 @@ public final class NoRememberedSet implements RememberedSet {
     @Override
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void enableRememberedSetForObject(AlignedHeader chunk, Object obj) {
+    public void enableRememberedSetForObject(AlignedHeader chunk, Object obj, UnsignedWord objSize) {
         // Nothing to do.
     }
 
@@ -165,6 +165,11 @@ public final class NoRememberedSet implements RememberedSet {
 
     @Override
     public boolean verify(UnalignedHeader firstUnalignedHeapChunk) {
+        return true;
+    }
+
+    @Override
+    public boolean verify(UnalignedHeader firstUnalignedHeapChunk, UnalignedHeader lastUnalignedHeapChunk) {
         return true;
     }
 }

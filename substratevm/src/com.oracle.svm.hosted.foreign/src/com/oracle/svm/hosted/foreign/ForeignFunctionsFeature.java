@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,8 +35,6 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import org.graalvm.collections.Pair;
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -62,32 +60,21 @@ import com.oracle.svm.core.foreign.RuntimeSystemLookup;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ProgressReporter;
+import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @AutomaticallyRegisteredFeature
 @Platforms(Platform.HOSTED_ONLY.class)
 public class ForeignFunctionsFeature implements InternalFeature {
-    private static boolean isPreviewEnabled() {
-        try {
-            return (boolean) ReflectionUtil.lookupMethod(
-                            ReflectionUtil.lookupClass(false, "jdk.internal.misc.PreviewFeatures"),
-                            "isEnabled").invoke(null);
-        } catch (ReflectiveOperationException e) {
-            throw VMError.shouldNotReachHere(e);
-        }
-    }
-
-    private static final int FIRST_SUPPORTED_PREVIEW = 21;
-    private static final int FIRST_SUPPORTED_NON_PREVIEW = Integer.MAX_VALUE - 1; // TBD
-
     private static final Map<String, String[]> REQUIRES_CONCEALED = Map.of(
                     "jdk.internal.vm.ci", new String[]{"jdk.vm.ci.code", "jdk.vm.ci.meta", "jdk.vm.ci.amd64"},
                     "java.base", new String[]{
@@ -101,7 +88,10 @@ public class ForeignFunctionsFeature implements InternalFeature {
     private final RuntimeForeignAccessSupportImpl accessSupport = new RuntimeForeignAccessSupportImpl();
 
     private final Set<Pair<FunctionDescriptor, Linker.Option[]>> registeredDowncalls = ConcurrentHashMap.newKeySet();
-    private int downcallCount = 0;
+    private int downcallCount = -1;
+
+    private final Set<Pair<FunctionDescriptor, Linker.Option[]>> registeredUpcalls = ConcurrentHashMap.newKeySet();
+    private int upcallCount = -1;
 
     @Fold
     public static ForeignFunctionsFeature singleton() {
@@ -116,14 +106,20 @@ public class ForeignFunctionsFeature implements InternalFeature {
         @Override
         public void registerForDowncall(ConfigurationCondition condition, FunctionDescriptor desc, Linker.Option... options) {
             checkNotSealed();
-            registerConditionalConfiguration(condition, () -> registeredDowncalls.add(Pair.create(desc, options)));
+            registerConditionalConfiguration(condition, (cnd) -> registeredDowncalls.add(Pair.create(desc, options)));
+        }
+
+        @Override
+        public void registerForUpcall(ConfigurationCondition condition, FunctionDescriptor desc, Linker.Option... options) {
+            checkNotSealed();
+            registerConditionalConfiguration(condition, (ignored) -> registeredUpcalls.add(Pair.create(desc, options)));
         }
     }
 
     ForeignFunctionsFeature() {
         /*
-         * We add these exports systematically in the constructor, as to avoid access errors from
-         * plugins when the feature is disabled in the config.
+         * We intentionally add these exports in the constructor to avoid access errors from plugins
+         * when the feature is disabled in the config.
          */
         for (var modulePackages : REQUIRES_CONCEALED.entrySet()) {
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, ForeignFunctionsFeature.class, false, modulePackages.getKey(), modulePackages.getValue());
@@ -132,16 +128,17 @@ public class ForeignFunctionsFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateUtil.getArchitectureName().contains("amd64") && !SubstrateOptions.useLLVMBackend();
+        if (!SubstrateOptions.ForeignAPISupport.getValue()) {
+            return false;
+        }
+        UserError.guarantee(JavaVersionUtil.JAVA_SPEC >= 22, "Support for the Foreign Function and Memory API is available only with JDK 22 and later.");
+        UserError.guarantee(SubstrateUtil.getArchitectureName().contains("amd64"), "Support for the Foreign Function and Memory API is currently available only on the AMD64 architecture.");
+        UserError.guarantee(!SubstrateOptions.useLLVMBackend(), "Support for the Foreign Function and Memory API is not available with the LLVM backend.");
+        return true;
     }
 
     @Override
     public void duringSetup(DuringSetupAccess a) {
-        assert (JavaVersionUtil.JAVA_SPEC >= FIRST_SUPPORTED_PREVIEW && isPreviewEnabled()) ||
-                        JavaVersionUtil.JAVA_SPEC >= FIRST_SUPPORTED_NON_PREVIEW;
-
-        UserError.guarantee(!SubstrateOptions.useLLVMBackend(), "Foreign functions interface is in use, but is not supported together with the LLVM backend.");
-
         ImageSingletons.add(AbiUtils.class, AbiUtils.create());
         ImageSingletons.add(ForeignFunctionsRuntime.class, new ForeignFunctionsRuntime());
         ImageSingletons.add(RuntimeForeignAccessSupport.class, accessSupport);
@@ -157,14 +154,26 @@ public class ForeignFunctionsFeature implements InternalFeature {
         this.downcallCount = createStubs(
                         registeredDowncalls,
                         access,
+                        false,
                         AbiUtils.singleton()::makeNativeEntrypoint,
                         n -> new DowncallStub(n, access.getMetaAccess().getWrapped()),
                         ForeignFunctionsRuntime.singleton()::addDowncallStubPointer);
     }
 
+    private void createUpcallStubs(FeatureImpl.BeforeAnalysisAccessImpl access) {
+        this.upcallCount = createStubs(
+                        registeredUpcalls,
+                        access,
+                        true,
+                        AbiUtils.singleton()::makeJavaEntryPoint,
+                        jepi -> LowLevelUpcallStub.make(jepi, access.getUniverse(), access.getMetaAccess().getWrapped()),
+                        ForeignFunctionsRuntime.singleton()::addUpcallStubPointer);
+    }
+
     private <S> int createStubs(
                     Set<Pair<FunctionDescriptor, Linker.Option[]>> source,
                     FeatureImpl.BeforeAnalysisAccessImpl access,
+                    boolean registerAsEntryPoints,
                     BiFunction<FunctionDescriptor, Linker.Option[], S> stubGenerator,
                     Function<S, ResolvedJavaMethod> wrapper,
                     BiConsumer<S, CFunctionPointer> register) {
@@ -178,6 +187,9 @@ public class ForeignFunctionsFeature implements InternalFeature {
                 ResolvedJavaMethod stub = wrapper.apply(nepi);
                 AnalysisMethod analysisStub = access.getUniverse().lookup(stub);
                 access.getBigBang().addRootMethod(analysisStub, false, "Foreign stub, registered in " + ForeignFunctionsFeature.class);
+                if (registerAsEntryPoints) {
+                    analysisStub.registerAsEntryPoint(CEntryPointData.createCustomUnpublished());
+                }
                 created.put(nepi, analysisStub);
                 register.accept(nepi, new MethodPointer(analysisStub));
             }
@@ -204,12 +216,20 @@ public class ForeignFunctionsFeature implements InternalFeature {
                                         "USE_SPEC"),
                         (receiver, originalValue) -> false);
 
+        access.registerFieldValueTransformer(
+                        ReflectionUtil.lookupField(
+                                        ReflectionUtil.lookupClass(false, "jdk.internal.foreign.abi.UpcallLinker"),
+                                        "USE_SPEC"),
+                        (receiver, originalValue) -> false);
+
         RuntimeClassInitialization.initializeAtRunTime(RuntimeSystemLookup.class);
+
         access.registerAsRoot(ReflectionUtil.lookupMethod(ForeignFunctionsRuntime.class, "captureCallState", int.class, CIntPointer.class), false,
                         "Runtime support, registered in " + ForeignFunctionsFeature.class);
 
         createDowncallStubs(access);
-        ProgressReporter.singleton().setForeignFunctionsInfo(getCreatedDowncallStubsCount());
+        createUpcallStubs(access);
+        ProgressReporter.singleton().setForeignFunctionsInfo(getCreatedDowncallStubsCount(), getCreatedUpcallStubsCount());
     }
 
     @Override
@@ -221,6 +241,13 @@ public class ForeignFunctionsFeature implements InternalFeature {
 
     public int getCreatedDowncallStubsCount() {
         assert sealed;
-        return this.downcallCount;
+        assert downcallCount >= 0;
+        return downcallCount;
+    }
+
+    public int getCreatedUpcallStubsCount() {
+        assert sealed;
+        assert upcallCount >= 0;
+        return upcallCount;
     }
 }

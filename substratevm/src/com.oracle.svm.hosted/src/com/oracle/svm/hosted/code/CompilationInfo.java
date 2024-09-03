@@ -108,17 +108,18 @@ public class CompilationInfo {
 
     @SuppressWarnings("try")
     public StructuredGraph createGraph(DebugContext debug, OptionValues options, CompilationIdentifier compilationId, boolean decode) {
+        var encodedGraph = getCompilationGraph().getEncodedGraph();
         var graph = new StructuredGraph.Builder(options, debug)
                         .method(method)
-                        .recordInlinedMethods(false)
-                        .trackNodeSourcePosition(getCompilationGraph().getEncodedGraph().trackNodeSourcePosition())
+                        .trackNodeSourcePosition(encodedGraph.trackNodeSourcePosition())
+                        .recordInlinedMethods(encodedGraph.isRecordingInlinedMethods())
                         .compilationId(compilationId)
                         .build();
 
         if (decode) {
             try (var s = debug.scope("CreateGraph", graph, method)) {
                 var decoder = new GraphDecoder(AnalysisParsedGraph.HOST_ARCHITECTURE, graph);
-                decoder.decode(getCompilationGraph().getEncodedGraph());
+                decoder.decode(encodedGraph);
             } catch (Throwable ex) {
                 throw debug.handle(ex);
             }
@@ -143,16 +144,16 @@ public class CompilationInfo {
         return isTrivialMethod;
     }
 
-    public void setTrivialMethod(boolean trivial) {
-        isTrivialMethod = trivial;
+    public void setTrivialMethod() {
+        isTrivialMethod = true;
     }
 
     public boolean isTrivialInliningDisabled() {
         return trivialInliningDisabled;
     }
 
-    public void setTrivialInliningDisabled(boolean trivialInliningDisabled) {
-        this.trivialInliningDisabled = trivialInliningDisabled;
+    public void setTrivialInliningDisabled() {
+        trivialInliningDisabled = true;
     }
 
     public void setCustomParseFunction(ParseFunction parseFunction) {

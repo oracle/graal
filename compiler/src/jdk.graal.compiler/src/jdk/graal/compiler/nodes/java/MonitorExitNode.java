@@ -27,18 +27,19 @@ package jdk.graal.compiler.nodes.java;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_64;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_64;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.IterableNodeType;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
-import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.extended.MonitorExit;
 import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
 import jdk.graal.compiler.nodes.spi.Lowerable;
 import jdk.graal.compiler.nodes.spi.Virtualizable;
 import jdk.graal.compiler.nodes.spi.VirtualizerTool;
-import org.graalvm.word.LocationIdentity;
+import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 
 /**
  * The {@code MonitorExitNode} represents a monitor release. If it is the release of the monitor of
@@ -76,6 +77,10 @@ public final class MonitorExitNode extends AccessMonitorNode implements Virtuali
 
     @Override
     public void virtualize(VirtualizerTool tool) {
+        if (!tool.getPlatformConfigurationProvider().areLocksSideEffectFree()) {
+            return;
+        }
+
         ValueNode alias = tool.getAlias(object());
         if (alias instanceof VirtualObjectNode) {
             VirtualObjectNode virtual = (VirtualObjectNode) alias;

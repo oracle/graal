@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,10 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 import static jdk.graal.compiler.replacements.nodes.ExplodeLoopNode.explodeLoop;
 
+import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
+
 import jdk.graal.compiler.nodes.PrefetchAllocateNode;
 import jdk.graal.compiler.nodes.extended.MembarNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
@@ -38,9 +42,6 @@ import jdk.graal.compiler.replacements.SnippetCounter.Group;
 import jdk.graal.compiler.replacements.nodes.ExplodeLoopNode;
 import jdk.graal.compiler.replacements.nodes.ZeroMemoryNode;
 import jdk.graal.compiler.word.Word;
-import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 /**
  * Snippets used for implementing NEW, ANEWARRAY and NEWARRAY.
@@ -52,7 +53,8 @@ public abstract class AllocationSnippets implements Snippets {
                     FillContent fillContents,
                     boolean emitMemoryBarrier,
                     boolean constantSize,
-                    AllocationProfilingData profilingData) {
+                    AllocationProfilingData profilingData,
+                    boolean withException) {
         Object result;
         Word tlabInfo = getTLABInfo();
         Word top = readTlabTop(tlabInfo);
@@ -64,7 +66,7 @@ public abstract class AllocationSnippets implements Snippets {
             result = formatObject(hub, size, top, fillContents, emitMemoryBarrier, constantSize, profilingData.snippetCounters);
         } else {
             profilingData.snippetCounters.stub.inc();
-            result = callNewInstanceStub(hub);
+            result = callNewInstanceStub(hub, withException);
         }
         profileAllocation(profilingData, size);
         return verifyOop(result);
@@ -80,7 +82,8 @@ public abstract class AllocationSnippets implements Snippets {
                     boolean maybeUnroll,
                     boolean supportsBulkZeroing,
                     boolean supportsOptimizedFilling,
-                    AllocationProfilingData profilingData) {
+                    AllocationProfilingData profilingData,
+                    boolean withException) {
         Word thread = getTLABInfo();
         Word top = readTlabTop(thread);
         Word end = readTlabEnd(thread);
@@ -95,23 +98,24 @@ public abstract class AllocationSnippets implements Snippets {
         if (useTLAB() && probability(FAST_PATH_PROBABILITY, shouldAllocateInTLAB(allocationSize, true)) && probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
             writeTlabTop(thread, newTop);
             emitPrefetchAllocate(newTop, true);
-            result = formatArray(hub, allocationSize, length, top, fillContents, emitMemoryBarrier, fillStartOffset, maybeUnroll, supportsBulkZeroing, supportsOptimizedFilling,
+            boolean useOptimizedFilling = !withException && supportsOptimizedFilling;
+            result = formatArray(hub, allocationSize, length, top, fillContents, emitMemoryBarrier, fillStartOffset, maybeUnroll, supportsBulkZeroing, useOptimizedFilling,
                             profilingData.snippetCounters);
         } else {
             profilingData.snippetCounters.stub.inc();
-            result = callNewArrayStub(hub, length);
+            result = callNewArrayStub(hub, length, withException);
         }
         profileAllocation(profilingData, allocationSize);
         return verifyOop(result);
     }
 
-    protected Object newMultiArrayImpl(Word hub, int rank, int[] dimensions) {
+    protected Object newMultiArrayImpl(Word hub, int rank, boolean withException, int[] dimensions) {
         Word dims = DimensionsNode.allocaDimsArray(rank);
         ExplodeLoopNode.explodeLoop();
         for (int i = 0; i < rank; i++) {
             dims.writeInt(i * 4, dimensions[i], LocationIdentity.init());
         }
-        return callNewMultiArrayStub(hub, rank, dims);
+        return callNewMultiArrayStub(hub, rank, dims, withException);
     }
 
     protected UnsignedWord arrayAllocationSize(int length, int arrayBaseOffset, int log2ElementSize) {
@@ -119,11 +123,11 @@ public abstract class AllocationSnippets implements Snippets {
         return WordFactory.unsigned(arrayAllocationSize(length, arrayBaseOffset, log2ElementSize, alignment));
     }
 
-    /**
-     * We do an unsigned multiplication so that a negative array length will result in an array size
-     * greater than Integer.MAX_VALUE.
-     */
-    public static long arrayAllocationSize(long length, int arrayBaseOffset, int log2ElementSize, int alignment) {
+    public static long arrayAllocationSize(int length, int arrayBaseOffset, int log2ElementSize, int alignment) {
+        /*
+         * We do an unsigned multiplication so that a negative array length will result in an array
+         * size greater than Integer.MAX_VALUE.
+         */
         long size = ((length & 0xFFFFFFFFL) << log2ElementSize) + arrayBaseOffset + (alignment - 1);
         long mask = ~(alignment - 1);
         return size & mask;
@@ -356,11 +360,11 @@ public abstract class AllocationSnippets implements Snippets {
 
     public abstract void initializeObjectHeader(Word memory, Word hub, boolean isArray);
 
-    protected abstract Object callNewInstanceStub(Word hub);
+    protected abstract Object callNewInstanceStub(Word hub, boolean withException);
 
-    protected abstract Object callNewArrayStub(Word hub, int length);
+    protected abstract Object callNewArrayStub(Word hub, int length, boolean withException);
 
-    protected abstract Object callNewMultiArrayStub(Word hub, int rank, Word dims);
+    protected abstract Object callNewMultiArrayStub(Word hub, int rank, Word dims, boolean withException);
 
     protected abstract int getMinimalBulkZeroingSize();
 

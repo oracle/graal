@@ -47,6 +47,8 @@ import static org.junit.Assert.assertTrue;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.graalvm.polyglot.Instrument;
+import org.graalvm.polyglot.Source;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -55,21 +57,17 @@ import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.test.AbstractInstrumentationTest;
 import com.oracle.truffle.api.instrumentation.test.examples.DebuggerController.Callback;
-import org.graalvm.polyglot.Instrument;
-import org.graalvm.polyglot.Source;
 
 public final class DebuggerExampleTest extends AbstractInstrumentationTest {
     private DebuggerController debugger;
 
     @Before
     public void setupDebugger() throws IOException {
-        // BEGIN: DebuggerExampleTest
         Instrument instrument = engine.getInstruments().get(DebuggerExample.ID);
         assert !isCreated(instrument) : "Not enabled yet";
         debugger = instrument.lookup(DebuggerController.class);
         assert isCreated(instrument) : "Got enabled";
         assert debugger != null : "We can control the debugger";
-        // END: DebuggerExampleTest
         assertTrue("Enabled by requesting registered services class", isCreated(instrument));
         assertNotNull("Debugger interface found", debugger);
         DebuggerExample itself = instrument.lookup(DebuggerExample.class);

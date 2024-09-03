@@ -27,7 +27,6 @@ package jdk.graal.compiler.hightiercodegen.reconstruction.stackifier;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Optional;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -36,11 +35,9 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 
-import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.hightiercodegen.reconstruction.StackifierData;
 import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.scopes.CatchScopeContainer;
 import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.scopes.IfScopeContainer;
@@ -195,27 +192,6 @@ public class CFStackifierSortPhase extends BasePhase<StackifierData> {
                 return 0;
             } else {
                 return current.getSuccessorCount();
-            }
-        }
-
-        /**
-         * We need to update the blockToNodesMap in
-         * {@link jdk.graal.compiler.nodes.StructuredGraph.ScheduleResult} because it internally
-         * uses an array that uses the basic block id as an index. Since we update the basic block
-         * indices we also have to update the array.
-         */
-        @SuppressWarnings("unchecked")
-        private void updateIds() {
-            int id = 0;
-            BlockMap<List<Node>> blockToNodesMap = scheduleResult.getBlockToNodesMap();
-            Object[] oldBlockToNodesMap = new Object[sortedBlocks.length];
-            for (int i = 0; i < sortedBlocks.length; i++) {
-                oldBlockToNodesMap[i] = blockToNodesMap.get(sortedBlocks[i]);
-            }
-            for (HIRBlock b : sortedBlocks) {
-                blockToNodesMap.put(b, (List<Node>) oldBlockToNodesMap[b.getId()]);
-                b.setId(id);
-                id++;
             }
         }
 
@@ -403,8 +379,7 @@ public class CFStackifierSortPhase extends BasePhase<StackifierData> {
 
         public void run() {
             sort();
-            updateIds();
-            stackifierData.setSortedBlocks(sortedBlocks);
+            stackifierData.setSortedBlocks(sortedBlocks, cfg);
             stackifierData.setEnclosingScope(enclosingScopes);
         }
     }

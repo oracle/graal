@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -158,7 +158,7 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
     @TruffleBoundary
     private DebugFunction debugFunction() {
         if (module.hasDebugInfo()) {
-            final EconomicMap<Integer, DebugFunction> debugFunctions = module.debugFunctions(WasmContext.get(this));
+            final EconomicMap<Integer, DebugFunction> debugFunctions = module.debugFunctions(this);
             if (debugFunctions.containsKey(functionSourceLocation)) {
                 return debugFunctions.get(functionSourceLocation);
             }
@@ -200,7 +200,7 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
                 info = this.instrumentation;
                 if (info == null) {
                     final int functionIndex = codeEntry.functionIndex();
-                    final DebugFunction debugFunction = module.debugFunctions(context).get(functionSourceLocation);
+                    final DebugFunction debugFunction = module.debugFunctions(this).get(functionSourceLocation);
                     this.instrumentation = info = insert(new WasmInstrumentationSupportNode(debugFunction, module, functionIndex));
                     final BinaryParser binaryParser = new BinaryParser(module, context, module.codeSection());
                     final byte[] bytecode = binaryParser.createFunctionDebugBytecode(functionIndex, debugFunction.lineMap().sourceLocationToLineMap());

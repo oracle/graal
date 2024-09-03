@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.core.test;
 
+import org.junit.Assert;
+
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import jdk.graal.compiler.nodes.ProxyNode;
@@ -36,7 +38,6 @@ import jdk.graal.compiler.phases.common.ConditionalEliminationPhase;
 import jdk.graal.compiler.phases.common.HighTierLoweringPhase;
 import jdk.graal.compiler.phases.common.IterativeConditionalEliminationPhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
-import org.junit.Assert;
 
 /**
  * Collection of tests for {@link ConditionalEliminationPhase} including those that triggered bugs
@@ -80,9 +81,8 @@ public class ConditionalEliminationTestBase extends GraalCompilerTest {
         try (DebugContext.Scope scope = debug.scope("ConditionalEliminationTest.ReferenceGraph", referenceGraph)) {
             prepareGraph(referenceGraph, canonicalizer, context, applyLowering);
             if (applyConditionalEliminationOnReference) {
-                new ConditionalEliminationPhase(true).apply(referenceGraph, context);
+                new ConditionalEliminationPhase(canonicalizer, true).apply(referenceGraph, context);
             }
-            canonicalizer.apply(referenceGraph, context);
             canonicalizer.apply(referenceGraph, context);
         } catch (Throwable t) {
             debug.handle(t);
@@ -110,8 +110,7 @@ public class ConditionalEliminationTestBase extends GraalCompilerTest {
         canonicalizer.apply(graph, context);
 
         int baseProxyCount = graph.getNodes().filter(ProxyNode.class).count();
-        new ConditionalEliminationPhase(true).apply(graph, context);
-        canonicalizer.apply(graph, context);
+        new ConditionalEliminationPhase(canonicalizer, true).apply(graph, context);
         new SchedulePhase(graph.getOptions()).apply(graph, context);
         int actualProxiesCreated = graph.getNodes().filter(ProxyNode.class).count() - baseProxyCount;
         Assert.assertEquals(expectedProxiesCreated, actualProxiesCreated);

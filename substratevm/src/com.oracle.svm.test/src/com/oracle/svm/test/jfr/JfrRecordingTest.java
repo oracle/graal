@@ -57,6 +57,10 @@ public abstract class JfrRecordingTest extends AbstractJfrTest {
         return startRecording(events, config, null, createTempJfrFile());
     }
 
+    protected Recording startRecording(String[] events, Configuration config) throws Throwable {
+        return startRecording(events, config, null, createTempJfrFile());
+    }
+
     protected Recording startRecording(String[] events, Configuration config, Map<String, String> settings) throws Throwable {
         return startRecording(events, config, settings, createTempJfrFile());
     }
@@ -95,10 +99,14 @@ public abstract class JfrRecordingTest extends AbstractJfrTest {
     }
 
     public void stopRecording(Recording recording, EventValidator validator) throws Throwable {
+        stopRecording(recording, validator, true);
+    }
+
+    public void stopRecording(Recording recording, EventValidator validator, boolean validateTestedEventsOnly) throws Throwable {
         recording.stop();
         recording.close();
 
         JfrRecordingState state = recordingStates.get(recording);
-        checkRecording(validator, recording.getDestination(), state);
+        checkRecording(validator, recording.getDestination(), state, validateTestedEventsOnly);
     }
 }

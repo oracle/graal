@@ -99,5 +99,11 @@ abstract class Generation {
      *
      * @return true on success, false if the there was insufficient capacity.
      */
-    protected abstract boolean promoteChunk(HeapChunk.Header<?> originalChunk, boolean isAligned, Space originalSpace);
+    protected abstract boolean promotePinnedObject(Object obj, HeapChunk.Header<?> originalChunk, boolean isAligned, Space originalSpace);
+
+    void checkSanityBeforeCollection() {
+    }
+
+    void checkSanityAfterCollection() {
+    }
 }

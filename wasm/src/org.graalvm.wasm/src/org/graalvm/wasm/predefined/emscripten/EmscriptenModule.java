@@ -44,13 +44,11 @@ import static org.graalvm.wasm.WasmType.F64_TYPE;
 import static org.graalvm.wasm.WasmType.I32_TYPE;
 
 import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.constants.GlobalModifier;
 import org.graalvm.wasm.predefined.BuiltinModule;
-import org.graalvm.wasm.predefined.testutil.TestutilModule;
 import org.graalvm.wasm.predefined.wasi.WasiFdWriteNode;
 
 public class EmscriptenModule extends BuiltinModule {
@@ -58,15 +56,6 @@ public class EmscriptenModule extends BuiltinModule {
     @Override
     protected WasmModule createModule(WasmLanguage language, WasmContext context, String name) {
         final WasmModule module = WasmModule.createBuiltin(name);
-
-        final WasmInstance testutil = context.lookupModuleInstance("testutil");
-        if (testutil != null) {
-            // Emscripten only allows extern symbols through the 'env' module, so we need to
-            // re-export some symbols from the testutil module.
-            if (testutil.symbolTable().function(TestutilModule.Names.SAVE_BINARY_FILE) != null) {
-                importFunction(context, module, "testutil", TestutilModule.Names.SAVE_BINARY_FILE, types(I32_TYPE, I32_TYPE, I32_TYPE), types(), TestutilModule.Names.SAVE_BINARY_FILE);
-            }
-        }
 
         defineFunction(context, module, "abort", types(), types(), new AbortNode(language, module));
         defineFunction(context, module, "abortOnCannotGrowMemory", types(I32_TYPE), types(I32_TYPE), new AbortOnCannotGrowMemoryNode(language, module));

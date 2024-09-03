@@ -25,16 +25,17 @@
 package com.oracle.svm.core.windows;
 
 import java.io.Console;
+import java.util.Objects;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jdk.Jvm;
 
 @TargetClass(java.lang.System.class)
@@ -51,6 +52,7 @@ final class Target_java_lang_System {
 
     @Substitute
     public static String mapLibraryName(String libname) {
+        Objects.requireNonNull(libname);
         return libname + ".dll";
     }
 

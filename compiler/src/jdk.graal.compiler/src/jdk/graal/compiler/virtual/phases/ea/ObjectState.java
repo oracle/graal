@@ -226,6 +226,10 @@ public class ObjectState {
         return locks != null;
     }
 
+    public int getLockDepth() {
+        return locks.monitorId.getLockDepth();
+    }
+
     public boolean locksEqual(ObjectState other) {
         LockState a = locks;
         LockState b = other.locks;

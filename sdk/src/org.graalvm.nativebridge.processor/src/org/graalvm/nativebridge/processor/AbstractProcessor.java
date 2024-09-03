@@ -187,7 +187,7 @@ public abstract class AbstractProcessor extends javax.annotation.processing.Abst
     /**
      * Gets the {@link TypeElement} for a given class name.
      *
-     * @returns {@code null} if the class cannot be resolved
+     * @return {@code null} if the class cannot be resolved
      */
     public TypeElement getTypeElementOrNull(String className) {
         TypeElement type = types.get(className);

@@ -42,6 +42,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
@@ -129,6 +131,64 @@ public final class InspectorInstrument extends TruffleInstrument {
         return uris;
     });
 
+    static final OptionType<Long> TIMEOUT = new OptionType<>("[1, inf)ms|s|m|h|d", (str) -> {
+        ChronoUnit foundUnit = null;
+        long value = -1;
+        try {
+            for (ChronoUnit unit : ChronoUnit.values()) {
+                String unitName = getUnitName(unit);
+                if (unitName == null) {
+                    continue;
+                }
+                if (str.endsWith(unitName)) {
+                    foundUnit = unit;
+                    String time = str.substring(0, str.length() - unitName.length());
+                    value = Long.parseLong(time);
+                    break;
+                }
+            }
+            if (value <= 0) {
+                throw invalidUnitValue(str);
+            }
+            assert foundUnit != null;
+            try {
+                Duration duration = Duration.of(value, foundUnit);
+                return duration.toMillis();
+            } catch (ArithmeticException ex) {
+                return Long.MAX_VALUE;
+            }
+        } catch (NumberFormatException | ArithmeticException e) {
+            throw invalidUnitValue(str);
+        }
+    });
+
+    private static String getUnitName(ChronoUnit unit) {
+        switch (unit) {
+            case MILLIS:
+                return "ms";
+            case SECONDS:
+                return "s";
+            case MINUTES:
+                return "m";
+            case HOURS:
+                return "h";
+            case DAYS:
+                return "d";
+        }
+        return null;
+    }
+
+    private static IllegalArgumentException invalidUnitValue(String value) {
+        throw new IllegalArgumentException("Invalid timeout '" + value + "' specified. " //
+                        + "A valid timeout duration consists of a positive integer value followed by a chronological time unit. " //
+                        + "For example '15m' or '60s'. Valid time units are " //
+                        + "'ms' for milliseconds, " //
+                        + "'s' for seconds, " //
+                        + "'m' for minutes, " //
+                        + "'h' for hours, and " //
+                        + "'d' for days.");
+    }
+
     private static URI createURIFromPath(String path) throws URISyntaxException {
         String lpath = path.toLowerCase();
         int index = 0;
@@ -174,6 +234,10 @@ public final class InspectorInstrument extends TruffleInstrument {
 
     @com.oracle.truffle.api.Option(help = "Suspend the execution at first executed source line (default: true).", usageSyntax = "true|false", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Boolean> Suspend = new OptionKey<>(true);
+
+    @com.oracle.truffle.api.Option(help = "Timeout of a debugger suspension. The debugger session is disconnected after the timeout expires. (default: no timeout). Example value: '5m'.", //
+                    usageSyntax = "[1, inf)ms|s|m|h|d", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    static final OptionKey<Long> SuspensionTimeout = new OptionKey<>(null, TIMEOUT);
 
     @com.oracle.truffle.api.Option(help = "Do not execute any source code until inspector client is attached.", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Boolean> WaitAttached = new OptionKey<>(false);
@@ -225,7 +289,7 @@ public final class InspectorInstrument extends TruffleInstrument {
             try {
                 server = new Server(env, "Main Context", hostAndPort, options.get(Attach), options.get(Suspend), options.get(WaitAttached), options.get(HideErrors), options.get(Internal),
                                 options.get(Initialization), options.get(Path), options.hasBeenSet(Secure), options.get(Secure), new KeyStoreOptions(options), options.get(SourcePath),
-                                connectionWatcher);
+                                options.get(SuspensionTimeout), connectionWatcher);
             } catch (IOException e) {
                 throw new InspectorIOException(hostAndPort.getHostPort(), e);
             }
@@ -249,7 +313,8 @@ public final class InspectorInstrument extends TruffleInstrument {
                 hostAndPort = new HostAndPort(host, port);
                 try {
                     server = new Server(env, "Main Context", hostAndPort, false, false, wait, options.get(HideErrors), options.get(Internal),
-                                    options.get(Initialization), null, options.hasBeenSet(Secure), options.get(Secure), new KeyStoreOptions(options), options.get(SourcePath), connectionWatcher);
+                                    options.get(Initialization), null, options.hasBeenSet(Secure), options.get(Secure), new KeyStoreOptions(options), options.get(SourcePath),
+                                    options.get(SuspensionTimeout), connectionWatcher);
                 } catch (IOException e) {
                     PrintWriter info = new PrintWriter(env.err());
                     info.println(new InspectorIOException(hostAndPort.getHostPort(), e).getLocalizedMessage());
@@ -263,8 +328,9 @@ public final class InspectorInstrument extends TruffleInstrument {
                 if (server != null) {
                     return server.getConnection().getExecutionContext();
                 } else {
-                    PrintWriter err = (options.get(HideErrors)) ? null : new PrintWriter(env.err(), true);
-                    return new InspectorExecutionContext("Main Context", options.get(Internal), options.get(Initialization), env, Collections.emptyList(), err);
+                    PrintWriter info = new PrintWriter(env.err(), true);
+                    PrintWriter err = (options.get(HideErrors)) ? null : info;
+                    return new InspectorExecutionContext("Main Context", options.get(Internal), options.get(Initialization), env, Collections.emptyList(), info, err, options.get(SuspensionTimeout));
                 }
             }
         }));
@@ -394,7 +460,7 @@ public final class InspectorInstrument extends TruffleInstrument {
 
         Server(final Env env, final String contextName, final HostAndPort hostAndPort, final boolean attach, final boolean debugBreak, final boolean waitAttached, final boolean hideErrors,
                         final boolean inspectInternal, final boolean inspectInitialization, final String pathOrNull, final boolean secureHasBeenSet, final boolean secureValue,
-                        final KeyStoreOptions keyStoreOptions, final List<URI> sourcePath, final ConnectionWatcher connectionWatcher) throws IOException {
+                        final KeyStoreOptions keyStoreOptions, final List<URI> sourcePath, final Long suspensionTimeout, final ConnectionWatcher connectionWatcher) throws IOException {
             InetSocketAddress socketAddress = hostAndPort.createSocket();
             PrintWriter info = new PrintWriter(env.err(), true);
             final String pathContainingToken;
@@ -408,7 +474,7 @@ public final class InspectorInstrument extends TruffleInstrument {
             boolean secure = (!secureHasBeenSet && socketAddress.getAddress().isLoopbackAddress()) ? false : secureValue;
 
             PrintWriter err = (hideErrors) ? null : info;
-            executionContext = new InspectorExecutionContext(contextName, inspectInternal, inspectInitialization, env, sourcePath, err);
+            executionContext = new InspectorExecutionContext(contextName, inspectInternal, inspectInitialization, env, sourcePath, info, err, suspensionTimeout);
             if (attach) {
                 wss = new InspectWSClient(socketAddress, pathContainingToken, executionContext, debugBreak, secure, keyStoreOptions, connectionWatcher, info);
                 urlContainingToken = ((InspectWSClient) wss).getURI().toString();
@@ -419,7 +485,7 @@ public final class InspectorInstrument extends TruffleInstrument {
                 } catch (URISyntaxException ex) {
                     throw new IOException(ex);
                 }
-                InspectServerSession iss = InspectServerSession.create(executionContext, debugBreak, connectionWatcher);
+                InspectServerSession iss = InspectServerSession.create(executionContext, debugBreak, connectionWatcher, () -> doFinalize());
                 boolean disposeIss = true;
                 try {
                     WSInterceptorServer interceptor = new WSInterceptorServer(socketAddress.getPort(), token, iss, connectionWatcher);
@@ -441,7 +507,7 @@ public final class InspectorInstrument extends TruffleInstrument {
                         info.println("E.g. in Chrome open: " + server.getDevtoolsAddress(token));
                         info.flush();
                     } else {
-                        restartServerEndpointOnClose(hostAndPort, env, wsuri, executionContext, connectionWatcher, iss, interceptor);
+                        restartServerEndpointOnClose(hostAndPort, env, wsuri, executionContext, connectionWatcher, iss, interceptor, () -> doFinalize());
                         interceptor.opened(serverEndpoint);
                         wss = interceptor;
                         urlContainingToken = wsuri.toString();
@@ -490,7 +556,13 @@ public final class InspectorInstrument extends TruffleInstrument {
                     @TruffleBoundary
                     private void waitForRunPermission() {
                         try {
-                            executionContext.waitForRunPermission();
+                            boolean success = executionContext.waitForRunPermission(suspensionTimeout);
+                            if (!success) {
+                                // Timeout expired, abandon debugging
+                                info.println("Timeout of " + suspensionTimeout + "ms as specified via '--" + InspectorInstrument.INSTRUMENT_ID +
+                                                ".SuspensionTimeout' was reached. Debugging is abandoned.");
+                                doFinalize();
+                            }
                         } catch (InterruptedException ex) {
                         }
                         final EventBinding<?> binding = execEnter.getAndSet(null);
@@ -523,10 +595,10 @@ public final class InspectorInstrument extends TruffleInstrument {
         }
 
         private static void restartServerEndpointOnClose(HostAndPort hostAndPort, Env env, URI wsuri, InspectorExecutionContext executionContext, ConnectionWatcher connectionWatcher,
-                        InspectServerSession iss, WSInterceptorServer interceptor) {
+                        InspectServerSession iss, WSInterceptorServer interceptor, Runnable sessionDisposal) {
             iss.onClose(() -> {
                 // debugBreak = false, do not break on re-connect
-                InspectServerSession newSession = InspectServerSession.create(executionContext, false, connectionWatcher);
+                InspectServerSession newSession = InspectServerSession.create(executionContext, false, connectionWatcher, sessionDisposal);
                 interceptor.newSession(newSession);
                 MessageEndpoint serverEndpoint;
                 try {
@@ -538,7 +610,7 @@ public final class InspectorInstrument extends TruffleInstrument {
                     throw new InspectorIOException(hostAndPort.getHostPort(), ioex);
                 }
                 interceptor.opened(serverEndpoint);
-                restartServerEndpointOnClose(hostAndPort, env, wsuri, executionContext, connectionWatcher, newSession, interceptor);
+                restartServerEndpointOnClose(hostAndPort, env, wsuri, executionContext, connectionWatcher, newSession, interceptor, sessionDisposal);
             });
         }
 

@@ -28,18 +28,29 @@ import java.util.Objects;
 
 import com.oracle.graal.pointsto.util.GraalAccess;
 
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public interface OriginalClassProvider {
 
-    static Class<?> getJavaClass(ResolvedJavaType javaType) {
-        Class<?> result;
-        if (javaType instanceof OriginalClassProvider) {
-            result = ((OriginalClassProvider) javaType).getJavaClass();
-        } else {
-            result = GraalAccess.getOriginalSnippetReflection().originalClass(javaType);
+    /**
+     * Provides a mapping back from a {@link ResolvedJavaType} to the original type provided by the
+     * JVMCI implementation of the VM that runs the image generator.
+     */
+    static ResolvedJavaType getOriginalType(JavaType type) {
+        JavaType cur = type;
+        while (cur instanceof OriginalClassProvider originalClassProvider) {
+            cur = originalClassProvider.unwrapTowardsOriginalType();
         }
+        /*
+         * The static analysis and the image generator never use unresolved types. The JavaType in
+         * the method signature is just to avoid casts in the callers.
+         */
+        return Objects.requireNonNull((ResolvedJavaType) cur);
+    }
 
+    static Class<?> getJavaClass(JavaType type) {
+        Class<?> result = GraalAccess.getOriginalSnippetReflection().originalClass(getOriginalType(type));
         /*
          * Currently, we do not support types at run time that have no matching java.lang.Class in
          * the image generator. So while there is no 1:1 mapping between JVMCI types and classes,
@@ -49,5 +60,5 @@ public interface OriginalClassProvider {
         return Objects.requireNonNull(result);
     }
 
-    Class<?> getJavaClass();
+    ResolvedJavaType unwrapTowardsOriginalType();
 }

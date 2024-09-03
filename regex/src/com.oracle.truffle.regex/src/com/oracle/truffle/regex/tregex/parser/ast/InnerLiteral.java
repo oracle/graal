@@ -83,7 +83,11 @@ public class InnerLiteral {
     }
 
     public TruffleString.WithMask getMaskContent() {
-        return mask == null ? null : maskTString;
+        return hasMask() ? maskTString : null;
+    }
+
+    public boolean hasMask() {
+        return mask != null;
     }
 
     /**

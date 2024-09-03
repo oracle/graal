@@ -27,11 +27,14 @@ package com.oracle.svm.core.thread;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.security.AccessControlContext;
 import java.security.AccessController;
+import java.util.EnumSet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.graalvm.nativeimage.CurrentIsolate;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.Pointer;
@@ -41,7 +44,13 @@ import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.imagelayer.LastImageBuildPredicate;
 import com.oracle.svm.core.jdk.StackTraceUtils;
+import com.oracle.svm.core.layeredimagesingleton.ApplicationLayerOnlyImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
@@ -52,6 +61,7 @@ import com.oracle.svm.util.ReflectionUtil;
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 
 /**
  * Implements operations on {@linkplain Target_java_lang_Thread Java threads}, which are on a higher
@@ -83,10 +93,34 @@ public final class JavaThreads {
      */
     static final FastThreadLocalLong currentVThreadId = FastThreadLocalFactory.createLong("JavaThreads.currentVThreadId").setMaxOffset(FastThreadLocal.BYTE_OFFSET);
 
-    /** For Thread.nextThreadID(). */
-    static final AtomicLong threadSeqNumber = new AtomicLong();
-    /** For Thread.nextThreadNum(). */
-    static final AtomicInteger threadInitNumber = new AtomicInteger();
+    @AutomaticallyRegisteredImageSingleton(onlyWith = LastImageBuildPredicate.class)
+    public static class JavaThreadNumberSingleton implements ApplicationLayerOnlyImageSingleton, UnsavedSingleton {
+
+        public static JavaThreadNumberSingleton singleton() {
+            return ImageSingletons.lookup(JavaThreadNumberSingleton.class);
+        }
+
+        /** For Thread.nextThreadID(). */
+        final AtomicLong threadSeqNumber;
+        /** For Thread.nextThreadNum(). */
+        final AtomicInteger threadInitNumber;
+
+        public JavaThreadNumberSingleton() {
+            this.threadSeqNumber = new AtomicLong();
+            this.threadInitNumber = new AtomicInteger();
+        }
+
+        @Platforms(Platform.HOSTED_ONLY.class)
+        public void setThreadNumberInfo(long seqNumber, int initNumber) {
+            this.threadSeqNumber.set(seqNumber);
+            this.threadInitNumber.set(initNumber);
+        }
+
+        @Override
+        public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+            return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
+        }
+    }
 
     private JavaThreads() {
     }
@@ -104,12 +138,12 @@ public final class JavaThreads {
 
     @Platforms(InternalPlatform.NATIVE_ONLY.class)
     static long nextThreadID() {
-        return JavaThreads.threadSeqNumber.incrementAndGet();
+        return JavaThreadNumberSingleton.singleton().threadSeqNumber.incrementAndGet();
     }
 
     @Platforms(InternalPlatform.NATIVE_ONLY.class)
     static int nextThreadNum() {
-        return JavaThreads.threadInitNumber.incrementAndGet();
+        return JavaThreadNumberSingleton.singleton().threadInitNumber.incrementAndGet();
     }
 
     /**
@@ -220,10 +254,10 @@ public final class JavaThreads {
             return null;
         }
         if (carrier == PlatformThreads.currentThread.get()) {
-            return StackTraceUtils.getStackTrace(filterExceptions, callerSP, endSP);
+            return StackTraceUtils.getCurrentThreadStackTrace(filterExceptions, callerSP, endSP);
         }
         assert VMOperation.isInProgressAtSafepoint();
-        return StackTraceUtils.getThreadStackTraceAtSafepoint(PlatformThreads.getIsolateThread(carrier), endSP);
+        return StackTraceUtils.getStackTraceAtSafepoint(PlatformThreads.getIsolateThread(carrier), endSP);
     }
 
     public static StackTraceElement[] getStackTraceAtSafepoint(Thread thread, Pointer callerSP) {
@@ -276,26 +310,27 @@ public final class JavaThreads {
         }
     }
 
-    /** If there is an uncaught exception handler, call it. */
     public static void dispatchUncaughtException(Thread thread, Throwable throwable) {
-        /* Get the uncaught exception handler for the Thread, or the default one. */
-        UncaughtExceptionHandler handler = thread.getUncaughtExceptionHandler();
-        if (handler == null) {
-            handler = Thread.getDefaultUncaughtExceptionHandler();
-        }
-        if (handler != null) {
-            try {
-                handler.uncaughtException(thread, throwable);
-            } catch (Throwable t) {
-                /*
-                 * The JavaDoc for {@code Thread.UncaughtExceptionHandler.uncaughtException} says
-                 * the VM ignores any exceptions thrown.
-                 */
+        try {
+            /* Get the uncaught exception handler for the Thread, or the default one. */
+            UncaughtExceptionHandler handler = thread.getUncaughtExceptionHandler();
+            if (handler == null) {
+                handler = Thread.getDefaultUncaughtExceptionHandler();
             }
-        } else {
-            /* If no uncaught exception handler is present, then just report the throwable. */
-            System.err.print("Exception in thread \"" + Thread.currentThread().getName() + "\" ");
-            throwable.printStackTrace();
+
+            if (handler != null) {
+                handler.uncaughtException(thread, throwable);
+            } else {
+                /*
+                 * If no uncaught exception handler is present, then just report the Throwable in
+                 * the same way as it is done by ThreadGroup.uncaughtException().
+                 */
+                System.err.print("Exception in thread \"" + thread.getName() + "\" ");
+                throwable.printStackTrace(System.err);
+            }
+        } catch (Throwable e) {
+            /* See JavaThread::exit() in HotSpot. */
+            Log.log().newline().string("Exception: ").string(e.getClass().getName()).string(" thrown from the UncaughtExceptionHandler in thread \"").string(thread.getName()).string("\"").newline();
         }
     }
 
@@ -384,6 +419,8 @@ public final class JavaThreads {
     }
 
     static void blockedOn(Target_sun_nio_ch_Interruptible b) {
+        assert JavaVersionUtil.JAVA_SPEC <= 21 : "blockedOn in newer JDKs uses safe disableSuspendAndPreempt";
+
         if (isCurrentThreadVirtual()) {
             VirtualThreadHelper.blockedOn(b);
         } else {

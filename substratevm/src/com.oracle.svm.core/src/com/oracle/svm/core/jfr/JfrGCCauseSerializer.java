@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.jfr;
 
+import java.util.List;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -37,10 +39,10 @@ public class JfrGCCauseSerializer implements JfrSerializer {
     @Override
     public void write(JfrChunkWriter writer) {
         // GCCauses has null entries
-        GCCause[] causes = GCCause.getGCCauses();
+        List<GCCause> causes = GCCause.getGCCauses();
         int nonNullItems = 0;
-        for (int index = 0; index < causes.length; index++) {
-            if (causes[index] != null) {
+        for (GCCause cause : causes) {
+            if (cause != null) {
                 nonNullItems++;
             }
         }

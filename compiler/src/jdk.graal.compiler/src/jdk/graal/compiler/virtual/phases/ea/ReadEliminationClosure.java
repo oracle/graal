@@ -35,7 +35,7 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.word.LocationIdentity;
 
-import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
@@ -121,7 +121,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                             deleted = true;
                         }
                         // will be a field location identity not killing array accesses
-                        killReadCacheByIdentity(state, identifier.identity);
+                        killReadCacheByIdentity(state, identifier.identity, node);
                         state.addCacheEntry(identifier, value);
                     } else if (node instanceof RawStoreNode) {
                         RawStoreNode write = (RawStoreNode) node;
@@ -134,15 +134,15 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                             effects.deleteNode(write);
                             deleted = true;
                         }
-                        killReadCacheByIdentity(state, write.getKilledLocationIdentity());
+                        killReadCacheByIdentity(state, write.getKilledLocationIdentity(), node);
                         state.addCacheEntry(identifier, value);
                     }
                 } else {
-                    killReadCacheByIdentity(state, identity);
+                    killReadCacheByIdentity(state, identity, node);
                 }
             } else if (MemoryKill.isMultiMemoryKill(node)) {
                 for (LocationIdentity identity : ((MultiMemoryKill) node).getKilledLocationIdentities()) {
-                    killReadCacheByIdentity(state, identity);
+                    killReadCacheByIdentity(state, identity, node);
                 }
             } else {
                 throw GraalError.shouldNotReachHere("Unknown memory kill " + node); // ExcludeFromJacocoGeneratedReport
@@ -179,11 +179,16 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                             ValueNode object = null;
                             if (node instanceof LoadFieldNode) {
                                 object = ((LoadFieldNode) node).object();
-                            } else if (node instanceof ReadNode) {
+                            } else if (node instanceof ReadNode read) {
+                                if (!read.getBarrierType().canReadEliminate()) {
+                                    assert deleted == false;
+                                    return false;
+                                }
                                 object = ((ReadNode) node).getAddress();
                             } else {
                                 // unknown node, no elimination possible
-                                return deleted;
+                                assert deleted == false;
+                                return false;
                             }
                             object = GraphUtil.unproxify(object);
                             ValueNode access = (ValueNode) node;
@@ -222,8 +227,8 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
         return null;
     }
 
-    private static void killReadCacheByIdentity(ReadEliminationBlockState state, LocationIdentity identity) {
-        state.killReadCache(identity, null, null);
+    private static void killReadCacheByIdentity(ReadEliminationBlockState state, LocationIdentity identity, Node kill) {
+        state.killReadCache(kill, identity, null, null);
     }
 
     @Override
@@ -343,7 +348,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
     }
 
     @Override
-    protected void processKilledLoopLocations(Loop<HIRBlock> loop, ReadEliminationBlockState initialState, ReadEliminationBlockState mergedStates) {
+    protected void processKilledLoopLocations(CFGLoop<HIRBlock> loop, ReadEliminationBlockState initialState, ReadEliminationBlockState mergedStates) {
         assert initialState != null;
         assert mergedStates != null;
         if (initialState.readCache.size() > 0) {
@@ -373,7 +378,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                     for (LocationIdentity location : forwardEndLiveLocations) {
                         loopKilledLocations.rememberLoopKilledLocation(location);
                     }
-                    if (debug.isLogEnabled() && loopKilledLocations != null) {
+                    if (debug.isLogEnabled()) {
                         debug.log("[Early Read Elimination] Setting loop killed locations of loop at node %s with %s",
                                         loop.getHeader().getBeginNode(), forwardEndLiveLocations);
                     }
@@ -385,7 +390,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
     }
 
     @Override
-    protected ReadEliminationBlockState stripKilledLoopLocations(Loop<HIRBlock> loop, ReadEliminationBlockState originalInitialState) {
+    protected ReadEliminationBlockState stripKilledLoopLocations(CFGLoop<HIRBlock> loop, ReadEliminationBlockState originalInitialState) {
         ReadEliminationBlockState initialState = super.stripKilledLoopLocations(loop, originalInitialState);
         LoopKillCache loopKilledLocations = loopLocationKillCache.get(loop);
         if (loopKilledLocations != null && loopKilledLocations.loopKillsLocations()) {

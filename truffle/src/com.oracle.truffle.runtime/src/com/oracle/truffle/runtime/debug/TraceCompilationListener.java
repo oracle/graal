@@ -40,6 +40,11 @@
  */
 package com.oracle.truffle.runtime.debug;
 
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.function.Supplier;
+
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeVisitor;
@@ -50,10 +55,10 @@ import com.oracle.truffle.runtime.AbstractCompilationTask;
 import com.oracle.truffle.runtime.AbstractGraalTruffleRuntimeListener;
 import com.oracle.truffle.runtime.CompilationTask;
 import com.oracle.truffle.runtime.FixedPointMath;
-import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
-import com.oracle.truffle.runtime.OptimizedTruffleRuntimeListener;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 import com.oracle.truffle.runtime.OptimizedDirectCallNode;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntimeListener;
 
 /**
  * Traces AST-level compilation events with a detailed log message sent to the Truffle log stream
@@ -73,16 +78,17 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
 
     public static final String TIER_FORMAT = "Tier %d";
     private static final String QUEUE_FORMAT = "Queue: Size %4d Change %c%-2d Load %5.2f Time %5dus                    ";
-    private static final String TARGET_FORMAT = "id=%-5d %-50s ";
+    private static final String TARGET_FORMAT = "engine=%-2d id=%-5d %-50s ";
     public static final String COUNT_THRESHOLD_FORMAT = "Count/Thres  %9d/%9d";
+    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS").withZone(ZoneId.of("UTC"));
     // @formatter:off
-    private static final String QUEUED_FORMAT   = "opt queued " + TARGET_FORMAT + "|" + TIER_FORMAT + "|" + COUNT_THRESHOLD_FORMAT + "|" + QUEUE_FORMAT + "|Timestamp %d|Src %s";
-    private static final String UNQUEUED_FORMAT = "opt unque. " + TARGET_FORMAT + "|" + TIER_FORMAT + "|" + COUNT_THRESHOLD_FORMAT + "|" + QUEUE_FORMAT + "|Timestamp %d|Src %s|Reason %s";
-    private static final String START_FORMAT    = "opt start  " + TARGET_FORMAT + "|" + TIER_FORMAT + "|Priority %9d|Rate %.6f|"         + QUEUE_FORMAT + "|Timestamp %d|Src %s";
-    private static final String DONE_FORMAT     = "opt done   " + TARGET_FORMAT + "|" + TIER_FORMAT + "|Time %18s|AST %4d|Inlined %3dY %3dN|IR %6d/%6d|CodeSize %7d|Addr %7s|Timestamp %d|Src %s";
-    private static final String FAILED_FORMAT   = "opt failed " + TARGET_FORMAT + "|" + TIER_FORMAT + "|Time %18s|Reason: %s|Timestamp %d|Src %s";
-    private static final String INV_FORMAT      = "opt inval. " + TARGET_FORMAT + "                                                                                                                |Timestamp %d|Src %s|Reason %s";
-    private static final String DEOPT_FORMAT    = "opt deopt  " + TARGET_FORMAT + "|                                                                                                               |Timestamp %d|Src %s";
+    private static final String QUEUED_FORMAT   = "opt queued " + TARGET_FORMAT + "|" + TIER_FORMAT + "|" + COUNT_THRESHOLD_FORMAT + "|" + QUEUE_FORMAT + "|UTC %s|Src %s";
+    private static final String UNQUEUED_FORMAT = "opt unque. " + TARGET_FORMAT + "|" + TIER_FORMAT + "|" + COUNT_THRESHOLD_FORMAT + "|" + QUEUE_FORMAT + "|UTC %s|Src %s|Reason %s";
+    private static final String START_FORMAT    = "opt start  " + TARGET_FORMAT + "|" + TIER_FORMAT + "|Priority %9d|Rate %.6f|"         + QUEUE_FORMAT + "|UTC %s|Src %s";
+    private static final String DONE_FORMAT     = "opt done   " + TARGET_FORMAT + "|" + TIER_FORMAT + "|Time %18s|AST %4d|Inlined %3dY %3dN|IR %6d/%6d|CodeSize %7d|Addr 0x%012x|UTC %s|Src %s";
+    private static final String FAILED_FORMAT   = "opt failed " + TARGET_FORMAT + "|" + TIER_FORMAT + "|Time %18s|Reason: %s|UTC %s|Src %s";
+    private static final String INV_FORMAT      = "opt inval. " + TARGET_FORMAT + "                                                                                                                |UTC %s|Src %s|Reason %s";
+    private static final String DEOPT_FORMAT    = "opt deopt  " + TARGET_FORMAT + "|                                                                                                               |UTC %s|Src %s";
     // @formatter:on
 
     @Override
@@ -91,6 +97,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
             int callAndLoopThreshold = (target.engine.multiTier && tier == 2) ? target.engine.callAndLoopThresholdInFirstTier : target.engine.callAndLoopThresholdInInterpreter;
             int scale = runtime.compilationThresholdScale();
             log(target, String.format(QUEUED_FORMAT,
+                            target.engineId(),
                             target.id,
                             safeTargetName(target),
                             tier,
@@ -101,7 +108,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
                             1,
                             FixedPointMath.toDouble(scale),
                             0,
-                            System.nanoTime(),
+                            TIME_FORMATTER.format(ZonedDateTime.now()),
                             formatSourceSection(safeSourceSection(target))));
         }
     }
@@ -112,6 +119,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
             int callAndLoopThreshold = tier == 1 ? target.engine.callAndLoopThresholdInInterpreter : target.engine.callAndLoopThresholdInFirstTier;
             int scale = runtime.compilationThresholdScale();
             log(target, String.format(UNQUEUED_FORMAT,
+                            target.engineId(),
                             target.id,
                             safeTargetName(target),
                             tier,
@@ -122,25 +130,30 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
                             0,
                             FixedPointMath.toDouble(scale),
                             0,
-                            System.nanoTime(),
+                            TIME_FORMATTER.format(ZonedDateTime.now()),
                             formatSourceSection(safeSourceSection(target)),
                             reason));
         }
     }
 
     @Override
-    public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier) {
+    public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> lazyStackTrace) {
         if (target.engine.traceCompilation || target.engine.traceCompilationDetails) {
+            Times compilation = currentCompilation.get();
+            if (!compilation.partialEvaluationSuccess) {
+                compilation.timePartialEvaluationFinished = System.nanoTime();
+            }
             if (!isPermanentFailure(bailout, permanentBailout)) {
                 onCompilationDequeued(target, null, "Non permanent bailout: " + reason, tier);
             } else {
                 log(target, String.format(FAILED_FORMAT,
+                                target.engineId(),
                                 target.id,
                                 safeTargetName(target),
                                 tier,
                                 compilationTime(),
                                 reason,
-                                System.nanoTime(),
+                                TIME_FORMATTER.format(ZonedDateTime.now()),
                                 formatSourceSection(safeSourceSection(target))));
             }
             currentCompilation.remove();
@@ -166,6 +179,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
                 queueChange = 0;
             }
             log(target, String.format(START_FORMAT,
+                            target.engineId(),
                             target.id,
                             safeTargetName(target),
                             task.tier(),
@@ -176,7 +190,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
                             Math.abs(queueChange),
                             FixedPointMath.toDouble(runtime.compilationThresholdScale()),
                             time / 1000,
-                            System.nanoTime(),
+                            TIME_FORMATTER.format(ZonedDateTime.now()),
                             formatSourceSection(safeSourceSection(target))));
         }
 
@@ -193,9 +207,10 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
     public void onCompilationDeoptimized(OptimizedCallTarget target, Frame frame) {
         if (target.engine.traceCompilation || target.engine.traceCompilationDetails) {
             log(target, String.format(DEOPT_FORMAT,
+                            target.engineId(),
                             target.id,
                             safeTargetName(target),
-                            System.nanoTime(),
+                            TIME_FORMATTER.format(ZonedDateTime.now()),
                             formatSourceSection(safeSourceSection(target))));
         }
     }
@@ -204,6 +219,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
     public void onCompilationTruffleTierFinished(OptimizedCallTarget target, AbstractCompilationTask task, GraphInfo graph) {
         if (target.engine.traceCompilation || target.engine.traceCompilationDetails) {
             final Times current = currentCompilation.get();
+            current.partialEvaluationSuccess = true;
             current.timePartialEvaluationFinished = System.nanoTime();
             current.nodeCountPartialEval = graph.getNodeCount();
         }
@@ -217,6 +233,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
         Times compilation = currentCompilation.get();
         int[] inlinedAndDispatched = inlinedAndDispatched(target, task);
         log(target, String.format(DONE_FORMAT,
+                        target.engineId(),
                         target.id,
                         safeTargetName(target),
                         task.tier(),
@@ -227,8 +244,8 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
                         compilation.nodeCountPartialEval,
                         graph == null ? 0 : graph.getNodeCount(),
                         result == null ? 0 : result.getTargetCodeSize(),
-                        "0x" + Long.toHexString(target.getCodeAddress()),
-                        System.nanoTime(),
+                        target.getCodeAddress(),
+                        TIME_FORMATTER.format(ZonedDateTime.now()),
                         formatSourceSection(safeSourceSection(target))));
         currentCompilation.remove();
     }
@@ -288,16 +305,17 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
         if (sourceSection == null || sourceSection.getSource() == null) {
             return "n/a";
         }
-        return String.format("%s:%d", sourceSection.getSource().getName(), sourceSection.getStartLine());
+        return String.format("%s:%d 0x%x", sourceSection.getSource().getName(), sourceSection.getStartLine(), sourceSection.getSource().hashCode());
     }
 
     @Override
     public void onCompilationInvalidated(OptimizedCallTarget target, Object source, CharSequence reason) {
         if (target.engine.traceCompilation || target.engine.traceCompilationDetails) {
             log(target, String.format(INV_FORMAT,
+                            target.engineId(),
                             target.id,
                             safeTargetName(target),
-                            System.nanoTime(),
+                            TIME_FORMATTER.format(ZonedDateTime.now()),
                             formatSourceSection(safeSourceSection(target)),
                             reason));
         }
@@ -307,7 +325,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
      * Determines if a failure is permanent.
      *
      * @see OptimizedTruffleRuntimeListener#onCompilationFailed(OptimizedCallTarget, String,
-     *      boolean, boolean, int)
+     *      boolean, boolean, int, Supplier)
      */
     private static boolean isPermanentFailure(boolean bailout, boolean permanentBailout) {
         return !bailout || permanentBailout;
@@ -315,6 +333,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
 
     private static final class Times {
         final long timeCompilationStarted = System.nanoTime();
+        boolean partialEvaluationSuccess;
         long timePartialEvaluationFinished;
         long nodeCountPartialEval;
     }

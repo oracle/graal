@@ -25,16 +25,19 @@
 package com.oracle.svm.core.genscavenge;
 
 import org.graalvm.collections.UnmodifiableEconomicMap;
+
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.genscavenge.compacting.ObjectMoveInfo;
+import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.util.UserError;
+
+import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
-
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.RuntimeOptionKey;
-import com.oracle.svm.core.util.InterruptImageBuilding;
-import com.oracle.svm.core.util.UserError;
 
 /** Options that are only valid for the serial GC (and not for the epsilon GC). */
 public final class SerialGCOptions {
@@ -79,11 +82,11 @@ public final class SerialGCOptions {
     @Option(help = "Print the time for each of the phases of each collection, if +VerboseGC. Serial GC only.", type = OptionType.Debug)//
     public static final RuntimeOptionKey<Boolean> PrintGCTimes = new RuntimeOptionKey<>(false, SerialGCOptions::serialGCOnly);
 
-    @Option(help = "Instrument write barriers with counters. Serial GC only.", type = OptionType.Debug)//
-    public static final HostedOptionKey<Boolean> CountWriteBarriers = new HostedOptionKey<>(false, SerialGCOptions::serialGCOnly);
-
     @Option(help = "Verify the heap before doing a garbage collection if VerifyHeap is enabled. Serial GC only.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> VerifyBeforeGC = new HostedOptionKey<>(true, SerialGCOptions::serialGCOnly);
+
+    @Option(help = "Verify the heap during a garbage collection if VerifyHeap is enabled. Serial GC only.", type = OptionType.Debug)//
+    public static final HostedOptionKey<Boolean> VerifyDuringGC = new HostedOptionKey<>(true, SerialGCOptions::serialGCOnly);
 
     @Option(help = "Verify the heap after doing a garbage collection if VerifyHeap is enabled. Serial GC only.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> VerifyAfterGC = new HostedOptionKey<>(true, SerialGCOptions::serialGCOnly);
@@ -106,12 +109,50 @@ public final class SerialGCOptions {
     @Option(help = "Develop demographics of the object references visited. Serial GC only.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> GreyToBlackObjRefDemographics = new HostedOptionKey<>(false, SerialGCOptions::serialGCOnly);
 
+    /* Option should be renamed, see GR-53798. */
+    @Option(help = "Ignore the maximum heap size while in VM-internal code.", type = OptionType.Expert)//
+    public static final HostedOptionKey<Boolean> IgnoreMaxHeapSizeWhileInVMOperation = new HostedOptionKey<>(false, SerialGCOptions::serialGCOnly);
+
+    /** Query these options only through an appropriate method. */
+    public static class ConcealedOptions {
+        @Option(help = "Collect old generation by compacting in-place instead of copying.", type = OptionType.Expert) //
+        public static final HostedOptionKey<Boolean> CompactingOldGen = new HostedOptionKey<>(false, SerialGCOptions::validateCompactingOldGen);
+
+        @Option(help = "Determines if a remembered set is used, which is necessary for collecting the young and old generation independently.", type = OptionType.Expert) //
+        public static final HostedOptionKey<Boolean> UseRememberedSet = new HostedOptionKey<>(true, SerialGCOptions::serialGCOnly);
+    }
+
     private SerialGCOptions() {
     }
 
     private static void serialGCOnly(OptionKey<?> optionKey) {
-        if (!SubstrateOptions.UseSerialGC.getValue()) {
-            throw new InterruptImageBuilding("The option '" + optionKey.getName() + "' can only be used together with the serial garbage collector ('--gc=serial').");
+        if (!SubstrateOptions.useSerialGC()) {
+            throw UserError.abort("The option '" + optionKey.getName() + "' can only be used together with the serial garbage collector ('--gc=serial').");
         }
+    }
+
+    private static void validateCompactingOldGen(HostedOptionKey<Boolean> compactingOldGen) {
+        if (!compactingOldGen.getValue()) {
+            return;
+        }
+        serialGCOnly(compactingOldGen);
+        if (!useRememberedSet()) {
+            throw UserError.abort("%s requires %s.", SubstrateOptionsParser.commandArgument(ConcealedOptions.CompactingOldGen, "+"),
+                            SubstrateOptionsParser.commandArgument(ConcealedOptions.UseRememberedSet, "+"));
+        }
+        if (SerialAndEpsilonGCOptions.AlignedHeapChunkSize.getValue() > ObjectMoveInfo.MAX_CHUNK_SIZE) {
+            throw UserError.abort("%s requires %s.", SubstrateOptionsParser.commandArgument(ConcealedOptions.CompactingOldGen, "+"),
+                            SubstrateOptionsParser.commandArgument(SerialAndEpsilonGCOptions.AlignedHeapChunkSize, "<value below or equal to " + ObjectMoveInfo.MAX_CHUNK_SIZE + ">"));
+        }
+    }
+
+    @Fold
+    public static boolean useRememberedSet() {
+        return !SubstrateOptions.useEpsilonGC() && ConcealedOptions.UseRememberedSet.getValue();
+    }
+
+    @Fold
+    public static boolean useCompactingOldGen() {
+        return !SubstrateOptions.useEpsilonGC() && ConcealedOptions.CompactingOldGen.getValue();
     }
 }

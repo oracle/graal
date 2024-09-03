@@ -48,7 +48,7 @@ import jdk.vm.ci.amd64.AMD64;
 class AMD64DarwinUContextRegisterDumper implements UContextRegisterDumper {
     AMD64DarwinUContextRegisterDumper() {
         VMError.guarantee(AMD64.r14.equals(AMD64ReservedRegisters.HEAP_BASE_REGISTER_CANDIDATE));
-        VMError.guarantee(AMD64.r15.equals(AMD64ReservedRegisters.THREAD_REGISTER_CANDIDATE));
+        VMError.guarantee(AMD64.r15.equals(AMD64ReservedRegisters.THREAD_REGISTER));
     }
 
     @Override

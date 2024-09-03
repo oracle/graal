@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,20 +36,20 @@ import java.nio.channels.FileChannel.MapMode;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.phases.common.inlining.InliningPhase;
-import jdk.graal.compiler.phases.common.inlining.policy.InlineEverythingPolicy;
-import jdk.graal.compiler.phases.tiers.HighTierContext;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.phases.common.inlining.InliningPhase;
+import jdk.graal.compiler.phases.common.inlining.policy.InlineEverythingPolicy;
+import jdk.graal.compiler.phases.tiers.HighTierContext;
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.InvalidInstalledCodeException;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import sun.misc.Unsafe;
 
 public class MarkUnsafeAccessTest extends GraalCompilerTest {
 
@@ -72,7 +72,7 @@ public class MarkUnsafeAccessTest extends GraalCompilerTest {
     }
 
     public void cas() {
-        unsafe.compareAndSwapInt(null, 0, 0, 0);
+        unsafe.compareAndSetInt(null, 0, 0, 0);
     }
 
     public void noAccess() {
@@ -118,7 +118,6 @@ public class MarkUnsafeAccessTest extends GraalCompilerTest {
 
     @Test
     public void testCompiled() throws IOException {
-        Assume.assumeFalse("Crashes on AArch64 (GR-8351)", System.getProperty("os.arch").equalsIgnoreCase("aarch64"));
         ResolvedJavaMethod getMethod = asResolvedJavaMethod(getMethod(ByteBuffer.class, "get", new Class<?>[]{}));
         ResolvedJavaType mbbClass = getMetaAccess().lookupJavaType(MappedByteBuffer.class);
         AssumptionResult<ResolvedJavaMethod> answer = mbbClass.findUniqueConcreteMethod(getMethod);

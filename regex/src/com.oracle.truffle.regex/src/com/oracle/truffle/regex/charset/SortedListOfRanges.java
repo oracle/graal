@@ -193,7 +193,7 @@ public interface SortedListOfRanges extends CharacterSet {
     /**
      * Returns {@code true} if the range {@code [aLo, aHi]} is "left of" the range
      * {@code [bLo, bHi]}, where "left of" means "all values of range a are less than all values of
-     * range b" - i.e. {code aHi < bLo}.
+     * range b" - i.e. {code aHi &lt; bLo}.
      */
     @SuppressWarnings("unused")
     static boolean leftOf(int aLo, int aHi, int bLo, int bHi) {

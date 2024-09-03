@@ -59,7 +59,8 @@ public class SubstrateField implements SharedField {
     @UnknownPrimitiveField(availability = AfterCompilation.class) int location;
     @UnknownPrimitiveField(availability = AfterCompilation.class) private boolean isAccessed;
     @UnknownPrimitiveField(availability = AfterCompilation.class) private boolean isWritten;
-    @UnknownObjectField(types = {DirectSubstrateObjectConstant.class, PrimitiveConstant.class}, fullyQualifiedTypes = "jdk.vm.ci.meta.NullConstant", availability = AfterCompilation.class)//
+    @UnknownObjectField(types = {DirectSubstrateObjectConstant.class, PrimitiveConstant.class}, fullyQualifiedTypes = "jdk.vm.ci.meta.NullConstant", //
+                    canBeNull = true, availability = AfterCompilation.class)//
     JavaConstant constantValue;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -168,6 +169,16 @@ public class SubstrateField implements SharedField {
     @Override
     public boolean isValueAvailable() {
         return true;
+    }
+
+    @Override
+    public boolean isInBaseLayer() {
+        return false;
+    }
+
+    @Override
+    public JavaConstant getStaticFieldBase() {
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

@@ -36,6 +36,7 @@ public final class BuildPhaseProvider {
     private boolean analysisFinished;
     private boolean hostedUniverseBuilt;
     private boolean readyForCompilation;
+    private boolean compileQueueFinished;
     private boolean compilationFinished;
     private boolean heapLayoutFinished;
 
@@ -74,6 +75,14 @@ public final class BuildPhaseProvider {
         return singleton().readyForCompilation;
     }
 
+    public static void markCompileQueueFinished() {
+        singleton().compileQueueFinished = true;
+    }
+
+    public static boolean isCompileQueueFinished() {
+        return singleton().compileQueueFinished;
+    }
+
     public static void markCompilationFinished() {
         singleton().compilationFinished = true;
     }
@@ -108,6 +117,13 @@ public final class BuildPhaseProvider {
         @Override
         public boolean getAsBoolean() {
             return BuildPhaseProvider.isReadyForCompilation();
+        }
+    }
+
+    public static class CompileQueueFinished implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            return BuildPhaseProvider.isCompileQueueFinished();
         }
     }
 

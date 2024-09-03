@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -169,7 +169,10 @@ import com.oracle.truffle.api.source.SourceSection;
  * </ul>
  * </p>
  * <p>
- * Usage example: {@link DebuggerSessionSnippets#example}
+ * Usage example:
+ *
+ * {@snippet file="com/oracle/truffle/api/debug/DebuggerSession.java"
+ * region="DebuggerSessionSnippets#example"}
  *
  * @since 0.17
  */
@@ -205,6 +208,7 @@ public final class DebuggerSession implements Closeable {
     private final StableBoolean stepping = new StableBoolean(false);
     private final StableBoolean ignoreLanguageContextInitialization = new StableBoolean(false);
     private volatile boolean includeInternal = false;
+    private volatile boolean includeAvailableSourceSectionsOnly = false;
     private volatile boolean showHostStackFrames = false;
     private Predicate<Source> sourceFilter;
     @CompilationFinal private volatile Assumption suspensionFilterUnchanged = Truffle.getRuntime().createAssumption("Unchanged suspension filter");
@@ -314,10 +318,9 @@ public final class DebuggerSession implements Closeable {
 
             @Override
             public DebugValue get(Object key) {
-                if (!(key instanceof String)) {
+                if (!(key instanceof String name)) {
                     return null;
                 }
-                String name = (String) key;
                 return polyglotBindings.getProperty(name);
             }
         };
@@ -350,11 +353,13 @@ public final class DebuggerSession implements Closeable {
         synchronized (this) {
             boolean oldIncludeInternal = this.includeInternal;
             this.includeInternal = steppingFilter.isInternalIncluded();
+            boolean oldIncludeOnlyAvailableSourceSections = this.includeAvailableSourceSectionsOnly;
+            this.includeAvailableSourceSectionsOnly = steppingFilter.isIncludeAvailableSourceSectionsOnly();
             Predicate<Source> oldSourceFilter = this.sourceFilter;
             this.sourceFilter = steppingFilter.getSourcePredicate();
             this.suspensionFilterUnchanged.invalidate();
             this.suspensionFilterUnchanged = Truffle.getRuntime().createAssumption("Unchanged suspension filter");
-            if (oldIncludeInternal != this.includeInternal || oldSourceFilter != this.sourceFilter) {
+            if (oldIncludeInternal != this.includeInternal || oldIncludeOnlyAvailableSourceSections != this.includeAvailableSourceSectionsOnly || oldSourceFilter != this.sourceFilter) {
                 removeBindings();
                 addBindings(this.includeInternal, this.sourceFilter);
             }
@@ -464,7 +469,7 @@ public final class DebuggerSession implements Closeable {
         if (result == null) {
             return false;
         }
-        doSuspend(result.context, SuspendAnchor.BEFORE, result.frame, null);
+        doSuspend(result.context, SuspendAnchor.BEFORE, result.frame, null, false, false);
         return true;
     }
 
@@ -526,6 +531,8 @@ public final class DebuggerSession implements Closeable {
      * Suspends the current or the next execution of a given thread. Will throw an
      * {@link IllegalStateException} if the session is already closed.
      *
+     * Note that if a stepping strategy is currently active, we preserve the stepping state.
+     *
      * @since 20.0
      */
     public void suspend(Thread t) {
@@ -535,8 +542,34 @@ public final class DebuggerSession implements Closeable {
         if (closed) {
             throw new IllegalStateException("session closed");
         }
-
-        setSteppingStrategy(t, SteppingStrategy.createAlwaysHalt(), true);
+        // If there's an ongoing step request, we want to preserve that, so we use the preserve
+        // after halt strategy for suspend requests. In case the current strategy is a preserve halt
+        // strategy, we re-establish the halt next execution within the strategy. This is to
+        // avoid multiple nested levels of dual concurrent strategies.
+        SteppingStrategy currentStrategy = this.strategyMap.get(t);
+        SteppingStrategy newStrategy;
+        SuspendedEvent suspendedEvent = currentSuspendedEventMap.get(t);
+        if (suspendedEvent != null) {
+            // we're currently suspended and the old single step
+            // will be consumed if completed, hence we pick the next strategy
+            if (suspendedEvent.isStep()) {
+                currentStrategy = suspendedEvent.getNextStrategy();
+            }
+        }
+        if (currentStrategy != null) {
+            if (currentStrategy.isSingleStep()) {
+                newStrategy = SteppingStrategy.createPreserveAfterHalt(currentStrategy);
+            } else if (currentStrategy instanceof SteppingStrategy.PreserveAfterHalt preserveAfterHalt) {
+                // re-establish the halt strategy while preserving the current one
+                preserveAfterHalt.haltNextExecution();
+                newStrategy = preserveAfterHalt;
+            } else {
+                newStrategy = SteppingStrategy.createAlwaysHalt();
+            }
+        } else {
+            newStrategy = SteppingStrategy.createAlwaysHalt();
+        }
+        setSteppingStrategy(t, newStrategy, true);
     }
 
     /**
@@ -557,11 +590,7 @@ public final class DebuggerSession implements Closeable {
         suspendAll = true;
         // iterating concurrent hashmap should be save
         for (Thread t : strategyMap.keySet()) {
-            SteppingStrategy s = strategyMap.get(t);
-            assert s != null;
-            if (s.isDone() || s.isConsumed()) {
-                setSteppingStrategy(t, SteppingStrategy.createAlwaysHalt(), false);
-            }
+            suspend(t);
         }
         updateStepping();
     }
@@ -687,6 +716,7 @@ public final class DebuggerSession implements Closeable {
                     Class<?>... tags) {
         Builder builder = SourceSectionFilter.newBuilder().tagIs(tags);
         builder.includeInternal(includeInternalCode);
+        builder.sourceSectionAvailableOnly(includeAvailableSourceSectionsOnly);
         if (sFilter != null) {
             builder.sourceIs(new SourceSectionFilter.SourcePredicate() {
                 @Override
@@ -1120,7 +1150,7 @@ public final class DebuggerSession implements Closeable {
         // Fake the caller context
         Caller caller = findCurrentCaller(this, includeInternal);
         SuspendedContext context = SuspendedContext.create(caller.node, ((SteppingStrategy.Unwind) s).unwind);
-        doSuspend(context, SuspendAnchor.AFTER, caller.frame, insertableNode);
+        doSuspend(context, SuspendAnchor.AFTER, caller.frame, insertableNode, false, true);
     }
 
     static Caller findCurrentCaller(DebuggerSession session, boolean includeInternal) {
@@ -1133,15 +1163,25 @@ public final class DebuggerSession implements Closeable {
                 if (!SuspendedEvent.isEvalRootStackFrame(session, frameInstance) && (depth++ == 0)) {
                     return null;
                 }
+
                 Node callNode = frameInstance.getCallNode();
-                while (callNode != null && !SourceSectionFilter.ANY.includes(callNode)) {
-                    callNode = callNode.getParent();
-                }
+                RootNode rootNode;
                 if (callNode == null) {
-                    return null;
+                    // GR-52192 temporary workaround for Espresso, where a meaningful call node
+                    // cannot always be set as encapsulated node reference.
+                    rootNode = ((RootCallTarget) frameInstance.getCallTarget()).getRootNode();
+                    callNode = rootNode;
+                } else {
+                    while (callNode != null && !SourceSectionFilter.ANY.includes(callNode)) {
+                        callNode = callNode.getParent();
+                    }
+                    rootNode = callNode != null ? callNode.getRootNode() : null;
+                    if (rootNode == null) {
+                        // can't handle disconnected call nodes
+                        return null;
+                    }
                 }
-                RootNode root = callNode.getRootNode();
-                if (root == null || !includeInternal && root.isInternal()) {
+                if (!includeInternal && rootNode.isInternal()) {
                     return null;
                 }
                 return new Caller(frameInstance, callNode);
@@ -1269,11 +1309,13 @@ public final class DebuggerSession implements Closeable {
 
         boolean hitStepping = s.step(this, source.getContext(), suspendAnchor);
         boolean hitBreakpoint = !breaks.isEmpty();
+        boolean singleStepCompleted = hitStepping ? s.isSingleStepCompleted() : false;
+
         Object newReturnValue = returnValue;
         if (hitStepping || hitBreakpoint) {
             s.consume();
             newReturnValue = doSuspend(contextSupplier.get(), suspendAnchor, frame, source, inputValuesProvider, returnValue, exception, breaks,
-                            breakpointFailures);
+                            breakpointFailures, singleStepCompleted, s.isUnwind());
         } else {
             if (Debugger.TRACE) {
                 trace("ignored suspended reason: strategy(%s) from source:%s context:%s location:%s", s, source, source.getContext(), source.getSuspendAnchors());
@@ -1285,20 +1327,21 @@ public final class DebuggerSession implements Closeable {
         return newReturnValue;
     }
 
-    private Object doSuspend(SuspendedContext context, SuspendAnchor suspendAnchor, MaterializedFrame frame, InsertableNode insertableNode) {
-        return doSuspend(context, suspendAnchor, frame, insertableNode, null, null, null, Collections.emptyList(), Collections.emptyMap());
+    private void doSuspend(SuspendedContext context, SuspendAnchor suspendAnchor, MaterializedFrame frame, InsertableNode insertableNode, boolean singleStepCompleted, boolean isUnwind) {
+        doSuspend(context, suspendAnchor, frame, insertableNode, null, null, null, Collections.emptyList(), Collections.emptyMap(), singleStepCompleted, isUnwind);
     }
 
     private Object doSuspend(SuspendedContext context, SuspendAnchor suspendAnchor, MaterializedFrame frame,
                     InsertableNode insertableNode, InputValuesProvider inputValuesProvider, Object returnValue, DebugException exception,
-                    List<Breakpoint> breaks, Map<Breakpoint, Throwable> conditionFailures) {
+                    List<Breakpoint> breaks, Map<Breakpoint, Throwable> conditionFailures, boolean singleStepCompleted, boolean isUnwind) {
         CompilerAsserts.neverPartOfCompilation();
         Thread currentThread = Thread.currentThread();
 
         SuspendedEvent suspendedEvent;
         Object newReturnValue;
         try {
-            suspendedEvent = new SuspendedEvent(this, currentThread, context, frame, suspendAnchor, insertableNode, inputValuesProvider, returnValue, exception, breaks, conditionFailures);
+            suspendedEvent = new SuspendedEvent(this, currentThread, context, frame, suspendAnchor, insertableNode, inputValuesProvider, returnValue, exception, breaks, conditionFailures,
+                            singleStepCompleted, isUnwind);
             if (exception != null) {
                 exception.setSuspendedEvent(suspendedEvent);
             }
@@ -1393,10 +1436,14 @@ public final class DebuggerSession implements Closeable {
 
     private List<DebuggerNode> collectDebuggerNodes(Node iNode, SuspendAnchor suspendAnchor) {
         List<DebuggerNode> nodes = new ArrayList<>();
-        for (EventBinding<?> binding : allBindings) {
-            DebuggerNode node = (DebuggerNode) debugger.getInstrumenter().lookupExecutionEventNode(iNode, binding);
-            if (node != null && node.isActiveAt(suspendAnchor)) {
-                nodes.add(node);
+        synchronized (allBindings) {
+            // allBindings is a synchronized set, but we still need to synchronize
+            // iteration against manipulations, to avoid ConcurrentModificationExceptions
+            for (EventBinding<?> binding : allBindings) {
+                DebuggerNode node = (DebuggerNode) debugger.getInstrumenter().lookupExecutionEventNode(iNode, binding);
+                if (node != null && node.isActiveAt(suspendAnchor)) {
+                    nodes.add(node);
+                }
             }
         }
         return nodes;
@@ -1822,9 +1869,9 @@ class DebuggerSessionSnippets {
 
     @SuppressFBWarnings("")
     public void example() {
-        // @formatter:off
+        // @formatter:off // @replace regex='.*' replacement=''
         TruffleInstrument.Env instrumentEnv = null;
-        // BEGIN: DebuggerSessionSnippets#example
+        // @start region="DebuggerSessionSnippets#example"
         try (DebuggerSession session = Debugger.find(instrumentEnv).
                         startSession(new SuspendedCallback() {
             public void onSuspend(SuspendedEvent event) {
@@ -1838,7 +1885,7 @@ class DebuggerSessionSnippets {
             // install line breakpoint
             session.install(Breakpoint.newBuilder(someCode).lineIs(3).build());
         }
-        // END: DebuggerSessionSnippets#example
-        // @formatter:on
+        // @end region="DebuggerSessionSnippets#example"
+        // @formatter:on // @replace regex='.*' replacement=''
     }
 }

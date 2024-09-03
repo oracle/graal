@@ -16,7 +16,7 @@ do
     "--results-file=${RESULTS_FILE_PATH}" \
     wasm:WASM_BENCHMARKCASES -- \
     --jvm ${VM} --jvm-config ${VM_CONFIG} \
-    -Dwasmbench.benchmarkName=$benchmark -Dwasmtest.keepTempFiles=true -- \
+    -Dwasmbench.benchmarkName=$benchmark -- \
     CMicroBenchmarkSuite
 
   ${UPLOAD_CMD} "${RESULTS_FILE_PATH}"

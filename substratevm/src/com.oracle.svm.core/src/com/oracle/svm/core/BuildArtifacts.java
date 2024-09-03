@@ -25,6 +25,8 @@
 package com.oracle.svm.core;
 
 import java.nio.file.Path;
+import java.util.List;
+import java.util.function.BiConsumer;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -40,6 +42,8 @@ public interface BuildArtifacts {
 
         /* For all executables needed at run-time. */
         EXECUTABLE("executables"),
+        /* Native image layer. */
+        IMAGE_LAYER("image_layer"),
         /* For all shared libraries that are not JDK-related and needed at run-time. */
         SHARED_LIBRARY("shared_libraries"),
 
@@ -62,6 +66,7 @@ public interface BuildArtifacts {
         BUILD_INFO("build_info"),
         /* For all debugging-related artifacts. */
         DEBUG_INFO("debug_info"),
+        LAYER_SNAPSHOT("layer_snapshot"),
 
         /* For C header files. */
         C_HEADER("c_headers"),
@@ -85,4 +90,10 @@ public interface BuildArtifacts {
 
     /** Adds an artifact produced during native image build. */
     void add(ArtifactType type, Path artifact);
+
+    List<Path> get(ArtifactType type);
+
+    void forEach(BiConsumer<ArtifactType, List<Path>> action);
+
+    boolean isEmpty();
 }

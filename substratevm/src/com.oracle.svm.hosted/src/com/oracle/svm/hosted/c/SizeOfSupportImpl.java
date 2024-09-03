@@ -33,26 +33,23 @@ import com.oracle.svm.hosted.c.info.ElementInfo;
 import com.oracle.svm.hosted.c.info.SizableInfo;
 import com.oracle.svm.hosted.c.info.StructInfo;
 
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class SizeOfSupportImpl implements SizeOfSupport {
     private final NativeLibraries nativeLibraries;
-    private final MetaAccessProvider metaAccess;
 
-    public SizeOfSupportImpl(NativeLibraries nativeLibraries, MetaAccessProvider metaAccess) {
+    public SizeOfSupportImpl(NativeLibraries nativeLibraries) {
         this.nativeLibraries = nativeLibraries;
-        this.metaAccess = metaAccess;
     }
 
     @Override
     public int sizeof(Class<? extends PointerBase> clazz) {
-        ResolvedJavaType type = metaAccess.lookupJavaType(clazz);
+        ResolvedJavaType type = nativeLibraries.getMetaAccess().lookupJavaType(clazz);
         ElementInfo typeInfo = nativeLibraries.findElementInfo(type);
         if (typeInfo instanceof StructInfo && ((StructInfo) typeInfo).isIncomplete()) {
             throw UserError.abort("Class parameter %s of call to %s is an incomplete structure, so no size is available", type.toJavaName(true), SizeOf.class.getSimpleName());
         } else if (typeInfo instanceof SizableInfo) {
-            return ((SizableInfo) typeInfo).getSizeInfo().getProperty();
+            return ((SizableInfo) typeInfo).getSizeInBytes();
         } else {
             throw UserError.abort("Class parameter %s of call to %s is not an annotated C interface type", type.toJavaName(true), SizeOf.class.getSimpleName());
         }

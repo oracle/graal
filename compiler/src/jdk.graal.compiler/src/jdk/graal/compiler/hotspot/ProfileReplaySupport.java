@@ -29,11 +29,10 @@ import static jdk.graal.compiler.hotspot.ProfileReplaySupport.Options.ProfileMet
 import static jdk.graal.compiler.hotspot.ProfileReplaySupport.Options.SaveProfiles;
 import static jdk.graal.compiler.hotspot.ProfileReplaySupport.Options.StrictProfiles;
 
-import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.PrintStream;
+import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -42,8 +41,8 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import jdk.graal.compiler.util.json.JSONFormatter;
 import org.graalvm.collections.EconomicMap;
+
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
@@ -68,9 +67,8 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
-import jdk.graal.compiler.util.json.JSONParser;
-
-import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.graal.compiler.util.json.JsonParser;
+import jdk.graal.compiler.util.json.JsonPrettyWriter;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -81,29 +79,29 @@ public final class ProfileReplaySupport {
 
     public static class Options {
         // @formatter:off
-        @Option(help = "Save per compilation profile information.", type = OptionType.User)
+        @Option(help = "Save per compilation profile information.", type = OptionType.Debug)
         public static final OptionKey<Boolean> SaveProfiles = new OptionKey<>(false);
-        @Option(help = "Allow multiple compilations of the same method by overriding existing profiles.", type = OptionType.User)
+        @Option(help = "Allow multiple compilations of the same method by overriding existing profiles.", type = OptionType.Debug)
         public static final OptionKey<Boolean> OverrideProfiles = new OptionKey<>(false);
-        @Option(help = "Path for saving compilation profiles. "
-                        + "If the value is omitted the debug dump path will be used.", type = OptionType.User)
+        @Option(help = "Path for saving compilation profiles. " +
+                       "If the value is omitted the debug dump path will be used.", type = OptionType.Debug)
         public static final OptionKey<String> SaveProfilesPath = new OptionKey<>(null);
-        @Option(help = "Load per compilation profile information.", type = OptionType.User)
+        @Option(help = "Load per compilation profile information.", type = OptionType.Debug)
         public static final OptionKey<String> LoadProfiles = new OptionKey<>(null);
-        @Option(help = "Restrict saving or loading of profiles based on this filter. "
-                        + "See the MethodFilter option for the pattern syntax.", type = OptionType.User)
+        @Option(help = "Restrict saving or loading of profiles based on this filter. " +
+                       "See the MethodFilter option for the pattern syntax.", type = OptionType.Debug)
         public static final OptionKey<String> ProfileMethodFilter = new OptionKey<>(null);
-        @Option(help = "Throw an error if an attempt is made to overwrite/update a profile loaded from disk.", type = OptionType.User)
+        @Option(help = "Throw an error if an attempt is made to overwrite/update a profile loaded from disk.", type = OptionType.Debug)
         public static final OptionKey<Boolean> StrictProfiles = new OptionKey<>(true);
-        @Option(help = "Print to stdout when a profile is loaded.", type = OptionType.User)
+        @Option(help = "Print to stdout when a profile is loaded.", type = OptionType.Debug)
         public static final OptionKey<Boolean> PrintProfileLoading = new OptionKey<>(false);
-        @Option(help = "Print to stdout when a compilation performed with different profiles generates different "
-                        + "frontend IR.", type = OptionType.User)
+        @Option(help = "Print to stdout when a compilation performed with different profiles generates different " +
+                       "frontend IR.", type = OptionType.Debug)
         public static final OptionKey<Boolean> WarnAboutGraphSignatureMismatch = new OptionKey<>(true);
-        @Option(help = "Print to stdout when a compilation performed with different profiles generates different "
-                        + "backend code.", type = OptionType.User)
+        @Option(help = "Print to stdout when a compilation performed with different profiles generates different " +
+                       "backend code.", type = OptionType.Debug)
         public static final OptionKey<Boolean> WarnAboutCodeSignatureMismatch = new OptionKey<>(true);
-        @Option(help = "Print to stdout when requesting profiling info not present in a loaded profile.", type = OptionType.User)
+        @Option(help = "Print to stdout when requesting profiling info not present in a loaded profile.", type = OptionType.Debug)
         public static final OptionKey<Boolean> WarnAboutNotCachedLoadedAccess = new OptionKey<>(true);
         // @formatter:on
     }
@@ -141,11 +139,24 @@ public final class ProfileReplaySupport {
         return expectedResult;
     }
 
-    public static ProfileReplaySupport profileReplayPrologue(DebugContext debug, HotSpotGraalRuntimeProvider graalRuntime, int entryBCI, HotSpotResolvedJavaMethod method,
+    /**
+     * Start the profile record/replay process. If {@link Options#SaveProfiles} is set, this method
+     * installs {@link StableProfileProvider}s to record profiling information that can be
+     * subsequently saved with {@link #profileReplayEpilogue}. If {@link Options#LoadProfiles} is
+     * set, the method initializes {@link StableProfileProvider}s with profiles loaded from disk.
+     * <p>
+     * Note that there might be cases where profiles cannot be restored, even if they are present in
+     * the on-disk representation. For example, the profiles of {@code invokedynamic} call sites
+     * (e.g. lambda expressions) cannot be restored due to unpredictable type names of the lambda
+     * objects. Depending on {@link Options#StrictProfiles}, the {@link StableProfileProvider}s will
+     * either throw an exception or emit a warning in this case.
+     * </p>
+     */
+    public static ProfileReplaySupport profileReplayPrologue(DebugContext debug, int entryBCI, ResolvedJavaMethod method,
                     StableProfileProvider profileProvider, TypeFilter profileSaveFilter) {
         if (SaveProfiles.getValue(debug.getOptions()) || LoadProfiles.getValue(debug.getOptions()) != null) {
             LambdaNameFormatter lambdaNameFormatter = new LambdaNameFormatter() {
-                private final StableMethodNameFormatter stableFormatter = new StableMethodNameFormatter(graalRuntime.getHostBackend().getProviders(), debug, true);
+                private final StableMethodNameFormatter stableFormatter = new StableMethodNameFormatter(true);
 
                 @Override
                 public boolean isLambda(ResolvedJavaMethod m) {
@@ -170,7 +181,7 @@ public final class ProfileReplaySupport {
                     String s = PathUtilities.sanitizeFileName(method.format("%h.%n(%p)%r"));
                     boolean foundOne = false;
                     for (Path path : files.filter(x -> x.toString().contains(s)).filter(x -> x.toString().endsWith(".glog")).collect(Collectors.toList())) {
-                        EconomicMap<String, Object> map = JSONParser.parseDict(new FileReader(path.toFile()));
+                        EconomicMap<String, Object> map = JsonParser.parseDict(new FileReader(path.toFile()));
                         if (entryBCI == (int) map.get("entryBCI")) {
                             foundOne = true;
                             expectedResult = (Boolean) map.get("result");
@@ -199,17 +210,27 @@ public final class ProfileReplaySupport {
         return null;
     }
 
-    public void profileReplayEpilogue(DebugContext debug, CompilationTask.HotSpotCompilationWrapper compilation, StableProfileProvider profileProvider, CompilationIdentifier compilationId,
-                    int entryBCI,
-                    HotSpotResolvedJavaMethod method) {
+    /**
+     * Finishes a previously started profile record/replay (see {@link #profileReplayPrologue}.
+     * Both, for record and replay, the method validates various expectations (see
+     * {@link Options#WarnAboutCodeSignatureMismatch} and
+     * {@link Options#WarnAboutGraphSignatureMismatch}). If {@link Options#SaveProfiles} is set, the
+     * method additionally saves the previously collected profiles to the given profile path.
+     */
+    public void profileReplayEpilogue(DebugContext debug, CompilationResult result, StructuredGraph graph, StableProfileProvider profileProvider, CompilationIdentifier compilationId,
+                    int entryBCI, ResolvedJavaMethod method) {
         if ((SaveProfiles.getValue(debug.getOptions()) || LoadProfiles.getValue(debug.getOptions()) != null) && profileFilter.matches(method)) {
             String codeSignature = null;
             String graphSignature = null;
-            if (compilation.result != null) {
-                codeSignature = compilation.result.getCodeSignature();
-                assert compilation.graph != null;
-                String s = getCanonicalGraphString(compilation.graph);
-                graphSignature = CompilationResult.getSignature(s.getBytes(StandardCharsets.UTF_8));
+            if (result != null) {
+                try {
+                    codeSignature = result.getCodeSignature();
+                    assert graph != null;
+                    String s = getCanonicalGraphString(graph);
+                    graphSignature = CompilationResult.getSignature(s.getBytes(StandardCharsets.UTF_8));
+                } catch (Throwable t) {
+                    throw debug.handle(t);
+                }
             }
             if (Options.WarnAboutCodeSignatureMismatch.getValue(debug.getOptions())) {
                 if (expectedCodeSignature != null && !Objects.equals(codeSignature, expectedCodeSignature)) {
@@ -229,7 +250,7 @@ public final class ProfileReplaySupport {
                     map.put("entryBCI", entryBCI);
                     map.put("codeSignature", codeSignature);
                     map.put("graphSignature", graphSignature);
-                    map.put("result", compilation.result != null);
+                    map.put("result", result != null);
                     profileProvider.recordProfiles(map, profileSaveFilter, lambdaNameFormatter);
                     String path = null;
                     if (Options.SaveProfilesPath.getValue(debug.getOptions()) != null) {
@@ -242,8 +263,8 @@ public final class ProfileReplaySupport {
                     } else {
                         path = debug.getDumpPath(".glog", false, false);
                     }
-                    try (PrintStream out = new PrintStream(new BufferedOutputStream(PathUtilities.openOutputStream(path)))) {
-                        out.println(JSONFormatter.formatJSON(map, true));
+                    try (JsonPrettyWriter writer = new JsonPrettyWriter(new PrintWriter(PathUtilities.openOutputStream(path)))) {
+                        writer.print(map);
                     }
                 } catch (Throwable t) {
                     throw debug.handle(t);

@@ -98,7 +98,8 @@ import com.oracle.truffle.tck.TruffleTestInvoker.TruffleTestClass;
  *
  * The Truffle AST to be tested is written as a {@link RootNode} subclass, for example:
  * <p>
- * {@codesnippet TruffleRunnerSnippets#TestExecuteNode}
+ * {@snippet file="com/oracle/truffle/tck/TruffleRunner.java"
+ * region="TruffleRunnerSnippets#TestExecuteNode"}
  *
  * <h4>Writing a test method</h4>
  *
@@ -112,14 +113,16 @@ import com.oracle.truffle.tck.TruffleTestInvoker.TruffleTestClass;
  * {@link CallTarget#call}. Then it should verify the result by inspecting the return value and
  * checking the expected side effects of the test code.
  * <p>
- * {@codesnippet TruffleRunnerSnippets#ExampleTest}
+ * {@snippet file="com/oracle/truffle/tck/TruffleRunner.java"
+ * region="TruffleRunnerSnippets#ExampleTest"}
  *
  * <h4>Running a test in the polyglot engine</h4>
  *
  * If a test should be run in the context of a polyglot engine, {@link RunWithPolyglotRule} can be
  * used.
  * <p>
- * {@codesnippet TruffleRunnerSnippets#RunWithPolyglotRule}
+ * {@snippet file="com/oracle/truffle/tck/TruffleRunner.java"
+ * region="TruffleRunnerSnippets#RunWithPolyglotRule"}
  *
  * @see Warmup warmup iterations and compilation
  * @see ParametersFactory parameterized Truffle AST tests
@@ -154,7 +157,8 @@ public class TruffleRunner extends BlockJUnit4ClassRunner {
      * test should be done before the Truffle tree is compiled. If this annotation is missing, the
      * default value of 3 is used.
      * <p>
-     * {@codesnippet TruffleRunnerSnippets#warmupTest}
+     * {@snippet file="com/oracle/truffle/tck/TruffleRunner.java"
+     * region="TruffleRunnerSnippets#warmupTest"}
      * <p>
      * In this example, the test code will in total be run 6 times. The first 5 iterations are
      * warmup. The {@link CallTarget#call} invocation will run in the interpreter, simply calling
@@ -186,7 +190,8 @@ public class TruffleRunner extends BlockJUnit4ClassRunner {
      * test {@link RootNode} constructor may take the test class as single argument, or
      * alternatively the test {@link RootNode} can be a non-static inner class of the test class.
      * <p>
-     * {@codesnippet TruffleRunnerSnippets#ParameterizedTest}
+     * {@snippet file="com/oracle/truffle/tck/TruffleRunner.java"
+     * region="TruffleRunnerSnippets#ParameterizedTest"}
      *
      * @see TruffleRunner
      *
@@ -307,7 +312,7 @@ public class TruffleRunner extends BlockJUnit4ClassRunner {
     private static final class ParameterizedRunner extends BlockJUnit4ClassRunnerWithParameters {
 
         ParameterizedRunner(TestWithParameters test) throws InitializationError {
-            super(test);
+            super(new TestWithParameters(test.getName(), new TruffleTestClass(test.getTestClass().getJavaClass()), test.getParameters()));
         }
 
         @Override
@@ -323,16 +328,6 @@ public class TruffleRunner extends BlockJUnit4ClassRunner {
         protected void validateTestMethods(List<Throwable> errors) {
             TruffleTestInvoker.validateTestMethods(getTestClass(), errors);
         }
-
-        /**
-         * Internal method used by the JUnit framework. Do not call directly.
-         *
-         * @since 0.27
-         */
-        @Override
-        protected TestClass createTestClass(Class<?> testClass) {
-            return new TruffleTestClass(testClass);
-        }
     }
 
     /**
@@ -344,7 +339,19 @@ public class TruffleRunner extends BlockJUnit4ClassRunner {
      * @since 0.25
      */
     public TruffleRunner(Class<?> klass) throws InitializationError {
-        super(klass);
+        super(new TruffleTestClass(klass));
+    }
+
+    /**
+     * Should not be called directly. To use this class, annotate your test class with
+     * {@code @RunWith(TruffleRunner.class)}.
+     *
+     * @see TruffleRunner
+     *
+     * @since 24.2
+     */
+    public TruffleRunner(TestClass testClass) throws InitializationError {
+        super(new TruffleTestClass(testClass.getJavaClass()));
     }
 
     /**
@@ -370,16 +377,6 @@ public class TruffleRunner extends BlockJUnit4ClassRunner {
     protected final void validateTestMethods(List<Throwable> errors) {
         TruffleTestInvoker.validateTestMethods(getTestClass(), errors);
     }
-
-    /**
-     * Internal method used by the JUnit framework. Do not call directly.
-     *
-     * @since 0.27
-     */
-    @Override
-    protected final TestClass createTestClass(Class<?> testClass) {
-        return new TruffleTestClass(testClass);
-    }
 }
 
 class TruffleRunnerSnippets {
@@ -387,7 +384,7 @@ class TruffleRunnerSnippets {
     @Rule RunWithPolyglotRule runWithPolyglot;
 
     // Checkstyle: stop
-    // BEGIN: TruffleRunnerSnippets#TestExecuteNode
+    // @start region="TruffleRunnerSnippets#TestExecuteNode"
     public class TestExecuteNode extends RootNode {
 
         @Child InteropLibrary interop;
@@ -409,7 +406,7 @@ class TruffleRunnerSnippets {
             }
         }
     }
-    // END: TruffleRunnerSnippets#TestExecuteNode
+    // @end region = "TruffleRunnerSnippets#TestExecuteNode"
     // Checkstyle: resume
 
     private static TruffleObject prepareArgumentValue() {
@@ -420,7 +417,7 @@ class TruffleRunnerSnippets {
         return null;
     }
 
-    // BEGIN: TruffleRunnerSnippets#ExampleTest
+    // @start region = "TruffleRunnerSnippets#ExampleTest"
     @RunWith(TruffleRunner.class)
     public class ExampleTest {
 
@@ -431,9 +428,9 @@ class TruffleRunnerSnippets {
             Assert.assertEquals(expectedRetValue(), ret);
         }
     }
-    // END: TruffleRunnerSnippets#ExampleTest
+    // @end region = "TruffleRunnerSnippets#ExampleTest"
 
-    // BEGIN: TruffleRunnerSnippets#warmupTest
+    // @start region = "TruffleRunnerSnippets#warmupTest"
     @Test
     @Warmup(5)
     public void warmupTest(@Inject(TestExecuteNode.class) CallTarget target) {
@@ -441,10 +438,10 @@ class TruffleRunnerSnippets {
         Object ret = target.call(receiver);
         Assert.assertEquals(expectedRetValue(), ret);
     }
-    // END: TruffleRunnerSnippets#warmupTest
+    // @end region = "TruffleRunnerSnippets#warmupTest"
 
     // Checkstyle: stop
-    // BEGIN: TruffleRunnerSnippets#ParameterizedTest
+    // @start region="TruffleRunnerSnippets#ParameterizedTest"
     @RunWith(Parameterized.class)
     @UseParametersRunnerFactory(TruffleRunner.ParametersFactory.class)
     public static class ParameterizedTest {
@@ -493,11 +490,11 @@ class TruffleRunnerSnippets {
             Assert.assertEquals(expectedRetValue(), ret);
         }
     }
-    // END: TruffleRunnerSnippets#ParameterizedTest
+    // @end region = "TruffleRunnerSnippets#ParameterizedTest"
     // Checkstyle: resume
 
     // Checkstyle: stop
-    // BEGIN: TruffleRunnerSnippets#RunWithPolyglotRule
+    // @start region="TruffleRunnerSnippets#RunWithPolyglotRule"
     @RunWith(TruffleRunner.class)
     public static class PolyglotTest {
 
@@ -516,6 +513,6 @@ class TruffleRunnerSnippets {
             Assert.assertEquals(expectedRetValue(), ret);
         }
     }
-    // END: TruffleRunnerSnippets#RunWithPolyglotRule
+    // @end region = "TruffleRunnerSnippets#RunWithPolyglotRule"
     // Checkstyle: resume
 }

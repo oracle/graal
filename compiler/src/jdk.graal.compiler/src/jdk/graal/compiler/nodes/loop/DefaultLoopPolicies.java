@@ -24,6 +24,10 @@
  */
 package jdk.graal.compiler.nodes.loop;
 
+import static java.lang.Math.addExact;
+import static java.lang.Math.min;
+import static java.lang.Math.multiplyExact;
+import static java.lang.Math.toIntExact;
 import static jdk.graal.compiler.core.common.GraalOptions.LoopMaxUnswitch;
 import static jdk.graal.compiler.core.common.GraalOptions.MaximumDesiredSize;
 import static jdk.graal.compiler.core.common.GraalOptions.MinimumPeelFrequency;
@@ -44,6 +48,15 @@ import static jdk.graal.compiler.nodes.loop.DefaultLoopPolicies.Options.UnrollMa
 
 import java.util.List;
 
+import org.graalvm.collections.EconomicMap;
+
+import jdk.graal.compiler.core.common.cfg.BasicBlock;
+import jdk.graal.compiler.core.common.cfg.CFGLoop;
+import jdk.graal.compiler.core.common.util.UnsignedLong;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeBitMap;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.ControlSplitNode;
 import jdk.graal.compiler.nodes.Invoke;
@@ -54,17 +67,9 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.CompareNode;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
+import jdk.graal.compiler.nodes.debug.ControlFlowAnchorNode;
 import jdk.graal.compiler.nodes.extended.ForeignCall;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
-import org.graalvm.collections.EconomicMap;
-import jdk.graal.compiler.core.common.cfg.BasicBlock;
-import jdk.graal.compiler.core.common.cfg.Loop;
-import jdk.graal.compiler.core.common.util.UnsignedLong;
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.graph.NodeBitMap;
-import jdk.graal.compiler.nodes.debug.ControlFlowAnchorNode;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
@@ -74,37 +79,37 @@ public class DefaultLoopPolicies implements LoopPolicies {
 
     public static class Options {
         // @formatter:off
-        @Option(help = "Maximum loop unswitching code size increase in nodes.", type = OptionType.Expert)
+        @Option(help = "Maximum loop unswitching code size increase in nodes.", type = OptionType.Debug)
         public static final OptionKey<Integer> LoopUnswitchMaxIncrease = new OptionKey<>(2000);
-        @Option(help = "Number of nodes allowed for a loop unswitching regardless of the loop frequency.", type = OptionType.Expert)
+        @Option(help = "Number of nodes allowed for a loop unswitching regardless of the loop frequency.", type = OptionType.Debug)
         public static final OptionKey<Integer> LoopUnswitchTrivial = new OptionKey<>(20);
-        @Option(help = "Number of nodes allowed for a loop unswitching per loop frequency. The number of nodes allowed for the unswitching is proportional to the relative frequency of the loop by this constant.", type = OptionType.Expert)
+        @Option(help = "Specifies the number of nodes allowed for a loop unswitching per loop frequency. The number of nodes allowed for an unswitching is proportional to the relative frequency of the loop by this value.", type = OptionType.Debug)
         public static final OptionKey<Double> LoopUnswitchFrequencyBoost = new OptionKey<>(20.0);
-        @Option(help = "Minimum value for the frequency factor of an invariant.", type = OptionType.Expert)
+        @Option(help = "Minimum value for the frequency factor of an invariant.", type = OptionType.Debug)
         public static final OptionKey<Double> LoopUnswitchFrequencyMinFactor = new OptionKey<>(0.05);
-        @Option(help = "Maximun value for the frequency factor of an invariant.", type = OptionType.Expert)
+        @Option(help = "Maximun value for the frequency factor of an invariant.", type = OptionType.Debug)
         public static final OptionKey<Double> LoopUnswitchFrequencyMaxFactor = new OptionKey<>(0.95);
-        @Option(help = "Lower bound for the minimun frequency of an invariant condition to be unswitched.", type = OptionType.Expert)
+        @Option(help = "Lower bound for the minimun frequency of an invariant condition to be unswitched.", type = OptionType.Debug)
         public static final OptionKey<Double> LoopUnswitchMinSplitFrequency = new OptionKey<>(1.0);
-        @Option(help = "Default frequency for loops with unknown local frequency.", type = OptionType.Expert)
+        @Option(help = "Default frequency for loops with unknown local frequency.", type = OptionType.Debug)
         public static final OptionKey<Double> DefaultLoopFrequency = new OptionKey<>(100.0);
-        @Option(help = "Default unswitching factor for control split node with unkown profile data.", type = OptionType.Expert)
+        @Option(help = "Default unswitching factor for control split node with unknown profile data.", type = OptionType.Debug)
         public static final OptionKey<Double> DefaultUnswitchFactor = new OptionKey<>(0.7);
-        @Option(help = "Maximum number of split successors before aborting unswitching.", type = OptionType.Expert)
+        @Option(help = "Maximum number of split successors before aborting unswitching.", type = OptionType.Debug)
         public static final OptionKey<Integer> MaxUnswitchSuccessors = new OptionKey<>(64);
 
-        @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> FullUnrollMaxNodes = new OptionKey<>(700);
-        @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> FullUnrollConstantCompareBoost = new OptionKey<>(15);
-        @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> FullUnrollMaxIterations = new OptionKey<>(600);
-        @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> ExactFullUnrollMaxNodes = new OptionKey<>(800);
-        @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> ExactPartialUnrollMaxNodes = new OptionKey<>(200);
+        @Option(help = "", type = OptionType.Debug) public static final OptionKey<Integer> FullUnrollMaxNodes = new OptionKey<>(700);
+        @Option(help = "", type = OptionType.Debug) public static final OptionKey<Integer> FullUnrollConstantCompareBoost = new OptionKey<>(15);
+        @Option(help = "", type = OptionType.Debug) public static final OptionKey<Integer> FullUnrollMaxIterations = new OptionKey<>(600);
+        @Option(help = "", type = OptionType.Debug) public static final OptionKey<Integer> ExactFullUnrollMaxNodes = new OptionKey<>(800);
+        @Option(help = "", type = OptionType.Debug) public static final OptionKey<Integer> ExactPartialUnrollMaxNodes = new OptionKey<>(200);
 
-        @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> UnrollMaxIterations = new OptionKey<>(16);
+        @Option(help = "", type = OptionType.Debug) public static final OptionKey<Integer> UnrollMaxIterations = new OptionKey<>(16);
         // @formatter:on
     }
 
     @Override
-    public boolean shouldPeel(LoopEx loop, ControlFlowGraph cfg, CoreProviders providers, int peelingIteration) {
+    public boolean shouldPeel(Loop loop, ControlFlowGraph cfg, CoreProviders providers, int peelingIteration) {
         if (peelingIteration > 0) {
             // Do not do iterative peeling by default.
             return false;
@@ -126,7 +131,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
             }
         }
 
-        if (loop.loop().getChildren().size() > 0) {
+        if (loop.getCFGLoop().getChildren().size() > 0) {
             // This loop has child loops. Loop peeling could explode graph size.
             return false;
         }
@@ -172,7 +177,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
      * returns some other member of {@link FullUnrollability} describing why the loop cannot or
      * should not be fully unrolled.
      */
-    public FullUnrollability canFullUnroll(LoopEx loop) {
+    public FullUnrollability canFullUnroll(Loop loop) {
         DebugContext debug = loop.loopBegin().graph().getDebug();
         if (!loop.isCounted() || !loop.counted().isConstantMaxTripCount() || !loop.counted().counterNeverOverflows()) {
             debug.log(DebugContext.INFO_LEVEL, "Loop %s not fully unrolled, because it is not counted", loop);
@@ -231,12 +236,12 @@ public class DefaultLoopPolicies implements LoopPolicies {
     }
 
     @Override
-    public boolean shouldFullUnroll(LoopEx loop) {
+    public boolean shouldFullUnroll(Loop loop) {
         return canFullUnroll(loop) == FullUnrollability.SHOULD_FULL_UNROLL;
     }
 
     @Override
-    public boolean shouldPartiallyUnroll(LoopEx loop, CoreProviders providers) {
+    public boolean shouldPartiallyUnroll(Loop loop, CoreProviders providers) {
         LoopBeginNode loopBegin = loop.loopBegin();
         if (!loop.isCounted()) {
             loopBegin.getDebug().log(DebugContext.VERBOSE_LEVEL, "shouldPartiallyUnroll %s isn't counted", loopBegin);
@@ -281,7 +286,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
     }
 
     @Override
-    public boolean shouldTryUnswitch(LoopEx loop) {
+    public boolean shouldTryUnswitch(Loop loop) {
         LoopBeginNode loopBegin = loop.loopBegin();
         double loopFrequency = loop.localLoopFrequency();
         if (loopFrequency <= 1.0) {
@@ -299,7 +304,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
      * @param controlSplits the control split nodes to consider.
      * @return the approximate code size change in nodes.
      */
-    private static int approxCodeSizeChange(LoopEx loop, List<ControlSplitNode> controlSplits) {
+    private static int approxCodeSizeChange(Loop loop, List<ControlSplitNode> controlSplits) {
         StructuredGraph graph = loop.loopBegin().graph();
         NodeBitMap branchNodes = graph.createNodeBitMap();
         for (ControlSplitNode controlSplit : controlSplits) {
@@ -363,8 +368,8 @@ public class DefaultLoopPolicies implements LoopPolicies {
      * frequencies which is 750. This mean that on average each time the loop is executed, the
      * invariant is used 750 times.
      */
-    private static double splitLocalLoopFrequency(LoopEx loop, List<ControlSplitNode> controlSplits) {
-        int loopDepth = loop.loop().getDepth();
+    private static double splitLocalLoopFrequency(Loop loop, List<ControlSplitNode> controlSplits) {
+        int loopDepth = loop.getCFGLoop().getDepth();
         double loopLocalFrequency = loop.localLoopFrequency();
         ControlFlowGraph cfg = loop.loopsData().getCFG();
         double loopRelativeFrequency = cfg.blockFor(loop.loopBegin()).getRelativeFrequency();
@@ -373,7 +378,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
         for (ControlSplitNode node : controlSplits) {
             HIRBlock b = cfg.blockFor(node);
             double f = b.getRelativeFrequency();
-            for (Loop<HIRBlock> l = b.getLoop(); l.getDepth() > loopDepth; l = l.getParent()) {
+            for (CFGLoop<HIRBlock> l = b.getLoop(); l.getDepth() > loopDepth; l = l.getParent()) {
                 f /= loop.loopsData().loop(l).localLoopFrequency();
             }
 
@@ -390,22 +395,25 @@ public class DefaultLoopPolicies implements LoopPolicies {
      * @param loop the loop to unswitch
      * @return the maximum code size change (in the number of nodes)
      */
-    private static int loopMaxCodeSizeChange(LoopEx loop) {
-        StructuredGraph graph = loop.loopBegin().graph();
-        OptionValues options = loop.loopBegin().getOptions();
+    private static int loopMaxCodeSizeChange(Loop loop) {
+        final StructuredGraph graph = loop.loopBegin().graph();
+        final OptionValues options = loop.loopBegin().getOptions();
+        final int remainingGraphSpace = MaximumDesiredSize.getValue(options) - graph.getNodeCount();
 
-        boolean isTrusted = ProfileData.ProfileSource.isTrusted(loop.localFrequencySource());
-        double loopFrequency = isTrusted ? loop.localLoopFrequency() : DefaultLoopFrequency.getValue(options);
-        /* When a loop has a greater local loop frequency we allow a bigger change in code size */
-        int maxDiff = LoopUnswitchTrivial.getValue(options) + (int) (LoopUnswitchFrequencyBoost.getValue(options) * (loopFrequency - 1.0));
-
-        maxDiff = Math.min(maxDiff, LoopUnswitchMaxIncrease.getValue(options));
-        int remainingGraphSpace = MaximumDesiredSize.getValue(options) - graph.getNodeCount();
-        return Math.min(maxDiff, remainingGraphSpace);
+        try {
+            boolean isTrusted = ProfileData.ProfileSource.isTrusted(loop.localFrequencySource());
+            double loopFrequency = isTrusted ? loop.localLoopFrequency() : DefaultLoopFrequency.getValue(options);
+            // When a loop has a greater local loop frequency we allow a bigger change in code size
+            int maxDiff = addExact(LoopUnswitchTrivial.getValue(options), toIntExact(multiplyExact((long) ((double) LoopUnswitchFrequencyBoost.getValue(options)), (long) (loopFrequency - 1.0))));
+            maxDiff = min(maxDiff, LoopUnswitchMaxIncrease.getValue(options));
+            return min(maxDiff, remainingGraphSpace);
+        } catch (ArithmeticException e) {
+            return remainingGraphSpace;
+        }
     }
 
     @Override
-    public UnswitchingDecision shouldUnswitch(LoopEx loop, EconomicMap<ValueNode, List<ControlSplitNode>> controlSplits) {
+    public UnswitchingDecision shouldUnswitch(Loop loop, EconomicMap<ValueNode, List<ControlSplitNode>> controlSplits) {
         if (loop.loopBegin().unswitches() >= LoopMaxUnswitch.getValue(loop.loopBegin().graph().getOptions())) {
             return UnswitchingDecision.NO;
         }
@@ -578,14 +586,14 @@ public class DefaultLoopPolicies implements LoopPolicies {
                         factor *= p;
                     }
                 }
-                assert 0 <= factor && factor <= 1 : "factor should be between 0 and 1, but is : " + factor;
+                assert ProfileData.isApproximatelyInRange(factor, 0.0, 1.0) : "factor should be between 0 and 1, but is : " + factor;
             } else {
                 debug.log("control split %s has an untrusted profile source", split);
                 factor = DefaultUnswitchFactor.getValue(options);
             }
 
             // We cap the factor and we invert it to make guards' range narrow.
-            double cappedFactor = 1 - Math.min(Math.max(factor, LoopUnswitchFrequencyMinFactor.getValue(options)), LoopUnswitchFrequencyMaxFactor.getValue(options));
+            double cappedFactor = 1 - Math.clamp(factor, LoopUnswitchFrequencyMinFactor.getValue(options), LoopUnswitchFrequencyMaxFactor.getValue(options));
 
             if (splitFrequency < cappedFactor * localLoopFrequency) {
                 /*

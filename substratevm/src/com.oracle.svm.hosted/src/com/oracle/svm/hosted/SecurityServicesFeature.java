@@ -80,7 +80,6 @@ import javax.net.ssl.TrustManagerFactory;
 import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.login.Configuration;
 
-import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -89,15 +88,16 @@ import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
-import com.oracle.svm.core.jdk.SecurityProvidersFilter;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -107,12 +107,15 @@ import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import sun.security.jca.ProviderList;
 import sun.security.provider.NativePRNG;
 import sun.security.x509.OIDMap;
 
 @AutomaticallyRegisteredFeature
-public class SecurityServicesFeature extends JNIRegistrationUtil implements InternalFeature, SecurityProvidersFilter {
+public class SecurityServicesFeature extends JNIRegistrationUtil implements InternalFeature {
 
     public static class Options {
         @Option(help = "Enable automatic registration of security services.")//
@@ -122,11 +125,12 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         public static final HostedOptionKey<Boolean> TraceSecurityServices = new HostedOptionKey<>(false);
 
         @Option(help = "Comma-separated list of additional security service types (fully qualified class names) for automatic registration. Note that these must be JCA compliant.")//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> AdditionalSecurityServiceTypes = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
+        public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> AdditionalSecurityServiceTypes = new HostedOptionKey<>(
+                        AccumulatingLocatableMultiOptionValue.Strings.build());
 
         @Option(help = "Comma-separated list of additional security provider fully qualified class names to mark as used." +
                         "Note that this option is only necessary if you use custom engine classes not available in JCA that are not JCA compliant.")//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> AdditionalSecurityProviders = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
+        public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> AdditionalSecurityProviders = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
     }
 
     /*
@@ -196,16 +200,6 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     /** Providers marked as used by the user. */
     private final Set<String> manuallyMarkedUsedProviderClassNames = new HashSet<>();
 
-    /** Provider verification cache that contains only used providers. */
-    private Object filteredVerificationCache;
-
-    /** Provider list that contains only used providers. */
-    private ProviderList filteredProviderList;
-    /** List of providers deemed not to be used by this feature. */
-    private List<Provider> removedProviders;
-
-    private boolean shouldFilterProviders = true;
-
     private Field verificationResultsField;
     private Field providerListField;
     private Field oidTableField;
@@ -213,13 +207,15 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private Field classCacheField;
     private Field constructorCacheField;
 
+    private ConcurrentHashMap<WeakReference<Provider>, Object> cachedVerificationCache;
+    private ProviderList cachedProviders;
+
     private Class<?> jceSecurityClass;
 
     @Override
     public void afterRegistration(AfterRegistrationAccess a) {
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, getClass(), false, "java.base", "sun.security.x509");
         ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, getClass(), Security.class);
-        ImageSingletons.add(SecurityProvidersFilter.class, this);
         ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtBuildTime("javax.security.auth.kerberos.KeyTab",
                         "Force initialization of sun.security.krb5.KerberosSecrets.javaxSecurityAuthKerberosAccess");
     }
@@ -239,63 +235,50 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
         /*
          * The SecureRandom implementations open the /dev/random and /dev/urandom files which are
-         * used as sources for entropy. These files are opened in the static initializers. That's
-         * why we rerun the static initializers at runtime. We cannot completely delay the static
-         * initializers execution to runtime because the SecureRandom classes are needed by the
-         * native image generator too, e.g., by Files.createTempDirectory().
+         * used as sources for entropy. These files are opened in the static initializers.
          */
-        rci.rerunInitialization(NativePRNG.class, "for substitutions");
-        rci.rerunInitialization(NativePRNG.Blocking.class, "for substitutions");
-        rci.rerunInitialization(NativePRNG.NonBlocking.class, "for substitutions");
+        rci.initializeAtRunTime(NativePRNG.class, "for substitutions");
+        rci.initializeAtRunTime(NativePRNG.Blocking.class, "for substitutions");
+        rci.initializeAtRunTime(NativePRNG.NonBlocking.class, "for substitutions");
 
-        rci.rerunInitialization(clazz(access, "sun.security.provider.SeedGenerator"), "for substitutions");
-        rci.rerunInitialization(clazz(access, "sun.security.provider.SecureRandom$SeederHolder"), "for substitutions");
+        rci.initializeAtRunTime(clazz(access, "sun.security.provider.SeedGenerator"), "for substitutions");
+        rci.initializeAtRunTime(clazz(access, "sun.security.provider.SecureRandom$SeederHolder"), "for substitutions");
 
         /*
          * sun.security.provider.AbstractDrbg$SeederHolder has a static final EntropySource seeder
-         * field that needs to be re-initialized at run time because it captures the result of
+         * field that needs to be initialized at run time because it captures the result of
          * SeedGenerator.getSystemEntropy().
          */
-        rci.rerunInitialization(clazz(access, "sun.security.provider.AbstractDrbg$SeederHolder"), "for substitutions");
+        rci.initializeAtRunTime(clazz(access, "sun.security.provider.AbstractDrbg$SeederHolder"), "for substitutions");
         if (isMscapiModulePresent) {
             /* PRNG.<clinit> creates a Cleaner (see JDK-8210476), which starts its thread. */
-            rci.rerunInitialization(clazz(access, "sun.security.mscapi.PRNG"), "for substitutions");
+            rci.initializeAtRunTime(clazz(access, "sun.security.mscapi.PRNG"), "for substitutions");
         }
-        rci.rerunInitialization(clazz(access, "sun.security.provider.FileInputStreamPool"), "for substitutions");
+        rci.initializeAtRunTime(clazz(access, "sun.security.provider.FileInputStreamPool"), "for substitutions");
         /* java.util.UUID$Holder has a static final SecureRandom field. */
-        rci.rerunInitialization(clazz(access, "java.util.UUID$Holder"), "for substitutions");
+        rci.initializeAtRunTime(clazz(access, "java.util.UUID$Holder"), "for substitutions");
 
-        /*
-         * The classes below have a static final SecureRandom field. Note that if the classes are
-         * not found as reachable by the analysis registering them for class initialization rerun
-         * doesn't have any effect.
-         */
-        rci.rerunInitialization(clazz(access, "sun.security.jca.JCAUtil$CachedSecureRandomHolder"), "for substitutions");
-        rci.rerunInitialization(clazz(access, "com.sun.crypto.provider.SunJCE$SecureRandomHolder"), "for substitutions");
-        optionalClazz(access, "sun.security.krb5.Confounder").ifPresent(clazz -> rci.rerunInitialization(clazz, "for substitutions"));
-        optionalClazz(access, "sun.security.krb5.Config").ifPresent(clazz -> rci.rerunInitialization(clazz, "Reset the value of lazily initialized field sun.security.krb5.Config#singleton"));
+        /* The classes below have a static final SecureRandom field. */
+        rci.initializeAtRunTime(clazz(access, "sun.security.jca.JCAUtil$CachedSecureRandomHolder"), "for substitutions");
+        rci.initializeAtRunTime(clazz(access, "com.sun.crypto.provider.SunJCE$SecureRandomHolder"), "for substitutions");
+        optionalClazz(access, "sun.security.krb5.Confounder").ifPresent(clazz -> rci.initializeAtRunTime(clazz, "for substitutions"));
+        optionalClazz(access, "sun.security.krb5.Config").ifPresent(clazz -> rci.initializeAtRunTime(clazz, "Reset the value of lazily initialized field sun.security.krb5.Config#singleton"));
 
-        rci.rerunInitialization(clazz(access, "sun.security.jca.JCAUtil"), "JCAUtil.def holds a SecureRandom.");
+        rci.initializeAtRunTime(clazz(access, "sun.security.jca.JCAUtil"), "JCAUtil.def holds a SecureRandom.");
 
         /*
          * When SSLContextImpl$DefaultManagersHolder sets-up the TrustManager in its initializer it
          * gets the value of the -Djavax.net.ssl.trustStore and -Djavax.net.ssl.trustStorePassword
-         * properties from the build machine. Re-runing its initialization at run time is required
-         * to use the run time provided values.
+         * properties from the build machine. Running its initialization at run time is required to
+         * use the run time provided values.
          */
-        rci.rerunInitialization(clazz(access, "sun.security.ssl.SSLContextImpl$DefaultManagersHolder"), "for reading properties at run time");
+        rci.initializeAtRunTime(clazz(access, "sun.security.ssl.SSLContextImpl$DefaultManagersHolder"), "for reading properties at run time");
 
         /*
          * SSL debug logging enabled by javax.net.debug system property is setup during the class
-         * initialization of either sun.security.ssl.Debug or sun.security.ssl.SSLLogger. (In JDK 8
-         * this was implemented in sun.security.ssl.Debug, the logic was moved to
-         * sun.security.ssl.SSLLogger in JDK11 but not yet backported to all JDKs. See JDK-8196584
-         * for details.) We cannot prevent these classes from being initialized at image build time,
-         * so we have to reinitialize them at run time to honour the run time passed value for the
-         * javax.net.debug system property.
+         * initialization.
          */
-        optionalClazz(access, "sun.security.ssl.Debug").ifPresent(c -> rci.rerunInitialization(c, "for reading properties at run time"));
-        optionalClazz(access, "sun.security.ssl.SSLLogger").ifPresent(c -> rci.rerunInitialization(c, "for reading properties at run time"));
+        rci.initializeAtRunTime(clazz(access, "sun.security.ssl.SSLLogger"), "for reading properties at run time");
     }
 
     @Override
@@ -346,6 +329,77 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             /* Resolve calls to sun_security_mscapi* as builtIn. */
             PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security_mscapi");
         }
+
+        access.registerFieldValueTransformer(providerListField, new FieldValueTransformerWithAvailability() {
+            @Override
+            public ValueAvailability valueAvailability() {
+                /*
+                 * We must wait until all providers have been registered before filtering the list.
+                 */
+                return ValueAvailability.AfterAnalysis;
+            }
+
+            @Override
+            public Object transform(Object receiver, Object originalValue) {
+                if (cachedProviders != null) {
+                    if (SubstrateUtil.assertionsEnabled()) {
+                        var filteredProviders = filterProviderList(originalValue);
+                        assert cachedProviders.providers().equals(filteredProviders) : Assertions.errorMessage(cachedProviders.providers(), filteredProviders);
+                    }
+                    if (Options.TraceSecurityServices.getValue()) {
+                        ProviderList providerList = (ProviderList) originalValue;
+                        List<Provider> removedProviders = providerList.providers().stream().filter(p -> shouldRemoveProvider(p)).toList();
+                        traceRemovedProviders(removedProviders);
+                    }
+                }
+                /*
+                 * This object is manually rescanned during analysis to ensure its entire type
+                 * structure is part of the analysis universe.
+                 */
+                return cachedProviders;
+            }
+        });
+
+        access.registerFieldValueTransformer(verificationResultsField, new FieldValueTransformerWithAvailability() {
+            @Override
+            public ValueAvailability valueAvailability() {
+                /*
+                 * We must wait until all providers have been registered before filtering the list.
+                 */
+                return ValueAvailability.AfterAnalysis;
+            }
+
+            @Override
+            public Object transform(Object receiver, Object originalValue) {
+                if (cachedVerificationCache != null) {
+                    if (SubstrateUtil.assertionsEnabled()) {
+                        var filteredCache = filterVerificationCache(originalValue);
+                        assert cachedVerificationCache.equals(filteredCache) : Assertions.errorMessage(cachedVerificationCache, filteredCache);
+                    }
+                }
+                /*
+                 * This object is manually rescanned during analysis to ensure its entire type
+                 * structure is part of the analysis universe.
+                 */
+                return cachedVerificationCache;
+            }
+        });
+    }
+
+    @SuppressWarnings("unchecked")
+    private ConcurrentHashMap<WeakReference<Provider>, Object> filterVerificationCache(Object originalValue) {
+        /*
+         * The verification cache is an WeakIdentityWrapper -> Verification result
+         * ConcurrentHashMap. We do not care about the private WeakIdentityWrapper class, it extends
+         * WeakReference and so using WeakReference.get() is sufficient for us.
+         */
+        var cleanedCache = new ConcurrentHashMap<>((ConcurrentHashMap<WeakReference<Provider>, Object>) originalValue);
+        cleanedCache.keySet().removeIf(key -> shouldRemoveProvider(key.get()));
+        return cleanedCache;
+    }
+
+    private List<Provider> filterProviderList(Object originalValue) {
+        return ((ProviderList) originalValue).providers().stream().filter(p -> !shouldRemoveProvider(p)).toList();
     }
 
     private void addManuallyConfiguredUsedProviders(DuringSetupAccess access) {
@@ -370,42 +424,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         return !manuallyMarkedUsedProviderClassNames.contains(p.getClass().getName());
     }
 
-    @Override
-    @SuppressWarnings("unchecked")
-    public Object cleanVerificationCache(Object cache) {
-        if (shouldFilterProviders) {
-            /*
-             * The verification cache is an WeakIdentityWrapper -> Verification result
-             * ConcurrentHashMap. We do not care about the private WeakIdentityWrapper class, it
-             * extends WeakReference and so using WeakReference.get() is sufficient for us.
-             */
-            var cleanedCache = new ConcurrentHashMap<>((ConcurrentHashMap<WeakReference<Provider>, Object>) cache);
-            cleanedCache.keySet().removeIf(key -> shouldRemoveProvider(key.get()));
-
-            if (filteredVerificationCache == null || !filteredVerificationCache.equals(cleanedCache)) {
-                filteredVerificationCache = cleanedCache;
-            }
-        }
-        return filteredVerificationCache;
-    }
-
-    @Override
-    public ProviderList cleanUnregisteredProviders(ProviderList providerList) {
-        if (shouldFilterProviders) {
-            List<Provider> filteredProviders = new ArrayList<>(providerList.providers());
-            filteredProviders.removeIf(this::shouldRemoveProvider);
-            if (filteredProviderList == null || !filteredProviderList.providers().equals(filteredProviders)) {
-                filteredProviderList = ProviderList.newList(filteredProviders.toArray(new Provider[0]));
-                if (Options.TraceSecurityServices.getValue()) {
-                    removedProviders = new ArrayList<>(providerList.providers());
-                    removedProviders.removeIf(provider -> !shouldRemoveProvider(provider));
-                }
-            }
-        }
-        return filteredProviderList;
-    }
-
-    private void traceRemovedProviders() {
+    private static void traceRemovedProviders(List<Provider> removedProviders) {
         if (removedProviders == null || removedProviders.isEmpty()) {
             trace("No security providers have been removed.");
         } else {
@@ -659,7 +678,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private static Function<String, Class<?>> getConstructorParameterClassAccessor(ImageClassLoader loader) {
         Map<String, /* EngineDescription */ Object> knownEngines = ReflectionUtil.readStaticField(Provider.class, "knownEngines");
         Class<?> clazz = loader.findClassOrFail("java.security.Provider$EngineDescription");
-        Field consParamClassNameField = ReflectionUtil.lookupField(clazz, "constructorParameterClassName");
+        Field consParamClassField = ReflectionUtil.lookupField(clazz, JavaVersionUtil.JAVA_SPEC >= 23 ? "constructorParameterClass" : "constructorParameterClassName");
 
         /*
          * The returned lambda captures the value of the Provider.knownEngines map retrieved above
@@ -684,7 +703,10 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                 if (engineDescription == null) {
                     return null;
                 }
-                String constrParamClassName = (String) consParamClassNameField.get(engineDescription);
+                if (JavaVersionUtil.JAVA_SPEC >= 23) {
+                    return (Class<?>) consParamClassField.get(engineDescription);
+                }
+                String constrParamClassName = (String) consParamClassField.get(engineDescription);
                 if (constrParamClassName != null) {
                     return loader.findClass(constrParamClassName).get();
                 }
@@ -810,11 +832,11 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     @Override
     public void duringAnalysis(DuringAnalysisAccess a) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
-        access.rescanRoot(verificationResultsField);
-        access.rescanRoot(providerListField);
+        maybeScanVerificationResultsField(access);
+        maybeScanProvidersField(access);
         access.rescanRoot(oidTableField);
-        if (filteredProviderList != null) {
-            for (Provider provider : filteredProviderList.providers()) {
+        if (cachedProviders != null) {
+            for (Provider provider : cachedProviders.providers()) {
                 for (Service service : provider.getServices()) {
                     access.rescanField(service, classCacheField);
                     access.rescanField(service, constructorCacheField);
@@ -823,11 +845,37 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         }
     }
 
+    private void maybeScanVerificationResultsField(DuringAnalysisAccessImpl access) {
+        if (access.getMetaAccess().lookupJavaField(verificationResultsField).isRead()) {
+            try {
+                var filteredVerificationCache = filterVerificationCache(verificationResultsField.get(null));
+                if (cachedVerificationCache == null || !cachedVerificationCache.equals(filteredVerificationCache)) {
+                    cachedVerificationCache = filteredVerificationCache;
+                    access.rescanObject(cachedVerificationCache);
+                }
+            } catch (IllegalAccessException ex) {
+                throw VMError.shouldNotReachHere("Cannot access field: " + verificationResultsField.getName(), ex);
+            }
+        }
+    }
+
+    private void maybeScanProvidersField(DuringAnalysisAccessImpl access) {
+        if (access.getMetaAccess().lookupJavaField(providerListField).isRead()) {
+            try {
+                List<Provider> filteredProviders = filterProviderList(providerListField.get(null));
+                if (cachedProviders == null || !cachedProviders.providers().equals(filteredProviders)) {
+                    cachedProviders = ProviderList.newList(filteredProviders.toArray(new Provider[0]));
+                    access.rescanObject(cachedProviders);
+                }
+            } catch (IllegalAccessException ex) {
+                throw VMError.shouldNotReachHere("Cannot access field: " + providerListField.getName(), ex);
+            }
+        }
+    }
+
     @Override
-    public void afterAnalysis(AfterAnalysisAccess access) {
-        traceRemovedProviders();
+    public void afterHeapLayout(AfterHeapLayoutAccess access) {
         SecurityServicesPrinter.endTracing();
-        shouldFilterProviders = false;
     }
 
     private static void registerForReflection(Class<?> clazz) {

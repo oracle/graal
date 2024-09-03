@@ -24,24 +24,25 @@
  */
 package com.oracle.svm.hosted.image;
 
+import java.io.File;
+import java.io.PrintWriter;
+import java.nio.file.Path;
+import java.util.function.Consumer;
+
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.hosted.FeatureImpl;
+
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionType;
-
-import java.io.File;
-import java.io.PrintWriter;
-import java.nio.file.Path;
-import java.util.function.Consumer;
 
 @AutomaticallyRegisteredFeature
 public class ImageHeapConnectedComponentsFeature implements InternalFeature {
     public static class Options {
-        @Option(help = {"file:doc-files/PrintImageHeapConnectedComponents.md"}, type = OptionType.Debug)//
+        @Option(help = "file:doc-files/PrintImageHeapConnectedComponents.md", type = OptionType.Debug)//
         static final HostedOptionKey<Boolean> PrintImageHeapConnectedComponents = new HostedOptionKey<>(false);
     }
 

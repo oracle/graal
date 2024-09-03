@@ -116,30 +116,31 @@ public final class CaseUnfoldingTrie {
     }
 
     public static List<Unfolding> findUnfoldings(CaseFoldData.CaseFoldAlgorithm algorithm, List<Integer> caseFolded) {
-        List<CaseUnfoldingTrie> states = new ArrayList<>();
-        List<CaseUnfoldingTrie> nextStates = new ArrayList<>();
+        List<CaseUnfoldingTrie> nodes = new ArrayList<>();
+        List<CaseUnfoldingTrie> nextNodes = new ArrayList<>();
         List<Unfolding> unfoldings = new ArrayList<>();
+        CaseUnfoldingTrie root = CaseFoldData.getUnfoldingTrie(algorithm);
 
         for (int i = 0; i < caseFolded.size(); i++) {
             int codepoint = caseFolded.get(i);
 
-            states.add(CaseFoldData.getUnfoldingTrie(algorithm));
+            nodes.add(root);
 
-            for (CaseUnfoldingTrie state : states) {
-                if (state.hasChildAt(codepoint)) {
-                    CaseUnfoldingTrie newState = state.getChildAt(codepoint);
-                    nextStates.add(newState);
-                    for (int unfoldedCodepoint : newState.getCodepoints()) {
-                        unfoldings.add(new Unfolding(i + 1 - newState.getDepth(), newState.getDepth(), unfoldedCodepoint));
+            for (CaseUnfoldingTrie node : nodes) {
+                if (node.hasChildAt(codepoint)) {
+                    CaseUnfoldingTrie child = node.getChildAt(codepoint);
+                    nextNodes.add(child);
+                    for (int unfoldedCodepoint : child.getCodepoints()) {
+                        unfoldings.add(new Unfolding(i + 1 - child.getDepth(), child.getDepth(), unfoldedCodepoint));
                     }
                 }
             }
 
-            List<CaseUnfoldingTrie> statesTmp = states;
-            states = nextStates;
-            nextStates = statesTmp;
+            List<CaseUnfoldingTrie> nodesTmp = nodes;
+            nodes = nextNodes;
+            nextNodes = nodesTmp;
 
-            nextStates.clear();
+            nextNodes.clear();
         }
 
         unfoldings.sort(Comparator.comparingInt(Unfolding::getStart).thenComparing(Comparator.comparingInt(Unfolding::getLength).reversed()));
@@ -148,14 +149,12 @@ public final class CaseUnfoldingTrie {
     }
 
     public static List<Integer> findSingleCharUnfoldings(CaseFoldData.CaseFoldAlgorithm algorithm, int[] caseFolded) {
-        CaseUnfoldingTrie state = CaseFoldData.getUnfoldingTrie(algorithm);
-
+        CaseUnfoldingTrie node = CaseFoldData.getUnfoldingTrie(algorithm);
         for (int codepoint : caseFolded) {
-            assert state.hasChildAt(codepoint);
-            state = state.getChildAt(codepoint);
+            assert node.hasChildAt(codepoint);
+            node = node.getChildAt(codepoint);
         }
-
-        return state.getCodepoints();
+        return node.getCodepoints();
     }
 
     public static List<Integer> findSingleCharUnfoldings(CaseFoldData.CaseFoldAlgorithm algorithm, int caseFolded) {

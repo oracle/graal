@@ -24,11 +24,35 @@
  */
 package com.oracle.svm.hosted.classinitialization;
 
+import static com.oracle.svm.hosted.classinitialization.SimulateClassInitializerGraphDecoder.adaptForImageHeap;
+
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.nativeimage.ImageSingletons;
+
+import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
+import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.graal.pointsto.phases.InlineBeforeAnalysis;
+import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisGraphDecoder;
+import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
+import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
+import com.oracle.svm.hosted.fieldfolding.MarkStaticFinalFieldInitializedNode;
+import com.oracle.svm.hosted.meta.HostedConstantReflectionProvider;
+import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.hosted.phases.InlineBeforeAnalysisGraphDecoderImpl;
+import com.oracle.svm.util.ClassUtil;
+
 import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
@@ -52,28 +76,6 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.replacements.PEGraphDecoder;
-import org.graalvm.nativeimage.ImageSingletons;
-
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
-import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.graal.pointsto.phases.InlineBeforeAnalysis;
-import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisGraphDecoder;
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
-import com.oracle.svm.hosted.fieldfolding.MarkStaticFinalFieldInitializedNode;
-import com.oracle.svm.hosted.meta.HostedConstantReflectionProvider;
-import com.oracle.svm.hosted.meta.HostedType;
-import com.oracle.svm.hosted.phases.InlineBeforeAnalysisGraphDecoderImpl;
-import com.oracle.svm.util.ClassUtil;
-
 import jdk.vm.ci.meta.JavaConstant;
 
 /**
@@ -164,18 +166,14 @@ import jdk.vm.ci.meta.JavaConstant;
 public class SimulateClassInitializerSupport {
 
     protected final ClassInitializationSupport classInitializationSupport = ClassInitializationSupport.singleton();
+    protected final FieldValueInterceptionSupport fieldValueInterceptionSupport = FieldValueInterceptionSupport.singleton();
     protected final SimulateClassInitializerPolicy simulateClassInitializerPolicy;
     protected final SimulateClassInitializerConstantFieldProvider simulatedFieldValueConstantFieldProvider;
 
     /** The main data structure that stores all published results of the simulation. */
     protected final ConcurrentMap<AnalysisType, SimulateClassInitializerResult> analyzedClasses = new ConcurrentHashMap<>();
 
-    /**
-     * Simulation of class initializer (like {@link InlineBeforeAnalysis}) requires ParseOnce,
-     * because otherwise graphs parsed for static analysis omits exception edges.
-     */
-    protected final boolean enabled = ClassInitializationOptions.SimulateClassInitializer.getValue() && SubstrateOptions.parseOnce();
-
+    protected final boolean enabled = ClassInitializationOptions.SimulateClassInitializer.getValue();
     /* Cached value of options to avoid frequent lookup of option values. */
     protected final boolean collectAllReasons = ClassInitializationOptions.SimulateClassInitializerCollectAllReasons.getValue();
     protected final int maxInlineDepth = ClassInitializationOptions.SimulateClassInitializerMaxInlineDepth.getValue();
@@ -470,9 +468,13 @@ public class SimulateClassInitializerSupport {
 
         var result = new StructuredGraph.Builder(bb.getOptions(), debug)
                         .method(classInitializer)
-                        .recordInlinedMethods(false)
                         .trackNodeSourcePosition(analysisParsedGraph.getEncodedGraph().trackNodeSourcePosition())
+                        .recordInlinedMethods(analysisParsedGraph.getEncodedGraph().isRecordingInlinedMethods())
                         .build();
+
+        if (classInitializer.isInBaseLayer()) {
+            throw SimulateClassInitializerAbortException.doAbort(clusterMember, result, "The class initializer was already simulated in the base layer.");
+        }
 
         try (var scope = debug.scope("SimulateClassInitializerGraphDecoder", result)) {
 
@@ -514,13 +516,14 @@ public class SimulateClassInitializerSupport {
             return;
         } else if (node instanceof MarkStaticFinalFieldInitializedNode) {
             return;
-
         } else if (node instanceof StoreFieldNode storeFieldNode) {
             var field = (AnalysisField) storeFieldNode.field();
             if (field.isStatic() && field.getDeclaringClass().equals(clusterMember.type)) {
                 var constantValue = storeFieldNode.value().asJavaConstant();
                 if (constantValue != null) {
-                    clusterMember.staticFieldValues.put(field, constantValue);
+                    // We use the java kind here and not the storage kind since that's what the
+                    // users of (Analysis)ConstantReflectionProvider expect.
+                    clusterMember.staticFieldValues.put(field, adaptForImageHeap(constantValue, field.getJavaKind()));
                     return;
                 }
             }
@@ -610,5 +613,9 @@ public class SimulateClassInitializerSupport {
         } else {
             return String.valueOf(reason);
         }
+    }
+
+    public ClassInitializationSupport getClassInitializationSupport() {
+        return classInitializationSupport;
     }
 }

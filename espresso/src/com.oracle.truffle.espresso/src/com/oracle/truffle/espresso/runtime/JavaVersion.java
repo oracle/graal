@@ -60,7 +60,8 @@ public final class JavaVersion implements Comparable<JavaVersion> {
         }
     }
 
-    public static final JavaVersion HOST_VERSION = forVersion(System.getProperty("java.version"));
+    public static final JavaVersion HOST_VERSION = forVersion(Runtime.version());
+
     public static final int LATEST_SUPPORTED = 21;
 
     private final int version;
@@ -70,7 +71,7 @@ public final class JavaVersion implements Comparable<JavaVersion> {
     }
 
     public static JavaVersion forVersion(int version) {
-        if (version < 1 || version > LATEST_SUPPORTED) {
+        if (version < 1) {
             throw new IllegalArgumentException("Unsupported java version: " + version);
         }
         return new JavaVersion(version);
@@ -93,6 +94,10 @@ public final class JavaVersion implements Comparable<JavaVersion> {
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("Unsupported java version: " + version + " (" + normalizedVersion + ")");
         }
+    }
+
+    private static JavaVersion forVersion(Runtime.Version version) {
+        return forVersion(version.feature());
     }
 
     public static JavaVersion latestSupported() {
@@ -121,6 +126,10 @@ public final class JavaVersion implements Comparable<JavaVersion> {
 
     public boolean java13OrEarlier() {
         return version <= 13;
+    }
+
+    public boolean java13OrLater() {
+        return version >= 13;
     }
 
     public boolean java15OrLater() {

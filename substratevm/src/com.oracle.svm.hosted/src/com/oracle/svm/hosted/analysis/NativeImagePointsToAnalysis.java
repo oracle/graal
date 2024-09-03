@@ -27,11 +27,16 @@ package com.oracle.svm.hosted.analysis;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Stream;
 
+import com.oracle.graal.pointsto.ClassInclusionPolicy;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
+import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -42,6 +47,8 @@ import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.ameta.CustomTypeFieldHandler;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.IncompatibleClassChangeFallbackMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
@@ -66,9 +73,9 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
                     AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider,
                     ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes,
                     AnnotationSubstitutionProcessor annotationSubstitutionProcessor, UnsupportedFeatures unsupportedFeatures,
-                    DebugContext debugContext, TimerCollection timerCollection) {
+                    DebugContext debugContext, TimerCollection timerCollection, ClassInclusionPolicy classInclusionPolicy) {
         super(options, universe, universe.hostVM(), metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, unsupportedFeatures, debugContext, timerCollection,
-                        SubstrateOptions.parseOnce());
+                        classInclusionPolicy);
         this.annotationSubstitutionProcessor = annotationSubstitutionProcessor;
 
         dynamicHubInitializer = new DynamicHubInitializer(this);
@@ -114,8 +121,43 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
     }
 
     @Override
+    public void injectFieldTypes(AnalysisField aField, List<AnalysisType> customTypes, boolean canBeNull) {
+        customTypeFieldHandler.injectFieldTypes(aField, customTypes, canBeNull);
+    }
+
+    @Override
     public void onTypeReachable(AnalysisType type) {
-        postTask(d -> type.getInitializeMetaDataTask().ensureDone());
+        postTask(d -> {
+            type.getInitializeMetaDataTask().ensureDone();
+            if (type.isInBaseLayer()) {
+                /*
+                 * Since the rescanning of the hub is skipped for constants from the base layer to
+                 * avoid deadlocks, the hub needs to be rescanned manually after the metadata is
+                 * initialized.
+                 */
+                universe.getImageLayerLoader().rescanHub(type, ((SVMHost) hostVM).dynamicHub(type));
+            }
+            if (SubstrateOptions.includeAll()) {
+                /*
+                 * Using getInstanceFields and getStaticFields allows to include the fields from the
+                 * substitution class.
+                 */
+                Stream.concat(Arrays.stream(getOrDefault(type, t -> t.getInstanceFields(true), new AnalysisField[0])),
+                                Arrays.stream(getOrDefault(type, AnalysisType::getStaticFields, new AnalysisField[0])))
+                                .map(OriginalFieldProvider::getJavaField)
+                                .filter(field -> field != null && classInclusionPolicy.isFieldIncluded(field))
+                                .forEach(classInclusionPolicy::includeField);
+
+                /*
+                 * Only the class initializers that are executed at run time should be included in
+                 * the base layer.
+                 */
+                AnalysisMethod classInitializer = type.getClassInitializer();
+                if (classInitializer != null && !ClassInitializationSupport.singleton().maybeInitializeAtBuildTime(type) && classInitializer.getCode() != null) {
+                    classInclusionPolicy.includeMethod(classInitializer);
+                }
+            }
+        });
     }
 
     @Override
@@ -212,5 +254,4 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
         /* Not matching method found at all. */
         return AbstractMethodError.class;
     }
-
 }

@@ -70,7 +70,8 @@ import com.oracle.truffle.api.nodes.Node;
  * On the fast-path, first check if the assumption is valid and in that case return the cached
  * result. When invalidating, first write the new value, then invalidate the CyclicAssumption.
  *
- * {@codesnippet cyclicassumption}
+ * {@snippet file="com/oracle/truffle/api/utilities/CyclicAssumption.java"
+ * region="cyclicassumption"}
  *
  * @since 0.8 or earlier
  */
@@ -110,7 +111,7 @@ public class CyclicAssumption {
 }
 
 class CyclicAssumptionSnippets {
-    // BEGIN: cyclicassumption
+    // @start region = "cyclicassumption"
     class MyContext {
         CyclicAssumption symbolsRedefined = new CyclicAssumption("symbols");
         Map<String, Object> symbols = new ConcurrentHashMap<>();
@@ -160,5 +161,5 @@ class CyclicAssumptionSnippets {
             this.value = value;
         }
     }
-    // END: cyclicassumption
+    // @end region = "cyclicassumption"
 }

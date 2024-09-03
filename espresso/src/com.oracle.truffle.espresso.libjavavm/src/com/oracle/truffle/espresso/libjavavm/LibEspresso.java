@@ -23,13 +23,16 @@
 package com.oracle.truffle.espresso.libjavavm;
 
 import java.io.PrintStream;
+import java.util.BitSet;
 
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.ObjectHandles;
 import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.word.WordFactory;
 
@@ -41,15 +44,26 @@ import com.oracle.truffle.espresso.libjavavm.jniapi.JNIJavaVMInitArgs;
 import com.oracle.truffle.espresso.libjavavm.jniapi.JNIJavaVMPointer;
 import com.oracle.truffle.espresso.libjavavm.jniapi.JNIVersion;
 
-public class LibEspresso {
+public final class LibEspresso {
     private static final PrintStream STDERR = System.err;
 
+    private LibEspresso() {
+    }
+
+    private static BitSet asBitSet(CIntPointer ignoredIndices, int nIgnoredIndices) {
+        BitSet result = new BitSet();
+        for (int i = 0; i < nIgnoredIndices; i++) {
+            result.set(ignoredIndices.read(i));
+        }
+        return result;
+    }
+
     @CEntryPoint(name = "Espresso_CreateJavaVM")
-    static int createJavaVM(@SuppressWarnings("unused") IsolateThread thread, JNIJavaVMPointer javaVMPointer, JNIEnvironmentPointer penv, JNIJavaVMInitArgs args) {
-        if (args.getVersion() < JNIVersion.JNI_VERSION_1_2() || args.getVersion() > JNIVersion.JNI_VERSION_10) {
+    static int createJavaVM(@SuppressWarnings("unused") IsolateThread thread, JNIJavaVMPointer javaVMPointer, JNIEnvironmentPointer penv, JNIJavaVMInitArgs args, CIntPointer ignoredIndices,
+                    int nIgnoredIndices) {
+        if (args.getVersion() < JNIVersion.JNI_VERSION_1_2() || args.getVersion() > JNIVersion.JNI_VERSION_21()) {
             return JNIErrors.JNI_EVERSION();
         }
-        // TODO use Launcher infra to parse graalvm specific options
         Context.Builder builder = Context.newBuilder().allowAllAccess(true);
 
         // These option need to be set before calling `Arguments.setupContext()` so that cmd line
@@ -59,7 +73,7 @@ public class LibEspresso {
         // checks and can use unsafe casts.
         builder.option("engine.RelaxStaticObjectSafetyChecks", "true");
 
-        int result = Arguments.setupContext(builder, args);
+        int result = Arguments.setupContext(builder, args, asBitSet(ignoredIndices, nIgnoredIndices));
         if (result != JNIErrors.JNI_OK()) {
             return result;
         }
@@ -69,9 +83,28 @@ public class LibEspresso {
         builder.option("java.ExitHost", "true");
         builder.option("java.EnableSignals", "true");
         builder.option("java.ExposeNativeJavaVM", "true");
+        builder.option("java.GuestFieldOffsetStrategy", "graal"); // most "hotspot-like"
         Context context = builder.build();
         context.enter();
-        Value bindings = context.getBindings("java");
+        Value bindings;
+        try {
+            bindings = context.getBindings("java");
+        } catch (PolyglotException e) {
+            if (e.isExit()) {
+                STDERR.println("Exit was called while starting VM");
+                return JNIErrors.JNI_ERR();
+            }
+            STDERR.println("Exception while creating Java VM");
+            printException(e);
+            // Tearing down the context now will likely result in some a stuck process waiting for
+            // threads. Exit the process instead.
+            System.exit(1);
+            // this is dead code
+            // it's what we should do if we supported cleanly tearing down the context in this state
+            context.leave();
+            context.close(true);
+            return JNIErrors.JNI_ERR();
+        }
         Value java = bindings.getMember("<JavaVM>");
         if (!java.isNativePointer()) {
             STDERR.println("<JavaVM> is not available in the java bindings");
@@ -89,6 +122,28 @@ public class LibEspresso {
         }
         javaVMPointer.write(espressoJavaVM);
         return JNIErrors.JNI_OK();
+    }
+
+    private static void printException(PolyglotException e) {
+        boolean printed = false;
+        if (e.getGuestObject() != null && !e.getGuestObject().isNull()) {
+            STDERR.println("Guest exception:");
+            try {
+                e.getGuestObject().invokeMember("printStackTrace");
+                printed = true;
+            } catch (Throwable t) {
+                // ignore
+                STDERR.println("Failed to print guest exception");
+            }
+        }
+        if (!printed) {
+            if (e.isInternalError()) {
+                STDERR.println("Internal error:");
+            } else {
+                STDERR.println("Polyglot exception:");
+            }
+            e.printStackTrace(STDERR);
+        }
     }
 
     @CEntryPoint(name = "Espresso_EnterContext")

@@ -91,7 +91,7 @@ public class AArch64AddressNode extends AddressNode implements LIRLowerable {
     }
 
     @Override
-    public boolean verify() {
+    public boolean verifyNode() {
         assertTrue(bitMemoryTransferSize == AArch64Address.ANY_SIZE || bitMemoryTransferSize == 8 || bitMemoryTransferSize == 16 || bitMemoryTransferSize == 32 || bitMemoryTransferSize == 64 ||
                         bitMemoryTransferSize == 128, "Invalid memory transfer size.");
         switch (addressingMode) {
@@ -115,7 +115,7 @@ public class AArch64AddressNode extends AddressNode implements LIRLowerable {
             default:
                 fail("Pairwise and post/pre index addressing modes should not be present.");
         }
-        return super.verify();
+        return super.verifyNode();
     }
 
     @Override

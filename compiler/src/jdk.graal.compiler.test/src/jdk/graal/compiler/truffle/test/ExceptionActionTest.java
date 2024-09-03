@@ -26,6 +26,7 @@ package jdk.graal.compiler.truffle.test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -35,8 +36,8 @@ import java.util.logging.FileHandler;
 import java.util.logging.SimpleFormatter;
 import java.util.regex.Pattern;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.test.SubprocessTestUtils;
-import com.oracle.truffle.api.test.SubprocessTestUtils.Subprocess;
 import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 
@@ -44,7 +45,6 @@ import jdk.graal.compiler.truffle.test.nodes.AbstractTestNode;
 import jdk.graal.compiler.truffle.test.nodes.RootTestNode;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -62,17 +62,6 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
     };
 
     static Object nonConstant;
-
-    @BeforeClass
-    public static void setUp() {
-        // All ExceptionActionTest's tests are executed in the spawned subprocess. The
-        // PermanentBailoutNode is used only by the code running in the subprocess. Needless
-        // PermanentBailoutNode initialization in the parent process will cause ExceptionActionTest
-        // failure when running with the engine.ExceptionAction=Throw.
-        if (SubprocessTestUtils.isSubprocess()) {
-            createPermanentBailoutNode().getCallTarget().call();
-        }
-    }
 
     @Test
     public void testDefault() throws Exception {
@@ -127,6 +116,30 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
     }
 
     @Test
+    public void testPermanentBailoutThrowWithGraalExitVM() throws Exception {
+        BiConsumer<String, String> verifier = (log, output) -> {
+            Assert.assertFalse(formatMessage("Unexpected bailout.", log, output), hasBailout(log));
+            Assert.assertFalse(formatMessage("Unexpected exit.", log, output), hasExit(log));
+            Assert.assertTrue(formatMessage("Expected OptimizationFailedException.", log, output), hasOptFailedException(log));
+        };
+        executeInSubProcess(verifier, ExceptionActionTest::createPermanentBailoutNode,
+                        new String[]{
+                                        "-Djdk.graal.CompilationFailureAction=ExitVM",
+                                        "-Djdk.graal.CompilationBailoutAsFailure=true",
+                                        /*
+                                         * The test validates that Truffle compilation uses
+                                         * CompilationFailureAction#Throw even when the Graal
+                                         * CompilationFailureAction option is set to ExitVM. To
+                                         * ensure test stability, we disable JVMCI host
+                                         * compilations, as they may lead to bailouts and random
+                                         * test failures, as observed in issue GR-51840.
+                                         */
+                                        "-XX:-UseJVMCICompiler",
+                        },
+                        "engine.CompilationFailureAction", "Throw");
+    }
+
+    @Test
     public void testNonPermanentBailout() throws Exception {
         BiConsumer<String, String> verifier = (log, output) -> {
             Assert.assertFalse(formatMessage("Unexpected bailout.", log, output), hasBailout(log));
@@ -134,9 +147,8 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
             Assert.assertFalse(formatMessage("Unexpected OptimizationFailedException.", log, output), hasOptFailedException(log));
         };
         executeInSubProcess(verifier, ExceptionActionTest::createConstantNode,
-                        new String[]{"-Dgraal.CrashAt=com.oracle.truffle.runtime.OptimizedCallTarget.profiledPERoot:Bailout"},
-                        "engine.CompilationFailureAction", "ExitVM",
-                        "compiler.PerformanceWarningsAreFatal", "all");
+                        new String[]{"-Djdk.graal.CrashAt=com.oracle.truffle.runtime.OptimizedCallTarget.profiledPERoot:Bailout"},
+                        "engine.CompilationFailureAction", "ExitVM");
     }
 
     @Test
@@ -147,25 +159,38 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
             Assert.assertFalse(formatMessage("Unexpected OptimizationFailedException.", log, output), hasOptFailedException(log));
         };
         executeInSubProcess(verifier, ExceptionActionTest::createConstantNode,
-                        new String[]{"-Dgraal.CrashAt=com.oracle.truffle.runtime.OptimizedCallTarget.profiledPERoot:Bailout"},
+                        new String[]{"-Djdk.graal.CrashAt=com.oracle.truffle.runtime.OptimizedCallTarget.profiledPERoot:Bailout"},
                         "engine.TraceCompilationDetails", "true");
+    }
+
+    @Test
+    public void testPerformanceWarnings() throws Exception {
+        BiConsumer<String, String> verifier = (log, output) -> {
+            Assert.assertFalse(formatMessage("Unexpected bailout.", log, output), hasBailout(log));
+            Assert.assertTrue(formatMessage("Unexpected exit.", log, output), hasExit(log));
+            Assert.assertFalse(formatMessage("Unexpected OptimizationFailedException.", log, output), hasOptFailedException(log));
+        };
+        executeInSubProcess(verifier, ExceptionActionTest::createVirtualCallNode,
+                        new String[]{},
+                        "engine.CompilationFailureAction", "ExitVM",
+                        "compiler.TreatPerformanceWarningsAsErrors", "all");
     }
 
     private void executeInSubProcess(BiConsumer<String, String> verifier, String... contextOptions) throws IOException, InterruptedException {
         executeInSubProcess(verifier, ExceptionActionTest::createPermanentBailoutNode, new String[0], contextOptions);
     }
 
-    private void executeInSubProcess(BiConsumer<String, String> verifier, Supplier<RootNode> rootNodeFactory, String[] additionalVmOptions, String... contextOptions)
+    private void executeInSubProcess(BiConsumer<String, String> verifier, Supplier<RootNode> rootNodeFactory, String[] appendVmOptions, String... contextOptions)
                     throws IOException, InterruptedException {
         Path log = SubprocessTestUtils.isSubprocess() ? null : File.createTempFile("compiler", ".log").toPath();
-        Subprocess subprocess = null;
-        boolean success = false;
+        Path dumpDir = SubprocessTestUtils.isSubprocess() ? null : Files.createTempDirectory(String.format("%s-dumps", ExceptionActionTest.class.getSimpleName()));
         try {
-            String[] useVMOptions = Arrays.copyOf(additionalVmOptions, additionalVmOptions.length + 2);
+            String[] useVMOptions = Arrays.copyOf(appendVmOptions, appendVmOptions.length + 2);
             useVMOptions[useVMOptions.length - 2] = String.format("-D%s=%s", LOG_FILE_PROPERTY, log);
-            // Prevent graal graph dumping for ExceptionAction#Diagnose
-            useVMOptions[useVMOptions.length - 1] = "-Dgraal.Dump=Truffle:0";
-            subprocess = SubprocessTestUtils.executeInSubprocess(ExceptionActionTest.class, () -> {
+            // Setting an explicit DumpPath is more reliable than preventing dumps using
+            // "-Djdk.graal.Dump=~"
+            useVMOptions[useVMOptions.length - 1] = String.format("-Djdk.graal.DumpPath=%s", dumpDir);
+            SubprocessTestUtils.newBuilder(ExceptionActionTest.class, () -> {
                 setupContext(contextOptions);
                 OptimizedCallTarget target = (OptimizedCallTarget) rootNodeFactory.get().getCallTarget();
                 try {
@@ -176,18 +201,34 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
                         OptimizedTruffleRuntime.getRuntime().log(target, optFailedException.getClass().getName());
                     }
                 }
-            }, false, useVMOptions);
-            success = true;
+            }).failOnNonZeroExit(false).postfixVmOption(useVMOptions).onExit((p) -> {
+                try {
+                    String logContent = String.join("\n", Files.readAllLines(log));
+                    String output = String.join("\n", p.output);
+                    verifier.accept(logContent, output);
+                } catch (IOException ioe) {
+                    throw CompilerDirectives.shouldNotReachHere(ioe);
+                }
+            }).run();
         } finally {
             if (log != null) {
-                if (success) {
-                    String logContent = String.join("\n", Files.readAllLines(log));
-                    String output = String.join("\n", subprocess.output);
-                    verifier.accept(logContent, output);
-                }
                 Files.deleteIfExists(log);
             }
+            if (dumpDir != null) {
+                delete(dumpDir);
+            }
         }
+    }
+
+    private static void delete(Path file) throws IOException {
+        if (Files.isDirectory(file)) {
+            try (DirectoryStream<Path> children = Files.newDirectoryStream(file)) {
+                for (Path child : children) {
+                    delete(child);
+                }
+            }
+        }
+        Files.deleteIfExists(file);
     }
 
     private static OptimizationFailedException isOptimizationFailed(Throwable t) {
@@ -252,6 +293,20 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
         return new RootTestNode(fd, "nonpermanent-bailout-test-node", new AbstractTestNode() {
             @Override
             public int execute(VirtualFrame frame) {
+                return 0;
+            }
+        });
+    }
+
+    private static RootNode createVirtualCallNode() {
+        FrameDescriptor fd = new FrameDescriptor();
+        return new RootTestNode(fd, "virtual-call-test-node", new AbstractTestNode() {
+            private volatile Runnable runnable = () -> {
+            };
+
+            @Override
+            public int execute(VirtualFrame frame) {
+                runnable.run();
                 return 0;
             }
         });

@@ -61,6 +61,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -103,7 +104,7 @@ import com.oracle.truffle.host.HostContext.ToGuestValueNode;
 import com.oracle.truffle.host.HostContextFactory.ToGuestValueNodeGen;
 
 @ExportLibrary(InteropLibrary.class)
-@SuppressWarnings("unused")
+@SuppressWarnings({"unused"})
 final class HostObject implements TruffleObject {
 
     static final int LIMIT = 5;
@@ -910,6 +911,10 @@ final class HostObject implements TruffleObject {
 
     // region Buffer Messages
 
+    boolean isByteSequence() {
+        return context.language.api.isByteSequence(obj);
+    }
+
     @ExportMessage
     static class HasBufferElements {
 
@@ -918,8 +923,14 @@ final class HostObject implements TruffleObject {
             return false;
         }
 
-        @Specialization(guards = "!receiver.isNull()")
-        static boolean doNonNull(HostObject receiver,
+        @Specialization(guards = {"receiver.isByteSequence()"})
+        static boolean doByteSequence(HostObject receiver,
+                        @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache) {
+            return hostClassCache.isBufferAccess();
+        }
+
+        @Specialization(guards = {"!receiver.isNull()", "!receiver.isByteSequence()"})
+        static boolean doOther(HostObject receiver,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache) {
             return receiver.isBuffer(hostClassCache);
         }
@@ -933,8 +944,14 @@ final class HostObject implements TruffleObject {
             throw UnsupportedMessageException.create();
         }
 
-        @Specialization(guards = "!receiver.isNull()")
-        static boolean doNonNull(HostObject receiver,
+        @Specialization(guards = {"receiver.isByteSequence()"})
+        static boolean doByteSequence(HostObject receiver,
+                        @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache) {
+            return false;
+        }
+
+        @Specialization(guards = {"!receiver.isNull()", "!receiver.isByteSequence()"})
+        static boolean doOther(HostObject receiver,
                         @Bind("$node") Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException {
@@ -960,8 +977,20 @@ final class HostObject implements TruffleObject {
             throw UnsupportedMessageException.create();
         }
 
-        @Specialization(guards = "!receiver.isNull()")
-        static long doNonNull(HostObject receiver,
+        @Specialization(guards = {"receiver.isByteSequence()"})
+        static long doByteSequence(HostObject receiver,
+                        @Bind("$node") Node node,
+                        @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
+                        @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException {
+            if (hostClassCache.isBufferAccess()) {
+                return getByteSequenceLengthBoundary(receiver.context.language.api, receiver.obj);
+            }
+            error.enter(node);
+            throw UnsupportedMessageException.create();
+        }
+
+        @Specialization(guards = {"!receiver.isNull()", "!receiver.isByteSequence()"})
+        static long doOther(HostObject receiver,
                         @Bind("$node") Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException {
@@ -972,6 +1001,11 @@ final class HostObject implements TruffleObject {
             error.enter(node);
             throw UnsupportedMessageException.create();
         }
+    }
+
+    @TruffleBoundary
+    private static long getByteSequenceLengthBoundary(APIAccess apiAccess, Object byteSequence) {
+        return apiAccess.byteSequenceLength(byteSequence);
     }
 
     @TruffleBoundary
@@ -995,8 +1029,30 @@ final class HostObject implements TruffleObject {
             throw UnsupportedMessageException.create();
         }
 
-        @Specialization(guards = "!receiver.isNull()")
-        static byte doNonNull(HostObject receiver,
+        @Specialization(guards = {"receiver.isByteSequence()"})
+        static byte doByteSequence(HostObject receiver,
+                        long index,
+                        @Bind("$node") Node node,
+                        @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
+                        @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            if (!hostClassCache.isBufferAccess()) {
+                error.enter(node);
+                throw UnsupportedMessageException.create();
+            }
+            if (index < 0 || Integer.MAX_VALUE < index) {
+                error.enter(node);
+                throw InvalidBufferOffsetException.create(index, Byte.BYTES);
+            }
+            try {
+                return getByteSequenceByteBoundary(receiver.context.language.api, receiver.obj, (int) index);
+            } catch (IndexOutOfBoundsException e) {
+                error.enter(node);
+                throw InvalidBufferOffsetException.create(index, Byte.BYTES);
+            }
+        }
+
+        @Specialization(guards = {"!receiver.isNull()", "!receiver.isByteSequence()"})
+        static byte doOther(HostObject receiver,
                         long index,
                         @Bind("$node") Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
@@ -1018,6 +1074,11 @@ final class HostObject implements TruffleObject {
                 throw InvalidBufferOffsetException.create(index, Byte.BYTES);
             }
         }
+    }
+
+    @TruffleBoundary
+    private static byte getByteSequenceByteBoundary(APIAccess apiAccess, Object byteSequence, int index) {
+        return apiAccess.byteSequenceByteAt(byteSequence, index);
     }
 
     @TruffleBoundary
@@ -1077,8 +1138,31 @@ final class HostObject implements TruffleObject {
             throw UnsupportedMessageException.create();
         }
 
-        @Specialization(guards = "!receiver.isNull()")
-        static short doNonNull(HostObject receiver, ByteOrder order, long index,
+        @Specialization(guards = {"receiver.isByteSequence()"})
+        static short doByteSequence(HostObject receiver,
+                        ByteOrder order,
+                        long index,
+                        @Bind("$node") Node node,
+                        @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
+                        @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            if (!hostClassCache.isBufferAccess()) {
+                error.enter(node);
+                throw UnsupportedMessageException.create();
+            }
+            if (index < 0 || Integer.MAX_VALUE < index) {
+                error.enter(node);
+                throw InvalidBufferOffsetException.create(index, Short.BYTES);
+            }
+            try {
+                return getByteSequenceShortBoundary(receiver.context.language.api, receiver.obj, (int) index, order);
+            } catch (IndexOutOfBoundsException e) {
+                error.enter(node);
+                throw InvalidBufferOffsetException.create(index, Short.BYTES);
+            }
+        }
+
+        @Specialization(guards = {"!receiver.isNull()", "!receiver.isByteSequence()"})
+        static short doOther(HostObject receiver, ByteOrder order, long index,
                         @Bind("$node") Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error,
@@ -1102,6 +1186,17 @@ final class HostObject implements TruffleObject {
                 error.enter(node);
                 throw InvalidBufferOffsetException.create(index, Short.BYTES);
             }
+        }
+    }
+
+    @TruffleBoundary
+    private static short getByteSequenceShortBoundary(APIAccess apiAccess, Object byteSequence, int index, ByteOrder order) {
+        int b1 = apiAccess.byteSequenceByteAt(byteSequence, index) & 0xFF;
+        int b2 = apiAccess.byteSequenceByteAt(byteSequence, index + 1) & 0xFF;
+        if (order == ByteOrder.BIG_ENDIAN) {
+            return (short) ((b1 << 8) | b2);
+        } else {
+            return (short) ((b2 << 8) | b1);
         }
     }
 
@@ -1165,8 +1260,31 @@ final class HostObject implements TruffleObject {
             throw UnsupportedMessageException.create();
         }
 
-        @Specialization(guards = "!receiver.isNull()")
-        static int doNonNull(HostObject receiver, ByteOrder order, long index,
+        @Specialization(guards = {"receiver.isByteSequence()"})
+        static int doByteSequence(HostObject receiver,
+                        ByteOrder order,
+                        long index,
+                        @Bind("$node") Node node,
+                        @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
+                        @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            if (!hostClassCache.isBufferAccess()) {
+                error.enter(node);
+                throw UnsupportedMessageException.create();
+            }
+            if (index < 0 || Integer.MAX_VALUE < index) {
+                error.enter(node);
+                throw InvalidBufferOffsetException.create(index, Integer.BYTES);
+            }
+            try {
+                return getByteSequenceIntBoundary(receiver.context.language.api, receiver.obj, (int) index, order);
+            } catch (IndexOutOfBoundsException e) {
+                error.enter(node);
+                throw InvalidBufferOffsetException.create(index, Integer.BYTES);
+            }
+        }
+
+        @Specialization(guards = {"!receiver.isNull()", "!receiver.isByteSequence()"})
+        static int doOther(HostObject receiver, ByteOrder order, long index,
                         @Bind("$node") Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error,
@@ -1196,6 +1314,19 @@ final class HostObject implements TruffleObject {
     @TruffleBoundary
     private static int getBufferIntBoundary(ByteBuffer buffer, int index) {
         return buffer.getInt(index);
+    }
+
+    @TruffleBoundary
+    private static int getByteSequenceIntBoundary(APIAccess apiAccess, Object byteSequence, int index, ByteOrder order) {
+        int b1 = apiAccess.byteSequenceByteAt(byteSequence, index) & 0xFF;
+        int b2 = apiAccess.byteSequenceByteAt(byteSequence, index + 1) & 0xFF;
+        int b3 = apiAccess.byteSequenceByteAt(byteSequence, index + 2) & 0xFF;
+        int b4 = apiAccess.byteSequenceByteAt(byteSequence, index + 3) & 0xFF;
+        if (order == ByteOrder.BIG_ENDIAN) {
+            return (b1 << 24) | (b2 << 16) | (b3 << 8) | b4;
+        } else {
+            return (b4 << 24) | (b3 << 16) | (b2 << 8) | b1;
+        }
     }
 
     @ExportMessage
@@ -1253,8 +1384,31 @@ final class HostObject implements TruffleObject {
             throw UnsupportedMessageException.create();
         }
 
-        @Specialization(guards = "!receiver.isNull()")
-        static long doNonNull(HostObject receiver, ByteOrder order, long index,
+        @Specialization(guards = {"receiver.isByteSequence()"})
+        static long doByteSequence(HostObject receiver,
+                        ByteOrder order,
+                        long index,
+                        @Bind("$node") Node node,
+                        @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
+                        @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            if (!hostClassCache.isBufferAccess()) {
+                error.enter(node);
+                throw UnsupportedMessageException.create();
+            }
+            if (index < 0 || Integer.MAX_VALUE < index) {
+                error.enter(node);
+                throw InvalidBufferOffsetException.create(index, Long.BYTES);
+            }
+            try {
+                return getByteSequenceLongBoundary(receiver.context.language.api, receiver.obj, (int) index, order);
+            } catch (IndexOutOfBoundsException e) {
+                error.enter(node);
+                throw InvalidBufferOffsetException.create(index, Long.BYTES);
+            }
+        }
+
+        @Specialization(guards = {"!receiver.isNull()", "!receiver.isByteSequence()"})
+        static long doOther(HostObject receiver, ByteOrder order, long index,
                         @Bind("$node") Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error,
@@ -1284,6 +1438,23 @@ final class HostObject implements TruffleObject {
     @TruffleBoundary
     private static long getBufferLongBoundary(ByteBuffer buffer, int index) {
         return buffer.getLong(index);
+    }
+
+    @TruffleBoundary
+    private static long getByteSequenceLongBoundary(APIAccess apiAccess, Object byteSequence, int index, ByteOrder order) {
+        long b1 = apiAccess.byteSequenceByteAt(byteSequence, index) & 0xFF;
+        long b2 = apiAccess.byteSequenceByteAt(byteSequence, index + 1) & 0xFF;
+        long b3 = apiAccess.byteSequenceByteAt(byteSequence, index + 2) & 0xFF;
+        long b4 = apiAccess.byteSequenceByteAt(byteSequence, index + 3) & 0xFF;
+        long b5 = apiAccess.byteSequenceByteAt(byteSequence, index + 4) & 0xFF;
+        long b6 = apiAccess.byteSequenceByteAt(byteSequence, index + 5) & 0xFF;
+        long b7 = apiAccess.byteSequenceByteAt(byteSequence, index + 6) & 0xFF;
+        long b8 = apiAccess.byteSequenceByteAt(byteSequence, index + 7) & 0xFF;
+        if (order == ByteOrder.BIG_ENDIAN) {
+            return (b1 << 56) | (b2 << 48) | (b3 << 40) | (b4 << 32) | (b5 << 24) | (b6 << 16) | (b7 << 8) | b8;
+        } else {
+            return (b8 << 56) | (b7 << 48) | (b6 << 40) | (b5 << 32) | (b4 << 24) | (b3 << 16) | (b2 << 8) | b1;
+        }
     }
 
     @ExportMessage
@@ -1341,8 +1512,31 @@ final class HostObject implements TruffleObject {
             throw UnsupportedMessageException.create();
         }
 
-        @Specialization(guards = "!receiver.isNull()")
-        static float doNonNull(HostObject receiver, ByteOrder order, long index,
+        @Specialization(guards = {"receiver.isByteSequence()"})
+        static float doByteSequence(HostObject receiver,
+                        ByteOrder order,
+                        long index,
+                        @Bind("$node") Node node,
+                        @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
+                        @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            if (!hostClassCache.isBufferAccess()) {
+                error.enter(node);
+                throw UnsupportedMessageException.create();
+            }
+            if (index < 0 || Integer.MAX_VALUE < index) {
+                error.enter(node);
+                throw InvalidBufferOffsetException.create(index, Float.BYTES);
+            }
+            try {
+                return getByteSequenceFloatBoundary(receiver.context.language.api, receiver.obj, (int) index, order);
+            } catch (IndexOutOfBoundsException e) {
+                error.enter(node);
+                throw InvalidBufferOffsetException.create(index, Float.BYTES);
+            }
+        }
+
+        @Specialization(guards = {"!receiver.isNull()", "!receiver.isByteSequence()"})
+        static float doOther(HostObject receiver, ByteOrder order, long index,
                         @Bind("$node") Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error,
@@ -1372,6 +1566,11 @@ final class HostObject implements TruffleObject {
     @TruffleBoundary
     private static float getBufferFloatBoundary(ByteBuffer buffer, int index) {
         return buffer.getFloat(index);
+    }
+
+    @TruffleBoundary
+    private static float getByteSequenceFloatBoundary(APIAccess apiAccess, Object byteSequence, int index, ByteOrder order) {
+        return Float.intBitsToFloat(getByteSequenceIntBoundary(apiAccess, byteSequence, index, order));
     }
 
     @ExportMessage
@@ -1429,8 +1628,31 @@ final class HostObject implements TruffleObject {
             throw UnsupportedMessageException.create();
         }
 
-        @Specialization(guards = "!receiver.isNull()")
-        static double doNonNull(HostObject receiver, ByteOrder order, long index,
+        @Specialization(guards = {"receiver.isByteSequence()"})
+        static double doByteSequence(HostObject receiver,
+                        ByteOrder order,
+                        long index,
+                        @Bind("$node") Node node,
+                        @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
+                        @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            if (!hostClassCache.isBufferAccess()) {
+                error.enter(node);
+                throw UnsupportedMessageException.create();
+            }
+            if (index < 0 || Integer.MAX_VALUE < index) {
+                error.enter(node);
+                throw InvalidBufferOffsetException.create(index, Double.BYTES);
+            }
+            try {
+                return getByteSequenceDoubleBoundary(receiver.context.language.api, receiver.obj, (int) index, order);
+            } catch (IndexOutOfBoundsException e) {
+                error.enter(node);
+                throw InvalidBufferOffsetException.create(index, Double.BYTES);
+            }
+        }
+
+        @Specialization(guards = {"!receiver.isNull()", "!receiver.isByteSequence()"})
+        static double doOther(HostObject receiver, ByteOrder order, long index,
                         @Bind("$node") Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error,
@@ -1460,6 +1682,11 @@ final class HostObject implements TruffleObject {
     @TruffleBoundary
     private static double getBufferDoubleBoundary(ByteBuffer buffer, int index) {
         return buffer.getDouble(index);
+    }
+
+    @TruffleBoundary
+    private static double getByteSequenceDoubleBoundary(APIAccess apiAccess, Object byteSequence, int index, ByteOrder order) {
+        return Double.longBitsToDouble(getByteSequenceLongBoundary(apiAccess, byteSequence, index, order));
     }
 
     @ExportMessage
@@ -1507,6 +1734,79 @@ final class HostObject implements TruffleObject {
     @TruffleBoundary
     private static void putBufferDoubleBoundary(ByteBuffer buffer, int index, double value) {
         buffer.putDouble(index, value);
+    }
+
+    @ExportMessage
+    static class ReadBuffer {
+
+        @Specialization(guards = "receiver.isNull()")
+        static void doNull(HostObject receiver, long bufferByteOffset, byte[] destination, int destinationOffset, int byteLength) throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
+        }
+
+        @Specialization(guards = {"receiver.isByteSequence()"})
+        static void doByteSequence(HostObject receiver,
+                        long bufferByteOffset,
+                        byte[] destination,
+                        int destinationOffset,
+                        int byteLength,
+                        @Bind("$node") Node node,
+                        @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
+                        @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            if (!hostClassCache.isBufferAccess()) {
+                error.enter(node);
+                throw UnsupportedMessageException.create();
+            }
+            if (bufferByteOffset < 0 || Integer.MAX_VALUE < bufferByteOffset + byteLength) {
+                error.enter(node);
+                throw InvalidBufferOffsetException.create(bufferByteOffset, byteLength);
+            }
+            try {
+                getByteSequenceBytesBoundary(receiver.context.language.api, receiver.obj, (int) bufferByteOffset, destination, destinationOffset, byteLength);
+            } catch (IndexOutOfBoundsException e) {
+                error.enter(node);
+                throw InvalidBufferOffsetException.create(bufferByteOffset, byteLength);
+            }
+        }
+
+        @Specialization(guards = {"!receiver.isNull()", "!receiver.isByteSequence()"})
+        static void doOther(HostObject receiver,
+                        long bufferByteOffset,
+                        byte[] destination,
+                        int destinationOffset,
+                        int byteLength,
+                        @Bind("$node") Node node,
+                        @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
+                        @Shared("error") @Cached InlinedBranchProfile error,
+                        @Shared("classProfile") @Cached InlinedExactClassProfile classProfile) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            if (!receiver.isBuffer(hostClassCache)) {
+                error.enter(node);
+                throw UnsupportedMessageException.create();
+            }
+            if (bufferByteOffset < 0 || Integer.MAX_VALUE < bufferByteOffset + byteLength) {
+                error.enter(node);
+                throw InvalidBufferOffsetException.create(bufferByteOffset, byteLength);
+            }
+            try {
+                final ByteBuffer buffer = (ByteBuffer) classProfile.profile(node, receiver.obj);
+                getBufferBytesBoundary(buffer, (int) bufferByteOffset, destination, destinationOffset, byteLength);
+            } catch (IndexOutOfBoundsException e) {
+                error.enter(node);
+                throw InvalidBufferOffsetException.create(bufferByteOffset, byteLength);
+            }
+        }
+    }
+
+    @TruffleBoundary
+    private static void getByteSequenceBytesBoundary(APIAccess apiAccess, Object byteSequence, int index, byte[] destination, int destinationOffset, int byteLength) {
+        for (int i = index; i < index + byteLength; i++) {
+            destination[destinationOffset + (i - index)] = apiAccess.byteSequenceByteAt(byteSequence, i);
+        }
+    }
+
+    @TruffleBoundary
+    private static void getBufferBytesBoundary(ByteBuffer buffer, int index, byte[] destination, int destinationOffset, int byteLength) {
+        buffer.get(index, destination, destinationOffset, byteLength);
     }
 
     // endregion

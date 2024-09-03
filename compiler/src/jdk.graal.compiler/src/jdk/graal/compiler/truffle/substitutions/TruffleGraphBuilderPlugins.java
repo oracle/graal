@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.function.Supplier;
+
+import org.graalvm.word.LocationIdentity;
+
+import com.oracle.truffle.compiler.TruffleCompilationTask;
 
 import jdk.graal.compiler.core.common.calc.CanonicalCondition;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
@@ -95,18 +99,20 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins;
 import jdk.graal.compiler.replacements.nodes.arithmetic.UnsignedMulHighNode;
 import jdk.graal.compiler.serviceprovider.SpeculationReasonGroup;
-import jdk.graal.compiler.truffle.nodes.asserts.NeverPartOfCompilationNode;
 import jdk.graal.compiler.truffle.KnownTruffleTypes;
 import jdk.graal.compiler.truffle.PerformanceInformationHandler;
 import jdk.graal.compiler.truffle.TruffleCompilation;
 import jdk.graal.compiler.truffle.TruffleCompilerOptions.PerformanceWarningKind;
 import jdk.graal.compiler.truffle.TruffleDebugJavaMethod;
 import jdk.graal.compiler.truffle.nodes.AnyExtendNode;
+import jdk.graal.compiler.truffle.nodes.AnyNarrowNode;
 import jdk.graal.compiler.truffle.nodes.IsCompilationConstantNode;
 import jdk.graal.compiler.truffle.nodes.ObjectLocationIdentity;
 import jdk.graal.compiler.truffle.nodes.TruffleAssumption;
+import jdk.graal.compiler.truffle.nodes.asserts.NeverPartOfCompilationNode;
 import jdk.graal.compiler.truffle.nodes.frame.AllowMaterializeNode;
 import jdk.graal.compiler.truffle.nodes.frame.ForceMaterializeNode;
 import jdk.graal.compiler.truffle.nodes.frame.NewFrameNode;
@@ -120,10 +126,6 @@ import jdk.graal.compiler.truffle.nodes.frame.VirtualFrameIsNode;
 import jdk.graal.compiler.truffle.nodes.frame.VirtualFrameSetNode;
 import jdk.graal.compiler.truffle.nodes.frame.VirtualFrameSwapNode;
 import jdk.graal.compiler.truffle.phases.TruffleSafepointInsertionPhase;
-import org.graalvm.word.LocationIdentity;
-
-import com.oracle.truffle.compiler.TruffleCompilationTask;
-
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -225,34 +227,38 @@ public class TruffleGraphBuilderPlugins {
         r.register(new RequiredInvocationPlugin("isValid", Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                if (receiver.isConstant() && b.getAssumptions() != null) {
-                    JavaConstant assumption = (JavaConstant) receiver.get().asConstant();
-                    if (b.getConstantReflection().readFieldValue(types.AbstractAssumption_isValid, assumption).asBoolean()) {
-                        b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(true));
-                        b.getAssumptions().record(new TruffleAssumption(assumption));
-                    } else {
-                        b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(false));
+                JavaConstant assumption = receiver.get(false).asJavaConstant();
+                if (b.getAssumptions() != null && assumption != null && assumption.isNonNull()) {
+                    JavaConstant isValid = b.getConstantReflection().readFieldValue(types.AbstractAssumption_isValid, assumption);
+                    if (isValid != null) {
+                        if (isValid.asBoolean()) {
+                            b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(true));
+                            b.getAssumptions().record(new TruffleAssumption(assumption));
+                        } else {
+                            b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(false));
+                        }
+                        return true;
                     }
-                    return true;
-                } else {
-                    return false;
                 }
+                return false;
             }
         });
         r.register(new RequiredInvocationPlugin("check", Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                if (receiver.isConstant() && b.getAssumptions() != null) {
-                    JavaConstant assumption = (JavaConstant) receiver.get().asConstant();
-                    if (b.getConstantReflection().readFieldValue(types.AbstractAssumption_isValid, assumption).asBoolean()) {
-                        b.getAssumptions().record(new TruffleAssumption(assumption));
-                    } else {
-                        b.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.None));
+                JavaConstant assumption = receiver.get(false).asJavaConstant();
+                if (b.getAssumptions() != null && assumption != null && assumption.isNonNull()) {
+                    JavaConstant isValid = b.getConstantReflection().readFieldValue(types.AbstractAssumption_isValid, assumption);
+                    if (isValid != null) {
+                        if (isValid.asBoolean()) {
+                            b.getAssumptions().record(new TruffleAssumption(assumption));
+                        } else {
+                            b.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.None));
+                        }
+                        return true;
                     }
-                    return true;
-                } else {
-                    return false;
                 }
+                return false;
             }
         });
     }
@@ -448,6 +454,13 @@ public class TruffleGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
                 b.add(new EnsureVirtualizedNode(object, true));
+                return true;
+            }
+        });
+        r.register(new RequiredInlineOnlyInvocationPlugin("ensureAllocatedHere", Object.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
+                StandardGraphBuilderPlugins.registerEnsureAllocatedHereIntrinsic(b, object);
                 return true;
             }
         });
@@ -706,10 +719,8 @@ public class TruffleGraphBuilderPlugins {
     }
 
     static int maybeGetConstantNumberedFrameSlotIndex(Receiver frameNode, ValueNode frameSlotNode) {
-        if (frameSlotNode.isConstant()) {
-            ValueNode frameNodeValue = frameNode.get(false);
-            if (frameNodeValue instanceof NewFrameNode) {
-                NewFrameNode newFrameNode = (NewFrameNode) frameNodeValue;
+        if (frameSlotNode.isJavaConstant()) {
+            if (frameNode.get(false) instanceof NewFrameNode newFrameNode) {
                 if (newFrameNode.getIntrinsifyAccessors()) {
                     int index = frameSlotNode.asJavaConstant().asInt();
                     if (newFrameNode.isValidIndexedSlotIndex(index)) {
@@ -725,9 +736,8 @@ public class TruffleGraphBuilderPlugins {
         r.register(new RequiredInvocationPlugin("startOSRTransfer", Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver frameNode) {
-                ValueNode frameNodeValue = frameNode.get(false);
-                if (frameNodeValue instanceof NewFrameNode) {
-                    ((NewFrameNode) frameNodeValue).setBytecodeOSRTransferTarget();
+                if (frameNode.get(false) instanceof NewFrameNode newFrameNode) {
+                    newFrameNode.setBytecodeOSRTransferTarget();
                     return true;
                 }
                 return false;
@@ -739,8 +749,8 @@ public class TruffleGraphBuilderPlugins {
         r.register(new RequiredInvocationPlugin("getArguments", Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver frame) {
-                if (frame.get(false) instanceof NewFrameNode) {
-                    b.push(JavaKind.Object, ((NewFrameNode) frame.get()).getArguments());
+                if (frame.get(false) instanceof NewFrameNode newFrameNode) {
+                    b.push(JavaKind.Object, newFrameNode.getArguments());
                     return true;
                 }
                 return false;
@@ -750,8 +760,8 @@ public class TruffleGraphBuilderPlugins {
         r.register(new RequiredInvocationPlugin("getFrameDescriptor", Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver frame) {
-                if (frame.get(false) instanceof NewFrameNode) {
-                    b.push(JavaKind.Object, ((NewFrameNode) frame.get()).getDescriptor());
+                if (frame.get(false) instanceof NewFrameNode newFrameNode) {
+                    b.push(JavaKind.Object, newFrameNode.getDescriptor());
                     return true;
                 }
                 return false;
@@ -761,9 +771,9 @@ public class TruffleGraphBuilderPlugins {
         r.register(new RequiredInvocationPlugin("materialize", Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                ValueNode frame = receiver.get();
-                if (frame instanceof NewFrameNode && ((NewFrameNode) frame).getIntrinsifyAccessors()) {
-                    Speculation speculation = b.getGraph().getSpeculationLog().speculate(((NewFrameNode) frame).getIntrinsifyAccessorsSpeculation());
+                ValueNode frame = receiver.get(true);
+                if (frame instanceof NewFrameNode newFrameNode && newFrameNode.getIntrinsifyAccessors()) {
+                    Speculation speculation = b.getGraph().getSpeculationLog().speculate(newFrameNode.getIntrinsifyAccessorsSpeculation());
                     b.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.RuntimeConstraint, speculation));
                     return true;
                 }
@@ -925,6 +935,13 @@ public class TruffleGraphBuilderPlugins {
                 return true;
             }
         });
+        r.register(new RequiredInvocationPlugin("narrow", long.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                b.addPush(JavaKind.Int, new AnyNarrowNode(value));
+                return true;
+            }
+        });
     }
 
     public static void registerNodePlugins(InvocationPlugins plugins, KnownTruffleTypes types, MetaAccessProvider metaAccess, boolean canDelayIntrinsification,
@@ -937,7 +954,7 @@ public class TruffleGraphBuilderPlugins {
                     return false;
                 }
 
-                ValueNode thisValue = receiver.get();
+                ValueNode thisValue = receiver.get(false);
                 if (!thisValue.isJavaConstant() || thisValue.isNullConstant()) {
                     throw b.bailout("getRootNode() receiver is not a compile-time constant or is null.");
                 }
@@ -996,8 +1013,6 @@ public class TruffleGraphBuilderPlugins {
         if (memorySegmentImplType != null) {
             Registration r = new Registration(plugins, new ResolvedJavaSymbol(memorySegmentImplType));
             r.register(new OptionalInvocationPlugin("sessionImpl", Receiver.class) {
-                private final SpeculationLog.SpeculationReason bufferSegmentNullSpeculationReason = BUFFER_SEGMENT_NULL_SPECULATION.createSpeculationReason();
-
                 /**
                  * ByteBuffer methods and VarHandles use the following code pattern to get any
                  * memory session that needs to be checked:
@@ -1029,6 +1044,7 @@ public class TruffleGraphBuilderPlugins {
                         Stamp stamp = segment.stamp(NodeView.DEFAULT);
                         if (stamp instanceof ObjectStamp && !((ObjectStamp) stamp).nonNull() && !((ObjectStamp) stamp).alwaysNull()) {
                             ValueNode load = GraphUtil.unproxify(segment);
+                            SpeculationLog.SpeculationReason bufferSegmentNullSpeculationReason = BUFFER_SEGMENT_NULL_SPECULATION.createSpeculationReason();
                             if (load instanceof LoadFieldNode && types.Buffer_segment.equals(((LoadFieldNode) load).field()) &&
                                             speculationLog.maySpeculate(bufferSegmentNullSpeculationReason)) {
                                 Speculation speculation = speculationLog.speculate(bufferSegmentNullSpeculationReason);

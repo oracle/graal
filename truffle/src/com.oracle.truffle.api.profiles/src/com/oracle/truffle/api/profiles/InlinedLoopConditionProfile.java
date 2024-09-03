@@ -98,8 +98,6 @@ import com.oracle.truffle.api.nodes.Node;
  * {@link #profile(Node, boolean)} is that it incurs less overhead in the interpreter. Using
  * {@link InlinedLoopConditionProfile#inject(Node, boolean)} is a no-op in the interpreter while
  * {@link #profile(Node, boolean)} needs to use a counter for each iteration.
- * <p>
- * {@inheritDoc}
  *
  * @see InlinedConditionProfile
  * @see InlinedCountingConditionProfile

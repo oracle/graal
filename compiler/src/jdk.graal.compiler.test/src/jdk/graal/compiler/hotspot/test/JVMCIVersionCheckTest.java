@@ -110,10 +110,10 @@ public class JVMCIVersionCheckTest extends GraalCompilerTest {
     private static Version getVersion(String jdkVersion, int major, int minor, int build) {
         if (jdkVersion != null) {
             // new version scheme
-            return new Version(jdkVersion, build);
+            return JVMCIVersionCheck.createLabsJDKVersion(jdkVersion, build);
         } else {
             // legacy version scheme
-            return new Version(major, minor, build);
+            return JVMCIVersionCheck.createLegacyVersion(major, minor, build);
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,12 +26,6 @@ package com.oracle.svm.core.identityhashcode;
 
 import java.util.SplittableRandom;
 
-import jdk.graal.compiler.nodes.NamedLocationIdentity;
-import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.phases.util.Providers;
-import jdk.graal.compiler.replacements.IdentityHashCodeSnippets;
-import jdk.graal.compiler.word.ObjectAccess;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.WordFactory;
@@ -40,11 +34,18 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.nodes.NamedLocationIdentity;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.IdentityHashCodeSnippets;
+import jdk.graal.compiler.word.ObjectAccess;
+import jdk.graal.compiler.word.Word;
 import jdk.internal.misc.Unsafe;
 
 public final class IdentityHashCodeSupport {
@@ -74,10 +75,12 @@ public final class IdentityHashCodeSupport {
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     public static int generateIdentityHashCode(Object obj) {
         ObjectLayout ol = ConfigurationValues.getObjectLayout();
-        VMError.guarantee(ol.hasFixedIdentityHashField(), "Snippet must handle other cases");
+        VMError.guarantee(!ol.isIdentityHashFieldOptional(), "Optional hash is handled in snippet");
+
         int newHashCode = generateRandomHashCode();
-        if (!Unsafe.getUnsafe().compareAndSetInt(obj, ol.getFixedIdentityHashOffset(), 0, newHashCode)) {
-            newHashCode = ObjectAccess.readInt(obj, ol.getFixedIdentityHashOffset(), IDENTITY_HASHCODE_LOCATION);
+        int offset = LayoutEncoding.getIdentityHashOffset(obj);
+        if (!Unsafe.getUnsafe().compareAndSetInt(obj, offset, 0, newHashCode)) {
+            newHashCode = ObjectAccess.readInt(obj, offset, IDENTITY_HASHCODE_LOCATION);
         }
         VMError.guarantee(newHashCode != 0, "Missing identity hash code");
         return newHashCode;
@@ -100,7 +103,7 @@ public final class IdentityHashCodeSupport {
         return (int) (((z ^ (z >>> 28)) * 0xcb24d0a5c88c35b3L) >>> 32);
     }
 
-    private static int generateRandomHashCode() {
+    public static int generateRandomHashCode() {
         SplittableRandom hashCodeGenerator = hashCodeGeneratorTL.get();
         if (hashCodeGenerator == null) {
             /*

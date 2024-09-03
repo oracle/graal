@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,11 +41,11 @@
 package com.oracle.truffle.nfi.backend.panama;
 
 import java.lang.foreign.FunctionDescriptor;
-import java.lang.foreign.Linker;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.InternalResource.OS;
 
 public class ErrorContext {
@@ -59,22 +59,9 @@ public class ErrorContext {
         };
     }
 
-    private Throwable throwable = null;
     @SuppressWarnings("preview") private MemorySegment errnoLocation;
     private Integer nativeErrno = null;
     final PanamaNFIContext ctx;
-
-    public void setThrowable(Throwable throwable) {
-        this.throwable = throwable;
-    }
-
-    void handleThrowables() {
-        if (throwable != null) {
-            Throwable temp = throwable;
-            throwable = null;
-            throw silenceThrowable(RuntimeException.class, temp);
-        }
-    }
 
     public boolean nativeErrnoSet() {
         return (nativeErrno != null);
@@ -88,40 +75,58 @@ public class ErrorContext {
         this.nativeErrno = nativeErrno;
     }
 
-    @SuppressWarnings({"preview", "restricted"})
-    MemorySegment getErrnoLocation() {
-        Linker linker = Linker.nativeLinker();
+    @SuppressWarnings({"preview"})
+    MemorySegment lookupErrnoLocation() {
         FunctionDescriptor desc = FunctionDescriptor.of(ValueLayout.JAVA_LONG);
-
-        MemorySegment t = linker.defaultLookup().find(ERRNO_LOCATION).get();
-        MethodHandle handle = linker.downcallHandle(desc);
         try {
-            return MemorySegment.ofAddress((long) handle.invokeExact(t)).reinterpret(4);
-        } catch (Throwable e) {
-            throw new RuntimeException(e);
+            MethodHandle handle = NFIPanamaAccessor.FOREIGN.downcallHandle(ERRNO_LOCATION, desc);
+            MemorySegment errnoAddress;
+            try {
+                errnoAddress = MemorySegment.ofAddress((long) handle.invokeExact());
+            } catch (Throwable e) {
+                throw new RuntimeException(e);
+            }
+            return (MemorySegment) NFIPanamaAccessor.FOREIGN.reinterpret(errnoAddress, 4);
+        } catch (IllegalCallerException ic) {
+            throw NFIError.illegalNativeAccess(null);
         }
     }
 
     void initialize() {
-        errnoLocation = getErrnoLocation();
+        if (this.errnoLocation == null) {
+            errnoLocation = lookupErrnoLocation();
+        }
+    }
+
+    private MemorySegment getErrnoLocation() {
+        if (errnoLocation == null) {
+            // FIXME: GR-30264
+            /*
+             * This thread was initialized externally, and we were called before the first truffle
+             * safepoint after thread initialization. Unfortunately there is not much we can do here
+             * except deopt and lazy initialize. This should be very rare.
+             *
+             * The actual fix for this is that Truffle should take care of doing the thread
+             * initialization on the correct thread. Truffle has enough control over safepoints that
+             * it can make sure this is guaranteed to happen before any guest code runs.
+             */
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            errnoLocation = lookupErrnoLocation();
+        }
+        return errnoLocation;
     }
 
     @SuppressWarnings("preview")
     int getErrno() {
-        return errnoLocation.get(ValueLayout.JAVA_INT, 0);
+        return getErrnoLocation().get(ValueLayout.JAVA_INT, 0);
     }
 
     @SuppressWarnings("preview")
     void setErrno(int newErrno) {
-        errnoLocation.set(ValueLayout.JAVA_INT, 0, newErrno);
+        getErrnoLocation().set(ValueLayout.JAVA_INT, 0, newErrno);
     }
 
     ErrorContext(PanamaNFIContext ctx, Thread thread) {
         this.ctx = ctx;
-    }
-
-    @SuppressWarnings("unchecked")
-    static <E extends Throwable> RuntimeException silenceThrowable(Class<E> type, Throwable t) throws E {
-        throw (E) t;
     }
 }

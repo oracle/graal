@@ -207,7 +207,7 @@ public final class VMError {
      * A high-level feature that is not supported, e.g. class loading at runtime.
      */
     public static RuntimeException unsupportedFeature(String msg) {
-        throw new HostedError("UNSUPPORTED FEATURE: " + msg);
+        throw new HostedError("Unsupported feature: " + msg);
     }
 
     /**

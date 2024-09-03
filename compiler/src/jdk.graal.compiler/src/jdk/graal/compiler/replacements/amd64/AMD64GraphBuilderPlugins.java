@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,7 +40,6 @@ import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
-import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.NodeView;
@@ -49,6 +48,7 @@ import jdk.graal.compiler.nodes.calc.CompressBitsNode;
 import jdk.graal.compiler.nodes.calc.CopySignNode;
 import jdk.graal.compiler.nodes.calc.ExpandBitsNode;
 import jdk.graal.compiler.nodes.calc.FloatTypeTestNode;
+import jdk.graal.compiler.nodes.calc.FusedMultiplyAddNode;
 import jdk.graal.compiler.nodes.calc.LeftShiftNode;
 import jdk.graal.compiler.nodes.calc.MaxNode;
 import jdk.graal.compiler.nodes.calc.MinNode;
@@ -74,20 +74,15 @@ import jdk.graal.compiler.replacements.StringLatin1Snippets;
 import jdk.graal.compiler.replacements.StringUTF16CompressNode;
 import jdk.graal.compiler.replacements.StringUTF16Snippets;
 import jdk.graal.compiler.replacements.TargetGraphBuilderPlugins;
-import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode;
-import jdk.graal.compiler.replacements.nodes.CountTrailingZerosNode;
-import jdk.graal.compiler.replacements.nodes.FloatToHalfFloatNode;
-import jdk.graal.compiler.replacements.nodes.FusedMultiplyAddNode;
-import jdk.graal.compiler.replacements.nodes.VectorizedHashCodeNode;
 import jdk.graal.compiler.replacements.nodes.ArrayCompareToNode;
 import jdk.graal.compiler.replacements.nodes.ArrayIndexOfNode;
-import jdk.graal.compiler.replacements.nodes.BitCountNode;
+import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import jdk.graal.compiler.replacements.nodes.CountLeadingZerosNode;
+import jdk.graal.compiler.replacements.nodes.CountTrailingZerosNode;
+import jdk.graal.compiler.replacements.nodes.FloatToHalfFloatNode;
 import jdk.graal.compiler.replacements.nodes.HalfFloatToFloatNode;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
-
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.code.Architecture;
@@ -118,7 +113,6 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 registerMathPlugins(invocationPlugins, arch, replacements);
                 registerStrictMathPlugins(invocationPlugins, arch, replacements);
                 registerArraysEqualsPlugins(invocationPlugins, replacements);
-                registerArraysSupportPlugins(invocationPlugins, arch, replacements);
             }
         });
     }
@@ -141,31 +135,20 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 return true;
             }
         });
-
-        r.registerConditional(arch.getFeatures().contains(CPUFeature.POPCNT), new InvocationPlugin("bitCount", type) {
+        r.registerConditional(arch.getFeatures().contains(CPUFeature.BMI2), new InvocationPlugin("compress", type, type) {
             @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                b.push(JavaKind.Int, b.append(new BitCountNode(value).canonical(null)));
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode mask) {
+                b.push(kind, b.append(new CompressBitsNode(value, mask)));
                 return true;
             }
         });
-
-        if (JavaVersionUtil.JAVA_SPEC >= 20) {
-            r.registerConditional(arch.getFeatures().contains(CPUFeature.BMI2), new InvocationPlugin("compress", type, type) {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode mask) {
-                    b.push(kind, b.append(new CompressBitsNode(value, mask)));
-                    return true;
-                }
-            });
-            r.registerConditional(arch.getFeatures().contains(CPUFeature.BMI2), new InvocationPlugin("expand", type, type) {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode mask) {
-                    b.push(kind, b.append(new ExpandBitsNode(value, mask)));
-                    return true;
-                }
-            });
-        }
+        r.registerConditional(arch.getFeatures().contains(CPUFeature.BMI2), new InvocationPlugin("expand", type, type) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode mask) {
+                b.push(kind, b.append(new ExpandBitsNode(value, mask)));
+                return true;
+            }
+        });
     }
 
     private static boolean supportsFeature(AMD64 arch, String feature) {
@@ -179,24 +162,22 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
     private static void registerFloatPlugins(InvocationPlugins plugins, AMD64 arch, Replacements replacements) {
         Registration r = new Registration(plugins, Float.class, replacements);
 
-        if (JavaVersionUtil.JAVA_SPEC >= 20) {
-            boolean supportsF16C = supportsFeature(arch, "F16C");
+        boolean supportsF16C = supportsFeature(arch, "F16C");
 
-            r.registerConditional(supportsF16C, new InvocationPlugin("float16ToFloat", short.class) {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                    b.push(JavaKind.Float, b.append(new HalfFloatToFloatNode(value)));
-                    return true;
-                }
-            });
-            r.registerConditional(supportsF16C, new InvocationPlugin("floatToFloat16", float.class) {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                    b.push(JavaKind.Short, b.append(new FloatToHalfFloatNode(value)));
-                    return true;
-                }
-            });
-        }
+        r.registerConditional(supportsF16C, new InvocationPlugin("float16ToFloat", short.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                b.push(JavaKind.Float, b.append(new HalfFloatToFloatNode(value)));
+                return true;
+            }
+        });
+        r.registerConditional(supportsF16C, new InvocationPlugin("floatToFloat16", float.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                b.push(JavaKind.Short, b.append(new FloatToHalfFloatNode(value)));
+                return true;
+            }
+        });
     }
 
     private static void registerFloatDoublePlugins(InvocationPlugins plugins, JavaKind kind, AMD64 arch, Replacements replacements) {
@@ -533,7 +514,8 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             }
 
         });
-        r.register(new InvocationPlugin("indexOfCharUnsafe", byte[].class, int.class, int.class, int.class) {
+        int jdk = Runtime.version().feature();
+        r.register(new InvocationPlugin(jdk == 21 ? "indexOfCharUnsafe" : "indexOfChar", byte[].class, int.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode ch, ValueNode fromIndex, ValueNode max) {
                 ZeroExtendNode toChar = b.add(new ZeroExtendNode(b.add(new NarrowNode(ch, JavaKind.Char.getBitCount())), JavaKind.Int.getBitCount()));
@@ -557,46 +539,6 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
         Registration r = new Registration(plugins, Arrays.class, replacements);
         r.register(new StandardGraphBuilderPlugins.ArrayEqualsInvocationPlugin(JavaKind.Float, float[].class, float[].class));
         r.register(new StandardGraphBuilderPlugins.ArrayEqualsInvocationPlugin(JavaKind.Double, double[].class, double[].class));
-    }
-
-    // Sync with ArraysSupport.java
-    public static final int T_BOOLEAN = 4;
-    public static final int T_CHAR = 5;
-    public static final int T_BYTE = 8;
-    public static final int T_SHORT = 9;
-    public static final int T_INT = 10;
-
-    private static void registerArraysSupportPlugins(InvocationPlugins plugins, AMD64 arch, Replacements replacements) {
-        Registration r = new Registration(plugins, "jdk.internal.util.ArraysSupport", replacements);
-
-        if (JavaVersionUtil.JAVA_SPEC >= 21) {
-            r.registerConditional(VectorizedHashCodeNode.isSupported(arch), new InvocationPlugin("vectorizedHashCode", Object.class, int.class, int.class, int.class, int.class) {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
-                                ValueNode array, ValueNode fromIndex, ValueNode length, ValueNode initialValue, ValueNode basicType) {
-                    try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                        if (basicType.isConstant()) {
-                            ValueNode arrayStart;
-                            int basicTypeAsInt = basicType.asJavaConstant().asInt();
-                            JavaKind componentType = switch (basicTypeAsInt) {
-                                case T_BOOLEAN -> JavaKind.Boolean;
-                                case T_CHAR -> JavaKind.Char;
-                                case T_BYTE -> JavaKind.Byte;
-                                case T_SHORT -> JavaKind.Short;
-                                case T_INT -> JavaKind.Int;
-                                default -> throw GraalError.shouldNotReachHere("Unsupported kind " + basicTypeAsInt);
-                            };
-
-                            // for T_CHAR, the intrinsic accepts both byte[] and char[]
-                            arrayStart = helper.arrayElementPointer(array, componentType, fromIndex, componentType == JavaKind.Char || componentType == JavaKind.Boolean);
-                            b.addPush(JavaKind.Int, new VectorizedHashCodeNode(arrayStart, length, initialValue, componentType));
-                            return true;
-                        }
-                    }
-                    return false;
-                }
-            });
-        }
     }
 
 }

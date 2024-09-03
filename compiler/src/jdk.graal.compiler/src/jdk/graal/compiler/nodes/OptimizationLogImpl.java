@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,12 +32,12 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.UnmodifiableEconomicMap;
+
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.debug.DebugCloseable;
@@ -51,13 +51,14 @@ import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.graph.NodeSuccessorList;
+import jdk.graal.compiler.java.StableMethodNameFormatter;
 import jdk.graal.compiler.nodeinfo.NodeCycles;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.NodeSize;
+import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.IsolateUtil;
-import jdk.graal.compiler.util.json.JSONFormatter;
-
+import jdk.graal.compiler.util.json.JsonFormatter;
 import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -434,17 +435,17 @@ public class OptimizationLogImpl implements OptimizationLog {
             NodeSourcePosition position = node.getNodeSourcePosition();
             DebugContext debug = optimizationLog.graph.getDebug();
             if (debug.isCountEnabled() || debug.hasUnscopedCounters()) {
-                DebugContext.counter(optimizationName + "_" + eventName).increment(debug);
+                DebugContext.counter("Optimization_" + optimizationName + "_" + eventName).increment(debug);
             }
             if (debug.isLogEnabled(logLevel)) {
                 debug.log(logLevel, "Performed %s %s for node %s at bci %s %s", optimizationName, eventName, node,
                                 position == null ? "unknown" : position.getBCI(),
-                                properties == null ? "" : JSONFormatter.formatJSON(properties));
+                                properties == null ? "" : JsonFormatter.formatJson(properties));
             }
             if (debug.isDumpEnabled(logLevel)) {
                 debug.dump(logLevel, optimizationLog.graph, "%s %s for %s", optimizationName, eventName, node);
             }
-            if (optimizationLog.optimizationLogEnabled) {
+            if (optimizationLog.structuredOptimizationLogEnabled) {
                 optimizationLog.currentPhase.addChild(new OptimizationNode(properties, position, optimizationName, eventName));
             }
         }
@@ -466,10 +467,10 @@ public class OptimizationLogImpl implements OptimizationLog {
     private final String compilationId;
 
     /**
-     * {@code true} iff the structured optimization log is enabled according to
-     * {@link OptimizationLog#isOptimizationLogEnabled(OptionValues)}.
+     * {@code true} iff the structured optimization log is
+     * {@link OptimizationLog#isStructuredOptimizationLogEnabled(OptionValues) enabled}.
      */
-    private final boolean optimizationLogEnabled;
+    private final boolean structuredOptimizationLogEnabled;
 
     /**
      * A data structure that holds the state of virtualized allocations during partial escape
@@ -479,7 +480,8 @@ public class OptimizationLogImpl implements OptimizationLog {
 
     /**
      * The most recently entered phase which has not been exited yet. Initially, this is the root
-     * phase. If {@link #optimizationLogEnabled} is {@code false}, the field stays {@code null}.
+     * phase. If {@link #structuredOptimizationLogEnabled} is {@code false}, the field stays
+     * {@code null}.
      */
     private OptimizationPhaseNode currentPhase;
 
@@ -497,8 +499,8 @@ public class OptimizationLogImpl implements OptimizationLog {
      */
     public OptimizationLogImpl(StructuredGraph graph) {
         this.graph = graph;
-        optimizationLogEnabled = OptimizationLog.isOptimizationLogEnabled(graph.getOptions());
-        if (optimizationLogEnabled) {
+        structuredOptimizationLogEnabled = OptimizationLog.isStructuredOptimizationLogEnabled(graph.getOptions());
+        if (structuredOptimizationLogEnabled) {
             compilationId = parseCompilationID();
             currentPhase = new OptimizationPhaseNode(ROOT_PHASE_NAME);
             optimizationTree = new Graph("OptimizationTree", graph.getOptions(), graph.getDebug(), false);
@@ -537,8 +539,13 @@ public class OptimizationLogImpl implements OptimizationLog {
     }
 
     @Override
-    public boolean isOptimizationLogEnabled() {
-        return optimizationLogEnabled;
+    public boolean isStructuredOptimizationLogEnabled() {
+        return structuredOptimizationLogEnabled;
+    }
+
+    @Override
+    public boolean isAnyLoggingEnabled() {
+        return true;
     }
 
     @Override
@@ -574,7 +581,7 @@ public class OptimizationLogImpl implements OptimizationLog {
      */
     @Override
     public DebugCloseable enterPhase(CharSequence name) {
-        if (optimizationLogEnabled) {
+        if (structuredOptimizationLogEnabled) {
             OptimizationPhaseNode previousPhase = currentPhase;
             OptimizationPhaseNode subphase = new OptimizationPhaseNode(name);
             currentPhase.addChild(subphase);
@@ -586,7 +593,7 @@ public class OptimizationLogImpl implements OptimizationLog {
 
     @Override
     public void inline(OptimizationLog calleeOptimizationLog, boolean updatePosition, NodeSourcePosition invokePosition) {
-        if (!optimizationLogEnabled || !calleeOptimizationLog.isOptimizationLogEnabled()) {
+        if (!structuredOptimizationLogEnabled || !calleeOptimizationLog.isStructuredOptimizationLogEnabled()) {
             return;
         }
         assert calleeOptimizationLog instanceof OptimizationLogImpl : "an enabled log is an instance of OptimizationLogImpl";
@@ -611,11 +618,11 @@ public class OptimizationLogImpl implements OptimizationLog {
 
     @Override
     public void replaceLog(OptimizationLog replacementLog) {
-        if (!optimizationLogEnabled) {
+        if (!structuredOptimizationLogEnabled) {
             return;
         }
         optimizationTree = new Graph(optimizationTree.name, optimizationTree.getOptions(), optimizationTree.getDebug(), optimizationTree.trackNodeSourcePosition());
-        if (!replacementLog.isOptimizationLogEnabled()) {
+        if (!replacementLog.isStructuredOptimizationLogEnabled()) {
             currentPhase = new OptimizationPhaseNode(ROOT_PHASE_NAME);
             optimizationTree.add(currentPhase);
             return;
@@ -629,13 +636,10 @@ public class OptimizationLogImpl implements OptimizationLog {
 
     @Override
     public DebugCloseable enterPartialEscapeAnalysis() {
-        assert partialEscapeLog == null;
-        if (!optimizationLogEnabled) {
-            return DebugCloseable.VOID_CLOSEABLE;
-        }
+        assert partialEscapeLog == null : "recursive entry to PEA is disallowed";
         partialEscapeLog = new PartialEscapeLog();
         return () -> {
-            assert partialEscapeLog != null;
+            assert partialEscapeLog != null : "the partial escape log is available during PEA";
             MapCursor<VirtualObjectNode, Integer> cursor = partialEscapeLog.getVirtualNodes().getEntries();
             while (cursor.advance()) {
                 withProperty("materializations", cursor.getValue()).report(PartialEscapeLog.class, "AllocationVirtualization", cursor.getKey());
@@ -646,7 +650,7 @@ public class OptimizationLogImpl implements OptimizationLog {
 
     @Override
     public PartialEscapeLog getPartialEscapeLog() {
-        assert partialEscapeLog != null;
+        assert partialEscapeLog != null : "accessing the partial escape log outside PEA";
         return partialEscapeLog;
     }
 
@@ -677,12 +681,10 @@ public class OptimizationLogImpl implements OptimizationLog {
      * Profdiff makes strong assumptions about the format of the optimization log files in order to
      * speed up parsing. In particular, it expects one compilation per line with {@code '\n'} line
      * separators. The JSON must start with the method name and compilation ID properties. There
-     * must be no extra whitespace other than what is generated by {@link JSONFormatter}.
-     *
-     * @param methodNameFormatter a function that formats method names
+     * must be no extra whitespace other than what is generated by {@link JsonFormatter}.
      */
     @Override
-    public void emit(Function<ResolvedJavaMethod, String> methodNameFormatter) {
+    public void emit() {
         EconomicSet<DebugOptions.OptimizationLogTarget> targets = DebugOptions.OptimizationLog.getValue(graph.getOptions());
         if (targets == null || targets.isEmpty()) {
             return;
@@ -695,7 +697,8 @@ public class OptimizationLogImpl implements OptimizationLog {
         if (!printToStdout && !printToFile) {
             return;
         }
-        String json = JSONFormatter.formatJSON(asJSONMap(methodNameFormatter));
+        StableMethodNameFormatter methodNameFormatter = new StableMethodNameFormatter(true);
+        String json = JsonFormatter.formatJson(asJSONMap(methodNameFormatter));
         if (printToStdout) {
             TTY.out().println(json);
         }
@@ -731,11 +734,11 @@ public class OptimizationLogImpl implements OptimizationLog {
         while (root.predecessor() != null) {
             root = (OptimizationPhaseNode) root.predecessor();
         }
-        assert ROOT_PHASE_NAME.contentEquals(root.getPhaseName());
+        assert ROOT_PHASE_NAME.contentEquals(root.getPhaseName()) : "the found phase must be the root phase";
         return root;
     }
 
-    private EconomicMap<String, Object> asJSONMap(Function<ResolvedJavaMethod, String> methodNameFormatter) {
+    private EconomicMap<String, Object> asJSONMap(StableMethodNameFormatter methodNameFormatter) {
         EconomicMap<String, Object> map = EconomicMap.create();
         String compilationMethodName = methodNameFormatter.apply(graph.method());
         map.put(METHOD_NAME_PROPERTY, compilationMethodName);
@@ -761,7 +764,7 @@ public class OptimizationLogImpl implements OptimizationLog {
     }
 
     private EconomicMap<String, Object> inliningTreeAsJSONMap(Function<ResolvedJavaMethod, String> methodNameFormatter) {
-        assert graph.getInliningLog() != null;
+        assert graph.getInliningLog() != null : "the graph must have an inlining log";
         EconomicMap<InliningLog.Callsite, EconomicMap<String, Object>> replacements = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
         return callsiteAsJSONMap(graph.getInliningLog().getRootCallsite(), true, null, methodNameFormatter, replacements);
     }
@@ -816,7 +819,7 @@ public class OptimizationLogImpl implements OptimizationLog {
         }
         if (callsite.getOverriddenParent() != null) {
             EconomicMap<String, Object> parentMap = replacements.get(callsite.getOverriddenParent());
-            assert parentMap != null;
+            assert parentMap != null : "there must already exist a JSON map for the overriden parent";
             List<Object> parentInvokesProperty = (List<Object>) parentMap.get(INVOKES_PROPERTY);
             if (parentInvokesProperty == null) {
                 parentInvokesProperty = new ArrayList<>();

@@ -38,8 +38,6 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
-
 /**
  * Registration of classes, methods, and fields accessed via JNI by C code of the JDK.
  */
@@ -67,25 +65,26 @@ public class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Inter
 
     @Override
     public void duringSetup(DuringSetupAccess a) {
-        rerunClassInit(a, "sun.nio.ch.IOUtil", "sun.nio.ch.ServerSocketChannelImpl", "sun.nio.ch.DatagramChannelImpl", "sun.nio.ch.FileChannelImpl", "sun.nio.ch.FileKey");
-        rerunClassInit(a, "java.nio.file.Files$FileTypeDetectors");
-        rerunClassInit(a, "sun.nio.ch.Net", "sun.nio.ch.SocketOptionRegistry$LazyInitialization");
-        rerunClassInit(a, "sun.nio.ch.AsynchronousSocketChannelImpl$DefaultOptionsHolder", "sun.nio.ch.AsynchronousServerSocketChannelImpl$DefaultOptionsHolder",
+        initializeAtRunTime(a, "sun.nio.ch.IOUtil", "sun.nio.ch.ServerSocketChannelImpl", "sun.nio.ch.DatagramChannelImpl", "sun.nio.ch.FileChannelImpl", "sun.nio.ch.FileKey");
+        initializeAtRunTime(a, "java.nio.file.Files$FileTypeDetectors");
+        initializeAtRunTime(a, "sun.nio.ch.Net", "sun.nio.ch.SocketOptionRegistry$LazyInitialization");
+        initializeAtRunTime(a, "sun.nio.ch.AsynchronousSocketChannelImpl$DefaultOptionsHolder", "sun.nio.ch.AsynchronousServerSocketChannelImpl$DefaultOptionsHolder",
                         "sun.nio.ch.DatagramChannelImpl$DefaultOptionsHolder", "sun.nio.ch.ServerSocketChannelImpl$DefaultOptionsHolder", "sun.nio.ch.SocketChannelImpl$DefaultOptionsHolder");
         /* Ensure that the interrupt signal handler is initialized at runtime. */
-        rerunClassInit(a, "sun.nio.ch.NativeThread");
-        rerunClassInit(a, "sun.nio.ch.FileDispatcherImpl", "sun.nio.ch.FileChannelImpl$Unmapper");
+        initializeAtRunTime(a, "sun.nio.ch.NativeThread");
+        initializeAtRunTime(a, "sun.nio.ch.FileDispatcherImpl", "sun.nio.ch.FileChannelImpl$Unmapper");
 
         if (isPosix()) {
-            rerunClassInit(a, "sun.nio.ch.SimpleAsynchronousFileChannelImpl", "sun.nio.ch.SimpleAsynchronousFileChannelImpl$DefaultExecutorHolder",
+            initializeAtRunTime(a, "sun.nio.ch.InheritedChannel");
+            initializeAtRunTime(a, "sun.nio.ch.SimpleAsynchronousFileChannelImpl", "sun.nio.ch.SimpleAsynchronousFileChannelImpl$DefaultExecutorHolder",
                             "sun.nio.ch.SinkChannelImpl", "sun.nio.ch.SourceChannelImpl");
-            rerunClassInit(a, "sun.nio.fs.UnixNativeDispatcher", "sun.nio.ch.UnixAsynchronousServerSocketChannelImpl");
+            initializeAtRunTime(a, "sun.nio.fs.UnixNativeDispatcher", "sun.nio.ch.UnixAsynchronousServerSocketChannelImpl");
             if (isLinux() && isJdkSctpModulePresent) {
-                rerunClassInit(a, "sun.nio.ch.sctp.SctpChannelImpl");
+                initializeAtRunTime(a, "sun.nio.ch.sctp.SctpChannelImpl");
             }
         } else if (isWindows()) {
-            rerunClassInit(a, "sun.nio.ch.WindowsAsynchronousFileChannelImpl", "sun.nio.ch.WindowsAsynchronousFileChannelImpl$DefaultIocpHolder");
-            rerunClassInit(a, "sun.nio.fs.WindowsNativeDispatcher", "sun.nio.fs.WindowsSecurity", "sun.nio.ch.Iocp",
+            initializeAtRunTime(a, "sun.nio.ch.WindowsAsynchronousFileChannelImpl", "sun.nio.ch.WindowsAsynchronousFileChannelImpl$DefaultIocpHolder");
+            initializeAtRunTime(a, "sun.nio.fs.WindowsNativeDispatcher", "sun.nio.fs.WindowsSecurity", "sun.nio.ch.Iocp",
                             "sun.nio.ch.WindowsAsynchronousServerSocketChannelImpl", "sun.nio.ch.WindowsAsynchronousSocketChannelImpl");
         }
     }
@@ -129,10 +128,6 @@ public class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Inter
         RuntimeJNIAccess.register(constructor(a, "java.net.InetSocketAddress", InetAddress.class, int.class));
     }
 
-    private static void registerFileChannelImplInitIDs(DuringAnalysisAccess a) {
-        RuntimeJNIAccess.register(fields(a, "sun.nio.ch.FileChannelImpl", "fd"));
-    }
-
     private static void registerFileKeyInitIDs(DuringAnalysisAccess a) {
         if (isPosix()) {
             RuntimeJNIAccess.register(fields(a, "sun.nio.ch.FileKey", "st_dev", "st_ino"));
@@ -146,10 +141,10 @@ public class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Inter
         RuntimeJNIAccess.register(fields(a, "sun.nio.fs.UnixFileAttributes",
                         "st_mode", "st_ino", "st_dev", "st_rdev", "st_nlink", "st_uid", "st_gid", "st_size",
                         "st_atime_sec", "st_atime_nsec", "st_mtime_sec", "st_mtime_nsec", "st_ctime_sec", "st_ctime_nsec"));
-        if (isDarwin() || JavaVersionUtil.JAVA_SPEC >= 22 && isLinux()) {
+        if (isDarwin() || isLinux()) {
             RuntimeJNIAccess.register(fields(a, "sun.nio.fs.UnixFileAttributes", "st_birthtime_sec"));
         }
-        if (JavaVersionUtil.JAVA_SPEC >= 22 && isLinux()) {
+        if (isLinux()) {
             RuntimeJNIAccess.register(fields(a, "sun.nio.fs.UnixFileAttributes", "st_birthtime_nsec"));
         }
 

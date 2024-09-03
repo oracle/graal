@@ -24,6 +24,9 @@
  */
 package jdk.graal.compiler.core.test;
 
+import org.junit.Assume;
+import org.junit.Test;
+
 import jdk.graal.compiler.loop.phases.LoopFullUnrollPhase;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
@@ -32,12 +35,11 @@ import jdk.graal.compiler.nodes.java.MonitorExitNode;
 import jdk.graal.compiler.nodes.loop.DefaultLoopPolicies;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
+import jdk.graal.compiler.phases.common.DisableOverflownCountedLoopsPhase;
 import jdk.graal.compiler.phases.common.HighTierLoweringPhase;
 import jdk.graal.compiler.phases.common.LockEliminationPhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
-import org.junit.Test;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class LockEliminationTest extends GraalCompilerTest {
@@ -106,6 +108,7 @@ public class LockEliminationTest extends GraalCompilerTest {
         CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
         canonicalizer.apply(graph, getProviders());
         HighTierContext context = getDefaultHighTierContext();
+        new DisableOverflownCountedLoopsPhase().apply(graph);
         new LoopFullUnrollPhase(canonicalizer, new DefaultLoopPolicies()).apply(graph, context);
         new LockEliminationPhase().apply(graph);
         assertDeepEquals(1, graph.getNodes().filter(MonitorEnterNode.class).count());
@@ -115,6 +118,8 @@ public class LockEliminationTest extends GraalCompilerTest {
     private StructuredGraph getGraph(String snippet, boolean doEscapeAnalysis) {
         ResolvedJavaMethod method = getResolvedJavaMethod(snippet);
         StructuredGraph graph = parseEager(method, AllowAssumptions.YES);
+        new DisableOverflownCountedLoopsPhase().apply(graph);
+
         HighTierContext context = getDefaultHighTierContext();
         CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
         canonicalizer.apply(graph, context);
@@ -154,6 +159,7 @@ public class LockEliminationTest extends GraalCompilerTest {
 
     @Test
     public void testEscapeAnalysis() {
+        Assume.assumeTrue("locks have side effects", getProviders().getPlatformConfigurationProvider().areLocksSideEffectFree());
         StructuredGraph graph = getGraph("testEscapeAnalysisSnippet", true);
 
         assertDeepEquals(3, graph.getNodes().filter(MonitorEnterNode.class).count());

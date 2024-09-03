@@ -29,7 +29,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Constructor;
 
-import jdk.graal.compiler.java.GraphBuilderPhase;
+import org.junit.Assert;
+import org.junit.Test;
+
 import jdk.graal.compiler.nodes.DeoptimizeNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
@@ -37,9 +39,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.java.NewInstanceNode;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
-import org.junit.Assert;
-import org.junit.Test;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class NewInstanceTest extends GraalCompilerTest {
@@ -76,7 +75,7 @@ public class NewInstanceTest extends GraalCompilerTest {
         StructuredGraph graph = new StructuredGraph.Builder(options, getDebugContext(options, null, javaMethod), AllowAssumptions.YES).method(javaMethod).build();
 
         GraphBuilderConfiguration conf = GraphBuilderConfiguration.getSnippetDefault(getDefaultGraphBuilderPlugins()).withUnresolvedIsError(false);
-        new GraphBuilderPhase.Instance(getProviders(), conf, OptimisticOptimizations.ALL, null).apply(graph);
+        new TestGraphBuilderPhase.Instance(getProviders(), conf, OptimisticOptimizations.ALL, null).apply(graph);
         return graph;
     }
 

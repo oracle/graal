@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -93,7 +93,7 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
 
     private FrameState createStateAfterStartOfReplacementGraph(ResolvedJavaMethod original, GraphBuilderConfiguration graphBuilderConfig) {
         FrameStateBuilder startFrameState = new FrameStateBuilder(this, code, graph, graphBuilderConfig.retainLocalVariables());
-        startFrameState.initializeForMethodStart(graph.getAssumptions(), false, graphBuilderConfig.getPlugins());
+        startFrameState.initializeForMethodStart(graph.getAssumptions(), false, graphBuilderConfig.getPlugins(), null);
         return startFrameState.createInitialIntrinsicFrameState(original);
     }
 
@@ -131,6 +131,8 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
         if (graphBuilderConfig != null && !method.isNative()) {
             graph.start().setStateAfter(createStateAfterStartOfReplacementGraph(method, graphBuilderConfig));
         }
+        // Record method dependency in the graph
+        graph.recordMethod(method);
 
         Signature sig = method.getSignature();
         int max = sig.getParameterCount(false);
@@ -193,6 +195,11 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
                 lastInstr = null;
             }
         }
+    }
+
+    @Override
+    public boolean hasParseTerminated() {
+        return lastInstr == null;
     }
 
     @Override
@@ -343,15 +350,6 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
         return arguments[0];
     }
 
-    /**
-     * The non-null check assertion for the receiver is ignored for the reasons stated in
-     * {@link #get(boolean)}.
-     */
-    @Override
-    public ValueNode requireNonNull() {
-        return get(false);
-    }
-
     @SuppressWarnings("try")
     public final StructuredGraph buildGraph(InvocationPlugin plugin) {
         // The caller is expected to have filtered out decorator plugins since they cannot be
@@ -407,4 +405,5 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
     public String toString() {
         return String.format("%s:intrinsic", method.format("%H.%n(%p)"));
     }
+
 }

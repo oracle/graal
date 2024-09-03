@@ -27,6 +27,8 @@ package com.oracle.svm.core.posix.darwin;
 import static com.oracle.svm.core.posix.headers.darwin.DarwinTime.NoTransitions.mach_absolute_time;
 import static com.oracle.svm.core.posix.headers.darwin.DarwinTime.NoTransitions.mach_timebase_info;
 
+import java.util.Objects;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -38,6 +40,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.darwin.DarwinTime;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 
 import jdk.internal.misc.Unsafe;
 
@@ -52,6 +55,7 @@ final class Target_java_lang_System_Darwin {
 
     @Substitute
     public static String mapLibraryName(String libname) {
+        Objects.requireNonNull(libname);
         return "lib" + libname + ".dylib";
     }
 }
@@ -74,11 +78,8 @@ final class DarwinTimeUtil {
     DarwinTimeUtil() {
     }
 
-    /**
-     * Based on HotSpot JDK 19 (git commit hash: 967a28c3d85fdde6d5eb48aa0edd8f7597772469, JDK tag:
-     * jdk-19+36).
-     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+10/src/hotspot/os/bsd/os_bsd.cpp#L799-L821")
     long nanoTime() {
         if (!U.getBooleanAcquire(this, INITIALIZED_OFFSET)) {
             /* Can be called by multiple threads but they should all query the same data. */

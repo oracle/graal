@@ -28,7 +28,6 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.flow.AllInstantiatedTypeFlow;
 import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.StoreIndexedTypeFlow;
 import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.UnsafeStoreTypeFlow;
 import com.oracle.graal.pointsto.typestate.TypeState;
@@ -54,6 +53,19 @@ public class PointsToAnalysisType extends AnalysisType {
 
     PointsToAnalysisType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType, AnalysisType cloneableType) {
         super(universe, javaType, storageKind, objectType, cloneableType);
+    }
+
+    @Override
+    public boolean registerAsUnsafeAllocated(Object reason) {
+        boolean result = super.registerAsUnsafeAllocated(reason);
+        if (result) {
+            var bb = (PointsToAnalysis) universe.getBigbang();
+            for (var f : getInstanceFields(true)) {
+                var field = (AnalysisField) f;
+                field.getInitialFlow().addState(bb, TypeState.defaultValueForKind(field.getStorageKind()));
+            }
+        }
+        return result;
     }
 
     /**
@@ -82,7 +94,7 @@ public class PointsToAnalysisType extends AnalysisType {
      */
     private UnsafeStoreTypeFlow createContextInsensitiveUnsafeStore(PointsToAnalysis bb, BytecodePosition originalLocation) {
         /* The receiver object flow is the flow corresponding to this type. */
-        AllInstantiatedTypeFlow objectFlow = this.getTypeFlow(bb, false);
+        var objectFlow = this.getTypeFlow(bb, false);
         /* Use the Object type as a conservative type for the values loaded. */
         AnalysisType componentType = bb.getObjectType();
         /*
@@ -114,7 +126,7 @@ public class PointsToAnalysisType extends AnalysisType {
     private StoreIndexedTypeFlow createContextInsensitiveIndexedStore(PointsToAnalysis bb, BytecodePosition originalLocation) {
         assert this.isArray() : this;
         /* The receiver object flow is the flow corresponding to this type. */
-        AllInstantiatedTypeFlow objectFlow = this.getTypeFlow(bb, false);
+        var objectFlow = this.getTypeFlow(bb, false);
         /*
          * The context insensitive store doesn't have a value flow, it will instead be linked with
          * the value flows at all the locations where it is swapped in.

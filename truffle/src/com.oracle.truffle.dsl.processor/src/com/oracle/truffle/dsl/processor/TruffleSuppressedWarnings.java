@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,6 +65,7 @@ public final class TruffleSuppressedWarnings {
     public static final String NEVERDEFAULT = "truffle-neverdefault";
     public static final String INLINING_RECOMMENDATION = "truffle-inlining";
     public static final String SHARING_RECOMMENDATION = "truffle-sharing";
+    public static final String SPLITTING = "truffle-splitting";
     public static final String ABSTRACT_LIBRARY_EXPORT = "truffle-abstract-export";
     public static final String ASSUMPTION = "truffle-assumption";
     public static final String GUARD = "truffle-guard";

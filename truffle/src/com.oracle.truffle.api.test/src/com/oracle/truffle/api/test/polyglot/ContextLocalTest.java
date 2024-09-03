@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,6 +52,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -64,8 +65,13 @@ import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.experimental.theories.DataPoints;
+import org.junit.experimental.theories.Theories;
+import org.junit.experimental.theories.Theory;
+import org.junit.runner.RunWith;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -76,6 +82,7 @@ import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
@@ -89,15 +96,18 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 @SuppressWarnings("this-escape")
+@RunWith(Theories.class)
 public class ContextLocalTest extends AbstractPolyglotTest {
 
+    @DataPoints public static final boolean[] useVirtualThreads = new boolean[]{false, true};
+
     private static final int PARALLELISM = 32;
-    private static final int ITERATIONS = 50;
     static final String VALID_EXCLUSIVE_LANGUAGE = "ContextLocalTest_ValidExclusiveLanguage";
     static final String VALID_SHARED_LANGUAGE = "ContextLocalTest_ValidSharedLanguage";
     static final String VALID_INSTRUMENT = "ContextLocalTest_ValidInstrument";
     static final String INVALID_CONTEXT_LOCAL = "ContextLocalTest_InvalidLanguageContextLocal";
     static final String INVALID_CONTEXT_THREAD_LOCAL = "ContextLocalTest_InvalidLanguageContextThreadLocal";
+    static final String CONTEXT_LOCAL_ACCESS_RACE_INSTRUMENT = "ContextLocalTest_ContextLocalAccessRaceInstrument";
 
     @BeforeClass
     public static void runWithWeakEncapsulationOnly() {
@@ -145,10 +155,15 @@ public class ContextLocalTest extends AbstractPolyglotTest {
 
     }
 
-    private static void runInParallel(Runnable callable) throws InterruptedException, ExecutionException {
-        ExecutorService executor = Executors.newFixedThreadPool(PARALLELISM);
+    private static void runInParallel(boolean vthreads, Runnable callable) throws InterruptedException, ExecutionException {
+        ExecutorService executor = threadPool(PARALLELISM, vthreads);
         List<Future<?>> futures = new ArrayList<>();
-        for (int i = 0; i < ITERATIONS; i++) {
+        /*
+         * For virtual threads, we want a number of iterations well above the maxPoolSize of
+         * VirtualThread.DEFAULT_SCHEDULER, which is max(availableProcessors(), 256).
+         */
+        int iterations = vthreads ? 5000 : 50;
+        for (int i = 0; i < iterations; i++) {
             futures.add(executor.submit(() -> {
                 callable.run();
                 return null;
@@ -164,8 +179,10 @@ public class ContextLocalTest extends AbstractPolyglotTest {
         }
     }
 
-    @Test
-    public void testExclusiveLanguageContextThreadLocal() throws InterruptedException, ExecutionException {
+    @Theory
+    public void testExclusiveLanguageContextThreadLocal(boolean vthreads) throws InterruptedException, ExecutionException {
+        Assume.assumeFalse(vthreads && !canCreateVirtualThreads());
+
         try (Context c0 = Context.create(); Context c1 = Context.create()) {
             c0.initialize(VALID_EXCLUSIVE_LANGUAGE);
 
@@ -181,11 +198,12 @@ public class ContextLocalTest extends AbstractPolyglotTest {
                 c0.leave();
             }
 
-            runInParallel(() -> {
+            runInParallel(vthreads, () -> {
                 c0.enter();
                 try {
                     assertSame(env0, language0.contextThreadLocal0.get().env);
                     assertSame(env0, language0.contextThreadLocal1.get().env);
+                    reschedule();
                     assertSame(Thread.currentThread(), language0.contextThreadLocal0.get().thread);
                     assertSame(Thread.currentThread(), language0.contextThreadLocal1.get().thread);
                 } finally {
@@ -194,7 +212,7 @@ public class ContextLocalTest extends AbstractPolyglotTest {
             });
 
             c1.initialize(VALID_EXCLUSIVE_LANGUAGE);
-            runInParallel(() -> {
+            runInParallel(vthreads, () -> {
                 c1.enter();
                 try {
                     Env env1 = ValidExclusiveLanguage.CONTEXT_REF.get(null);
@@ -315,8 +333,10 @@ public class ContextLocalTest extends AbstractPolyglotTest {
         }
     }
 
-    @Test
-    public void testSharedLanguageContextThreadLocal() throws InterruptedException, ExecutionException {
+    @Theory
+    public void testSharedLanguageContextThreadLocal(boolean vthreads) throws InterruptedException, ExecutionException {
+        Assume.assumeFalse(vthreads && !canCreateVirtualThreads());
+
         try (Engine engine = Engine.create()) {
             try (Context c0 = Context.newBuilder().engine(engine).build();
                             Context c1 = Context.newBuilder().engine(engine).build()) {
@@ -334,7 +354,7 @@ public class ContextLocalTest extends AbstractPolyglotTest {
                     c0.leave();
                 }
 
-                runInParallel(() -> {
+                runInParallel(vthreads, () -> {
                     c0.enter();
                     try {
                         assertSame(env0, language0.contextThreadLocal0.get().env);
@@ -347,7 +367,7 @@ public class ContextLocalTest extends AbstractPolyglotTest {
                 });
 
                 c1.initialize(VALID_SHARED_LANGUAGE);
-                runInParallel(() -> {
+                runInParallel(vthreads, () -> {
                     c1.enter();
                     try {
                         Env env1 = ValidSharedLanguage.CONTEXT_REF.get(null);
@@ -430,14 +450,16 @@ public class ContextLocalTest extends AbstractPolyglotTest {
     }
 
     @SuppressWarnings("cast")
-    @Test
-    public void testContextThreadLocalValidInstrument() throws InterruptedException, ExecutionException {
+    @Theory
+    public void testContextThreadLocalValidInstrument(boolean vthreads) throws InterruptedException, ExecutionException {
+        Assume.assumeFalse(vthreads && !canCreateVirtualThreads());
+
         try (Engine engine = Engine.create()) {
             try (Context c0 = Context.newBuilder().engine(engine).build();
                             Context c1 = Context.newBuilder().engine(engine).build()) {
 
                 ValidInstrument instrument = engine.getInstruments().get(VALID_INSTRUMENT).lookup(ValidInstrument.class);
-                runInParallel(() -> {
+                runInParallel(vthreads, () -> {
 
                     c0.enter();
                     InstrumentThreadLocalValue tc0;
@@ -708,6 +730,73 @@ public class ContextLocalTest extends AbstractPolyglotTest {
     public void testInnerContextLocals() {
         try (Context ctx = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.ALL).build()) {
             Assert.assertEquals(0, ctx.eval(VALID_SHARED_LANGUAGE, "").asInt());
+        }
+    }
+
+    private static CountDownLatch contextLocalCreationStartedLatch;
+    private static CountDownLatch contextLocalCreationLatch;
+
+    @Test
+    public void testContextLocalAccessRace() throws ExecutionException, InterruptedException {
+        /*
+         * In this test, context close is called on one of the two contexts before the instrument
+         * created in a third thread initializes context locals for the context at the end of
+         * PolyglotInstrument#ensureCreated. The context local defined by the instrument is accessed
+         * in an onContextClosed event installed by the instrument, and so if the event was called,
+         * we would get an assertion error. However, since the events in the context listener
+         * installed by the instrument are not invoked before context locals for all contexts are
+         * properly initialized, we get no error.
+         */
+        ExecutorService executorService = Executors.newFixedThreadPool(3);
+        CountDownLatch contextCreatedAndEnteredLatch = new CountDownLatch(2);
+        CountDownLatch contextCloseLatch = new CountDownLatch(1);
+        CountDownLatch contextClosedLatch = new CountDownLatch(1);
+        contextLocalCreationStartedLatch = new CountDownLatch(1);
+        contextLocalCreationLatch = new CountDownLatch(1);
+        try (Engine engine = Engine.create()) {
+            List<Future<?>> futures = new ArrayList<>();
+            for (int i = 0; i < 2; i++) {
+                futures.add(executorService.submit(() -> {
+                    try (Context ctx = Context.newBuilder().engine(engine).build()) {
+                        /*
+                         * Context close enters the context in the process and if it is the first
+                         * enter on that thread, it initializes context locals, which would block
+                         * the closing process and cause deadlock because we deliberately block the
+                         * context local creation using the contextLocalCreationLatch. But if we
+                         * enter and leave before creation of the instrument, the context local
+                         * creation relies on the instrument calling it on all contexts, thread
+                         * enter done as the part of context close does not initialize context
+                         * locals because the thread was already entered.
+                         */
+                        ctx.enter();
+                        ctx.leave();
+                        contextCreatedAndEnteredLatch.countDown();
+                        try {
+                            contextCloseLatch.await();
+                        } catch (InterruptedException ie) {
+                            throw new AssertionError(ie);
+                        }
+                    } finally {
+                        contextClosedLatch.countDown();
+                    }
+                }));
+            }
+            contextCreatedAndEnteredLatch.await();
+            futures.add(executorService.submit(() -> {
+                engine.getInstruments().get(CONTEXT_LOCAL_ACCESS_RACE_INSTRUMENT).lookup(ContextLocalAccessRaceInstrument.class);
+            }));
+            contextLocalCreationStartedLatch.await();
+            contextCloseLatch.countDown();
+            contextClosedLatch.await();
+            contextLocalCreationLatch.countDown();
+            for (Future<?> future : futures) {
+                future.get();
+            }
+        } finally {
+            contextLocalCreationLatch = null;
+            contextLocalCreationStartedLatch = null;
+            executorService.shutdownNow();
+            assertTrue(executorService.awaitTermination(1, TimeUnit.MINUTES));
         }
     }
 
@@ -1012,6 +1101,61 @@ public class ContextLocalTest extends AbstractPolyglotTest {
                 this.thread = new WeakReference<>(thread);
             }
 
+        }
+
+    }
+
+    @TruffleInstrument.Registration(id = CONTEXT_LOCAL_ACCESS_RACE_INSTRUMENT, services = ContextLocalAccessRaceInstrument.class)
+    public static class ContextLocalAccessRaceInstrument extends TruffleInstrument {
+
+        final ContextLocal<CLARIContextLocal> local = locals.createContextLocal(CLARIContextLocal::new);
+
+        @Override
+        protected void onCreate(Env env) {
+            env.getInstrumenter().attachContextsListener(new ContextsListener() {
+                @Override
+                public void onContextCreated(TruffleContext context) {
+
+                }
+
+                @Override
+                public void onLanguageContextCreated(TruffleContext context, LanguageInfo language) {
+
+                }
+
+                @Override
+                public void onLanguageContextInitialized(TruffleContext context, LanguageInfo language) {
+
+                }
+
+                @Override
+                public void onLanguageContextFinalized(TruffleContext context, LanguageInfo language) {
+
+                }
+
+                @Override
+                public void onLanguageContextDisposed(TruffleContext context, LanguageInfo language) {
+
+                }
+
+                @Override
+                public void onContextClosed(TruffleContext context) {
+                    local.get(context);
+                }
+            }, false);
+            env.registerService(this);
+        }
+
+        static class CLARIContextLocal {
+            @SuppressWarnings("unused")
+            CLARIContextLocal(TruffleContext truffleContext) {
+                contextLocalCreationStartedLatch.countDown();
+                try {
+                    contextLocalCreationLatch.await();
+                } catch (InterruptedException ie) {
+                    throw new AssertionError(ie);
+                }
+            }
         }
 
     }

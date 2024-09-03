@@ -41,8 +41,8 @@ import static jdk.graal.compiler.hotspot.JVMCIVersionCheck.DEFAULT_VENDOR_ENTRY;
 public class JVMCIVersionCheckVendorTest extends GraalCompilerTest {
 
     private static final Map<String, Map<String, JVMCIVersionCheck.Version>> VERSION_MAP = Map.of("99", Map.of(
-                    DEFAULT_VENDOR_ENTRY, new JVMCIVersionCheck.Version("99+99", 1),
-                    "Vendor Specific", new JVMCIVersionCheck.Version("99.0.1", 1)));
+                    DEFAULT_VENDOR_ENTRY, JVMCIVersionCheck.createLabsJDKVersion("99+99", 1),
+                    "Vendor Specific", JVMCIVersionCheck.createLabsJDKVersion("99.0.1", 1)));
 
     private static void expect(String javaVmVendor, String expected) {
         var props = JVMCIVersionCheckTest.createTestProperties("99", null, javaVmVendor);

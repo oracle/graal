@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,9 @@
 package com.oracle.truffle.object;
 
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.function.Consumer;
 
 abstract class TrieNode<K, V, E extends Map.Entry<K, V>> {
@@ -62,7 +64,7 @@ abstract class TrieNode<K, V, E extends Map.Entry<K, V>> {
     }
 
     final TrieNode<K, V, E> put(K key, int hash, E entry) {
-        assert key != null && hash(key) == hash && key(entry).equals(key);
+        assert key != null && hash(key) == hash && key(entry).equals(key) : Arrays.asList(entry, key);
         return put(key, hash, entry, 0);
     }
 
@@ -149,7 +151,7 @@ abstract class TrieNode<K, V, E extends Map.Entry<K, V>> {
     }
 
     @SuppressWarnings("unchecked")
-    final void forEachEntry(Consumer<E> consumer) {
+    final void forEachEntry(Consumer<? super E> consumer) {
         for (Object entry : entries()) {
             if (entry == null) {
                 continue;
@@ -169,6 +171,10 @@ abstract class TrieNode<K, V, E extends Map.Entry<K, V>> {
             }
         });
         return true;
+    }
+
+    final Iterator<E> entryIterator() {
+        return new EntryIterator<>(entries());
     }
 
     @Override
@@ -205,7 +211,7 @@ abstract class TrieNode<K, V, E extends Map.Entry<K, V>> {
     }
 
     final TrieNode<K, V, E> combine(K key1, int hash1, E entry1, K key2, int hash2, E entry2, int shift) {
-        assert !key1.equals(key2);
+        assert !key1.equals(key2) : Arrays.asList(key1, key2);
         if (hash1 != hash2) {
             int pos1 = pos(hash1, shift);
             int pos2 = pos(hash2, shift);
@@ -225,7 +231,7 @@ abstract class TrieNode<K, V, E extends Map.Entry<K, V>> {
         }
     }
 
-    static class BitmapNode<K, V, E extends Map.Entry<K, V>> extends TrieNode<K, V, E> {
+    static final class BitmapNode<K, V, E extends Map.Entry<K, V>> extends TrieNode<K, V, E> {
         private final int bitmap;
         private final Object[] entries;
 
@@ -359,7 +365,7 @@ abstract class TrieNode<K, V, E extends Map.Entry<K, V>> {
         }
     }
 
-    static class HashCollisionNode<K, V, E extends Map.Entry<K, V>> extends TrieNode<K, V, E> {
+    static final class HashCollisionNode<K, V, E extends Map.Entry<K, V>> extends TrieNode<K, V, E> {
         private final int hashcode;
         private final Object[] entries;
 
@@ -373,7 +379,7 @@ abstract class TrieNode<K, V, E extends Map.Entry<K, V>> {
         private int findIndex(K key) {
             for (int i = 0; i < entries.length; i++) {
                 E entry = (E) entries[i];
-                if (key.equals(key(entry))) {
+                if (key(entry).equals(key)) {
                     return i;
                 }
             }
@@ -388,7 +394,7 @@ abstract class TrieNode<K, V, E extends Map.Entry<K, V>> {
                 return null;
             } else {
                 E entry = (E) entries[index];
-                assert entry != null && key(entry).equals(key);
+                assert entry != null && key(entry).equals(key) : Arrays.asList(entry, key);
                 return entry;
             }
         }
@@ -402,7 +408,7 @@ abstract class TrieNode<K, V, E extends Map.Entry<K, V>> {
                     return new HashCollisionNode<>(hash, copyAndAppend(entries, entry));
                 } else {
                     E e = (E) entries[index];
-                    assert e != null && key(e).equals(key);
+                    assert e != null && key(e).equals(key) : Arrays.asList(e, key);
                     if (e.equals(entry)) {
                         return this;
                     } else {
@@ -421,7 +427,7 @@ abstract class TrieNode<K, V, E extends Map.Entry<K, V>> {
             if (index < 0) {
                 return this;
             } else {
-                assert entries[index] != null && key((E) entries[index]).equals(key);
+                assert entries[index] != null && key((E) entries[index]).equals(key) : Arrays.asList(entries[index], key);
                 assert entries.length >= 2;
                 if (entries.length == 2) {
                     return new BitmapNode<>(bit(this.hashcode, shift), copyAndRemove(entries, index));
@@ -434,6 +440,58 @@ abstract class TrieNode<K, V, E extends Map.Entry<K, V>> {
         @Override
         Object[] entries() {
             return entries;
+        }
+    }
+
+    static final class EntryIterator<E> implements Iterator<E> {
+        int nextIndex;
+        final Object[] entries;
+        E nextEntry;
+        EntryIterator<E> nestedIterator;
+
+        EntryIterator(Object[] entries) {
+            this.entries = entries;
+            this.nextEntry = advance();
+        }
+
+        @SuppressWarnings("unchecked")
+        private E advance() {
+            do {
+                if (nestedIterator != null) {
+                    if (nestedIterator.hasNext()) {
+                        return nestedIterator.next();
+                    } else {
+                        nestedIterator = null;
+                    }
+                }
+                while (nextIndex < entries.length) {
+                    Object entry = entries[nextIndex++];
+                    if (entry == null) {
+                        continue;
+                    } else if (entry instanceof TrieNode<?, ?, ?> branch) {
+                        nestedIterator = new EntryIterator<>(branch.entries());
+                        break;
+                    } else {
+                        return (E) entry;
+                    }
+                }
+            } while (nestedIterator != null);
+            return null;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return nextEntry != null;
+        }
+
+        @Override
+        public E next() {
+            E current = nextEntry;
+            if (current == null) {
+                throw new NoSuchElementException();
+            }
+            nextEntry = advance();
+            return current;
         }
     }
 }

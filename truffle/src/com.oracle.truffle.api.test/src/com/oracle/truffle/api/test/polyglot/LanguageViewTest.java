@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,7 +51,6 @@ import java.util.List;
 import java.util.function.Function;
 
 import org.graalvm.polyglot.Context;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runners.Parameterized.Parameters;
 
@@ -63,15 +62,8 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
-import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class LanguageViewTest extends AbstractParametrizedLibraryTest {
-
-    @BeforeClass
-    public static void beforeClass() {
-        // shared static state
-        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
-    }
 
     @Parameters(name = "{0}")
     public static List<TestRun> data() {

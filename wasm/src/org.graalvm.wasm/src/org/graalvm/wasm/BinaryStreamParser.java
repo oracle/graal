@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,8 @@ import org.graalvm.wasm.exception.WasmException;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+
+import java.util.Arrays;
 
 public abstract class BinaryStreamParser {
     protected static final int SINGLE_RESULT_VALUE = 0;
@@ -273,7 +275,7 @@ public abstract class BinaryStreamParser {
      * @param result The array used for returning the result.
      *
      */
-    protected void readBlockType(int[] result, boolean allowRefTypes) {
+    protected void readBlockType(int[] result, boolean allowRefTypes, boolean allowVecType) {
         byte type = peek1(data, offset);
         switch (type) {
             case WasmType.VOID_TYPE:
@@ -281,6 +283,12 @@ public abstract class BinaryStreamParser {
             case WasmType.I64_TYPE:
             case WasmType.F32_TYPE:
             case WasmType.F64_TYPE:
+                offset++;
+                result[0] = type;
+                result[1] = SINGLE_RESULT_VALUE;
+                break;
+            case WasmType.V128_TYPE:
+                Assert.assertTrue(allowVecType, Failure.MALFORMED_VALUE_TYPE);
                 offset++;
                 result[0] = type;
                 result[1] = SINGLE_RESULT_VALUE;
@@ -301,13 +309,16 @@ public abstract class BinaryStreamParser {
         }
     }
 
-    protected static byte peekValueType(byte[] data, int offset, boolean allowRefTypes) {
+    protected static byte peekValueType(byte[] data, int offset, boolean allowRefTypes, boolean allowVecType) {
         byte b = peek1(data, offset);
         switch (b) {
             case WasmType.I32_TYPE:
             case WasmType.I64_TYPE:
             case WasmType.F32_TYPE:
             case WasmType.F64_TYPE:
+                break;
+            case WasmType.V128_TYPE:
+                Assert.assertTrue(allowVecType, Failure.MALFORMED_VALUE_TYPE);
                 break;
             case WasmType.FUNCREF_TYPE:
             case WasmType.EXTERNREF_TYPE:
@@ -319,8 +330,8 @@ public abstract class BinaryStreamParser {
         return b;
     }
 
-    protected byte readValueType(boolean allowRefTypes) {
-        byte b = peekValueType(data, offset, allowRefTypes);
+    protected byte readValueType(boolean allowRefTypes, boolean allowVecType) {
+        byte b = peekValueType(data, offset, allowRefTypes, allowVecType);
         offset++;
         return b;
     }
@@ -449,6 +460,17 @@ public abstract class BinaryStreamParser {
         bytecode[offset + 5] = (byte) ((value >> 40) & 0xFF);
         bytecode[offset + 6] = (byte) ((value >> 48) & 0xFF);
         bytecode[offset + 7] = (byte) ((value >> 56) & 0xFF);
+    }
+
+    /**
+     * Reads the 16 bytes of an {@code i128}/{@code v128} value at the given bytecode offset.
+     *
+     * @param bytecode The bytecode
+     * @param offset The offset in the bytecode.
+     * @return The 16-byte {@code byte[]} read at the given bytecode offset.
+     */
+    public static byte[] rawPeekI128(byte[] bytecode, int offset) {
+        return Arrays.copyOfRange(bytecode, offset, offset + 16);
     }
 
     // endregion

@@ -29,7 +29,6 @@ import static jdk.graal.compiler.nodes.StaticDeoptimizingNode.mergeActions;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
-import java.util.Optional;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
@@ -37,6 +36,7 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 
 import jdk.graal.compiler.core.common.cfg.BlockMap;
+import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp.And;
@@ -55,7 +55,9 @@ import jdk.graal.compiler.graph.NodeStack;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.AbstractMergeNode;
+import jdk.graal.compiler.nodes.BeginNode;
 import jdk.graal.compiler.nodes.BinaryOpLogicNode;
+import jdk.graal.compiler.nodes.CompressionNode;
 import jdk.graal.compiler.nodes.ConditionAnchorNode;
 import jdk.graal.compiler.nodes.DeoptimizeNode;
 import jdk.graal.compiler.nodes.DeoptimizingGuard;
@@ -63,7 +65,6 @@ import jdk.graal.compiler.nodes.EndNode;
 import jdk.graal.compiler.nodes.FixedGuardNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
-import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.GuardNode;
 import jdk.graal.compiler.nodes.GuardProxyNode;
@@ -84,13 +85,13 @@ import jdk.graal.compiler.nodes.calc.AndNode;
 import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
-import jdk.graal.compiler.nodes.extended.CaptureStateBeginNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.extended.IntegerSwitchNode;
 import jdk.graal.compiler.nodes.extended.LoadHubNode;
 import jdk.graal.compiler.nodes.extended.OpaqueLogicNode;
 import jdk.graal.compiler.nodes.extended.SwitchNode;
 import jdk.graal.compiler.nodes.extended.ValueAnchorNode;
+import jdk.graal.compiler.nodes.java.AccessFieldNode;
 import jdk.graal.compiler.nodes.java.InstanceOfNode;
 import jdk.graal.compiler.nodes.java.TypeSwitchNode;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
@@ -101,9 +102,11 @@ import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
-import jdk.graal.compiler.phases.BasePhase;
+import jdk.graal.compiler.phases.common.ConditionalEliminationUtil.InfoElement;
+import jdk.graal.compiler.phases.common.util.LoopUtility;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.SpeculationLog.Speculation;
 import jdk.vm.ci.meta.TriState;
 
@@ -118,7 +121,7 @@ import jdk.vm.ci.meta.TriState;
  * and traverses it depth first. Every time the traversal encounters a basic block whose predecessor
  * has multiple successors (i.e., the predecessor block ends with a control flow split node) it
  * inspects the control split's condition in detail: The condition leading to the current block
- * carries value & type information for the operands of the condition.
+ * carries value &amp; type information for the operands of the condition.
  *
  * Consider the following example where a variable {@code a} is used in a condition 3 times.
  * Traversing the dominator tree depth first and recording the value ranges for {@code a} after
@@ -127,8 +130,8 @@ import jdk.vm.ci.meta.TriState;
  * <pre>
  * if (a >= 0) {
  *     // a in [0:Integer.MAX_VAL]
- *     if (a < 1) {
- *         // a in [Integer.MIN_VAL,0] && a in [0:Integer.MAX_VAL]
+ *     if (a &lt; 1) {
+ *         // a in [Integer.MIN_VAL,0] &amp;&amp; a in [0:Integer.MAX_VAL]
  *         // --> a in [0]
  *         if (a == 0) { // true
  *         }
@@ -146,13 +149,15 @@ import jdk.vm.ci.meta.TriState;
  *           <li>{@link ConditionAnchorNode}
  *           </ul>
  */
-public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
+public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<CoreProviders> {
 
     public static class Options {
         // @formatter:off
-        @Option(help = "Move guard nodes to earlier places in the dominator tree if "
-                     + "all successors of basic block share a common guard condition.", type = OptionType.Expert)
+        @Option(help = "Moves guard nodes to earlier places in the dominator tree if " +
+                       "all successors of a basic block share a common guard condition.", type = OptionType.Expert)
         public static final OptionKey<Boolean> MoveGuardsUpwards = new OptionKey<>(true);
+        @Option(help = "", type = OptionType.Debug)
+         public static final OptionKey<Boolean> FieldAccessSkipPreciseTypes = new OptionKey<>(true);
         // @formatter:on
     }
 
@@ -160,18 +165,14 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
     private final boolean fullSchedule;
     private final boolean moveGuards;
 
-    public ConditionalEliminationPhase(boolean fullSchedule) {
-        this(fullSchedule, true);
+    public ConditionalEliminationPhase(CanonicalizerPhase canonicalizer, boolean fullSchedule) {
+        this(canonicalizer, fullSchedule, true);
     }
 
-    public ConditionalEliminationPhase(boolean fullSchedule, boolean moveGuards) {
+    public ConditionalEliminationPhase(CanonicalizerPhase canonicalizer, boolean fullSchedule, boolean moveGuards) {
+        super(canonicalizer);
         this.fullSchedule = fullSchedule;
         this.moveGuards = moveGuards;
-    }
-
-    @Override
-    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
-        return ALWAYS_APPLICABLE;
     }
 
     @Override
@@ -182,10 +183,16 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
             NodeMap<HIRBlock> nodeToBlock = null;
             ControlFlowGraph cfg = null;
             if (fullSchedule) {
+                trySkippingGuardPis(graph);
                 cfg = ControlFlowGraph.newBuilder(graph).backendBlocks(true).connectBlocks(true).computeFrequency(true).computeLoops(true).computeDominators(true).computePostdominators(
                                 true).build();
+                graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Conditional elimination after computing CFG");
                 if (moveGuards && Options.MoveGuardsUpwards.getValue(graph.getOptions())) {
-                    cfg.visitDominatorTree(new MoveGuardsUpwards(), graph.isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL));
+                    /**
+                     * See comment in {@link MoveGuardsUpwards#enter}.
+                     */
+                    final boolean deferLoopExits = false;
+                    cfg.visitDominatorTree(new MoveGuardsUpwards(), deferLoopExits);
                 }
                 try (DebugContext.Scope scheduleScope = graph.getDebug().scope(SchedulePhase.class)) {
                     SchedulePhase.run(graph, SchedulePhase.SchedulingStrategy.EARLIEST_WITH_GUARD_ORDER, cfg, context, false);
@@ -205,6 +212,13 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
         }
     }
 
+    private static void trySkippingGuardPis(StructuredGraph graph) {
+        for (GuardNode floatingGuard : graph.getNodes(GuardNode.TYPE).snapshot()) {
+            PiNode.guardTrySkipPi(floatingGuard, floatingGuard.getCondition(), floatingGuard.isNegated(), NodeView.DEFAULT);
+        }
+        graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After trySkipGuardPis");
+    }
+
     protected BlockMap<List<Node>> getBlockToNodes(@SuppressWarnings("unused") ControlFlowGraph cfg) {
         return null;
     }
@@ -218,12 +232,9 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
 
         HIRBlock anchorBlock;
 
-        /**
-         * Guards cannot be moved above CaptureStateBeginNodes in order to ensure deoptimizations
-         * are always attached to valid FrameStates.
-         */
-        private static boolean disallowUpwardGuardMovement(HIRBlock b) {
-            return b.getBeginNode() instanceof CaptureStateBeginNode;
+        @Override
+        public String toString() {
+            return "MoveGuardsUpwards - anchorBlock=" + anchorBlock;
         }
 
         @Override
@@ -231,6 +242,8 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
         public HIRBlock enter(HIRBlock b) {
             HIRBlock oldAnchorBlock = anchorBlock;
             /*
+             * REASONING:
+             *
              * The goal of this pass is to move guards upward while not introducing the guards on
              * new paths. At all points the anchorBlock must set so the following two invariants
              * hold:
@@ -256,93 +269,111 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
              */
             boolean updateAnchorBlock = b.getDominator() == null ||
                             b.getDominator().getPostdominator() != b ||
-                            disallowUpwardGuardMovement(b);
+                            b.getBeginNode().mustNotMoveAttachedGuards();
             if (updateAnchorBlock) {
                 // New anchor.
                 anchorBlock = b;
             }
 
-            AbstractBeginNode beginNode = b.getBeginNode();
-            if (beginNode instanceof AbstractMergeNode && anchorBlock != b) {
-                AbstractMergeNode mergeNode = (AbstractMergeNode) beginNode;
-                mergeNode.replaceAtUsages(anchorBlock.getBeginNode(), InputType.Anchor, InputType.Guard);
-                mergeNode.graph().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, mergeNode.graph(), "After moving guard and anchored usages from %s to %s", mergeNode, anchorBlock.getBeginNode());
-                assert mergeNode.anchored().isEmpty();
-            }
+            final AbstractBeginNode beginNode = b.getBeginNode();
 
-            FixedNode endNode = b.getEndNode();
-            if (endNode instanceof IfNode) {
-                IfNode node = (IfNode) endNode;
+            /**
+             * A note on loop exits and deferred loop exits in dominator tree traversal for
+             * MoveGuardsUpwards: We must not defer loop exits when we run the move guards upwards
+             * because a loop exit block is itself part of the dominator tree (normally as a
+             * dedicated block) and we cannot leave it out. All the logic explained above under
+             * "REASONING" is only correct if we visit all blocks in dominance order. Thus, when we
+             * move guards we must ensure we are safe proxy wise.
+             *
+             * In order to do so we verify that the location of the anchor block can be used by the
+             * current block without the need of any proxies.
+             */
+            final boolean canMoveGuardsToAnchorBlock = b.getCfg().graph.isAfterStage(StageFlag.VALUE_PROXY_REMOVAL) ||
+                            LoopUtility.canUseWithoutProxy(b.getCfg(), anchorBlock.getBeginNode(), b.getBeginNode());
 
-                // Check if we can move guards upwards.
-                AbstractBeginNode trueSuccessor = node.trueSuccessor();
-                AbstractBeginNode falseSuccessor = node.falseSuccessor();
-
-                EconomicMap<LogicNode, GuardNode> trueGuards = EconomicMap.create(Equivalence.IDENTITY);
-                for (GuardNode guard : trueSuccessor.guards()) {
-                    LogicNode condition = guard.getCondition();
-                    if (condition.hasMoreThanOneUsage()) {
-                        trueGuards.put(condition, guard);
-                    }
+            if (canMoveGuardsToAnchorBlock) {
+                if (anchorBlock != b) {
+                    AbstractBeginNode abstractBegin = beginNode;
+                    abstractBegin.replaceAtUsages(anchorBlock.getBeginNode(), InputType.Anchor, InputType.Guard);
+                    abstractBegin.graph().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, abstractBegin.graph(), "After moving guard and anchored usages from %s to %s", abstractBegin,
+                                    anchorBlock.getBeginNode());
+                    assert abstractBegin.anchored().isEmpty();
                 }
-                if (!trueGuards.isEmpty()) {
-                    /*
-                     * Special case loop exits: We must only ever move guards over loop exits if we
-                     * move them over all loop exits (i.e. if a successor is a loop exit it must be
-                     * the only loop exit or a loop has two exits and both are successors of the
-                     * current if). Else we would risk moving a guard from after a particular exit
-                     * into the loop (might be loop invariant) which can be too early resulting in
-                     * the generated code deopting without the need to.
-                     *
-                     * Note: The code below is written with the possibility in mind that both
-                     * successors are loop exits, even of potentially different loops. Thus, we need
-                     * to ensure we see all possible loop exits involved for all loops.
-                     */
-                    EconomicSet<LoopExitNode> allLoopsAllExits = null;
-                    if (trueSuccessor instanceof LoopExitNode successor) {
-                        if (allLoopsAllExits == null) {
-                            allLoopsAllExits = EconomicSet.create();
+                FixedNode endNode = b.getEndNode();
+                if (endNode instanceof IfNode) {
+                    IfNode node = (IfNode) endNode;
+
+                    // Check if we can move guards upwards.
+                    AbstractBeginNode trueSuccessor = node.trueSuccessor();
+                    AbstractBeginNode falseSuccessor = node.falseSuccessor();
+
+                    EconomicMap<LogicNode, GuardNode> trueGuards = EconomicMap.create(Equivalence.IDENTITY);
+                    for (GuardNode guard : trueSuccessor.guards()) {
+                        LogicNode condition = guard.getCondition();
+                        if (condition.hasMoreThanOneUsage()) {
+                            trueGuards.put(condition, guard);
                         }
-                        allLoopsAllExits.addAll(successor.loopBegin().loopExits());
-                        allLoopsAllExits.remove(successor);
                     }
-                    if (falseSuccessor instanceof LoopExitNode successor) {
-                        if (allLoopsAllExits == null) {
-                            allLoopsAllExits = EconomicSet.create();
+                    if (!trueGuards.isEmpty()) {
+                        /*
+                         * Special case loop exits: We must only ever move guards over loop exits if
+                         * we move them over all loop exits (i.e. if a successor is a loop exit it
+                         * must be the only loop exit or a loop has two exits and both are
+                         * successors of the current if). Else we would risk moving a guard from
+                         * after a particular exit into the loop (might be loop invariant) which can
+                         * be too early resulting in the generated code deopting without the need
+                         * to.
+                         *
+                         * Note: The code below is written with the possibility in mind that both
+                         * successors are loop exits, even of potentially different loops. Thus, we
+                         * need to ensure we see all possible loop exits involved for all loops.
+                         */
+                        EconomicSet<LoopExitNode> allLoopsAllExits = null;
+                        if (trueSuccessor instanceof LoopExitNode successor) {
+                            if (allLoopsAllExits == null) {
+                                allLoopsAllExits = EconomicSet.create();
+                            }
+                            allLoopsAllExits.addAll(successor.loopBegin().loopExits());
+                            allLoopsAllExits.remove(successor);
                         }
-                        allLoopsAllExits.addAll(successor.loopBegin().loopExits());
-                        allLoopsAllExits.remove(successor);
-                    }
-                    if (allLoopsAllExits == null || allLoopsAllExits.isEmpty()) {
-                        for (GuardNode falseGuard : falseSuccessor.guards().snapshot()) {
-                            GuardNode trueGuard = trueGuards.get(falseGuard.getCondition());
-                            if (trueGuard != null && falseGuard.isNegated() == trueGuard.isNegated()) {
-                                Speculation speculation = trueGuard.getSpeculation();
-                                if (speculation == null) {
-                                    speculation = falseGuard.getSpeculation();
-                                } else if (falseGuard.getSpeculation() != null && falseGuard.getSpeculation() != speculation) {
-                                    // Cannot optimize due to different speculations.
-                                    continue;
-                                }
-                                try (DebugCloseable closeable = falseGuard.withNodeSourcePosition()) {
-                                    StructuredGraph graph = falseGuard.graph();
-                                    GuardNode newlyCreatedGuard = new GuardNode(falseGuard.getCondition(), anchorBlock.getBeginNode(), falseGuard.getReason(), falseGuard.getAction(),
-                                                    falseGuard.isNegated(), speculation,
-                                                    falseGuard.getNoDeoptSuccessorPosition());
-                                    GuardNode newGuard = node.graph().unique(newlyCreatedGuard);
-                                    if (trueGuard.isAlive()) {
-                                        if (trueSuccessor instanceof LoopExitNode && beginNode.graph().isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL)) {
-                                            trueGuard.replaceAndDelete(ProxyNode.forGuard(newGuard, (LoopExitNode) trueSuccessor));
-                                        } else {
-                                            trueGuard.replaceAndDelete(newGuard);
+                        if (falseSuccessor instanceof LoopExitNode successor) {
+                            if (allLoopsAllExits == null) {
+                                allLoopsAllExits = EconomicSet.create();
+                            }
+                            allLoopsAllExits.addAll(successor.loopBegin().loopExits());
+                            allLoopsAllExits.remove(successor);
+                        }
+                        if (allLoopsAllExits == null || allLoopsAllExits.isEmpty()) {
+                            for (GuardNode falseGuard : falseSuccessor.guards().snapshot()) {
+                                GuardNode trueGuard = trueGuards.get(falseGuard.getCondition());
+                                if (trueGuard != null && falseGuard.isNegated() == trueGuard.isNegated()) {
+                                    Speculation speculation = trueGuard.getSpeculation();
+                                    if (speculation == null) {
+                                        speculation = falseGuard.getSpeculation();
+                                    } else if (falseGuard.getSpeculation() != null && falseGuard.getSpeculation() != speculation) {
+                                        // Cannot optimize due to different speculations.
+                                        continue;
+                                    }
+                                    try (DebugCloseable closeable = falseGuard.withNodeSourcePosition()) {
+                                        StructuredGraph graph = falseGuard.graph();
+                                        GuardNode newlyCreatedGuard = new GuardNode(falseGuard.getCondition(), anchorBlock.getBeginNode(), falseGuard.getReason(), falseGuard.getAction(),
+                                                        falseGuard.isNegated(), speculation,
+                                                        falseGuard.getNoDeoptSuccessorPosition());
+                                        GuardNode newGuard = node.graph().unique(newlyCreatedGuard);
+                                        if (trueGuard.isAlive()) {
+                                            if (trueSuccessor instanceof LoopExitNode && beginNode.graph().isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL)) {
+                                                trueGuard.replaceAndDelete(ProxyNode.forGuard(newGuard, (LoopExitNode) trueSuccessor));
+                                            } else {
+                                                trueGuard.replaceAndDelete(newGuard);
+                                            }
                                         }
+                                        if (falseSuccessor instanceof LoopExitNode && beginNode.graph().isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL)) {
+                                            falseGuard.replaceAndDelete(ProxyNode.forGuard(newGuard, (LoopExitNode) falseSuccessor));
+                                        } else {
+                                            falseGuard.replaceAndDelete(newGuard);
+                                        }
+                                        graph.getOptimizationLog().report(ConditionalEliminationPhase.class, "GuardCombination", falseGuard);
                                     }
-                                    if (falseSuccessor instanceof LoopExitNode && beginNode.graph().isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL)) {
-                                        falseGuard.replaceAndDelete(ProxyNode.forGuard(newGuard, (LoopExitNode) falseSuccessor));
-                                    } else {
-                                        falseGuard.replaceAndDelete(newGuard);
-                                    }
-                                    graph.getOptimizationLog().report(ConditionalEliminationPhase.class, "GuardCombination", falseGuard);
                                 }
                             }
                         }
@@ -389,8 +420,8 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
         protected final EconomicMap<MergeNode, EconomicMap<ValuePhiNode, PhiInfoElement>> mergeMaps;
         private final ConditionalEliminationUtil.InfoElementProvider infoElementProvider;
         private final ConditionalEliminationUtil.GuardFolding guardFolding;
-
         protected final ArrayDeque<ConditionalEliminationUtil.GuardedCondition> conditions;
+        private final boolean processFieldAccess;
 
         /**
          * Tests which may be eliminated because post dominating tests to prove a broader condition.
@@ -422,6 +453,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                     return foldPendingTest(thisGuard, original, newStamp, rewireGuardFunction);
                 }
             };
+            this.processFieldAccess = Options.FieldAccessSkipPreciseTypes.getValue(graph.getOptions());
         }
 
         protected void processConditionAnchor(ConditionAnchorNode node) {
@@ -431,7 +463,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                     GraphUtil.unlinkFixedNode(node);
                     GraphUtil.killWithUnusedFloatingInputs(node);
                 } else {
-                    ValueAnchorNode valueAnchor = node.graph().add(new ValueAnchorNode(null));
+                    ValueAnchorNode valueAnchor = node.graph().add(new ValueAnchorNode());
                     node.replaceAtUsages(valueAnchor);
                     node.graph().replaceFixedWithFixed(node, valueAnchor);
                 }
@@ -443,9 +475,15 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
         protected void processGuard(GuardNode node) {
             if (!tryProveGuardCondition(node, node.getCondition(), (guard, result, guardedValueStamp, newInput) -> {
                 if (result != node.isNegated()) {
+                    ValueNode condition = node.getCondition();
                     node.replaceAndDelete(guard.asNode());
-                    if (guard instanceof DeoptimizingGuard && !((DeoptimizingGuard) guard).isNegated()) {
-                        rebuildPiNodes((DeoptimizingGuard) guard);
+                    if (condition.hasNoUsages()) {
+                        GraphUtil.killWithUnusedFloatingInputs(condition);
+                    }
+                    if (guard instanceof BeginNode b && b.predecessor() instanceof IfNode ifNode) {
+                        rebuildPiNodes(b, ifNode.condition());
+                    } else if (guard instanceof DeoptimizingGuard dg && !((DeoptimizingGuard) guard).isNegated()) {
+                        rebuildPiNodes(dg, dg.getCondition());
                     }
                 } else {
                     AbstractBeginNode beginNode = (AbstractBeginNode) node.getAnchor();
@@ -478,8 +516,11 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                     node.replaceAtUsages(guard.asNode());
                     GraphUtil.unlinkFixedNode(node);
                     GraphUtil.killWithUnusedFloatingInputs(node);
-                    if (guard instanceof DeoptimizingGuard && !((DeoptimizingGuard) guard).isNegated()) {
-                        rebuildPiNodes((DeoptimizingGuard) guard);
+
+                    if (guard instanceof BeginNode b && b.predecessor() instanceof IfNode ifNode) {
+                        rebuildPiNodes(b, ifNode.condition());
+                    } else if (guard instanceof DeoptimizingGuard dg && !((DeoptimizingGuard) guard).isNegated()) {
+                        rebuildPiNodes(dg, dg.getCondition());
                     }
                 } else {
                     node.setCondition(LogicConstantNode.forBoolean(result, node.graph()), node.isNegated());
@@ -492,8 +533,94 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
             }
         }
 
-        private void rebuildPiNodes(DeoptimizingGuard guard) {
-            LogicNode newCondition = guard.getCondition();
+        /**
+         * Optimize load field / store field pi inputs if possible.
+         *
+         * This is a common Java source code pattern like:
+         *
+         * <pre>
+         * if (someObject instanceof ConcreteClass concrete) {
+         *     use(concrete.field);
+         * }
+         * </pre>
+         *
+         * Bytecode parsing builds two instanceof checks:
+         *
+         * <pre>
+         *     if (someObject instanceof ConcreteClass[non-null]) {
+         *         guard = FixedGuard(ClassCastException, someObject instanceof ConcreteClass[may be null]);
+         *         concrete = Pi(guard, someObject, piStamp = ConcreteClass[may be null]);
+         *         use(concrete.field);
+         *     }
+         * </pre>
+         *
+         * Conditional elimination removes the guard. We are left with the Pi anchored on the if:
+         *
+         * <pre>
+         *     if (someObject instanceof ConcreteClass[non-null]) {
+         *         anchor = BeginNode();
+         *         concrete = Pi(anchor, someObject, piStamp = ConcreteClass[may be null]);
+         *         use(concrete.field);
+         *     }
+         * </pre>
+         *
+         * The Pi now proves a weaker stamp than the branch on which it is anchored. When we lower
+         * the field access, we would need to insert a null check. That null check would eventually
+         * fold away, but in the meantime it could prevent other high tier canonicalizations.
+         * Strengthen the Pi to include the information that the object is non-null.
+         */
+        private void processAccessField(AccessFieldNode af) {
+            ValueNode object = af.object();
+            ResolvedJavaField field = af.field();
+            if (object instanceof PiNode objectPi) {
+                // see if there are earlier pi's we can use for the same data
+                final boolean nonNull = ((AbstractObjectStamp) object.stamp(NodeView.DEFAULT)).nonNull();
+                GuardingNode fieldPiGuard = objectPi.getGuard();
+                LogicNode condition = null;
+                if (fieldPiGuard instanceof BeginNode b) {
+                    if (b.predecessor() instanceof IfNode ifNode && b == ifNode.trueSuccessor()) {
+                        condition = ifNode.condition();
+                    }
+                } else if (fieldPiGuard instanceof GuardNode floatingGuard && !floatingGuard.isNegated()) {
+                    condition = floatingGuard.getCondition();
+                } else if (fieldPiGuard instanceof FixedGuardNode fixedGuard && !fixedGuard.isNegated()) {
+                    condition = fixedGuard.getCondition();
+                }
+
+                if (condition instanceof UnaryOpLogicNode unaryLogicNode) {
+                    final ValueNode value = unaryLogicNode.getValue();
+                    InfoElement infoElement = infoElementProvider.infoElements(value);
+                    while (infoElement != null) {
+                        /*
+                         * Once we optimized and skipped a pi we do not immediately remove it from
+                         * the graph. Other nodes may still use it, we let the canonicalizer take
+                         * care of it. We have to ensure we are not using a later pi again that we
+                         * just recently skipped. In the optimization (if conditional elimination is
+                         * called multiple times).
+                         */
+                        if (infoElement.getGuard() != fieldPiGuard && nodeToBlock.get(infoElement.getGuard().asNode()).strictlyDominates(nodeToBlock.get(fieldPiGuard.asNode()))) {
+                            final Stamp stamp = infoElement.getStamp();
+                            /*
+                             * Determine if this pi can be skipped by using a pi based on the stamp
+                             * of this guard.
+                             */
+                            if (stamp instanceof AbstractObjectStamp objectStamp && objectStamp.nonNull() == nonNull && objectStamp.type() != null &&
+                                            field.getDeclaringClass().isAssignableFrom(objectStamp.type())) {
+                                ValueNode newPi = graph.addOrUnique(PiNode.create(value, stamp, infoElement.getGuard().asNode()));
+                                af.setObject(newPi);
+                                graph.getOptimizationLog().report(ConditionalEliminationPhase.class, "AccessFieldSkipPi", af);
+                                break;
+                            }
+                        }
+                        infoElement = infoElementProvider.nextElement(infoElement);
+                    }
+                }
+
+            }
+        }
+
+        private void rebuildPiNodes(GuardingNode guard, LogicNode condition) {
+            LogicNode newCondition = condition;
             if (newCondition instanceof InstanceOfNode) {
                 InstanceOfNode inst = (InstanceOfNode) newCondition;
                 ValueNode originalValue = GraphUtil.skipPi(inst.getValue());
@@ -603,6 +730,24 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
             registerNewStamp(piNode.object(), piNode.piStamp(), piNode.getGuard());
         }
 
+        private void processCompressionNode(CompressionNode compression) {
+            if (!(compression.stamp(NodeView.DEFAULT) instanceof AbstractObjectStamp)) {
+                return;
+            }
+
+            AbstractObjectStamp stamp = (AbstractObjectStamp) compression.stamp(NodeView.DEFAULT);
+            ConditionalEliminationUtil.InfoElement infoElement = infoElementProvider.infoElements(compression.getValue());
+            while (infoElement != null) {
+                if (infoElement.getStamp() instanceof AbstractObjectStamp objStamp) {
+                    Stamp improvedStamp = compression.foldStamp(infoElement.getStamp());
+                    if (!stamp.equals(improvedStamp)) {
+                        registerNewStamp(compression, improvedStamp, infoElement.getGuard());
+                    }
+                }
+                infoElement = infoElementProvider.nextElement(infoElement);
+            }
+        }
+
         @Override
         public ConditionalEliminationUtil.Marks enter(HIRBlock block) {
             int infoElementsMark = undoOperations.size();
@@ -673,6 +818,10 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                     processEnd((EndNode) node);
                 } else if (node instanceof ValueAnchorNode) {
                     processValueAnchor((ValueAnchorNode) node);
+                } else if (node instanceof CompressionNode c) {
+                    processCompressionNode(c);
+                } else if (processFieldAccess && node instanceof AccessFieldNode af) {
+                    processAccessField(af);
                 }
             }
         }
@@ -1131,6 +1280,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                 conditions.pop();
             }
         }
+
     }
 
     @Override

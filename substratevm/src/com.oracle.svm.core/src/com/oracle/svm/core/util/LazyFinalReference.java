@@ -58,7 +58,7 @@ public final class LazyFinalReference<T> {
     }
 
     public boolean isPresent() {
-        return value != UNINITIALIZED || Unsafe.getUnsafe().getObjectVolatile(this, VALUE_OFFSET) != UNINITIALIZED;
+        return value != UNINITIALIZED || Unsafe.getUnsafe().getReferenceVolatile(this, VALUE_OFFSET) != UNINITIALIZED;
     }
 
     @SuppressWarnings("unchecked")
@@ -66,14 +66,14 @@ public final class LazyFinalReference<T> {
         T v = value;
         if (v == UNINITIALIZED) {
             // Try volatile read first in case of memory inconsistency to avoid Supplier call
-            v = (T) Unsafe.getUnsafe().getObjectVolatile(this, VALUE_OFFSET);
+            v = (T) Unsafe.getUnsafe().getReferenceVolatile(this, VALUE_OFFSET);
             if (v == UNINITIALIZED) {
                 T obj = supplier.get();
 
-                if (Unsafe.getUnsafe().compareAndSetObject(this, VALUE_OFFSET, UNINITIALIZED, obj)) {
+                if (Unsafe.getUnsafe().compareAndSetReference(this, VALUE_OFFSET, UNINITIALIZED, obj)) {
                     v = obj;
                 } else {
-                    v = (T) Unsafe.getUnsafe().getObjectVolatile(this, VALUE_OFFSET);
+                    v = (T) Unsafe.getUnsafe().getReferenceVolatile(this, VALUE_OFFSET);
                 }
                 assert v != UNINITIALIZED;
             }

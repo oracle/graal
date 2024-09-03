@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -110,62 +110,6 @@ public abstract class Property {
      */
     @Deprecated(since = "22.2")
     public abstract Object get(DynamicObject store, boolean condition);
-
-    /**
-     * Assigns value to this property of the object.
-     *
-     * Throws an exception if the value cannot be assigned to the property's current location.
-     *
-     * @param store the store that this property resides in
-     * @param value the value to assign
-     * @param shape the current shape of the object or {@code null}
-     * @throws IncompatibleLocationException if the value is incompatible with the property location
-     * @throws FinalLocationException if the location is final and values differ
-     * @see DynamicObjectLibrary#put(DynamicObject, Object, Object)
-     * @since 0.8 or earlier
-     * @deprecated Use {@link DynamicObjectLibrary#put(DynamicObject, Object, Object)}.
-     */
-    @SuppressWarnings("deprecation")
-    @Deprecated(since = "22.2")
-    public abstract void set(DynamicObject store, Object value, Shape shape) throws IncompatibleLocationException, FinalLocationException;
-
-    /**
-     * Assigns value to this property of the object.
-     *
-     * Automatically relocates the property if the value cannot be assigned to its current location.
-     *
-     * @param shape the current shape of the object or {@code null}
-     * @since 0.8 or earlier
-     * @deprecated Use {@link DynamicObjectLibrary#put(DynamicObject, Object, Object)}.
-     */
-    @Deprecated(since = "22.2")
-    public abstract void setGeneric(DynamicObject store, Object value, Shape shape);
-
-    /**
-     * Like {@link #set(DynamicObject, Object, Shape)}, but throws an {@link IllegalStateException}
-     * instead.
-     *
-     * @since 0.8 or earlier
-     * @deprecated Use {@link DynamicObjectLibrary#put(DynamicObject, Object, Object)}.
-     */
-    @Deprecated(since = "22.2")
-    public abstract void setSafe(DynamicObject store, Object value, Shape shape);
-
-    /**
-     * Assigns value to this property of the object, changing the object's shape.
-     *
-     * Combines {@code setShapeAndGrow} and {@link #setSafe(DynamicObject, Object, Shape)} to an
-     * atomic operation.
-     *
-     * @param store the store that this property resides in
-     * @param value the value to assign
-     * @param oldShape the shape before the transition
-     * @param newShape the shape after the transition
-     * @since 0.8 or earlier
-     * @deprecated Use {@link DynamicObjectLibrary#put(DynamicObject, Object, Object)}.
-     */
-    @Deprecated(since = "22.2")
-    public abstract void setSafe(DynamicObject store, Object value, Shape oldShape, Shape newShape);
 
     /**
      * Get the property location.

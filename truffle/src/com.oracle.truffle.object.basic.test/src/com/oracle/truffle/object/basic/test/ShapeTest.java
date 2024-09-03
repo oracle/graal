@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,38 +44,39 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.object.ShapeImpl;
 
 @SuppressWarnings("deprecation")
 public class ShapeTest {
 
     @Test
     public void testToString() {
-        Shape rootShape = Shape.newBuilder().layout(TestDynamicObjectDefault.class).allowImplicitCastIntToLong(true).build();
+        ShapeImpl rootShape = (ShapeImpl) Shape.newBuilder().layout(TestDynamicObjectDefault.class).allowImplicitCastIntToLong(true).build();
         DOTestAsserts.assertShape(new String[]{}, rootShape);
 
-        Shape aInt = rootShape.defineProperty("a", 1, 0);
+        ShapeImpl aInt = rootShape.defineProperty("a", 1, 0);
         DOTestAsserts.assertShape(new String[]{"\"a\":int@0"}, aInt);
 
-        Shape aObj = aInt.defineProperty("a", new Object(), 0);
+        ShapeImpl aObj = aInt.defineProperty("a", new Object(), 0);
         DOTestAsserts.assertShape(new String[]{"\"a\":Object@0"}, aObj);
 
-        Shape aObjBInt = aObj.defineProperty("b", 2, 0);
+        ShapeImpl aObjBInt = aObj.defineProperty("b", 2, 0);
         DOTestAsserts.assertShape(new String[]{
                         "\"b\":int@1",
                         "\"a\":Object@0"}, aObjBInt);
 
-        Shape aIntBObj = aInt.defineProperty("b", new Object(), 0);
+        ShapeImpl aIntBObj = aInt.defineProperty("b", new Object(), 0);
         DOTestAsserts.assertShape(new String[]{
                         "\"b\":Object@0",
                         "\"a\":int@0"}, aIntBObj);
 
-        Shape bool = rootShape.addProperty(Property.create("bool", rootShape.allocator().locationForType(boolean.class), 0));
+        ShapeImpl bool = rootShape.addProperty(Property.create("bool", rootShape.allocator().locationForType(boolean.class), 0));
         DOTestAsserts.assertShape(new String[]{"\"bool\":boolean@0"}, bool);
 
-        Shape str = rootShape.addProperty(Property.create("str", rootShape.allocator().locationForType(String.class), 0));
+        ShapeImpl str = rootShape.addProperty(Property.create("str", rootShape.allocator().locationForType(String.class), 0));
         DOTestAsserts.assertShape(new String[]{"\"str\":Object@0"}, str);
 
-        Shape shapeWithExtArray = aIntBObj.defineProperty("c", true, 0).defineProperty("d", 3.14, 0).defineProperty("e", 1L << 44, 0);
+        ShapeImpl shapeWithExtArray = aIntBObj.defineProperty("c", true, 0).defineProperty("d", 3.14, 0).defineProperty("e", 1L << 44, 0);
         DOTestAsserts.assertShape(new String[]{
                         "\"e\":long[0]",
                         "\"d\":double@2",

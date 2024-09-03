@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,6 +42,7 @@ import java.util.function.Supplier;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -69,6 +70,40 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
+import com.oracle.truffle.espresso.nodes.bytecodes.ArrayLength;
+import com.oracle.truffle.espresso.nodes.bytecodes.ArrayLengthFactory;
+import com.oracle.truffle.espresso.nodes.bytecodes.BooleanArrayLoad;
+import com.oracle.truffle.espresso.nodes.bytecodes.BooleanArrayLoadNodeGen;
+import com.oracle.truffle.espresso.nodes.bytecodes.BooleanArrayStore;
+import com.oracle.truffle.espresso.nodes.bytecodes.BooleanArrayStoreNodeGen;
+import com.oracle.truffle.espresso.nodes.bytecodes.ByteArrayLoad;
+import com.oracle.truffle.espresso.nodes.bytecodes.ByteArrayLoadNodeGen;
+import com.oracle.truffle.espresso.nodes.bytecodes.ByteArrayStore;
+import com.oracle.truffle.espresso.nodes.bytecodes.ByteArrayStoreNodeGen;
+import com.oracle.truffle.espresso.nodes.bytecodes.CharArrayLoad;
+import com.oracle.truffle.espresso.nodes.bytecodes.CharArrayLoadNodeGen;
+import com.oracle.truffle.espresso.nodes.bytecodes.CharArrayStore;
+import com.oracle.truffle.espresso.nodes.bytecodes.CharArrayStoreNodeGen;
+import com.oracle.truffle.espresso.nodes.bytecodes.DoubleArrayLoad;
+import com.oracle.truffle.espresso.nodes.bytecodes.DoubleArrayLoadNodeGen;
+import com.oracle.truffle.espresso.nodes.bytecodes.DoubleArrayStore;
+import com.oracle.truffle.espresso.nodes.bytecodes.DoubleArrayStoreNodeGen;
+import com.oracle.truffle.espresso.nodes.bytecodes.FloatArrayLoad;
+import com.oracle.truffle.espresso.nodes.bytecodes.FloatArrayLoadNodeGen;
+import com.oracle.truffle.espresso.nodes.bytecodes.FloatArrayStore;
+import com.oracle.truffle.espresso.nodes.bytecodes.FloatArrayStoreNodeGen;
+import com.oracle.truffle.espresso.nodes.bytecodes.IntArrayLoad;
+import com.oracle.truffle.espresso.nodes.bytecodes.IntArrayLoadNodeGen;
+import com.oracle.truffle.espresso.nodes.bytecodes.IntArrayStore;
+import com.oracle.truffle.espresso.nodes.bytecodes.IntArrayStoreNodeGen;
+import com.oracle.truffle.espresso.nodes.bytecodes.LongArrayLoad;
+import com.oracle.truffle.espresso.nodes.bytecodes.LongArrayLoadNodeGen;
+import com.oracle.truffle.espresso.nodes.bytecodes.LongArrayStore;
+import com.oracle.truffle.espresso.nodes.bytecodes.LongArrayStoreNodeGen;
+import com.oracle.truffle.espresso.nodes.bytecodes.ShortArrayLoad;
+import com.oracle.truffle.espresso.nodes.bytecodes.ShortArrayLoadNodeGen;
+import com.oracle.truffle.espresso.nodes.bytecodes.ShortArrayStore;
+import com.oracle.truffle.espresso.nodes.bytecodes.ShortArrayStoreNodeGen;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
@@ -82,6 +117,7 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 @GenerateNativeEnv(target = JniImpl.class)
 public final class JniEnv extends NativeEnv {
+    private static final TruffleLogger LOGGER = TruffleLogger.getLogger(EspressoLanguage.ID, JniEnv.class);
 
     public static final int JNI_OK = 0; /* success */
     public static final int JNI_ERR = -1; /* unknown error */
@@ -168,6 +204,11 @@ public final class JniEnv extends NativeEnv {
 
     public void setPendingException(EspressoException ex) {
         getContext().getLanguage().getThreadLocalState().setPendingException(ex);
+    }
+
+    @Override
+    protected TruffleLogger getLogger() {
+        return LOGGER;
     }
 
     private class VarArgsImpl implements VarArgs {
@@ -293,22 +334,35 @@ public final class JniEnv extends NativeEnv {
     }
 
     public Object[] popVarArgs(@Pointer TruffleObject varargsPtr, final Symbol<Type>[] signature) {
+        return popVarArgs(varargsPtr, signature, null);
+    }
+
+    public Object[] popVarArgs(@Pointer TruffleObject varargsPtr, final Symbol<Type>[] signature, StaticObject receiver) {
         VarArgs varargs = new VarArgsImpl(varargsPtr);
         int paramCount = Signatures.parameterCount(signature);
-        Object[] args = new Object[paramCount];
+        int argCount = paramCount;
+        int argOffset = 0;
+        if (receiver != null) {
+            argCount += 1;
+            argOffset = 1;
+        }
+        Object[] args = new Object[argCount];
+        if (receiver != null) {
+            args[0] = receiver;
+        }
         for (int i = 0; i < paramCount; ++i) {
             JavaKind kind = Signatures.parameterKind(signature, i);
             // @formatter:off
             switch (kind) {
-                case Boolean : args[i] = varargs.popBoolean(); break;
-                case Byte    : args[i] = varargs.popByte();    break;
-                case Short   : args[i] = varargs.popShort();   break;
-                case Char    : args[i] = varargs.popChar();    break;
-                case Int     : args[i] = varargs.popInt();     break;
-                case Float   : args[i] = varargs.popFloat();   break;
-                case Long    : args[i] = varargs.popLong();    break;
-                case Double  : args[i] = varargs.popDouble();  break;
-                case Object  : args[i] = varargs.popObject();  break;
+                case Boolean : args[i + argOffset] = varargs.popBoolean(); break;
+                case Byte    : args[i + argOffset] = varargs.popByte();    break;
+                case Short   : args[i + argOffset] = varargs.popShort();   break;
+                case Char    : args[i + argOffset] = varargs.popChar();    break;
+                case Int     : args[i + argOffset] = varargs.popInt();     break;
+                case Float   : args[i + argOffset] = varargs.popFloat();   break;
+                case Long    : args[i + argOffset] = varargs.popLong();    break;
+                case Double  : args[i + argOffset] = varargs.popDouble();  break;
+                case Object  : args[i + argOffset] = varargs.popObject();  break;
                 default:
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw EspressoError.shouldNotReachHere("invalid parameter kind: " + kind);
@@ -434,6 +488,7 @@ public final class JniEnv extends NativeEnv {
      * @throws OutOfMemoryError: if the system runs out of memory.
      */
     @JniImpl
+    @TruffleBoundary
     public @Handle(Field.class) long GetFieldID(@JavaType(Class.class) StaticObject clazz, @Pointer TruffleObject namePtr, @Pointer TruffleObject typePtr) {
         String name = NativeUtils.interopPointerToString(namePtr);
         String type = NativeUtils.interopPointerToString(typePtr);
@@ -478,6 +533,7 @@ public final class JniEnv extends NativeEnv {
      * @throws OutOfMemoryError if the system runs out of memory.
      */
     @JniImpl
+    @TruffleBoundary
     public @Handle(Field.class) long GetStaticFieldID(@JavaType(Class.class) StaticObject clazz, @Pointer TruffleObject namePtr, @Pointer TruffleObject typePtr) {
         String name = NativeUtils.interopPointerToString(namePtr);
         String type = NativeUtils.interopPointerToString(typePtr);
@@ -522,6 +578,7 @@ public final class JniEnv extends NativeEnv {
      * @throws OutOfMemoryError if the system runs out of memory.
      */
     @JniImpl
+    @TruffleBoundary
     public @Handle(Method.class) long GetMethodID(@JavaType(Class.class) StaticObject clazz, @Pointer TruffleObject namePtr, @Pointer TruffleObject signaturePtr) {
         String name = NativeUtils.interopPointerToString(namePtr);
         String signature = NativeUtils.interopPointerToString(signaturePtr);
@@ -562,6 +619,7 @@ public final class JniEnv extends NativeEnv {
      * @throws OutOfMemoryError if the system runs out of memory.
      */
     @JniImpl
+    @TruffleBoundary
     public @Handle(Method.class) long GetStaticMethodID(@JavaType(Class.class) StaticObject clazz, @Pointer TruffleObject namePtr, @Pointer TruffleObject signaturePtr) {
         String name = NativeUtils.interopPointerToString(namePtr);
         String signature = NativeUtils.interopPointerToString(signaturePtr);
@@ -855,7 +913,7 @@ public final class JniEnv extends NativeEnv {
         Method resolutionSeed = methodIds.getObject(methodId);
         assert !resolutionSeed.isStatic();
         assert resolutionSeed.getDeclaringKlass().isAssignableFrom(receiver.getKlass());
-        Object[] args = popVarArgs(varargsPtr, resolutionSeed.getParsedSignature());
+        Object[] args = popVarArgs(varargsPtr, resolutionSeed.getParsedSignature(), receiver);
 
         Method target;
         if (resolutionSeed.getDeclaringKlass().isInterface()) {
@@ -876,7 +934,7 @@ public final class JniEnv extends NativeEnv {
 
         assert target != null;
         assert target.getName() == resolutionSeed.getName() && resolutionSeed.getRawSignature() == target.getRawSignature();
-        return target.invokeDirect(receiver, args);
+        return target.invokeDirect(args);
     }
 
     @JniImpl
@@ -959,7 +1017,7 @@ public final class JniEnv extends NativeEnv {
         Method method = methodIds.getObject(methodId);
         assert !method.isStatic();
         assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
-        Object result = method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
+        Object result = method.invokeDirect(popVarArgs(varargsPtr, method.getParsedSignature(), receiver));
         return getMeta().asObject(result);
     }
 
@@ -969,7 +1027,7 @@ public final class JniEnv extends NativeEnv {
         Method method = methodIds.getObject(methodId);
         assert !method.isStatic();
         assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
-        Object result = method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
+        Object result = method.invokeDirect(popVarArgs(varargsPtr, method.getParsedSignature(), receiver));
         return getMeta().asBoolean(result, true);
     }
 
@@ -979,7 +1037,7 @@ public final class JniEnv extends NativeEnv {
         Method method = methodIds.getObject(methodId);
         assert !method.isStatic();
         assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
-        Object result = method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
+        Object result = method.invokeDirect(popVarArgs(varargsPtr, method.getParsedSignature(), receiver));
         return getMeta().asChar(result, true);
     }
 
@@ -989,7 +1047,7 @@ public final class JniEnv extends NativeEnv {
         Method method = methodIds.getObject(methodId);
         assert !method.isStatic();
         assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
-        Object result = method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
+        Object result = method.invokeDirect(popVarArgs(varargsPtr, method.getParsedSignature(), receiver));
         return getMeta().asByte(result, true);
     }
 
@@ -999,7 +1057,7 @@ public final class JniEnv extends NativeEnv {
         Method method = methodIds.getObject(methodId);
         assert !method.isStatic();
         assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
-        Object result = method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
+        Object result = method.invokeDirect(popVarArgs(varargsPtr, method.getParsedSignature(), receiver));
         return getMeta().asShort(result, true);
     }
 
@@ -1009,7 +1067,7 @@ public final class JniEnv extends NativeEnv {
         Method method = methodIds.getObject(methodId);
         assert !method.isStatic();
         assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
-        Object result = method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
+        Object result = method.invokeDirect(popVarArgs(varargsPtr, method.getParsedSignature(), receiver));
         return getMeta().asInt(result, true);
     }
 
@@ -1019,7 +1077,7 @@ public final class JniEnv extends NativeEnv {
         Method method = methodIds.getObject(methodId);
         assert !method.isStatic();
         assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
-        Object result = method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
+        Object result = method.invokeDirect(popVarArgs(varargsPtr, method.getParsedSignature(), receiver));
         return getMeta().asFloat(result, true);
     }
 
@@ -1029,7 +1087,7 @@ public final class JniEnv extends NativeEnv {
         Method method = methodIds.getObject(methodId);
         assert !method.isStatic();
         assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
-        Object result = method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
+        Object result = method.invokeDirect(popVarArgs(varargsPtr, method.getParsedSignature(), receiver));
         return getMeta().asDouble(result, true);
     }
 
@@ -1039,7 +1097,7 @@ public final class JniEnv extends NativeEnv {
         Method method = methodIds.getObject(methodId);
         assert !method.isStatic();
         assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
-        Object result = method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
+        Object result = method.invokeDirect(popVarArgs(varargsPtr, method.getParsedSignature(), receiver));
         return getMeta().asLong(result, true);
     }
 
@@ -1049,7 +1107,7 @@ public final class JniEnv extends NativeEnv {
         Method method = methodIds.getObject(methodId);
         assert !method.isStatic();
         assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
-        Object result = method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
+        Object result = method.invokeDirect(popVarArgs(varargsPtr, method.getParsedSignature(), receiver));
         assert result instanceof StaticObject && StaticObject.isNull((StaticObject) result) : "void methods must return StaticObject.NULL";
     }
 
@@ -1062,7 +1120,7 @@ public final class JniEnv extends NativeEnv {
         Method method = methodIds.getObject(methodId);
         assert method.isStatic();
         assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
-        Object result = method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
+        Object result = method.invokeDirectStatic(popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asObject(result);
     }
 
@@ -1071,7 +1129,7 @@ public final class JniEnv extends NativeEnv {
         Method method = methodIds.getObject(methodId);
         assert method.isStatic();
         assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
-        Object result = method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
+        Object result = method.invokeDirectStatic(popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asBoolean(result, true);
     }
 
@@ -1080,7 +1138,7 @@ public final class JniEnv extends NativeEnv {
         Method method = methodIds.getObject(methodId);
         assert method.isStatic();
         assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
-        Object result = method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
+        Object result = method.invokeDirectStatic(popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asChar(result, true);
     }
 
@@ -1089,7 +1147,7 @@ public final class JniEnv extends NativeEnv {
         Method method = methodIds.getObject(methodId);
         assert method.isStatic();
         assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
-        Object result = method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
+        Object result = method.invokeDirectStatic(popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asByte(result, true);
     }
 
@@ -1098,7 +1156,7 @@ public final class JniEnv extends NativeEnv {
         Method method = methodIds.getObject(methodId);
         assert method.isStatic();
         assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
-        Object result = method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
+        Object result = method.invokeDirectStatic(popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asShort(result, true);
     }
 
@@ -1107,7 +1165,7 @@ public final class JniEnv extends NativeEnv {
         Method method = methodIds.getObject(methodId);
         assert method.isStatic();
         assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
-        Object result = method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
+        Object result = method.invokeDirectStatic(popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asInt(result, true);
     }
 
@@ -1116,7 +1174,7 @@ public final class JniEnv extends NativeEnv {
         Method method = methodIds.getObject(methodId);
         assert method.isStatic();
         assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
-        Object result = method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
+        Object result = method.invokeDirectStatic(popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asFloat(result, true);
     }
 
@@ -1125,7 +1183,7 @@ public final class JniEnv extends NativeEnv {
         Method method = methodIds.getObject(methodId);
         assert method.isStatic();
         assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
-        Object result = method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
+        Object result = method.invokeDirectStatic(popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asDouble(result, true);
     }
 
@@ -1134,7 +1192,7 @@ public final class JniEnv extends NativeEnv {
         Method method = methodIds.getObject(methodId);
         assert method.isStatic();
         assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
-        Object result = method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
+        Object result = method.invokeDirectStatic(popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asLong(result, true);
     }
 
@@ -1143,7 +1201,7 @@ public final class JniEnv extends NativeEnv {
         Method method = methodIds.getObject(methodId);
         assert method.isStatic();
         assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
-        Object result = method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
+        Object result = method.invokeDirectStatic(popVarArgs(varargsPtr, method.getParsedSignature()));
         assert result instanceof StaticObject && StaticObject.isNull((StaticObject) result) : "void methods must return StaticObject.NULL";
     }
 
@@ -1211,13 +1269,140 @@ public final class JniEnv extends NativeEnv {
     @JniImpl
     @TruffleBoundary
     public void GetBooleanArrayRegion(@JavaType(boolean[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
-        byte[] contents = array.unwrap(language);
-        boundsCheck(start, len, contents.length);
         ByteBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Byte);
-        buf.put(contents, start, len);
+        if (array.isEspressoObject()) {
+            byte[] contents = array.unwrap(language);
+            boundsCheck(start, len, contents.length);
+            buf.put(contents, start, len);
+        } else {
+            checkForeignBounds(array, start, len);
+            BooleanArrayLoad.WithoutNullCheck arrayLoadNode = BooleanArrayLoadNodeGen.WithoutNullCheckNodeGen.getUncached();
+            for (int i = start; i - len < start; i++) {
+                buf.put((byte) (arrayLoadNode.execute(array, i) ? 0 : 1));
+            }
+        }
     }
 
-    private void boundsCheck(int start, int len, int arrayLength) {
+    @JniImpl
+    @TruffleBoundary
+    public void GetCharArrayRegion(@JavaType(char[].class /* or byte[].class */) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
+        CharBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Char).asCharBuffer();
+        if (array.isEspressoObject()) {
+            char[] contents = array.unwrap(language);
+            boundsCheck(start, len, contents.length);
+            buf.put(contents, start, len);
+        } else {
+            checkForeignBounds(array, start, len);
+            CharArrayLoad.WithoutNullCheck arrayLoadNode = CharArrayLoadNodeGen.WithoutNullCheckNodeGen.getUncached();
+            for (int i = start; i - len < start; i++) {
+                buf.put(arrayLoadNode.execute(array, i));
+            }
+        }
+    }
+
+    @JniImpl
+    @TruffleBoundary
+    public void GetByteArrayRegion(@JavaType(byte[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
+        ByteBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Byte);
+        if (array.isEspressoObject()) {
+            byte[] contents = array.unwrap(language);
+            boundsCheck(start, len, contents.length);
+            buf.put(contents, start, len);
+        } else {
+            checkForeignBounds(array, start, len);
+            ByteArrayLoad.WithoutNullCheck arrayLoadNode = ByteArrayLoadNodeGen.WithoutNullCheckNodeGen.getUncached();
+            for (int i = start; i - len < start; i++) {
+                buf.put(arrayLoadNode.execute(array, i));
+            }
+        }
+    }
+
+    @JniImpl
+    @TruffleBoundary
+    public void GetShortArrayRegion(@JavaType(short[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
+        ShortBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Short).asShortBuffer();
+        if (array.isEspressoObject()) {
+            short[] contents = array.unwrap(language);
+            boundsCheck(start, len, contents.length);
+            buf.put(contents, start, len);
+        } else {
+            checkForeignBounds(array, start, len);
+            ShortArrayLoad.WithoutNullCheck arrayLoadNode = ShortArrayLoadNodeGen.WithoutNullCheckNodeGen.getUncached();
+            for (int i = start; i - len < start; i++) {
+                buf.put(arrayLoadNode.execute(array, i));
+            }
+        }
+    }
+
+    @JniImpl
+    @TruffleBoundary
+    public void GetIntArrayRegion(@JavaType(int[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
+        IntBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Int).asIntBuffer();
+        if (array.isEspressoObject()) {
+            int[] contents = array.unwrap(language);
+            boundsCheck(start, len, contents.length);
+            buf.put(contents, start, len);
+        } else {
+            checkForeignBounds(array, start, len);
+            IntArrayLoad.WithoutNullCheck arrayLoadNode = IntArrayLoadNodeGen.WithoutNullCheckNodeGen.getUncached();
+            for (int i = start; i - len < start; i++) {
+                buf.put(arrayLoadNode.execute(array, i));
+            }
+        }
+    }
+
+    @JniImpl
+    @TruffleBoundary
+    public void GetFloatArrayRegion(@JavaType(float[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
+        FloatBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Float).asFloatBuffer();
+        if (array.isEspressoObject()) {
+            float[] contents = array.unwrap(language);
+            boundsCheck(start, len, contents.length);
+            buf.put(contents, start, len);
+        } else {
+            checkForeignBounds(array, start, len);
+            FloatArrayLoad.WithoutNullCheck arrayLoadNode = FloatArrayLoadNodeGen.WithoutNullCheckNodeGen.getUncached();
+            for (int i = start; i - len < start; i++) {
+                buf.put(arrayLoadNode.execute(array, i));
+            }
+        }
+    }
+
+    @JniImpl
+    @TruffleBoundary
+    public void GetDoubleArrayRegion(@JavaType(double[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
+        DoubleBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Double).asDoubleBuffer();
+        if (array.isEspressoObject()) {
+            double[] contents = array.unwrap(language);
+            boundsCheck(start, len, contents.length);
+            buf.put(contents, start, len);
+        } else {
+            checkForeignBounds(array, start, len);
+            DoubleArrayLoad.WithoutNullCheck arrayLoadNode = DoubleArrayLoadNodeGen.WithoutNullCheckNodeGen.getUncached();
+            for (int i = start; i - len < start; i++) {
+                buf.put(arrayLoadNode.execute(array, i));
+            }
+        }
+    }
+
+    @JniImpl
+    @TruffleBoundary
+    public void GetLongArrayRegion(@JavaType(long[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
+        LongBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Long).asLongBuffer();
+        if (array.isEspressoObject()) {
+            long[] contents = array.unwrap(language);
+            boundsCheck(start, len, contents.length);
+            buf.put(contents, start, len);
+        } else {
+            checkForeignBounds(array, start, len);
+            LongArrayLoad.WithoutNullCheck arrayLoadNode = LongArrayLoadNodeGen.WithoutNullCheckNodeGen.getUncached();
+            for (int i = start; i - len < start; i++) {
+                buf.put(arrayLoadNode.execute(array, i));
+            }
+        }
+    }
+
+    private void boundsCheck(int start, int len, long arrayLength) {
         assert arrayLength >= 0;
         if (start < 0 || len < 0 || start + (long) len > arrayLength) {
             Meta meta = getMeta();
@@ -1225,67 +1410,9 @@ public final class JniEnv extends NativeEnv {
         }
     }
 
-    @JniImpl
-    @TruffleBoundary
-    public void GetCharArrayRegion(@JavaType(char[].class /* or byte[].class */) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
-        char[] contents = array.unwrap(language);
-        boundsCheck(start, len, contents.length);
-        CharBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Char).asCharBuffer();
-        buf.put(contents, start, len);
-    }
-
-    @JniImpl
-    @TruffleBoundary
-    public void GetByteArrayRegion(@JavaType(byte[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
-        byte[] contents = array.unwrap(language);
-        boundsCheck(start, len, contents.length);
-        ByteBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Byte);
-        buf.put(contents, start, len);
-    }
-
-    @JniImpl
-    @TruffleBoundary
-    public void GetShortArrayRegion(@JavaType(short[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
-        short[] contents = array.unwrap(language);
-        boundsCheck(start, len, contents.length);
-        ShortBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Short).asShortBuffer();
-        buf.put(contents, start, len);
-    }
-
-    @JniImpl
-    @TruffleBoundary
-    public void GetIntArrayRegion(@JavaType(int[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
-        int[] contents = array.unwrap(language);
-        boundsCheck(start, len, contents.length);
-        IntBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Int).asIntBuffer();
-        buf.put(contents, start, len);
-    }
-
-    @JniImpl
-    @TruffleBoundary
-    public void GetFloatArrayRegion(@JavaType(float[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
-        float[] contents = array.unwrap(language);
-        boundsCheck(start, len, contents.length);
-        FloatBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Float).asFloatBuffer();
-        buf.put(contents, start, len);
-    }
-
-    @JniImpl
-    @TruffleBoundary
-    public void GetDoubleArrayRegion(@JavaType(double[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
-        double[] contents = array.unwrap(language);
-        boundsCheck(start, len, contents.length);
-        DoubleBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Double).asDoubleBuffer();
-        buf.put(contents, start, len);
-    }
-
-    @JniImpl
-    @TruffleBoundary
-    public void GetLongArrayRegion(@JavaType(long[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
-        long[] contents = array.unwrap(language);
-        boundsCheck(start, len, contents.length);
-        LongBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Long).asLongBuffer();
-        buf.put(contents, start, len);
+    private void checkForeignBounds(StaticObject array, int start, int len) {
+        ArrayLength.WithoutNullCheck arrayLength = ArrayLengthFactory.WithoutNullCheckNodeGen.getUncached();
+        boundsCheck(start, len, arrayLength.executeAsLong(array));
     }
 
     // endregion Get*ArrayRegion
@@ -1295,73 +1422,137 @@ public final class JniEnv extends NativeEnv {
     @JniImpl
     @TruffleBoundary
     public void SetBooleanArrayRegion(@JavaType(boolean[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
-        byte[] contents = array.unwrap(language);
-        boundsCheck(start, len, contents.length);
         ByteBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Byte);
-        buf.get(contents, start, len);
+        if (array.isEspressoObject()) {
+            byte[] contents = array.unwrap(language);
+            boundsCheck(start, len, contents.length);
+            buf.get(contents, start, len);
+        } else {
+            checkForeignBounds(array, start, len);
+            BooleanArrayStore.WithoutNullCheck arrayStore = BooleanArrayStoreNodeGen.WithoutNullCheckNodeGen.getUncached();
+            for (int i = start; i - len < start; i++) {
+                arrayStore.execute(array, i, buf.get(i));
+            }
+        }
     }
 
     @JniImpl
     @TruffleBoundary
     public void SetCharArrayRegion(@JavaType(char[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
-        char[] contents = array.unwrap(language);
-        boundsCheck(start, len, contents.length);
         CharBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Char).asCharBuffer();
-        buf.get(contents, start, len);
+        if (array.isEspressoObject()) {
+            char[] contents = array.unwrap(language);
+            boundsCheck(start, len, contents.length);
+            buf.get(contents, start, len);
+        } else {
+            checkForeignBounds(array, start, len);
+            CharArrayStore.WithoutNullCheck arrayStore = CharArrayStoreNodeGen.WithoutNullCheckNodeGen.getUncached();
+            for (int i = start; i - len < start; i++) {
+                arrayStore.execute(array, i, buf.get(i));
+            }
+        }
     }
 
     @JniImpl
     @TruffleBoundary
     public void SetByteArrayRegion(@JavaType(byte[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
-        byte[] contents = array.unwrap(language);
-        boundsCheck(start, len, contents.length);
         ByteBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Byte);
-        buf.get(contents, start, len);
+        if (array.isEspressoObject()) {
+            byte[] contents = array.unwrap(language);
+            boundsCheck(start, len, contents.length);
+            buf.get(contents, start, len);
+        } else {
+            checkForeignBounds(array, start, len);
+            ByteArrayStore.WithoutNullCheck arrayStore = ByteArrayStoreNodeGen.WithoutNullCheckNodeGen.getUncached();
+            for (int i = start; i - len < start; i++) {
+                arrayStore.execute(array, i, buf.get(i));
+            }
+        }
     }
 
     @JniImpl
     @TruffleBoundary
     public void SetShortArrayRegion(@JavaType(short[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
-        short[] contents = array.unwrap(language);
-        boundsCheck(start, len, contents.length);
         ShortBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Short).asShortBuffer();
-        buf.get(contents, start, len);
+        if (array.isEspressoObject()) {
+            short[] contents = array.unwrap(language);
+            boundsCheck(start, len, contents.length);
+            buf.get(contents, start, len);
+        } else {
+            checkForeignBounds(array, start, len);
+            ShortArrayStore.WithoutNullCheck arrayStore = ShortArrayStoreNodeGen.WithoutNullCheckNodeGen.getUncached();
+            for (int i = start; i - len < start; i++) {
+                arrayStore.execute(array, i, buf.get(i));
+            }
+        }
     }
 
     @JniImpl
     @TruffleBoundary
     public void SetIntArrayRegion(@JavaType(int[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
-        int[] contents = array.unwrap(language);
-        boundsCheck(start, len, contents.length);
         IntBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Int).asIntBuffer();
-        buf.get(contents, start, len);
+        if (array.isEspressoObject()) {
+            int[] contents = array.unwrap(language);
+            boundsCheck(start, len, contents.length);
+            buf.get(contents, start, len);
+        } else {
+            checkForeignBounds(array, start, len);
+            IntArrayStore.WithoutNullCheck arrayStore = IntArrayStoreNodeGen.WithoutNullCheckNodeGen.getUncached();
+            for (int i = start; i - len < start; i++) {
+                arrayStore.execute(array, i, buf.get(i));
+            }
+        }
     }
 
     @JniImpl
     @TruffleBoundary
     public void SetFloatArrayRegion(@JavaType(float[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
-        float[] contents = array.unwrap(language);
-        boundsCheck(start, len, contents.length);
         FloatBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Float).asFloatBuffer();
-        buf.get(contents, start, len);
+        if (array.isEspressoObject()) {
+            float[] contents = array.unwrap(language);
+            boundsCheck(start, len, contents.length);
+            buf.get(contents, start, len);
+        } else {
+            checkForeignBounds(array, start, len);
+            FloatArrayStore.WithoutNullCheck arrayStore = FloatArrayStoreNodeGen.WithoutNullCheckNodeGen.getUncached();
+            for (int i = start; i - len < start; i++) {
+                arrayStore.execute(array, i, buf.get(i));
+            }
+        }
     }
 
     @JniImpl
     @TruffleBoundary
     public void SetDoubleArrayRegion(@JavaType(double[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
-        double[] contents = array.unwrap(language);
-        boundsCheck(start, len, contents.length);
         DoubleBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Double).asDoubleBuffer();
-        buf.get(contents, start, len);
+        if (array.isEspressoObject()) {
+            double[] contents = array.unwrap(language);
+            boundsCheck(start, len, contents.length);
+            buf.get(contents, start, len);
+        } else {
+            checkForeignBounds(array, start, len);
+            DoubleArrayStore.WithoutNullCheck arrayStore = DoubleArrayStoreNodeGen.WithoutNullCheckNodeGen.getUncached();
+            for (int i = start; i - len < start; i++) {
+                arrayStore.execute(array, i, buf.get(i));
+            }
+        }
     }
 
     @JniImpl
     @TruffleBoundary
     public void SetLongArrayRegion(@JavaType(long[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
-        long[] contents = array.unwrap(language);
-        boundsCheck(start, len, contents.length);
         LongBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Long).asLongBuffer();
-        buf.get(contents, start, len);
+        if (array.isEspressoObject()) {
+            long[] contents = array.unwrap(language);
+            boundsCheck(start, len, contents.length);
+            buf.get(contents, start, len);
+        } else {
+            checkForeignBounds(array, start, len);
+            LongArrayStore.WithoutNullCheck arrayStore = LongArrayStoreNodeGen.WithoutNullCheckNodeGen.getUncached();
+            for (int i = start; i - len < start; i++) {
+                arrayStore.execute(array, i, buf.get(i));
+            }
+        }
     }
 
     // endregion Set*ArrayRegion
@@ -1381,7 +1572,7 @@ public final class JniEnv extends NativeEnv {
         if (StaticObject.isNull(string)) {
             return 0;
         }
-        return (int) getMeta().java_lang_String_length.invokeDirect(string);
+        return (int) getMeta().java_lang_String_length.invokeDirectSpecial(string);
     }
 
     /**
@@ -1425,7 +1616,7 @@ public final class JniEnv extends NativeEnv {
         }
         StaticObject stringChars;
         if (getJavaVersion().compactStringsEnabled()) {
-            stringChars = (StaticObject) meta.java_lang_String_toCharArray.invokeDirect(str);
+            stringChars = (StaticObject) meta.java_lang_String_toCharArray.invokeDirectSpecial(str);
         } else {
             stringChars = meta.java_lang_String_value.getObject(str);
         }
@@ -1473,7 +1664,7 @@ public final class JniEnv extends NativeEnv {
         }
         char[] chars;
         if (getJavaVersion().compactStringsEnabled()) {
-            StaticObject wrappedChars = (StaticObject) getMeta().java_lang_String_toCharArray.invokeDirect(string);
+            StaticObject wrappedChars = (StaticObject) getMeta().java_lang_String_toCharArray.invokeDirectSpecial(string);
             chars = wrappedChars.unwrap(language);
         } else {
             chars = getMeta().java_lang_String_value.getObject(string).unwrap(language);
@@ -1666,10 +1857,9 @@ public final class JniEnv extends NativeEnv {
         EspressoException ex = getPendingEspressoException();
         if (ex != null) {
             StaticObject guestException = ex.getGuestException();
-            assert InterpreterToVM.instanceOf(guestException, getMeta().java_lang_Throwable);
-            // Dynamic lookup.
-            Method printStackTrace = guestException.getKlass().lookupMethod(Name.printStackTrace, Signature._void);
-            printStackTrace.invokeDirect(guestException);
+            Meta meta = getMeta();
+            assert InterpreterToVM.instanceOf(guestException, meta.java_lang_Throwable);
+            meta.java_lang_Throwable_printStackTrace.invokeDirectVirtual(guestException);
             // Restore exception cleared by invokeDirect.
             setPendingException(ex);
         }
@@ -1878,7 +2068,7 @@ public final class JniEnv extends NativeEnv {
             StaticObject clazz = GetObjectClass(array);
             JavaKind componentKind = ((ArrayKlass) clazz.getMirrorKlass(getMeta())).getComponentType().getJavaKind();
             assert componentKind.isPrimitive();
-            int length = GetArrayLength(array, language);
+            int length = GetArrayLength(array);
             // @formatter:off
             switch (componentKind) {
                 case Boolean : SetBooleanArrayRegion(array, 0, length, bufPtr, language); break;
@@ -1977,9 +2167,9 @@ public final class JniEnv extends NativeEnv {
         StaticObject instance = meta.java_nio_DirectByteBuffer.allocateInstance(getContext());
         long address = NativeUtils.interopAsPointer(addressPtr);
         if (meta.getJavaVersion().java21OrLater()) {
-            meta.java_nio_DirectByteBuffer_init_long_int.invokeDirect(instance, address, capacity);
+            meta.java_nio_DirectByteBuffer_init_long_int.invokeDirectSpecial(instance, address, capacity);
         } else {
-            meta.java_nio_DirectByteBuffer_init_long_int.invokeDirect(instance, address, (int) capacity);
+            meta.java_nio_DirectByteBuffer_init_long_int.invokeDirectSpecial(instance, address, (int) capacity);
         }
         return instance;
     }
@@ -2509,8 +2699,8 @@ public final class JniEnv extends NativeEnv {
      * @return the length of the array.
      */
     @JniImpl
-    public static int GetArrayLength(@JavaType(Object.class) StaticObject array, @Inject EspressoLanguage language) {
-        return InterpreterToVM.arrayLength(array, language);
+    public static int GetArrayLength(@JavaType(Object.class) StaticObject array) {
+        return ArrayLengthFactory.WithoutNullCheckNodeGen.getUncached().executeAsInt(array);
     }
 
     @JniImpl
@@ -2523,7 +2713,7 @@ public final class JniEnv extends NativeEnv {
         StaticObject clazz = GetObjectClass(array);
         JavaKind componentKind = ((ArrayKlass) clazz.getMirrorKlass(getMeta())).getComponentType().getJavaKind();
         assert componentKind.isPrimitive();
-        int length = GetArrayLength(array, language);
+        int length = GetArrayLength(array);
 
         ByteBuffer region = allocateDirect(length, componentKind);
         @Pointer
@@ -2557,7 +2747,7 @@ public final class JniEnv extends NativeEnv {
             StaticObject clazz = GetObjectClass(array);
             JavaKind componentKind = ((ArrayKlass) clazz.getMirrorKlass(getMeta())).getComponentType().getJavaKind();
             assert componentKind.isPrimitive();
-            int length = GetArrayLength(array, language);
+            int length = GetArrayLength(array);
             // @formatter:off
             switch (componentKind) {
                 case Boolean : SetBooleanArrayRegion(array, 0, length, carrayPtr, language); break;
@@ -2623,7 +2813,7 @@ public final class JniEnv extends NativeEnv {
         klass.initialize();
         StaticObject instance;
         instance = klass.allocateInstance(getContext());
-        method.invokeDirect(instance, popVarArgs(varargsPtr, method.getParsedSignature()));
+        method.invokeDirectSpecial(popVarArgs(varargsPtr, method.getParsedSignature(), instance));
         return instance;
     }
 
@@ -2691,21 +2881,21 @@ public final class JniEnv extends NativeEnv {
 
         StaticObject caller = getVM().JVM_GetCallerClass(0, profiler); // security stack walk
         if (StaticObject.notNull(caller)) {
-            Klass callerKlass = caller.getMirrorKlass(getMeta());
+            Klass callerKlass = caller.getMirrorKlass(meta);
             loader = callerKlass.getDefiningClassLoader();
-            if (StaticObject.isNull(loader) && Type.java_lang_ClassLoader$NativeLibrary.equals(callerKlass.getType())) {
-                StaticObject result = (StaticObject) getMeta().java_lang_ClassLoader$NativeLibrary_getFromClass.invokeDirect(null);
-                loader = result.getMirrorKlass(getMeta()).getDefiningClassLoader();
+            if (StaticObject.isNull(loader) && meta.java_lang_ClassLoader$NativeLibrary.equals(callerKlass)) {
+                StaticObject result = (StaticObject) meta.java_lang_ClassLoader$NativeLibrary_getFromClass.invokeDirectStatic();
+                loader = result.getMirrorKlass(meta).getDefiningClassLoader();
                 protectionDomain = getVM().JVM_GetProtectionDomain(result);
             }
         } else {
-            loader = (StaticObject) getMeta().java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);
+            loader = (StaticObject) meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirectStatic();
         }
 
         StaticObject guestClass = StaticObject.NULL;
         try {
             String dotName = name.replace('/', '.');
-            guestClass = (StaticObject) getMeta().java_lang_Class_forName_String_boolean_ClassLoader.invokeDirect(null, meta.toGuestString(dotName), false, loader);
+            guestClass = (StaticObject) meta.java_lang_Class_forName_String_boolean_ClassLoader.invokeDirectStatic(meta.toGuestString(dotName), false, loader);
             EspressoError.guarantee(StaticObject.notNull(guestClass), "Class.forName returned null", dotName);
         } catch (EspressoException e) {
             profiler.profile(5);
@@ -2718,7 +2908,7 @@ public final class JniEnv extends NativeEnv {
 
         meta.HIDDEN_PROTECTION_DOMAIN.setHiddenObject(guestClass, protectionDomain);
         // FindClass should initialize the class.
-        guestClass.getMirrorKlass(getMeta()).safeInitialize();
+        guestClass.getMirrorKlass(meta).safeInitialize();
 
         return guestClass;
     }

@@ -58,7 +58,7 @@ import jdk.vm.ci.code.Register;
 public class CreateExceptionStub extends SnippetStub {
 
     public static class Options {
-        @Option(help = "Testing only option that forces deopts for exception throws", type = OptionType.Expert)//
+        @Option(help = "Testing only option that forces deopts for exception throws", type = OptionType.Debug)//
         public static final OptionKey<Boolean> HotSpotDeoptExplicitExceptions = new OptionKey<>(false);
     }
 

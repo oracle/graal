@@ -5,11 +5,11 @@ link_title: Truffle Language Safepoint Tutorial
 ---
 
 # Truffle languages and instruments migration to Java modules
-Since version 23.1 Truffle uses languages and instruments primarily as Java modules loaded from the Java VM module-path.
+Since version 23.1 Truffle uses languages and instruments primarily as Java modules loaded from the Java VM module path.
 Loading languages and tools from language or tool homes is still supported for compatibility reasons. However, it is
 deprecated and will be removed in future versions. The motivations for this change are:
 1. Truffle should be used the same way on all JDKs.
-2. Truffle is not a part of the Java VM jimage and is used as a regular JVM VM module-path library.
+2. Truffle is not a part of the Java VM jimage and is used as a regular JVM VM module path library.
 3. Loading languages and tools from the module path is much easier for the embedder and works right out of the box with
 tools like Apache Maven.
 4. The Java module system guarantees strong encapsulation and reliable configuration.

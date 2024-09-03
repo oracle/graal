@@ -28,10 +28,11 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.Locale;
 
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.serviceprovider.ServiceProvider;
-
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.CodeUtil.DefaultRefMapFormatter;
@@ -44,7 +45,6 @@ import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.DataPatch;
 import jdk.vm.ci.code.site.ExceptionHandler;
 import jdk.vm.ci.code.site.Infopoint;
-import jdk.vm.ci.services.Services;
 
 /**
  * {@link HexCodeFile} based implementation of {@link DisassemblerProvider}.
@@ -149,12 +149,12 @@ public class HexCodeFileDisassemblerProvider implements DisassemblerProvider {
             // current platform).
             if (toolMethod != null) {
                 byte[] code = {};
-                String arch = Services.getSavedProperty("os.arch");
+                String arch = GraalServices.getSavedProperty("os.arch");
                 if (arch.equals("x86_64")) {
                     arch = "amd64";
                 }
-                int wordWidth = arch.endsWith("64") ? 64 : Integer.parseInt(Services.getSavedProperty("sun.arch.data.model", "64"));
-                String hcf = new HexCodeFile(code, 0L, arch.toLowerCase(), wordWidth).toEmbeddedString();
+                int wordWidth = arch.endsWith("64") ? 64 : Integer.parseInt(GraalServices.getSavedProperty("sun.arch.data.model", "64"));
+                String hcf = new HexCodeFile(code, 0L, arch.toLowerCase(Locale.ROOT), wordWidth).toEmbeddedString();
                 try {
                     toolMethod.invokeExact(hcf);
                 } catch (Throwable e) {

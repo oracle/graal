@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import jdk.graal.compiler.serviceprovider.LibGraalService;
 import org.graalvm.collections.EconomicMap;
 import jdk.graal.compiler.core.Instrumentation;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
@@ -58,6 +59,7 @@ import jdk.vm.ci.services.Services;
  * have a unique {@link #name} and {@link #autoSelectionPriority}. The latter imposes a total
  * ordering between factories for the purpose of auto-selecting the factory to use.
  */
+@LibGraalService
 public abstract class CompilerConfigurationFactory implements Comparable<CompilerConfigurationFactory> {
 
     public enum ShowConfigurationLevel {
@@ -68,11 +70,11 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
 
     public static class Options {
         // @formatter:off
-        @Option(help = "Names the compiler configuration to use. If omitted, the compiler configuration " +
-                       "with the highest auto-selection priority is used. To see the set of available configurations, " +
-                       "supply the value 'help' to this option.", type = OptionType.Expert, stability = OptionStability.STABLE)
+        @Option(help = "Names the compiler configuration to use. " +
+                       "If omitted, uses the compiler configuration with the greatest auto-selection priority. " +
+                       "To see available configurations, use the value 'help'.", type = OptionType.Expert, stability = OptionStability.STABLE)
         public static final OptionKey<String> CompilerConfiguration = new OptionKey<>(null);
-        @Option(help = "Writes to the VM log information about the compiler configuration selected.", type = OptionType.User, stability = OptionStability.STABLE)
+        @Option(help = "Writes the configuration of the selected compiler to the VM log.", type = OptionType.User, stability = OptionStability.STABLE)
         public static final OptionKey<ShowConfigurationLevel> ShowConfiguration = new EnumOptionKey<>(ShowConfigurationLevel.none);
         // @formatter:on
     }
@@ -135,14 +137,14 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
 
     public static class DefaultBackendMap implements BackendMap {
 
-        private final EconomicMap<Class<? extends Architecture>, HotSpotBackendFactory> backends = EconomicMap.create();
+        private final EconomicMap<String, HotSpotBackendFactory> backends = EconomicMap.create();
 
         @SuppressWarnings("try")
         public DefaultBackendMap(String backendName) {
             try (InitTimer t = timer("HotSpotBackendFactory.register")) {
                 for (HotSpotBackendFactory backend : GraalServices.load(HotSpotBackendFactory.class)) {
                     if (backend.getName().equals(backendName)) {
-                        Class<? extends Architecture> arch = backend.getArchitecture();
+                        String arch = backend.getArchitecture();
                         if (arch != null) {
                             HotSpotBackendFactory oldEntry = backends.put(arch, backend);
                             assert oldEntry == null || oldEntry == backend : "duplicate Graal backend";
@@ -154,7 +156,7 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
 
         @Override
         public final HotSpotBackendFactory getBackendFactory(Architecture arch) {
-            return backends.get(arch.getClass());
+            return backends.get(arch.getName());
         }
     }
 
@@ -232,7 +234,7 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
                 }
                 if (factory == null) {
                     throw new GraalError("Compiler configuration '%s' not found. Available configurations are: %s", value,
-                                    getAllCandidates().stream().map(c -> c.name).collect(Collectors.joining(", ")));
+                                    getAllCandidates().stream().map(c -> c.name).distinct().collect(Collectors.joining(", ")));
                 }
             } else {
                 List<CompilerConfigurationFactory> candidates = getAllCandidates();

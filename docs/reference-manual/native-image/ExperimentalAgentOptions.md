@@ -16,18 +16,18 @@ These options are described here.
 Native-image needs all classes to be known at image build time (a "closed-world assumption").
 However, Java has support for loading new classes at runtime.
 To emulate class loading, the agent can be told to trace dynamically loaded classes and save their bytecode for later use by the image builder.
-This functionality can be enabled by adding `experimental-class-define-support` to the agent option string, e.g.: `-agentlib:native-image-agent=config-output-dir=config,experimental-class-define-support`
+This functionality can be enabled by adding `experimental-class-define-support` to the agent option string, for example: `-agentlib:native-image-agent=config-output-dir=config,experimental-class-define-support`
 Apart from the standard configuration files, the agent will create an `agent-extracted-predefined-classes` directory in the configuration output directory and write bytecode of newly loaded classes on the go.
 The configuration directory can then be used by image builder without additional tweaks,.
 The classes will be loaded during the image build, but will not be initialized or made available to the application.
-At runtime, if there is an attempt to load a class with the same name and bytecodes as one of the classes encountered during tracing, the predefined class will be supplied to the application.
+At runtime, if there is an attempt to load a class with the same name and bytecode as one of the classes encountered during tracing, the predefined class will be supplied to the application.
 
 ### Known Limitations
 
  - Native images support "loading" a predefined class only once per execution, by just a single class loader.
  - Predefined classes are initialized when they are "loaded" at runtime and cannot be initialized at build time.
  - The agent collects all classes which are not loaded by one of the Java VM's built-in class loaders (with some exceptions), that is, from the class path or module path. This includes classes loaded by any custom class loaders.
- - Classes that are generated with varying data in their name or bytecodes, such as sequential or random numbers or timestamps, can generally not be matched to predefined classes at runtime. In these cases, the way such classes are generated needs to be adjusted.
+ - Classes that are generated with varying data in their name or bytecode, such as sequential or random numbers or timestamps, can generally not be matched to predefined classes at runtime. In these cases, the way such classes are generated needs to be adjusted.
 
 ## Printing Configuration With Origins
 
@@ -71,7 +71,7 @@ native-image-configure generate-conditional --user-code-filter=<path-to-filter-f
 ```
 where:
  - `--user-code-filter=<path-to-filter-file>`: path to an agent filter file that specifies user classes
- - (optional) `--class-name-filter=<path-to-filter-file>`: path to an agent filter file that further filters the generated config
+ - (optional) `--class-name-filter=<path-to-filter-file>`: path to an agent filter file that further filters the generated configuration
 
 ### The Underlying Heuristics
 

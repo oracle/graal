@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,6 @@
  */
 package jdk.graal.compiler.hotspot.meta;
 
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.BASE64_DECODE_BLOCK;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.BASE64_ENCODE_BLOCK;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.CHACHA20Block;
@@ -32,6 +31,8 @@ import static jdk.graal.compiler.hotspot.HotSpotBackend.CRC_TABLE_LOCATION;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.ELECTRONIC_CODEBOOK_DECRYPT_AESCRYPT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.ELECTRONIC_CODEBOOK_ENCRYPT_AESCRYPT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.GALOIS_COUNTER_MODE_CRYPT;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.INTPOLY_ASSIGN;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.INTPOLY_MONTGOMERYMULT_P256;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.POLY1305_PROCESSBLOCKS;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_END;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_MOUNT;
@@ -42,6 +43,7 @@ import static jdk.graal.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32C;
 import static jdk.graal.compiler.java.BytecodeParserOptions.InlineDuringParsing;
 import static jdk.graal.compiler.nodes.ConstantNode.forBoolean;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
+import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 
 import java.lang.annotation.Annotation;
 import java.lang.invoke.ConstantCallSite;
@@ -51,8 +53,11 @@ import java.lang.ref.PhantomReference;
 import java.lang.ref.Reference;
 import java.lang.reflect.Array;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Type;
 import java.math.BigInteger;
 import java.util.zip.CRC32;
+
+import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -62,6 +67,12 @@ import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
+import jdk.graal.compiler.hotspot.HotSpotBackend;
+import jdk.graal.compiler.hotspot.HotSpotGraalRuntimeProvider;
+import jdk.graal.compiler.hotspot.nodes.CurrentJavaThreadNode;
+import jdk.graal.compiler.hotspot.nodes.HotSpotLoadReservedReferenceNode;
+import jdk.graal.compiler.hotspot.nodes.HotSpotStoreReservedReferenceNode;
 import jdk.graal.compiler.hotspot.replacements.CallSiteTargetNode;
 import jdk.graal.compiler.hotspot.replacements.DigestBaseSnippets;
 import jdk.graal.compiler.hotspot.replacements.FastNotifyNode;
@@ -72,12 +83,7 @@ import jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import jdk.graal.compiler.hotspot.replacements.HubGetClassNode;
 import jdk.graal.compiler.hotspot.replacements.ObjectCloneNode;
 import jdk.graal.compiler.hotspot.replacements.UnsafeCopyMemoryNode;
-import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
-import jdk.graal.compiler.hotspot.HotSpotBackend;
-import jdk.graal.compiler.hotspot.HotSpotGraalRuntimeProvider;
-import jdk.graal.compiler.hotspot.nodes.CurrentJavaThreadNode;
-import jdk.graal.compiler.hotspot.nodes.HotSpotLoadReservedReferenceNode;
-import jdk.graal.compiler.hotspot.nodes.HotSpotStoreReservedReferenceNode;
+import jdk.graal.compiler.hotspot.replacements.UnsafeSetMemoryNode;
 import jdk.graal.compiler.hotspot.word.HotSpotWordTypes;
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.lir.SyncPort;
@@ -86,6 +92,7 @@ import jdk.graal.compiler.nodes.ComputeObjectAddressNode;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.EndNode;
 import jdk.graal.compiler.nodes.FieldLocationIdentity;
+import jdk.graal.compiler.nodes.FixedGuardNode;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.MergeNode;
@@ -109,6 +116,7 @@ import jdk.graal.compiler.nodes.calc.SubNode;
 import jdk.graal.compiler.nodes.calc.UnsignedRightShiftNode;
 import jdk.graal.compiler.nodes.calc.XorNode;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
+import jdk.graal.compiler.nodes.extended.FixedValueAnchorNode;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.nodes.extended.JavaReadNode;
 import jdk.graal.compiler.nodes.extended.JavaWriteNode;
@@ -127,6 +135,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 import jdk.graal.compiler.nodes.java.DynamicNewArrayNode;
 import jdk.graal.compiler.nodes.java.DynamicNewInstanceNode;
+import jdk.graal.compiler.nodes.java.DynamicNewInstanceWithExceptionNode;
 import jdk.graal.compiler.nodes.java.NewArrayNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
@@ -156,21 +165,25 @@ import jdk.graal.compiler.replacements.nodes.AESNode.CryptMode;
 import jdk.graal.compiler.replacements.nodes.CipherBlockChainingAESNode;
 import jdk.graal.compiler.replacements.nodes.CounterModeAESNode;
 import jdk.graal.compiler.replacements.nodes.MacroNode.MacroParams;
+import jdk.graal.compiler.replacements.nodes.VectorizedHashCodeNode;
 import jdk.graal.compiler.replacements.nodes.VectorizedMismatchNode;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
+import jdk.graal.compiler.serviceprovider.SpeculationReasonGroup;
 import jdk.graal.compiler.word.WordTypes;
-import org.graalvm.word.LocationIdentity;
-
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 import jdk.vm.ci.services.Services;
 
@@ -180,7 +193,7 @@ import jdk.vm.ci.services.Services;
 public class HotSpotGraphBuilderPlugins {
 
     public static class Options {
-        @Option(help = "Force an explicit compiler node for Reference.reachabilityFence, instead of relying on FrameState liveness", type = OptionType.Expert) //
+        @Option(help = "Force an explicit compiler node for Reference.reachabilityFence, instead of relying on FrameState liveness", type = OptionType.Debug) //
         public static final OptionKey<Boolean> ForceExplicitReachabilityFence = new OptionKey<>(false);
     }
 
@@ -199,7 +212,7 @@ public class HotSpotGraphBuilderPlugins {
                     OptionValues options,
                     TargetDescription target,
                     BarrierSet barrierSet) {
-        InvocationPlugins invocationPlugins = new HotSpotInvocationPlugins(graalRuntime, config, compilerConfiguration, options);
+        InvocationPlugins invocationPlugins = new HotSpotInvocationPlugins(graalRuntime, config, compilerConfiguration, options, target);
 
         Plugins plugins = new Plugins(invocationPlugins);
         plugins.appendNodePlugin(new HotSpotExceptionDispatchPlugin(config, wordTypes.getWordKind()));
@@ -241,7 +254,7 @@ public class HotSpotGraphBuilderPlugins {
                 registerBigIntegerPlugins(invocationPlugins, config, replacements);
                 registerSHAPlugins(invocationPlugins, config, replacements);
                 registerBase64Plugins(invocationPlugins, config, metaAccess, replacements);
-                registerUnsafePlugins(invocationPlugins, replacements);
+                registerUnsafePlugins(invocationPlugins, replacements, config);
                 StandardGraphBuilderPlugins.registerInvocationPlugins(snippetReflection, invocationPlugins, replacements, true, false, true, graalRuntime.getHostProviders().getLowerer());
                 registerArrayPlugins(invocationPlugins, replacements, config);
                 registerStringPlugins(invocationPlugins, replacements, wordTypes, foreignCalls, config);
@@ -254,11 +267,12 @@ public class HotSpotGraphBuilderPlugins {
                 }
                 registerPoly1305Plugins(invocationPlugins, config, replacements);
                 registerChaCha20Plugins(invocationPlugins, config, replacements);
+                registerP256Plugins(invocationPlugins, config, replacements);
             }
 
         });
         if (!IS_IN_NATIVE_IMAGE) {
-            // In libgraal all NodeIntrinsics been converted into special nodes so the plugins
+            // In libgraal, all NodeIntrinsics have been converted into special nodes so the plugins
             // aren't needed.
             NodeIntrinsificationProvider nodeIntrinsificationProvider = new NodeIntrinsificationProvider(metaAccess, snippetReflection, foreignCalls, wordTypes, target);
             invocationPlugins.defer(() -> {
@@ -280,7 +294,7 @@ public class HotSpotGraphBuilderPlugins {
         tl.register(new InvocationPlugin("get", Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                receiver.get();
+                receiver.get(true);
                 int jvmciReservedReference0Offset = config.jvmciReservedReference0Offset;
                 GraalError.guarantee(jvmciReservedReference0Offset != -1, "jvmciReservedReference0Offset is not available but used.");
                 b.addPush(JavaKind.Object, new HotSpotLoadReservedReferenceNode(b.getMetaAccess(), wordTypes, jvmciReservedReference0Offset));
@@ -289,9 +303,8 @@ public class HotSpotGraphBuilderPlugins {
         });
         tl.register(new InvocationPlugin("set", Receiver.class, Object[].class) {
             @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
-                            ValueNode value) {
-                receiver.get();
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                receiver.get(true);
                 int jvmciReservedReference0Offset = config.jvmciReservedReference0Offset;
                 GraalError.guarantee(jvmciReservedReference0Offset != -1, "jvmciReservedReference0Offset is not available but used.");
                 b.add(new HotSpotStoreReservedReferenceNode(wordTypes, value, jvmciReservedReference0Offset));
@@ -305,7 +318,7 @@ public class HotSpotGraphBuilderPlugins {
         r.register(new InlineOnlyInvocationPlugin("clone", Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                ValueNode object = receiver.get();
+                ValueNode object = receiver.get(true);
                 b.addPush(JavaKind.Object, new ObjectCloneNode(MacroParams.of(b, targetMethod, object)));
                 return true;
             }
@@ -313,7 +326,7 @@ public class HotSpotGraphBuilderPlugins {
         r.register(new InlineOnlyInvocationPlugin("hashCode", Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                ValueNode object = receiver.get();
+                ValueNode object = receiver.get(true);
                 b.addPush(JavaKind.Int, new HotSpotIdentityHashCodeNode(object, b.bci()));
                 return true;
             }
@@ -322,7 +335,7 @@ public class HotSpotGraphBuilderPlugins {
             r.register(new InlineOnlyInvocationPlugin("notify", Receiver.class) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                    ValueNode object = receiver.get();
+                    ValueNode object = receiver.get(true);
                     b.add(new FastNotifyNode(object, false, b.bci()));
                     return true;
                 }
@@ -332,7 +345,7 @@ public class HotSpotGraphBuilderPlugins {
             r.register(new InlineOnlyInvocationPlugin("notifyAll", Receiver.class) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                    ValueNode object = receiver.get();
+                    ValueNode object = receiver.get(true);
                     b.add(new FastNotifyNode(object, true, b.bci()));
                     return true;
                 }
@@ -347,7 +360,7 @@ public class HotSpotGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
-                    ValueNode klass = helper.readKlassFromClass(receiver.get());
+                    ValueNode klass = helper.readKlassFromClass(receiver.get(true));
                     // Primitive Class case
                     ValueNode nonNullKlass = helper.emitNullReturnGuard(klass, ConstantNode.forInt(Modifier.ABSTRACT | Modifier.FINAL | Modifier.PUBLIC), GraalDirectives.UNLIKELY_PROBABILITY);
                     // other return Klass::_modifier_flags
@@ -360,7 +373,7 @@ public class HotSpotGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
-                    ValueNode klass = helper.readKlassFromClass(receiver.get());
+                    ValueNode klass = helper.readKlassFromClass(receiver.get(true));
                     // Primitive Class case returns false
                     ValueNode klassNonNull = helper.emitNullReturnGuard(klass, ConstantNode.forBoolean(false), GraalDirectives.UNLIKELY_PROBABILITY);
                     ValueNode accessFlags = helper.readKlassAccessFlags(klassNonNull);
@@ -375,7 +388,7 @@ public class HotSpotGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
-                    ValueNode klass = helper.readKlassFromClass(receiver.get());
+                    ValueNode klass = helper.readKlassFromClass(receiver.get(true));
                     LogicNode isNull = b.add(IsNullNode.create(klass));
                     b.addPush(JavaKind.Boolean, ConditionalNode.create(isNull, b.add(forBoolean(true)), b.add(forBoolean(false)), NodeView.DEFAULT));
                 }
@@ -386,7 +399,7 @@ public class HotSpotGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
-                    ValueNode klass = helper.readKlassFromClass(receiver.get());
+                    ValueNode klass = helper.readKlassFromClass(receiver.get(true));
                     ConstantNode nullValue = ConstantNode.defaultForKind(JavaKind.Object);
 
                     // Primitive Class case returns null
@@ -420,7 +433,7 @@ public class HotSpotGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
-                    ValueNode klass = helper.readKlassFromClass(receiver.get());
+                    ValueNode klass = helper.readKlassFromClass(receiver.get(true));
                     // Primitive Class case returns false
                     ValueNode nonNullKlass = helper.emitNullReturnGuard(klass, ConstantNode.forBoolean(false), GraalDirectives.UNLIKELY_PROBABILITY);
                     // return (Klass::_access_flags & jvmAccIsHiddenClass) == 0 ? false : true
@@ -437,7 +450,7 @@ public class HotSpotGraphBuilderPlugins {
         InvocationPlugin plugin = new InlineOnlyInvocationPlugin("getTarget", Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                ValueNode callSite = receiver.get();
+                ValueNode callSite = receiver.get(true);
                 ValueNode folded = CallSiteTargetNode.tryFold(GraphUtil.originalValue(callSite, true), b.getMetaAccess(), b.getAssumptions());
                 if (folded != null) {
                     b.addPush(JavaKind.Object, folded);
@@ -477,28 +490,56 @@ public class HotSpotGraphBuilderPlugins {
         });
     }
 
-    private static void registerUnsafePlugins(InvocationPlugins plugins, Replacements replacements) {
+    private static final SpeculationReasonGroup JVMTI_NOTIFY_ALLOCATE_INSTANCE = new SpeculationReasonGroup("JvmtiNotifyAllocateInstance");
+
+    private static void registerUnsafePlugins(InvocationPlugins plugins, Replacements replacements, GraalHotSpotVMConfig config) {
         Registration r = new Registration(plugins, "jdk.internal.misc.Unsafe", replacements);
         r.register(new InvocationPlugin("copyMemory0", Receiver.class, Object.class, long.class, Object.class, long.class, long.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode srcBase, ValueNode srcOffset, ValueNode destBase,
                             ValueNode destOffset, ValueNode bytes) {
-                b.add(new UnsafeCopyMemoryNode(receiver.get(), srcBase, srcOffset, destBase, destOffset, bytes));
+                b.add(new UnsafeCopyMemoryNode(receiver.get(true), srcBase, srcOffset, destBase, destOffset, bytes));
+                return true;
+            }
+        });
+        r.registerConditional(config.unsafeSetMemory != 0L, new InvocationPlugin("setMemory0", Receiver.class, Object.class, long.class, long.class, byte.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode obj, ValueNode offset, ValueNode bytes, ValueNode value) {
+                b.add(new UnsafeSetMemoryNode(receiver.get(true), obj, offset, bytes, value));
                 return true;
             }
         });
         r.register(new InvocationPlugin("allocateInstance", Receiver.class, Class.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode clazz) {
+                if (config.shouldNotifyObjectAllocAddress != 0) {
+                    SpeculationLog speculationLog = b.getGraph().getSpeculationLog();
+                    SpeculationReason speculationReason = JVMTI_NOTIFY_ALLOCATE_INSTANCE.createSpeculationReason();
+                    if (speculationLog == null || !speculationLog.maySpeculate(speculationReason)) {
+                        return false;
+                    }
+                    try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
+                        OffsetAddressNode address = OffsetAddressNode.create(helper.asWord(config.shouldNotifyObjectAllocAddress));
+                        ValueNode shouldPostVMObjectAlloc = b.add(new JavaReadNode(JavaKind.Int, address, LocationIdentity.ANY_LOCATION, BarrierType.NONE, MemoryOrderMode.PLAIN, false));
+                        LogicNode testShouldPostVMObjectAlloc = IntegerEqualsNode.create(shouldPostVMObjectAlloc, ConstantNode.forInt(0), NodeView.DEFAULT);
+                        FixedGuardNode guard = new FixedGuardNode(testShouldPostVMObjectAlloc, DeoptimizationReason.RuntimeConstraint, DeoptimizationAction.InvalidateRecompile,
+                                        speculationLog.speculate(speculationReason), false);
+                        b.add(guard);
+                    }
+                }
                 /* Emits a null-check for the otherwise unused receiver. */
-                unsafe.get();
+                unsafe.get(true);
                 /*
                  * Note that the provided clazz might not be initialized. The HotSpot lowering
                  * snippet for DynamicNewInstanceNode performs the necessary class initialization
                  * check. Such a DynamicNewInstanceNode is also never constant folded to a
                  * NewInstanceNode.
                  */
-                DynamicNewInstanceNode.createAndPush(b, clazz);
+                if (b.currentBlockCatchesOOM()) {
+                    DynamicNewInstanceWithExceptionNode.createAndPush(b, clazz, true);
+                } else {
+                    DynamicNewInstanceNode.createAndPush(b, clazz, true);
+                }
                 return true;
             }
         });
@@ -560,6 +601,11 @@ public class HotSpotGraphBuilderPlugins {
                     // perform the call that fills in the array.
                     b.add(new ArrayCopyCallNode(foreignCalls, wordTypes, value, srcBegin, newArray, ConstantNode.forInt(0), length, JavaKind.Char, LocationIdentity.init(), false, true, true,
                                     vmConfig.heapWordSize));
+
+                    // Writes to init must be protected by a FixedValueAnchorNode so that floating
+                    // reads don't bypass the ArrayCopyCallNode above.
+                    b.pop(JavaKind.Object);
+                    b.addPush(JavaKind.Object, new FixedValueAnchorNode(newArray));
                 }
                 return true;
             }
@@ -621,56 +667,52 @@ public class HotSpotGraphBuilderPlugins {
             }
         });
 
-        if (JavaVersionUtil.JAVA_SPEC >= 19) {
-            r.register(new InvocationPlugin("currentCarrierThread") {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                    try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
-                        ValueNode value = helper.readCurrentThreadObject(false);
-                        b.push(JavaKind.Object, value);
-                    }
-                    return true;
+        r.register(new InvocationPlugin("currentCarrierThread") {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
+                    ValueNode value = helper.readCurrentThreadObject(false);
+                    b.push(JavaKind.Object, value);
                 }
-            });
+                return true;
+            }
+        });
 
-            r.register(new InlineOnlyInvocationPlugin("setCurrentThread", Receiver.class, Thread.class) {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode thread) {
-                    GraalError.guarantee(Services.IS_IN_NATIVE_IMAGE || isAnnotatedByChangesCurrentThread(b.getMethod()), "method changes current Thread but is not annotated ChangesCurrentThread");
-                    try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
-                        receiver.get();
-                        helper.setCurrentThread(thread);
-                    }
-                    return true;
+        r.register(new InlineOnlyInvocationPlugin("setCurrentThread", Receiver.class, Thread.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode thread) {
+                GraalError.guarantee(Services.IS_IN_NATIVE_IMAGE || isAnnotatedByChangesCurrentThread(b.getMethod()), "method changes current Thread but is not annotated ChangesCurrentThread");
+                try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
+                    receiver.get(true);
+                    helper.setCurrentThread(thread);
                 }
-            });
-        }
+                return true;
+            }
+        });
 
-        if (JavaVersionUtil.JAVA_SPEC >= 20) {
-            r.registerConditional(config.threadScopedValueCacheOffset != -1, new InvocationPlugin("scopedValueCache") {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                    try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
-                        b.push(JavaKind.Object, helper.readThreadScopedValueCache());
-                    }
-                    return true;
+        r.registerConditional(config.threadScopedValueCacheOffset != -1, new InvocationPlugin("scopedValueCache") {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
+                    b.push(JavaKind.Object, helper.readThreadScopedValueCache());
                 }
-            });
+                return true;
+            }
+        });
 
-            r.registerConditional(config.threadScopedValueCacheOffset != -1, new InvocationPlugin("setScopedValueCache", Object[].class) {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode cache) {
-                    try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
-                        helper.setThreadScopedValueCache(cache);
-                    }
-                    return true;
+        r.registerConditional(config.threadScopedValueCacheOffset != -1, new InvocationPlugin("setScopedValueCache", Object[].class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode cache) {
+                try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
+                    helper.setThreadScopedValueCache(cache);
                 }
-            });
-        }
+                return true;
+            }
+        });
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/0d4de8a71f063e44618f43ddd862a91aed647f48/src/hotspot/share/opto/library_call.cpp#L2868-L2923",
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/aaaa86b57172d45d1126c50efc270c6e49aba7a5/src/hotspot/share/opto/library_call.cpp#L2906-L2961",
               sha1 = "5c117a305e90a48f0a6fe86ace2c15942393c0ab")
     // @formatter:on
     private static void inlineNativeNotifyJvmtiFunctions(GraalHotSpotVMConfig config, GraphBuilderContext b, ResolvedJavaMethod targetMethod, ForeignCallDescriptor descriptor,
@@ -720,13 +762,13 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     private static void registerVirtualThreadPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
-        if (JavaVersionUtil.JAVA_SPEC >= 21 && config.supportJVMTIVThreadNotification()) {
-            Registration r = new Registration(plugins, "java.lang.VirtualThread", replacements);
+        Registration r = new Registration(plugins, "java.lang.VirtualThread", replacements);
+        if (config.supportJVMTIVThreadNotification()) {
             r.register(new InvocationPlugin("notifyJvmtiStart", Receiver.class) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                     if (config.doJVMTIVirtualThreadTransitions) {
-                        ValueNode nonNullReceiver = receiver.get();
+                        ValueNode nonNullReceiver = receiver.get(true);
                         inlineNativeNotifyJvmtiFunctions(config, b, targetMethod, SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_START, nonNullReceiver, ConstantNode.forBoolean(false, b.getGraph()));
                     }
                     return true;
@@ -736,7 +778,7 @@ public class HotSpotGraphBuilderPlugins {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                     if (config.doJVMTIVirtualThreadTransitions) {
-                        ValueNode nonNullReceiver = receiver.get();
+                        ValueNode nonNullReceiver = receiver.get(true);
                         inlineNativeNotifyJvmtiFunctions(config, b, targetMethod, SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_END, nonNullReceiver, ConstantNode.forBoolean(true, b.getGraph()));
                     }
                     return true;
@@ -746,7 +788,7 @@ public class HotSpotGraphBuilderPlugins {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode hide) {
                     if (config.doJVMTIVirtualThreadTransitions) {
-                        ValueNode nonNullReceiver = receiver.get();
+                        ValueNode nonNullReceiver = receiver.get(true);
                         inlineNativeNotifyJvmtiFunctions(config, b, targetMethod, SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_MOUNT, nonNullReceiver, hide);
                     }
                     return true;
@@ -756,24 +798,50 @@ public class HotSpotGraphBuilderPlugins {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode hide) {
                     if (config.doJVMTIVirtualThreadTransitions) {
-                        ValueNode nonNullReceiver = receiver.get();
+                        ValueNode nonNullReceiver = receiver.get(true);
                         inlineNativeNotifyJvmtiFunctions(config, b, targetMethod, SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_UNMOUNT, nonNullReceiver, hide);
                     }
                     return true;
                 }
             });
-            r.register(new InvocationPlugin("notifyJvmtiHideFrames", Receiver.class, boolean.class) {
+        }
+        Type[] notifyJvmtiHideFramesArgTypes = JavaVersionUtil.JAVA_SPEC >= 23 ? new Type[]{boolean.class} : new Type[]{Receiver.class, boolean.class};
+        r.register(new InvocationPlugin("notifyJvmtiHideFrames", notifyJvmtiHideFramesArgTypes) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode hide) {
+                if (config.doJVMTIVirtualThreadTransitions) {
+                    try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
+                        if (JavaVersionUtil.JAVA_SPEC < 23) {
+                            receiver.get(true);
+                        }
+                        // unconditionally update the temporary VTMS transition bit in current
+                        // JavaThread
+                        GraalError.guarantee(config.threadIsInTmpVTMSTransitionOffset != -1, "JavaThread::_is_in_tmp_VTMS_transition is not exported");
+                        CurrentJavaThreadNode javaThread = b.add(new CurrentJavaThreadNode(helper.getWordKind()));
+                        OffsetAddressNode address = b.add(new OffsetAddressNode(javaThread, helper.asWord(config.threadIsInTmpVTMSTransitionOffset)));
+                        b.add(new JavaWriteNode(JavaKind.Boolean, address, HotSpotReplacementsUtil.HOTSPOT_JAVA_THREAD_IS_IN_TMP_VTMS_TRANSITION, hide, BarrierType.NONE, false));
+                    }
+                }
+                return true;
+            }
+        });
+
+        if (JavaVersionUtil.JAVA_SPEC >= 22) {
+            Type[] notifyJvmtiDisableSuspendArgTypes = JavaVersionUtil.JAVA_SPEC >= 23 ? new Type[]{boolean.class} : new Type[]{Receiver.class, boolean.class};
+            r.register(new InvocationPlugin("notifyJvmtiDisableSuspend", notifyJvmtiDisableSuspendArgTypes) {
                 @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode hide) {
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode enter) {
                     if (config.doJVMTIVirtualThreadTransitions) {
                         try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
-                            receiver.get();
-                            // unconditionally update the temporary VTMS transition bit in current
+                            if (JavaVersionUtil.JAVA_SPEC < 23) {
+                                receiver.get(true);
+                            }
+                            // unconditionally update the is_disable_suspend bit in current
                             // JavaThread
-                            GraalError.guarantee(config.threadIsInTmpVTMSTransitionOffset != -1L, "JavaThread::_is_in_tmp_VTMS_transition is not exported");
+                            GraalError.guarantee(config.threadIsDisableSuspendOffset != -1, "JavaThread::_is_disable_suspend is not exported");
                             CurrentJavaThreadNode javaThread = b.add(new CurrentJavaThreadNode(helper.getWordKind()));
-                            OffsetAddressNode address = b.add(new OffsetAddressNode(javaThread, helper.asWord(config.threadIsInTmpVTMSTransitionOffset)));
-                            b.add(new JavaWriteNode(JavaKind.Boolean, address, HotSpotReplacementsUtil.HOTSPOT_JAVA_THREAD_IS_IN_TMP_VTMS_TRANSITION, hide, BarrierType.NONE, false));
+                            OffsetAddressNode address = b.add(new OffsetAddressNode(javaThread, helper.asWord(config.threadIsDisableSuspendOffset)));
+                            b.add(new JavaWriteNode(JavaKind.Boolean, address, HotSpotReplacementsUtil.HOTSPOT_JAVA_THREAD_IS_DISABLE_SUSPEND, enter, BarrierType.NONE, false));
                         }
                     }
                     return true;
@@ -816,7 +884,7 @@ public class HotSpotGraphBuilderPlugins {
                 ResolvedJavaType receiverType = targetMethod.getDeclaringClass();
                 ResolvedJavaType typeAESCrypt = getTypeAESCrypt(b.getMetaAccess(), receiverType);
 
-                ValueNode nonNullReceiver = receiver.get();
+                ValueNode nonNullReceiver = receiver.get(true);
                 ValueNode inAddr = helper.arrayElementPointer(in, JavaKind.Byte, inOffset);
                 ValueNode outAddr = helper.arrayElementPointer(out, JavaKind.Byte, outOffset);
                 ValueNode kAddr = readEmbeddedAESCryptKArrayStart(b, helper, receiverType, typeAESCrypt, nonNullReceiver);
@@ -897,10 +965,8 @@ public class HotSpotGraphBuilderPlugins {
         r.registerConditional(config.electronicCodeBookEncrypt != 0L, new ElectronicCodeBookCryptPlugin(CryptMode.ENCRYPT));
         r.registerConditional(config.electronicCodeBookDecrypt != 0L, new ElectronicCodeBookCryptPlugin(CryptMode.DECRYPT));
 
-        if (JavaVersionUtil.JAVA_SPEC >= 18) {
-            r = new Registration(plugins, "com.sun.crypto.provider.GaloisCounterMode", replacements);
-            r.registerConditional(config.galoisCounterModeCrypt != 0L, new GaloisCounterModeCryptPlugin());
-        }
+        r = new Registration(plugins, "com.sun.crypto.provider.GaloisCounterMode", replacements);
+        r.registerConditional(config.galoisCounterModeCrypt != 0L, new GaloisCounterModeCryptPlugin());
 
         r = new Registration(plugins, "com.sun.crypto.provider.CounterMode", replacements);
         r.registerConditional(CounterModeAESNode.isSupported(arch), new CounterModeCryptPlugin() {
@@ -1038,7 +1104,7 @@ public class HotSpotGraphBuilderPlugins {
                             ValueNode sp, ValueNode sl, ValueNode dst, ValueNode dp, ValueNode isURL) {
                 if (receiver != null) {
                     // Side effect of call below is to add a receiver null check if required
-                    receiver.get();
+                    receiver.get(true);
                 }
                 int byteArrayBaseOffset = metaAccess.getArrayBaseOffset(JavaKind.Byte);
                 ComputeObjectAddressNode srcAddress = b.add(new ComputeObjectAddressNode(src, ConstantNode.forInt(byteArrayBaseOffset)));
@@ -1055,7 +1121,7 @@ public class HotSpotGraphBuilderPlugins {
                                 ValueNode sp, ValueNode sl, ValueNode dst, ValueNode dp, ValueNode isURL, ValueNode isMime) {
                     if (receiver != null) {
                         // Side effect of call below is to add a receiver null check if required
-                        receiver.get();
+                        receiver.get(true);
                     }
                     int byteArrayBaseOffset = metaAccess.getArrayBaseOffset(JavaKind.Byte);
                     ComputeObjectAddressNode srcAddress = b.add(new ComputeObjectAddressNode(src, ConstantNode.forInt(byteArrayBaseOffset)));
@@ -1130,7 +1196,7 @@ public class HotSpotGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode input, ValueNode offset, ValueNode length, ValueNode aLimbs, ValueNode rLimbs) {
                 try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                    receiver.get();
+                    receiver.get(true);
                     ValueNode inputNotNull = b.nullCheckedValue(input);
                     ValueNode aLimbsNotNull = b.nullCheckedValue(aLimbs);
                     ValueNode rLimbsNotNull = b.nullCheckedValue(rLimbs);
@@ -1166,9 +1232,49 @@ public class HotSpotGraphBuilderPlugins {
         });
     }
 
+    private static void registerP256Plugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
+        Registration r = new Registration(plugins, "sun.security.util.math.intpoly.MontgomeryIntegerPolynomialP256", replacements);
+        r.registerConditional(config.intpolyMontgomeryMultP256 != 0L, new InvocationPlugin("multImpl", Receiver.class, long[].class, long[].class, long[].class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode aIn, ValueNode bIn, ValueNode rOut) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ValueNode aNotNull = b.nullCheckedValue(aIn);
+                    ValueNode bNotNull = b.nullCheckedValue(bIn);
+                    ValueNode rNotNull = b.nullCheckedValue(rOut);
+
+                    ValueNode aStart = helper.arrayStart(aNotNull, JavaKind.Long);
+                    ValueNode bStart = helper.arrayStart(bNotNull, JavaKind.Long);
+                    ValueNode rStart = helper.arrayStart(rNotNull, JavaKind.Long);
+
+                    b.add(new ForeignCallNode(INTPOLY_MONTGOMERYMULT_P256, aStart, bStart, rStart));
+                }
+                return true;
+            }
+        });
+
+        r = new Registration(plugins, "sun.security.util.math.intpoly.IntegerPolynomial", replacements);
+        r.registerConditional(config.intpolyAssign != 0L, new InvocationPlugin("conditionalAssign", int.class, long[].class, long[].class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode set, ValueNode aIn, ValueNode bIn) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ValueNode aNotNull = b.nullCheckedValue(aIn);
+                    ValueNode bNotNull = b.nullCheckedValue(bIn);
+
+                    ValueNode aStart = helper.arrayStart(aNotNull, JavaKind.Long);
+                    ValueNode bStart = helper.arrayStart(bNotNull, JavaKind.Long);
+
+                    ValueNode aLength = helper.arraylength(aNotNull);
+
+                    b.add(new ForeignCallNode(INTPOLY_ASSIGN, set, aStart, bStart, aLength));
+                }
+                return true;
+            }
+        });
+    }
+
     private static void registerArraysSupportPlugins(InvocationPlugins plugins, Replacements replacements, Architecture arch) {
         Registration r = new Registration(plugins, "jdk.internal.util.ArraysSupport", replacements);
-        r.register(new InvocationPlugin("vectorizedMismatch", Object.class, long.class, Object.class, long.class, int.class, int.class) {
+        r.registerConditional(VectorizedMismatchNode.isSupported(arch), new InvocationPlugin("vectorizedMismatch", Object.class, long.class, Object.class, long.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
                             ValueNode aObject, ValueNode aOffset, ValueNode bObject, ValueNode bOffset, ValueNode length, ValueNode log2ArrayIndexScale) {
@@ -1182,6 +1288,14 @@ public class HotSpotGraphBuilderPlugins {
             public boolean isGraalOnly() {
                 // On AArch64 HotSpot, this intrinsic is not implemented and
                 // UseVectorizedMismatchIntrinsic defaults to false.
+                return arch instanceof AArch64;
+            }
+        });
+        r.registerConditional(VectorizedHashCodeNode.isSupported(arch), new StandardGraphBuilderPlugins.VectorizedHashCodeInvocationPlugin("vectorizedHashCode") {
+            @Override
+            public boolean isGraalOnly() {
+                // On AArch64 HotSpot, this intrinsic is not implemented and
+                // UseVectorizedHashCodeIntrinsic defaults to false.
                 return arch instanceof AArch64;
             }
         });
@@ -1199,7 +1313,7 @@ public class HotSpotGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode o) {
                 ValueNode offset = b.add(ConstantNode.forLong(HotSpotReplacementsUtil.referentOffset(b.getMetaAccess())));
-                AddressNode address = b.add(new OffsetAddressNode(receiver.get(), offset));
+                AddressNode address = b.add(new OffsetAddressNode(receiver.get(true), offset));
                 FieldLocationIdentity locationIdentity = new FieldLocationIdentity(HotSpotReplacementsUtil.referentField(b.getMetaAccess()));
                 JavaReadNode read = b.add(new JavaReadNode(StampFactory.object(), JavaKind.Object, address, locationIdentity, BarrierType.WEAK_REFERS_TO, MemoryOrderMode.PLAIN, true));
                 LogicNode objectEquals = b.add(ObjectEqualsNode.create(b.getConstantReflection(), b.getMetaAccess(), b.getOptions(), read, o, NodeView.DEFAULT));
@@ -1212,7 +1326,7 @@ public class HotSpotGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode o) {
                 ValueNode offset = b.add(ConstantNode.forLong(HotSpotReplacementsUtil.referentOffset(b.getMetaAccess())));
-                AddressNode address = b.add(new OffsetAddressNode(receiver.get(), offset));
+                AddressNode address = b.add(new OffsetAddressNode(receiver.get(true), offset));
                 FieldLocationIdentity locationIdentity = new FieldLocationIdentity(HotSpotReplacementsUtil.referentField(b.getMetaAccess()));
                 JavaReadNode read = b.add(new JavaReadNode(StampFactory.object(), JavaKind.Object, address, locationIdentity, BarrierType.PHANTOM_REFERS_TO, MemoryOrderMode.PLAIN, true));
                 LogicNode objectEquals = b.add(ObjectEqualsNode.create(b.getConstantReflection(), b.getMetaAccess(), b.getOptions(), read, o, NodeView.DEFAULT));
@@ -1230,7 +1344,8 @@ public class HotSpotGraphBuilderPlugins {
                 try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
                     ValueNode objectNonNull = b.nullCheckedValue(objectToSize);
                     StructuredGraph graph = b.getGraph();
-                    receiver.get(); // Discharge receiver null check requirement
+                    // Discharge receiver null check requirement
+                    receiver.get(true);
                     LoadHubNode hub = b.add(new LoadHubNode(b.getStampProvider(), objectNonNull));
                     ValueNode layoutHelper = helper.klassLayoutHelper(hub);
 

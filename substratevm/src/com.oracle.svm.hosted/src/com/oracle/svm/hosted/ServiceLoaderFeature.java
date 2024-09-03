@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,8 @@
 package com.oracle.svm.hosted;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.HashSet;
@@ -33,16 +35,18 @@ import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.options.OptionType;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.jdk.ServiceCatalogSupport;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.hosted.analysis.Inflation;
+
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionType;
 
 /**
  * Support for {@link ServiceLoader} on Substrate VM.
@@ -71,11 +75,12 @@ public class ServiceLoaderFeature implements InternalFeature {
         public static final HostedOptionKey<Boolean> UseServiceLoaderFeature = new HostedOptionKey<>(true);
 
         @Option(help = "Comma-separated list of services that should be excluded", type = OptionType.Expert) //
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ServiceLoaderFeatureExcludeServices = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
+        public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> ServiceLoaderFeatureExcludeServices = new HostedOptionKey<>(
+                        AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
         @Option(help = "Comma-separated list of service providers that should be excluded", type = OptionType.Expert) //
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ServiceLoaderFeatureExcludeServiceProviders = new HostedOptionKey<>(
-                        LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
+        public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> ServiceLoaderFeatureExcludeServiceProviders = new HostedOptionKey<>(
+                        AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
     }
 
@@ -133,14 +138,24 @@ public class ServiceLoaderFeature implements InternalFeature {
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         FeatureImpl.BeforeAnalysisAccessImpl accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
         accessImpl.imageClassLoader.classLoaderSupport.serviceProvidersForEach((serviceName, providers) -> {
-            if (servicesToSkip.contains(serviceName)) {
-                return;
-            }
             Class<?> serviceClass = access.findClassByName(serviceName);
-            if (serviceClass == null || serviceClass.isArray() || serviceClass.isPrimitive()) {
-                return;
+            boolean skipService = false;
+            /* If the service should not end up in the image, we remove all the providers with it */
+            Collection<String> providersToSkip = providers;
+            if (servicesToSkip.contains(serviceName)) {
+                skipService = true;
+            } else if (serviceClass == null || serviceClass.isArray() || serviceClass.isPrimitive()) {
+                skipService = true;
+            } else if (!accessImpl.getHostVM().platformSupported(serviceClass)) {
+                skipService = true;
+            } else {
+                providersToSkip = providers.stream().filter(serviceProvidersToSkip::contains).collect(Collectors.toList());
+                if (!providersToSkip.isEmpty()) {
+                    skipService = true;
+                }
             }
-            if (!accessImpl.getHostVM().platformSupported(serviceClass)) {
+            if (skipService) {
+                ServiceCatalogSupport.singleton().removeServicesFromServicesCatalog(serviceName, new HashSet<>(providersToSkip));
                 return;
             }
             access.registerReachabilityHandler(a -> handleServiceClassIsReachable(a, serviceClass, providers), serviceClass);
@@ -168,17 +183,52 @@ public class ServiceLoaderFeature implements InternalFeature {
                 continue;
             }
 
-            Constructor<?> nullaryConstructor;
+            /*
+             * Find either a public static provider() method or a nullary constructor (or both).
+             * Skip providers that do not comply with requirements.
+             *
+             * See ServiceLoader#loadProvider and ServiceLoader#findStaticProviderMethod.
+             */
+            Constructor<?> nullaryConstructor = null;
+            Method nullaryProviderMethod = null;
             try {
-                nullaryConstructor = providerClass.getDeclaredConstructor();
+                /* Only look for a provider() method if provider class is in an explicit module. */
+                if (providerClass.getModule().isNamed() && !providerClass.getModule().getDescriptor().isAutomatic()) {
+                    for (Method method : providerClass.getDeclaredMethods()) {
+                        if (Modifier.isPublic(method.getModifiers()) && Modifier.isStatic(method.getModifiers()) &&
+                                        method.getParameterCount() == 0 && method.getName().equals("provider")) {
+                            if (nullaryProviderMethod == null) {
+                                nullaryProviderMethod = method;
+                            } else {
+                                /* There must be at most one public static provider() method. */
+                                nullaryProviderMethod = null;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                Constructor<?> constructor = providerClass.getDeclaredConstructor();
+                if (Modifier.isPublic(constructor.getModifiers())) {
+                    nullaryConstructor = constructor;
+                }
             } catch (NoSuchMethodException | SecurityException | LinkageError e) {
-                /* Skip providers that do not comply with requirements */
-                nullaryConstructor = null;
+                // ignore
             }
-            if (nullaryConstructor != null) {
+            if (nullaryConstructor != null || nullaryProviderMethod != null) {
                 RuntimeReflection.register(providerClass);
-                RuntimeReflection.register(nullaryConstructor);
-                RuntimeReflection.registerAllDeclaredMethods(providerClass);
+                if (nullaryConstructor != null) {
+                    RuntimeReflection.register(nullaryConstructor);
+                }
+                if (nullaryProviderMethod != null) {
+                    RuntimeReflection.register(nullaryProviderMethod);
+                } else {
+                    /*
+                     * If there's no declared public provider() method, register it as negative
+                     * lookup to avoid throwing a MissingReflectionRegistrationError at run time.
+                     */
+                    RuntimeReflection.registerMethodLookup(providerClass, "provider");
+                }
                 registeredProviders.add(provider);
             }
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@
 package com.oracle.svm.test;
 
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_DIR;
+import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_DIR_WITH_SPACE;
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_1;
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_2;
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_3;
@@ -48,7 +49,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
 
@@ -128,6 +128,19 @@ public class NativeImageResourceTest {
         Assert.assertTrue("Two URLs must be the same!", compareTwoURLs(url1, url2));
 
         String nonCanonicalResourceDirectoryName = RESOURCE_DIR + "/./";
+        resourceNameToURL(nonCanonicalResourceDirectoryName, false);
+    }
+
+    @Test
+    public void classGetDirectoryWithSpaceResource() {
+        URL url1 = resourceNameToURL(RESOURCE_DIR_WITH_SPACE + "/", true);
+        Assert.assertTrue("The URL should end with slash!", url1.toString().endsWith("/"));
+
+        URL url2 = resourceNameToURL(RESOURCE_DIR_WITH_SPACE, true);
+        Assert.assertFalse("The URL should not end with slash!", url2.toString().endsWith("/"));
+        Assert.assertTrue("Two URLs must be the same!", compareTwoURLs(url1, url2));
+
+        String nonCanonicalResourceDirectoryName = RESOURCE_DIR_WITH_SPACE + "/./";
         resourceNameToURL(nonCanonicalResourceDirectoryName, false);
     }
 
@@ -221,7 +234,7 @@ public class NativeImageResourceTest {
         Assert.assertNotNull(urlEnumeration);
         Enumeration<URL> finalVar = urlEnumeration;
         Iterable<URL> urlIterable = finalVar::asIterator;
-        List<URL> urlList = StreamSupport.stream(urlIterable.spliterator(), false).collect(Collectors.toList());
+        List<URL> urlList = StreamSupport.stream(urlIterable.spliterator(), false).toList();
         Assert.assertTrue("ClassLoader.getSystemResources(\"module-info.class\") must return many module-info.class URLs",
                         urlList.size() > 3);
 

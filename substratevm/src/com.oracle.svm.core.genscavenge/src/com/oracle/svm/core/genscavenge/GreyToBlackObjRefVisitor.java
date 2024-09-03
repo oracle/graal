@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
@@ -37,6 +36,8 @@ import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
+
+import jdk.graal.compiler.word.Word;
 
 /**
  * This visitor is handed <em>Pointers to Object references</em> and if necessary it promotes the
@@ -103,8 +104,13 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
                 return true;
             }
 
-            // Promote the Object if necessary, making it at least grey, and ...
             Object obj = p.toObject();
+            if (SerialGCOptions.useCompactingOldGen() && ObjectHeaderImpl.isMarkedHeader(header)) {
+                RememberedSet.get().dirtyCardIfNecessary(holderObject, obj);
+                return true;
+            }
+
+            // Promote the Object if necessary, making it at least grey, and ...
             assert innerOffset < LayoutEncoding.getSizeFromObjectInGC(obj).rawValue();
             Object copy = GCImpl.getGCImpl().promoteObject(obj, header);
             if (copy != obj) {

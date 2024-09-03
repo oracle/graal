@@ -24,17 +24,18 @@
  */
 package jdk.graal.compiler.lir;
 
-import jdk.graal.compiler.graph.Node;
-
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Repeatable;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
+import jdk.graal.compiler.graph.Node.NodeIntrinsic;
+
 /**
  * Generate a stub to be called via foreign call. This annotation is valid for methods annotated
- * with {@link Node.NodeIntrinsic} only. To trigger stub generation, a marker class annotated with
+ * with {@link NodeIntrinsic} only. To trigger stub generation, a marker class annotated with
  * {@link GeneratedStubsHolder} is required. Processed by {@code IntrinsicStubProcessor}.
  */
 @Target(ElementType.METHOD)
@@ -48,7 +49,7 @@ public @interface GenerateStub {
     String name() default "";
 
     /**
-     * Optional values for parameters annotated with {@link Node.ConstantNodeParameter}. The string
+     * Optional values for parameters annotated with {@link ConstantNodeParameter}. The string
      * content is pasted as-is into the generated code, with the only exception being enum values -
      * in that case, the enum class name and a dot is prepended to the string.
      */

@@ -252,7 +252,7 @@ public final class FilterNode extends CheckNode implements FilterListener {
     
     private String exceptionString(Throwable t) {
         StringBuilder sb = new StringBuilder();
-        sb.append(t.getClass().getName()).append(":").append(t.getLocalizedMessage()).append(";");
+        sb.append(t.getClass().getName()).append(":").append(t.toString()).append(";");
         for (StackTraceElement sel : t.getStackTrace()) {
             sb.append(sel.getFileName()).append(":").append(sel.getLineNumber()).append("\n");
         }

@@ -24,11 +24,14 @@
  */
 package com.oracle.svm.hosted.analysis;
 
+import java.util.List;
+
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.hosted.ameta.CustomTypeFieldHandler;
 
 public class PointsToCustomTypeFieldHandler extends CustomTypeFieldHandler {
     public PointsToCustomTypeFieldHandler(BigBang bb, AnalysisMetaAccess metaAccess) {
@@ -40,45 +43,40 @@ public class PointsToCustomTypeFieldHandler extends CustomTypeFieldHandler {
      * which are not available during analysis.
      */
     @Override
-    protected void injectFieldTypes(AnalysisField aField, AnalysisType... customTypes) {
+    public void injectFieldTypes(AnalysisField aField, List<AnalysisType> customTypes, boolean canBeNull) {
         NativeImagePointsToAnalysis analysis = (NativeImagePointsToAnalysis) bb;
 
         assert aField.getJavaKind().isObject();
-        aField.registerAsWritten("@UnknownObjectField annotated field");
 
         /* Link the field with all declared types. */
         for (AnalysisType type : customTypes) {
-            if (type.isPrimitive()) {
+            if (type.isPrimitive() || type.isWordType()) {
                 continue;
             }
-            TypeFlow<?> typeFlow = type.getTypeFlow(analysis, true);
-            if (aField.isStatic()) {
-                typeFlow.addUse(analysis, aField.getStaticFieldFlow());
-            } else {
-                typeFlow.addUse(analysis, aField.getInitialInstanceFieldFlow());
-                if (type.isArray()) {
-                    AnalysisType fieldComponentType = type.getComponentType();
-                    aField.getInitialInstanceFieldFlow().addUse(analysis, aField.getInstanceFieldFlow());
-                    if (!fieldComponentType.isPrimitive()) {
-                        /*
-                         * Write the component type abstract object into the field array elements
-                         * type flow, i.e., the array elements type flow of the abstract object of
-                         * the field declared type.
-                         *
-                         * This is required so that the index loads from this array return all the
-                         * possible objects that can be stored in the array.
-                         */
-                        TypeFlow<?> elementsFlow = type.getContextInsensitiveAnalysisObject().getArrayElementsFlow(analysis, true);
-                        fieldComponentType.getTypeFlow(analysis, false).addUse(analysis, elementsFlow);
+            type.getTypeFlow(analysis, canBeNull).addUse(analysis, aField.getInitialFlow());
 
-                        /*
-                         * In the current implementation it is not necessary to do it it recursively
-                         * for multidimensional arrays since we don't model individual array
-                         * elements, so from the point of view of the static analysis the field's
-                         * array elements value is non null (in the case of a n-dimensional array
-                         * that value is another array, n-1 dimensional).
-                         */
-                    }
+            if (type.isArray()) {
+                AnalysisType fieldComponentType = type.getComponentType();
+                aField.getInitialFlow().addUse(analysis, aField.getSinkFlow());
+                if (!(fieldComponentType.isPrimitive() || fieldComponentType.isWordType())) {
+                    /*
+                     * Write the component type abstract object into the field array elements type
+                     * flow, i.e., the array elements type flow of the abstract object of the field
+                     * declared type.
+                     *
+                     * This is required so that the index loads from this array return all the
+                     * possible objects that can be stored in the array.
+                     */
+                    TypeFlow<?> elementsFlow = type.getContextInsensitiveAnalysisObject().getArrayElementsFlow(analysis, true);
+                    fieldComponentType.getTypeFlow(analysis, false).addUse(analysis, elementsFlow);
+
+                    /*
+                     * In the current implementation it is not necessary to do it it recursively for
+                     * multidimensional arrays since we don't model individual array elements, so
+                     * from the point of view of the static analysis the field's array elements
+                     * value is non null (in the case of a n-dimensional array that value is another
+                     * array, n-1 dimensional).
+                     */
                 }
             }
         }

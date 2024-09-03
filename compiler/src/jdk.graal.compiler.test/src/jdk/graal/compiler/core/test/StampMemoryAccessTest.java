@@ -73,7 +73,7 @@ public class StampMemoryAccessTest extends GraalCompilerTest {
         Object object = this;
         JavaConstant objectBase = getSnippetReflection().forObject(object);
         Field f = getClass().getDeclaredField("longField1");
-        long baseDisplacement = getObjectFieldOffset(f);
+        long baseDisplacement = UNSAFE.objectFieldOffset(f);
         for (JavaKind kind : JavaKind.values()) {
             if (kind.isPrimitive() && kind != JavaKind.Void && kind.getByteCount() > 1) {
                 for (long offset = 1; offset < kind.getByteCount(); offset++) {

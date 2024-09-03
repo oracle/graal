@@ -24,11 +24,13 @@
  */
 package jdk.graal.compiler.truffle.test;
 
+import java.io.IOException;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.util.Arrays;
 import java.util.concurrent.FutureTask;
 
+import com.oracle.truffle.api.test.SubprocessTestUtils;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -50,7 +52,11 @@ public class CompilationMemoryTest extends TestWithPolyglotOptions {
     }
 
     @Test
-    public void testFieldsFreedAfterCompilation() throws InterruptedException {
+    public void testFieldsFreedAfterCompilation() throws IOException, InterruptedException {
+        SubprocessTestUtils.newBuilder(CompilationMemoryTest.class, CompilationMemoryTest::performTest).run();
+    }
+
+    private static void performTest() {
         TestObject expected = new TestObject();
         OptimizedCallTarget callTarget = (OptimizedCallTarget) RootNode.createConstantNode(expected).getCallTarget();
         GraalTruffleRuntimeListenerImpl listener = new GraalTruffleRuntimeListenerImpl(callTarget);
@@ -69,21 +75,25 @@ public class CompilationMemoryTest extends TestWithPolyglotOptions {
         // method that references the Callable, in our case CompilationTask, finishes. The
         // CompilationTask holds the CallTarget via inliningData. Therefore, we have to wait for the
         // compiler thread to actually finish FutureTask execution.
-        awaitDone(compilerTread, 10_000);
+        Assert.assertTrue(awaitDone(compilerTread, 10_000));
         Reference<?> ref = new WeakReference<>(expected);
         expected = null;
         callTarget = null;
         GCUtils.assertGc("JavaConstant for TestObject should be freed after compilation.", ref);
     }
 
-    private static boolean awaitDone(Thread t, long timeout) throws InterruptedException {
+    private static boolean awaitDone(Thread t, long timeout) {
         long deadline = System.currentTimeMillis() + timeout;
-        while (System.currentTimeMillis() < deadline) {
-            boolean working = Arrays.stream(t.getStackTrace()).map(StackTraceElement::getClassName).anyMatch((name) -> name.equals(FutureTask.class.getName()));
-            if (!working) {
-                return true;
+        try {
+            while (System.currentTimeMillis() < deadline) {
+                boolean working = Arrays.stream(t.getStackTrace()).map(StackTraceElement::getClassName).anyMatch((name) -> name.equals(FutureTask.class.getName()));
+                if (!working) {
+                    return true;
+                }
+                Thread.sleep(100);
             }
-            Thread.sleep(100);
+        } catch (InterruptedException ie) {
+            // pass and return false
         }
         return false;
     }

@@ -24,12 +24,13 @@
  */
 package jdk.graal.compiler.core.test;
 
+import org.junit.Test;
+
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.ConditionalEliminationPhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
-import org.junit.Test;
 
 public class ConditionalEliminationMulTest extends GraalCompilerTest {
 
@@ -77,11 +78,9 @@ public class ConditionalEliminationMulTest extends GraalCompilerTest {
     private StructuredGraph prepareGraph(String snippet) {
         StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO);
         HighTierContext context = getDefaultHighTierContext();
-        new ConditionalEliminationPhase(false).apply(graph, context);
         CanonicalizerPhase c = createCanonicalizerPhase();
-        c.apply(graph, context);
-        new ConditionalEliminationPhase(false).apply(graph, context);
-        c.apply(graph, context);
+        new ConditionalEliminationPhase(c, false).apply(graph, context);
+        new ConditionalEliminationPhase(c, false).apply(graph, context);
         return graph;
     }
 }

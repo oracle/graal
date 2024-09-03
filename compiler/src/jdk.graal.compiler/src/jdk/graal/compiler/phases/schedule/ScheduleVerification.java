@@ -32,7 +32,7 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.cfg.BlockMap;
-import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
@@ -172,7 +172,7 @@ public final class ScheduleVerification extends ReentrantBlockIterator.BlockIter
 
                     assert usageBlock != null || usage instanceof ProxyNode : "Usage " + usageNode + " of node " + n + " has no block";
 
-                    Loop<HIRBlock> usageLoop = null;
+                    CFGLoop<HIRBlock> usageLoop = null;
                     if (usageNode instanceof ProxyNode) {
                         ProxyNode proxyNode = (ProxyNode) usageNode;
                         usageLoop = nodeMap.get(proxyNode.proxyPoint().loopBegin()).getLoop();
@@ -265,7 +265,7 @@ public final class ScheduleVerification extends ReentrantBlockIterator.BlockIter
     }
 
     @Override
-    protected List<EconomicSet<FloatingReadNode>> processLoop(Loop<HIRBlock> loop, EconomicSet<FloatingReadNode> initialState) {
+    protected List<EconomicSet<FloatingReadNode>> processLoop(CFGLoop<HIRBlock> loop, EconomicSet<FloatingReadNode> initialState) {
         HIRLoop l = (HIRLoop) loop;
         for (MemoryPhiNode memoryPhi : ((LoopBeginNode) l.getHeader().getBeginNode()).memoryPhis()) {
             for (FloatingReadNode r : cloneState(initialState)) {

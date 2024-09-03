@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -443,8 +443,7 @@ public class SharedCachedTest {
 
         SharedStringInGuardNode errorNode = SharedStringInGuardNodeGen.create();
         AbstractPolyglotTest.assertFails(() -> errorNode.execute(null), IllegalStateException.class, (e) -> {
-            assertEquals("Specialization 's0(String, String)' contains a shared cache with name 'cachedName' that returned a default value for the cached initializer. " +
-                            "Default values are not supported for shared cached initializers because the default value is reserved for the uninitialized state.",
+            assertEquals("A specialization returned a default value for a cached initializer. Default values are not supported for shared cached initializers because the default value is reserved for the uninitialized state.",
                             e.getMessage());
         });
     }

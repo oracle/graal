@@ -642,7 +642,7 @@ public final class StackViewTopComponent extends TopComponent
                     return s;
                 }
             };
-            node.setDisplayName(provider.getProperties().getString(PROPNAME_NAME, "")); // NOI18N 
+            node.setDisplayName(provider.getProperties().getString(PROPNAME_NAME, "")); // NOI18N
             setActivatedNodes(new Node[]{node});
         }
     }
@@ -702,10 +702,17 @@ public final class StackViewTopComponent extends TopComponent
                 }
             }
         }
-        NodeStack.Frame head = locs.bottom();
-        ChainNode node = new ChainNode(head, head.getLookup().lookup(Node.class),
-                                       head.getNested() == null ? Children.LEAF : new ChainChildren(head));
+        final int indentLevel = 24;
         Children.Array arr = new Children.Array();
+        for (int i = locs.size() - 1; i > indentLevel; i--) {
+            NodeStack.Frame frame = locs.get(i);
+            ChainNode node = new ChainNode(frame, frame.getLookup().lookup(Node.class),Children.LEAF);
+            arr.add(new Node[]{node});
+        }
+
+        NodeStack.Frame head = locs.size() > indentLevel ? locs.get(indentLevel) : locs.bottom();
+        Children children = head.getNested() == null ? Children.LEAF : new ChainChildren(head);
+        ChainNode node = new ChainNode(head, head.getLookup().lookup(Node.class), children);
         arr.add(new Node[]{node});
         manager.setRootContext(new AbstractNode(arr));
         Node toSelect = findNode(locs.top());

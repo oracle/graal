@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,8 +26,10 @@ package jdk.graal.compiler.hotspot;
 
 import static jdk.graal.compiler.core.common.GraalOptions.OptAssumptions;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 import jdk.graal.compiler.api.runtime.GraalJVMCICompiler;
 import jdk.graal.compiler.code.CompilationResult;
@@ -35,6 +37,7 @@ import jdk.graal.compiler.core.CompilationWatchDog;
 import jdk.graal.compiler.core.GraalCompiler;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Activation;
 import jdk.graal.compiler.debug.DebugHandlersFactory;
@@ -43,7 +46,6 @@ import jdk.graal.compiler.hotspot.HotSpotGraalRuntime.HotSpotGC;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.phases.OnStackReplacementPhase;
 import jdk.graal.compiler.java.GraphBuilderPhase;
-import jdk.graal.compiler.java.StableMethodNameFormatter;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilderFactory;
 import jdk.graal.compiler.lir.phases.LIRSuites;
 import jdk.graal.compiler.nodes.Cancellable;
@@ -51,6 +53,8 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.spi.ProfileProvider;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.OptimisticOptimizations.Optimization;
@@ -58,9 +62,9 @@ import jdk.graal.compiler.phases.PhaseSuite;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
-import jdk.graal.compiler.serviceprovider.GraalUnsafeAccess;
-import jdk.graal.compiler.debug.Assertions;
-
+import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
+import jdk.graal.compiler.serviceprovider.VMSupport;
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.code.CompilationRequestResult;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
@@ -74,11 +78,27 @@ import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.TriState;
 import jdk.vm.ci.runtime.JVMCICompiler;
 import jdk.vm.ci.services.Services;
-import sun.misc.Unsafe;
 
-public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JVMCICompilerShadow {
+public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JVMCICompilerShadow, GraalCompiler.RequestedCrashHandler {
 
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+    public static final class Options {
+        @Option(help = "If non-zero, converts an exception triggered by the CrashAt option into a fatal error " +
+                        "if a non-null pointer was passed in the _fatal option to JNI_CreateJavaVM. " +
+                        "The value of this option is the number of milliseconds to sleep before calling _fatal. " +
+                        "This option exists for the purpose of testing fatal error handling in libgraal.") //
+        public static final OptionKey<Integer> CrashAtIsFatal = new OptionKey<>(0);
+        @Option(help = "The fully qualified name of a no-arg, void, static method to be invoked " +
+                        "in HotSpot when a HotSpotGraalRuntime is being shutdown." +
+                        "This option exists for the purpose of testing callbacks in this context.") //
+        public static final OptionKey<String> OnShutdownCallback = new OptionKey<>(null);
+        @Option(help = "Replaces first exception thrown by the CrashAt option with an OutOfMemoryError. " +
+                        "Subsequently CrashAt exceptions are suppressed. " +
+                        "This option exists to test HeapDumpOnOutOfMemoryError. " +
+                        "See the MethodFilter option for the pattern syntax.") //
+        public static final OptionKey<Boolean> CrashAtThrowsOOME = new OptionKey<>(false);
+    }
+
+    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
     private final HotSpotJVMCIRuntime jvmciRuntime;
     private final HotSpotGraalRuntimeProvider graalRuntime;
     private final CompilationCounters compilationCounters;
@@ -105,18 +125,14 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
         return graalRuntime;
     }
 
+    @SuppressWarnings("try")
     @Override
     public CompilationRequestResult compileMethod(CompilationRequest request) {
-        return compileMethod(this, request);
-    }
-
-    /**
-     * Substituted by
-     * {@code com.oracle.svm.graal.hotspot.libgraal.Target_jdk_graal_compiler_hotspot_HotSpotGraalCompiler}
-     * to create a {@code org.graalvm.libgraal.jni.JNILibGraalScope}.
-     */
-    private static CompilationRequestResult compileMethod(HotSpotGraalCompiler compiler, CompilationRequest request) {
-        return compiler.compileMethod(request, true, compiler.getGraalRuntime().getOptions());
+        try (AutoCloseable ignored = VMSupport.getCompilationRequestScope()) {
+            return compileMethod(request, true, getGraalRuntime().getOptions());
+        } catch (Exception e) {
+            return HotSpotCompilationRequestResult.failure(e.toString(), false);
+        }
     }
 
     @SuppressWarnings("try")
@@ -140,7 +156,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
                 }
             }
             HotSpotCompilationRequest hsRequest = (HotSpotCompilationRequest) request;
-            CompilationTask task = new CompilationTask(jvmciRuntime, this, hsRequest, true, shouldRetainLocalVariables(hsRequest.getJvmciEnv()), installAsDefault);
+            CompilationTask task = new CompilationTask(jvmciRuntime, this, hsRequest, true, shouldRetainLocalVariables(hsRequest.getJvmciEnv()), shouldUsePreciseUnresolvedDeopts(), installAsDefault);
             OptionValues options = task.filterOptions(initialOptions);
 
             HotSpotVMConfigAccess config = new HotSpotVMConfigAccess(graalRuntime.getVMConfig().getStore());
@@ -153,13 +169,10 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
                 if (compilationCounters != null) {
                     compilationCounters.countCompilation(method);
                 }
-                CompilationRequestResult r = null;
                 try (DebugContext debug = graalRuntime.openDebugContext(options, task.getCompilationIdentifier(), method, getDebugHandlersFactories(), DebugContext.getDefaultLogStream());
                                 Activation a = debug.activate()) {
-                    r = task.runCompilation(debug);
+                    return Objects.requireNonNull(task.runCompilation(debug));
                 }
-                assert r != null;
-                return r;
             }
         }
     }
@@ -180,6 +193,22 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
             }
         }
         return false;
+    }
+
+    private boolean shouldUsePreciseUnresolvedDeopts() {
+        GraalHotSpotVMConfig config = graalRuntime.getVMConfig();
+        /*
+         * When running with -Xcomp, use precise deopts for unresolved elements. This is necessary
+         * to avoid deopt loops: An imprecise deopt could cause us to deoptimize even if the path
+         * using the unresolved element is not executed. As -Xcomp forces compilations, this would
+         * cause us to recompile the method in the same way, so we would trigger the same imprecise
+         * deopt again.
+         *
+         * Without -Xcomp we rely on normal warmup in the interpreter to resolve unresolved items
+         * and prune never executed paths, and we use speculations for additional protection against
+         * deopt loops.
+         */
+        return config.xcompMode;
     }
 
     @Override
@@ -214,8 +243,8 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
     }
 
     @SuppressWarnings("try")
-    public CompilationResult compileHelper(CompilationResultBuilderFactory crbf, CompilationResult result, StructuredGraph graph, boolean shouldRetainLocalVariables, boolean eagerResolving,
-                    OptionValues options) {
+    public CompilationResult compileHelper(CompilationResultBuilderFactory crbf, CompilationResult result, StructuredGraph graph, boolean shouldRetainLocalVariables,
+                    boolean shouldUsePreciseUnresolvedDeopts, boolean eagerResolving, OptionValues options) {
         int entryBCI = graph.getEntryBCI();
         ResolvedJavaMethod method = graph.method();
         assert options == graph.getOptions() : Assertions.errorMessage(options, graph.getOptions());
@@ -239,10 +268,23 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
         result.setEntryBCI(entryBCI);
         boolean shouldDebugNonSafepoints = providers.getCodeCache().shouldDebugNonSafepoints();
         PhaseSuite<HighTierContext> graphBuilderSuite = configGraphBuilderSuite(providers.getSuites().getDefaultGraphBuilderSuite(), shouldDebugNonSafepoints, shouldRetainLocalVariables,
-                        eagerResolving, isOSR);
+                        shouldUsePreciseUnresolvedDeopts, eagerResolving, isOSR);
 
-        GraalCompiler.compileGraph(graph, method, providers, backend, graphBuilderSuite, optimisticOpts, profilingInfo, suites, lirSuites, result, crbf, true);
-        graph.getOptimizationLog().emit(new StableMethodNameFormatter(providers, graph.getDebug()));
+        GraalCompiler.compile(new GraalCompiler.Request<>(graph,
+                        method,
+                        providers,
+                        backend,
+                        graphBuilderSuite,
+                        optimisticOpts,
+                        profilingInfo,
+                        suites,
+                        lirSuites,
+                        result,
+                        crbf,
+                        null,
+                        this,
+                        true));
+        graph.getOptimizationLog().emit();
         if (!isOSR) {
             profilingInfo.setCompilerIRSize(StructuredGraph.class, graph.getNodeCount());
         }
@@ -252,11 +294,12 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
 
     public CompilationResult compile(StructuredGraph graph,
                     boolean shouldRetainLocalVariables,
+                    boolean shouldUsePreciseUnresolvedDeopts,
                     boolean eagerResolving,
                     CompilationIdentifier compilationId,
                     DebugContext debug) {
         CompilationResult result = new CompilationResult(compilationId);
-        return compileHelper(CompilationResultBuilderFactory.Default, result, graph, shouldRetainLocalVariables, eagerResolving, debug.getOptions());
+        return compileHelper(CompilationResultBuilderFactory.Default, result, graph, shouldRetainLocalVariables, shouldUsePreciseUnresolvedDeopts, eagerResolving, debug.getOptions());
     }
 
     protected OptimisticOptimizations getOptimisticOpts(ProfilingInfo profilingInfo, OptionValues options) {
@@ -280,12 +323,14 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
      *            false)
      * @param shouldRetainLocalVariables specifies if local variables should be retained for
      *            debugging purposes (default is false)
+     * @param shouldUsePreciseUnresolvedDeopts specifies if Unresolved deoptimizations should use
+     *            precise frame states (default is false, except in Xcomp mode)
      * @param isOSR specifies if extra OSR-specific post-processing is required (default is false)
      * @return a new suite derived from {@code suite} if any of the GBS parameters did not have a
      *         default value otherwise {@code suite}
      */
-    protected PhaseSuite<HighTierContext> configGraphBuilderSuite(PhaseSuite<HighTierContext> suite, boolean shouldDebugNonSafepoints, boolean shouldRetainLocalVariables, boolean eagerResolving,
-                    boolean isOSR) {
+    protected PhaseSuite<HighTierContext> configGraphBuilderSuite(PhaseSuite<HighTierContext> suite, boolean shouldDebugNonSafepoints, boolean shouldRetainLocalVariables,
+                    boolean shouldUsePreciseUnresolvedDeopts, boolean eagerResolving, boolean isOSR) {
         PhaseSuite<HighTierContext> newGbs = suite.copy();
         GraphBuilderPhase graphBuilderPhase = (GraphBuilderPhase) newGbs.findPhase(GraphBuilderPhase.class).previous();
         GraphBuilderConfiguration graphBuilderConfig = graphBuilderPhase.getGraphBuilderConfig();
@@ -295,9 +340,15 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
         if (shouldRetainLocalVariables) {
             graphBuilderConfig = graphBuilderConfig.withRetainLocalVariables(true);
         }
+        if (shouldUsePreciseUnresolvedDeopts) {
+            graphBuilderConfig = graphBuilderConfig.withUsePreciseUnresolvedDeopts(true);
+        }
         if (eagerResolving) {
             graphBuilderConfig = graphBuilderConfig.withEagerResolving(true);
             graphBuilderConfig = graphBuilderConfig.withUnresolvedIsError(true);
+        }
+        if (graalRuntime.getVMConfig().alwaysSafeConstructors) {
+            graphBuilderConfig = graphBuilderConfig.withAlwaysSafeConstructors();
         }
         GraphBuilderPhase newGraphBuilderPhase = new HotSpotGraphBuilderPhase(graphBuilderConfig);
         newGbs.findPhase(GraphBuilderPhase.class).set(newGraphBuilderPhase);
@@ -316,4 +367,31 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
         return false;
     }
 
+    // Support for CrashAtThrowsOOME
+    private static final GlobalAtomicLong OOME_CRASH_DONE = new GlobalAtomicLong(0);
+
+    @Override
+    public boolean notifyCrash(OptionValues options, String crashMessage) {
+        if (Services.IS_IN_NATIVE_IMAGE) {
+            if (HotSpotGraalCompiler.Options.CrashAtThrowsOOME.getValue(options)) {
+                if (OOME_CRASH_DONE.compareAndSet(0L, 1L)) {
+                    // The -Djdk.libgraal.Xmx option should also be employed to make
+                    // this allocation fail quicky
+                    String largeString = Arrays.toString(new int[Integer.MAX_VALUE - 1]);
+                    throw new InternalError("Failed to trigger OOME: largeString.length=" + largeString.length());
+                } else {
+                    // Remaining compilations should proceed so that test finishes quickly.
+                    return false;
+                }
+            } else {
+                int crashAtIsFatal = HotSpotGraalCompiler.Options.CrashAtIsFatal.getValue(options);
+                if (crashAtIsFatal != 0) {
+                    VMSupport.fatalError(crashMessage, crashAtIsFatal);
+                    // If changing this message, update the test for it in mx_vm_gate.py
+                    System.out.println("CrashAtIsFatal: no fatalError function pointer installed");
+                }
+            }
+        }
+        return true;
+    }
 }

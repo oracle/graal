@@ -30,9 +30,6 @@ import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_BEGIN;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_END;
 import static org.graalvm.word.WordFactory.nullPointer;
 
-import java.util.EnumSet;
-
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -41,77 +38,35 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
-import com.oracle.svm.core.code.RuntimeCodeCache;
-import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.util.UnsignedUtils;
-import com.oracle.svm.core.util.VMError;
 
 public abstract class AbstractCommittedMemoryProvider implements CommittedMemoryProvider {
-    @Fold
-    @Override
-    public boolean guaranteesHeapPreferredAddressSpaceAlignment() {
-        return SubstrateOptions.SpawnIsolates.getValue() && ImageHeapProvider.get().guaranteesHeapPreferredAddressSpaceAlignment();
-    }
-
     @Uninterruptible(reason = "Still being initialized.")
     protected static int protectSingleIsolateImageHeap() {
         assert !SubstrateOptions.SpawnIsolates.getValue() : "Must be handled by ImageHeapProvider when SpawnIsolates is enabled";
-        assert Heap.getHeap().getImageHeapNullRegionSize() == 0 : "A null region only makes sense with a heap base.";
         Pointer heapBegin = IMAGE_HEAP_BEGIN.get();
         if (Heap.getHeap().getImageHeapOffsetInAddressSpace() != 0) {
             return CEntryPointErrors.MAP_HEAP_FAILED;
         }
-        if (!SubstrateOptions.ForceNoROSectionRelocations.getValue()) {
-            /*
-             * Set strict read-only and read+write permissions for the image heap (the entire image
-             * heap should already be read-only, but the linker/loader can place it in a segment
-             * that has the executable bit set unnecessarily)
-             *
-             * If ForceNoROSectionRelocations is set, however, the image heap is writable and should
-             * remain so.
-             */
-            UnsignedWord heapSize = IMAGE_HEAP_END.get().subtract(heapBegin);
-            if (VirtualMemoryProvider.get().protect(heapBegin, heapSize, VirtualMemoryProvider.Access.READ) != 0) {
-                return CEntryPointErrors.PROTECT_HEAP_FAILED;
-            }
-            Pointer writableBegin = IMAGE_HEAP_WRITABLE_BEGIN.get();
-            UnsignedWord writableSize = IMAGE_HEAP_WRITABLE_END.get().subtract(writableBegin);
-            if (VirtualMemoryProvider.get().protect(writableBegin, writableSize, VirtualMemoryProvider.Access.READ | VirtualMemoryProvider.Access.WRITE) != 0) {
-                return CEntryPointErrors.PROTECT_HEAP_FAILED;
-            }
+
+        /*
+         * Set strict read-only and read+write permissions for the image heap (the entire image heap
+         * should already be read-only, but the linker/loader can place it in a segment that has the
+         * executable bit set unnecessarily)
+         */
+        UnsignedWord heapSize = IMAGE_HEAP_END.get().subtract(heapBegin);
+        if (VirtualMemoryProvider.get().protect(heapBegin, heapSize, VirtualMemoryProvider.Access.READ) != 0) {
+            return CEntryPointErrors.PROTECT_HEAP_FAILED;
+        }
+
+        Pointer writableBegin = IMAGE_HEAP_WRITABLE_BEGIN.get();
+        UnsignedWord writableSize = IMAGE_HEAP_WRITABLE_END.get().subtract(writableBegin);
+        if (VirtualMemoryProvider.get().protect(writableBegin, writableSize, VirtualMemoryProvider.Access.READ | VirtualMemoryProvider.Access.WRITE) != 0) {
+            return CEntryPointErrors.PROTECT_HEAP_FAILED;
         }
 
         return CEntryPointErrors.NO_ERROR;
-    }
-
-    @Override
-    public int protect(PointerBase start, UnsignedWord nbytes, EnumSet<Access> accessFlags) {
-        int vmAccessBits = VirtualMemoryProvider.Access.NONE;
-        if (accessFlags.contains(CommittedMemoryProvider.Access.READ)) {
-            vmAccessBits |= VirtualMemoryProvider.Access.READ;
-        }
-        if (accessFlags.contains(CommittedMemoryProvider.Access.WRITE)) {
-            vmAccessBits |= VirtualMemoryProvider.Access.WRITE;
-        }
-        if (accessFlags.contains(CommittedMemoryProvider.Access.EXECUTE)) {
-            if ((vmAccessBits & VirtualMemoryProvider.Access.WRITE) != 0 && !RuntimeCodeCache.Options.WriteableCodeCache.getValue()) {
-                throw VMError.shouldNotReachHere("memory should never be writable and executable at the same time");
-            }
-            vmAccessBits |= VirtualMemoryProvider.Access.EXECUTE;
-        }
-        return VirtualMemoryProvider.get().protect(start, nbytes, vmAccessBits);
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public Pointer allocateAlignedChunk(UnsignedWord nbytes, UnsignedWord alignment) {
-        return allocate(nbytes, alignment, false);
-    }
-
-    @Override
-    public Pointer allocateUnalignedChunk(UnsignedWord nbytes) {
-        return allocate(nbytes, getAlignmentForUnalignedChunks(), false);
     }
 
     @Override
@@ -120,7 +75,7 @@ public abstract class AbstractCommittedMemoryProvider implements CommittedMemory
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private Pointer allocate(UnsignedWord size, UnsignedWord alignment, boolean executable) {
+    protected Pointer allocate(UnsignedWord size, UnsignedWord alignment, boolean executable) {
         Pointer reserved = WordFactory.nullPointer();
         if (!UnsignedUtils.isAMultiple(getGranularity(), alignment)) {
             reserved = VirtualMemoryProvider.get().reserve(size, alignment, executable);
@@ -145,43 +100,16 @@ public abstract class AbstractCommittedMemoryProvider implements CommittedMemory
     }
 
     @Override
-    public boolean areUnalignedChunksZeroed() {
-        return false;
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void freeAlignedChunk(PointerBase start, UnsignedWord nbytes, UnsignedWord alignment) {
-        free(start, nbytes);
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void freeUnalignedChunk(PointerBase start, UnsignedWord nbytes) {
-        free(start, nbytes);
-    }
-
-    @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void freeExecutableMemory(PointerBase start, UnsignedWord nbytes, UnsignedWord alignment) {
         free(start, nbytes);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private void free(PointerBase start, UnsignedWord nbytes) {
+    protected void free(PointerBase start, UnsignedWord nbytes) {
         if (VirtualMemoryProvider.get().free(start, nbytes) == 0) {
             tracker.untrack(nbytes);
         }
-    }
-
-    /**
-     * Unaligned chunks also need some minimal alignment - otherwise, the data in the chunk header
-     * or the Java heap object within the unaligned chunk would be misaligned.
-     */
-    @Fold
-    protected static UnsignedWord getAlignmentForUnalignedChunks() {
-        int alignment = Math.max(ConfigurationValues.getTarget().wordSize, ConfigurationValues.getObjectLayout().getAlignment());
-        return WordFactory.unsigned(alignment);
     }
 
     private final VirtualMemoryTracker tracker = new VirtualMemoryTracker();

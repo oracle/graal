@@ -285,13 +285,13 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
             assert getThreadAccess().getCurrentGuestThread() != null;
 
             if (name == null) {
-                meta.java_lang_Thread_init_ThreadGroup_Runnable.invokeDirect(guestThread, effectiveThreadGroup, StaticObject.NULL);
+                meta.java_lang_Thread_init_ThreadGroup_Runnable.invokeDirectSpecial(guestThread, effectiveThreadGroup, StaticObject.NULL);
             } else {
-                meta.java_lang_Thread_init_ThreadGroup_String.invokeDirect(guestThread, effectiveThreadGroup, meta.toGuestString(name));
+                meta.java_lang_Thread_init_ThreadGroup_String.invokeDirectSpecial(guestThread, effectiveThreadGroup, meta.toGuestString(name));
             }
 
             if (getJavaVersion().java17OrEarlier()) {
-                meta.java_lang_ThreadGroup_add.invokeDirect(effectiveThreadGroup, guestThread);
+                meta.java_lang_ThreadGroup_add.invokeDirectVirtual(effectiveThreadGroup, guestThread);
             }
 
             getThreadAccess().setState(guestThread, State.RUNNABLE.value);
@@ -328,7 +328,7 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
         registerMainThread(hostThread, mainThread);
 
         // Guest Thread.currentThread() must work as this point.
-        meta.java_lang_Thread_init_ThreadGroup_String.invokeDirect(mainThread,
+        meta.java_lang_Thread_init_ThreadGroup_String.invokeDirectSpecial(mainThread,
                         /* group */ mainThreadGroup,
                         /* name */ meta.toGuestString("main"));
 
@@ -347,12 +347,12 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
         StaticObject systemThreadGroup = meta.java_lang_ThreadGroup.allocateInstance(getContext());
         meta.java_lang_ThreadGroup.lookupDeclaredMethod(Symbol.Name._init_, Symbol.Signature._void) // private
                         // ThreadGroup()
-                        .invokeDirect(systemThreadGroup);
+                        .invokeDirectSpecial(systemThreadGroup);
 
         mainThreadGroup = meta.java_lang_ThreadGroup.allocateInstance(getContext());
         meta.java_lang_ThreadGroup // public ThreadGroup(ThreadGroup parent, String name)
                         .lookupDeclaredMethod(Symbol.Name._init_, Symbol.Signature._void_ThreadGroup_String) //
-                        .invokeDirect(mainThreadGroup,
+                        .invokeDirectSpecial(mainThreadGroup,
                                         /* parent */ systemThreadGroup,
                                         /* name */ meta.toGuestString("main"));
     }

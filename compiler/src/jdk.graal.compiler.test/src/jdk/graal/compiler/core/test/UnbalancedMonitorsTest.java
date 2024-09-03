@@ -24,6 +24,12 @@
  */
 package jdk.graal.compiler.core.test;
 
+import org.junit.Test;
+import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.Label;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+
 import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -31,13 +37,8 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugi
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
-import org.junit.Test;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.Label;
-import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.Opcodes;
-
 import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -47,6 +48,9 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * unstructured locking aren't compiled and fall back to the interpreter. Having the Graal parser
  * handle this directly is simplifying for targets of Graal since they don't have to provide a data
  * flow that checks this property.
+ * </p>
+ * Since [GR-51446], Graal defers some checks to run time, e.g., if it cannot be proven statically
+ * that an unlocked object matches the object on top of the monitor stack.
  */
 public class UnbalancedMonitorsTest extends GraalCompilerTest {
     private static final String CLASS_NAME = UnbalancedMonitorsTest.class.getName();
@@ -58,7 +62,12 @@ public class UnbalancedMonitorsTest extends GraalCompilerTest {
 
     @Test
     public void runWrongOrder() throws Exception {
-        checkForBailout("wrongOrder");
+        Class<?> clazz = LOADER.findClass(INNER_CLASS_NAME);
+        ResolvedJavaMethod method = getResolvedJavaMethod(clazz, "wrongOrder");
+        Object instance = clazz.getName();
+        InstalledCode code = getCode(method);
+        code.executeVarargs(instance, new Object(), new Object());
+        assertTrue("Deopt expected due to unlocked object not matching top of monitor stack.", !code.isValid());
     }
 
     @Test
@@ -90,10 +99,10 @@ public class UnbalancedMonitorsTest extends GraalCompilerTest {
             GraphBuilderConfiguration graphBuilderConfig = GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true).withUnresolvedIsError(true);
             OptimisticOptimizations optimisticOpts = OptimisticOptimizations.NONE;
 
-            GraphBuilderPhase.Instance graphBuilder = new GraphBuilderPhase.Instance(getProviders(), graphBuilderConfig, optimisticOpts, null);
+            GraphBuilderPhase.Instance graphBuilder = new TestGraphBuilderPhase.Instance(getProviders(), graphBuilderConfig, optimisticOpts, null);
             graphBuilder.apply(graph);
         } catch (BailoutException e) {
-            if (e.getMessage().contains("unbalanced monitors") ||
+            if (e.getMessage().toLowerCase().contains("unstructured locking") ||
                             // tooFewExits is caught by the FrameStateBuilder
                             e.getMessage().contains("will underflow the bytecode stack")) {
                 return;

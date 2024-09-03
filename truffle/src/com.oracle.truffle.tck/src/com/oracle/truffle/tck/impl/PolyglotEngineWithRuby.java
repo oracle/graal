@@ -76,8 +76,6 @@ public class PolyglotEngineWithRuby {
     }
 
     // @formatter:off
-
-    // BEGIN: com.oracle.truffle.tck.impl.PolyglotEngineWithRuby#callRubyFunctionFromJava
     @FunctionalInterface
     interface Multiplier {
         int multiply(int a, int b);
@@ -100,8 +98,5 @@ public class PolyglotEngineWithRuby {
         assertEquals(144, mul.multiply(12, 12));
         assertEquals(256, mul.multiply(32, 8));
     }
-    // END: com.oracle.truffle.tck.impl.PolyglotEngineWithRuby#callRubyFunctionFromJava
-
     // @formatter:on
-
 }

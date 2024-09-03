@@ -26,18 +26,14 @@ package com.oracle.graal.pointsto.infrastructure;
 
 import static jdk.vm.ci.common.JVMCIError.unimplemented;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import jdk.graal.compiler.core.common.BootstrapMethodIntrospection;
-import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.serviceprovider.GraalServices;
-
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.graal.pointsto.util.GraalAccess;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
@@ -64,31 +60,28 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
     }
 
     private JavaConstant lookupConstant(JavaConstant constant) {
-        return universe.lookup(constant);
+        return universe.lookup(extractResolvedType(constant));
     }
 
-    /**
-     * The method jdk.vm.ci.meta.ConstantPool#lookupBootstrapMethodInvocation(int cpi, int opcode)
-     * was introduced in JVMCI 22.1.
-     */
-    private static final Method cpLookupBootstrapMethodInvocation = ReflectionUtil.lookupMethod(true, ConstantPool.class, "lookupBootstrapMethodInvocation", int.class, int.class);
-
-    /**
-     * {@code jdk.vm.ci.meta.ConstantPool.lookupMethod(int cpi, int opcode, ResolvedJavaMethod caller)}
-     * was introduced in JVMCI 22.3.
-     */
-    private static final Method lookupMethodWithCaller = ReflectionUtil.lookupMethod(true, ConstantPool.class, "lookupMethod", int.class, int.class, ResolvedJavaMethod.class);
-
-    /**
-     * The interface jdk.vm.ci.meta.ConstantPool.BootstrapMethodInvocation was introduced in JVMCI
-     * 22.1.
-     */
-    private static final Class<?> bsmClass = ReflectionUtil.lookupClass(true, "jdk.vm.ci.meta.ConstantPool$BootstrapMethodInvocation");
-    private static final Method bsmGetMethod = bsmClass == null ? null : ReflectionUtil.lookupMethod(bsmClass, "getMethod");
-    private static final Method bsmIsInvokeDynamic = bsmClass == null ? null : ReflectionUtil.lookupMethod(bsmClass, "isInvokeDynamic");
-    private static final Method bsmGetName = bsmClass == null ? null : ReflectionUtil.lookupMethod(bsmClass, "getName");
-    private static final Method bsmGetType = bsmClass == null ? null : ReflectionUtil.lookupMethod(bsmClass, "getType");
-    private static final Method bsmGetStaticArguments = bsmClass == null ? null : ReflectionUtil.lookupMethod(bsmClass, "getStaticArguments");
+    public JavaConstant extractResolvedType(JavaConstant constant) {
+        if (constant != null && constant.getJavaKind().isObject() && !constant.isNull()) {
+            SnippetReflectionProvider snippetReflection = GraalAccess.getOriginalSnippetReflection();
+            if (snippetReflection.asObject(Object.class, constant) instanceof ResolvedJavaType resolvedJavaType) {
+                /*
+                 * BootstrapMethodInvocation.getStaticArguments can output a constant containing a
+                 * HotspotJavaType when a static argument of type Class if loaded lazily in pull
+                 * mode. In this case, the type has to be converted back to a Class, as it would
+                 * cause a hotspot value to be reachable otherwise.
+                 *
+                 * If the constant contains an UnresolvedJavaType, it cannot be converted as a
+                 * Class. It is not a problem for this type to be reachable, so those constants can
+                 * be handled later.
+                 */
+                return snippetReflection.forObject(OriginalClassProvider.getJavaClass(resolvedJavaType));
+            }
+        }
+        return constant;
+    }
 
     @Override
     public void loadReferencedType(int cpi, int opcode, boolean initialize) {
@@ -113,8 +106,7 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
 
     @Override
     public JavaField lookupField(int cpi, ResolvedJavaMethod method, int opcode) {
-        ResolvedJavaMethod substMethod = universe.resolveSubstitution(((WrappedJavaMethod) method).getWrapped());
-        return universe.lookupAllowUnresolved(wrapped.lookupField(cpi, substMethod, opcode));
+        return universe.lookupAllowUnresolved(wrapped.lookupField(cpi, OriginalMethodProvider.getOriginalMethod(method), opcode));
     }
 
     @Override
@@ -124,23 +116,11 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
 
     @Override
     public JavaMethod lookupMethod(int cpi, int opcode, ResolvedJavaMethod caller) {
-        if (lookupMethodWithCaller == null) {
-            /* Resort to version without caller. */
-            return lookupMethod(cpi, opcode);
-        }
         try {
-            /* Unwrap the caller method. */
-            ResolvedJavaMethod substCaller = universe.resolveSubstitution(((WrappedJavaMethod) caller).getWrapped());
-            /*
-             * Delegate to the lookup with caller method of the wrapped constant pool (via
-             * reflection).
-             */
-            return universe.lookupAllowUnresolved((JavaMethod) lookupMethodWithCaller.invoke(wrapped, cpi, opcode, substCaller));
+            return universe.lookupAllowUnresolved(wrapped.lookupMethod(cpi, opcode, OriginalMethodProvider.getOriginalMethod(caller)));
         } catch (Throwable ex) {
             Throwable cause = ex;
-            if (ex instanceof InvocationTargetException && ex.getCause() != null) {
-                cause = ex.getCause();
-            } else if (ex instanceof ExceptionInInitializerError && ex.getCause() != null) {
+            if (ex instanceof ExceptionInInitializerError && ex.getCause() != null) {
                 cause = ex.getCause();
             }
             throw new UnresolvedElementException("Error loading a referenced type: " + cause.toString(), cause);
@@ -153,7 +133,7 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
     }
 
     @Override
-    public WrappedSignature lookupSignature(int cpi) {
+    public ResolvedSignature<?> lookupSignature(int cpi) {
         return universe.lookup(wrapped.lookupSignature(cpi), defaultAccessingClass);
     }
 
@@ -174,7 +154,7 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
 
     @Override
     public Object lookupConstant(int cpi, boolean resolve) {
-        Object con = GraalServices.lookupConstant(wrapped, cpi, resolve);
+        Object con = wrapped.lookupConstant(cpi, resolve);
         if (con instanceof JavaType) {
             if (con instanceof ResolvedJavaType) {
                 return universe.lookup((ResolvedJavaType) con);
@@ -196,84 +176,46 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
         return universe.lookupAllowUnresolved(wrapped.lookupReferencedType(index, opcode));
     }
 
-    public BootstrapMethodIntrospection lookupBootstrapMethodIntrospection(int cpi, int opcode) {
-        if (cpLookupBootstrapMethodInvocation != null) {
-            try {
-                Object bootstrapMethodInvocation = cpLookupBootstrapMethodInvocation.invoke(wrapped, cpi, opcode);
-                return new WrappedBootstrapMethodInvocation(bootstrapMethodInvocation);
-            } catch (Throwable ignored) {
-                // GR-38955 - understand why exception is thrown
-            }
+    @Override
+    public BootstrapMethodInvocation lookupBootstrapMethodInvocation(int cpi, int opcode) {
+        BootstrapMethodInvocation bootstrapMethodInvocation = wrapped.lookupBootstrapMethodInvocation(cpi, opcode);
+        if (bootstrapMethodInvocation != null) {
+            return new WrappedBootstrapMethodInvocation(bootstrapMethodInvocation);
         }
         return null;
     }
 
-    public class WrappedBootstrapMethodInvocation implements BootstrapMethodIntrospection {
-        private final Object wrapped;
+    public class WrappedBootstrapMethodInvocation implements BootstrapMethodInvocation {
 
-        public WrappedBootstrapMethodInvocation(Object wrapped) {
+        private final BootstrapMethodInvocation wrapped;
+
+        public WrappedBootstrapMethodInvocation(BootstrapMethodInvocation wrapped) {
             this.wrapped = wrapped;
         }
 
         @Override
         public ResolvedJavaMethod getMethod() {
-            if (bsmGetMethod != null) {
-                try {
-                    return universe.lookup((ResolvedJavaMethod) bsmGetMethod.invoke(wrapped));
-                } catch (Throwable t) {
-                    throw GraalError.shouldNotReachHere(t); // ExcludeFromJacocoGeneratedReport
-                }
-            }
-            throw GraalError.shouldNotReachHere("unexpected null"); // ExcludeFromJacocoGeneratedReport
+            return universe.lookup(wrapped.getMethod());
         }
 
         @Override
         public boolean isInvokeDynamic() {
-            if (bsmIsInvokeDynamic != null) {
-                try {
-                    return (boolean) bsmIsInvokeDynamic.invoke(wrapped);
-                } catch (Throwable t) {
-                    throw GraalError.shouldNotReachHere(t); // ExcludeFromJacocoGeneratedReport
-                }
-            }
-            throw GraalError.shouldNotReachHere("unexpected null"); // ExcludeFromJacocoGeneratedReport
+            return wrapped.isInvokeDynamic();
         }
 
         @Override
         public String getName() {
-            if (bsmGetName != null) {
-                try {
-                    return (String) bsmGetName.invoke(wrapped);
-                } catch (Throwable t) {
-                    throw GraalError.shouldNotReachHere(t); // ExcludeFromJacocoGeneratedReport
-                }
-            }
-            throw GraalError.shouldNotReachHere("unexpected null"); // ExcludeFromJacocoGeneratedReport
+            return wrapped.getName();
         }
 
         @Override
         public JavaConstant getType() {
-            if (bsmGetType != null) {
-                try {
-                    return lookupConstant((JavaConstant) bsmGetType.invoke(wrapped));
-                } catch (Throwable t) {
-                    throw GraalError.shouldNotReachHere(t); // ExcludeFromJacocoGeneratedReport
-                }
-            }
-            throw GraalError.shouldNotReachHere("unexpected null"); // ExcludeFromJacocoGeneratedReport
+            return lookupConstant(wrapped.getType());
         }
 
         @Override
         public List<JavaConstant> getStaticArguments() {
-            if (bsmGetStaticArguments != null) {
-                try {
-                    List<?> original = (List<?>) bsmGetStaticArguments.invoke(wrapped);
-                    return original.stream().map(e -> lookupConstant((JavaConstant) e)).collect(Collectors.toList());
-                } catch (Throwable t) {
-                    throw GraalError.shouldNotReachHere(t); // ExcludeFromJacocoGeneratedReport
-                }
-            }
-            throw GraalError.shouldNotReachHere("unexpected null"); // ExcludeFromJacocoGeneratedReport
+            return wrapped.getStaticArguments().stream().map(WrappedConstantPool.this::lookupConstant).collect(Collectors.toList());
         }
     }
 }

@@ -24,8 +24,6 @@
  */
 package jdk.graal.compiler.lir.aarch64;
 
-import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.vm.ci.code.ValueUtil.isIllegal;
 import static jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDInstruction.LD2_MULTIPLE_2R;
 import static jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDInstruction.LD4_MULTIPLE_4R;
 import static jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize.FullReg;
@@ -39,6 +37,8 @@ import static jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler.PREFERRED_BRA
 import static jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler.PREFERRED_LOOP_ALIGNMENT;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.code.ValueUtil.isIllegal;
 
 import java.util.Arrays;
 
@@ -53,11 +53,10 @@ import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.core.common.StrideUtil;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.Opcode;
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
@@ -232,7 +231,7 @@ public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
         Register refAddress = len;
         asm.add(64, refAddress, arrayMax, len, ShiftType.LSL, strideMax.log2);
 
-        simdCompare64(asm, strideMax, strideMin, strideA, strideM, arrayMax, arrayMin, arrayM);
+        simdCompare64(asm, strideMax, strideMin, strideA, strideM, arrayMax, arrayMin, arrayM, tmp);
         asm.branchConditionally(ConditionFlag.NE, end);
 
         asm.cmp(64, refAddress, arrayMax);
@@ -249,7 +248,7 @@ public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
         // 64 byte loop
         asm.align(PREFERRED_LOOP_ALIGNMENT);
         asm.bind(vectorLoop);
-        simdCompare64(asm, strideMax, strideMin, strideA, strideM, arrayMax, arrayMin, arrayM);
+        simdCompare64(asm, strideMax, strideMin, strideA, strideM, arrayMax, arrayMin, arrayM, tmp);
         asm.branchConditionally(ConditionFlag.NE, end);
         asm.cmp(64, arrayMax, refAddress);
         asm.branchConditionally(ConditionFlag.LO, vectorLoop);
@@ -263,13 +262,13 @@ public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
             asm.sub(64, arrayM, arrayM, tmp, ShiftType.LSR, strideMax.log2 - strideM.log2);
         }
 
-        simdCompare64(asm, strideMax, strideMin, strideA, strideM, arrayMax, arrayMin, arrayM);
+        simdCompare64(asm, strideMax, strideMin, strideA, strideM, arrayMax, arrayMin, arrayM, tmp);
         asm.jmp(end);
 
         // tail for 32 - 63 bytes
-        tail32(asm, strideMax, strideMin, strideA, strideM, arrayMax, arrayMin, arrayM, len, tailLessThan64, tailLessThan32, end);
+        tail32(asm, strideMax, strideMin, strideA, strideM, arrayMax, arrayMin, arrayM, len, tmp, tailLessThan64, tailLessThan32, end);
         // tail for 16 - 31 bytes
-        tail16(asm, strideA, strideB, strideM, strideMax, strideMin, arrayA, arrayB, arrayM, len, tailLessThan32, tailLessThan16, end);
+        tail16(asm, strideA, strideB, strideM, strideMax, strideMin, arrayA, arrayB, arrayM, len, tmp, tailLessThan32, tailLessThan16, end);
         // tail for 8 - 15 bytes
         tailLessThan16(asm, strideA, strideB, strideM, strideMax, arrayA, arrayB, arrayM, len, tmp, ret, tailLessThan16, tailLessThan8, end, 8);
         // tail for 4 - 7 bytes
@@ -291,7 +290,8 @@ public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
                     Stride strideMask,
                     Register arrayMax,
                     Register arrayMin,
-                    Register arrayMask) {
+                    Register arrayMask,
+                    Register tmp) {
         ElementSize minESize = fromStride(strideMin);
         switch (strideMax.log2 - strideMin.log2) {
             case 0:
@@ -420,7 +420,7 @@ public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
             default:
                 throw GraalError.unimplemented("comparison of " + strideMin + " to " + strideMax + " not implemented"); // ExcludeFromJacocoGeneratedReport
         }
-        vectorCheckZero(asm, v(0), v(0));
+        cmpZeroVector(asm, v(0), v(0), tmp);
     }
 
     private void tail32(AArch64MacroAssembler asm,
@@ -432,6 +432,7 @@ public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
                     Register arrayMin,
                     Register arrayMask,
                     Register len,
+                    Register tmp,
                     Label entry,
                     Label nextTail,
                     Label end) {
@@ -595,7 +596,7 @@ public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
             default:
                 throw GraalError.unimplemented("comparison of " + strideMin + " to " + strideMax + " not implemented"); // ExcludeFromJacocoGeneratedReport
         }
-        vectorCheckZero(asm, v(0), v(0));
+        cmpZeroVector(asm, v(0), v(0), tmp);
         asm.jmp(end);
     }
 
@@ -609,6 +610,7 @@ public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
                     Register arrayB,
                     Register arrayM,
                     Register len,
+                    Register tmp,
                     Label entry,
                     Label nextTail,
                     Label end) {
@@ -663,7 +665,7 @@ public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
         asm.neon.eorVVV(FullReg, vecArrayA2, vecArrayA2, vecArrayB2);
         asm.neon.orrVVV(FullReg, vecArrayA1, vecArrayA1, vecArrayA2);
 
-        vectorCheckZero(asm, vecArrayA1, vecArrayA1);
+        cmpZeroVector(asm, vecArrayA1, vecArrayA1, tmp);
         asm.jmp(end);
     }
 
@@ -753,7 +755,7 @@ public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
                 asm.neon.orrVVV(FullReg, vecArrayA1, vecArrayA1, vecArrayM1);
             }
             asm.neon.eorVVV(FullReg, vecArrayA1, vecArrayA1, vecArrayB1);
-            vectorCheckZero(asm, vecArrayA1, vecArrayA1);
+            cmpZeroVector(asm, vecArrayA1, vecArrayA1, tmp);
         } else if (strideMax.value == nBytes) {
             asm.bind(entry);
             // tail for length == 1

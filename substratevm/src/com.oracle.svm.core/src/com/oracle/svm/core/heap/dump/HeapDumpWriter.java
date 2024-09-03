@@ -26,11 +26,6 @@ package com.oracle.svm.core.heap.dump;
 
 import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.nodes.java.ArrayLengthNode;
-import jdk.graal.compiler.word.ObjectAccess;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -44,7 +39,6 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.StaticFieldsSupport;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
@@ -60,6 +54,8 @@ import com.oracle.svm.core.collections.GrowableWordArrayAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
+import com.oracle.svm.core.heap.FillerArray;
+import com.oracle.svm.core.heap.FillerObject;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
@@ -77,6 +73,7 @@ import com.oracle.svm.core.heap.dump.HeapDumpMetadata.FieldNameAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.BufferedFileOperationSupport;
 import com.oracle.svm.core.os.BufferedFileOperationSupport.BufferedFile;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
@@ -87,8 +84,14 @@ import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.threadlocal.VMThreadLocalMTSupport;
+import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.nodes.java.ArrayLengthNode;
+import jdk.graal.compiler.word.ObjectAccess;
+import jdk.graal.compiler.word.Word;
 
 /**
  * This class dumps the image heap and the Java heap into a file (HPROF binary format), similar to
@@ -443,7 +446,7 @@ public class HeapDumpWriter {
     private boolean initialize(RawFileDescriptor fd) {
         assert topLevelRecordBegin == -1 && subRecordBegin == -1 && !error;
 
-        this.f = file().allocate(fd);
+        this.f = file().allocate(fd, NmtCategory.HeapDump);
         if (f.isNull()) {
             return false;
         }
@@ -735,10 +738,8 @@ public class HeapDumpWriter {
     }
 
     private void writeThreadLocals(IsolateThread isolateThread, int threadSerialNum) {
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            threadLocalsVisitor.initialize(threadSerialNum);
-            VMThreadLocalMTSupport.singleton().walk(isolateThread, threadLocalsVisitor);
-        }
+        threadLocalsVisitor.initialize(threadSerialNum);
+        VMThreadLocalSupport.singleton().walk(isolateThread, threadLocalsVisitor);
     }
 
     private void writeJNIGlobals() {
@@ -1194,30 +1195,32 @@ public class HeapDumpWriter {
 
         @Override
         @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Heap dumping must not allocate.")
-        protected boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame) {
-            if (deoptimizedFrame != null) {
-                markAsGCRoot(deoptimizedFrame);
+        protected boolean visitRegularFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo) {
+            /*
+             * All references that are on the stack need to be marked as GC roots. Our information
+             * is not necessarily precise enough to identify the exact Java-level stack frame to
+             * which a reference belongs. Therefore, we just dump the data in a way that it gets
+             * associated with the deepest inlined Java-level stack frame of each compilation unit.
+             */
+            markStackValuesAsGCRoots(sp, ip, codeInfo);
 
-                for (DeoptimizedFrame.VirtualFrame frame = deoptimizedFrame.getTopFrame(); frame != null; frame = frame.getCaller()) {
-                    visitFrame(frame.getFrameInfo());
-                    nextFrameId++;
-                }
-            } else {
-                /*
-                 * All references that are on the stack need to be marked as GC roots. Our
-                 * information is not necessarily precise enough to identify the exact Java-level
-                 * stack frame to which a reference belongs. Therefore, we just dump the data in a
-                 * way that it gets associated with the deepest inlined Java-level stack frame of
-                 * each compilation unit.
-                 */
-                markStackValuesAsGCRoots(sp, ip, codeInfo);
+            frameInfoCursor.initialize(codeInfo, ip, true);
+            while (frameInfoCursor.advance()) {
+                FrameInfoQueryResult frame = frameInfoCursor.get();
+                visitFrame(frame);
+                nextFrameId++;
+            }
+            return true;
+        }
 
-                frameInfoCursor.initialize(codeInfo, ip, true);
-                while (frameInfoCursor.advance()) {
-                    FrameInfoQueryResult frame = frameInfoCursor.get();
-                    visitFrame(frame);
-                    nextFrameId++;
-                }
+        @Override
+        @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Heap dumping must not allocate.")
+        protected boolean visitDeoptimizedFrame(Pointer originalSP, CodePointer deoptStubIP, DeoptimizedFrame deoptimizedFrame) {
+            markAsGCRoot(deoptimizedFrame);
+
+            for (DeoptimizedFrame.VirtualFrame frame = deoptimizedFrame.getTopFrame(); frame != null; frame = frame.getCaller()) {
+                visitFrame(frame.getFrameInfo());
+                nextFrameId++;
             }
             return true;
         }
@@ -1231,12 +1234,12 @@ public class HeapDumpWriter {
         private void markStackValuesAsGCRoots(Pointer sp, CodePointer ip, CodeInfo codeInfo) {
             if (markGCRoots) {
                 SimpleCodeInfoQueryResult queryResult = StackValue.get(SimpleCodeInfoQueryResult.class);
-                CodeInfoAccess.lookupCodeInfo(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip), queryResult);
+                CodeInfoAccess.lookupCodeInfo(codeInfo, ip, queryResult);
 
                 NonmovableArray<Byte> referenceMapEncoding = CodeInfoAccess.getStackReferenceMapEncoding(codeInfo);
                 long referenceMapIndex = queryResult.getReferenceMapIndex();
                 if (referenceMapIndex == ReferenceMapIndex.NO_REFERENCE_MAP) {
-                    throw CodeInfoTable.reportNoReferenceMap(sp, ip, codeInfo);
+                    throw CodeInfoTable.fatalErrorNoReferenceMap(sp, ip, codeInfo);
                 }
                 CodeReferenceMapDecoder.walkOffsetsFromPointer(sp, referenceMapEncoding, referenceMapIndex, this, null);
             }
@@ -1341,15 +1344,22 @@ public class HeapDumpWriter {
         @Override
         @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Heap dumping must not allocate.")
         public boolean visitObject(Object obj) {
-            if (isLarge(obj)) {
-                boolean added = GrowableWordArrayAccess.add(largeObjects, Word.objectToUntrackedPointer(obj));
-                if (!added) {
-                    Log.log().string("Failed to add an element to the large object list. Heap dump will be incomplete.").newline();
+            if (!isFillerObject(obj)) {
+                if (isLarge(obj)) {
+                    boolean added = GrowableWordArrayAccess.add(largeObjects, Word.objectToUntrackedPointer(obj), NmtCategory.HeapDump);
+                    if (!added) {
+                        Log.log().string("Failed to add an element to the large object list. Heap dump will be incomplete.").newline();
+                    }
+                } else {
+                    writeObject(obj);
                 }
-            } else {
-                writeObject(obj);
             }
             return true;
+        }
+
+        private static boolean isFillerObject(Object obj) {
+            /* Filler objects increase the size of the heap dump but don't add much value. */
+            return obj.getClass() == FillerArray.class || obj.getClass() == FillerObject.class;
         }
 
         private boolean isLarge(Object obj) {

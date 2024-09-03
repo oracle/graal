@@ -85,7 +85,7 @@ public final class Target_java_lang_reflect_Field {
     native Target_jdk_internal_reflect_FieldAccessor acquireFieldAccessor();
 
     @Alias//
-    native Target_jdk_internal_reflect_FieldAccessor acquireOverrideFieldAccessor();
+    public native Target_jdk_internal_reflect_FieldAccessor acquireOverrideFieldAccessor();
 
     @Alias
     @TargetElement(name = CONSTRUCTOR_NAME)
@@ -133,14 +133,14 @@ public final class Target_java_lang_reflect_Field {
 
         @Override
         public Object transform(Object receiver, Object originalValue) {
-            return ImageSingletons.lookup(ReflectionSubstitutionSupport.class).getDeletionReason((Field) receiver);
+            return ReflectionSubstitutionSupport.singleton().getDeletionReason((Field) receiver);
         }
     }
 
     static class AnnotationsComputer extends ReflectionMetadataComputer {
         @Override
         public Object transform(Object receiver, Object originalValue) {
-            return ImageSingletons.lookup(EncodedReflectionMetadataSupplier.class).getAnnotationsEncoding((AccessibleObject) receiver);
+            return ImageSingletons.lookup(EncodedRuntimeMetadataSupplier.class).getAnnotationsEncoding((AccessibleObject) receiver);
         }
     }
 }

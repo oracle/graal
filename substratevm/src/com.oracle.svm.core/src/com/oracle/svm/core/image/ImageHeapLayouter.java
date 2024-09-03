@@ -43,11 +43,14 @@ public interface ImageHeapLayouter {
     void assignObjectToPartition(ImageHeapObject info, boolean immutable, boolean references, boolean relocatable);
 
     /**
-     * This method places all heap partitions as one contiguous memory block in one section. After
-     * calling that method, all native image heap objects are assigned their final address. This
-     * address must not change anymore.
+     * Places all heap partitions and assigns objects their final offsets.
      */
     ImageHeapLayoutInfo layout(ImageHeap imageHeap, int pageSize);
+
+    /** Hook to run tasks after heap layout is finished. */
+    @SuppressWarnings("unused")
+    default void afterLayout(ImageHeap imageHeap) {
+    }
 
     /**
      * Based on the layout decided during an earlier call to {@link #layout}, fill the image heap in

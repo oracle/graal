@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -63,5 +63,10 @@ public class BytecodeParserOptions {
 
     @Option(help = "Dump the current graph after every bci to IGV.", type = OptionType.Debug)
     public static final OptionKey<Boolean> DumpAfterEveryBCI = new OptionKey<>(false);
+
+
+    @Option(help = "Do not move allocations when the parser encounters allocations covered by an exception"
+                    + " handler for OutOfMemoryError.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> DoNotMoveAllocationsWithOOMEHandlers = new OptionKey<>(true);
     // @formatter:on
 }

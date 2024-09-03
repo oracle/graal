@@ -28,6 +28,8 @@ package jdk.graal.compiler.hotspot.replacements.arraycopy;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
@@ -39,8 +41,6 @@ import jdk.graal.compiler.nodes.memory.AbstractMemoryCheckpoint;
 import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
 import jdk.graal.compiler.nodes.spi.Lowerable;
 import jdk.graal.compiler.replacements.arraycopy.ArrayCopyCallNode;
-import org.graalvm.word.LocationIdentity;
-
 import jdk.vm.ci.meta.JavaKind;
 
 /**
@@ -51,11 +51,12 @@ import jdk.vm.ci.meta.JavaKind;
  * copied elements xor'd with {@code -1}. Users of this node are responsible for converting that
  * into the expected exception. A return value of {@code 0} indicates that the operation was
  * successful.
- *
- * @see CheckcastArrayCopyCallNode A {@link System#arraycopy} stub call node that performs a fast
- *      check cast.
- * @see ArrayCopyCallNode A {@link System#arraycopy} stub call node that calls specialized stubs
- *      based element type and memory properties.
+ * <p>
+ * See {@link CheckcastArrayCopyCallNode} for a {@link System#arraycopy} stub call node that
+ * performs a fast check cast.
+ * <p>
+ * See {@link ArrayCopyCallNode} for a {@link System#arraycopy} stub call node that calls
+ * specialized stubs based element type and memory properties.
  */
 @NodeInfo(allowedUsageTypes = {InputType.Memory, InputType.Value}, cycles = CYCLES_UNKNOWN, size = SIZE_UNKNOWN)
 public final class GenericArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lowerable, SingleMemoryKill {

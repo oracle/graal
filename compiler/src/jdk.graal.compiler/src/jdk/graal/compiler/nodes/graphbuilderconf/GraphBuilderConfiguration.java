@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,7 @@ import java.util.Collections;
 import java.util.List;
 
 import jdk.graal.compiler.core.common.type.StampPair;
-
+import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -169,6 +169,28 @@ public final class GraphBuilderConfiguration {
     private final boolean retainLocalVariables;
     private final Plugins plugins;
     private final boolean replaceLocalsWithConstants;
+    private final boolean usePreciseUnresolvedDeopts;
+    private final ExplicitOOMEExceptionEdges oomeExceptionEdges;
+    private final boolean alwaysSafeConstructors;
+
+    /**
+     * Constants controlling if exception edges are used in the scope of a try block with a catch
+     * clause for {@link OutOfMemoryError}.
+     */
+    public enum ExplicitOOMEExceptionEdges {
+        /**
+         * In this mode, allocation exception edges will be used if OOME handlers are found.
+         */
+        Default,
+        /**
+         * In this mode, allocation exception edges are unconditionally disabled.
+         */
+        DisableOOMEExceptionEdges,
+        /**
+         * In this mode, allocation exception edges are unconditionally enabled.
+         */
+        ForceOOMEExceptionEdges
+    }
 
     public enum BytecodeExceptionMode {
         /**
@@ -198,6 +220,9 @@ public final class GraphBuilderConfiguration {
                     boolean trackNodeSourcePosition,
                     boolean retainLocalVariables,
                     boolean replaceLocalsWithConstants,
+                    boolean usePreciseUnresolvedDeopts,
+                    ExplicitOOMEExceptionEdges oomeExceptionEdges,
+                    boolean alwaysSafeConstructors,
                     List<ResolvedJavaType> skippedExceptionTypes,
                     Plugins plugins) {
         this.eagerResolving = eagerResolving;
@@ -208,6 +233,9 @@ public final class GraphBuilderConfiguration {
         this.trackNodeSourcePosition = trackNodeSourcePosition;
         this.retainLocalVariables = retainLocalVariables;
         this.replaceLocalsWithConstants = replaceLocalsWithConstants;
+        this.usePreciseUnresolvedDeopts = usePreciseUnresolvedDeopts;
+        this.oomeExceptionEdges = oomeExceptionEdges;
+        this.alwaysSafeConstructors = alwaysSafeConstructors;
         this.skippedExceptionTypes = skippedExceptionTypes;
         this.plugins = plugins;
     }
@@ -227,6 +255,9 @@ public final class GraphBuilderConfiguration {
                         trackNodeSourcePosition,
                         retainLocalVariables,
                         replaceLocalsWithConstants,
+                        usePreciseUnresolvedDeopts,
+                        oomeExceptionEdges,
+                        alwaysSafeConstructors,
                         skippedExceptionTypes,
                         newPlugins);
         return result;
@@ -248,6 +279,9 @@ public final class GraphBuilderConfiguration {
                         trackNodeSourcePosition,
                         retainLocalVariables,
                         replaceLocalsWithConstants,
+                        usePreciseUnresolvedDeopts,
+                        oomeExceptionEdges,
+                        alwaysSafeConstructors,
                         skippedExceptionTypes,
                         plugins);
     }
@@ -262,6 +296,9 @@ public final class GraphBuilderConfiguration {
                         trackNodeSourcePosition,
                         retainLocalVariables,
                         replaceLocalsWithConstants,
+                        usePreciseUnresolvedDeopts,
+                        oomeExceptionEdges,
+                        alwaysSafeConstructors,
                         skippedExceptionTypes,
                         plugins);
     }
@@ -276,6 +313,9 @@ public final class GraphBuilderConfiguration {
                         trackNodeSourcePosition,
                         retainLocalVariables,
                         replaceLocalsWithConstants,
+                        usePreciseUnresolvedDeopts,
+                        oomeExceptionEdges,
+                        alwaysSafeConstructors,
                         Collections.unmodifiableList(Arrays.asList(newSkippedExceptionTypes)),
                         plugins);
     }
@@ -289,6 +329,9 @@ public final class GraphBuilderConfiguration {
                         trackNodeSourcePosition,
                         retainLocalVariables,
                         replaceLocalsWithConstants,
+                        usePreciseUnresolvedDeopts,
+                        oomeExceptionEdges,
+                        alwaysSafeConstructors,
                         skippedExceptionTypes,
                         plugins);
     }
@@ -303,6 +346,9 @@ public final class GraphBuilderConfiguration {
                         trackNodeSourcePosition,
                         retainLocalVariables,
                         replaceLocalsWithConstants,
+                        usePreciseUnresolvedDeopts,
+                        oomeExceptionEdges,
+                        alwaysSafeConstructors,
                         skippedExceptionTypes,
                         plugins);
     }
@@ -317,6 +363,9 @@ public final class GraphBuilderConfiguration {
                         trackNodeSourcePosition,
                         retainLocalVariables,
                         replaceLocalsWithConstants,
+                        usePreciseUnresolvedDeopts,
+                        oomeExceptionEdges,
+                        alwaysSafeConstructors,
                         skippedExceptionTypes,
                         plugins);
     }
@@ -331,6 +380,9 @@ public final class GraphBuilderConfiguration {
                         newTrackNodeSourcePosition,
                         retainLocalVariables,
                         replaceLocalsWithConstants,
+                        usePreciseUnresolvedDeopts,
+                        oomeExceptionEdges,
+                        alwaysSafeConstructors,
                         skippedExceptionTypes,
                         plugins);
     }
@@ -345,6 +397,60 @@ public final class GraphBuilderConfiguration {
                         trackNodeSourcePosition,
                         newRetainLocalVariables,
                         replaceLocalsWithConstants,
+                        usePreciseUnresolvedDeopts,
+                        oomeExceptionEdges,
+                        alwaysSafeConstructors,
+                        skippedExceptionTypes,
+                        plugins);
+    }
+
+    public GraphBuilderConfiguration withUsePreciseUnresolvedDeopts(boolean newUsePreciseUnresolvedDeopts) {
+        return new GraphBuilderConfiguration(
+                        eagerResolving,
+                        unresolvedIsError,
+                        bytecodeExceptionMode,
+                        omitAssertions,
+                        insertFullInfopoints,
+                        trackNodeSourcePosition,
+                        retainLocalVariables,
+                        replaceLocalsWithConstants,
+                        newUsePreciseUnresolvedDeopts,
+                        oomeExceptionEdges,
+                        alwaysSafeConstructors,
+                        skippedExceptionTypes,
+                        plugins);
+    }
+
+    public GraphBuilderConfiguration withOOMEExceptionEdges(ExplicitOOMEExceptionEdges newOomeExceptionEdges) {
+        return new GraphBuilderConfiguration(
+                        eagerResolving,
+                        unresolvedIsError,
+                        bytecodeExceptionMode,
+                        omitAssertions,
+                        insertFullInfopoints,
+                        trackNodeSourcePosition,
+                        retainLocalVariables,
+                        replaceLocalsWithConstants,
+                        usePreciseUnresolvedDeopts,
+                        newOomeExceptionEdges,
+                        alwaysSafeConstructors,
+                        skippedExceptionTypes,
+                        plugins);
+    }
+
+    public GraphBuilderConfiguration withAlwaysSafeConstructors() {
+        return new GraphBuilderConfiguration(
+                        eagerResolving,
+                        unresolvedIsError,
+                        bytecodeExceptionMode,
+                        omitAssertions,
+                        insertFullInfopoints,
+                        trackNodeSourcePosition,
+                        retainLocalVariables,
+                        replaceLocalsWithConstants,
+                        usePreciseUnresolvedDeopts,
+                        oomeExceptionEdges,
+                        true,
                         skippedExceptionTypes,
                         plugins);
     }
@@ -381,6 +487,22 @@ public final class GraphBuilderConfiguration {
         return this.replaceLocalsWithConstants;
     }
 
+    public ExplicitOOMEExceptionEdges oomeExceptionEdges() {
+        return this.oomeExceptionEdges;
+    }
+
+    public boolean alwaysSafeConstructors() {
+        return alwaysSafeConstructors;
+    }
+
+    /**
+     * Returns {@code true} if a graph must not contain {@link DeoptimizationReason#Unresolved}
+     * deopts that can float or may otherwise have an imprecise frame state.
+     */
+    public boolean usePreciseUnresolvedDeopts() {
+        return this.usePreciseUnresolvedDeopts;
+    }
+
     public static GraphBuilderConfiguration getDefault(Plugins plugins) {
         return new GraphBuilderConfiguration(
                         /* eagerResolving: */ false,
@@ -391,6 +513,9 @@ public final class GraphBuilderConfiguration {
                         /* trackNodeSourcePosition: */ false,
                         /* retainLocalVariables */ false,
                         /* replaceLocalsWithConstants */ false,
+                        /* usePreciseUnresolvedDeopts */ false,
+                        /* withoutOOMEExceptionEdges */ ExplicitOOMEExceptionEdges.Default,
+                        /* alwaysSafeConstructors */ false,
                         Collections.emptyList(),
                         plugins);
     }
@@ -405,6 +530,9 @@ public final class GraphBuilderConfiguration {
                         /* trackNodeSourcePosition: */ false,
                         /* retainLocalVariables */ false,
                         /* replaceLocalsWithConstants */ false,
+                        /* usePreciseUnresolvedDeopts */ false,
+                        /* withoutOOMEExceptionEdges */ ExplicitOOMEExceptionEdges.DisableOOMEExceptionEdges,
+                        /* alwaysSafeConstructors */ false,
                         Collections.emptyList(),
                         plugins);
     }

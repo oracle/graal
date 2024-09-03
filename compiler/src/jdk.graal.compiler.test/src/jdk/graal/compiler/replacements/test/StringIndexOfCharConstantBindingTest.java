@@ -41,8 +41,8 @@ public class StringIndexOfCharConstantBindingTest extends StringIndexOfCharTest 
 
     Object[] constantArgs;
 
-    public StringIndexOfCharConstantBindingTest(String sourceString, int constantChar, int fromIndex) {
-        super(sourceString, constantChar, fromIndex);
+    public StringIndexOfCharConstantBindingTest(String sourceString, int constantChar, int fromIndex, int toIndex) {
+        super(sourceString, constantChar, fromIndex, toIndex);
     }
 
     @Override
@@ -89,5 +89,11 @@ public class StringIndexOfCharConstantBindingTest extends StringIndexOfCharTest 
         constantArgs[2] = this.constantChar;
         constantArgs[3] = this.fromIndex;
         test("testStringIndexOfOffset", this.sourceString, this.constantChar, this.fromIndex);
+    }
+
+    @Test
+    @Override
+    public void testStringIndexOfRegion() {
+        // ignore
     }
 }

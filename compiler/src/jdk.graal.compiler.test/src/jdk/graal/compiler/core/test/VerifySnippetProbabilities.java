@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package jdk.graal.compiler.core.test;
 import java.lang.annotation.Annotation;
 
 import org.graalvm.collections.EconomicSet;
+
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.Snippet;
@@ -48,7 +49,6 @@ import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.phases.VerifyPhase;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -98,6 +98,7 @@ public class VerifySnippetProbabilities extends VerifyPhase<CoreProviders> {
                 }
             }
         }
+        final boolean isStatic = method.isStatic();
         for (Node n : graph.getNodes()) {
             if (n instanceof IfNode) {
                 IfNode ifNode = (IfNode) n;
@@ -145,7 +146,8 @@ public class VerifySnippetProbabilities extends VerifyPhase<CoreProviders> {
                                 break;
                             }
                         } else if (input instanceof ParameterNode) {
-                            if (specialParameters[((ParameterNode) input).index()]) {
+                            final int index = isStatic ? ((ParameterNode) input).index() : ((ParameterNode) input).index() - 1;
+                            if (specialParameters[index]) {
                                 // constant or non null parameter, ignore
                                 found = true;
                                 break;

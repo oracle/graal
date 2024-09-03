@@ -24,16 +24,18 @@
  */
 package jdk.graal.compiler.core.test;
 
+import org.junit.Assert;
+import org.junit.Test;
+
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.nodes.GuardNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.ConditionalEliminationPhase;
-import jdk.graal.compiler.phases.common.LoweringPhase;
 import jdk.graal.compiler.phases.common.HighTierLoweringPhase;
-import org.junit.Assert;
-import org.junit.Test;
+import jdk.graal.compiler.phases.common.LoweringPhase;
 
 /**
  * This test checks the combined action of {@link ConditionalEliminationPhase} and
@@ -92,8 +94,9 @@ public class ConditionalEliminationTest10 extends ConditionalEliminationTestBase
     private void test(String snippet, int guardCount) {
         StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
         CoreProviders context = getProviders();
-        new HighTierLoweringPhase(createCanonicalizerPhase()).apply(graph, context);
-        new ConditionalEliminationPhase(true).apply(graph, context);
+        CanonicalizerPhase c = createCanonicalizerPhase();
+        new HighTierLoweringPhase(c).apply(graph, context);
+        new ConditionalEliminationPhase(c, true).apply(graph, context);
         Assert.assertEquals(guardCount, graph.getNodes().filter(GuardNode.class).count());
     }
 }

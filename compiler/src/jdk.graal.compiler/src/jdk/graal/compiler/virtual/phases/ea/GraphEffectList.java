@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -382,13 +382,15 @@ public final class GraphEffectList extends EffectList {
                     if (node.hasUsages() && (replacementNode.stamp(NodeView.DEFAULT).tryImproveWith(node.stamp(NodeView.DEFAULT)) != null)) {
                         replacementNode = graph.unique(new PiNode(replacementNode, node.stamp(NodeView.DEFAULT)));
                     }
-                    node.replaceAtUsages(replacementNode);
-                    if (node instanceof WithExceptionNode) {
-                        GraphUtil.unlinkAndKillExceptionEdge((WithExceptionNode) node);
-                    } else if (node instanceof FixedWithNextNode) {
-                        GraphUtil.unlinkFixedNode((FixedWithNextNode) node);
+                    if (node != replacementNode) {
+                        node.replaceAtUsages(replacementNode);
+                        if (node instanceof WithExceptionNode) {
+                            GraphUtil.unlinkAndKillExceptionEdge((WithExceptionNode) node);
+                        } else if (node instanceof FixedWithNextNode) {
+                            GraphUtil.unlinkFixedNode((FixedWithNextNode) node);
+                        }
+                        obsoleteNodes.add(node);
                     }
-                    obsoleteNodes.add(node);
                 }
             }
 

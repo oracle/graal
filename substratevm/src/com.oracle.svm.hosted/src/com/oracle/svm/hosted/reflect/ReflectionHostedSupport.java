@@ -34,13 +34,14 @@ import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 
 public interface ReflectionHostedSupport {
     Map<Class<?>, Set<Class<?>>> getReflectionInnerClasses();
 
-    Map<AnalysisField, Field> getReflectionFields();
+    Map<AnalysisType, Map<AnalysisField, ConditionalRuntimeValue<Field>>> getReflectionFields();
 
-    Map<AnalysisMethod, Executable> getReflectionExecutables();
+    Map<AnalysisType, Map<AnalysisMethod, ConditionalRuntimeValue<Executable>>> getReflectionExecutables();
 
     Object getAccessor(AnalysisMethod method);
 
@@ -75,6 +76,14 @@ public interface ReflectionHostedSupport {
     Map<AnalysisType, Set<AnalysisMethod.Signature>> getNegativeMethodQueries();
 
     Map<AnalysisType, Set<AnalysisType[]>> getNegativeConstructorQueries();
+
+    Map<Class<?>, Throwable> getClassLookupErrors();
+
+    Map<Class<?>, Throwable> getFieldLookupErrors();
+
+    Map<Class<?>, Throwable> getMethodLookupErrors();
+
+    Map<Class<?>, Throwable> getConstructorLookupErrors();
 
     int getReflectionMethodsCount();
 

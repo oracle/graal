@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -38,8 +38,24 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.nfi.api.SignatureLibrary;
 
 public final class LLVMNativeCallUtils {
+
+    static Object callNativeFunction(boolean enabled, SignatureLibrary signatureLib, Object signature, Object function, Object[] nativeArgs, LLVMFunctionDescriptor descriptor) {
+        CompilerAsserts.partialEvaluationConstant(enabled);
+        if (enabled) {
+            if (descriptor != null) {
+                traceNativeCall(LLVMContext.get(signatureLib), descriptor);
+            }
+        }
+        try {
+            return signatureLib.call(signature, function, nativeArgs);
+        } catch (InteropException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw CompilerDirectives.shouldNotReachHere("Exception thrown by a callback during the native call " + function + argsToString(nativeArgs), e);
+        }
+    }
 
     static Object callNativeFunction(boolean enabled, InteropLibrary nativeCall, Object function, Object[] nativeArgs, LLVMFunctionDescriptor descriptor) {
         CompilerAsserts.partialEvaluationConstant(enabled);

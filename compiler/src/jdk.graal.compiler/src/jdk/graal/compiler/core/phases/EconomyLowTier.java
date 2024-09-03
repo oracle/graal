@@ -31,6 +31,8 @@ import jdk.graal.compiler.phases.common.BarrierSetVerificationPhase;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.ExpandLogicPhase;
 import jdk.graal.compiler.phases.common.LowTierLoweringPhase;
+import jdk.graal.compiler.phases.common.RemoveOpaqueValuePhase;
+import jdk.graal.compiler.phases.common.TransplantGraphsPhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.graal.compiler.phases.tiers.LowTierContext;
 
@@ -51,7 +53,9 @@ public class EconomyLowTier extends BaseTier<LowTierContext> {
          * specific to the target architecture for this compilation. This should be done by the
          * backend or the target specific suites provider.
          */
-        appendPhase(new PlaceholderPhase<LowTierContext>(AddressLoweringPhase.class));
-        appendPhase(new SchedulePhase(SchedulePhase.SchedulingStrategy.LATEST_OUT_OF_LOOPS));
+        appendPhase(new PlaceholderPhase<>(AddressLoweringPhase.class));
+        appendPhase(new RemoveOpaqueValuePhase());
+        appendPhase(new SchedulePhase.FinalSchedulePhase());
+        appendPhase(new PlaceholderPhase<>(TransplantGraphsPhase.class));
     }
 }

@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.function.Function;
 
 import org.graalvm.nativeimage.ImageInfo;
@@ -262,7 +263,7 @@ public final class EspressoOptions {
         @Override
         public SpecComplianceMode apply(String s) {
             try {
-                return SpecComplianceMode.valueOf(s.toUpperCase());
+                return SpecComplianceMode.valueOf(s.toUpperCase(Locale.ROOT));
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException("--java.SpecCompliance: Mode can be 'strict' or 'hotspot'.");
             }
@@ -285,7 +286,7 @@ public final class EspressoOptions {
         @Override
         public VerifyMode apply(String s) {
             try {
-                return VerifyMode.valueOf(s.toUpperCase());
+                return VerifyMode.valueOf(s.toUpperCase(Locale.ROOT));
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException("-Xverify: Mode can be 'none', 'remote' or 'all'.");
             }
@@ -298,6 +299,12 @@ public final class EspressoOptions {
                     usageSyntax = "remote|none|all" //
     ) //
     public static final OptionKey<VerifyMode> Verify = new OptionKey<>(VerifyMode.REMOTE, VERIFY_MODE_OPTION_TYPE);
+
+    @Option(help = "Replace regular expression engine with a TRegex implementation.", //
+                    category = OptionCategory.USER, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "true|false") //
+    public static final OptionKey<Boolean> UseTRegex = new OptionKey<>(false);
 
     @Option(help = "Speculatively inline field accessors.", //
                     category = OptionCategory.EXPERT, //
@@ -341,7 +348,7 @@ public final class EspressoOptions {
                 return LivenessAnalysisMode.NONE;
             }
             try {
-                return LivenessAnalysisMode.valueOf(s.toUpperCase());
+                return LivenessAnalysisMode.valueOf(s.toUpperCase(Locale.ROOT));
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException("--java.LivenessAnalysis can only be 'none'|'false', 'auto' or 'all'|'true'.");
             }
@@ -638,7 +645,7 @@ public final class EspressoOptions {
                         @Override
                         public JImageMode apply(String s) {
                             try {
-                                return JImageMode.valueOf(s.toUpperCase());
+                                return JImageMode.valueOf(s.toUpperCase(Locale.ROOT));
                             } catch (IllegalArgumentException e) {
                                 throw new IllegalArgumentException("JImage: Mode can be 'native', 'java'.");
                             }
@@ -660,6 +667,35 @@ public final class EspressoOptions {
                     stability = OptionStability.EXPERIMENTAL, //
                     usageSyntax = "false|true") //
     public static final OptionKey<Boolean> WhiteBoxAPI = new OptionKey<>(false);
+
+    public enum GuestFieldOffsetStrategyEnum {
+        safety,
+        compact,
+        graal
+    }
+
+    @Option(help = "Guest field offset strategy. The safety strategy will help catch some wrong usages of the unsafe API.", //
+                    category = OptionCategory.INTERNAL, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "safety|compact|graal") //
+    public static final OptionKey<GuestFieldOffsetStrategyEnum> GuestFieldOffsetStrategy = new OptionKey<>(GuestFieldOffsetStrategyEnum.safety);
+
+    @Option(help = "Selects a specific runtime resource id (espresso-runtime-resource-<id>).", //
+                    category = OptionCategory.EXPERT, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "jdk21|openjdk21|...") //
+    public static final OptionKey<String> RuntimeResourceId = new OptionKey<>("");
+
+    @Option(help = "Enables the Continuum API.", //
+                    category = OptionCategory.USER, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "false|true") //
+    public static final OptionKey<Boolean> Continuum = new OptionKey<>(false);
+
+    @Option(help = "Forces frame analysis to run for all loaded classes. Used for testing.", //
+                    category = OptionCategory.INTERNAL, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "false|true") public static final OptionKey<Boolean> EagerFrameAnalysis = new OptionKey<>(false);
 
     // These are host properties e.g. use --vm.Despresso.DebugCounters=true .
     public static final boolean DebugCounters = booleanProperty("espresso.DebugCounters", false);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,6 +37,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
@@ -70,15 +71,18 @@ import com.oracle.svm.core.VM;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.jdk.Resources;
+import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
+import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
+import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
-import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.OptionMigrationMessage;
 import com.oracle.svm.core.option.OptionOrigin;
+import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.hosted.ProgressReporterFeature.UserRecommendation;
 import com.oracle.svm.hosted.ProgressReporterJsonHelper.AnalysisResults;
 import com.oracle.svm.hosted.ProgressReporterJsonHelper.GeneralInfo;
@@ -93,14 +97,15 @@ import com.oracle.svm.hosted.util.DiagnosticUtils;
 import com.oracle.svm.hosted.util.JDKArgsUtils;
 import com.oracle.svm.hosted.util.VMErrorReporter;
 import com.oracle.svm.util.ImageBuildStatistics;
+import com.sun.management.OperatingSystemMXBean;
 
 import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionStability;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.graal.compiler.util.json.JsonWriter;
 
-public class ProgressReporter {
+public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
     private static final boolean IS_CI = SubstrateUtil.isRunningInCI();
     private static final int CHARACTERS_PER_LINE;
     private static final String HEADLINE_SEPARATOR;
@@ -118,10 +123,8 @@ public class ProgressReporter {
     private final StagePrinter<?> stagePrinter;
     private final ColorStrategy colorStrategy;
     private final LinkStrategy linkStrategy;
-    private final boolean usePrefix;
     private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
 
-    private String outputPrefix = "";
     private long lastGCCheckTimeMillis = System.currentTimeMillis();
     private GCStats lastGCStats = GCStats.getCurrent();
     private long numRuntimeCompiledMethods = -1;
@@ -129,6 +132,7 @@ public class ProgressReporter {
     private int numJNIFields = -1;
     private int numJNIMethods = -1;
     private int numForeignDowncalls = -1;
+    private int numForeignUpcalls = -1;
     private Timer debugInfoTimer;
     private boolean creationStageEndCompleted = false;
 
@@ -180,7 +184,6 @@ public class ProgressReporter {
             builderIO = NativeImageSystemIOWrappers.singleton();
         }
         jsonHelper = new ProgressReporterJsonHelper();
-        usePrefix = SubstrateOptions.BuildOutputPrefix.getValue(options);
 
         boolean enableColors = SubstrateOptions.hasColorsEnabled(options);
         colorStrategy = enableColors ? new ColorfulStrategy() : new ColorlessStrategy();
@@ -198,19 +201,15 @@ public class ProgressReporter {
         numJNIMethods = numMethods;
     }
 
-    public void setForeignFunctionsInfo(int numDowncalls) {
-        this.numForeignDowncalls = numDowncalls;
+    public void setForeignFunctionsInfo(int numDowncallStubs, int numUpcallStubs) {
+        this.numForeignDowncalls = numDowncallStubs;
+        this.numForeignUpcalls = numUpcallStubs;
     }
 
     public void printStart(String imageName, NativeImageKind imageKind) {
-        if (usePrefix) {
-            // Add the PID to further disambiguate concurrent builds of images with the same name
-            outputPrefix = String.format("[%s:%s] ", imageName, GraalServices.getExecutionID());
-            stagePrinter.progressBarStart += outputPrefix.length();
-        }
         l().printHeadlineSeparator();
         recordJsonMetric(GeneralInfo.IMAGE_NAME, imageName);
-        String imageKindName = imageKind.name().toLowerCase().replace('_', ' ');
+        String imageKindName = imageKind.name().toLowerCase(Locale.ROOT).replace('_', ' ');
         l().blueBold().link("GraalVM Native Image", "https://www.graalvm.org/native-image/").reset()
                         .a(": Generating '").bold().a(imageName).reset().a("' (").doclink(imageKindName, "#glossary-imagekind").a(")...").println();
         l().printHeadlineSeparator();
@@ -353,16 +352,15 @@ public class ProgressReporter {
                 continue;
             }
             String origins = "";
-            /* The first extra help item is used for migration messages of options. */
-            String migrationMessage = descriptor.getExtraHelp().isEmpty() ? "" : descriptor.getExtraHelp().getFirst();
+            String migrationMessage = OptionUtils.getAnnotationsByType(descriptor, OptionMigrationMessage.class).stream().map(a -> a.value()).collect(Collectors.joining(". "));
             String alternatives = "";
 
-            if (optionValue instanceof LocatableMultiOptionValue<?> lmov) {
-                if (lmov.getValuesWithOrigins().allMatch(o -> o.getRight().isStable())) {
+            if (optionValue instanceof AccumulatingLocatableMultiOptionValue<?> lmov) {
+                if (lmov.getValuesWithOrigins().allMatch(o -> o.origin().isStable())) {
                     continue;
                 } else {
-                    origins = lmov.getValuesWithOrigins().filter(p -> !isStableOrInternalOrigin(p.getRight())).map(p -> p.getRight().toString()).collect(Collectors.joining(", "));
-                    alternatives = lmov.getValuesWithOrigins().map(p -> SubstrateOptionsParser.commandArgument(option, p.getLeft().toString()))
+                    origins = lmov.getValuesWithOrigins().filter(p -> !isStableOrInternalOrigin(p.origin())).map(p -> p.origin().toString()).distinct().collect(Collectors.joining(", "));
+                    alternatives = lmov.getValuesWithOrigins().map(p -> SubstrateOptionsParser.commandArgument(option, p.value().toString()))
                                     .filter(c -> !c.startsWith(CommonOptionParser.HOSTED_OPTION_PREFIX))
                                     .collect(Collectors.joining(", "));
                 }
@@ -479,7 +477,12 @@ public class ProgressReporter {
     private void printAnalysisStatistics(AnalysisUniverse universe, Collection<String> libraries) {
         String actualFormat = "%,9d ";
         String totalFormat = " (%4.1f%% of %,8d total)";
-        long reachableTypes = universe.getTypes().stream().filter(AnalysisType::isReachable).count();
+        long reachableTypes;
+        if (universe.hostVM().useBaseLayer()) {
+            reachableTypes = universe.getTypes().stream().filter(AnalysisType::isReachable).filter(t -> !t.isInBaseLayer()).count();
+        } else {
+            reachableTypes = universe.getTypes().stream().filter(AnalysisType::isReachable).count();
+        }
         long totalTypes = universe.getTypes().size();
         recordJsonMetric(AnalysisResults.TYPES_TOTAL, totalTypes);
         recordJsonMetric(AnalysisResults.DEPRECATED_CLASS_TOTAL, totalTypes);
@@ -488,14 +491,24 @@ public class ProgressReporter {
         l().a(actualFormat, reachableTypes).doclink("reachable types", "#glossary-reachability").a("  ")
                         .a(totalFormat, Utils.toPercentage(reachableTypes, totalTypes), totalTypes).println();
         Collection<AnalysisField> fields = universe.getFields();
-        long reachableFields = fields.stream().filter(AnalysisField::isAccessed).count();
+        long reachableFields;
+        if (universe.hostVM().useBaseLayer()) {
+            reachableFields = fields.stream().filter(AnalysisField::isAccessed).filter(f -> !f.isInBaseLayer()).count();
+        } else {
+            reachableFields = fields.stream().filter(AnalysisField::isAccessed).count();
+        }
         int totalFields = fields.size();
         recordJsonMetric(AnalysisResults.FIELD_TOTAL, totalFields);
         recordJsonMetric(AnalysisResults.FIELD_REACHABLE, reachableFields);
         l().a(actualFormat, reachableFields).doclink("reachable fields", "#glossary-reachability").a(" ")
                         .a(totalFormat, Utils.toPercentage(reachableFields, totalFields), totalFields).println();
         Collection<AnalysisMethod> methods = universe.getMethods();
-        long reachableMethods = methods.stream().filter(AnalysisMethod::isReachable).count();
+        long reachableMethods;
+        if (universe.hostVM().useBaseLayer()) {
+            reachableMethods = methods.stream().filter(AnalysisMethod::isReachable).filter(m -> !m.isInBaseLayer()).count();
+        } else {
+            reachableMethods = methods.stream().filter(AnalysisMethod::isReachable).count();
+        }
         int totalMethods = methods.size();
         recordJsonMetric(AnalysisResults.METHOD_TOTAL, totalMethods);
         recordJsonMetric(AnalysisResults.METHOD_REACHABLE, reachableMethods);
@@ -507,7 +520,7 @@ public class ProgressReporter {
                             .a(totalFormat, Utils.toPercentage(numRuntimeCompiledMethods, totalMethods), totalMethods).println();
         }
         String typesFieldsMethodFormat = "%,9d types, %,5d fields, and %,5d methods ";
-        int reflectClassesCount = ClassForNameSupport.count();
+        int reflectClassesCount = ClassForNameSupport.singleton().count();
         ReflectionHostedSupport rs = ImageSingletons.lookup(ReflectionHostedSupport.class);
         int reflectFieldsCount = rs.getReflectionFieldsCount();
         int reflectMethodsCount = rs.getReflectionMethodsCount();
@@ -525,10 +538,12 @@ public class ProgressReporter {
             l().a(typesFieldsMethodFormat, numJNIClasses, numJNIFields, numJNIMethods)
                             .doclink("registered for JNI access", "#glossary-jni-access-registrations").println();
         }
+        String stubsFormat = "%,9d downcalls and %,d upcalls ";
         recordJsonMetric(AnalysisResults.FOREIGN_DOWNCALLS, (numForeignDowncalls >= 0 ? numForeignDowncalls : UNAVAILABLE_METRIC));
-        if (numForeignDowncalls >= 0) {
-            l().a("%,8d ", numForeignDowncalls)
-                            .doclink("foreign downcalls registered", "#glossary-foreign-downcall-registrations").println();
+        recordJsonMetric(AnalysisResults.FOREIGN_UPCALLS, (numForeignUpcalls >= 0 ? numForeignUpcalls : UNAVAILABLE_METRIC));
+        if (numForeignDowncalls >= 0 || numForeignUpcalls >= 0) {
+            l().a(stubsFormat, numForeignDowncalls, numForeignUpcalls)
+                            .doclink("registered for foreign access", "#glossary-foreign-downcall-and-upcall-registrations").println();
         }
         int numLibraries = libraries.size();
         if (numLibraries > 0) {
@@ -681,26 +696,30 @@ public class ProgressReporter {
         l().yellowBold().a("Recommendations:").reset().println();
         for (UserRecommendation r : topApplicableRecommendations) {
             String alignment = Utils.stringFilledWith(Math.max(1, 5 - r.id().length()), " ");
-            l().a(" ").doclink(r.id(), "#recommendation-" + r.id().toLowerCase()).a(":").a(alignment).a(r.description()).println();
+            l().a(" ").doclink(r.id(), "#recommendation-" + r.id().toLowerCase(Locale.ROOT)).a(":").a(alignment).a(r.description()).println();
         }
     }
 
-    public void printEpilog(Optional<String> optionalImageName, Optional<NativeImageGenerator> optionalGenerator, ImageClassLoader classLoader, Optional<Throwable> optionalError,
-                    OptionValues parsedHostedOptions) {
+    public void printEpilog(Optional<String> optionalImageName, Optional<NativeImageGenerator> optionalGenerator, ImageClassLoader classLoader, boolean wasSuccessfulBuild,
+                    Optional<Throwable> optionalUnhandledThrowable, OptionValues parsedHostedOptions) {
         executor.shutdown();
 
-        if (optionalError.isPresent()) {
+        boolean singletonSupportAvailable = ImageSingletonsSupport.isInstalled() && ImageSingletons.contains(BuildArtifacts.class) && ImageSingletons.contains(TimerCollection.class);
+        if (optionalUnhandledThrowable.isPresent()) {
             Path errorReportPath = NativeImageOptions.getErrorFilePath(parsedHostedOptions);
             Optional<FeatureHandler> featureHandler = optionalGenerator.map(nativeImageGenerator -> nativeImageGenerator.featureHandler);
-            ReportUtils.report("GraalVM Native Image Error Report", errorReportPath, p -> VMErrorReporter.generateErrorReport(p, buildOutputLog, classLoader, featureHandler, optionalError.get()),
+            ReportUtils.report("GraalVM Native Image Error Report", errorReportPath,
+                            p -> VMErrorReporter.generateErrorReport(p, buildOutputLog, classLoader, featureHandler, optionalUnhandledThrowable.get()),
                             false);
-            if (ImageSingletonsSupport.isInstalled()) {
-                BuildArtifacts.singleton().add(ArtifactType.BUILD_INFO, errorReportPath);
+            if (!singletonSupportAvailable) {
+                printErrorMessage(optionalUnhandledThrowable, parsedHostedOptions);
+                return;
             }
+            BuildArtifacts.singleton().add(ArtifactType.BUILD_INFO, errorReportPath);
         }
 
-        if (optionalImageName.isEmpty() || optionalGenerator.isEmpty()) {
-            printErrorMessage(optionalError, parsedHostedOptions);
+        if (!singletonSupportAvailable || optionalImageName.isEmpty() || optionalGenerator.isEmpty()) {
+            printErrorMessage(optionalUnhandledThrowable, parsedHostedOptions);
             return;
         }
         String imageName = optionalImageName.get();
@@ -712,8 +731,8 @@ public class ProgressReporter {
         double totalSeconds = Utils.millisToSeconds(getTimer(TimerCollection.Registry.TOTAL).getTotalTime());
         recordJsonMetric(ResourceUsageKey.TOTAL_SECS, totalSeconds);
 
-        createAdditionalArtifacts(imageName, generator, optionalError, parsedHostedOptions);
-        printArtifacts(generator.getBuildArtifacts());
+        createAdditionalArtifacts(imageName, generator, wasSuccessfulBuild, parsedHostedOptions);
+        printArtifacts(BuildArtifacts.singleton());
 
         l().printHeadlineSeparator();
 
@@ -723,26 +742,26 @@ public class ProgressReporter {
         } else {
             timeStats = String.format("%dm %ds", (int) totalSeconds / 60, (int) totalSeconds % 60);
         }
-        l().a(optionalError.isEmpty() ? "Finished" : "Failed").a(" generating '").bold().a(imageName).reset().a("' ")
-                        .a(optionalError.isEmpty() ? "in" : "after").a(" ").a(timeStats).a(".").println();
+        l().a(wasSuccessfulBuild ? "Finished" : "Failed").a(" generating '").bold().a(imageName).reset().a("' ")
+                        .a(wasSuccessfulBuild ? "in" : "after").a(" ").a(timeStats).a(".").println();
 
-        printErrorMessage(optionalError, parsedHostedOptions);
+        printErrorMessage(optionalUnhandledThrowable, parsedHostedOptions);
     }
 
-    private void printErrorMessage(Optional<Throwable> optionalError, OptionValues parsedHostedOptions) {
-        if (optionalError.isEmpty()) {
+    private void printErrorMessage(Optional<Throwable> optionalUnhandledThrowable, OptionValues parsedHostedOptions) {
+        if (optionalUnhandledThrowable.isEmpty()) {
             return;
         }
-        Throwable error = optionalError.get();
+        Throwable unhandledThrowable = optionalUnhandledThrowable.get();
         l().println();
         l().redBold().a("The build process encountered an unexpected error:").reset().println();
         if (NativeImageOptions.ReportExceptionStackTraces.getValue(parsedHostedOptions)) {
             l().dim().println();
-            error.printStackTrace(builderIO.getOut());
+            unhandledThrowable.printStackTrace(builderIO.getOut());
             l().reset().println();
         } else {
             l().println();
-            l().dim().a("> %s", error).reset().println();
+            l().dim().a("> %s", unhandledThrowable).reset().println();
             l().println();
             l().a("Please inspect the generated error report at:").println();
             l().link(NativeImageOptions.getErrorFilePath(parsedHostedOptions)).println();
@@ -753,32 +772,36 @@ public class ProgressReporter {
         }
     }
 
-    private void createAdditionalArtifacts(String imageName, NativeImageGenerator generator, Optional<Throwable> error, OptionValues parsedHostedOptions) {
+    private void createAdditionalArtifacts(String imageName, NativeImageGenerator generator, boolean wasSuccessfulBuild, OptionValues parsedHostedOptions) {
         BuildArtifacts artifacts = BuildArtifacts.singleton();
+        if (wasSuccessfulBuild) {
+            createAdditionalArtifactsOnSuccess(artifacts, generator, parsedHostedOptions);
+        }
+        BuildArtifactsExporter.run(imageName, artifacts);
+    }
+
+    private void createAdditionalArtifactsOnSuccess(BuildArtifacts artifacts, NativeImageGenerator generator, OptionValues parsedHostedOptions) {
         Optional<Path> buildOutputJSONFile = SubstrateOptions.BuildOutputJSONFile.getValue(parsedHostedOptions).lastValue();
-        if (error.isEmpty() && buildOutputJSONFile.isPresent()) {
+        if (buildOutputJSONFile.isPresent()) {
             artifacts.add(ArtifactType.BUILD_INFO, reportBuildOutput(buildOutputJSONFile.get()));
         }
         if (generator.getBigbang() != null && ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(parsedHostedOptions)) {
             artifacts.add(ArtifactType.BUILD_INFO, reportImageBuildStatistics());
         }
-        if (error.isEmpty()) {
-            ImageSingletons.lookup(ProgressReporterFeature.class).createAdditionalArtifacts(artifacts);
-        }
-        BuildArtifactsExporter.run(imageName, artifacts, generator.getBuildArtifacts());
+        ImageSingletons.lookup(ProgressReporterFeature.class).createAdditionalArtifactsOnSuccess(artifacts);
     }
 
-    private void printArtifacts(Map<ArtifactType, List<Path>> artifacts) {
+    private void printArtifacts(BuildArtifacts artifacts) {
         if (artifacts.isEmpty()) {
             return;
         }
         l().printLineSeparator();
-        l().yellowBold().a("Produced artifacts:").reset().println();
+        l().yellowBold().doclink("Build artifacts", "#glossary-build-artifacts").a(":").reset().println();
         // Use TreeMap to sort paths alphabetically.
         Map<Path, List<String>> pathToTypes = new TreeMap<>();
         artifacts.forEach((artifactType, paths) -> {
             for (Path path : paths) {
-                pathToTypes.computeIfAbsent(path, p -> new ArrayList<>()).add(artifactType.name().toLowerCase());
+                pathToTypes.computeIfAbsent(path, p -> new ArrayList<>()).add(artifactType.name().toLowerCase(Locale.ROOT));
             }
         });
         pathToTypes.forEach((path, typeNames) -> l().a(" ").link(path).dim().a(" (").a(String.join(", ", typeNames)).a(")").reset().println());
@@ -857,8 +880,8 @@ public class ProgressReporter {
         return TimerCollection.singleton().get(type);
     }
 
-    private static com.sun.management.OperatingSystemMXBean getOperatingSystemMXBean() {
-        return (com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
+    private static OperatingSystemMXBean getOperatingSystemMXBean() {
+        return (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
     }
 
     private static class Utils {
@@ -1058,7 +1081,7 @@ public class ProgressReporter {
      * Start printing a new line.
      */
     public DirectPrinter l() {
-        return linePrinter.a(outputPrefix);
+        return linePrinter;
     }
 
     public CenteredTextPrinter centered() {
@@ -1140,7 +1163,7 @@ public class ProgressReporter {
     }
 
     abstract class StagePrinter<T extends StagePrinter<T>> extends LinePrinter<T> {
-        private int progressBarStart = 30;
+        private static final int PROGRESS_BAR_START = 30;
         private BuildStage activeBuildStage = null;
 
         private ScheduledFuture<?> periodicPrintingTask;
@@ -1178,12 +1201,12 @@ public class ProgressReporter {
         }
 
         private void appendStageStart() {
-            a(outputPrefix).blue().a(String.format("[%s/%s] ", 1 + activeBuildStage.ordinal(), BuildStage.NUM_STAGES)).reset()
-                            .blueBold().doclink(activeBuildStage.message, "#stage-" + activeBuildStage.name().toLowerCase()).a("...").reset();
+            blue().a(String.format("[%s/%s] ", 1 + activeBuildStage.ordinal(), BuildStage.NUM_STAGES)).reset()
+                            .blueBold().doclink(activeBuildStage.message, "#stage-" + activeBuildStage.name().toLowerCase(Locale.ROOT)).a("...").reset();
         }
 
         final String progressBarStartPadding() {
-            return Utils.stringFilledWith(progressBarStart - getCurrentTextLength(), " ");
+            return Utils.stringFilledWith(PROGRESS_BAR_START - getCurrentTextLength(), " ");
         }
 
         void reportProgress() {
@@ -1330,12 +1353,6 @@ public class ProgressReporter {
             assert getCurrentTextLength() == CHARACTERS_PER_LINE / 2;
             return this;
         }
-
-        @Override
-        void flushln() {
-            print(outputPrefix);
-            super.flushln();
-        }
     }
 
     public final class CenteredTextPrinter extends LinePrinter<CenteredTextPrinter> {
@@ -1346,7 +1363,6 @@ public class ProgressReporter {
 
         @Override
         public void flushln() {
-            print(outputPrefix);
             String padding = Utils.stringFilledWith((Math.max(0, CHARACTERS_PER_LINE - getCurrentTextLength())) / 2, " ");
             print(padding);
             super.flushln();

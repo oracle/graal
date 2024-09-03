@@ -24,6 +24,11 @@
  */
 package jdk.graal.compiler.loop.phases;
 
+import java.util.Optional;
+
+import jdk.graal.compiler.nodes.GraphState;
+import jdk.graal.compiler.nodes.GraphState.StageFlag;
+import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.loop.LoopPolicies;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
@@ -40,5 +45,16 @@ public abstract class LoopPhase<P extends LoopPolicies> extends PostRunCanonical
 
     protected P getPolicies() {
         return policies;
+    }
+
+    @Override
+    public boolean shouldApply(StructuredGraph graph) {
+        return graph.hasLoops();
+    }
+
+    @Override
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return NotApplicable.ifAny(super.notApplicableTo(graphState),
+                        NotApplicable.unlessRunAfter(this, StageFlag.LOOP_OVERFLOWS_CHECKED, graphState));
     }
 }

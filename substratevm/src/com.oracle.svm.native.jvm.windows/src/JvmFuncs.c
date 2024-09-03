@@ -233,10 +233,15 @@ JNIEXPORT jobject JNICALL JVM_DoPrivileged(JNIEnv *env, jclass cls, jobject acti
             return (*env)->CallObjectMethod(env, action, run);
         }
     }
+
+    /* Some error occurred - clear pending exception and try to report the error. */
+    (*env)->ExceptionClear(env);
+
     errorClass = (*env)->FindClass(env, "java/lang/InternalError");
     if (errorClass != NULL && !(*env)->ExceptionCheck(env)) {
         (*env)->ThrowNew(env, errorClass, "Could not invoke PrivilegedAction");
     } else {
+        (*env)->ExceptionClear(env);
         (*env)->FatalError(env, "PrivilegedAction could not be invoked and the error could not be reported");
     }
     return NULL;

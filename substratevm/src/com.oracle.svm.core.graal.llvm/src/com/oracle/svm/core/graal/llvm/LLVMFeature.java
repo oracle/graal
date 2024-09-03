@@ -27,12 +27,6 @@ package com.oracle.svm.core.graal.llvm;
 import java.nio.file.Path;
 import java.util.Map;
 
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.nodes.java.LoadExceptionObjectNode;
-import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.phases.util.Providers;
-import jdk.graal.compiler.replacements.TargetGraphBuilderPlugins;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -58,6 +52,7 @@ import com.oracle.svm.core.graal.llvm.runtime.LLVMExceptionUnwind;
 import com.oracle.svm.core.graal.llvm.util.LLVMOptions;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
+import com.oracle.svm.core.layeredimagesingleton.UnsupportedLayeredSingleton;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.snippets.ExceptionUnwind;
 import com.oracle.svm.core.util.UserError;
@@ -72,6 +67,13 @@ import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.image.ObjectFileFactory;
 import com.oracle.svm.util.ModuleSupport;
 
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodes.java.LoadExceptionObjectNode;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.TargetGraphBuilderPlugins;
+
 /*
  * This feature enables the LLVM backend of Native Image. It does so by registering the backend,
  * lowerings, code cache and exception handling mechanism required to emit LLVM bitcode
@@ -79,7 +81,7 @@ import com.oracle.svm.util.ModuleSupport;
  */
 @AutomaticallyRegisteredFeature
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-public class LLVMFeature implements Feature, InternalFeature {
+public class LLVMFeature implements Feature, InternalFeature, UnsupportedLayeredSingleton {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {

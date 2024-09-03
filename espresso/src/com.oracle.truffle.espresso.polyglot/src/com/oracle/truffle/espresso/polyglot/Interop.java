@@ -41,6 +41,7 @@
 
 package com.oracle.truffle.espresso.polyglot;
 
+import java.math.BigInteger;
 import java.nio.ByteOrder;
 
 /**
@@ -250,6 +251,20 @@ public final class Interop {
     public static native boolean fitsInDouble(Object receiver);
 
     /**
+     * Returns <code>true</code> if the receiver represents a <code>number</code> and its value fits
+     * in a Java BigInteger without loss of precision, else <code>false</code>. Invoking this
+     * message does not cause any observable side-effects.
+     *
+     * Foreign objects for which this method returns <code>true</code>, can be
+     * {@link Polyglot#cast(Class, Object) polyglot-casted} as <code>BigInteger</code>.
+     *
+     * @see #isNumber(Object)
+     * @see #asBigInteger(Object)
+     * @since 24.0
+     */
+    public static native boolean fitsInBigInteger(Object receiver);
+
+    /**
      * Returns the receiver value as Java byte primitive if the number fits without loss of
      * precision. Invoking this message does not cause any observable side-effects.
      *
@@ -320,6 +335,18 @@ public final class Interop {
      * @since 21.0
      */
     public static native double asDouble(Object receiver) throws UnsupportedMessageException;
+
+    /**
+     * Returns the receiver value as Java BigInteger primitive if the number fits without loss of
+     * precision. Invoking this message does not cause any observable side-effects.
+     *
+     * @throws UnsupportedMessageException if and only if the receiver is not a
+     *             {@link #isNumber(Object)} or it does not fit without loss of precision.
+     * @see #isNumber(Object)
+     * @see #fitsInBigInteger(Object)
+     * @since 24.0
+     */
+    public static native BigInteger asBigInteger(Object receiver) throws UnsupportedMessageException;
 
     // endregion Number Messages
 
@@ -1437,6 +1464,26 @@ public final class Interop {
     public static native long getBufferSize(Object receiver) throws UnsupportedMessageException;
 
     /**
+     * Reads bytes from the receiver object into the specified byte array.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this message does not cause any observable side-effects.
+     *
+     * @param byteOffset offset in the buffer to start reading from.
+     * @param destination byte array to write the read bytes into.
+     * @param destinationOffset offset in the destination array to start writing from.
+     * @param length number of bytes to read.
+     * @throws InvalidBufferOffsetException if and only if
+     *             <code>byteOffset &lt; 0 || length &lt; 0 || byteOffset + length > </code>{@link #getBufferSize(Object)}
+     * @throws UnsupportedMessageException if and only if {@link #hasBufferElements(Object)} returns
+     *             {@code false}
+     * @since 24.0
+     */
+    public static native void readBuffer(Object receiver, long byteOffset, byte[] destination, int destinationOffset, int length) throws InvalidBufferOffsetException, UnsupportedMessageException;
+
+    /**
      * Reads the byte from the receiver object at the given byte offset from the start of the
      * buffer.
      * <p>
@@ -1447,7 +1494,7 @@ public final class Interop {
      *
      * @return the byte at the given index
      * @throws InvalidBufferOffsetException if and only if
-     *             <code>byteOffset < 0 || byteOffset >= </code>{@link #getBufferSize(Object)}
+     *             <code>byteOffset &lt; 0 || byteOffset >= </code>{@link #getBufferSize(Object)}
      * @throws UnsupportedMessageException if and only if either {@link #hasBufferElements(Object)}
      *             returns {@code false} returns {@code false}
      * @since 21.1
@@ -1462,7 +1509,7 @@ public final class Interop {
      * thread-safe.
      *
      * @throws InvalidBufferOffsetException if and only if
-     *             <code>byteOffset < 0 || byteOffset >= </code>{@link #getBufferSize(Object)}
+     *             <code>byteOffset &lt; 0 || byteOffset >= </code>{@link #getBufferSize(Object)}
      * @throws UnsupportedMessageException if and only if either {@link #hasBufferElements(Object)}
      *             or {@link #isBufferWritable} returns {@code false}
      * @since 21.1
@@ -1482,7 +1529,7 @@ public final class Interop {
      *
      * @return the short at the given byte offset from the start of the buffer
      * @throws InvalidBufferOffsetException if and only if
-     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 1</code>
+     *             <code>byteOffset &lt; 0 || byteOffset >= {@link #getBufferSize(Object)} - 1</code>
      * @throws UnsupportedMessageException if and only if {@link #hasBufferElements(Object)} returns
      *             {@code false}
      * @since 21.1
@@ -1499,7 +1546,7 @@ public final class Interop {
      * thread-safe.
      *
      * @throws InvalidBufferOffsetException if and only if
-     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 1</code>
+     *             <code>byteOffset &lt; 0 || byteOffset >= {@link #getBufferSize(Object)} - 1</code>
      * @throws UnsupportedMessageException if and only if either {@link #hasBufferElements(Object)}
      *             or {@link #isBufferWritable} returns {@code false}
      * @since 21.1
@@ -1519,7 +1566,7 @@ public final class Interop {
      *
      * @return the int at the given byte offset from the start of the buffer
      * @throws InvalidBufferOffsetException if and only if
-     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 3</code>
+     *             <code>byteOffset &lt; 0 || byteOffset >= {@link #getBufferSize(Object)} - 3</code>
      * @throws UnsupportedMessageException if and only if {@link #hasBufferElements(Object)} returns
      *             {@code false}
      * @since 21.1
@@ -1536,7 +1583,7 @@ public final class Interop {
      * thread-safe.
      *
      * @throws InvalidBufferOffsetException if and only if
-     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 3</code>
+     *             <code>byteOffset &lt; 0 || byteOffset >= {@link #getBufferSize(Object)} - 3</code>
      * @throws UnsupportedMessageException if and only if either {@link #hasBufferElements(Object)}
      *             or {@link #isBufferWritable} returns {@code false}
      * @since 21.1
@@ -1556,7 +1603,7 @@ public final class Interop {
      *
      * @return the int at the given byte offset from the start of the buffer
      * @throws InvalidBufferOffsetException if and only if
-     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 7</code>
+     *             <code>byteOffset &lt; 0 || byteOffset >= {@link #getBufferSize(Object)} - 7</code>
      * @throws UnsupportedMessageException if and only if {@link #hasBufferElements(Object)} returns
      *             {@code false}
      * @since 21.1
@@ -1573,7 +1620,7 @@ public final class Interop {
      * thread-safe.
      *
      * @throws InvalidBufferOffsetException if and only if
-     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 7</code>
+     *             <code>byteOffset &lt; 0 || byteOffset >= {@link #getBufferSize(Object)} - 7</code>
      * @throws UnsupportedMessageException if and only if either {@link #hasBufferElements(Object)}
      *             or {@link #isBufferWritable} returns {@code false}
      * @since 21.1
@@ -1593,7 +1640,7 @@ public final class Interop {
      *
      * @return the float at the given byte offset from the start of the buffer
      * @throws InvalidBufferOffsetException if and only if
-     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 3</code>
+     *             <code>byteOffset &lt; 0 || byteOffset >= {@link #getBufferSize(Object)} - 3</code>
      * @throws UnsupportedMessageException if and only if {@link #hasBufferElements(Object)} returns
      *             {@code false}
      * @since 21.1
@@ -1610,7 +1657,7 @@ public final class Interop {
      * thread-safe.
      *
      * @throws InvalidBufferOffsetException if and only if
-     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 3</code>
+     *             <code>byteOffset &lt; 0 || byteOffset >= {@link #getBufferSize(Object)} - 3</code>
      * @throws UnsupportedMessageException if and only if either {@link #hasBufferElements(Object)}
      *             or {@link #isBufferWritable} returns {@code false}
      * @since 21.1
@@ -1630,7 +1677,7 @@ public final class Interop {
      *
      * @return the double at the given byte offset from the start of the buffer
      * @throws InvalidBufferOffsetException if and only if
-     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 7</code>
+     *             <code>byteOffset &lt; 0 || byteOffset >= {@link #getBufferSize(Object)} - 7</code>
      * @throws UnsupportedMessageException if and only if {@link #hasBufferElements(Object)} returns
      *             {@code false}
      * @since 21.1
@@ -1647,7 +1694,7 @@ public final class Interop {
      * thread-safe.
      *
      * @throws InvalidBufferOffsetException if and only if
-     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 7</code>
+     *             <code>byteOffset &lt; 0 || byteOffset >= {@link #getBufferSize(Object)} - 7</code>
      * @throws UnsupportedMessageException if and only if either {@link #hasBufferElements(Object)}
      *             or {@link #isBufferWritable} returns {@code false}
      * @since 21.1

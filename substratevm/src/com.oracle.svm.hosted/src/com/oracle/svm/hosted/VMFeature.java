@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted;
 
 import java.nio.file.Path;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -62,9 +63,9 @@ public class VMFeature implements InternalFeature {
     }
 
     protected static final String getSelectedGCName() {
-        if (SubstrateOptions.UseSerialGC.getValue()) {
+        if (SubstrateOptions.useSerialGC()) {
             return "serial gc";
-        } else if (SubstrateOptions.UseEpsilonGC.getValue()) {
+        } else if (SubstrateOptions.useEpsilonGC()) {
             return "epsilon gc";
         } else {
             return "unknown gc";
@@ -92,7 +93,7 @@ public class VMFeature implements InternalFeature {
     public void afterAnalysis(AfterAnalysisAccess access) {
         CGlobalDataFeature.singleton().registerWithGlobalSymbol(
                         CGlobalDataFactory.createCString(VM.class.getName() + valueSeparator +
-                                        ImageSingletons.lookup(VM.class).version, VERSION_INFO_SYMBOL_NAME));
+                                        ImageSingletons.lookup(VM.class).vendorVersion, VERSION_INFO_SYMBOL_NAME));
 
         addCGlobalDataString("Target.Platform", ImageSingletons.lookup(Platform.class).getClass().getName());
         addCGlobalDataString("Target.LibC", ImageSingletons.lookup(LibCBase.class).getClass().getName());
@@ -120,7 +121,7 @@ public class VMFeature implements InternalFeature {
 
     private static void addCGlobalDataString(String infoType, String content) {
         String data = VM.class.getName() + "." + infoType + valueSeparator + content;
-        String symbolName = "__svm_vm_" + infoType.toLowerCase().replace(".", "_");
+        String symbolName = "__svm_vm_" + infoType.toLowerCase(Locale.ROOT).replace(".", "_");
         CGlobalDataFeature.singleton().registerWithGlobalSymbol(CGlobalDataFactory.createCString(data, symbolName));
     }
 }

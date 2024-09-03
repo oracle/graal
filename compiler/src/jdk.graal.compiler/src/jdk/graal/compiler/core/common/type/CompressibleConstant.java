@@ -33,4 +33,18 @@ public interface CompressibleConstant extends JavaConstant {
     JavaConstant compress();
 
     JavaConstant uncompress();
+
+    static JavaConstant uncompress(JavaConstant constant) {
+        if (constant instanceof CompressibleConstant compressible && compressible.isCompressed()) {
+            return compressible.uncompress();
+        }
+        return constant;
+    }
+
+    static boolean isCompressed(JavaConstant constant) {
+        if (constant instanceof CompressibleConstant compressible) {
+            return compressible.isCompressed();
+        }
+        return false;
+    }
 }

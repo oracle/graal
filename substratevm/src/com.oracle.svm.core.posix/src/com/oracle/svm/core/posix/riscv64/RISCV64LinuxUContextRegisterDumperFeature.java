@@ -50,7 +50,7 @@ import jdk.vm.ci.riscv64.RISCV64;
 class RISCV64LinuxUContextRegisterDumper implements UContextRegisterDumper {
     RISCV64LinuxUContextRegisterDumper() {
         VMError.guarantee(RISCV64.x27.equals(RISCV64ReservedRegisters.HEAP_BASE_REGISTER_CANDIDATE));
-        VMError.guarantee(RISCV64.x23.equals(RISCV64ReservedRegisters.THREAD_REGISTER_CANDIDATE));
+        VMError.guarantee(RISCV64.x23.equals(RISCV64ReservedRegisters.THREAD_REGISTER));
     }
 
     @Override

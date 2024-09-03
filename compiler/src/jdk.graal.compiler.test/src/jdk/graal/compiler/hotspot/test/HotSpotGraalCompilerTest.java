@@ -24,26 +24,23 @@
  */
 package jdk.graal.compiler.hotspot.test;
 
-import jdk.graal.compiler.api.test.Graal;
-import jdk.graal.compiler.core.test.GraalCompilerTest;
+import org.junit.Assume;
+import org.junit.AssumptionViolatedException;
+
 import jdk.graal.compiler.bytecode.Bytecode;
 import jdk.graal.compiler.bytecode.ResolvedJavaMethodBytecode;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
+import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.hotspot.HotSpotBackend;
 import jdk.graal.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import jdk.graal.compiler.hotspot.HotSpotReplacementsImpl;
-import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.nodes.Cancellable;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.runtime.RuntimeProvider;
-import org.junit.Assume;
-import org.junit.AssumptionViolatedException;
-
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
@@ -80,8 +77,6 @@ public abstract class HotSpotGraalCompilerTest extends GraalCompilerTest {
     }
 
     protected InstalledCode compileAndInstallSubstitution(ResolvedJavaMethod method) {
-        HotSpotGraalRuntimeProvider rt = (HotSpotGraalRuntimeProvider) Graal.getRequiredCapability(RuntimeProvider.class);
-        HotSpotProviders providers = rt.getHostBackend().getProviders();
         CompilationIdentifier compilationId = runtime().getHostBackend().getCompilationIdentifier(method);
         OptionValues options = getInitialOptions();
         StructuredGraph graph = getIntrinsicGraph(method, compilationId, getDebugContext(options), AllowAssumptions.YES, null);
@@ -91,6 +86,7 @@ public abstract class HotSpotGraalCompilerTest extends GraalCompilerTest {
         return null;
     }
 
+    @SuppressWarnings("unused")
     public StructuredGraph getIntrinsicGraph(ResolvedJavaMethod method, CompilationIdentifier compilationId, DebugContext debug, AllowAssumptions allowAssumptions, Cancellable cancellable) {
         GraphBuilderConfiguration.Plugins graphBuilderPlugins = getReplacements().getGraphBuilderPlugins();
         InvocationPlugin plugin = graphBuilderPlugins.getInvocationPlugins().lookupInvocation(method, debug.getOptions());

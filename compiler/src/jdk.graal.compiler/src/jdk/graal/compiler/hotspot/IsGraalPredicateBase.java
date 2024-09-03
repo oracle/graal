@@ -24,7 +24,6 @@
  */
 package jdk.graal.compiler.hotspot;
 
-import jdk.vm.ci.hotspot.HotSpotJVMCICompilerFactory;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 
 /**
@@ -35,11 +34,5 @@ abstract class IsGraalPredicateBase {
 
     @SuppressWarnings("unused")
     void onCompilerConfigurationFactorySelection(HotSpotJVMCIRuntime runtime, CompilerConfigurationFactory factory) {
-    }
-
-    abstract boolean apply(Class<?> declaringClass);
-
-    HotSpotJVMCICompilerFactory.CompilationLevelAdjustment getCompilationLevelAdjustment() {
-        return HotSpotJVMCICompilerFactory.CompilationLevelAdjustment.ByHolder;
     }
 }

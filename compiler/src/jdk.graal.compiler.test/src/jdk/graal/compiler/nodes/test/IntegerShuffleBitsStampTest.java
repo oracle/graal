@@ -49,12 +49,12 @@ public class IntegerShuffleBitsStampTest extends GraalTest {
             Stamp value0Stamp = StampFactory.forInteger(JavaKind.Int, value0, value0, value0 & INT_MASK, value0 & INT_MASK);
             for (int value1 : inputs) {
                 Stamp value1Stamp = StampFactory.forInteger(JavaKind.Int, value1, value1, value1 & INT_MASK, value1 & INT_MASK);
-                Stamp valueStamp = (IntegerStamp) value0Stamp.meet(value1Stamp);
+                Stamp valueStamp = value0Stamp.meet(value1Stamp);
                 for (int mask0 : inputs) {
                     Stamp mask0Stamp = StampFactory.forInteger(JavaKind.Int, mask0, mask0, mask0 & INT_MASK, mask0 & INT_MASK);
                     for (int mask1 : inputs) {
                         Stamp mask1Stamp = StampFactory.forInteger(JavaKind.Int, mask1, mask1, mask1 & INT_MASK, mask1 & INT_MASK);
-                        Stamp maskStamp = (IntegerStamp) mask0Stamp.meet(mask1Stamp);
+                        Stamp maskStamp = mask0Stamp.meet(mask1Stamp);
                         IntegerStamp newStamp = (IntegerStamp) compressOp.foldStamp(valueStamp, maskStamp);
                         assertTrue(newStamp.contains(Integer.compress(value0, mask0)));
                         assertTrue(newStamp.contains(Integer.compress(value0, mask1)));

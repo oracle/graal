@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,11 +48,26 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.DebuggerSession;
+import com.oracle.truffle.api.debug.SourceElement;
+import com.oracle.truffle.api.debug.SuspendAnchor;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.debug.SuspensionFilter;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import java.util.List;
 
 import org.graalvm.polyglot.Source;
 
@@ -529,6 +544,119 @@ public class SuspensionFilterTest extends AbstractDebugTest {
                 });
                 expectDone();
             }
+        }
+    }
+
+    @Test
+    public void testUnavailableSourceSection() {
+        ProxyLanguage.setDelegate(createSectionAvailabilityTestLanguage());
+        try (DebuggerSession session = tester.startSession(SourceElement.ROOT)) {
+            session.suspendNextExecution();
+            for (Boolean availableOnly : List.of(Boolean.FALSE, Boolean.TRUE)) {
+                session.setSteppingFilter(SuspensionFilter.newBuilder().sourceSectionAvailableOnly(availableOnly).build());
+                for (int i = 0; i < 3; i++) {
+                    // Create RootWithUnavailableSection.sectionAvailability = i:
+                    Source source = Source.create(ProxyLanguage.ID, Integer.toString(i));
+                    tester.startEval(source);
+                    boolean suspends = !availableOnly || i == 0;
+                    if (suspends) {
+                        for (SuspendAnchor anchor : List.of(SuspendAnchor.BEFORE, SuspendAnchor.AFTER)) {
+                            final SuspendAnchor suspendAnchor = anchor;
+                            final int sectionAvailability = i;
+                            tester.expectSuspended((SuspendedEvent event) -> {
+                                Assert.assertEquals(suspendAnchor, event.getSuspendAnchor());
+                                SourceSection section = event.getSourceSection();
+                                switch (sectionAvailability) {
+                                    case 0:
+                                        Assert.assertTrue(section.isAvailable());
+                                        break;
+                                    case 1:
+                                        Assert.assertFalse(section.isAvailable());
+                                        break;
+                                    case 2:
+                                        Assert.assertNull(section);
+                                        break;
+                                }
+                                event.prepareStepOver(1);
+                            }, error -> error.contains("has null SourceSection"));
+                        }
+                    }
+                    tester.expectDone();
+                }
+            }
+        }
+    }
+
+    public static ProxyLanguage createSectionAvailabilityTestLanguage() {
+        return new ProxyLanguage() {
+            @Override
+            protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
+                return new TestRootNode(languageInstance, request.getSource()).getCallTarget();
+            }
+
+            final class TestRootNode extends RootNode {
+                @Node.Child RootWithUnavailableSection node;
+
+                TestRootNode(TruffleLanguage<?> language, com.oracle.truffle.api.source.Source source) {
+                    super(language);
+                    node = new RootWithUnavailableSection(source);
+                }
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return node.execute(frame);
+                }
+            }
+        };
+    }
+
+    @GenerateWrapper
+    static class RootWithUnavailableSection extends Node implements InstrumentableNode {
+
+        private final int sectionAvailability;
+        private final com.oracle.truffle.api.source.Source source;
+
+        RootWithUnavailableSection(com.oracle.truffle.api.source.Source source) {
+            this.sectionAvailability = Character.digit(source.getCharacters().charAt(0), 10);
+            this.source = source;
+        }
+
+        RootWithUnavailableSection(RootWithUnavailableSection root) {
+            this.sectionAvailability = root.sectionAvailability;
+            this.source = root.source;
+        }
+
+        @Override
+        public boolean isInstrumentable() {
+            return true;
+        }
+
+        @Override
+        public boolean hasTag(Class<? extends Tag> tag) {
+            return StandardTags.RootTag.class.equals(tag);
+        }
+
+        @Override
+        public InstrumentableNode.WrapperNode createWrapper(ProbeNode probe) {
+            return new RootWithUnavailableSectionWrapper(this, this, probe);
+        }
+
+        @Override
+        public SourceSection getSourceSection() {
+            switch (sectionAvailability) {
+                case 0: // Available
+                    return source.createSection(1);
+                case 1: // Unavailable
+                    return source.createUnavailableSection();
+                case 2: // null
+                    return null;
+                default:
+                    throw new IllegalStateException(String.format("Unknown sectionAvailability %d", sectionAvailability));
+            }
+        }
+
+        public int execute(@SuppressWarnings("unused") VirtualFrame frame) {
+            return 42;
         }
     }
 }

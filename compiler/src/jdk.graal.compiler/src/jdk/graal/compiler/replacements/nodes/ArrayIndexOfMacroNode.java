@@ -37,6 +37,8 @@ import jdk.graal.compiler.nodes.ComputeObjectAddressNode;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.LoweringTool;
+import jdk.graal.compiler.nodes.spi.Simplifiable;
+import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaKind;
 
@@ -47,7 +49,7 @@ import jdk.vm.ci.meta.JavaKind;
  * image baseline CPU feature set does not meet its requirements.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_128)
-public final class ArrayIndexOfMacroNode extends MacroNode {
+public final class ArrayIndexOfMacroNode extends MacroWithExceptionNode implements Simplifiable {
 
     public static final NodeClass<ArrayIndexOfMacroNode> TYPE = NodeClass.create(ArrayIndexOfMacroNode.class);
 
@@ -55,12 +57,13 @@ public final class ArrayIndexOfMacroNode extends MacroNode {
     private final LIRGeneratorTool.ArrayIndexOfVariant variant;
 
     private final LocationIdentity locationIdentity;
+    private boolean intrinsifiable = false;
 
-    public ArrayIndexOfMacroNode(MacroParams p, Stride stride, LIRGeneratorTool.ArrayIndexOfVariant variant, LocationIdentity locationIdentity) {
+    public ArrayIndexOfMacroNode(MacroNode.MacroParams p, Stride stride, LIRGeneratorTool.ArrayIndexOfVariant variant, LocationIdentity locationIdentity) {
         this(TYPE, p, stride, variant, locationIdentity);
     }
 
-    public ArrayIndexOfMacroNode(NodeClass<? extends MacroNode> c, MacroParams p, Stride stride, LIRGeneratorTool.ArrayIndexOfVariant variant,
+    public ArrayIndexOfMacroNode(NodeClass<? extends MacroWithExceptionNode> c, MacroNode.MacroParams p, Stride stride, LIRGeneratorTool.ArrayIndexOfVariant variant,
                     LocationIdentity locationIdentity) {
         super(c, p);
         this.stride = stride;
@@ -69,9 +72,19 @@ public final class ArrayIndexOfMacroNode extends MacroNode {
     }
 
     @Override
+    public void simplify(SimplifierTool tool) {
+        if (!intrinsifiable) {
+            Architecture arch = tool.getLowerer().getTarget().arch;
+            if (ArrayIndexOfNode.isSupported(arch, stride, variant)) {
+                intrinsifiable = true;
+                replaceWithNonThrowing();
+            }
+        }
+    }
+
+    @Override
     public void lower(LoweringTool tool) {
-        Architecture arch = tool.getLowerer().getTarget().arch;
-        if (ArrayIndexOfNode.isSupported(arch, stride, variant)) {
+        if (intrinsifiable) {
             // some arguments of the original method are unused in the intrinsic. original args:
             // 0: Node location
             // 1: array
@@ -95,7 +108,8 @@ public final class ArrayIndexOfMacroNode extends MacroNode {
                             getArgument(6), // fromIndex
                             searchValues // values
             ));
-            graph().replaceFixedWithFixed(this, replacement);
+            killExceptionEdge();
+            graph().replaceSplitWithFixed(this, replacement, next());
             if (variant == LIRGeneratorTool.ArrayIndexOfVariant.Table) {
                 graph().addBeforeFixed(replacement, (ComputeObjectAddressNode) searchValues[0]);
             }

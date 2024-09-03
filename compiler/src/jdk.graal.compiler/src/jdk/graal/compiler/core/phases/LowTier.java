@@ -40,8 +40,11 @@ import jdk.graal.compiler.phases.common.FinalCanonicalizerPhase;
 import jdk.graal.compiler.phases.common.FixReadsPhase;
 import jdk.graal.compiler.phases.common.LowTierLoweringPhase;
 import jdk.graal.compiler.phases.common.OptimizeExtendsPhase;
+import jdk.graal.compiler.phases.common.OptimizeOffsetAddressPhase;
 import jdk.graal.compiler.phases.common.ProfileCompiledMethodsPhase;
 import jdk.graal.compiler.phases.common.PropagateDeoptimizeProbabilityPhase;
+import jdk.graal.compiler.phases.common.RemoveOpaqueValuePhase;
+import jdk.graal.compiler.phases.common.TransplantGraphsPhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import jdk.graal.compiler.phases.tiers.LowTierContext;
@@ -73,6 +76,8 @@ public class LowTier extends BaseTier<LowTierContext> {
 
         appendPhase(new ExpandLogicPhase(canonicalizerWithGVN));
 
+        appendPhase(new OptimizeOffsetAddressPhase(canonicalizerWithGVN));
+
         appendPhase(new FixReadsPhase(true,
                         new SchedulePhase(GraalOptions.StressTestEarlyReads.getValue(options) ? SchedulingStrategy.EARLIEST : SchedulingStrategy.LATEST_OUT_OF_LOOPS_IMPLICIT_NULL_CHECKS)));
 
@@ -93,7 +98,16 @@ public class LowTier extends BaseTier<LowTierContext> {
 
         appendPhase(new OptimizeExtendsPhase());
 
-        appendPhase(new SchedulePhase(SchedulePhase.SchedulingStrategy.LATEST_OUT_OF_LOOPS));
+        appendPhase(new RemoveOpaqueValuePhase());
+
+        appendPhase(new SchedulePhase.FinalSchedulePhase());
+
+        /*
+         * TransplantLowTierSnippetPhase is marked as placeholder phase because we can only
+         * instantiate it once we have a suites object for the callee graphs available at some later
+         * vm specific time.
+         */
+        appendPhase(new PlaceholderPhase<>(TransplantGraphsPhase.class));
     }
 
     public final CanonicalizerPhase getCanonicalizerWithoutGVN() {

@@ -36,22 +36,17 @@ import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.common.util.EconomicSetNodeEventListener;
 
 public class IterativeConditionalEliminationPhase extends BasePhase<CoreProviders> {
-
-    private final CanonicalizerPhase canonicalizer;
     private final boolean fullSchedule;
     private final ConditionalEliminationPhase conditionalEliminationPhase;
 
     public IterativeConditionalEliminationPhase(CanonicalizerPhase canonicalizer, boolean fullSchedule) {
-        this.canonicalizer = canonicalizer;
         this.fullSchedule = fullSchedule;
-        this.conditionalEliminationPhase = new ConditionalEliminationPhase(fullSchedule);
+        this.conditionalEliminationPhase = new ConditionalEliminationPhase(canonicalizer, fullSchedule);
     }
 
     @Override
     public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
-        return NotApplicable.ifAny(
-                        conditionalEliminationPhase.notApplicableTo(graphState),
-                        canonicalizer.notApplicableTo(graphState));
+        return conditionalEliminationPhase.notApplicableTo(graphState);
     }
 
     @Override
@@ -59,24 +54,14 @@ public class IterativeConditionalEliminationPhase extends BasePhase<CoreProvider
     protected void run(StructuredGraph graph, CoreProviders context) {
         final int maxIterations = GraalOptions.ConditionalEliminationMaxIterations.getValue(graph.getOptions());
         EconomicSetNodeEventListener listener = new EconomicSetNodeEventListener();
-        int count = 0;
-
-        while (true) { // TERMINATION ARGUMENT: explicit max number of iterations, or no progress is
-                       // made (decided by a node event scope)
-            count++;
+        for (int count = 0; count < maxIterations; ++count) {
             try (NodeEventScope nes = graph.trackNodeEvents(listener)) {
                 conditionalEliminationPhase.apply(graph, context);
             }
             if (listener.getNodes().isEmpty()) {
                 break;
             }
-
-            canonicalizer.applyIncremental(graph, context, listener.getNodes());
             listener.getNodes().clear();
-
-            if (count >= maxIterations) {
-                break;
-            }
         }
     }
 
@@ -87,7 +72,7 @@ public class IterativeConditionalEliminationPhase extends BasePhase<CoreProvider
 
     @Override
     public int hashCode() {
-        return Objects.hash(this.getClass().getName(), fullSchedule, canonicalizer, conditionalEliminationPhase);
+        return Objects.hash(this.getClass().getName(), fullSchedule, conditionalEliminationPhase);
     }
 
     @Override
@@ -104,7 +89,6 @@ public class IterativeConditionalEliminationPhase extends BasePhase<CoreProvider
 
         return this.getClass().equals(that.getClass()) &&
                         this.fullSchedule == that.fullSchedule &&
-                        this.canonicalizer.equals(that.canonicalizer) &&
                         this.conditionalEliminationPhase.equals(that.conditionalEliminationPhase);
     }
 }

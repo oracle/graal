@@ -1,23 +1,17 @@
 ---
 layout: docs
-toc_group: truffles
+toc_group: truffle
 link_title: Implementing a New Language with Truffle
 permalink: /graalvm-as-a-platform/language-implementation-framework/LanguageTutorial/
 ---
 # Implementing a New Language with Truffle
 
-For an in-depth presentation on how to implement your language with Truffle,
-watch this [three-hour walkthrough](https://youtu.be/FJY96_6Y3a4) presented at the
-Conference on Programming Language Design and Implementation [PLDI 2016](http://conf.researchr.org/home/pldi-2016).
+The Truffle framework enables you to implement a programming language and run it efficiently on GraalVM.
+We provide extensive [Truffle API documentation](http://graalvm.org/truffle/javadoc/).
 
-<a href="http://www.youtube.com/watch?feature=player_embedded&v=FJY96_6Y3a4" target="_blank">
-<img src="http://img.youtube.com/vi/FJY96_6Y3a4/0.jpg" alt="Youtube Video Player" width="854" height="480" border="10" />
-</a>
+A good way to start implementing your language is to:
+* Look at the [TruffleLanguage](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html) class, and subclass it for your own language implementation. 
+* Fork the [SimpleLanguage](https://github.com/graalvm/simplelanguage) project and start hacking. SimpleLanguage is a relatively small language implementation, well-documented, and designed to demonstrate most of the Truffle features.
+* Examine the [GraalVM Polyglot API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/package-summary.html) that enables you to embed your Truffle language in Java.
 
-[Download Slides](https://lafo.ssw.uni-linz.ac.at/pub/papers/2016_PLDI_Truffle.pdf)
-
-Next Steps:
-* Start to subclass [TruffleLanguage](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html) for your own language implementation.
-* Fork [SimpleLanguage](https://github.com/graalvm/simplelanguage), a toy language that demonstrates how to use many Truffle features.
-* Embed Truffle languages in Java host applications using the [Polyglot API](../../docs/reference-manual/embedding/embed-languages.md).
-* Read [GraalVM/Truffle publications](https://github.com/oracle/graal/blob/master/docs/Publications.md).
+We also recommend to watch this online seminar on [Dynamic Metacompilation with Truffle](https://www.youtube.com/watch?v=pksRrON5XfU) by Christian Humer from Oracle, to better understand Truffle concepts such as dynamic metacompilation, partial evaluation, polymorphic inlining, and so on.

@@ -52,7 +52,6 @@ import jdk.graal.compiler.replacements.amd64.AMD64GraphBuilderPlugins;
 import jdk.graal.compiler.serviceprovider.ServiceProvider;
 
 import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
@@ -71,8 +70,8 @@ public class AMD64HotSpotBackendFactory extends HotSpotBackendFactory {
     }
 
     @Override
-    public Class<? extends Architecture> getArchitecture() {
-        return AMD64.class;
+    public String getArchitecture() {
+        return "AMD64";
     }
 
     @Override

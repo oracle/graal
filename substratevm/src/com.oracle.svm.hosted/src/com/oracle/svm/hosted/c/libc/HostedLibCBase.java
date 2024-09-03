@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.c.libc;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
 import java.util.List;
+import java.util.Locale;
 
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -65,7 +66,7 @@ public interface HostedLibCBase extends LibCBase {
         // Checkstyle: allow Class.getSimpleName
         String simpleName = platformClass.getSimpleName();
         // Checkstyle: disallow Class.getSimpleName
-        return simpleName.toLowerCase().equals(platform.getOS()) || Platform.includedIn(platformClass);
+        return simpleName.toLowerCase(Locale.ROOT).equals(platform.getOS()) || Platform.includedIn(platformClass);
     }
 
     /**
@@ -120,8 +121,5 @@ public interface HostedLibCBase extends LibCBase {
      * special cases, like Bionic libc.
      */
     boolean requiresLibCSpecificStaticJDKLibraries();
-
-    default void checkIfLibCSupported() {
-    }
 
 }

@@ -34,7 +34,7 @@ import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.gc.BarrierSet;
-import jdk.graal.compiler.nodes.gc.SerialWriteBarrier;
+import jdk.graal.compiler.nodes.gc.SerialWriteBarrierNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode.Address;
 import jdk.graal.compiler.nodes.spi.Lowerable;
@@ -61,7 +61,7 @@ public final class ForcedSerialPostWriteBarrier extends FixedWithNextNode implem
     @Override
     public void lower(LoweringTool tool) {
         if (graph().getGuardsStage().areFrameStatesAtDeopts()) {
-            SerialWriteBarrier barrier = graph().add(new SerialWriteBarrier(address, precise));
+            SerialWriteBarrierNode barrier = graph().add(new SerialWriteBarrierNode(address, precise));
             graph().replaceFixedWithFixed(this, barrier);
             tool.getLowerer().lower(barrier, tool);
         }

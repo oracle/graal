@@ -36,7 +36,7 @@ import com.oracle.svm.core.annotate.TargetClass;
  * libraries. The provided libraries are not really defined in the documentation, so the best we can
  * do is load the exact same libraries as HotSpot.
  */
-@TargetClass(className = "jdk.internal.foreign.SystemLookup")
+@TargetClass(className = "jdk.internal.foreign.SystemLookup", onlyWith = ForeignFunctionsEnabled.class)
 public final class Target_jdk_internal_foreign_SystemLookup {
     @Substitute
     public Optional<MemorySegment> find(String name) {
@@ -44,7 +44,7 @@ public final class Target_jdk_internal_foreign_SystemLookup {
     }
 }
 
-@TargetClass(className = "jdk.internal.foreign.SystemLookup", innerClass = "WindowsFallbackSymbols")
+@TargetClass(className = "jdk.internal.foreign.SystemLookup", innerClass = "WindowsFallbackSymbols", onlyWith = ForeignFunctionsEnabled.class)
 @Delete
 final class Target_jdk_internal_foreign_SystemLookup_WindowsFallbackSymbols {
 }

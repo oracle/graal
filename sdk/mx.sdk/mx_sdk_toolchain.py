@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import os.path
 import re
 
 import mx
+import mx_util
 
 class ToolchainTestProject(mx.Project):
     def __init__(self, suite, name, deps, workingSets, theLicense, **kwArgs):
@@ -95,7 +96,7 @@ class ToolchainTestBuildTask(mx.BuildTask):
         return super(ToolchainTestBuildTask, self).cleanForbidden()
 
     def build(self):
-        mx.ensure_dir_exists(self.subject.get_output_root())
+        mx_util.ensure_dir_exists(self.subject.get_output_root())
 
         toolchainPath = mx.distribution('LLVM_TOOLCHAIN').output
         clang = os.path.join(toolchainPath, 'bin', 'clang')

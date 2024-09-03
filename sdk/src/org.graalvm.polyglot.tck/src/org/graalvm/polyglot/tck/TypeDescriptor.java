@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,6 +54,7 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+
 import org.graalvm.polyglot.Value;
 
 /**
@@ -225,8 +226,16 @@ public final class TypeDescriptor {
      *
      * <p>
      * The JavaScript sample usage for no argument function constructor:
-     * {@codesnippet LanguageProviderSnippets#TypeDescriptorSnippets#createValueConstructors}
-     * <p>
+     * 
+     * <pre>
+     * &#64;Override
+     * public Collection&lt;? extends Snippet&gt; createValueConstructors(Context context) {
+     *     return Collections.singleton(Snippet.newBuilder(
+     *                     "function",
+     *                     context.eval("js", "(function(){ return function(){}})"),
+     *                     TypeDescriptor.EXECUTABLE).build());
+     * }
+     * </pre>
      *
      * @see Value#canExecute().
      * @since 0.30
@@ -241,10 +250,39 @@ public final class TypeDescriptor {
      * . This type can be used for specifying expressions or statements parameter types when the
      * passed executable is actually not invoked.
      *
-     * <p>
-     * The JavaScript sample usage for plus operator:
-     * {@codesnippet LanguageProviderSnippets#JsSnippets#createExpressions}
-     * <p>
+     * <pre>
+     * &#64;Override
+     * public Collection&lt;? extends Snippet&gt; createExpressions(Context context) {
+     *     final Collection&lt;Snippet&gt; expressions = new ArrayList&lt;&gt;();
+     *     final TypeDescriptor numeric = TypeDescriptor.union(
+     *                     TypeDescriptor.NUMBER,
+     *                     TypeDescriptor.BOOLEAN);
+     *     final TypeDescriptor nonNumeric = TypeDescriptor.union(
+     *                     TypeDescriptor.STRING,
+     *                     TypeDescriptor.OBJECT,
+     *                     TypeDescriptor.ARRAY,
+     *                     TypeDescriptor.EXECUTABLE_ANY);
+     *     Snippet.Builder builder = Snippet.newBuilder(
+     *                     "+",
+     *                     context.eval("js",
+     *                                     "(function (a, b){ return a + b;})"),
+     *                     TypeDescriptor.NUMBER).parameterTypes(numeric, numeric);
+     *     expressions.add(builder.build());
+     *     builder = Snippet.newBuilder(
+     *                     "+",
+     *                     context.eval("js",
+     *                                     "(function (a, b){ return a + b;})"),
+     *                     TypeDescriptor.STRING).parameterTypes(nonNumeric, TypeDescriptor.ANY);
+     *     expressions.add(builder.build());
+     *     builder = Snippet.newBuilder(
+     *                     "+",
+     *                     context.eval("js",
+     *                                     "(function (a, b){ return a + b;})"),
+     *                     TypeDescriptor.STRING).parameterTypes(TypeDescriptor.ANY, nonNumeric);
+     *     expressions.add(builder.build());
+     *     return expressions;
+     * }
+     * </pre>
      *
      * @see TypeDescriptor#EXECUTABLE
      * @since 19.0
@@ -647,8 +685,10 @@ public final class TypeDescriptor {
      * <li>NUMBER.subtract(STRING) -> NUMBER</li>
      * <li>UNION[NUMBER|STRING|OBJECT].subtract(NUMBER) -> UNION[STRING|OBJECT]</li>
      * <li>UNION[NUMBER|STRING|OBJECT].subtract(UNION[NUMBER|STRING]) -> OBJECT</li>
-     * <li>INTERSECTION[NUMBER&STRING&OBJECT].subtract(NUMBER) -> INTERSECTION[STRING&OBJECT]</li>
-     * <li>INTERSECTION[NUMBER&STRING&OBJECT].subtract(INTERSECTION[NUMBER&STRING]) -> OBJECT</li>
+     * <li>INTERSECTION[NUMBER&amp;STRING&amp;OBJECT].subtract(NUMBER) ->
+     * INTERSECTION[STRING&amp;OBJECT]</li>
+     * <li>INTERSECTION[NUMBER&amp;STRING&amp;OBJECT].subtract(INTERSECTION[NUMBER&amp;STRING]) ->
+     * OBJECT</li>
      * <li>ARRAY[UNION[NUMBER|STRING]].subtract(ARRAY[NUMBER]) -> ARRAY[STRING]</li>
      * <li>ARRAY[INTERSECTION[NUMBER|STRING]].subtract(ARRAY[NUMBER]) -> ARRAY[STRING]</li>
      * </ul>

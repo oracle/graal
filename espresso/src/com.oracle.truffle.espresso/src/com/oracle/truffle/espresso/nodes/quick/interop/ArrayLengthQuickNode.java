@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,9 +46,9 @@ public final class ArrayLengthQuickNode extends QuickNode {
     }
 
     @Override
-    public int execute(VirtualFrame frame) {
+    public int execute(VirtualFrame frame, boolean isContinuationResume) {
         StaticObject array = nullCheck(EspressoFrame.popObject(frame, top - 1));
-        EspressoFrame.putInt(frame, top - 1, arrayLength.execute(array));
+        EspressoFrame.putInt(frame, top - 1, arrayLength.executeAsInt(array));
         return stackEffectOf_ARRAYLENGTH;
     }
 }

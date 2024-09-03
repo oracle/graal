@@ -24,24 +24,21 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.word.Word;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.util.UnsignedUtils;
+
+import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.Word;
 
 /**
  * An UnalignedHeapChunk holds exactly one Object.
@@ -131,8 +128,11 @@ public final class UnalignedHeapChunk {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static UnalignedHeader getEnclosingChunkFromObjectPointer(Pointer objPointer) {
-        Pointer chunkPointer = objPointer.subtract(getObjectStartOffset());
+    static UnalignedHeader getEnclosingChunkFromObjectPointer(Pointer ptr) {
+        if (!GraalDirectives.inIntrinsic()) {
+            assert HeapImpl.isImageHeapAligned() || !HeapImpl.getHeapImpl().isInImageHeap(ptr) : "can't be used for the image heap because the image heap is not aligned to the chunk size";
+        }
+        Pointer chunkPointer = ptr.subtract(getObjectStartOffset());
         return (UnalignedHeader) chunkPointer;
     }
 
@@ -154,28 +154,5 @@ public final class UnalignedHeapChunk {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getCommittedObjectMemory(UnalignedHeader that) {
         return HeapChunk.getEndOffset(that).subtract(getObjectStartOffset());
-    }
-
-    @Fold
-    public static MemoryWalker.HeapChunkAccess<UnalignedHeapChunk.UnalignedHeader> getMemoryWalkerAccess() {
-        return ImageSingletons.lookup(UnalignedHeapChunk.MemoryWalkerAccessImpl.class);
-    }
-
-    @AutomaticallyRegisteredImageSingleton(onlyWith = UseSerialOrEpsilonGC.class)
-    static final class MemoryWalkerAccessImpl extends HeapChunk.MemoryWalkerAccessImpl<UnalignedHeapChunk.UnalignedHeader> {
-
-        @Platforms(Platform.HOSTED_ONLY.class)
-        MemoryWalkerAccessImpl() {
-        }
-
-        @Override
-        public boolean isAligned(UnalignedHeapChunk.UnalignedHeader heapChunk) {
-            return false;
-        }
-
-        @Override
-        public UnsignedWord getAllocationStart(UnalignedHeapChunk.UnalignedHeader heapChunk) {
-            return getObjectStart(heapChunk);
-        }
     }
 }

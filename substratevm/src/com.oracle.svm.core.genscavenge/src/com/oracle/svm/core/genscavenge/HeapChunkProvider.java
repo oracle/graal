@@ -32,7 +32,6 @@ import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.HeapChunk.Header;
@@ -41,7 +40,7 @@ import com.oracle.svm.core.heap.OutOfMemoryUtil;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicUnsigned;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.os.CommittedMemoryProvider;
+import com.oracle.svm.core.os.ChunkBasedCommittedMemoryProvider;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.UnsignedUtils;
@@ -68,7 +67,7 @@ final class HeapChunkProvider {
      * head}, but this is OK because we only need the number of chunks for policy code (to avoid
      * running down the list and counting the number of chunks).
      */
-    private final AtomicUnsigned bytesInUnusedAlignedChunks = new AtomicUnsigned();
+    private final AtomicUnsigned numUnusedAlignedChunks = new AtomicUnsigned();
 
     @Platforms(Platform.HOSTED_ONLY.class)
     HeapChunkProvider() {
@@ -76,7 +75,7 @@ final class HeapChunkProvider {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public UnsignedWord getBytesInUnusedChunks() {
-        return bytesInUnusedAlignedChunks.get();
+        return numUnusedAlignedChunks.get().multiply(HeapParameters.getAlignedHeapChunkSize());
     }
 
     private static final OutOfMemoryError ALIGNED_OUT_OF_MEMORY_ERROR = new OutOfMemoryError("Could not allocate an aligned heap chunk");
@@ -90,7 +89,7 @@ final class HeapChunkProvider {
         AlignedHeader result = popUnusedAlignedChunk();
         if (result.isNull()) {
             /* Unused list was empty, need to allocate memory. */
-            result = (AlignedHeader) CommittedMemoryProvider.get().allocateAlignedChunk(chunkSize, HeapParameters.getAlignedHeapChunkAlignment());
+            result = (AlignedHeader) ChunkBasedCommittedMemoryProvider.get().allocateAlignedChunk(chunkSize, HeapParameters.getAlignedHeapChunkAlignment());
             if (result.isNull()) {
                 throw OutOfMemoryUtil.reportOutOfMemoryError(ALIGNED_OUT_OF_MEMORY_ERROR);
             }
@@ -175,13 +174,11 @@ final class HeapChunkProvider {
      */
     private void pushUnusedAlignedChunk(AlignedHeader chunk) {
         assert VMOperation.isGCInProgress();
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            VMThreads.guaranteeOwnsThreadMutex("Should hold the lock when pushing to the global list.");
-        }
+        VMThreads.guaranteeOwnsThreadMutex("Should hold the lock when pushing to the global list.");
 
         HeapChunk.setNext(chunk, unusedAlignedChunks.get());
         unusedAlignedChunks.set(chunk);
-        bytesInUnusedAlignedChunks.addAndGet(HeapParameters.getAlignedHeapChunkSize());
+        numUnusedAlignedChunks.addAndGet(WordFactory.unsigned(1));
     }
 
     /**
@@ -199,7 +196,7 @@ final class HeapChunkProvider {
         if (result.isNull()) {
             return WordFactory.nullPointer();
         } else {
-            bytesInUnusedAlignedChunks.subtractAndGet(HeapParameters.getAlignedHeapChunkSize());
+            numUnusedAlignedChunks.subtractAndGet(WordFactory.unsigned(1));
             return result;
         }
     }
@@ -235,7 +232,7 @@ final class HeapChunkProvider {
             released = released.add(1);
         }
         unusedAlignedChunks.set(chunk);
-        bytesInUnusedAlignedChunks.subtractAndGet(released.multiply(HeapParameters.getAlignedHeapChunkSize()));
+        numUnusedAlignedChunks.subtractAndGet(released);
     }
 
     /** Acquire an UnalignedHeapChunk from the operating system. */
@@ -243,7 +240,7 @@ final class HeapChunkProvider {
     UnalignedHeader produceUnalignedChunk(UnsignedWord objectSize) {
         UnsignedWord chunkSize = UnalignedHeapChunk.getChunkSizeForObject(objectSize);
 
-        UnalignedHeader result = (UnalignedHeader) CommittedMemoryProvider.get().allocateUnalignedChunk(chunkSize);
+        UnalignedHeader result = (UnalignedHeader) ChunkBasedCommittedMemoryProvider.get().allocateUnalignedChunk(chunkSize);
         if (result.isNull()) {
             throw OutOfMemoryUtil.reportOutOfMemoryError(UNALIGNED_OUT_OF_MEMORY_ERROR);
         }
@@ -252,14 +249,14 @@ final class HeapChunkProvider {
         assert objectSize.belowOrEqual(HeapChunk.availableObjectMemory(result)) : "UnalignedHeapChunk insufficient for requested object";
 
         /* Avoid zapping if unaligned chunks are pre-zeroed. */
-        if (!CommittedMemoryProvider.get().areUnalignedChunksZeroed() && HeapParameters.getZapProducedHeapChunks()) {
+        if (!ChunkBasedCommittedMemoryProvider.get().areUnalignedChunksZeroed() && HeapParameters.getZapProducedHeapChunks()) {
             zap(result, HeapParameters.getProducedHeapChunkZapWord());
         }
         return result;
     }
 
     public static boolean areUnalignedChunksZeroed() {
-        return CommittedMemoryProvider.get().areUnalignedChunksZeroed();
+        return ChunkBasedCommittedMemoryProvider.get().areUnalignedChunksZeroed();
     }
 
     /**
@@ -281,7 +278,7 @@ final class HeapChunkProvider {
     }
 
     void logFreeChunks(Log log) {
-        HeapChunkLogging.logChunks(log, unusedAlignedChunks.get(), "F", true);
+        HeapChunkLogging.logChunks(log, unusedAlignedChunks.get(), "F", false);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -309,12 +306,12 @@ final class HeapChunkProvider {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void freeAlignedChunk(AlignedHeader chunk) {
-        CommittedMemoryProvider.get().freeAlignedChunk(chunk, HeapParameters.getAlignedHeapChunkSize(), HeapParameters.getAlignedHeapChunkAlignment());
+        ChunkBasedCommittedMemoryProvider.get().freeAlignedChunk(chunk, HeapParameters.getAlignedHeapChunkSize(), HeapParameters.getAlignedHeapChunkAlignment());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void freeUnalignedChunk(UnalignedHeader chunk) {
-        CommittedMemoryProvider.get().freeUnalignedChunk(chunk, unalignedChunkSize(chunk));
+        ChunkBasedCommittedMemoryProvider.get().freeUnalignedChunk(chunk, unalignedChunkSize(chunk));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

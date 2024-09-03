@@ -58,7 +58,7 @@ public final class DeadRegexExecNode extends RegexExecNode {
     }
 
     @Override
-    protected RegexResult execute(VirtualFrame frame, TruffleString input, int fromIndex) {
+    protected RegexResult execute(VirtualFrame frame, TruffleString input, int fromIndex, int toIndex, int regionFrom, int regionTo) {
         return RegexResult.getNoMatchInstance();
     }
 

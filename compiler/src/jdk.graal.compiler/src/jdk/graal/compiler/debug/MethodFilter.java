@@ -24,8 +24,10 @@
  */
 package jdk.graal.compiler.debug;
 
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -137,6 +139,14 @@ public final class MethodFilter {
      */
     public boolean matches(String javaClassName, String name, Signature sig) {
         return matches(baseFilter -> baseFilter.matches(javaClassName, name, sig));
+    }
+
+    /**
+     * Determines if a given method with a given declaring class and argument types is matched by
+     * this filter.
+     */
+    public boolean matchesWithArgs(String declaringClassName, String name, List<Type> argTypes) {
+        return matches(baseFilter -> baseFilter.matchesWithArgs(declaringClassName, name, argTypes));
     }
 
     /**
@@ -255,6 +265,22 @@ public final class MethodFilter {
             return true;
         }
 
+        private boolean matchesArgTypes(List<Type> argTypes) {
+            if (signature == null) {
+                return true;
+            }
+            if (argTypes.size() != signature.length) {
+                return false;
+            }
+            for (int i = 0; i < signature.length; i++) {
+                String javaName = argTypes.get(i).getTypeName();
+                if (signature[i] != null && !signature[i].matcher(javaName).matches()) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
         private boolean matches(String javaClassName, String name, Signature sig) {
             assert sig != null || signature == null;
             // check method name first, since MetaUtil.toJavaName is expensive
@@ -265,6 +291,18 @@ public final class MethodFilter {
                 return false;
             }
             return matchesSignature(sig);
+        }
+
+        private boolean matchesWithArgs(String javaClassName, String name, List<Type> argTypes) {
+            assert argTypes != null || signature == null;
+            // check method name first, since MetaUtil.toJavaName is expensive
+            if (methodName != null && !methodName.matcher(name).matches()) {
+                return false;
+            }
+            if (clazz != null && !clazz.matcher(javaClassName).matches()) {
+                return false;
+            }
+            return matchesArgTypes(argTypes);
         }
 
         @Override

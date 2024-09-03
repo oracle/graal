@@ -144,21 +144,21 @@ However, you can prevent unwanted linking errors by specifying which classes are
 For that, use the `--link-at-build-time` option. 
 If the option is used in the right context (see below), you can specify required classes to link at build time without explicitly listing classes and packages.
 It is designed in a way that libraries can only configure their own classes, to avoid any side effects on other libraries.
-You can pass the option to the `native-image` tool on the command line, embed it in a `native-image.properties` file on the module-path or the classpath.
+You can pass the option to the `native-image` tool on the command line, embed it in a _native-image.properties_ file on the module path or the class path.
 
 Depending on how and where the option is used it behaves differently:
 
-* If you use `--link-at-build-time` without arguments, all classes in the scope are required to be fully defined. If used without arguments on command line, all classes will be treated as "link-at-build-time" classes. If used without arguments embedded in a `native-image.properties` file on the module-path, all classes of the module will be treated as "link-at-build-time" classes. If you use `--link-at-build-time` embedded in a `native-image.properties` file on the classpath, the following error will be thrown:
-    ```shell
-    Error: Using '--link-at-build-time' without args only allowed on module-path. 'META-INF/native-image/org.mylibrary/native-image.properties' in 'file:///home/test/myapp/MyLibrary.jar' not part of module-path.
+* If you use `--link-at-build-time` without arguments, all classes in the scope are required to be fully defined. If used without arguments on command line, all classes will be treated as "link-at-build-time" classes. If used without arguments embedded in a _native-image.properties_ file on the module path, all classes of the module will be treated as "link-at-build-time" classes. If you use `--link-at-build-time` embedded in a _native-image.properties_ file on the class path, the following error will be thrown:
     ```
-* If you use the  `--link-at-build-time` option with arguments, for example, `--link-at-build-time=foo.bar.Foobar,demo.myLibrary.Name,...`, the arguments should be fully qualified class names or package names. When used on the module-path or classpath (embedded in `native-image.properties` files), only classes and packages defined in the same JAR file can be specified. Packages for libraries used on the classpath need to be listed explicitly. To make this process easy, use the `@<prop-values-file>` syntax to generate a package list (or a class list) in a separate file automatically.
+    Error: Using '--link-at-build-time' without args only allowed on module path. 'META-INF/native-image/org.mylibrary/native-image.properties' in 'file:///home/test/myapp/MyLibrary.jar' not part of module path.
+    ```
+* If you use the  `--link-at-build-time` option with arguments, for example, `--link-at-build-time=foo.bar.Foobar,demo.myLibrary.Name,...`, the arguments should be fully qualified class names or package names. When used on the module path or class path (embedded in `native-image.properties` files), only classes and packages defined in the same JAR file can be specified. Packages for libraries used on the class path need to be listed explicitly. To make this process easy, use the `@<prop-values-file>` syntax to generate a package list (or a class list) in a separate file automatically.
 
 Another handy option is `--link-at-build-time-paths` which allows to specify which classes are required to be fully defined at build time by other means.
 This variant requires arguments that are of the same type as the arguments passed via `-p` (`--module-path`) or `-cp` (`--class-path`):
 
 ```shell
---link-at-build-time-paths <class search path of directories and zip/jar files>
+--link-at-build-time-paths <class search path of directories and ZIP/JAR files>
 ```
 
 The given entries are searched and all classes inside are registered as `--link-at-build-time` classes.

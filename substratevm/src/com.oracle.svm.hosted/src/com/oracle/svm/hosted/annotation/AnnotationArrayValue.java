@@ -31,10 +31,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-
 import jdk.internal.reflect.ConstantPool;
-import jdk.vm.ci.meta.JavaConstant;
 import sun.reflect.annotation.ExceptionProxy;
 
 public final class AnnotationArrayValue extends AnnotationMemberValue {
@@ -82,24 +79,6 @@ public final class AnnotationArrayValue extends AnnotationMemberValue {
             types.addAll(element.getTypes());
         }
         return types;
-    }
-
-    @Override
-    public List<String> getStrings() {
-        List<String> strings = new ArrayList<>();
-        for (AnnotationMemberValue element : elements) {
-            strings.addAll(element.getStrings());
-        }
-        return strings;
-    }
-
-    @Override
-    public List<JavaConstant> getExceptionProxies(SnippetReflectionProvider snippetReflection) {
-        List<JavaConstant> exceptionProxies = new ArrayList<>();
-        for (AnnotationMemberValue element : elements) {
-            exceptionProxies.addAll(element.getExceptionProxies(snippetReflection));
-        }
-        return exceptionProxies;
     }
 
     @Override

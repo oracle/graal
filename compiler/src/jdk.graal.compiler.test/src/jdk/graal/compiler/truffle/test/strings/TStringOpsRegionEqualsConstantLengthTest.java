@@ -25,7 +25,13 @@
 package jdk.graal.compiler.truffle.test.strings;
 
 import java.util.List;
-import java.util.stream.Collectors;
+
+import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.lir.amd64.AMD64ArrayEqualsOp;
@@ -36,13 +42,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.replacements.nodes.ArrayRegionEqualsNode;
-import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
-
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaKind;
@@ -63,12 +62,7 @@ public class TStringOpsRegionEqualsConstantLengthTest extends TStringOpsRegionEq
 
     @Parameters(name = "{index}: offset: {1}, {6}, stride: {3}, {8}, length: {10}")
     public static List<Object[]> data() {
-        return TStringOpsRegionEqualsTest.data().stream().filter(args -> {
-            int length = (int) args[10];
-            // this test takes much longer than TStringOpsRegionEqualsTest, reduce number of test
-            // cases
-            return contains(lengthFilter, length);
-        }).collect(Collectors.toList());
+        return TStringOpsConstantTest.reduceTestData(TStringOpsRegionEqualsTest.data(), 10, lengthFilter);
     }
 
     @Override

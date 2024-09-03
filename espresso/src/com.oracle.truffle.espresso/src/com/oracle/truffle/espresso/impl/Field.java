@@ -206,7 +206,6 @@ public class Field extends Member<Type> implements FieldRef {
         return target;
     }
 
-    @TruffleBoundary
     public final void checkLoadingConstraints(StaticObject loader1, StaticObject loader2) {
         getDeclaringKlass().getContext().getRegistries().checkLoadingConstraint(getType(), loader1, loader2);
     }
@@ -400,7 +399,7 @@ public class Field extends Member<Type> implements FieldRef {
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
 
         if (getDeclaringKlass().getContext().anyHierarchyChanged()) {
-            checkSetValueValifity(value);
+            checkSetValueValidity(value);
         }
         if (isVolatile() || forceVolatile) {
             linkedField.setObjectVolatile(obj, value);
@@ -409,7 +408,7 @@ public class Field extends Member<Type> implements FieldRef {
         }
     }
 
-    protected void checkSetValueValifity(Object value) {
+    protected void checkSetValueValidity(Object value) {
         if (value != StaticObject.NULL && value instanceof StaticObject) {
             Klass klass = null;
             try {
@@ -941,6 +940,46 @@ public class Field extends Member<Type> implements FieldRef {
 
     public Field getCompatibleField() {
         return null;
+    }
+
+    @TruffleBoundary
+    public StaticObject makeMirror(Meta meta) {
+        StaticObject instance = meta.java_lang_reflect_Field.allocateInstance(meta.getContext());
+
+        Attribute rawRuntimeVisibleAnnotations = getAttribute(Name.RuntimeVisibleAnnotations);
+        StaticObject runtimeVisibleAnnotations = rawRuntimeVisibleAnnotations != null
+                        ? StaticObject.wrap(rawRuntimeVisibleAnnotations.getData(), meta)
+                        : StaticObject.NULL;
+
+        Attribute rawRuntimeVisibleTypeAnnotations = getAttribute(Name.RuntimeVisibleTypeAnnotations);
+        StaticObject runtimeVisibleTypeAnnotations = rawRuntimeVisibleTypeAnnotations != null
+                        ? StaticObject.wrap(rawRuntimeVisibleTypeAnnotations.getData(), meta)
+                        : StaticObject.NULL;
+        if (meta.getJavaVersion().java15OrLater()) {
+            meta.java_lang_reflect_Field_init.invokeDirectSpecial(
+                            /* this */ instance,
+                            /* declaringKlass */ getDeclaringKlass().mirror(),
+                            /* name */ meta.getStrings().intern(getName()),
+                            /* type */ resolveTypeKlass().mirror(),
+                            /* modifiers */ getModifiers(),
+                            /* trustedFinal */ isTrustedFinal(),
+                            /* slot */ getSlot(),
+                            /* signature */ meta.toGuestString(getGenericSignature()),
+                            /* annotations */ runtimeVisibleAnnotations);
+        } else {
+            meta.java_lang_reflect_Field_init.invokeDirectSpecial(
+                            /* this */ instance,
+                            /* declaringKlass */ getDeclaringKlass().mirror(),
+                            /* name */ meta.getStrings().intern(getName()),
+                            /* type */ resolveTypeKlass().mirror(),
+                            /* modifiers */ getModifiers(),
+                            /* slot */ getSlot(),
+                            /* signature */ meta.toGuestString(getGenericSignature()),
+                            /* annotations */ runtimeVisibleAnnotations);
+        }
+        meta.HIDDEN_FIELD_KEY.setHiddenObject(instance, this);
+        meta.HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS.setHiddenObject(instance, runtimeVisibleTypeAnnotations);
+        return instance;
     }
 
     /**

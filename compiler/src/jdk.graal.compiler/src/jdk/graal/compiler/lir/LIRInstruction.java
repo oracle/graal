@@ -481,4 +481,12 @@ public abstract class LIRInstruction {
     public boolean needsClearUpperVectorRegisters() {
         return false;
     }
+
+    /**
+     * Indicates whether the LIR instruction modifies the stack pointer in a non-standard way, e.g.,
+     * outside the prologue and epilogue of the method.
+     */
+    public boolean modifiesStackPointer() {
+        return false;
+    }
 }

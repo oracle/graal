@@ -362,7 +362,7 @@ public final class BytecodeStream {
     }
 
     private static String unknownVariableLengthBytecodeMessage(int opcode) {
-        return "unknown variable-length bytecode: " + opcode;
+        return "unknown variable-length bytecode: " + Bytecodes.nameOf(opcode);
     }
 
     public void printBytecode(Klass klass, PrintStream out) {

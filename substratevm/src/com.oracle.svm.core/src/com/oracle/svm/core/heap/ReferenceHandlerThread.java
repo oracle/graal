@@ -24,7 +24,8 @@
  */
 package com.oracle.svm.core.heap;
 
-import jdk.graal.compiler.api.replacements.Fold;
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
@@ -32,11 +33,14 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 public final class ReferenceHandlerThread implements Runnable {
     private final Thread thread;
@@ -55,6 +59,7 @@ public final class ReferenceHandlerThread implements Runnable {
         }
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static boolean isReferenceHandlerThread() {
         if (isSupported()) {
             return CurrentIsolate.getCurrentThread() == singleton().isolateThread;
@@ -83,7 +88,11 @@ public final class ReferenceHandlerThread implements Runnable {
         } catch (InterruptedException e) {
             VMError.guarantee(VMThreads.isTearingDown(), "Reference Handler should only be interrupted during tear-down");
         } catch (Throwable t) {
-            VMError.shouldNotReachHere("Reference processing and cleaners must handle all potential exceptions", t);
+            if (t instanceof OutOfMemoryError && VMThreads.isTearingDown()) {
+                // Likely failed to allocate the InterruptedException, ignore either way.
+            } else {
+                VMError.shouldNotReachHere("Reference processing and cleaners must handle all potential exceptions", t);
+            }
         }
     }
 
@@ -94,7 +103,7 @@ public final class ReferenceHandlerThread implements Runnable {
 
     @Fold
     static boolean isSupported() {
-        return SubstrateOptions.MultiThreaded.getValue() && SubstrateOptions.AllowVMInternalThreads.getValue();
+        return SubstrateOptions.AllowVMInternalThreads.getValue();
     }
 }
 

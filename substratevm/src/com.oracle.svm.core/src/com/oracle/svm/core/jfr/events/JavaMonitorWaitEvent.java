@@ -26,8 +26,6 @@
 
 package com.oracle.svm.core.jfr.events;
 
-import jdk.graal.compiler.word.Word;
-
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.JfrEvent;
@@ -37,10 +35,14 @@ import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.Target_jdk_jfr_internal_JVM_ChunkRotationMonitor;
+import com.oracle.svm.core.jfr.Target_jdk_jfr_internal_management_HiddenWait;
+
+import jdk.graal.compiler.word.Word;
 
 public class JavaMonitorWaitEvent {
     public static void emit(long startTicks, Object obj, long notifier, long timeout, boolean timedOut) {
-        if (HasJfrSupport.get() && obj != null && !Target_jdk_jfr_internal_JVM_ChunkRotationMonitor.class.equals(obj.getClass())) {
+        if (HasJfrSupport.get() && obj != null && !Target_jdk_jfr_internal_JVM_ChunkRotationMonitor.class.equals(obj.getClass()) &&
+                        !Target_jdk_jfr_internal_management_HiddenWait.class.equals(obj.getClass())) {
             emit0(startTicks, obj, notifier, timeout, timedOut);
         }
     }

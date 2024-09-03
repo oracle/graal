@@ -58,7 +58,7 @@ public abstract class SLTestTruffleBoundary01Builtin extends SLGraalRuntimeBuilt
             throw new AssertionError();
         }
         try {
-            int result = (int) CompilerDirectives.interpreterOnly(new Callable<Object>() {
+            int result = (int) CompilerDirectives.interpreterOnly(new Callable<>() {
                 @Override
                 public Object call() throws Exception {
                     return 1;

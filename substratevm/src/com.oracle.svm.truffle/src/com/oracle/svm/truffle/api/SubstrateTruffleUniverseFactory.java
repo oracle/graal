@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.graal.meta.SubstrateField;
 import com.oracle.svm.graal.meta.SubstrateMethod;
@@ -54,7 +55,7 @@ public final class SubstrateTruffleUniverseFactory extends SubstrateUniverseFact
     }
 
     @Override
-    public SubstrateMethod createMethod(AnalysisMethod aMethod, HostedStringDeduplication stringTable) {
+    public SubstrateMethod createMethod(AnalysisMethod aMethod, ImageCodeInfo imageCodeInfo, HostedStringDeduplication stringTable) {
         PartialEvaluationMethodInfo peInfo = createPartialEvaluationMethodInfo(truffleRuntime, aMethod);
         PartialEvaluationMethodInfo canonicalPeInfo = canonicalMethodInfos.computeIfAbsent(peInfo, k -> k);
         /*
@@ -63,7 +64,7 @@ public final class SubstrateTruffleUniverseFactory extends SubstrateUniverseFact
          * annotations in the image heap, we pre-compute all information at image build time. This
          * is also faster than accessing annotations at image run time.
          */
-        return new SubstrateTruffleMethod(aMethod, stringTable, canonicalPeInfo);
+        return new SubstrateTruffleMethod(aMethod, imageCodeInfo, stringTable, canonicalPeInfo);
     }
 
     @Override

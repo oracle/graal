@@ -34,6 +34,7 @@ import jdk.graal.compiler.nodes.java.InstanceOfNode;
 
 public class InstanceOfCanonicalizationTest extends GraalCompilerTest {
 
+    @SuppressWarnings("unused")
     public static boolean checkCastIncompatibleTypes(Object arr) {
         // Cast first to a byte array, then to a boolean array. This only succeeds if arr is null.
         byte[] barr = (byte[]) arr;
@@ -41,6 +42,7 @@ public class InstanceOfCanonicalizationTest extends GraalCompilerTest {
         return true;
     }
 
+    @SuppressWarnings("cast")
     public static int unsatisfiableInstanceOf(byte[] barr) {
         // Plain instanceof does not allow null, so this will never succeed.
         if ((Object) barr instanceof boolean[]) {

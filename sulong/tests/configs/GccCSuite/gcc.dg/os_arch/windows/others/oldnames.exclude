@@ -1,0 +1,7 @@
+# The following tests require a function (usually strdup) from oldnames, but these aren't loaded for bc files
+gcc-5.2.0/gcc/testsuite/gcc.dg/pr43643.c.dir
+gcc-5.2.0/gcc/testsuite/gcc.dg/strlenopt-2.c.dir
+gcc-5.2.0/gcc/testsuite/gcc.dg/strlenopt-21.c.dir
+gcc-5.2.0/gcc/testsuite/gcc.dg/strlenopt-2f.c.dir
+gcc-5.2.0/gcc/testsuite/gcc.dg/strlenopt-6.c.dir
+gcc-5.2.0/gcc/testsuite/gcc.dg/strlenopt-8.c.dir

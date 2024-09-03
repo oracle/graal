@@ -67,12 +67,13 @@ public enum MemoryOrderMode {
     RELEASE_ACQUIRE,
     /**
      * The behavior of {@code VOLATILE} is dependent on the type of access (load, store,
-     * load&store):
+     * load&amp;store):
      *
      * <ul>
      * <li>Load: same ordering requirements as {@link #ACQUIRE}</li>
      * <li>Store: same ordering requirements as {@link #RELEASE}</li>
-     * <li>Load&Store (i.e., atomic): same ordering requirements as {@link #RELEASE_ACQUIRE}</li>
+     * <li>Load&amp;Store (i.e., atomic): same ordering requirements as
+     * {@link #RELEASE_ACQUIRE}</li>
      * </ul>
      *
      * In addition, all volatile accesses are strictly ordered. This means that, within a given

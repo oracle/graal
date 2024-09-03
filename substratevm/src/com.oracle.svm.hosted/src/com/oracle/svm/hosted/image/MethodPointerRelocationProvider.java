@@ -39,10 +39,9 @@ public class MethodPointerRelocationProvider {
     }
 
     public void markMethodPointerRelocation(ObjectFile.ProgbitsSectionImpl section, int offset, ObjectFile.RelocationKind relocationKind, HostedMethod target,
-                    @SuppressWarnings("unused") boolean isStaticallyResolved) {
-        section.markRelocationSite(offset, relocationKind, localSymbolNameForMethod(target), 0L);
+                    long addend, @SuppressWarnings("unused") boolean isStaticallyResolved) {
+        section.markRelocationSite(offset, relocationKind, localSymbolNameForMethod(target), addend);
     }
-
 }
 
 @AutomaticallyRegisteredFeature

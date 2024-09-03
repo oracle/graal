@@ -24,28 +24,32 @@
  */
 package com.oracle.svm.hosted.meta;
 
-import org.graalvm.nativeimage.c.function.RelocatedPointer;
-import org.graalvm.word.WordBase;
+import java.lang.reflect.Executable;
+import java.lang.reflect.Field;
 
 import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
-import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.graal.meta.SubstrateSnippetReflectionProvider;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
+import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.word.WordTypes;
+import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class HostedSnippetReflectionProvider extends SubstrateSnippetReflectionProvider {
+public class HostedSnippetReflectionProvider implements SnippetReflectionProvider {
     private ImageHeapScanner heapScanner;
+    private final WordTypes wordTypes;
 
     public HostedSnippetReflectionProvider(ImageHeapScanner heapScanner, WordTypes wordTypes) {
-        super(wordTypes);
         this.heapScanner = heapScanner;
+        this.wordTypes = wordTypes;
     }
 
     public void setHeapScanner(ImageHeapScanner heapScanner) {
@@ -54,15 +58,8 @@ public class HostedSnippetReflectionProvider extends SubstrateSnippetReflectionP
 
     @Override
     public JavaConstant forObject(Object object) {
-        if (object instanceof RelocatedPointer pointer) {
-            /* Relocated pointers are subject to relocation, so we don't know their value yet. */
-            return new RelocatableConstant(pointer);
-        } else if (object instanceof WordBase word) {
-            return JavaConstant.forIntegerKind(FrameAccess.getWordKind(), word.rawValue());
-        }
-        AnalysisConstantReflectionProvider.validateRawObjectConstant(object);
-        /* Redirect constant lookup through the shadow heap. */
-        return heapScanner.createImageHeapConstant(super.forObject(object), OtherReason.UNKNOWN);
+        /* Redirect object lookup through the shadow heap. */
+        return heapScanner.createImageHeapConstant(object, OtherReason.UNKNOWN);
     }
 
     @Override
@@ -74,19 +71,8 @@ public class HostedSnippetReflectionProvider extends SubstrateSnippetReflectionP
     }
 
     @Override
-    public JavaConstant unwrapConstant(JavaConstant constant) {
-        if (constant instanceof ImageHeapConstant heapConstant && heapConstant.getHostedObject() != null) {
-            return heapConstant.getHostedObject();
-        }
-        return constant;
-    }
-
-    @Override
     public <T> T asObject(Class<T> type, JavaConstant c) {
         JavaConstant constant = c;
-        if (constant instanceof RelocatableConstant relocatable) {
-            return type.cast(relocatable.getPointer());
-        }
         if (constant instanceof ImageHeapConstant imageHeapConstant) {
             constant = imageHeapConstant.getHostedObject();
             if (constant == null) {
@@ -95,12 +81,37 @@ public class HostedSnippetReflectionProvider extends SubstrateSnippetReflectionP
             }
         }
 
-        if (type == Class.class && constant instanceof SubstrateObjectConstant) {
+        if (type == Class.class && constant instanceof HotSpotObjectConstant) {
             /* Only unwrap the DynamicHub if a Class object is required explicitly. */
-            if (SubstrateObjectConstant.asObject(constant) instanceof DynamicHub hub) {
+            if (heapScanner.getHostedValuesProvider().asObject(Object.class, constant) instanceof DynamicHub hub) {
                 return type.cast(hub.getHostedJavaClass());
             }
         }
-        return super.asObject(type, constant);
+        VMError.guarantee(!(constant instanceof SubstrateObjectConstant));
+        return heapScanner.getHostedValuesProvider().asObject(type, constant);
+    }
+
+    @Override
+    public <T> T getInjectedNodeIntrinsicParameter(Class<T> type) {
+        if (type.isAssignableFrom(WordTypes.class)) {
+            return type.cast(wordTypes);
+        } else {
+            return null;
+        }
+    }
+
+    @Override
+    public Class<?> originalClass(ResolvedJavaType type) {
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @Override
+    public Executable originalMethod(ResolvedJavaMethod method) {
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @Override
+    public Field originalField(ResolvedJavaField field) {
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 }

@@ -39,22 +39,23 @@ import com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.util.LogUtils;
+
+import jdk.graal.compiler.util.json.JsonWriter;
 
 public class BuildArtifactsExporter {
     private static final String ENV_VAR_REENABLE_DEPRECATED = "NATIVE_IMAGE_DEPRECATED_BUILD_ARTIFACTS_TXT";
 
-    public static void run(String imageName, BuildArtifacts buildArtifacts, Map<ArtifactType, List<Path>> buildArtifactsMap) {
-        run(buildArtifacts, buildArtifactsMap);
+    public static void run(String imageName, BuildArtifacts buildArtifacts) {
+        run(buildArtifacts);
         if ("true".equalsIgnoreCase(System.getenv().get(ENV_VAR_REENABLE_DEPRECATED))) {
             LogUtils.warningDeprecatedEnvironmentVariable(ENV_VAR_REENABLE_DEPRECATED);
-            reportDeprecatedBuildArtifacts(imageName, buildArtifacts, buildArtifactsMap);
+            reportDeprecatedBuildArtifacts(imageName, buildArtifacts);
         }
     }
 
-    private static void run(BuildArtifacts buildArtifacts, Map<ArtifactType, List<Path>> buildArtifactsMap) {
-        if (buildArtifactsMap.isEmpty() || !SubstrateOptions.GenerateBuildArtifactsFile.getValue()) {
+    private static void run(BuildArtifacts buildArtifacts) {
+        if (buildArtifacts.isEmpty() || !SubstrateOptions.GenerateBuildArtifactsFile.getValue()) {
             return; // nothing to do
         }
         Path buildPath = NativeImageGenerator.generatedFiles(HostedOptionValues.singleton());
@@ -64,11 +65,11 @@ public class BuildArtifactsExporter {
          * merges ArtifactTypes with the same JSON key.
          */
         Map<String, List<String>> jsonMap = new TreeMap<>();
-        for (var artifact : buildArtifactsMap.entrySet()) {
-            String key = artifact.getKey().getJsonKey();
-            List<String> value = artifact.getValue().stream().map(p -> buildPath.relativize(p.toAbsolutePath()).toString()).toList();
+        buildArtifacts.forEach((artifactType, paths) -> {
+            String key = artifactType.getJsonKey();
+            List<String> value = paths.stream().map(p -> buildPath.relativize(p.toAbsolutePath()).toString()).toList();
             jsonMap.computeIfAbsent(key, k -> new ArrayList<>()).addAll(value);
-        }
+        });
 
         try (JsonWriter writer = new JsonWriter(targetPath)) {
             writer.appendObjectStart();
@@ -87,9 +88,9 @@ public class BuildArtifactsExporter {
         }
     }
 
-    private static void reportDeprecatedBuildArtifacts(String imageName, BuildArtifacts buildArtifacts, Map<ArtifactType, List<Path>> buildArtifactsMap) {
+    private static void reportDeprecatedBuildArtifacts(String imageName, BuildArtifacts buildArtifacts) {
         Path buildDir = NativeImageGenerator.generatedFiles(HostedOptionValues.singleton());
-        Consumer<PrintWriter> writerConsumer = writer -> buildArtifactsMap.forEach((artifactType, paths) -> {
+        Consumer<PrintWriter> writerConsumer = writer -> buildArtifacts.forEach((artifactType, paths) -> {
             writer.println("[" + artifactType + "]");
             if (artifactType == BuildArtifacts.ArtifactType.JDK_LIBRARY_SHIM) {
                 writer.println("# Note that shim JDK libraries depend on this");

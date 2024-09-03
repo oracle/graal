@@ -34,19 +34,20 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.IntegerConvertNode;
 import jdk.graal.compiler.nodes.calc.NegateNode;
 import jdk.graal.compiler.nodes.util.GraphUtil;
+import jdk.graal.compiler.phases.common.util.LoopUtility;
 
 public class DerivedScaledInductionVariable extends DerivedInductionVariable {
 
     protected final ValueNode scale;
     protected final ValueNode value;
 
-    public DerivedScaledInductionVariable(LoopEx loop, InductionVariable base, ValueNode scale, ValueNode value) {
+    public DerivedScaledInductionVariable(Loop loop, InductionVariable base, ValueNode scale, ValueNode value) {
         super(loop, base);
         this.scale = scale;
         this.value = value;
     }
 
-    public DerivedScaledInductionVariable(LoopEx loop, InductionVariable base, NegateNode value) {
+    public DerivedScaledInductionVariable(Loop loop, InductionVariable base, NegateNode value) {
         super(loop, base);
         this.scale = ConstantNode.forIntegerStamp(value.stamp(NodeView.DEFAULT), -1, value.graph());
         this.value = value;
@@ -91,22 +92,74 @@ public class DerivedScaledInductionVariable extends DerivedInductionVariable {
 
     @Override
     public boolean isConstantInit() {
-        return scale.isConstant() && base.isConstantInit();
+        try {
+            if (scale.isConstant() && base.isConstantInit()) {
+                constantInitSafe();
+                return true;
+            }
+        } catch (ArithmeticException e) {
+            // fall through to return false
+        }
+        return false;
     }
 
     @Override
     public boolean isConstantStride() {
-        return scale.isConstant() && base.isConstantStride();
+        try {
+            if (scale.isConstant() && base.isConstantStride()) {
+                constantStrideSafe();
+                return true;
+            }
+        } catch (ArithmeticException e) {
+            // fall through to return false
+        }
+        return false;
     }
 
     @Override
     public long constantInit() {
-        return base.constantInit() * scale.asJavaConstant().asLong();
+        return constantInitSafe();
+    }
+
+    private long constantInitSafe() throws ArithmeticException {
+        return opSafe(base.constantInit(), scale.asJavaConstant().asLong());
     }
 
     @Override
     public long constantStride() {
-        return base.constantStride() * scale.asJavaConstant().asLong();
+        return constantStrideSafe();
+    }
+
+    private long constantStrideSafe() throws ArithmeticException {
+        return opSafe(base.constantStride(), scale.asJavaConstant().asLong());
+    }
+
+    private long opSafe(long a, long b) {
+        // we can use scale bits here because all operands (init, scale, stride and extremum) have
+        // by construction equal bit sizes
+        return LoopUtility.multiplyExact(IntegerStamp.getBits(scale.stamp(NodeView.DEFAULT)), a, b);
+    }
+
+    @Override
+    public boolean isConstantExtremum() {
+        try {
+            if (scale.isConstant() && base.isConstantExtremum()) {
+                constantExtremumSafe();
+                return true;
+            }
+        } catch (ArithmeticException e) {
+            // fall through to return false
+        }
+        return false;
+    }
+
+    @Override
+    public long constantExtremum() {
+        return constantExtremumSafe();
+    }
+
+    private long constantExtremumSafe() throws ArithmeticException {
+        return opSafe(base.constantExtremum(), scale.asJavaConstant().asLong());
     }
 
     @Override
@@ -122,16 +175,6 @@ public class DerivedScaledInductionVariable extends DerivedInductionVariable {
     @Override
     public ValueNode exitValueNode() {
         return mul(graph(), base.exitValueNode(), scale);
-    }
-
-    @Override
-    public boolean isConstantExtremum() {
-        return scale.isConstant() && base.isConstantExtremum();
-    }
-
-    @Override
-    public long constantExtremum() {
-        return base.constantExtremum() * scale.asJavaConstant().asLong();
     }
 
     @Override

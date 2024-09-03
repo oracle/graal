@@ -37,22 +37,23 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
+import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
+import com.oracle.svm.core.fieldvaluetransformer.NewEmptyArrayFieldValueTransformer;
 import com.oracle.svm.core.invoke.MethodHandleIntrinsic;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import sun.invoke.util.ValueConversions;
 import sun.invoke.util.Wrapper;
 
@@ -89,10 +90,6 @@ public class MethodHandleFeature implements InternalFeature {
     private Method memberNameIsConstructor;
     private Method memberNameIsField;
     private Method memberNameGetMethodType;
-    private Field lambdaFormLFIdentity;
-    private Field lambdaFormLFZero;
-    private Field lambdaFormNFIdentity;
-    private Field lambdaFormNFZero;
     private Field typedAccessors;
     private Field typedCollectors;
 
@@ -116,12 +113,6 @@ public class MethodHandleFeature implements InternalFeature {
         memberNameIsField = ReflectionUtil.lookupMethod(memberNameClass, "isField");
         memberNameGetMethodType = ReflectionUtil.lookupMethod(memberNameClass, "getMethodType");
 
-        Class<?> lambdaFormClass = access.findClassByName("java.lang.invoke.LambdaForm");
-        lambdaFormLFIdentity = ReflectionUtil.lookupField(lambdaFormClass, "LF_identity");
-        lambdaFormLFZero = ReflectionUtil.lookupField(lambdaFormClass, "LF_zero");
-        lambdaFormNFIdentity = ReflectionUtil.lookupField(lambdaFormClass, "NF_identity");
-        lambdaFormNFZero = ReflectionUtil.lookupField(lambdaFormClass, "NF_zero");
-
         Class<?> arrayAccessorClass = access.findClassByName("java.lang.invoke.MethodHandleImpl$ArrayAccessor");
         typedAccessors = ReflectionUtil.lookupField(arrayAccessorClass, "TYPED_ACCESSORS");
         Class<?> methodHandleImplClass = access.findClassByName("java.lang.invoke.MethodHandleImpl$Makers");
@@ -144,19 +135,18 @@ public class MethodHandleFeature implements InternalFeature {
             referencedKeySetAdd = ReflectionUtil.lookupMethod(concurrentWeakInternSetClass, "add", Object.class);
         }
 
-        if (!SubstrateOptions.UseOldMethodHandleIntrinsics.getValue()) {
-            /*
-             * Renaming is not crucial with old method handle intrinsics, so if those are requested
-             * explicitly, disable renaming to offer a fallback in case it causes problems.
-             */
-            var accessImpl = (DuringSetupAccessImpl) access;
-            substitutionProcessor = new MethodHandleInvokerRenamingSubstitutionProcessor(accessImpl.getBigBang());
-            accessImpl.registerSubstitutionProcessor(substitutionProcessor);
-        }
+        var accessImpl = (DuringSetupAccessImpl) access;
+        substitutionProcessor = new MethodHandleInvokerRenamingSubstitutionProcessor(accessImpl.getBigBang());
+        accessImpl.registerSubstitutionProcessor(substitutionProcessor);
+
+        accessImpl.registerObjectReachableCallback(memberNameClass, (a1, member, reason) -> registerHeapMemberName((Member) member));
+        accessImpl.registerObjectReachableCallback(MethodType.class, (a1, methodType, reason) -> registerHeapMethodType(methodType));
     }
 
     @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
+    public void beforeAnalysis(BeforeAnalysisAccess a) {
+        var access = (BeforeAnalysisAccessImpl) a;
+
         /* java.lang.invoke functions called through reflection */
         Class<?> mhImplClazz = access.findClassByName("java.lang.invoke.MethodHandleImpl");
 
@@ -172,17 +162,7 @@ public class MethodHandleFeature implements InternalFeature {
         access.registerReachabilityHandler(MethodHandleFeature::registerInvokersFunctionsForReflection,
                         ReflectionUtil.lookupMethod(access.findClassByName("java.lang.invoke.Invokers"), "getFunction", byte.class));
 
-        access.registerReachabilityHandler(MethodHandleFeature::registerValueConversionBoxFunctionsForReflection,
-                        ReflectionUtil.lookupMethod(ValueConversions.class, "boxExact", Wrapper.class));
-
-        access.registerReachabilityHandler(MethodHandleFeature::registerValueConversionUnboxFunctionsForReflection,
-                        ReflectionUtil.lookupMethod(ValueConversions.class, "unbox", Wrapper.class, int.class));
-
-        access.registerReachabilityHandler(MethodHandleFeature::registerValueConversionConvertFunctionsForReflection,
-                        ReflectionUtil.lookupMethod(ValueConversions.class, "convertPrimitive", Wrapper.class, Wrapper.class));
-
-        access.registerReachabilityHandler(MethodHandleFeature::registerValueConversionIgnoreForReflection,
-                        ReflectionUtil.lookupMethod(ValueConversions.class, "ignore"));
+        eagerlyInitializeValueConversionsCaches();
 
         access.registerClassInitializerReachabilityHandler(MethodHandleFeature::registerDelegatingMHFunctionsForReflection,
                         access.findClassByName("java.lang.invoke.DelegatingMethodHandle"));
@@ -199,7 +179,9 @@ public class MethodHandleFeature implements InternalFeature {
         access.registerSubtypeReachabilityHandler(MethodHandleFeature::scanBoundMethodHandle,
                         access.findClassByName("java.lang.invoke.BoundMethodHandle"));
 
-        AnalysisMetaAccess metaAccess = ((FeatureImpl.BeforeAnalysisAccessImpl) access).getMetaAccess();
+        AnalysisMetaAccess metaAccess = access.getMetaAccess();
+        ImageHeapScanner heapScanner = access.getUniverse().getHeapScanner();
+
         access.registerFieldValueTransformer(
                         ReflectionUtil.lookupField(ReflectionUtil.lookupClass(false, "java.lang.invoke.ClassSpecializer"), "cache"),
                         new FieldValueTransformerWithAvailability() {
@@ -224,22 +206,76 @@ public class MethodHandleFeature implements InternalFeature {
                                 ConcurrentHashMap<Object, Object> originalMap = (ConcurrentHashMap<Object, Object>) originalValue;
                                 ConcurrentHashMap<Object, Object> filteredMap = new ConcurrentHashMap<>();
                                 originalMap.forEach((key, speciesData) -> {
-                                    if (isSpeciesReachable(speciesData)) {
+                                    if (isSpeciesTypeInstantiated(speciesData)) {
                                         filteredMap.put(key, speciesData);
                                     }
                                 });
                                 return filteredMap;
                             }
 
-                            private boolean isSpeciesReachable(Object speciesData) {
+                            private boolean isSpeciesTypeInstantiated(Object speciesData) {
                                 Class<?> speciesClass = ReflectionUtil.readField(speciesDataClass, "speciesCode", speciesData);
                                 Optional<AnalysisType> analysisType = metaAccess.optionalLookupJavaType(speciesClass);
-                                return analysisType.isPresent() && analysisType.get().isReachable();
+                                return analysisType.isPresent() && analysisType.get().isInstantiated();
                             }
                         });
         access.registerFieldValueTransformer(
+                        ReflectionUtil.lookupField(ReflectionUtil.lookupClass(false, "java.lang.invoke.DirectMethodHandle"), "ACCESSOR_FORMS"),
+                        NewEmptyArrayFieldValueTransformer.INSTANCE);
+        access.registerFieldValueTransformer(
                         ReflectionUtil.lookupField(ReflectionUtil.lookupClass(false, "java.lang.invoke.MethodType"), "internTable"),
                         (receiver, originalValue) -> runtimeMethodTypeInternTable);
+
+        /*
+         * SpeciesData.transformHelpers is a lazily initialized cache of MethodHandle objects. We do
+         * not want to make a MethodHandle reachable just because the image builder initialized the
+         * cache, so we filter out unreachable objects. This also solves the problem when late image
+         * heap re-scanning after static analysis would see a method handle that was not yet cached
+         * during static analysis, in which case image building would fail because new types would
+         * be made reachable after analysis.
+         */
+        access.registerFieldValueTransformer(
+                        ReflectionUtil.lookupField(ReflectionUtil.lookupClass(false, "java.lang.invoke.ClassSpecializer$SpeciesData"), "transformHelpers"),
+                        new FieldValueTransformerWithAvailability() {
+                            @Override
+                            public FieldValueTransformerWithAvailability.ValueAvailability valueAvailability() {
+                                return FieldValueTransformerWithAvailability.ValueAvailability.AfterAnalysis;
+                            }
+
+                            @Override
+                            @SuppressWarnings("unchecked")
+                            public Object transform(Object receiver, Object originalValue) {
+                                MethodHandle[] originalArray = (MethodHandle[]) originalValue;
+                                MethodHandle[] filteredArray = new MethodHandle[originalArray.length];
+                                for (int i = 0; i < originalArray.length; i++) {
+                                    MethodHandle handle = originalArray[i];
+                                    if (handle != null && heapScanner.isObjectReachable(handle)) {
+                                        filteredArray[i] = handle;
+                                    }
+                                }
+                                return filteredArray;
+                            }
+                        });
+
+        /*
+         * Retrieve all six basic types from the java.lang.invoke.LambdaForm$BasicType class (void,
+         * int, long, float, double, Object) and invoke the
+         * java.lang.invoke.LambdaForm.createFormsFor method to ensure that the analysis tracks
+         * these types. This addresses an issue that arises when these types are created after
+         * analysis as a side effect of using reflection in the image builder (for example in a
+         * method Feature.beforeCompilation()), thereby registering new elements into the image heap
+         * (elements that were not tracked in the analysis).
+         */
+        Class<?> lambdaFormClass = ReflectionUtil.lookupClass(false, "java.lang.invoke.LambdaForm");
+        Class<?> basicTypeClass = ReflectionUtil.lookupClass(false, "java.lang.invoke.LambdaForm$BasicType");
+        Method createFormsForMethod = ReflectionUtil.lookupMethod(lambdaFormClass, "createFormsFor", basicTypeClass);
+        try {
+            for (Object type : (Object[]) ReflectionUtil.readStaticField(basicTypeClass, "ALL_TYPES")) {
+                createFormsForMethod.invoke(null, type);
+            }
+        } catch (ReflectiveOperationException e) {
+            VMError.shouldNotReachHere("Can not invoke createFormsForm method to register base types from the java.lang.invoke.LambdaForm$BasicType class.");
+        }
     }
 
     private static void registerMHImplFunctionsForReflection(DuringAnalysisAccess access) {
@@ -281,42 +317,30 @@ public class MethodHandleFeature implements InternalFeature {
         RuntimeReflection.register(ReflectionUtil.lookupMethod(invokersClazz, "directVarHandleTarget", access.findClassByName("java.lang.invoke.VarHandle")));
     }
 
-    private static void registerValueConversionBoxFunctionsForReflection(DuringAnalysisAccess access) {
-        for (Wrapper type : Wrapper.values()) {
-            if (type.primitiveType().isPrimitive() && type != Wrapper.VOID) {
-                RuntimeReflection.register(ReflectionUtil.lookupMethod(ValueConversions.class, "box" + type.wrapperSimpleName(), type.primitiveType()));
-            }
-        }
-    }
+    /**
+     * Eagerly initialize method handle caches in {@link ValueConversions} so that 1) we avoid
+     * reflection registration for conversion methods, and 2) the static analysis already sees a
+     * consistent snapshot that does not change after analysis when the JDK needs more conversions.
+     */
+    private static void eagerlyInitializeValueConversionsCaches() {
+        ValueConversions.ignore();
 
-    private static void registerValueConversionUnboxFunctionsForReflection(DuringAnalysisAccess access) {
-        for (Wrapper type : Wrapper.values()) {
-            if (type.primitiveType().isPrimitive() && type != Wrapper.VOID) {
-                RuntimeReflection.register(ReflectionUtil.lookupMethod(ValueConversions.class, "unbox" + type.wrapperSimpleName(), type.wrapperType()));
-                RuntimeReflection.register(ReflectionUtil.lookupMethod(ValueConversions.class, "unbox" + type.wrapperSimpleName(), Object.class, boolean.class));
-            }
-        }
-    }
-
-    private static void registerValueConversionConvertFunctionsForReflection(DuringAnalysisAccess access) {
         for (Wrapper src : Wrapper.values()) {
-            for (Wrapper dest : Wrapper.values()) {
-                if (src != dest && src.primitiveType().isPrimitive() && src != Wrapper.VOID && dest.primitiveType().isPrimitive() && dest != Wrapper.VOID) {
-                    RuntimeReflection.register(ReflectionUtil.lookupMethod(ValueConversions.class, valueConverterName(src, dest), src.primitiveType()));
+            if (src != Wrapper.VOID && src.primitiveType().isPrimitive()) {
+                ValueConversions.boxExact(src);
+
+                ValueConversions.unboxExact(src, false);
+                ValueConversions.unboxExact(src, true);
+                ValueConversions.unboxWiden(src);
+                ValueConversions.unboxCast(src);
+            }
+
+            for (Wrapper dst : Wrapper.values()) {
+                if (src != Wrapper.VOID && dst != Wrapper.VOID && (src == dst || (src.primitiveType().isPrimitive() && dst.primitiveType().isPrimitive()))) {
+                    ValueConversions.convertPrimitive(src, dst);
                 }
             }
         }
-    }
-
-    private static String valueConverterName(Wrapper src, Wrapper dest) {
-        String srcType = src.primitiveSimpleName();
-        String destType = dest.primitiveSimpleName();
-        /* Capitalize first letter of destination type */
-        return srcType + "To" + destType.substring(0, 1).toUpperCase() + destType.substring(1);
-    }
-
-    private static void registerValueConversionIgnoreForReflection(DuringAnalysisAccess access) {
-        RuntimeReflection.register(ReflectionUtil.lookupMethod(ValueConversions.class, "ignore", Object.class));
     }
 
     private static void registerDelegatingMHFunctionsForReflection(DuringAnalysisAccess access) {
@@ -382,13 +406,13 @@ public class MethodHandleFeature implements InternalFeature {
     @Override
     public void duringAnalysis(DuringAnalysisAccess a) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
-        access.rescanRoot(lambdaFormLFIdentity);
-        access.rescanRoot(lambdaFormLFZero);
-        access.rescanRoot(lambdaFormNFIdentity);
-        access.rescanRoot(lambdaFormNFZero);
+        int numTypes = access.getUniverse().getTypes().size();
         access.rescanRoot(typedAccessors);
         access.rescanRoot(typedCollectors);
         access.rescanObject(runtimeMethodTypeInternTable);
+        if (numTypes != access.getUniverse().getTypes().size()) {
+            access.requireAnalysisIteration();
+        }
     }
 
     private static void scanBoundMethodHandle(DuringAnalysisAccess a, Class<?> bmhSubtype) {
@@ -417,6 +441,10 @@ public class MethodHandleFeature implements InternalFeature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        assert substitutionProcessor.checkAllTypeNames();
+        assert substitutionProcessor == null || substitutionProcessor.checkAllTypeNames();
+    }
+
+    public MethodHandleInvokerRenamingSubstitutionProcessor getMethodHandleSubstitutionProcessor() {
+        return substitutionProcessor;
     }
 }

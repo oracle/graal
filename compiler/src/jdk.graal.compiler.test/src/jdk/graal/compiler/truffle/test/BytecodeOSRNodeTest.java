@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,12 +28,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
-import com.oracle.truffle.api.test.SubprocessTestUtils;
-import com.oracle.truffle.runtime.BytecodeOSRMetadata;
-import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
-import com.oracle.truffle.runtime.OptimizedCallTarget;
-
-import jdk.graal.compiler.test.GraalTest;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Before;
@@ -54,16 +48,25 @@ import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.impl.FrameWithoutBoxing;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.SubprocessTestUtils;
+import com.oracle.truffle.api.test.SubprocessTestUtils.WithSubprocess;
+import com.oracle.truffle.runtime.BytecodeOSRMetadata;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
+
+import jdk.graal.compiler.test.GraalTest;
 
 public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
 
     private static final OptimizedTruffleRuntime runtime = (OptimizedTruffleRuntime) Truffle.getRuntime();
 
-    @Rule public TestRule timeout = GraalTest.createTimeout(30, TimeUnit.SECONDS);
+    @Rule public TestRule timeout = SubprocessTestUtils.disableForParentProcess(GraalTest.createTimeout(60, TimeUnit.SECONDS));
 
     private int osrThreshold;
 
@@ -188,10 +191,11 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
      * Test that OSR fails if the code cannot be compiled.
      */
     @Test
+    @WithSubprocess
     public void testFailedCompilation() throws IOException, InterruptedException {
         // Run in a subprocess to prevent graph graal dumps that are enabled by the default mx
         // unittest options.
-        SubprocessTestUtils.executeInSubprocess(BytecodeOSRNodeTest.class, () -> {
+        SubprocessTestUtils.newBuilder(BytecodeOSRNodeTest.class, () -> {
             Context.Builder builder = newContextBuilder().logHandler(new ByteArrayOutputStream());
             builder.option("engine.MultiTier", "false");
             builder.option("engine.OSR", "true");
@@ -204,7 +208,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
             Assert.assertEquals(FixedIterationLoop.NORMAL_RESULT, target.call(osrThreshold + 1));
             // Compilation should be disabled after a compilation failure.
             Assert.assertTrue(osrNode.getGraalOSRMetadata().isDisabled());
-        });
+        }).run();
     }
 
     /*
@@ -232,7 +236,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
     }
 
     /*
-     * Test that node replacement in the base node invalidates the OSR target.
+     * Test that node replacement in the base node invalidates both OSR and root call targets.
      */
     @Test
     public void testInvalidateOnNodeReplaced() {
@@ -248,15 +252,65 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         Assert.assertNotNull(osrTarget);
         Assert.assertTrue(osrTarget.isValid());
 
+        // Invoke the root node itself until it's compiled.
+        for (int i = 1; i < SINGLE_TIER_THRESHOLD; i++) {
+            target.call(5);
+        }
+        Assert.assertTrue(target.isValid());
+
         childToReplace.replace(new Node() {
         });
         Assert.assertFalse(osrTarget.isValid());
+        Assert.assertFalse(target.isValid());
+
         // Invalidating a target on node replace should not disable compilation or remove the target
         Assert.assertNotEquals(osrNode.getGraalOSRMetadata(), BytecodeOSRMetadata.DISABLED);
         Assert.assertFalse(osrMetadata.getOSRCompilations().isEmpty());
         // Calling the node will eventually trigger OSR again.
+        target.resetCompilationProfile(); // Clear call count so the root node is not compiled.
         Assert.assertEquals(FixedIterationLoop.OSR_RESULT, target.call(osrThreshold + 1));
         Assert.assertNotEquals(osrNode.getGraalOSRMetadata(), BytecodeOSRMetadata.DISABLED);
+        OptimizedCallTarget newOSRTarget = osrMetadata.getOSRCompilations().get(BytecodeOSRTestNode.DEFAULT_TARGET);
+        Assert.assertTrue(newOSRTarget.isValid());
+        Assert.assertEquals(osrTarget, newOSRTarget);
+    }
+
+    /*
+     * Test that node replacement in the base node invalidates both OSR and root call targets when
+     * the bytecode OSR node is also the root node. (GR-53074 regression test)
+     */
+    @Test
+    public void testInvalidateOnNodeReplacedOSRNodeIsRoot() {
+        // Simplified version of the above test where the BytecodeOSRNode is also the RootNode.
+        Node childToReplace = new Node() {
+        };
+        FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
+        FixedIterationLoopRootNode osrRootNode = new FixedIterationLoopRootNode(builder, childToReplace, builder.addSlot(FrameSlotKind.Int, "i", null), builder.addSlot(FrameSlotKind.Int, "n", null));
+        OptimizedCallTarget target = (OptimizedCallTarget) osrRootNode.getCallTarget();
+        Assert.assertEquals(FixedIterationLoop.OSR_RESULT, target.call(osrThreshold + 1));
+        BytecodeOSRMetadata osrMetadata = osrRootNode.getGraalOSRMetadata();
+        OptimizedCallTarget osrTarget = osrMetadata.getOSRCompilations().get(BytecodeOSRTestNode.DEFAULT_TARGET);
+        Assert.assertNotNull(osrTarget);
+        Assert.assertTrue(osrTarget.isValid());
+
+        // Invoke the root node itself until it's compiled.
+        for (int i = 1; i < SINGLE_TIER_THRESHOLD; i++) {
+            target.call(5);
+        }
+        Assert.assertTrue(target.isValid());
+
+        childToReplace.replace(new Node() {
+        });
+        Assert.assertFalse(osrTarget.isValid());
+        Assert.assertFalse(target.isValid());
+
+        // Invalidating a target on node replace should not disable compilation or remove the target
+        Assert.assertNotEquals(osrRootNode.getGraalOSRMetadata(), BytecodeOSRMetadata.DISABLED);
+        Assert.assertFalse(osrMetadata.getOSRCompilations().isEmpty());
+        // Calling the node will eventually trigger OSR again.
+        target.resetCompilationProfile(); // Clear call count so the root node is not compiled.
+        Assert.assertEquals(FixedIterationLoop.OSR_RESULT, target.call(osrThreshold + 1));
+        Assert.assertNotEquals(osrRootNode.getGraalOSRMetadata(), BytecodeOSRMetadata.DISABLED);
         OptimizedCallTarget newOSRTarget = osrMetadata.getOSRCompilations().get(BytecodeOSRTestNode.DEFAULT_TARGET);
         Assert.assertTrue(newOSRTarget.isValid());
         Assert.assertEquals(osrTarget, newOSRTarget);
@@ -407,6 +461,25 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
      */
     @Test
     public void testFrameTransferWithStaticAccesses() {
+        frameTransferWithStaticAccesses();
+    }
+
+    /*
+     * Test that the frame transfer helper works as expected, even with static accesses, both on OSR
+     * enter and exit, and even when assertions are disabled.
+     */
+    @Test
+    @WithSubprocess
+    public void testFrameTransferWithStaticAccessesWithAssertionsDisabled() throws Throwable {
+        // Execute in a subprocess to disable assertion checking for frames.
+        SubprocessTestUtils.newBuilder(BytecodeOSRNodeTest.class,
+                        () -> {
+                            Assert.assertFalse(FrameAssertionsChecker.areFrameAssertionsEnabled());
+                            frameTransferWithStaticAccesses();
+                        }).disableAssertions(FrameWithoutBoxing.class).run();
+    }
+
+    public static void frameTransferWithStaticAccesses() {
         var frameBuilder = FrameDescriptor.newBuilder();
         RootNode rootNode = new Program(new FrameTransferringWithStaticAccessNode(frameBuilder), frameBuilder.build());
         OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
@@ -452,6 +525,41 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         Object defaultValue = new Object();
         frameBuilder.defaultValue(defaultValue);
         RootNode rootNode = new Program(new FrameTransferringNodeWithUninitializedSlots(frameBuilder, defaultValue), frameBuilder.build());
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
+        Assert.assertEquals(42, target.call());
+    }
+
+    /*
+     * Same as above, but with static slots.
+     *
+     * Note that uninitialized static slots differs from regular slots in that it may be read as any
+     * kind, and always return the default ('defaultValue' for Object, '0' for primitives).
+     */
+    @Test
+    public void testFrameTransferWithUninitializedStaticSlots() {
+        frameTransferWithUninitializedStaticSlots();
+    }
+
+    /*
+     * Same as above, but with assertion disabled.
+     */
+    @Test
+    @WithSubprocess
+    public void testFrameTransferWithUninitializedStaticSlotsWithoutAssertions() throws Throwable {
+        // Execute in a subprocess to disable assertion checking for frames.
+        SubprocessTestUtils.newBuilder(BytecodeOSRNodeTest.class,
+                        () -> {
+                            Assert.assertFalse(FrameAssertionsChecker.areFrameAssertionsEnabled());
+                            frameTransferWithUninitializedStaticSlots();
+                        }).disableAssertions(FrameWithoutBoxing.class).run();
+    }
+
+    public static void frameTransferWithUninitializedStaticSlots() {
+        // use a non-null default value to make sure it gets copied properly.
+        var frameBuilder = FrameDescriptor.newBuilder();
+        Object defaultValue = new Object();
+        frameBuilder.defaultValue(defaultValue);
+        RootNode rootNode = new Program(new FrameTransferringNodeWithUninitializedStaticSlots(frameBuilder, defaultValue), frameBuilder.build());
         OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
         Assert.assertEquals(42, target.call());
     }
@@ -691,8 +799,10 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         }
 
         protected Object executeLoop(VirtualFrame frame, int numIterations) {
+            int loopIterations = 0;
             try {
                 for (int i = frame.getInt(indexSlot); i < numIterations; i++) {
+                    loopIterations++;
                     frame.setInt(indexSlot, i);
                     if (i + 1 < numIterations) { // back-edge will be taken
                         if (BytecodeOSRNode.pollOSRBackEdge(this)) {
@@ -707,6 +817,8 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
             } catch (FrameSlotTypeException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException("Error accessing index slot");
+            } finally {
+                LoopNode.reportLoopCount(this, loopIterations);
             }
         }
     }
@@ -1538,6 +1650,71 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         }
     }
 
+    public static class FrameTransferringNodeWithUninitializedStaticSlots extends FrameTransferringWithStaticAccessNode {
+        final Object defaultValue;
+
+        public FrameTransferringNodeWithUninitializedStaticSlots(FrameDescriptor.Builder frameDescriptor, Object defaultValue) {
+            super(frameDescriptor);
+            this.defaultValue = defaultValue;
+        }
+
+        private void ensureUninitReturnsDefault(VirtualFrame frame, int index) {
+            assertEquals(defaultValue, frame.getObjectStatic(index));
+            assertEquals((byte) 0, frame.getByteStatic(index));
+            assertEquals(false, frame.getBooleanStatic(index));
+            assertEquals(0, frame.getIntStatic(index));
+            assertEquals(0L, frame.getLongStatic(index));
+            assertEquals(0f, frame.getFloatStatic(index));
+            assertEquals(0d, frame.getDoubleStatic(index));
+        }
+
+        @Override
+        public void setRegularState(VirtualFrame frame) {
+            frame.setByteStatic(byteSlot, (byte) 1);
+            // everything else is uninitialized
+        }
+
+        @Override
+        public void checkRegularState(VirtualFrame frame) {
+            try {
+                assertEquals((byte) 1, frame.getByteStatic(byteSlot));
+                // these slots are uninitialized
+                ensureUninitReturnsDefault(frame, booleanSlot);
+                ensureUninitReturnsDefault(frame, doubleSlot);
+                ensureUninitReturnsDefault(frame, floatSlot);
+                ensureUninitReturnsDefault(frame, intSlot);
+                ensureUninitReturnsDefault(frame, longSlot);
+                ensureUninitReturnsDefault(frame, objectSlot);
+            } catch (FrameSlotTypeException ex) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException("Error accessing index slot");
+            }
+        }
+
+        @Override
+        public void setOSRState(VirtualFrame frame) {
+            frame.setByteStatic(byteSlot, (byte) 2);
+            // everything else is uninitialized
+        }
+
+        @Override
+        public void checkOSRState(VirtualFrame frame) {
+            try {
+                assertEquals((byte) 2, frame.getByteStatic(byteSlot));
+                // these slots are uninitialized
+                ensureUninitReturnsDefault(frame, booleanSlot);
+                ensureUninitReturnsDefault(frame, doubleSlot);
+                ensureUninitReturnsDefault(frame, floatSlot);
+                ensureUninitReturnsDefault(frame, intSlot);
+                ensureUninitReturnsDefault(frame, longSlot);
+                ensureUninitReturnsDefault(frame, objectSlot);
+            } catch (FrameSlotTypeException ex) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException("Error accessing index slot");
+            }
+        }
+    }
+
     public static class OSRDisablingTransferringNode extends FrameTransferringNode {
         @CompilationFinal int staticSlot;
 
@@ -1735,6 +1912,98 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
                         bci = bci + 3;
                     }
                 }
+            }
+        }
+    }
+
+    /**
+     * Copy of the {@link FixedIterationLoopWithChild} as a {@link RootNode}. Used to test node
+     * invalidation edge case.
+     */
+    static class FixedIterationLoopRootNode extends RootNode implements BytecodeOSRNode {
+        public static final int DEFAULT_TARGET = -1;
+        static final String OSR_RESULT = "osr result";
+        static final String NORMAL_RESULT = "normal result";
+
+        @Child Node child;
+        @CompilationFinal Object osrMetadata;
+        @CompilationFinal int indexSlot;
+        @CompilationFinal int numIterationsSlot;
+
+        protected FixedIterationLoopRootNode(FrameDescriptor.Builder fdBuilder, Node child, int indexSlot, int numIterationsSlot) {
+            super(null, fdBuilder.build());
+            this.child = child;
+            this.indexSlot = indexSlot;
+            this.numIterationsSlot = numIterationsSlot;
+
+        }
+
+        @Override
+        public Object getOSRMetadata() {
+            return osrMetadata;
+        }
+
+        @Override
+        public void setOSRMetadata(Object osrMetadata) {
+            this.osrMetadata = osrMetadata;
+        }
+
+        BytecodeOSRMetadata getGraalOSRMetadata() {
+            return (BytecodeOSRMetadata) getOSRMetadata();
+        }
+
+        protected int getInt(Frame frame, int frameSlot) {
+            try {
+                return frame.getInt(frameSlot);
+            } catch (FrameSlotTypeException e) {
+                throw new IllegalStateException("Error accessing frame slot " + frameSlot);
+            }
+        }
+
+        protected void setInt(Frame frame, int frameSlot, int value) {
+            frame.setInt(frameSlot, value);
+        }
+
+        @Override
+        public void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target, Object targetMetadata) {
+            setInt(osrFrame, indexSlot, getInt(parentFrame, indexSlot));
+            setInt(osrFrame, numIterationsSlot, getInt(parentFrame, numIterationsSlot));
+        }
+
+        @Override
+        public Object executeOSR(VirtualFrame osrFrame, int target, Object interpreterState) {
+            return executeLoop(osrFrame, getInt(osrFrame, numIterationsSlot));
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            frame.setInt(indexSlot, 0);
+            int numIterations = (Integer) frame.getArguments()[0];
+            frame.setInt(numIterationsSlot, numIterations);
+            return executeLoop(frame, numIterations);
+        }
+
+        protected Object executeLoop(VirtualFrame frame, int numIterations) {
+            int loopIterations = 0;
+            try {
+                for (int i = frame.getInt(indexSlot); i < numIterations; i++) {
+                    loopIterations++;
+                    frame.setInt(indexSlot, i);
+                    if (i + 1 < numIterations) { // back-edge will be taken
+                        if (BytecodeOSRNode.pollOSRBackEdge(this)) {
+                            Object result = BytecodeOSRNode.tryOSR(this, DEFAULT_TARGET, null, null, frame);
+                            if (result != null) {
+                                return result;
+                            }
+                        }
+                    }
+                }
+                return CompilerDirectives.inCompiledCode() ? OSR_RESULT : NORMAL_RESULT;
+            } catch (FrameSlotTypeException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException("Error accessing index slot");
+            } finally {
+                LoopNode.reportLoopCount(this, loopIterations);
             }
         }
     }

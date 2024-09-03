@@ -29,6 +29,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.util.VMError;
 
 @TargetClass(className = "java.lang.Shutdown")
 public final class Target_java_lang_Shutdown {
@@ -41,12 +42,7 @@ public final class Target_java_lang_Shutdown {
 
     static {
         hooks = new Runnable[Util_java_lang_Shutdown.MAX_SYSTEM_HOOKS];
-        /*
-         * We use the last system hook slot (index 9), which is currently not used by the JDK, for
-         * our own shutdown hooks that are registered during image generation. The JDK currently
-         * uses slots 0, 1, and 2.
-         */
-        hooks[hooks.length - 1] = RuntimeSupport::executeShutdownHooks;
+        hooks[Util_java_lang_Shutdown.NATIVE_IMAGE_SHUTDOWN_HOOKS_SLOT] = RuntimeSupport::executeShutdownHooks;
     }
 
     @Substitute
@@ -73,7 +69,21 @@ final class Util_java_lang_Shutdown {
 
     /**
      * Value *copied* from {@code java.lang.Shutdown.MAX_SYSTEM_HOOKS} so that the value can be used
-     * during image generation (@Alias values are only visible at run time).
+     * during image generation (@Alias values are only visible at run time). The JDK currently uses
+     * slots 0, 1, and 2.
      */
     static final int MAX_SYSTEM_HOOKS = 10;
+
+    static final int LOG_MANAGER_SHUTDOWN_HOOK_SLOT = MAX_SYSTEM_HOOKS - 1;
+    static final int NATIVE_IMAGE_SHUTDOWN_HOOKS_SLOT = LOG_MANAGER_SHUTDOWN_HOOK_SLOT - 1;
+
+    public static void registerLogManagerShutdownHook(Runnable hook) {
+        /*
+         * Execute the LogManager shutdown hook after all other shutdown hooks. This is a workaround
+         * for GR-39429.
+         */
+        Runnable[] hooks = Target_java_lang_Shutdown.hooks;
+        VMError.guarantee(hooks[LOG_MANAGER_SHUTDOWN_HOOK_SLOT] == null, "slot must not be used");
+        hooks[LOG_MANAGER_SHUTDOWN_HOOK_SLOT] = hook;
+    }
 }

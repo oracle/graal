@@ -26,121 +26,40 @@ package com.oracle.svm.core.posix.pthread;
 
 import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.c.CIsolateData;
 import com.oracle.svm.core.c.CIsolateDataFactory;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
-
-import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
-import com.oracle.svm.core.locks.ClassInstanceReplacer;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMLockSupport;
 import com.oracle.svm.core.locks.VMMutex;
-import com.oracle.svm.core.locks.VMSemaphore;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.posix.PosixVMSemaphoreSupport;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 
-import java.util.Arrays;
-import java.util.Comparator;
-
-/**
- * Support of {@link VMMutex} and {@link VMCondition} in multi-threaded environments. Locking is
- * implemented via pthreads.
- */
-@AutomaticallyRegisteredFeature
-final class PthreadVMLockFeature implements InternalFeature {
-
-    private final ClassInstanceReplacer<VMMutex, VMMutex> mutexReplacer = new ClassInstanceReplacer<>(VMMutex.class) {
-        @Override
-        protected VMMutex createReplacement(VMMutex source) {
-            return new PthreadVMMutex(source.getName());
-        }
-    };
-
-    private final ClassInstanceReplacer<VMCondition, VMCondition> conditionReplacer = new ClassInstanceReplacer<>(VMCondition.class) {
-        @Override
-        protected VMCondition createReplacement(VMCondition source) {
-            return new PthreadVMCondition((PthreadVMMutex) mutexReplacer.apply(source.getMutex()), source.getConditionName());
-        }
-    };
+public abstract class PthreadVMLockSupport extends VMLockSupport {
 
     @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.MultiThreaded.getValue();
+    @Platforms(Platform.HOSTED_ONLY.class)
+    protected VMMutex replaceVMMutex(VMMutex source) {
+        return new PthreadVMMutex(source.getName());
     }
 
     @Override
-    public void duringSetup(DuringSetupAccess access) {
-        PthreadVMLockSupport support = new PthreadVMLockSupport();
-        ImageSingletons.add(VMLockSupport.class, support);
-        access.registerObjectReplacer(mutexReplacer);
-        access.registerObjectReplacer(conditionReplacer);
-    }
-
-    @Override
-    public void beforeCompilation(BeforeCompilationAccess access) {
-        PthreadVMMutex[] mutexes = mutexReplacer.getReplacements().toArray(new PthreadVMMutex[0]);
-        PthreadVMCondition[] conditions = conditionReplacer.getReplacements().toArray(new PthreadVMCondition[0]);
-        Arrays.sort(mutexes, Comparator.comparing(PthreadVMMutex::getName));
-        Arrays.sort(conditions, Comparator.comparing(c -> c.getMutex().getName()));
-
-        PthreadVMLockSupport lockSupport = PthreadVMLockSupport.singleton();
-        lockSupport.mutexes = mutexes;
-        lockSupport.conditions = conditions;
-    }
-}
-
-public final class PthreadVMLockSupport extends VMLockSupport {
-    /** All mutexes, so that we can initialize them at run time when the VM starts. */
-    @UnknownObjectField(availability = ReadyForCompilation.class) //
-    PthreadVMMutex[] mutexes;
-
-    /** All conditions, so that we can initialize them at run time when the VM starts. */
-    @UnknownObjectField(availability = ReadyForCompilation.class) //
-    PthreadVMCondition[] conditions;
-
-    @Fold
-    public static PthreadVMLockSupport singleton() {
-        return (PthreadVMLockSupport) ImageSingletons.lookup(VMLockSupport.class);
-    }
-
-    /**
-     * Must be called once early during startup, before any mutex or condition is used.
-     */
-    @Uninterruptible(reason = "Called from uninterruptible code. Too early for safepoints.")
-    public static boolean initialize() {
-        PthreadVMLockSupport support = PthreadVMLockSupport.singleton();
-        for (PthreadVMMutex mutex : support.mutexes) {
-            if (Pthread.pthread_mutex_init(mutex.getStructPointer(), WordFactory.nullPointer()) != 0) {
-                return false;
-            }
-        }
-
-        for (PthreadVMCondition condition : support.conditions) {
-            if (PthreadConditionUtils.initConditionWithRelativeTime(condition.getStructPointer()) != 0) {
-                return false;
-            }
-        }
-
-        return PosixVMSemaphoreSupport.singleton().initialize();
+    @Platforms(Platform.HOSTED_ONLY.class)
+    protected VMCondition replaceVMCondition(VMCondition source) {
+        return new PthreadVMCondition((PthreadVMMutex) mutexReplacer.apply(source.getMutex()), source.getConditionName());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -163,21 +82,6 @@ public final class PthreadVMLockSupport extends VMLockSupport {
         Log.log().string(functionName).string(" returned ").signed(result).newline();
         ImageSingletons.lookup(LogHandler.class).fatalError();
     }
-
-    @Override
-    public PthreadVMMutex[] getMutexes() {
-        return mutexes;
-    }
-
-    @Override
-    public PthreadVMCondition[] getConditions() {
-        return conditions;
-    }
-
-    @Override
-    public VMSemaphore[] getSemaphores() {
-        return PosixVMSemaphoreSupport.singleton().getSemaphores();
-    }
 }
 
 final class PthreadVMMutex extends VMMutex {
@@ -193,6 +97,18 @@ final class PthreadVMMutex extends VMMutex {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     Pthread.pthread_mutex_t getStructPointer() {
         return structPointer.get();
+    }
+
+    @Override
+    @Uninterruptible(reason = "Too early for safepoints.")
+    public int initialize() {
+        return Pthread.pthread_mutex_init(getStructPointer(), WordFactory.nullPointer());
+    }
+
+    @Override
+    @Uninterruptible(reason = "The isolate teardown is in progress.")
+    public int destroy() {
+        return Pthread.pthread_mutex_destroy(getStructPointer());
     }
 
     @Override
@@ -245,6 +161,18 @@ final class PthreadVMCondition extends VMCondition {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     Pthread.pthread_cond_t getStructPointer() {
         return structPointer.get();
+    }
+
+    @Override
+    @Uninterruptible(reason = "Too early for safepoints.")
+    public int initialize() {
+        return PthreadConditionUtils.initConditionWithRelativeTime(getStructPointer());
+    }
+
+    @Override
+    @Uninterruptible(reason = "The isolate teardown is in progress.")
+    public int destroy() {
+        return Pthread.pthread_cond_destroy(getStructPointer());
     }
 
     @Override

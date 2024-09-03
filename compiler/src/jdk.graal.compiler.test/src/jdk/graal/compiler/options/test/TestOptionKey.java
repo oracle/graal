@@ -27,15 +27,16 @@ package jdk.graal.compiler.options.test;
 import static jdk.graal.compiler.options.OptionValues.asMap;
 import static jdk.graal.compiler.options.OptionValues.newOptionMap;
 import static jdk.graal.compiler.options.OptionsParser.parseOptionValue;
+import static jdk.graal.compiler.options.test.TestOptionKey.Options.MyBooleanOption;
+import static jdk.graal.compiler.options.test.TestOptionKey.Options.MyDebugOption;
 import static jdk.graal.compiler.options.test.TestOptionKey.Options.MyDeprecatedOption;
-import static jdk.graal.compiler.options.test.TestOptionKey.Options.MyOption;
-import static jdk.graal.compiler.options.test.TestOptionKey.Options.MyOtherOption;
+import static jdk.graal.compiler.options.test.TestOptionKey.Options.MyDoubleOption;
+import static jdk.graal.compiler.options.test.TestOptionKey.Options.MyFloatOption;
 import static jdk.graal.compiler.options.test.TestOptionKey.Options.MyIntegerOption;
 import static jdk.graal.compiler.options.test.TestOptionKey.Options.MyLongOption;
-import static jdk.graal.compiler.options.test.TestOptionKey.Options.MyBooleanOption;
-import static jdk.graal.compiler.options.test.TestOptionKey.Options.MyFloatOption;
-import static jdk.graal.compiler.options.test.TestOptionKey.Options.MyDoubleOption;
 import static jdk.graal.compiler.options.test.TestOptionKey.Options.MyMultiEnumOption;
+import static jdk.graal.compiler.options.test.TestOptionKey.Options.MyOption;
+import static jdk.graal.compiler.options.test.TestOptionKey.Options.MyOtherOption;
 import static jdk.graal.compiler.options.test.TestOptionKey.Options.MySecondOption;
 import static jdk.graal.compiler.options.test.TestOptionKey.TestEnum.Value2;
 import static jdk.graal.compiler.options.test.TestOptionKey.TestEnum.Value3;
@@ -52,6 +53,10 @@ import java.util.stream.Stream;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
+import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Test;
+
 import jdk.graal.compiler.options.EnumMultiOptionKey;
 import jdk.graal.compiler.options.EnumOptionKey;
 import jdk.graal.compiler.options.ModifiableOptionValues;
@@ -63,9 +68,6 @@ import jdk.graal.compiler.options.OptionStability;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.options.OptionsParser;
-import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.Test;
 
 @SuppressWarnings("try")
 public class TestOptionKey {
@@ -89,23 +91,25 @@ public class TestOptionKey {
         public static final OptionKey<String> MyOtherOption = new OptionKey<>("original");
         public static final EnumMultiOptionKey<TestEnum> MyMultiEnumOption = new EnumMultiOptionKey<>(TestEnum.class, null);
         public static final OptionKey<String> MyDeprecatedOption = new OptionKey<>("deprecated");
+        public static final OptionKey<String> MyDebugOption = new OptionKey<>("debug");
     }
 
     private static final OptionDescriptors OPTION_DESCRIPTORS;
     static {
         EconomicMap<String, OptionDescriptor> map = EconomicMap.create();
-        map.put("MyOption", OptionDescriptor.create("MyOption", OptionType.Debug, String.class, "", Options.class, "MyOption", MyOption));
-        map.put("MyIntegerOption", OptionDescriptor.create("MyIntegerOption", OptionType.Debug, Integer.class, "", Options.class, "MyIntegerOption", MyIntegerOption));
-        map.put("MyLongOption", OptionDescriptor.create("MyLongOption", OptionType.Debug, Long.class, "", Options.class, "MyLongOption", MyLongOption));
-        map.put("MyBooleanOption", OptionDescriptor.create("MyBooleanOption", OptionType.Debug, Boolean.class, "", Options.class, "MyBooleanOption", MyBooleanOption));
-        map.put("MyFloatOption", OptionDescriptor.create("MyFloatOption", OptionType.Debug, Float.class, "", Options.class, "MyFloatOption", MyFloatOption));
-        map.put("MyDoubleOption", OptionDescriptor.create("MyDoubleOption", OptionType.Debug, Double.class, "", Options.class, "MyDoubleOption", MyDoubleOption));
-        map.put("MySecondOption", OptionDescriptor.create("MySecondOption", OptionType.Debug, String.class, "", Options.class, "MySecondOption", MySecondOption));
-        map.put("MyMultiEnumOption", OptionDescriptor.create("MyMultiEnumOption", OptionType.Debug, EconomicSet.class, "", Options.class, "MyMultiEnumOption", MyMultiEnumOption));
+        map.put("MyOption", OptionDescriptor.create("MyOption", OptionType.User, String.class, "", Options.class, "MyOption", MyOption));
+        map.put("MyDebugOption", OptionDescriptor.create("MyDebugOption", OptionType.Debug, String.class, "", Options.class, "MyDebugOption", MyDebugOption));
+        map.put("MyIntegerOption", OptionDescriptor.create("MyIntegerOption", OptionType.User, Integer.class, "", Options.class, "MyIntegerOption", MyIntegerOption));
+        map.put("MyLongOption", OptionDescriptor.create("MyLongOption", OptionType.User, Long.class, "", Options.class, "MyLongOption", MyLongOption));
+        map.put("MyBooleanOption", OptionDescriptor.create("MyBooleanOption", OptionType.User, Boolean.class, "", Options.class, "MyBooleanOption", MyBooleanOption));
+        map.put("MyFloatOption", OptionDescriptor.create("MyFloatOption", OptionType.User, Float.class, "", Options.class, "MyFloatOption", MyFloatOption));
+        map.put("MyDoubleOption", OptionDescriptor.create("MyDoubleOption", OptionType.User, Double.class, "", Options.class, "MyDoubleOption", MyDoubleOption));
+        map.put("MySecondOption", OptionDescriptor.create("MySecondOption", OptionType.User, String.class, "", Options.class, "MySecondOption", MySecondOption));
+        map.put("MyMultiEnumOption", OptionDescriptor.create("MyMultiEnumOption", OptionType.User, EconomicSet.class, "", Options.class, "MyMultiEnumOption", MyMultiEnumOption));
         map.put("MyDeprecatedOption", OptionDescriptor.create(
         // @formatter:off
             /*name*/ "MyDeprecatedOption",
-            /*optionType*/ OptionType.Debug,
+            /*optionType*/ OptionType.User,
             /*optionValueType*/ String.class,
             /*help*/ "Help for MyDeprecatedOption with",
             /*extraHelp*/ new String[] {
@@ -140,10 +144,18 @@ public class TestOptionKey {
 
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             Iterable<OptionDescriptors> loader = List.of(OPTION_DESCRIPTORS);
-            optionsValues.printHelp(loader, new PrintStream(baos), "prefix.");
+            optionsValues.printHelp(loader, new PrintStream(baos), "prefix.", false);
             String help = baos.toString();
             Assert.assertNotEquals(help.length(), 0);
             Assert.assertTrue(help, help.contains("prefix.MyDeprecatedOption = \"deprecated\""));
+        }
+
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            Iterable<OptionDescriptors> loader = List.of(OPTION_DESCRIPTORS);
+            optionsValues.printHelp(loader, new PrintStream(baos), "prefix.", true);
+            String help = baos.toString();
+            Assert.assertNotEquals(help.length(), 0);
+            Assert.assertTrue(help, help.contains("prefix.MyDebugOption = \"debug\""));
         }
     }
 
@@ -164,7 +176,7 @@ public class TestOptionKey {
         Assert.assertEquals(true, parseOptionValue(descs.get("MyBooleanOption"), "true"));
 
         OptionKey<Exception> exceptionOption = new OptionKey<>(null);
-        OptionDescriptor desc = OptionDescriptor.create("exceptionOption", OptionType.Debug, Exception.class, "", Options.class, "exceptionOption", exceptionOption);
+        OptionDescriptor desc = OptionDescriptor.create("exceptionOption", OptionType.User, Exception.class, "", Options.class, "exceptionOption", exceptionOption);
         try {
             parseOptionValue(desc, "impossible value");
             Assert.fail("expected IllegalArgumentException");
@@ -180,6 +192,23 @@ public class TestOptionKey {
         OptionsParser.parseOptionSettingTo("MyOption=a value", EconomicMap.create());
         try {
             OptionsParser.parseOptionSettingTo("MyOption:a value", null);
+            Assert.fail("expected IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            // Expected
+        }
+
+        Assert.assertArrayEquals(OptionsParser.splitOptions("MyOption=a  MyLongOption=42"),
+                        new String[]{"MyOption=a", "MyLongOption=42"});
+        Assert.assertArrayEquals(OptionsParser.splitOptions("@MyOption=a string with spaces@MyLongOption=51@MyBooleanOption=false"),
+                        new String[]{"MyOption=a string with spaces", "MyLongOption=51", "MyBooleanOption=false"});
+
+        // Single option also works
+        Assert.assertArrayEquals(OptionsParser.splitOptions("MyIntegerOption=1001"),
+                        new String[]{"MyIntegerOption=1001"});
+
+        // Contiguous repeats of delimiters throw IllegalArgumentException
+        try {
+            OptionsParser.splitOptions("#MyIntegerOption=1001##SomeOtherOption=false");
             Assert.fail("expected IllegalArgumentException");
         } catch (IllegalArgumentException e) {
             // Expected
@@ -282,7 +311,7 @@ public class TestOptionKey {
         map = OptionValues.newOptionMap();
         option.update(map, TestEnum.Value3);
         OptionValues values = new OptionValues(map);
-        OptionDescriptor.create("myEnumOption", OptionType.Debug, String.class, "", Options.class, "myEnumOption", option);
+        OptionDescriptor.create("myEnumOption", OptionType.User, String.class, "", Options.class, "myEnumOption", option);
         Assert.assertEquals(option.getValue(values), TestEnum.Value3);
     }
 
@@ -370,7 +399,7 @@ public class TestOptionKey {
     public void testOptionDescriptors() {
         OptionDescriptor desc = MyDeprecatedOption.getDescriptor();
         Assert.assertTrue(desc.isDeprecated());
-        Assert.assertEquals(desc.getOptionType(), OptionType.Debug);
+        Assert.assertEquals(desc.getOptionType(), OptionType.User);
         Assert.assertEquals(desc.getDeprecationMessage(), "Some deprecation message");
         Assert.assertEquals(desc.getHelp(), "Help for MyDeprecatedOption with");
         Assert.assertEquals(desc.getExtraHelp(), List.of("some extra text on", "following lines."));

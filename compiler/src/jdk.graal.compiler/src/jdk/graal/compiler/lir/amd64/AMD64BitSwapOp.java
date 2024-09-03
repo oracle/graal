@@ -35,16 +35,13 @@ import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-
-import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
-import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/0a3a925ad88921d387aa851157f54ac0054d347b/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L5744-L5826",
-          sha1 = "cb807f6ece0a42ba5abae88477e8899436d09a4e")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/715fa8f9fe7242e86b985aece3d078b226f53fb9/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L6291-L6373",
+          sha1 = "34c6e1ee7916fc7190cbcbc237eaf2b510f7dd0e")
 // @formatter:on
 public final class AMD64BitSwapOp extends AMD64LIRInstruction {
     public static final LIRInstructionClass<AMD64BitSwapOp> TYPE = LIRInstructionClass.create(AMD64BitSwapOp.class);
@@ -65,7 +62,7 @@ public final class AMD64BitSwapOp extends AMD64LIRInstruction {
 
         this.rtmpValue = tool.newVariable(dstValue.getValueKind());
 
-        if (supportsGFNI(tool.target().arch)) {
+        if (tool.target().arch.getFeatures().contains(GFNI)) {
             this.rtmp2Value = Value.ILLEGAL;
 
             LIRKind lirKind = LIRKind.value(AMD64Kind.DOUBLE);
@@ -80,14 +77,6 @@ public final class AMD64BitSwapOp extends AMD64LIRInstruction {
 
             this.xtmp1Value = Value.ILLEGAL;
             this.xtmp2Value = Value.ILLEGAL;
-        }
-    }
-
-    private static boolean supportsGFNI(Architecture arch) {
-        try {
-            return arch.getFeatures().contains(AMD64.CPUFeature.valueOf("GFNI"));
-        } catch (IllegalArgumentException e) {
-            return false;
         }
     }
 

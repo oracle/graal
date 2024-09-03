@@ -66,7 +66,8 @@ public class TRegexTraceFinderRootNode extends RegexBodyNode {
         final Object[] args = frame.getArguments();
         assert args.length == 1;
         final RegexResult receiver = (RegexResult) args[0];
-        final int traceFinderResult = (int) ((long) entryNode.execute(frame, receiver.getInput(), receiver.getFromIndex(), receiver.getEnd(), receiver.getEnd()));
+        final int traceFinderResult = (int) ((long) entryNode.execute(frame, receiver.getInput(),
+                        receiver.getFromIndex(), receiver.getEnd(), receiver.getRegionFrom(), receiver.getRegionTo(), receiver.getEnd()));
         final int[] result = preCalculatedResults[traceFinderResult].createArrayFromEnd(receiver.getEnd());
         receiver.setResult(result);
         return result[0];

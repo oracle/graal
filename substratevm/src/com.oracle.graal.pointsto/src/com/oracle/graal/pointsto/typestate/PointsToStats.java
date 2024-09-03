@@ -43,9 +43,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import jdk.graal.compiler.graph.NodeSourcePosition;
-import jdk.graal.compiler.nodes.ValueNode;
-
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
@@ -60,20 +57,15 @@ import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.FilterTypeFlow;
 import com.oracle.graal.pointsto.flow.FormalParamTypeFlow;
 import com.oracle.graal.pointsto.flow.FormalReturnTypeFlow;
-import com.oracle.graal.pointsto.flow.FrozenFieldFilterTypeFlow;
-import com.oracle.graal.pointsto.flow.InstanceOfTypeFlow;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.LoadFieldTypeFlow.LoadInstanceFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.LoadFieldTypeFlow.LoadStaticFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.MergeTypeFlow;
-import com.oracle.graal.pointsto.flow.MonitorEnterTypeFlow;
 import com.oracle.graal.pointsto.flow.NewInstanceTypeFlow;
 import com.oracle.graal.pointsto.flow.NullCheckTypeFlow;
 import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.LoadIndexedTypeFlow;
 import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.UnsafeLoadTypeFlow;
-import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.UnsafePartitionLoadTypeFlow;
 import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.StoreIndexedTypeFlow;
-import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.UnsafePartitionStoreTypeFlow;
 import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.UnsafeStoreTypeFlow;
 import com.oracle.graal.pointsto.flow.SourceTypeFlow;
 import com.oracle.graal.pointsto.flow.StoreFieldTypeFlow.StoreInstanceFieldTypeFlow;
@@ -85,6 +77,8 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.util.ClassUtil;
 
+import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.nodes.ValueNode;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaType;
@@ -467,8 +461,6 @@ public class PointsToStats {
             return "IndexedStore @ " + formatSource(flow);
         } else if (flow instanceof UnsafeStoreTypeFlow) {
             return "UnsafeStore @ " + formatSource(flow);
-        } else if (flow instanceof UnsafePartitionStoreTypeFlow) {
-            return "UnsafePartitionStore @ " + formatSource(flow);
         } else if (flow instanceof UnsafeWriteSinkTypeFlow) {
             UnsafeWriteSinkTypeFlow sink = (UnsafeWriteSinkTypeFlow) flow;
             return "UnsafeWriteSink(" + formatField(sink.getSource()) + ")";
@@ -476,8 +468,6 @@ public class PointsToStats {
             return "IndexedLoad @ " + formatSource(flow);
         } else if (flow instanceof UnsafeLoadTypeFlow) {
             return "UnsafeLoad @ " + formatSource(flow);
-        } else if (flow instanceof UnsafePartitionLoadTypeFlow) {
-            return "UnsafePartitionLoad @ " + formatSource(flow);
         } else if (flow instanceof ArrayElementsTypeFlow) {
             ArrayElementsTypeFlow arrayFlow = (ArrayElementsTypeFlow) flow;
             return "ArrayElements(" + (arrayFlow.object() != null ? arrayFlow.object().type().toJavaName(false) : "?") + ")";
@@ -493,12 +483,6 @@ public class PointsToStats {
         } else if (flow instanceof FieldFilterTypeFlow) {
             FieldFilterTypeFlow filter = (FieldFilterTypeFlow) flow;
             return "FieldFilter(" + formatField(filter.getSource()) + ")";
-        } else if (flow instanceof FrozenFieldFilterTypeFlow) {
-            FrozenFieldFilterTypeFlow filter = (FrozenFieldFilterTypeFlow) flow;
-            return "FrozenFieldFilter(" + formatField(filter.getSource()) + ")";
-        } else if (flow instanceof InstanceOfTypeFlow) {
-            InstanceOfTypeFlow instanceOf = (InstanceOfTypeFlow) flow;
-            return "InstanceOf(" + formatType(instanceOf.getDeclaredType(), true) + ")@" + formatSource(flow);
         } else if (flow instanceof NewInstanceTypeFlow) {
             return "NewInstance(" + flow.getDeclaredType().toJavaName(false) + ")@" + formatSource(flow);
         } else if (flow instanceof DynamicNewInstanceTypeFlow) {
@@ -521,9 +505,6 @@ public class PointsToStats {
             return "Source @ " + formatSource(flow);
         } else if (flow instanceof CloneTypeFlow) {
             return "Clone @ " + formatSource(flow);
-        } else if (flow instanceof MonitorEnterTypeFlow) {
-            MonitorEnterTypeFlow monitor = (MonitorEnterTypeFlow) flow;
-            return "MonitorEnter @ " + formatMethod(monitor.getSource().getMethod());
         } else {
             return ClassUtil.getUnqualifiedName(flow.getClass()) + "@" + formatSource(flow);
         }

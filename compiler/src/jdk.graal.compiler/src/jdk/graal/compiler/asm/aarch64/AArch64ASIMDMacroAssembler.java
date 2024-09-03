@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,6 @@ import static jdk.vm.ci.aarch64.AArch64.SIMD;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.debug.GraalError;
-
 import jdk.vm.ci.code.Register;
 
 public class AArch64ASIMDMacroAssembler extends AArch64ASIMDAssembler {
@@ -143,9 +142,10 @@ public class AArch64ASIMDMacroAssembler extends AArch64ASIMDAssembler {
     }
 
     /**
-     * Moves an immediate value into each element of the result.<br>
+     * Moves a vector. This instruction copies the vector in the source SIMD register into the
+     * destination SIMD register.<br>
      *
-     * <code>for i in 0..n-1 do dst[i] = imm</code>
+     * <code>for i in 0..n-1 do dst[i] = src[i]</code>
      */
     public void moveVV(ASIMDSize size, Register dst, Register src) {
         if (!src.equals(dst)) {
@@ -200,7 +200,7 @@ public class AArch64ASIMDMacroAssembler extends AArch64ASIMDAssembler {
     /**
      * Performs a bitwise bit clear with the provided immediate on each element.
      *
-     * <code>for i in 0..n-1 do dst[i] &^= imm</code>
+     * <code>for i in 0..n-1 do dst[i] &amp;^= imm</code>
      */
     public void bicVI(ASIMDSize size, ElementSize eSize, Register dst, long imm) {
         long imm64 = replicateValueToImm64(eSize, imm);
@@ -310,6 +310,8 @@ public class AArch64ASIMDMacroAssembler extends AArch64ASIMDAssembler {
      * <p>
      * Preferred alias for sshll when only sign-extending the vector elements.
      *
+     * Extracts vector elements from the lower half of the source register.
+     *
      * @param srcESize source element size. Cannot be ElementSize.DoubleWord. The destination
      *            element size will be double this width.
      * @param dst SIMD register.
@@ -320,9 +322,27 @@ public class AArch64ASIMDMacroAssembler extends AArch64ASIMDAssembler {
     }
 
     /**
+     * C7.2.338 Signed extend long.<br>
+     * <p>
+     * Preferred alias for sshll2 when only sign-extending the vector elements.
+     *
+     * Extracts vector elements from the upper half of the source register.
+     *
+     * @param srcESize source element size. Cannot be ElementSize.DoubleWord. The destination
+     *            element size will be double this width.
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     */
+    public void sxtl2VV(ElementSize srcESize, Register dst, Register src) {
+        sshll2VVI(srcESize, dst, src, 0);
+    }
+
+    /**
      * C7.2.398 Unsigned extend long.<br>
      * <p>
      * Preferred alias for ushll when only zero-extending the vector elements.
+     *
+     * Extracts vector elements from the lower half of the source register.
      *
      * @param srcESize source element size. Cannot be ElementSize.DoubleWord. The destination
      *            element size will be double this width.
@@ -337,6 +357,8 @@ public class AArch64ASIMDMacroAssembler extends AArch64ASIMDAssembler {
      * C7.2.398 Unsigned extend long.<br>
      * <p>
      * Preferred alias for ushll2 when only zero-extending the vector elements.
+     *
+     * Extracts vector elements from the upper half of the source register.
      *
      * @param srcESize source element size. Cannot be ElementSize.DoubleWord. The destination
      *            element size will be double this width.

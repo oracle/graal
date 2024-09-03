@@ -95,11 +95,12 @@ import jdk.graal.compiler.lir.aarch64.AArch64SHA512Op;
 import jdk.graal.compiler.lir.aarch64.AArch64SpeculativeBarrier;
 import jdk.graal.compiler.lir.aarch64.AArch64StringLatin1InflateOp;
 import jdk.graal.compiler.lir.aarch64.AArch64StringUTF16CompressOp;
+import jdk.graal.compiler.lir.aarch64.AArch64VectorizedHashCodeOp;
 import jdk.graal.compiler.lir.aarch64.AArch64VectorizedMismatchOp;
 import jdk.graal.compiler.lir.aarch64.AArch64ZapRegistersOp;
 import jdk.graal.compiler.lir.aarch64.AArch64ZapStackOp;
 import jdk.graal.compiler.lir.aarch64.AArch64ZeroMemoryOp;
-import jdk.graal.compiler.lir.gen.BarrierSetLIRGenerator;
+import jdk.graal.compiler.lir.gen.BarrierSetLIRGeneratorTool;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.gen.LIRGenerator;
 import jdk.graal.compiler.lir.gen.MoveFactory;
@@ -119,7 +120,7 @@ import jdk.vm.ci.meta.ValueKind;
 
 public abstract class AArch64LIRGenerator extends LIRGenerator {
 
-    public AArch64LIRGenerator(LIRKindTool lirKindTool, AArch64ArithmeticLIRGenerator arithmeticLIRGen, BarrierSetLIRGenerator barrierSetLIRGen, MoveFactory moveFactory, Providers providers,
+    public AArch64LIRGenerator(LIRKindTool lirKindTool, AArch64ArithmeticLIRGenerator arithmeticLIRGen, BarrierSetLIRGeneratorTool barrierSetLIRGen, MoveFactory moveFactory, Providers providers,
                     LIRGenerationResult lirGenRes) {
         super(lirKindTool, arithmeticLIRGen, barrierSetLIRGen, moveFactory, providers, lirGenRes);
     }
@@ -134,11 +135,6 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
             return emitMove(val);
         }
         return val;
-    }
-
-    @Override
-    public AArch64BarrierSetLIRGenerator getBarrierSet() {
-        return (AArch64BarrierSetLIRGenerator) super.getBarrierSet();
     }
 
     /**
@@ -243,8 +239,8 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
     protected void emitCompareAndSwapOp(boolean isLogicVariant, Value address, MemoryOrderMode memoryOrder, AArch64Kind memKind, Variable result, AllocatableValue allocatableExpectedValue,
                     AllocatableValue allocatableNewValue, BarrierType barrierType) {
-        if (barrierType != BarrierType.NONE && getBarrierSet() != null) {
-            getBarrierSet().emitCompareAndSwapOp(isLogicVariant, address, memoryOrder, memKind, result, allocatableExpectedValue, allocatableNewValue, barrierType);
+        if (barrierType != BarrierType.NONE && getBarrierSet() instanceof AArch64ReadBarrierSetLIRGenerator barrierSetLIRGenerator) {
+            barrierSetLIRGenerator.emitCompareAndSwapOp(this, isLogicVariant, address, memoryOrder, memKind, result, allocatableExpectedValue, allocatableNewValue, barrierType);
         } else {
             append(new CompareAndSwapOp(memKind, memoryOrder, isLogicVariant, result, allocatableExpectedValue, allocatableNewValue, asAllocatable(address)));
         }
@@ -252,8 +248,8 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
     @Override
     public Value emitAtomicReadAndWrite(LIRKind accessKind, Value address, Value newValue, BarrierType barrierType) {
-        if (barrierType != BarrierType.NONE && getBarrierSet() != null) {
-            return getBarrierSet().emitAtomicReadAndWrite(accessKind, address, newValue, barrierType);
+        if (barrierType != BarrierType.NONE && getBarrierSet() instanceof AArch64ReadBarrierSetLIRGenerator barrierSetLIRGenerator) {
+            return barrierSetLIRGenerator.emitAtomicReadAndWrite(this, accessKind, address, newValue, barrierType);
         } else {
             Variable result = newVariable(toRegisterKind(accessKind));
             append(new AtomicReadAndWriteOp((AArch64Kind) accessKind.getPlatformKind(), result, asAllocatable(address), asAllocatable(newValue)));
@@ -288,12 +284,13 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     /**
-     * Branches to label if (left & right) == 0. If negated is true branchse on non-zero instead.
+     * Branches to label if (left &amp; right) == 0. If negated is true branchse on non-zero
+     * instead.
      *
      * @param left Integer kind. Non null.
      * @param right Integer kind. Non null.
-     * @param trueDestination destination if left & right == 0. Non null.
-     * @param falseDestination destination if left & right != 0. Non null
+     * @param trueDestination destination if left &amp; right == 0. Non null.
+     * @param falseDestination destination if left &amp; right != 0. Non null
      * @param trueSuccessorProbability hoistoric probability that comparison is true
      */
     @Override
@@ -301,6 +298,16 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         assert ((AArch64Kind) left.getPlatformKind()).isInteger() && left.getPlatformKind() == right.getPlatformKind() : right + " " + left;
         ((AArch64ArithmeticLIRGenerator) getArithmetic()).emitBinary(AArch64.zr.asValue(LIRKind.combine(left, right)), AArch64ArithmeticOp.TST, true, left, right);
         append(new AArch64ControlFlow.BranchOp(ConditionFlag.EQ, trueDestination, falseDestination, trueSuccessorProbability));
+    }
+
+    @Override
+    public void emitOpMaskTestBranch(Value left, boolean negateLeft, Value right, LabelRef trueDestination, LabelRef falseDestination, double trueSuccessorProbability) {
+        throw GraalError.unsupportedArchitecture(target().arch);
+    }
+
+    @Override
+    public void emitOpMaskOrTestBranch(Value left, Value right, boolean allZeros, LabelRef trueDestination, LabelRef falseDestination, double trueSuccessorProbability) {
+        throw GraalError.unsupportedArchitecture(target().arch);
     }
 
     /**
@@ -505,13 +512,13 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     /**
-     * Moves trueValue into result if (left & right) == 0, else falseValue.
+     * Moves trueValue into result if (left &amp; right) == 0, else falseValue.
      *
      * @param left Integer kind. Non null.
      * @param right Integer kind. Non null.
      * @param trueValue Arbitrary value, same type as falseValue. Non null.
      * @param falseValue Arbitrary value, same type as trueValue. Non null.
-     * @return virtual register containing trueValue if (left & right) == 0, else falseValue.
+     * @return virtual register containing trueValue if (left &amp; right) == 0, else falseValue.
      */
     @Override
     public Variable emitIntegerTestMove(Value left, Value right, Value trueValue, Value falseValue) {
@@ -528,6 +535,16 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
             append(new CondMoveOp(result, ConditionFlag.EQ, asAllocatable(trueValue), asAllocatable(falseValue)));
         }
         return result;
+    }
+
+    @Override
+    public Variable emitOpMaskTestMove(Value leftVal, boolean negateLeft, Value right, Value trueValue, Value falseValue) {
+        throw GraalError.unsupportedArchitecture(target().arch);
+    }
+
+    @Override
+    public Variable emitOpMaskOrTestMove(Value leftVal, Value right, boolean allZeros, Value trueValue, Value falseValue) {
+        throw GraalError.unsupportedArchitecture(target().arch);
     }
 
     @Override
@@ -808,6 +825,14 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     public Variable emitVectorizedMismatch(EnumSet<?> runtimeCheckedCPUFeatures, Value arrayA, Value arrayB, Value length, Value stride) {
         Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
         append(new AArch64VectorizedMismatchOp(this, result, asAllocatable(arrayA), asAllocatable(arrayB), asAllocatable(length), asAllocatable(stride)));
+        return result;
+    }
+
+    @Override
+    public Variable emitVectorizedHashCode(EnumSet<?> runtimeCheckedCPUFeatures, Value arrayStart, Value length, Value initialValue, JavaKind arrayKind) {
+        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        append(new AArch64VectorizedHashCodeOp(this,
+                        result, asAllocatable(arrayStart), asAllocatable(length), asAllocatable(initialValue), arrayKind));
         return result;
     }
 

@@ -24,14 +24,13 @@
  */
 package jdk.graal.compiler.lir.amd64;
 
-import static jdk.vm.ci.amd64.AMD64.xmm0;
 import static jdk.graal.compiler.lir.amd64.AMD64LIRHelper.registersToValues;
+import static jdk.vm.ci.amd64.AMD64.xmm0;
 
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
@@ -68,4 +67,8 @@ public abstract class AMD64MathIntrinsicUnaryOp extends AMD64LIRInstruction {
         return result;
     }
 
+    @Override
+    public boolean modifiesStackPointer() {
+        return true;
+    }
 }

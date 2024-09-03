@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,11 +28,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Optional;
 
-import jdk.graal.compiler.phases.util.GraphOrder;
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
-import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
@@ -59,7 +60,7 @@ import jdk.graal.compiler.nodes.cfg.HIRLoop;
 import jdk.graal.compiler.nodes.cfg.LocationSet;
 import jdk.graal.compiler.nodes.debug.ControlFlowAnchored;
 import jdk.graal.compiler.nodes.extended.AnchoringNode;
-import jdk.graal.compiler.nodes.loop.LoopEx;
+import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.loop.LoopsData;
 import jdk.graal.compiler.nodes.memory.MemoryAccess;
 import jdk.graal.compiler.nodes.memory.MemoryKill;
@@ -68,7 +69,8 @@ import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.VirtualizableAllocation;
 import jdk.graal.compiler.nodes.util.GraphUtil;
-import org.graalvm.word.LocationIdentity;
+import jdk.graal.compiler.phases.common.util.LoopUtility;
+import jdk.graal.compiler.phases.util.GraphOrder;
 
 /**
  * Optimization phase that performs global value numbering and loop invariant code motion on a
@@ -80,7 +82,7 @@ import org.graalvm.word.LocationIdentity;
  * an array length
  *
  * <pre>
- * for (int i = 0; i < arr.length; i++) {
+ * for (int i = 0; i &lt; arr.length; i++) {
  * // body
  * }
  * </pre>
@@ -93,7 +95,7 @@ import org.graalvm.word.LocationIdentity;
  * int i = 0;
  * while (true) {
  *     int len = arr.length;
- *     if (i < len) {
+ *     if (i &lt; len) {
  *         // body
  *         i++;
  *     }
@@ -132,7 +134,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
 
     @Override
     public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
-        return ALWAYS_APPLICABLE;
+        return super.notApplicableTo(graphState);
     }
 
     @Override
@@ -168,7 +170,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
             this.ld = ld;
             this.graph = cfg.graph;
             this.licmNodesPerLoop = EconomicMap.create();
-            for (LoopEx lex : ld.loops()) {
+            for (Loop lex : ld.loops()) {
                 licmNodesPerLoop.put(lex.loopBegin(), graph.createNodeBitMap());
             }
             this.blockMaps = new BlockMap<>(cfg);
@@ -176,23 +178,23 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
         }
 
         /**
-         * Traversal order and kill effects: The visit order of the dominator tree guarantees
-         * that predecessors (except loop edges which are handled explicitly) are visited before
-         * a block itself (i.e. the post dominator of a split). This ensures we will have seen
-         * all necessary predecessor kills before we process a merge block.
+         * Traversal order and kill effects: The visit order of the dominator tree guarantees that
+         * predecessors (except loop edges which are handled explicitly) are visited before a block
+         * itself (i.e. the post dominator of a split). This ensures we will have seen all necessary
+         * predecessor kills before we process a merge block.
          *
          * Example: Block b0,b1,b2,b3
          *
-         * @formatter:off
+         * <pre>
          * if()  b0
          *  b1
          * else
          *  b2
          * merge b3
+         * </pre>
          *
          * The order of traversal would be b0,b1,b2,b3(post dom) where the effects of b1 and b2 are
          * collected and applied to b3 as well
-         * @formatter:on
          */
         @Override
         public ValueMap enter(HIRBlock b) {
@@ -210,7 +212,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
             // preserve for dominated and successors
             blockMaps.put(b, blockMap);
 
-            Loop<HIRBlock> hirLoop = b.getLoop();
+            CFGLoop<HIRBlock> hirLoop = b.getLoop();
             LocationSet thisLoopKilledLocations = hirLoop == null ? null : ((HIRLoop) hirLoop).getKillLocations();
 
             if (!b.isLoopHeader()) {
@@ -231,7 +233,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
                 killLoopLocations(thisLoopKilledLocations, blockMap);
             }
 
-            LoopEx loopCandidate = null;
+            Loop loopCandidate = null;
             boolean tryLICM = false;
             if (hirLoop != null && considerLICM) {
                 checkLICM: {
@@ -300,7 +302,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
         }
 
         private static void processNode(FixedWithNextNode cur, LocationSet thisLoopKilledLocations,
-                        LoopEx loopCandidate, ValueMap blockMap, NodeBitMap licmNodes, ControlFlowGraph cfg) {
+                        Loop loopCandidate, ValueMap blockMap, NodeBitMap licmNodes, ControlFlowGraph cfg) {
             if (cur instanceof LoopExitNode) {
                 /*
                  * We exit a loop down this path, we have to account for the effects of the loop
@@ -390,7 +392,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
      * invariant based on its inputs (data fields of the node including indirect loop variant
      * dependencies like the memory graph are checked by the caller).
      */
-    public static boolean tryPerformLICM(LoopEx loop, FixedNode n, NodeBitMap liftedNodes) {
+    public static boolean tryPerformLICM(Loop loop, FixedNode n, NodeBitMap liftedNodes) {
         if (nodeCanBeLifted(n, loop, liftedNodes)) {
             loop.loopBegin().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, loop.loopBegin().graph(), "Before LICM of node %s", n);
             loop.loopBegin().getDebug().log(DebugContext.VERY_DETAILED_LEVEL, "Early GVN: LICM on node %s", n);
@@ -416,7 +418,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
 
     }
 
-    public static boolean nodeCanBeLifted(Node n, LoopEx loop, NodeBitMap liftedNodes) {
+    public static boolean nodeCanBeLifted(Node n, Loop loop, NodeBitMap liftedNodes) {
         /*
          * Note that the caller has to ensure n is not a memory kill at that point
          */
@@ -447,7 +449,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
         return canLICM;
     }
 
-    public static boolean inputIsLoopInvariant(Node input, LoopEx loop, NodeBitMap liftedNodes) {
+    public static boolean inputIsLoopInvariant(Node input, Loop loop, NodeBitMap liftedNodes) {
         if (input == null) {
             return true;
         }
@@ -587,7 +589,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
          * Perform actual global value numbering. Replace node {@code n} with an equal node (inputs
          * and data fields) up in the dominance chain.
          */
-        public void substitute(Node n, ControlFlowGraph cfg, NodeBitMap licmNodes, LoopEx invariantInLoop) {
+        public void substitute(Node n, ControlFlowGraph cfg, NodeBitMap licmNodes, Loop invariantInLoop) {
             Node edgeDataEqual = find(n);
             if (edgeDataEqual != null) {
                 assert edgeDataEqual.graph() != null;
@@ -612,24 +614,9 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
                     }
                 }
 
-                HIRBlock useBlock = cfg.blockFor(n);
-                Loop<HIRBlock> defLoop = defBlock.getLoop();
-                Loop<HIRBlock> useLoop = useBlock.getLoop();
-
-                if (defLoop != null) {
-                    // the def is inside a loop, either a parent or a disjunct loop
-                    if (useLoop != null) {
-                        // we are only safe without proxies if we are included in the def loop,
-                        // i.e., the def loop is a parent loop
-                        if (!useLoop.isAncestorOrSelf(defLoop)) {
-                            earlyGVNAbort.increment(graph.getDebug());
-                            return;
-                        }
-                    } else {
-                        // the use is not in a loop but the def is, needs proxies, fail
-                        earlyGVNAbort.increment(graph.getDebug());
-                        return;
-                    }
+                if (!LoopUtility.canUseWithoutProxy(cfg, edgeDataEqual, n)) {
+                    earlyGVNAbort.increment(graph.getDebug());
+                    return;
                 }
 
                 graph.getDebug().log(DebugContext.VERY_DETAILED_LEVEL, "Early GVN: replacing %s with %s", n, edgeDataEqual);

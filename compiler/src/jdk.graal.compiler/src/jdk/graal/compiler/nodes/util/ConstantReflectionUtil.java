@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package jdk.graal.compiler.nodes.util;
 
 import java.nio.ByteOrder;
 
+import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.nodes.ConstantNode;
@@ -46,6 +47,14 @@ public final class ConstantReflectionUtil {
     private ConstantReflectionUtil() {
     }
 
+    /**
+     * Checks if the given value is a {@link JavaConstant} with at least one
+     * {@link ConstantNode#getStableDimension() stable dimension}.
+     */
+    public static boolean isStableJavaArray(ValueNode array) {
+        return array.isJavaConstant() && ((ConstantNode) array).getStableDimension() > 0;
+    }
+
     public static int[] loadIntArrayConstant(ConstantReflectionProvider crp, JavaConstant targetArg, int maxLength) {
         int targetArgLength = Integer.min(maxLength, crp.readArrayLength(targetArg));
         int[] targetCharArray = new int[targetArgLength];
@@ -53,6 +62,39 @@ public final class ConstantReflectionUtil {
             targetCharArray[i] = (char) crp.readArrayElement(targetArg, i).asInt();
         }
         return targetCharArray;
+    }
+
+    public static boolean shouldConstantFoldArrayOperation(CanonicalizerTool tool, int arrayLength) {
+        // constant-folding huge arrays takes too long, do it only for reasonably small arrays
+        return arrayLength < GraalOptions.StringIndexOfConstantLimit.getValue(tool.getOptions());
+    }
+
+    /**
+     * Performs a type punned array bounds check on the given type punned array properties vs actual
+     * array properties. A type punned array access is an array access whose bit width not the same
+     * as the array element's bit width, e.g. reading a {@code char} value from a {@code byte}
+     * array.
+     *
+     * @param typePunnedOffset array offset in relation to the type punned element size, e.g.
+     *            "number of char elements in this byte array".
+     * @param typePunnedLength array length in relation to the type punned element size, e.g.
+     *            "number of char elements in this byte array".
+     * @param typePunnedStride type punned array element size.
+     * @param arrayLength actual array length, e.g. actual byte size of the {@code byte} array we
+     *            want to read a {@code char} from.
+     * @param arrayKind actual array kind, e.g. {@link JavaKind#Byte} for a {@code byte} array we
+     *            want to read a {@code char} from.
+     */
+    public static boolean boundsCheckTypePunned(long typePunnedOffset, int typePunnedLength, Stride typePunnedStride, int arrayLength, JavaKind arrayKind) {
+        /*
+         * Note: A simple (offset + length |<=| array.length) check does not protect against illegal
+         * negative offset or length values for which (offset + length) might appear to be in bounds
+         * while the start of the range is out of bounds or greater than the end.
+         */
+        long arrayByteLength = (long) arrayLength * arrayKind.getByteCount();
+        long byteOffset = typePunnedOffset * typePunnedStride.value;
+        long byteLength = (long) typePunnedLength * typePunnedStride.value;
+        return Long.compareUnsigned(byteOffset + byteLength, arrayByteLength) <= 0 && byteOffset >= 0 && byteLength >= 0;
     }
 
     /**

@@ -65,7 +65,6 @@ public class CompletionExecutor {
     private final DebugContext debug;
     private final BigBang bb;
     private Timing timing;
-    private Object vmConfig;
 
     public interface Timing {
         long getPrintIntervalNanos();
@@ -97,7 +96,6 @@ public class CompletionExecutor {
         postedOperations.reset();
         completedOperations.reset();
         postedBeforeStart = Collections.synchronizedList(new ArrayList<>());
-        vmConfig = bb.getHostVM().getConfiguration();
     }
 
     /**
@@ -156,17 +154,16 @@ public class CompletionExecutor {
 
     @SuppressWarnings("try")
     private void executeCommand(DebugContextRunnable command) {
-        bb.getHostVM().installInThread(vmConfig);
         long startTime = 0L;
         if (timing != null) {
             startTime = System.nanoTime();
         }
         bb.getHostVM().recordActivity();
         Throwable thrown = null;
-        try (DebugContext debug = command.getDebug(bb.getOptions(), bb.getDebugHandlerFactories());
-                        Scope s = debug.scope("Operation");
-                        Activation a = debug.activate()) {
-            command.run(debug);
+        try (DebugContext localDebug = command.getDebug(bb.getOptions(), bb.getDebugHandlerFactories());
+                        Scope s = localDebug.scope("Operation");
+                        Activation a = localDebug.activate()) {
+            command.run(localDebug);
         } catch (Throwable x) {
             thrown = x;
         } finally {
@@ -195,6 +192,7 @@ public class CompletionExecutor {
         state.set(newState);
     }
 
+    @SuppressWarnings("unused")
     public long complete() throws InterruptedException {
         long lastPrint = 0;
         if (timing != null) {

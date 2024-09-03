@@ -24,9 +24,9 @@
  */
 package jdk.graal.compiler.hotspot;
 
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static jdk.graal.compiler.hotspot.HotSpotReplacementsImpl.isGraalClass;
 import static jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
+import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
@@ -35,6 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 import org.graalvm.collections.UnmodifiableEconomicMap;
+
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.bytecode.ResolvedJavaMethodBytecode;
@@ -60,7 +61,6 @@ import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.ConstantBindingParameterPlugin;
 import jdk.graal.compiler.replacements.PEGraphDecoder;
 import jdk.graal.compiler.replacements.PartialIntrinsicCallTargetNode;
-
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -173,10 +173,10 @@ public class EncodedSnippets {
         return snippetNodeClasses;
     }
 
-    ResolvedJavaType lookupSnippetType(Class<?> clazz) {
+    public ResolvedJavaType lookupSnippetType(Class<?> clazz) {
         SnippetResolvedJavaType type = snippetTypes.get(clazz);
         if (type == null && isGraalClass(clazz)) {
-            // During libgraal image building references to Graal classes from snippets are tracked.
+            // During image building, references to Graal classes from snippets are tracked.
             // If a class isn't found in this path at runtime it means something was missed.
             throw new GraalError("Missing Graal class " + clazz.getName());
         }
@@ -297,7 +297,7 @@ public class EncodedSnippets {
         ParameterPlugin parameterPlugin = null;
         if (args != null) {
             MetaAccessProvider meta = HotSpotReplacementsImpl.noticeTypes(providers.getMetaAccess());
-            SnippetReflectionProvider snippetReflection = replacements.snippetReflection;
+            SnippetReflectionProvider snippetReflection = replacements.getProviders().getSnippetReflection();
             if (IS_IN_NATIVE_IMAGE) {
                 snippetReflection = new LibGraalSnippetReflectionProvider(snippetReflection);
             }

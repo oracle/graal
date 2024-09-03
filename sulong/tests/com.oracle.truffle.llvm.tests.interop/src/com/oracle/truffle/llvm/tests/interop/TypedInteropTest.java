@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,20 @@
  */
 package com.oracle.truffle.llvm.tests.interop;
 
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.CoreMatchers.is;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import org.graalvm.polyglot.Value;
+import org.hamcrest.MatcherAssert;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Ignore;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.llvm.tests.interop.values.ArrayObject;
@@ -37,16 +51,6 @@ import com.oracle.truffle.llvm.tests.interop.values.StructObject;
 import com.oracle.truffle.llvm.tests.interop.values.TestCallback;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
-import java.util.HashMap;
-import java.util.Map;
-import org.graalvm.polyglot.Value;
-import static org.hamcrest.CoreMatchers.instanceOf;
-import static org.hamcrest.CoreMatchers.is;
-import org.junit.BeforeClass;
-import org.junit.Assert;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.junit.runner.RunWith;
 
 @RunWith(TruffleRunner.class)
 public class TypedInteropTest extends InteropTestBase {
@@ -370,7 +374,7 @@ public class TypedInteropTest extends InteropTestBase {
         StructObject point = makePoint(39, 17);
         Object ret = addAndSwapPoint.call(point, 3, 7);
 
-        Assert.assertThat("ret", ret, is(instanceOf(StructObject.class)));
+        MatcherAssert.assertThat("ret", ret, is(instanceOf(StructObject.class)));
         checkPoint((StructObject) ret, 24, 42);
     }
 

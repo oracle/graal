@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,13 +27,14 @@ package jdk.graal.compiler.core.test.ea;
 import java.lang.ref.WeakReference;
 import java.util.List;
 
+import org.junit.Assert;
+import org.junit.Test;
+
 import jdk.graal.compiler.nodes.extended.BoxNode;
 import jdk.graal.compiler.nodes.extended.UnboxNode;
 import jdk.graal.compiler.nodes.java.StoreFieldNode;
 import jdk.graal.compiler.nodes.virtual.CommitAllocationNode;
 import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
-import org.junit.Assert;
-import org.junit.Test;
 
 public class PartialEscapeAnalysisIterationTest extends EATestBase {
 
@@ -150,5 +151,23 @@ public class PartialEscapeAnalysisIterationTest extends EATestBase {
             Assert.assertEquals(1, allocations.size());
             Assert.assertTrue(allocations.get(0).isAlive());
         }
+    }
+
+    public static int foldFloatLessThanSelf(short y) {
+        Double x = (double) y;
+        int i = 0;
+        while (x < x) {
+            if (i++ >= 100) {
+                break;
+            }
+            x = x + 1;
+        }
+        return i;
+    }
+
+    @Test
+    public void testFloatLessThanSelf() {
+        prepareGraph("foldFloatLessThanSelf", true);
+        new PartialEscapePhase(true, false, createCanonicalizerPhase(), null, graph.getOptions()).apply(graph, context);
     }
 }

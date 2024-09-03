@@ -41,14 +41,19 @@ import java.io.PrintStream;
 import java.util.Formatter;
 import java.util.Map;
 
+import org.graalvm.collections.EconomicMap;
+
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugOptions;
 import jdk.graal.compiler.debug.DiagnosticsOutputDirectory;
 import jdk.graal.compiler.debug.PathUtilities;
 import jdk.graal.compiler.debug.TTY;
+import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.options.OptionsParser;
 import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
-
 import jdk.vm.ci.code.BailoutException;
 
 /**
@@ -236,17 +241,17 @@ public abstract class CompilationWrapper<T> {
             for (ExceptionAction action : alternatives) {
                 String option = GraalCompilerOptions.CompilationFailureAction.getName();
                 if (action == ExceptionAction.Silent) {
-                    ps.printf("- To disable compilation failure notifications, set %s to %s (e.g., -Dgraal.%s=%s).%n",
+                    ps.printf("- To disable compilation failure notifications, set %s to %s (e.g., -Djdk.graal.%s=%s).%n",
                                     option, action,
                                     option, action);
                 } else if (action == ExceptionAction.Print) {
                     ps.printf("- To print a message for a compilation failure without retrying the compilation, " +
-                                    "set %s to %s (e.g., -Dgraal.%s=%s).%n",
+                                    "set %s to %s (e.g., -Djdk.graal.%s=%s).%n",
                                     option, action,
                                     option, action);
                 } else if (action == ExceptionAction.Diagnose) {
                     ps.printf("- To capture more information for diagnosing or reporting a compilation failure, " +
-                                    "set %s to %s or %s (e.g., -Dgraal.%s=%s).%n",
+                                    "set %s to %s or %s (e.g., -Djdk.graal.%s=%s).%n",
                                     option, action,
                                     ExceptionAction.ExitVM,
                                     option, action);
@@ -255,6 +260,7 @@ public abstract class CompilationWrapper<T> {
         }
     }
 
+    @SuppressWarnings("try")
     protected T handleFailure(DebugContext initialDebug, Throwable cause) {
         OptionValues initialOptions = initialDebug.getOptions();
 
@@ -335,18 +341,11 @@ public abstract class CompilationWrapper<T> {
                 TTY.printf("Error writing to %s: %s%n", retryLogFile, ioe);
             }
 
-            OptionValues retryOptions = new OptionValues(initialOptions,
-                            Dump, ":" + DebugOptions.DiagnoseDumpLevel.getValue(initialOptions),
-                            MethodFilter, null,
-                            Count, "",
-                            Time, "",
-                            DumpPath, dumpPath,
-                            PrintBackendCFG, true,
-                            TrackNodeSourcePosition, true);
-
+            OptionValues retryOptions = getRetryOptions(initialOptions, dumpPath);
             ByteArrayOutputStream logBaos = new ByteArrayOutputStream();
             PrintStream ps = new PrintStream(logBaos);
-            try (DebugContext retryDebug = createRetryDebugContext(initialDebug, retryOptions, ps)) {
+            try (DebugContext retryDebug = createRetryDebugContext(initialDebug, retryOptions, ps);
+                            DebugCloseable retryScope = retryDebug.openRetryCompilation()) {
                 dumpOnError(retryDebug, cause);
 
                 T res;
@@ -367,6 +366,34 @@ public abstract class CompilationWrapper<T> {
                 return postRetry(action, handleException(cause));
             }
         }
+    }
+
+    /**
+     * Parses options to be used for retry compilations, storing the result in {@code values}. Any
+     * defaults already present in {@code values} should be overridden by the parsed options.
+     *
+     * @param options an array of options, obtained from the value of
+     *            {@link DebugOptions#DiagnoseOptions}.
+     * @param values the object in which to store the parsed values.
+     */
+    protected abstract void parseRetryOptions(String[] options, EconomicMap<OptionKey<?>, Object> values);
+
+    private OptionValues getRetryOptions(OptionValues initialOptions, String dumpPath) {
+        EconomicMap<OptionKey<?>, Object> values = EconomicMap.create(initialOptions.getMap());
+        /*
+         * Override values in initialOptions with useful defaults, but let them be overridden in
+         * turn if explicitly set in DiagnoseOptions.
+         */
+        values.put(MethodFilter, null);
+        values.put(Count, "");
+        values.put(Time, "");
+        values.put(DumpPath, dumpPath);
+        values.put(PrintBackendCFG, true);
+        values.put(TrackNodeSourcePosition, true);
+
+        String diagnoseOptions = DebugOptions.DiagnoseOptions.getValue(initialOptions);
+        parseRetryOptions(OptionsParser.splitOptions(diagnoseOptions), values);
+        return new OptionValues(values);
     }
 
     private T postRetry(ExceptionAction action, T res) {
@@ -445,7 +472,7 @@ public abstract class CompilationWrapper<T> {
             return false;
         }
 
-        int maxRate = Math.min(100, Math.abs(maxRateValue));
+        int maxRate = Math.min(100, NumUtil.safeAbs(maxRateValue));
         long now = System.currentTimeMillis();
         long start = getCompilationPeriodStart(now);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,7 +50,6 @@ public final class JDWP {
     public static final String JAVA_LANG_OBJECT = "Ljava/lang/Object;";
 
     private static final boolean CAN_GET_INSTANCE_INFO = false;
-    private static final long SUSPEND_TIMEOUT = 400;
 
     private static final int ACC_SYNTHETIC = 0x00001000;
     private static final int JDWP_SYNTHETIC = 0xF0000000;
@@ -194,14 +193,6 @@ public final class JDWP {
 
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 controller.suspendAll();
-
-                // give threads time to suspend before returning
-                for (Object guestThread : controller.getVisibleGuestThreads()) {
-                    SuspendedInfo info = controller.getSuspendedInfo(guestThread);
-                    if (info instanceof UnknownSuspendedInfo) {
-                        awaitSuspendedInfo(controller, guestThread, info);
-                    }
-                }
                 return new CommandResult(reply);
             }
         }
@@ -213,7 +204,7 @@ public final class JDWP {
                 controller.fine(() -> "Resume all packet");
 
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
-                controller.resumeAll(false);
+                controller.resumeAll();
                 return new CommandResult(reply);
             }
         }
@@ -431,7 +422,7 @@ public final class JDWP {
                     controller.fine(() -> "Redefine successful");
                 } finally {
                     for (Object guestThread : allGuestThreads) {
-                        controller.resume(guestThread, false);
+                        controller.resume(guestThread);
                     }
                     controller.leaveTruffleContext(prev);
                 }
@@ -1190,10 +1181,7 @@ public final class JDWP {
                                 writeMethodResult(reply, context, result, thread, controller);
                             } catch (Throwable t) {
                                 reply.errorCode(ErrorCodes.INTERNAL);
-                                // Checkstyle: stop allow error output
-                                System.err.println("Internal Espresso error: " + t.getMessage());
-                                t.printStackTrace();
-                                // Checkstyle: resume allow error output
+                                controller.severe(INVOKE_METHOD.class.getName() + ".createReply", t);
                             } finally {
                                 connection.handleReply(packet, commandResult);
                             }
@@ -1382,10 +1370,7 @@ public final class JDWP {
                                 writeMethodResult(reply, context, result, thread, controller);
                             } catch (Throwable t) {
                                 reply.errorCode(ErrorCodes.INTERNAL);
-                                // Checkstyle: stop allow error output
-                                System.err.println("Internal Espresso error: " + t.getMessage());
-                                t.printStackTrace();
-                                // Checkstyle: resume allow error output
+                                controller.severe(INVOKE_METHOD.class.getName() + "." + "createReply", t);
                             } finally {
                                 connection.handleReply(packet, commandResult);
                             }
@@ -1480,23 +1465,7 @@ public final class JDWP {
                     return new CommandResult(reply);
                 }
 
-                if (!method.hasVariableTable()) {
-                    reply.errorCode(ErrorCodes.ABSENT_INFORMATION);
-                    return new CommandResult(reply);
-                }
-
-                KlassRef[] params = method.getParameters();
-                int argCnt = 0; // the number of words in the frame used by the arguments
-                for (KlassRef klass : params) {
-                    if (klass.isPrimitive()) {
-                        byte tag = klass.getTagConstant();
-                        if (tag == TagConstants.DOUBLE || tag == TagConstants.LONG) {
-                            argCnt += 2;
-                        } else {
-                            argCnt++;
-                        }
-                    }
-                }
+                int argCnt = getArgCount(method.getSignatureAsString());
                 LocalRef[] locals = method.getLocalVariableTable().getLocals();
 
                 reply.writeInt(argCnt);
@@ -1505,7 +1474,7 @@ public final class JDWP {
                     reply.writeLong(local.getStartBCI());
                     reply.writeString(local.getNameAsString());
                     reply.writeString(local.getTypeAsString());
-                    reply.writeInt(local.getEndBCI() - local.getStartBCI());
+                    reply.writeInt(local.getEndBCI() - local.getStartBCI() + 1);
                     reply.writeInt(local.getSlot());
                 }
                 return new CommandResult(reply);
@@ -1583,24 +1552,8 @@ public final class JDWP {
                 if (method == null) {
                     return new CommandResult(reply);
                 }
-
-                if (!method.hasVariableTable()) {
-                    reply.errorCode(ErrorCodes.ABSENT_INFORMATION);
-                    return new CommandResult(reply);
-                }
-
-                KlassRef[] params = method.getParameters();
-                int argCnt = 0; // the number of words in the frame used by the arguments
-                for (KlassRef klass : params) {
-                    if (klass.isPrimitive()) {
-                        byte tag = klass.getTagConstant();
-                        if (tag == TagConstants.DOUBLE || tag == TagConstants.LONG) {
-                            argCnt += 2;
-                        } else {
-                            argCnt++;
-                        }
-                    }
-                }
+                // the number of words in the frame used by the arguments
+                int argCnt = getArgCount(method.getSignatureAsString());
                 LocalRef[] locals = method.getLocalVariableTable().getLocals();
                 LocalRef[] genericLocals = method.getLocalVariableTypeTable().getLocals();
 
@@ -1618,7 +1571,7 @@ public final class JDWP {
                         }
                     }
                     reply.writeString(genericSignature);
-                    reply.writeInt(local.getEndBCI() - local.getStartBCI());
+                    reply.writeInt(local.getEndBCI() - local.getStartBCI() + 1);
                     reply.writeInt(local.getSlot());
                 }
                 return new CommandResult(reply);
@@ -1753,23 +1706,14 @@ public final class JDWP {
                 } else {
                     reply.writeLong(context.getIds().getIdAsLong(monitorOwnerThread));
 
-                    // go through the suspended info to obtain the entry count
+                    // check if thread not suspended
                     SuspendedInfo info = controller.getSuspendedInfo(monitorOwnerThread);
 
                     if (info == null) {
                         reply.errorCode(ErrorCodes.THREAD_NOT_SUSPENDED);
                         return new CommandResult(reply);
                     }
-
-                    if (info instanceof UnknownSuspendedInfo) {
-                        awaitSuspendedInfo(controller, monitorOwnerThread, info);
-                        if (info instanceof UnknownSuspendedInfo) {
-                            // still no known suspension state
-                            reply.errorCode(ErrorCodes.THREAD_NOT_SUSPENDED);
-                            return new CommandResult(reply);
-                        }
-                    }
-                    int entryCount = info.getMonitorEntryCount(monitor);
+                    int entryCount = context.getMonitorEntryCount(monitorOwnerThread, monitor);
 
                     if (entryCount == -1) {
                         reply.errorCode(ErrorCodes.INVALID_OBJECT);
@@ -1883,10 +1827,7 @@ public final class JDWP {
                                 writeMethodResult(reply, context, result, thread, controller);
                             } catch (Throwable t) {
                                 reply.errorCode(ErrorCodes.INTERNAL);
-                                // Checkstyle: stop allow error output
-                                System.err.println("Internal Espresso error: " + t.getMessage());
-                                t.printStackTrace();
-                                // Checkstyle: resume allow error output
+                                controller.severe(INVOKE_METHOD.class.getName() + "." + "createReply", t);
                             } finally {
                                 connection.handleReply(packet, commandResult);
                             }
@@ -2067,7 +2008,7 @@ public final class JDWP {
 
                 controller.fine(() -> "resume thread packet for thread: " + controller.getContext().getThreadName(thread));
 
-                controller.resume(thread, false);
+                controller.resume(thread);
                 return new CommandResult(reply);
             }
         }
@@ -2186,16 +2127,6 @@ public final class JDWP {
                     return new CommandResult(reply);
                 }
 
-                if (suspendedInfo instanceof UnknownSuspendedInfo) {
-                    controller.fine(() -> "Unknown suspension info for thread: " + controller.getContext().getThreadName(thread));
-                    suspendedInfo = awaitSuspendedInfo(controller, thread, suspendedInfo);
-                    if (suspendedInfo instanceof UnknownSuspendedInfo) {
-                        // we can't return any frames for a not yet suspended thread
-                        reply.errorCode(ErrorCodes.THREAD_NOT_SUSPENDED);
-                        return new CommandResult(reply);
-                    }
-                }
-
                 CallFrame[] frames = suspendedInfo.getStackFrames();
 
                 if (length == -1 || length > frames.length) {
@@ -2238,11 +2169,8 @@ public final class JDWP {
                     return new CommandResult(reply);
                 }
 
-                if (suspendedInfo instanceof UnknownSuspendedInfo) {
-                    suspendedInfo = awaitSuspendedInfo(controller, thread, suspendedInfo);
-                }
                 int length = suspendedInfo.getStackFrames().length;
-                reply.writeInt(suspendedInfo.getStackFrames().length);
+                reply.writeInt(length);
                 controller.fine(() -> "current frame count: " + length + " for thread: " + controller.getContext().getThreadName(thread));
 
                 return new CommandResult(reply);
@@ -2269,15 +2197,6 @@ public final class JDWP {
                 if (info == null) {
                     reply.errorCode(ErrorCodes.THREAD_NOT_SUSPENDED);
                     return new CommandResult(reply);
-                }
-
-                if (info instanceof UnknownSuspendedInfo) {
-                    info = awaitSuspendedInfo(controller, thread, info);
-                    if (info instanceof UnknownSuspendedInfo) {
-                        // still no known suspension state
-                        reply.errorCode(ErrorCodes.THREAD_NOT_SUSPENDED);
-                        return new CommandResult(reply);
-                    }
                 }
 
                 // fetch all monitors on current stack
@@ -2411,14 +2330,6 @@ public final class JDWP {
 
                 SuspendedInfo suspendedInfo = controller.getSuspendedInfo(thread);
 
-                if (suspendedInfo instanceof UnknownSuspendedInfo) {
-                    suspendedInfo = awaitSuspendedInfo(controller, thread, suspendedInfo);
-                    if (suspendedInfo instanceof UnknownSuspendedInfo) {
-                        reply.errorCode(ErrorCodes.THREAD_NOT_SUSPENDED);
-                        return new CommandResult(reply);
-                    }
-                }
-
                 MonitorStackInfo[] ownedMonitorInfos = context.getOwnedMonitors(suspendedInfo.getStackFrames());
                 // filter out monitors not owned by thread
                 ArrayList<MonitorStackInfo> filtered = new ArrayList<>(ownedMonitorInfos.length);
@@ -2461,17 +2372,6 @@ public final class JDWP {
                     return new CommandResult(reply);
                 }
 
-                if (info instanceof UnknownSuspendedInfo) {
-                    info = awaitSuspendedInfo(controller, thread, info);
-                    if (info instanceof UnknownSuspendedInfo) {
-                        // still no known suspension state
-                        reply.errorCode(ErrorCodes.THREAD_NOT_SUSPENDED);
-                        return new CommandResult(reply);
-                    }
-                }
-
-                final SuspendedInfo suspendedInfo = info;
-
                 Object returnValue = readValue(input, controller.getContext());
                 if (returnValue == Void.TYPE) {
                     // we have to use an Interop value, so simply use
@@ -2479,18 +2379,18 @@ public final class JDWP {
                     // return type methods anyway
                     returnValue = controller.getContext().getNullObject();
                 }
-                CallFrame topFrame = suspendedInfo.getStackFrames().length > 0 ? suspendedInfo.getStackFrames()[0] : null;
-                if (!controller.forceEarlyReturn(thread, topFrame, returnValue)) {
+
+                CallFrame[] stackFrames = info.getStackFrames();
+                CallFrame topFrame = stackFrames.length > 0 ? stackFrames[0] : null;
+                if (topFrame == null || !controller.forceEarlyReturn(info, thread, topFrame, returnValue)) {
+
                     reply.errorCode(ErrorCodes.OPAQUE_FRAME);
                 }
 
                 // make sure owned monitors taken in frame are exited
-                ThreadJob<Void> job = new ThreadJob<>(thread, new Callable<Void>() {
-                    @Override
-                    public Void call() {
-                        controller.getContext().clearFrameMonitors(topFrame);
-                        return null;
-                    }
+                ThreadJob<Void> job = new ThreadJob<>(thread, () -> {
+                    controller.getContext().clearFrameMonitors(topFrame);
+                    return null;
                 });
                 controller.postJobForThread(job);
                 // don't return here before job completed
@@ -2785,7 +2685,7 @@ public final class JDWP {
         static class GET_VALUES {
             public static final int ID = 1;
 
-            static CommandResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context, DebuggerController controller) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
@@ -2821,6 +2721,7 @@ public final class JDWP {
                         writeValue(sigbyte, value, reply, true, context);
                     }
                 } catch (ArrayIndexOutOfBoundsException | InteropException ex) {
+                    controller.severe(GET_VALUES.class.getName() + "." + "createReply", ex);
                     // invalid slot provided
                     reply.errorCode(ErrorCodes.INVALID_SLOT);
                     return new CommandResult(reply);
@@ -3025,32 +2926,6 @@ public final class JDWP {
         }
     }
 
-    private static SuspendedInfo awaitSuspendedInfo(DebuggerController controller, Object thread, SuspendedInfo suspendedInfo) {
-        // OK, we hard suspended this thread, but it hasn't yet actually suspended
-        // in a code location known to Truffle
-        // let's check if the thread is RUNNING and give it a moment to reach
-        // the suspended state
-        SuspendedInfo result = suspendedInfo;
-        Thread hostThread = controller.getContext().asHostThread(thread);
-        if (hostThread.getState() == Thread.State.RUNNABLE) {
-            controller.fine(() -> "Awaiting suspended info for thread " + controller.getContext().getThreadName(thread));
-
-            long timeout = System.currentTimeMillis() + SUSPEND_TIMEOUT;
-            while (result instanceof UnknownSuspendedInfo && System.currentTimeMillis() < timeout) {
-                try {
-                    Thread.sleep(10);
-                    result = controller.getSuspendedInfo(thread);
-                } catch (InterruptedException e) {
-                    // ignore this here
-                }
-            }
-        }
-        if (result instanceof UnknownSuspendedInfo) {
-            controller.fine(() -> "Still no suspended info for thread " + controller.getContext().getThreadName(thread));
-        }
-        return result;
-    }
-
     private static Object readValue(byte valueKind, PacketStream input, JDWPContext context) {
         switch (valueKind) {
             case TagConstants.BOOLEAN:
@@ -3124,7 +2999,7 @@ public final class JDWP {
             case TagConstants.BOOLEAN:
                 if (value.getClass() == Long.class) {
                     long unboxed = (long) value;
-                    reply.writeBoolean(unboxed > 0 ? true : false);
+                    reply.writeBoolean(unboxed > 0);
                 } else {
                     reply.writeBoolean((boolean) value);
                 }
@@ -3238,6 +3113,70 @@ public final class JDWP {
             mod |= JDWP_SYNTHETIC;
         }
         return mod;
+    }
+
+    private static int getArgCount(String signature) {
+        int startIndex = signature.indexOf('(') + 1;
+        int endIndex = signature.indexOf(')');
+        String parameterSig = signature.substring(startIndex, endIndex);
+        int currentCount = 0;
+        int currentIndex = 0;
+        char[] charArray = parameterSig.toCharArray();
+        while (currentIndex < charArray.length) {
+            switch (charArray[currentIndex]) {
+                case 'D':
+                case 'J': {
+                    currentCount += 2;
+                    currentIndex++;
+                    break;
+                }
+                case 'B':
+                case 'C':
+                case 'F':
+                case 'I':
+                case 'S':
+                case 'Z': {
+                    currentCount++;
+                    currentIndex++;
+                    break;
+                }
+                case 'L':
+                    currentCount++;
+                    currentIndex = parameterSig.indexOf(';', currentIndex) + 1;
+                    break;
+                case 'T':
+                    throw new RuntimeException("unexpected type variable");
+                case '[':
+                    currentCount++;
+                    currentIndex += parseArrayType(parameterSig, charArray, currentIndex + 1);
+                    break;
+                default:
+                    throw new RuntimeException("should not reach here");
+            }
+        }
+        return currentCount;
+    }
+
+    private static int parseArrayType(String signature, char[] charArray, int currentIndex) {
+        switch (charArray[currentIndex]) {
+            case 'D':
+            case 'J':
+            case 'B':
+            case 'C':
+            case 'F':
+            case 'I':
+            case 'S':
+            case 'Z':
+                return 2;
+            case 'L':
+                return 2 + signature.indexOf(';', currentIndex) - currentIndex;
+            case 'T':
+                throw new RuntimeException("unexpected type variable");
+            case '[':
+                return 1 + parseArrayType(signature, charArray, currentIndex + 1);
+            default:
+                throw new RuntimeException("should not reach here");
+        }
     }
 
     private static KlassRef verifyRefType(long refTypeId, PacketStream reply, JDWPContext context) {

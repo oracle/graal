@@ -63,15 +63,15 @@ import com.oracle.truffle.api.library.GenerateLibrary.Abstract;
  * static final class DispatchObject {
  *
  *     final Object data;
- *     final Class<?> dispatchTarget;
+ *     final Class&lt;?&gt; dispatchTarget;
  *
- *     DispatchObject(Object data, Class<?> dispatchTarget) {
+ *     DispatchObject(Object data, Class&lt;&gt; dispatchTarget) {
  *         this.data = data;
  *         this.dispatchTarget = dispatchTarget;
  *     }
  *
  *     &#64;ExportMessage
- *     Class<?> dispatch() {
+ *     Class&lt;?&gt; dispatch() {
  *         return dispatchTarget;
  *     }
  * }

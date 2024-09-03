@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -86,10 +86,17 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.test.polyglot.MultiThreadedLanguage.LanguageContext;
 import com.oracle.truffle.api.test.polyglot.MultiThreadedLanguage.ThreadRequest;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
-public class MultiThreadedLanguageTest {
+@SuppressWarnings("hiding")
+@RunWith(Parameterized.class)
+public class MultiThreadedLanguageTest extends AbstractThreadedPolyglotTest {
 
-    static volatile LanguageContext langContext;
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     private static Value eval(Context context, Function<Env, Object> f) {
         MultiThreadedLanguage.runinside.set(f);
@@ -98,11 +105,6 @@ public class MultiThreadedLanguageTest {
         } finally {
             MultiThreadedLanguage.runinside.set(null);
         }
-    }
-
-    @BeforeClass
-    public static void runWithWeakEncapsulationOnly() {
-        TruffleTestAssumptions.assumeWeakEncapsulation();
     }
 
     @Test
@@ -171,7 +173,7 @@ public class MultiThreadedLanguageTest {
             return req.singleThreaded;
         };
 
-        ExecutorService executor = createExecutor(1);
+        ExecutorService executor = createExecutor(1, vthreads);
 
         assertEquals(0, initializeCount.get());
         assertNull(lastInitializeRequest.get());
@@ -298,7 +300,7 @@ public class MultiThreadedLanguageTest {
         final int threadCount = 10;
         final int outerLoop = 10;
         final int innerLoop = 100;
-        ExecutorService executor = createExecutor(threadCount);
+        ExecutorService executor = createExecutor(threadCount, vthreads);
         for (int outerIter = 0; outerIter < outerLoop; outerIter++) {
             resetData();
 
@@ -381,9 +383,7 @@ public class MultiThreadedLanguageTest {
 
     @Test
     public void testAccessTruffleContextPolyglotThread() throws Throwable {
-        MultiThreadedLanguage.isThreadAccessAllowed = (req) -> {
-            return true;
-        };
+        MultiThreadedLanguage.isThreadAccessAllowed = (req) -> true;
         Engine engine = Engine.create();
         AtomicReference<Throwable> seenError = new AtomicReference<>();
         Context context = Context.newBuilder().allowCreateThread(true).engine(engine).build();
@@ -391,7 +391,7 @@ public class MultiThreadedLanguageTest {
             public Object apply(Env env) {
                 List<Thread> createdThreads = new ArrayList<>();
                 ExecutorService service = Executors.newFixedThreadPool(10, (r) -> {
-                    Thread t = env.newTruffleThreadBuilder(r).build();
+                    Thread t = env.newTruffleThreadBuilder(r).virtual(vthreads).build();
                     t.setUncaughtExceptionHandler((thread, e) -> seenError.set(e));
                     createdThreads.add(t);
                     return t;
@@ -485,7 +485,7 @@ public class MultiThreadedLanguageTest {
                             TruffleContext innerContext = env.newInnerContextBuilder().initializeCreatorContext(true).inheritAllAccess(true).build();
                             Thread innerThread = env.newTruffleThreadBuilder(() -> {
                                 assertUniqueContext();
-                            }).context(innerContext).build();
+                            }).virtual(vthreads).context(innerContext).build();
                             innerThread.setUncaughtExceptionHandler(uncaughtHandler);
                             innerThread.start();
 
@@ -502,7 +502,7 @@ public class MultiThreadedLanguageTest {
                             innerContext.close();
                         }
 
-                    }).context(context).build();
+                    }).virtual(vthreads).context(context).build();
                     thread.setUncaughtExceptionHandler(uncaughtHandler);
                     thread.start();
                     threads.add(thread);
@@ -550,7 +550,7 @@ public class MultiThreadedLanguageTest {
                             Thread innerThread = env.newTruffleThreadBuilder(() -> {
                                 LanguageContext innerThreadContext = MultiThreadedLanguage.getContext();
                                 assertSame(languageContext, innerThreadContext);
-                            }).context(env.getContext()).build();
+                            }).virtual(vthreads).context(env.getContext()).build();
                             innerThread.setUncaughtExceptionHandler(uncaughtHandler);
                             innerThread.start();
 
@@ -566,7 +566,7 @@ public class MultiThreadedLanguageTest {
                             innerContext.close();
                         }
 
-                    }).context(env.getContext()).build();
+                    }).virtual(vthreads).context(env.getContext()).build();
                     thread.setUncaughtExceptionHandler(uncaughtHandler);
                     thread.start();
                     threads.add(thread);
@@ -606,7 +606,7 @@ public class MultiThreadedLanguageTest {
                         wait.acquire();
                     } catch (InterruptedException e) {
                     }
-                }).build();
+                }).virtual(vthreads).build();
                 t.start();
                 try {
                     waitForEnter.acquire();
@@ -656,7 +656,7 @@ public class MultiThreadedLanguageTest {
                     } catch (InterruptedException e) {
                         seenInterrupt.set(true);
                     }
-                }).build();
+                }).virtual(vthreads).build();
                 tref.set(t);
                 t.setUncaughtExceptionHandler((thread, e) -> seenError.set(e));
                 t.start();
@@ -682,7 +682,7 @@ public class MultiThreadedLanguageTest {
             };
             eval(context, (env) -> {
                 AbstractPolyglotTest.assertFails(() -> env.newTruffleThreadBuilder(() -> {
-                }).build(), IllegalStateException.class, (ise) -> {
+                }).virtual(vthreads).build(), IllegalStateException.class, (ise) -> {
                     assertTrue(ise.getMessage().contains("Multi threaded access requested by thread"));
                 });
                 return null;
@@ -762,10 +762,10 @@ public class MultiThreadedLanguageTest {
         }
     }
 
-    private ExecutorService createExecutor(int noThreads) {
+    private ExecutorService createExecutor(int noThreads, boolean vthreads) {
         threads.clear();
         ExecutorService service = Executors.newFixedThreadPool(noThreads, (r) -> {
-            Thread t = new Thread(r);
+            Thread t = vthreads ? Thread.ofVirtual().unstarted(r) : new Thread(r);
             threads.add(t);
             return t;
         });

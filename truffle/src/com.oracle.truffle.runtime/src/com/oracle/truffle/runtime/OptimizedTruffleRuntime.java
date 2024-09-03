@@ -70,6 +70,7 @@ import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
+import org.graalvm.home.Version;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
@@ -110,9 +111,7 @@ import com.oracle.truffle.api.impl.AbstractFastThreadLocal;
 import com.oracle.truffle.api.impl.FrameWithoutBoxing;
 import com.oracle.truffle.api.impl.TVMCI;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
-import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.Node.Child;
@@ -164,10 +163,13 @@ import jdk.vm.ci.services.Services;
 /**
  * Implementation of the Truffle runtime when running on top of Graal. There is only one per VM.
  */
-
 public abstract class OptimizedTruffleRuntime implements TruffleRuntime, TruffleCompilerRuntime {
 
     private static final int JAVA_SPECIFICATION_VERSION = Runtime.version().feature();
+    public static final Version MIN_COMPILER_VERSION = Version.create(23, 1, 2);
+    public static final int MIN_JDK_VERSION = 21;
+    public static final int MAX_JDK_VERSION = 25;
+    public static final Version NEXT_VERSION_UPDATE = Version.create(25, 1);
 
     /**
      * Used only to reset state for native image compilation.
@@ -229,10 +231,6 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
 
     protected EngineCacheSupport loadEngineCacheSupport(List<OptionDescriptors> options) {
         return loadGraalRuntimeServiceProvider(EngineCacheSupport.class, options, false);
-    }
-
-    public boolean isLatestJVMCI() {
-        return true;
     }
 
     public abstract ThreadLocalHandshake getThreadLocalHandshake();
@@ -644,23 +642,6 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     }
 
     @Override
-    public final DirectCallNode createDirectCallNode(CallTarget target) {
-        if (target instanceof OptimizedCallTarget) {
-            OptimizedCallTarget optimizedTarget = (OptimizedCallTarget) target;
-            final OptimizedDirectCallNode directCallNode = new OptimizedDirectCallNode(optimizedTarget);
-            optimizedTarget.addDirectCallNode(directCallNode);
-            return directCallNode;
-        } else {
-            throw new IllegalStateException(String.format("Unexpected call target class %s!", target.getClass()));
-        }
-    }
-
-    @Override
-    public final IndirectCallNode createIndirectCallNode() {
-        return new OptimizedIndirectCallNode();
-    }
-
-    @Override
     public final VirtualFrame createVirtualFrame(Object[] arguments, FrameDescriptor frameDescriptor) {
         return OptimizedCallTarget.createFrame(frameDescriptor, arguments);
     }
@@ -911,7 +892,7 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     private void notifyCompilationFailure(OptimizedCallTarget callTarget, Throwable t, boolean compilationStarted, int tier) {
         try {
             if (compilationStarted) {
-                listeners.onCompilationFailed(callTarget, t.toString(), false, false, tier);
+                listeners.onCompilationFailed(callTarget, t.toString(), false, false, tier, () -> TruffleCompilable.serializeException(t));
             } else {
                 listeners.onCompilationDequeued(callTarget, this, String.format("Failed to create Truffle compiler due to %s.", t.getMessage()), tier);
             }
@@ -922,6 +903,10 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     }
 
     public abstract BackgroundCompileQueue getCompileQueue();
+
+    @SuppressWarnings("unused")
+    protected void onEngineCreated(EngineData engine) {
+    }
 
     @SuppressWarnings("try")
     public CompilationTask submitForCompilation(OptimizedCallTarget optimizedCallTarget, boolean lastTierCompilation) {
@@ -1232,7 +1217,7 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
             final OptimizedTruffleRuntime runtime = OptimizedTruffleRuntime.getRuntime();
             final StringBuilder messageBuilder = new StringBuilder();
             messageBuilder.append(reason).append(" at\n");
-            runtime.iterateFrames(new FrameInstanceVisitor<Object>() {
+            runtime.iterateFrames(new FrameInstanceVisitor<>() {
                 int frameIndex = 0;
 
                 @Override

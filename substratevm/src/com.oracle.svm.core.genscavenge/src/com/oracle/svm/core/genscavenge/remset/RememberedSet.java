@@ -26,7 +26,6 @@ package com.oracle.svm.core.genscavenge.remset;
 
 import java.util.List;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -41,6 +40,8 @@ import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.heap.BarrierSetProvider;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.util.HostedByteBufferPointer;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 /**
  * A remembered set keeps track of references between generations (from the old generation to the
@@ -93,7 +94,7 @@ public interface RememberedSet extends BarrierSetProvider {
      */
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    void enableRememberedSetForObject(AlignedHeader chunk, Object obj);
+    void enableRememberedSetForObject(AlignedHeader chunk, Object obj, UnsignedWord objSize);
 
     /** Clears the remembered set of an aligned chunk. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -152,12 +153,18 @@ public interface RememberedSet extends BarrierSetProvider {
     void walkDirtyObjects(Space space, GreyToBlackObjectVisitor visitor, boolean clean);
 
     /**
-     * Verify the remembered set for an aligned chunk.
+     * Verify the remembered set for an aligned chunk and all its linked-list successors.
      */
     boolean verify(AlignedHeader firstAlignedHeapChunk);
 
     /**
-     * Verify the remembered set for an unaligned chunk.
+     * Verify the remembered set for an unaligned chunk and all its linked-list successors.
      */
     boolean verify(UnalignedHeader firstUnalignedHeapChunk);
+
+    /**
+     * Verify the remembered set for an unaligned chunk and its linked-list successors up until (and
+     * including) another unaligned chunk.
+     */
+    boolean verify(UnalignedHeader firstUnalignedHeapChunk, UnalignedHeader lastUnalignedHeapChunk);
 }

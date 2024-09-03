@@ -41,7 +41,7 @@ import sys
 import atexit
 from mx_gate import Task
 
-from os import environ, listdir, remove, linesep, pathsep
+from os import environ, listdir, remove, linesep
 from os.path import join, exists, dirname, isdir, isfile, getsize, abspath
 from tempfile import NamedTemporaryFile, mkdtemp
 from contextlib import contextmanager
@@ -68,23 +68,14 @@ class VmGateTasks:
     integration = 'integration'
     tools = 'tools'
     libgraal = 'libgraal'
-    svm_tck_test = 'svm_tck_test'
-    svm_sl_tck = 'svm_sl_tck'
-    svm_truffle_tck_js = 'svm-truffle-tck-js'
-    svm_truffle_tck_python = 'svm-truffle-tck-python'
-    truffle_unchained = 'truffle-unchained'
+    truffle_native_tck = 'truffle-native-tck'
+    truffle_native_tck_sl = 'truffle-native-tck-sl'
+    truffle_native_tck_js = 'truffle-native-tck-js'
+    truffle_native_tck_python = 'truffle-native-tck-python'
+    truffle_jvm = 'truffle-jvm'
+    truffle_native = 'truffle-native'
+    truffle_native_quickbuild = 'truffle-native-quickbuild'
     maven_downloader = 'maven-downloader'
-
-def _unittest_config_participant(config):
-    vmArgs, mainClass, mainClassArgs = config
-    # This is required by org.graalvm.component.installer.CatalogIterableTest
-    vmArgs += [
-        '--add-exports=java.base/jdk.internal.loader=ALL-UNNAMED',
-        '--add-opens=java.base/jdk.internal.loader=ALL-UNNAMED',
-    ]
-    return vmArgs, mainClass, mainClassArgs
-
-mx_unittest.add_config_participant(_unittest_config_participant)
 
 def _get_CountUppercase_vmargs():
     cp = mx.project("jdk.graal.compiler.test").classpath_repr()
@@ -128,10 +119,27 @@ def _check_compiler_log(compiler_log_file, expectations, extra_check=None, extra
         for extra_log_file in extra_log_files:
             remove(extra_log_file)
 
+def _test_libgraal_check_build_path(libgraal_location):
+    """
+    If ``mx_substratevm.allow_build_path_in_libgraal()`` is False, tests that libgraal does not contain
+    strings whose prefix is the absolute path of the SDK suite.
+    """
+    import mx_compiler
+    import mx_substratevm
+    import subprocess
+    if not mx_substratevm.allow_build_path_in_libgraal():
+        sdk_suite_dir = mx.suite('sdk').dir
+        tool_path = join(sdk_suite_dir, 'src/org.graalvm.nativeimage.test/src/org/graalvm/nativeimage/test/FindPathsInBinary.java'.replace('/', os.sep))
+        cmd = [mx_compiler.jdk.java, tool_path, libgraal_location, sdk_suite_dir]
+        mx.logv(' '.join(cmd))
+        matches = subprocess.check_output(cmd, universal_newlines=True).strip()
+        if len(matches) != 0:
+            mx.abort(f"Found strings in {libgraal_location} with illegal prefix \"{sdk_suite_dir}\":\n{matches}\n\nRe-run: {' '.join(cmd)}")
+
 def _test_libgraal_basic(extra_vm_arguments, libgraal_location):
     """
     Tests basic libgraal execution by running CountUppercase, ensuring it has a 0 exit code
-    and that the output for -DgraalShowConfiguration=info describes a libgraal execution.
+    and that the output for -Djdk.graal.ShowConfiguration=info describes a libgraal execution.
     """
 
     graalvm_home = mx_sdk_vm_impl.graalvm_home()
@@ -177,8 +185,8 @@ def _test_libgraal_basic(extra_vm_arguments, libgraal_location):
         '-XX:JVMCIThreadsPerNativeLibraryRuntime=1',
         '-XX:JVMCICompilerIdleDelay=0',
         '-XX:JVMCIThreads=1',
-        '-Dlibgraal.PrintCompilation=true',
-        '-Dlibgraal.LogFile=' + compiler_log_file,
+        '-Djdk.graal.PrintCompilation=true',
+        '-Djdk.graal.LogFile=' + compiler_log_file,
     ]
 
     def extra_check(compiler_log):
@@ -201,34 +209,38 @@ def _test_libgraal_basic(extra_vm_arguments, libgraal_location):
             table = f'  Count    Stub{nl}  ' + f'{nl}  '.join((f'{count:<8d} {stub}') for stub, count in stub_compilations.items())
             mx.abort(f'Following stubs were compiled more than once according to compiler log:{nl}{table}')
 
-    args = check_stub_sharing + ['-Dgraal.ShowConfiguration=verbose'] + _get_CountUppercase_vmargs()
+    # Test that legacy `-D.graal` options work.
+    show_config_args = ('-Djdk.graal.ShowConfiguration=verbose', '-Dgraal.ShowConfiguration=verbose')
 
-    # Verify execution via raw java launcher in `mx graalvm-home`.
-    for jre_name, jre, jre_args in jres:
+    for show_config_arg in show_config_args:
+        args = check_stub_sharing + [show_config_arg] + _get_CountUppercase_vmargs()
+
+        # Verify execution via raw java launcher in `mx graalvm-home`.
+        for jre_name, jre, jre_args in jres:
+            try:
+                cmd = [join(jre, 'bin', 'java')] + jre_args + extra_vm_arguments + args
+                mx.log(f'{jre_name}: {" ".join(cmd)}')
+                mx.run(cmd)
+            finally:
+                _check_compiler_log(compiler_log_file, expect, extra_check=extra_check)
+
+        # Verify execution via `mx vm`.
+        import mx_compiler
         try:
-            cmd = [join(jre, 'bin', 'java')] + jre_args + args
-            mx.log(f'{jre_name}: {" ".join(cmd)}')
-            mx.run(cmd)
+            mx.log(f'mx.run_vm: args={extra_vm_arguments + args}')
+            mx_compiler.run_vm(extra_vm_arguments + args)
         finally:
-            _check_compiler_log(compiler_log_file, expect, extra_check=extra_check)
+            _check_compiler_log(compiler_log_file, expect)
 
-    # Verify execution via `mx vm`.
-    import mx_compiler
-    try:
-        mx.log(f'mx.run_vm: args={extra_vm_arguments + args}')
-        mx_compiler.run_vm(extra_vm_arguments + args)
-    finally:
-        _check_compiler_log(compiler_log_file, expect)
-
-def _test_libgraal_fatal_error_handling():
+def _test_libgraal_fatal_error_handling(extra_vm_arguments):
     """
     Tests that fatal errors in libgraal route back to HotSpot fatal error handling.
     """
     graalvm_home = mx_sdk_vm_impl.graalvm_home()
     vmargs = ['-XX:+PrintFlagsFinal',
-              '-Dlibgraal.CrashAt=*',
-              '-Dlibgraal.CrashAtIsFatal=true']
-    cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + _get_CountUppercase_vmargs()
+              '-Djdk.graal.CrashAt=*',
+              '-Djdk.graal.CrashAtIsFatal=1']
+    cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + extra_vm_arguments + _get_CountUppercase_vmargs()
     out = mx.OutputCapture()
     scratch_dir = mkdtemp(dir='.')
     exitcode = mx.run(cmd, nonZeroIsFatal=False, err=out, out=out, cwd=scratch_dir)
@@ -270,7 +282,7 @@ def _test_libgraal_fatal_error_handling():
     mx.log(f"Cleaning up scratch dir after gate task completion: {scratch_dir}")
     mx.rmtree(scratch_dir)
 
-def _test_libgraal_oome_dumping():
+def _test_libgraal_oome_dumping(extra_vm_arguments):
     """
     Tests the HeapDumpOnOutOfMemoryError libgraal option.
     """
@@ -284,17 +296,18 @@ def _test_libgraal_oome_dumping():
     }
     if mx.is_windows():
         # GR-39501
-        mx.log('-Dlibgraal.HeapDumpOnOutOfMemoryError=true is not supported on Windows')
+        mx.log('-Djdk.graal.internal.HeapDumpOnOutOfMemoryError=true is not supported on Windows')
         return
 
     for n, v in inputs.items():
-        vmargs = ['-Dlibgraal.CrashAt=*',
-                  '-Dlibgraal.Xmx128M',
-                  '-Dlibgraal.PrintGC=true',
-                  '-Dlibgraal.HeapDumpOnOutOfMemoryError=true',
-                  f'-Dlibgraal.HeapDumpPath={n}',
-                  '-Dlibgraal.CrashAtThrowsOOME=true']
-        cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + _get_CountUppercase_vmargs()
+        vmargs = ['-Djdk.graal.CrashAt=*',
+                  '-Djdk.graal.internal.Xmx128M',
+                  '-Djdk.graal.internal.PrintGC=true',
+                  '-Djdk.graal.internal.HeapDumpOnOutOfMemoryError=true',
+                  f'-Djdk.graal.internal.HeapDumpPath={n}',
+                  '-Djdk.graal.SystemicCompilationFailureRate=0',
+                  '-Djdk.graal.CrashAtThrowsOOME=true']
+        cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + extra_vm_arguments + _get_CountUppercase_vmargs()
         mx.run(cmd, cwd=scratch_dir)
         heap_dumps = glob.glob(v)
         if not heap_dumps:
@@ -309,19 +322,19 @@ def _test_libgraal_oome_dumping():
     mx.log(f"Cleaning up scratch dir after gate task completion: {scratch_dir}")
     mx.rmtree(scratch_dir)
 
-def _test_libgraal_systemic_failure_detection():
+def _test_libgraal_systemic_failure_detection(extra_vm_arguments):
     """
     Tests that system compilation failures are detected and cause the VM to exit.
     """
     graalvm_home = mx_sdk_vm_impl.graalvm_home()
     for rate in (-1, 1):
         vmargs = [
-            '-Dgraal.CrashAt=*',
-            f'-Dgraal.SystemicCompilationFailureRate={rate}',
-            '-Dgraal.DumpOnError=false',
-            '-Dgraal.CompilationFailureAction=Silent'
+            '-Djdk.graal.CrashAt=*',
+            f'-Djdk.graal.SystemicCompilationFailureRate={rate}',
+            '-Djdk.graal.DumpOnError=false',
+            '-Djdk.graal.CompilationFailureAction=Silent'
         ]
-        cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + _get_CountUppercase_vmargs()
+        cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + extra_vm_arguments + _get_CountUppercase_vmargs()
         out = mx.OutputCapture()
         scratch_dir = mkdtemp(dir='.')
         exitcode = mx.run(cmd, nonZeroIsFatal=False, err=out, out=out, cwd=scratch_dir)
@@ -349,14 +362,14 @@ def _jdk_has_ForceTranslateFailure_jvmci_option(jdk):
         return False
     mx.abort(sink.data)
 
-def _test_libgraal_CompilationTimeout_JIT():
+def _test_libgraal_CompilationTimeout_JIT(extra_vm_arguments):
     """
     Tests timeout handling of CompileBroker compilations.
     """
 
     graalvm_home = mx_sdk_vm_impl.graalvm_home()
     compiler_log_file = abspath('graal-compiler.log')
-    G = '-Dgraal.' #pylint: disable=invalid-name
+    G = '-Djdk.graal.' #pylint: disable=invalid-name
     for vm_can_exit in (False, True):
         vm_exit_delay = 0 if not vm_can_exit else 2
         vmargs = [f'{G}CompilationWatchDogStartDelay=1',  # set compilation timeout to 1 sec
@@ -367,7 +380,7 @@ def _test_libgraal_CompilationTimeout_JIT():
                   f'{G}LogFile={compiler_log_file}',
                    '-Ddebug.graal.CompilationWatchDog=true'] # helps debug failure
 
-        cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + _get_CountUppercase_vmargs()
+        cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + extra_vm_arguments + _get_CountUppercase_vmargs()
         exit_code = mx.run(cmd, nonZeroIsFatal=False)
         expectations = ['detected long running compilation'] + (['a stuck compilation'] if vm_can_exit else [])
         _check_compiler_log(compiler_log_file, expectations)
@@ -385,7 +398,7 @@ def _test_libgraal_CompilationTimeout_Truffle(extra_vm_arguments):
     graalvm_home = mx_sdk_vm_impl.graalvm_home()
     compiler_log_file = abspath('graal-compiler.log')
     truffle_log_file = abspath('truffle-compiler.log')
-    G = '-Dgraal.' #pylint: disable=invalid-name
+    G = '-Djdk.graal.' #pylint: disable=invalid-name
     P = '-Dpolyglot.engine.' #pylint: disable=invalid-name
     for vm_can_exit in (False, True):
         vm_exit_delay = 0 if not vm_can_exit else 2
@@ -409,7 +422,7 @@ def _test_libgraal_CompilationTimeout_Truffle(extra_vm_arguments):
 
         delay = abspath(join(dirname(__file__), 'Delay.sl'))
         cp_args = mx.get_runtime_jvm_args(mx_truffle.resolve_sl_dist_names(use_optimized_runtime=True, use_enterprise=True))
-        cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + cp_args + ['--module', 'org.graalvm.sl_launcher/com.oracle.truffle.sl.launcher.SLMain', delay]
+        cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + extra_vm_arguments + cp_args + ['--module', 'org.graalvm.sl_launcher/com.oracle.truffle.sl.launcher.SLMain', delay]
         err = mx.OutputCapture()
         exit_code = mx.run(cmd, nonZeroIsFatal=False, err=err)
         if err.data:
@@ -437,9 +450,10 @@ def _test_libgraal_ctw(extra_vm_arguments):
             mx_compiler.ctw([
                f'-DCompileTheWorld.Config=Inline=false {" ".join(mx_compiler._compiler_error_options(prefix=""))}',
                 '-XX:+EnableJVMCI',
-                '-Dgraal.InlineDuringParsing=false',
-                '-Dgraal.TrackNodeSourcePosition=true',
-                '-Dgraal.LogFile=' + compiler_log_file,
+                '-Djdk.graal.InlineDuringParsing=false',
+                '-Djdk.graal.TrackNodeSourcePosition=true',
+                '-Djdk.graal.LogFile=' + compiler_log_file,
+                '-DCompileTheWorld.IgnoreCompilationFailures=true',
                 '-DCompileTheWorld.Verbose=true',
                 '-DCompileTheWorld.MethodFilter=StackOverflowError.*,String.*',
                 '-Djvmci.ForceTranslateFailure=nmethod/StackOverflowError:hotspot,method/String.hashCode:native,valueOf',
@@ -452,8 +466,8 @@ def _test_libgraal_ctw(extra_vm_arguments):
             '-esa',
             '-XX:+EnableJVMCI',
             '-DCompileTheWorld.MultiThreaded=true',
-            '-Dgraal.InlineDuringParsing=false',
-            '-Dgraal.TrackNodeSourcePosition=true',
+            '-Djdk.graal.InlineDuringParsing=false',
+            '-Djdk.graal.TrackNodeSourcePosition=true',
             '-DCompileTheWorld.Verbose=false',
             '-DCompileTheWorld.HugeMethodLimit=4000',
             '-DCompileTheWorld.MaxCompiles=150000',
@@ -461,17 +475,6 @@ def _test_libgraal_ctw(extra_vm_arguments):
         ], extra_vm_arguments)
 
 def _test_libgraal_truffle(extra_vm_arguments):
-    def _unittest_config_participant(config):
-        vmArgs, mainClass, mainClassArgs = config
-        def is_truffle_fallback(arg):
-            fallback_args = [
-                "-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime",
-                "-Dgraalvm.ForcePolyglotInvalid=true"
-            ]
-            return arg in fallback_args
-        newVmArgs = [arg for arg in vmArgs if not is_truffle_fallback(arg)]
-        return (newVmArgs, mainClass, mainClassArgs)
-    mx_unittest.add_config_participant(_unittest_config_participant)
     excluded_tests = environ.get("TEST_LIBGRAAL_EXCLUDE")
     if excluded_tests:
         with NamedTemporaryFile(prefix='blacklist.', mode='w', delete=False) as fp:
@@ -485,6 +488,7 @@ def _test_libgraal_truffle(extra_vm_arguments):
         "-Dpolyglot.engine.CompileImmediately=true",
         "-Dpolyglot.engine.BackgroundCompilation=false",
         "-Dpolyglot.engine.CompilationFailureAction=Throw",
+        "-Djdk.graal.CompilationFailureAction=ExitVM",
         "-Dgraalvm.locatorDisabled=true",
         "truffle", "LibGraalCompilerTest"])
 
@@ -519,16 +523,18 @@ def gate_body(args, tasks):
                 if args.extra_vm_argument:
                     extra_vm_arguments += args.extra_vm_argument
 
+                with Task('LibGraal Compiler:CheckBuildPaths', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:
+                    if t: _test_libgraal_check_build_path(libgraal_location)
                 with Task('LibGraal Compiler:Basic', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:
                     if t: _test_libgraal_basic(extra_vm_arguments, libgraal_location)
                 with Task('LibGraal Compiler:FatalErrorHandling', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:
-                    if t: _test_libgraal_fatal_error_handling()
+                    if t: _test_libgraal_fatal_error_handling(extra_vm_arguments)
                 with Task('LibGraal Compiler:OOMEDumping', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:
-                    if t: _test_libgraal_oome_dumping()
+                    if t: _test_libgraal_oome_dumping(extra_vm_arguments)
                 with Task('LibGraal Compiler:SystemicFailureDetection', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:
-                    if t: _test_libgraal_systemic_failure_detection()
+                    if t: _test_libgraal_systemic_failure_detection(extra_vm_arguments)
                 with Task('LibGraal Compiler:CompilationTimeout:JIT', tasks, tags=[VmGateTasks.libgraal]) as t:
-                    if t: _test_libgraal_CompilationTimeout_JIT()
+                    if t: _test_libgraal_CompilationTimeout_JIT(extra_vm_arguments)
                 with Task('LibGraal Compiler:CompilationTimeout:Truffle', tasks, tags=[VmGateTasks.libgraal]) as t:
                     if t: _test_libgraal_CompilationTimeout_Truffle(extra_vm_arguments)
 
@@ -538,22 +544,22 @@ def gate_body(args, tasks):
                 import mx_compiler
                 mx_compiler.compiler_gate_benchmark_runner(tasks, extra_vm_arguments, prefix='LibGraal Compiler:')
 
-                with Task('LibGraal Truffle:unittest', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:
+                with Task('LibGraal Truffle', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:
                     if t: _test_libgraal_truffle(extra_vm_arguments)
         else:
             mx.warn("Skipping libgraal tests: component not enabled")
     else:
         mx.warn("Skipping libgraal tests: suite '{suite}' not found. Did you forget to dynamically import it? (--dynamicimports {suite})".format(suite=libgraal_suite_name))
 
-    gate_substratevm(tasks)
-    gate_substratevm(tasks, quickbuild=True)
     gate_sulong(tasks)
     gate_python(tasks)
-    gate_svm_truffle_tck_smoke_test(tasks)
-    gate_svm_sl_tck(tasks)
-    gate_svm_truffle_tck_js(tasks)
-    gate_svm_truffle_tck_python(tasks)
-    gate_truffle_unchained(tasks)
+    gate_truffle_native_tck_smoke_test(tasks)
+    gate_truffle_native_tck_sl(tasks)
+    gate_truffle_native_tck_js(tasks)
+    gate_truffle_native_tck_python(tasks)
+    gate_truffle_jvm(tasks)
+    gate_truffle_native(tasks)
+    gate_truffle_native(tasks, quickbuild=True)
     gate_maven_downloader(tasks)
 
 def graalvm_svm():
@@ -572,46 +578,26 @@ def graalvm_svm():
             yield native_image
     return native_image_context, svm.extensions
 
-def gate_substratevm(tasks, quickbuild=False):
-    tag = VmGateTasks.substratevm
-    name = 'Run Truffle API tests on SVM'
-    extra_build_args = []
-    if quickbuild:
-        tag = VmGateTasks.substratevm_quickbuild
-        name += ' with quickbuild'
-        extra_build_args = ['-Ob']
-
-    with Task(name, tasks, tags=[tag]) as t:
+def gate_truffle_native(tasks, quickbuild=False):
+    tag = VmGateTasks.truffle_native_quickbuild if quickbuild else VmGateTasks.truffle_native
+    name_suffix = ' with quickbuild' if quickbuild else ''
+    truffle_suite = mx.suite('truffle')
+    with Task('Truffle SL Native Fallback' + name_suffix, tasks, tags=[tag]) as t:
         if t:
-            tests = ['com.oracle.truffle.api.test.polyglot']
-            with NamedTemporaryFile(prefix='blacklist.', mode='w', delete=False) as fp:
-                # ContextPreInitializationNativeImageTest must run in its own image
-                fp.file.writelines([l + '\n' for l in ['com.oracle.truffle.api.test.polyglot.ContextPreInitializationNativeImageTest']])
-                blacklist_args = ["--blacklist", fp.name]
-
-            truffle_with_compilation = [
-                '--verbose',
-                '--macro:truffle',
-                '--language:nfi',
-                '--add-exports=java.base/jdk.internal.module=ALL-UNNAMED',
-                '--add-exports=org.graalvm.polyglot/org.graalvm.polyglot.impl=ALL-UNNAMED',
-                '-R:MaxHeapSize=2g',
-                '--enable-url-protocols=jar',
-                '--enable-url-protocols=http',
-                '-H:MaxRuntimeCompileMethods=5000',
-            ]
-            truffle_without_compilation = truffle_with_compilation + [
-                '-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime'
-            ]
-            args = ['--build-args'] + truffle_with_compilation + extra_build_args + blacklist_args + ['--'] + tests
-            native_image_context, svm = graalvm_svm()
-            with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
-                svm._native_unittest(native_image, args)
-
-            args = ['--build-args'] + truffle_without_compilation + extra_build_args + blacklist_args + ['--run-args', '--verbose', '-Dpolyglot.engine.WarnInterpreterOnly=false'] + ['--'] + tests
-            native_image_context, svm = graalvm_svm()
-            with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
-                svm._native_unittest(native_image, args)
+            if not truffle_suite:
+                mx.abort("Cannot resolve truffle suite.")
+            mx_truffle.sl_native_fallback_gate_tests(quickbuild)
+    with Task('Truffle SL Native Optimized' + name_suffix, tasks, tags=[tag]) as t:
+        if t:
+            if not truffle_suite:
+                mx.abort("Cannot resolve truffle suite.")
+            mx_truffle.sl_native_optimized_gate_tests(quickbuild)
+    with Task('Truffle API Native Tests' + name_suffix, tasks, tags=[tag]) as t:
+        if t:
+            if not truffle_suite:
+                mx.abort("Cannot resolve truffle suite.")
+            mx_truffle.truffle_native_unit_tests_gate(True, quickbuild)
+            mx_truffle.truffle_native_unit_tests_gate(False, quickbuild)
 
 def gate_sulong(tasks):
     with Task('Run SulongSuite tests as native-image', tasks, tags=[VmGateTasks.sulong]) as t:
@@ -649,11 +635,13 @@ def gate_python(tasks):
             python_suite = mx.suite("graalpython")
             python_suite.extensions.run_python_unittests(python_svm_image_path)
 
-def _svm_truffle_tck(native_image, svm_suite, language_suite, language_id, language_distribution=None, fail_on_error=True):
-    assert not language_distribution if language_suite else language_distribution, 'Either language_suite or language_distribution must be given'
-    dists = [d for d in svm_suite.dists if d.name == 'SVM_TRUFFLE_TCK']
-    if not dists:
-        mx.abort("Cannot resolve: SVM_TRUFFLE_TCK distribution.")
+
+def _svm_truffle_tck(native_image, language_id, language_distribution=None, fail_on_error=True):
+    assert language_distribution, 'Language_distribution must be given'
+    dists = [
+        mx.distribution('substratevm:SVM_TRUFFLE_TCK'),
+        language_distribution
+    ] + mx_truffle.resolve_truffle_dist_names()
 
     def _collect_excludes(suite, suite_import, excludes):
         excludes_dir = join(suite.mxDir, 'truffle.tck.permissions')
@@ -664,26 +652,19 @@ def _svm_truffle_tck(native_image, svm_suite, language_suite, language_id, langu
         imported_suite.visit_imports(_collect_excludes, excludes=excludes)
 
     excludes = []
-    if language_suite:
-        language_suite.visit_imports(_collect_excludes, excludes=excludes)
-        macro_options = [f'--language:{language_id}']
-    else:
-        macro_options = ['--macro:truffle']
-        dists = dists + [language_distribution]
-    cp = pathsep.join([d.classpath_repr() for d in dists])
+    language_distribution.suite.visit_imports(_collect_excludes, excludes=excludes)
     svmbuild = mkdtemp()
     try:
         report_file = join(svmbuild, "language_permissions.log")
-        options = macro_options + [
+        options = mx.get_runtime_jvm_args(dists, exclude_names=['substratevm:SVM']) + [
             '--features=com.oracle.svm.truffle.tck.PermissionsFeature',
         ] + mx_sdk_vm_impl.svm_experimental_options([
             '-H:ClassInitialization=:build_time',
             '-H:+EnforceMaxRuntimeCompileMethods',
-            '-cp',
-            cp,
             '-H:-FoldSecurityManagerGetter',
             f'-H:TruffleTCKPermissionsReportFile={report_file}',
             f'-H:Path={svmbuild}',
+            '--add-exports=org.graalvm.truffle.runtime/com.oracle.truffle.runtime=ALL-UNNAMED'
         ]) + [
             'com.oracle.svm.truffle.tck.MockMain'
         ]
@@ -703,75 +684,77 @@ def _svm_truffle_tck(native_image, svm_suite, language_suite, language_id, langu
         mx.rmtree(svmbuild)
     return None
 
-def gate_svm_truffle_tck_smoke_test(tasks):
-    with Task('SVM Truffle TCK Smoke Test', tasks, tags=[VmGateTasks.svm_tck_test]) as t:
+
+def gate_truffle_native_tck_smoke_test(tasks):
+    with Task('Truffle Native TCK Smoke Test', tasks, tags=[VmGateTasks.truffle_native_tck]) as t:
         if t:
             truffle_suite = mx.suite('truffle')
             test_language_dist = [d for d in truffle_suite.dists if d.name == 'TRUFFLE_TCK_TESTS_LANGUAGE'][0]
             native_image_context, svm = graalvm_svm()
             with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
-                result = _svm_truffle_tck(native_image, svm.suite, None, 'TCKSmokeTestLanguage', test_language_dist, False)
+                result = _svm_truffle_tck(native_image, 'TCKSmokeTestLanguage', test_language_dist, False)
                 if not 'Failed: Language TCKSmokeTestLanguage performs following privileged calls' in result:
                     mx.abort("Expected failure, log:\n" + result)
                 if not 'UnsafeCallNode.doUnsafeAccess' in result:
                     mx.abort("Missing UnsafeCallNode.doUnsafeAccess call in the log, log:\n" + result)
-                if not 'UnsafeCallNode.doUnsafeAccessBehindBoundary' in result:
-                    mx.abort("Missing UnsafeCallNode.doUnsafeAccessBehindBoundary call in the log, log:\n" + result)
-                if not 'PrivilegedCallNode.doPrivilegedCall' in result:
-                    mx.abort("Missing PrivilegedCallNode.doPrivilegedCall call in the log, log:\n" + result)
-                if not 'PrivilegedCallNode.doPrivilegedCallBehindBoundary' in result:
-                    mx.abort("Missing PrivilegedCallNode.doPrivilegedCallBehindBoundary call in the log, log:\n" + result)
+                if not 'UnsafeCallNode.doBehindBoundaryUnsafeAccess' in result:
+                    mx.abort("Missing UnsafeCallNode.doBehindBoundaryUnsafeAccess call in the log, log:\n" + result)
+                if not 'PrivilegedCallNode.execute' in result:
+                    mx.abort("Missing PrivilegedCallNode.execute call in the log, log:\n" + result)
+                if not 'PrivilegedCallNode.doBehindBoundaryPrivilegedCall' in result:
+                    mx.abort("Missing PrivilegedCallNode.doBehindBoundaryPrivilegedCall call in the log, log:\n" + result)
+                if not 'PrivilegedCallNode.doInterrupt' in result:
+                    mx.abort("Missing PrivilegedCallNode.doInterrupt call in the log, log:\n" + result)
 
 
-def gate_svm_truffle_tck_js(tasks):
-    with Task('JavaScript SVM Truffle TCK', tasks, tags=[VmGateTasks.svm_truffle_tck_js]) as t:
+def gate_truffle_native_tck_js(tasks):
+    with Task('JavaScript Truffle Native TCK', tasks, tags=[VmGateTasks.truffle_native_tck_js]) as t:
         if t:
-            js_suite = mx.suite('graal-js')
-            if not js_suite:
-                mx.abort("Cannot resolve graal-js suite.")
+            js_language = mx.distribution('graal-js:GRAALJS', fatalIfMissing=False)
+            if not js_language:
+                mx.abort("Cannot resolve the `graal-js::GRAALJS` language distribution. To resolve this, import the graal-js suite using `--dynamicimports /graal-js`.")
             native_image_context, svm = graalvm_svm()
             with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
-                _svm_truffle_tck(native_image, svm.suite, js_suite, 'js')
+                _svm_truffle_tck(native_image, 'js', js_language)
 
 
-
-def gate_svm_truffle_tck_python(tasks):
-    with Task('Python SVM Truffle TCK', tasks, tags=[VmGateTasks.svm_truffle_tck_python]) as t:
+def gate_truffle_native_tck_python(tasks):
+    with Task('Python Truffle Native TCK', tasks, tags=[VmGateTasks.truffle_native_tck_python]) as t:
         if t:
-            py_suite = mx.suite('graalpython')
-            if not py_suite:
-                mx.abort("Cannot resolve graalpython suite.")
+            py_language = mx.distribution('graalpython:GRAALPYTHON', fatalIfMissing=False)
+            if not py_language:
+                mx.abort("Cannot resolve the `graalpython:GRAALPYTHON` language distribution. To resolve this, import the graalpython suite using `--dynamicimports /graalpython`.")
             native_image_context, svm = graalvm_svm()
             with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
-                _svm_truffle_tck(native_image, svm.suite, py_suite, 'python')
+                _svm_truffle_tck(native_image, 'python', py_language)
 
-def gate_truffle_unchained(tasks):
+def gate_truffle_jvm(tasks):
     truffle_suite = mx.suite('truffle')
-    with Task('Truffle Unchained Truffle ModulePath Unit Tests', tasks, tags=[VmGateTasks.truffle_unchained]) as t:
+    with Task('Truffle ModulePath Unit Tests Optimized', tasks, tags=[VmGateTasks.truffle_jvm]) as t:
         if t:
             if not truffle_suite:
                 mx.abort("Cannot resolve truffle suite.")
-            mx_truffle.truffle_jvm_module_path_unit_tests_gate()
-    with Task('Truffle Unchained Truffle ClassPath Unit Tests', tasks, tags=[VmGateTasks.truffle_unchained]) as t:
+            mx_truffle.truffle_jvm_module_path_optimized_unit_tests_gate()
+    with Task('Truffle ModulePath Unit Tests Fallback', tasks, tags=[VmGateTasks.truffle_jvm]) as t:
         if t:
             if not truffle_suite:
                 mx.abort("Cannot resolve truffle suite.")
-            mx_truffle.truffle_jvm_class_path_unit_tests_gate()
-    with Task('Truffle Unchained SL JVM', tasks, tags=[VmGateTasks.truffle_unchained]) as t:
+            mx_truffle.truffle_jvm_module_path_fallback_unit_tests_gate()
+    with Task('Truffle ClassPath Unit Tests Optimized', tasks, tags=[VmGateTasks.truffle_jvm]) as t:
+        if t:
+            if not truffle_suite:
+                mx.abort("Cannot resolve truffle suite.")
+            mx_truffle.truffle_jvm_class_path_optimized_unit_tests_gate()
+    with Task('Truffle ClassPath Unit Tests Fallback', tasks, tags=[VmGateTasks.truffle_jvm]) as t:
+        if t:
+            if not truffle_suite:
+                mx.abort("Cannot resolve truffle suite.")
+            mx_truffle.truffle_jvm_class_path_fallback_unit_tests_gate()
+    with Task('Truffle SL JVM', tasks, tags=[VmGateTasks.truffle_jvm]) as t:
         if t:
             if not truffle_suite:
                 mx.abort("Cannot resolve truffle suite.")
             mx_truffle.sl_jvm_gate_tests()
-    with Task('Truffle Unchained SL Native Fallback', tasks, tags=[VmGateTasks.truffle_unchained]) as t:
-        if t:
-            if not truffle_suite:
-                mx.abort("Cannot resolve truffle suite.")
-            mx_truffle.sl_native_fallback_gate_tests()
-    with Task('Truffle Unchained SL Native Optimized', tasks, tags=[VmGateTasks.truffle_unchained]) as t:
-        if t:
-            if not truffle_suite:
-                mx.abort("Cannot resolve truffle suite.")
-            mx_truffle.sl_native_optimized_gate_tests()
 
 def gate_maven_downloader(tasks):
     with Task('Maven Downloader prepare maven repo', tasks, tags=[VmGateTasks.maven_downloader]) as t:
@@ -862,17 +845,15 @@ def build_tests_image(image_dir, options, unit_tests=None, additional_deps=None,
         mx.logv(f'Test image path: {tests_image_path}')
         return tests_image_path, unittests_file
 
-def gate_svm_sl_tck(tasks):
-    with Task('SVM Truffle TCK', tasks, tags=[VmGateTasks.svm_sl_tck]) as t:
+def gate_truffle_native_tck_sl(tasks):
+    with Task('SL Truffle Native TCK', tasks, tags=[VmGateTasks.truffle_native_tck_sl]) as t:
         if t:
-            tools_suite = mx.suite('tools')
+            tools_suite = mx.suite('tools', fatalIfMissing=False)
             if not tools_suite:
-                mx.abort("Cannot resolve tools suite.")
+                mx.abort("Cannot resolve tools suite. To resolve this, import the tools suite using `--dynamicimports /tools`.")
             svmbuild = mkdtemp()
             try:
                 options = [
-                    '--macro:truffle',
-                    '--tool:all',
                     '-H:Class=org.junit.runner.JUnitCore',
                 ] + mx_sdk_vm_impl.svm_experimental_options([
                     f'-H:Path={svmbuild}',

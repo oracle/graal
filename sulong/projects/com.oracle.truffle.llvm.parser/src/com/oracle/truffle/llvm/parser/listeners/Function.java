@@ -613,6 +613,8 @@ public final class Function implements ParserListener {
 
     private static final int CALL_HAS_FMF_SHIFT = 17;
     private static final int CALL_HAS_EXPLICITTYPE_SHIFT = 15;
+    private static final int CALL_TAIL = 0;
+    private static final int CALL_MUST_TAIL = 14;
 
     private void createFunctionCall(RecordBuffer buffer) {
         final AttributesCodeEntry paramAttr = paramAttributes.getCodeEntry(buffer.read());
@@ -626,6 +628,8 @@ public final class Function implements ParserListener {
         if (((ccinfo >> CALL_HAS_EXPLICITTYPE_SHIFT) & 1) != 0) {
             functionType = Types.castToFunction(readType(buffer));
         }
+
+        boolean mustTail = (((ccinfo >> CALL_TAIL) & 1) & ((ccinfo >> CALL_MUST_TAIL) & 1)) != 0;
 
         int callee = readIndex(buffer);
         Type calleeType = readValueType(buffer, callee);
@@ -653,9 +657,9 @@ public final class Function implements ParserListener {
         final Type returnType = functionType.getReturnType();
 
         if (returnType == VoidType.INSTANCE) {
-            emit(VoidCallInstruction.fromSymbols(scope, callee, args, paramAttr, operandBundle, functionType));
+            emit(VoidCallInstruction.fromSymbols(scope, callee, args, paramAttr, operandBundle, functionType, mustTail));
         } else {
-            emit(CallInstruction.fromSymbols(scope, returnType, callee, args, paramAttr, operandBundle, functionType));
+            emit(CallInstruction.fromSymbols(scope, returnType, callee, args, paramAttr, operandBundle, functionType, mustTail));
         }
         operandBundle = null;
     }

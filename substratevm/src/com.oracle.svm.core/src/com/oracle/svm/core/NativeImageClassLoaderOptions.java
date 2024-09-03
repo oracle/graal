@@ -28,26 +28,25 @@ import jdk.graal.compiler.options.Option;
 
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 
 public class NativeImageClassLoaderOptions {
     public static final String AddExportsAndOpensFormat = "<module>/<package>=<target-module>(,<target-module>)*";
-
     public static final String AddReadsFormat = "<module>=<target-module>(,<target-module>)*";
 
     @APIOption(name = "add-exports", extra = true, launcherOption = true, valueSeparator = {APIOption.WHITESPACE_SEPARATOR, '='})//
     @Option(help = "Value " + AddExportsAndOpensFormat + " updates <module> to export <package> to <target-module>, regardless of module declaration." +
                     " <target-module> can be ALL-UNNAMED to export to all unnamed modules.")//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> AddExports = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> AddExports = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
     @APIOption(name = "add-opens", extra = true, launcherOption = true, valueSeparator = {APIOption.WHITESPACE_SEPARATOR, '='})//
     @Option(help = "Value " + AddExportsAndOpensFormat + " updates <module> to open <package> to <target-module>, regardless of module declaration.")//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> AddOpens = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> AddOpens = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
     @APIOption(name = "add-reads", extra = true, valueSeparator = {APIOption.WHITESPACE_SEPARATOR, '='})//
     @Option(help = "Value " + AddReadsFormat + " updates <module> to read <target-module>, regardless of module declaration." +
                     " <target-module> can be ALL-UNNAMED to read all unnamed modules.")//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> AddReads = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> AddReads = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
     @APIOption(name = "list-modules")//
     @Option(help = "List observable modules and exit.")//

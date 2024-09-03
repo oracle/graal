@@ -39,33 +39,33 @@ public class ControlFlowGraphBuilder {
         this.structuredGraph = structuredGraph;
     }
 
-    public ControlFlowGraphBuilder backendBlocks(boolean backendBlocks) {
-        this.backendBlocks = backendBlocks;
+    public ControlFlowGraphBuilder backendBlocks(boolean backendBlocksParam) {
+        this.backendBlocks = backendBlocksParam;
         return this;
     }
 
-    public ControlFlowGraphBuilder connectBlocks(boolean connectBlocks) {
-        this.connectBlocks = connectBlocks;
+    public ControlFlowGraphBuilder connectBlocks(boolean connectBlocksParam) {
+        this.connectBlocks = connectBlocksParam;
         return this;
     }
 
-    public ControlFlowGraphBuilder computeFrequency(boolean computeFrequency) {
-        this.computeFrequency = computeFrequency;
+    public ControlFlowGraphBuilder computeFrequency(boolean computeFrequencyParam) {
+        this.computeFrequency = computeFrequencyParam;
         return this;
     }
 
-    public ControlFlowGraphBuilder computeLoops(boolean computeLoops) {
-        this.computeLoops = computeLoops;
+    public ControlFlowGraphBuilder computeLoops(boolean computeLoopsParam) {
+        this.computeLoops = computeLoopsParam;
         return this;
     }
 
-    public ControlFlowGraphBuilder computeDominators(boolean computeDominators) {
-        this.computeDominators = computeDominators;
+    public ControlFlowGraphBuilder computeDominators(boolean computeDominatorsParam) {
+        this.computeDominators = computeDominatorsParam;
         return this;
     }
 
-    public ControlFlowGraphBuilder computePostdominators(boolean computePostdominators) {
-        this.computePostdominators = computePostdominators;
+    public ControlFlowGraphBuilder computePostdominators(boolean computePostdominatorsParam) {
+        this.computePostdominators = computePostdominatorsParam;
         return this;
     }
 

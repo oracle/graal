@@ -24,20 +24,21 @@
  */
 package com.oracle.svm.configure.trace;
 
+import static com.oracle.svm.configure.trace.LazyValueUtils.lazyNull;
 import static com.oracle.svm.configure.trace.LazyValueUtils.lazyValue;
 
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
-import jdk.graal.compiler.phases.common.LazyValue;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberDeclaration;
-import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.configure.config.ConfigurationMethod;
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.config.TypeConfiguration;
+import com.oracle.svm.util.LogUtils;
 
+import jdk.graal.compiler.phases.common.LazyValue;
 import jdk.vm.ci.meta.MetaUtil;
 
 class JniProcessor extends AbstractProcessor {
@@ -50,7 +51,7 @@ class JniProcessor extends AbstractProcessor {
     @Override
     @SuppressWarnings("fallthrough")
     void processEntry(EconomicMap<String, ?> entry, ConfigurationSet configurationSet) {
-        ConfigurationCondition condition = ConfigurationCondition.alwaysTrue();
+        UnresolvedConfigurationCondition condition = UnresolvedConfigurationCondition.alwaysTrue();
         boolean invalidResult = Boolean.FALSE.equals(entry.get("result"));
         if (invalidResult) {
             return;
@@ -64,9 +65,12 @@ class JniProcessor extends AbstractProcessor {
             String lookupName = singleElement(args);
             String internalName = (lookupName.charAt(0) != '[') ? ('L' + lookupName + ';') : lookupName;
             String forNameString = MetaUtil.internalNameToJava(internalName, true, true);
-            if (!advisor.shouldIgnore(lazyValue(forNameString), callerClassLazyValue)) {
+            LazyValue<String> forNameStringLazyValue = lazyValue(forNameString);
+            if (!advisor.shouldIgnore(forNameStringLazyValue, callerClassLazyValue)) {
                 if (function.equals("FindClass")) {
-                    configurationSet.getJniConfiguration().getOrCreateType(condition, forNameString);
+                    if (!advisor.shouldIgnoreJniLookup(forNameStringLazyValue, lazyNull(), lazyNull(), callerClassLazyValue)) {
+                        configurationSet.getJniConfiguration().getOrCreateType(condition, forNameString);
+                    }
                 } else if (!AccessAdvisor.PROXY_CLASS_NAME_PATTERN.matcher(lookupName).matches()) { // DefineClass
                     LogUtils.warning("Unsupported JNI function DefineClass used to load class " + forNameString);
                 }
@@ -82,12 +86,20 @@ class JniProcessor extends AbstractProcessor {
         ConfigurationMemberDeclaration declaration = (declaringClass != null) ? ConfigurationMemberDeclaration.DECLARED : ConfigurationMemberDeclaration.PRESENT;
         TypeConfiguration config = configurationSet.getJniConfiguration();
         switch (function) {
+            case "AllocObject":
+                expectSize(args, 0);
+                /*
+                 * AllocObject is implemented via Unsafe.allocateInstance, so we need to set the
+                 * "unsafe allocated" flag in the reflection configuration file.
+                 */
+                configurationSet.getReflectionConfiguration().getOrCreateType(condition, clazz).setUnsafeAllocated();
+                break;
             case "GetStaticMethodID":
             case "GetMethodID": {
                 expectSize(args, 2);
                 String name = (String) args.get(0);
                 String signature = (String) args.get(1);
-                if (!advisor.shouldIgnoreJniMethodLookup(lazyValue(clazz), lazyValue(name), lazyValue(signature), callerClassLazyValue)) {
+                if (!advisor.shouldIgnoreJniLookup(lazyValue(clazz), lazyValue(name), lazyValue(signature), callerClassLazyValue)) {
                     config.getOrCreateType(condition, declaringClassOrClazz).addMethod(name, signature, declaration);
                     if (!declaringClassOrClazz.equals(clazz)) {
                         config.getOrCreateType(condition, clazz);
@@ -99,9 +111,12 @@ class JniProcessor extends AbstractProcessor {
             case "GetStaticFieldID": {
                 expectSize(args, 2);
                 String name = (String) args.get(0);
-                config.getOrCreateType(condition, declaringClassOrClazz).addField(name, declaration, false);
-                if (!declaringClassOrClazz.equals(clazz)) {
-                    config.getOrCreateType(condition, clazz);
+                String signature = (String) args.get(1);
+                if (!advisor.shouldIgnoreJniLookup(lazyValue(clazz), lazyValue(name), lazyValue(signature), callerClassLazyValue)) {
+                    config.getOrCreateType(condition, declaringClassOrClazz).addField(name, declaration, false);
+                    if (!declaringClassOrClazz.equals(clazz)) {
+                        config.getOrCreateType(condition, clazz);
+                    }
                 }
                 break;
             }
@@ -109,7 +124,7 @@ class JniProcessor extends AbstractProcessor {
                 expectSize(args, 1); // exception message, ignore
                 String name = ConfigurationMethod.CONSTRUCTOR_NAME;
                 String signature = "(Ljava/lang/String;)V";
-                if (!advisor.shouldIgnoreJniMethodLookup(lazyValue(clazz), lazyValue(name), lazyValue(signature), callerClassLazyValue)) {
+                if (!advisor.shouldIgnoreJniLookup(lazyValue(clazz), lazyValue(name), lazyValue(signature), callerClassLazyValue)) {
                     config.getOrCreateType(condition, declaringClassOrClazz).addMethod(name, signature, declaration);
                     assert declaringClassOrClazz.equals(clazz) : "Constructor can only be accessed via declaring class";
                 }

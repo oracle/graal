@@ -87,7 +87,7 @@ public class RemoveProfileAction extends AbstractAction {
             profileService.deleteProfile(profile);
         } catch (IOException ex) {
             NotifyDescriptor.Message err = new NotifyDescriptor.Message(
-                            Bundle.ERR_CannotDeleteProfile(ex.getLocalizedMessage()),
+                            Bundle.ERR_CannotDeleteProfile(ex.toString()),
                             NotifyDescriptor.WARNING_MESSAGE);
             DialogDisplayer.getDefault().notifyLater(err);
         }

@@ -246,13 +246,42 @@ public abstract class BasicArrayCopyNode extends WithExceptionNode
         if ((srcType.getComponentType().getJavaKind().isPrimitive() && destType.getComponentType().equals(srcType.getComponentType())) || getSource() == getDestination()) {
             return true;
         }
-
         if (StampTool.isExactType(getDestination().stamp(NodeView.DEFAULT))) {
-            if (destType != null && destType.isAssignableFrom(srcType)) {
-                return true;
-            }
+            return destType.isAssignableFrom(srcType);
         }
         return false;
+    }
+
+    /**
+     * When dealing with arrays of primitives it's possible to store a larger value into a smaller
+     * component type array. For example a long value can be written into a byte array by storing
+     * the larger value in the first entry and storing {@code Illegal} in the slots whose value
+     * comes from the long value. So a long in a byte array would be a long value followed by 7
+     * {@code Illegal} values. That also means such a write must be treated as a group by arraycopy
+     * so reads and writes can't be performed in the middle of the illegal values.
+     * <p>
+     * To ensure that an arraycopy properly treats these kinds of writes as group, it's sufficient
+     * to check that the first value is not {@code Illegal} and that the next value after the end is
+     * not {@code Illegal} since {@code Illegal} values only appear in the tail of these groups.
+     */
+    private static boolean ensureIllegalValuesCanBeRepresented(int length, int srcPos, int srcLength, int dstPos, int dstLength, VirtualObjectNode src, VirtualObjectNode dst, VirtualizerTool tool) {
+        if (length <= 0) {
+            return true;
+        }
+        // check source
+        ValueNode firstSrcEntry = tool.getEntry(src, srcPos);
+        ValueNode followingSrcEntry = srcPos + length < srcLength ? tool.getEntry(src, srcPos + length) : null;
+        if (firstSrcEntry.isIllegalConstant() || followingSrcEntry != null && followingSrcEntry.isIllegalConstant()) {
+            return false;
+        }
+
+        // check dst
+        ValueNode firstDstEntry = tool.getEntry(dst, dstPos);
+        ValueNode followingDstEntry = dstPos + length < dstLength ? tool.getEntry(dst, dstPos + length) : null;
+        if (firstDstEntry.isIllegalConstant() || followingDstEntry != null && followingDstEntry.isIllegalConstant()) {
+            return false;
+        }
+        return true;
     }
 
     @Override
@@ -286,6 +315,9 @@ public abstract class BasicArrayCopyNode extends WithExceptionNode
                         return;
                     }
                     if (!checkEntryTypes(srcPosInt, len, srcVirtual, destVirtual.type().getComponentType(), tool)) {
+                        return;
+                    }
+                    if (!ensureIllegalValuesCanBeRepresented(len, srcPosInt, srcVirtual.entryCount(), destPosInt, destVirtual.entryCount(), srcVirtual, destVirtual, tool)) {
                         return;
                     }
                     if (srcVirtual == destVirtual && srcPosInt < destPosInt) {

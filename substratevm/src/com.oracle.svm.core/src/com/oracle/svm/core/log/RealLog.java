@@ -27,8 +27,6 @@ package com.oracle.svm.core.log;
 
 import java.nio.charset.StandardCharsets;
 
-import jdk.graal.compiler.core.common.calc.UnsignedMath;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -51,6 +49,10 @@ import com.oracle.svm.core.jdk.JDKUtils;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.calc.UnsignedMath;
+import jdk.graal.compiler.word.Word;
 
 public class RealLog extends Log {
 
@@ -187,6 +189,7 @@ public class RealLog extends Log {
         return this;
     }
 
+    @Override
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log string(CCharPointer bytes, int length) {
         if (length == 0) {
@@ -387,8 +390,9 @@ public class RealLog extends Log {
         if (decimals > 0) {
             character('.');
 
-            long positiveNumerator = Math.abs(numerator);
-            long positiveDenominator = Math.abs(denominator);
+            // we don't care if overflow happens in these abs
+            long positiveNumerator = NumUtil.unsafeAbs(numerator);
+            long positiveDenominator = NumUtil.unsafeAbs(denominator);
 
             long remainder = positiveNumerator % positiveDenominator;
             for (int i = 0; i < decimals; i++) {
@@ -498,6 +502,11 @@ public class RealLog extends Log {
     public Log resetIndentation() {
         indent = 0;
         return this;
+    }
+
+    @Override
+    public int getIndentation() {
+        return indent;
     }
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
@@ -647,36 +656,47 @@ public class RealLog extends Log {
             return this;
         }
 
-        /*
-         * We do not want to call getMessage(), since it can be overridden by subclasses of
-         * Throwable. So we access the raw detailMessage directly from the field in Throwable. That
-         * is better than printing nothing.
-         */
-        String detailMessage = JDKUtils.getRawMessage(t);
-
-        string(t.getClass().getName()).string(": ").string(detailMessage);
-        if (!JDKUtils.isStackTraceValid(t)) {
-            /*
-             * We accept that there might be a race with concurrent calls to
-             * `Throwable#fillInStackTrace`, which changes `Throwable#backtrace`. We accept that and
-             * the code can deal with that. Worst case we don't get a stack trace.
-             */
-            int remaining = printBacktraceLocked(t, maxFrames);
-            printRemainingFramesCount(remaining);
-        } else {
-            StackTraceElement[] stackTrace = JDKUtils.getRawStackTrace(t);
-            if (stackTrace != null) {
-                int i;
-                for (i = 0; i < stackTrace.length && i < maxFrames; i++) {
-                    StackTraceElement element = stackTrace[i];
-                    if (element != null) {
-                        printJavaFrame(element.getClassName(), element.getMethodName(), element.getFileName(), element.getLineNumber());
-                    }
-                }
-                int remaining = stackTrace.length - i;
-                printRemainingFramesCount(remaining);
+        Throwable cur = t;
+        int maxCauses = 25;
+        for (int i = 0; i < maxCauses && cur != null; i++) {
+            if (i > 0) {
+                newline().string("Caused by: ");
             }
+
+            /*
+             * We do not want to call getMessage(), since it can be overridden by subclasses of
+             * Throwable. So we access the raw detailMessage directly from the field in Throwable.
+             * That is better than printing nothing.
+             */
+            String detailMessage = JDKUtils.getRawMessage(cur);
+
+            string(cur.getClass().getName()).string(": ").string(detailMessage);
+            if (!JDKUtils.isStackTraceValid(cur)) {
+                /*
+                 * We accept that there might be a race with concurrent calls to
+                 * `Throwable#fillInStackTrace`, which changes `Throwable#backtrace`. We accept that
+                 * and the code can deal with that. Worst case we don't get a stack trace.
+                 */
+                int remaining = printBacktraceLocked(cur, maxFrames);
+                printRemainingFramesCount(remaining);
+            } else {
+                StackTraceElement[] stackTrace = JDKUtils.getRawStackTrace(cur);
+                if (stackTrace != null) {
+                    int j;
+                    for (j = 0; j < stackTrace.length && j < maxFrames; j++) {
+                        StackTraceElement element = stackTrace[j];
+                        if (element != null) {
+                            printJavaFrame(element.getClassName(), element.getMethodName(), element.getFileName(), element.getLineNumber());
+                        }
+                    }
+                    int remaining = stackTrace.length - j;
+                    printRemainingFramesCount(remaining);
+                }
+            }
+
+            cur = JDKUtils.getRawCause(cur);
         }
+
         return this;
     }
 

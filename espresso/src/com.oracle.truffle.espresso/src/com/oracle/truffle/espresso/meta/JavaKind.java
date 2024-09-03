@@ -227,7 +227,7 @@ public enum JavaKind {
      * @return the kind
      */
     public static JavaKind fromTypeString(String typeString) {
-        assert typeString.length() > 0;
+        assert !typeString.isEmpty();
         final char first = typeString.charAt(0);
         if (first == '[' || first == 'L') {
             return JavaKind.Object;
@@ -572,14 +572,5 @@ public enum JavaKind {
             default:
                 return -1;
         }
-    }
-
-    public static JavaKind fromByte(byte b) {
-        return JavaKind.values()[b];
-    }
-
-    public byte toByte() {
-        assert JavaKind.values().length < java.lang.Byte.MAX_VALUE;
-        return (byte) ordinal();
     }
 }

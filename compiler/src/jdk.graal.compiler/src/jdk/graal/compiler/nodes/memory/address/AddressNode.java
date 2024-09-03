@@ -29,7 +29,7 @@ import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_0;
 
 import jdk.graal.compiler.core.common.type.StampFactory;
-import jdk.graal.compiler.graph.Node.IndirectCanonicalization;
+import jdk.graal.compiler.graph.Node.IndirectInputChangedCanonicalization;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.StructuralInput;
@@ -40,7 +40,7 @@ import jdk.graal.compiler.nodes.calc.FloatingNode;
  * Base class for nodes that deal with addressing calculation.
  */
 @NodeInfo(allowedUsageTypes = Association, size = SIZE_0, cycles = CYCLES_0)
-public abstract class AddressNode extends FloatingNode implements IndirectCanonicalization {
+public abstract class AddressNode extends FloatingNode implements IndirectInputChangedCanonicalization {
     public static final NodeClass<AddressNode> TYPE = NodeClass.create(AddressNode.class);
 
     protected AddressNode(NodeClass<? extends AddressNode> c) {

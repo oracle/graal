@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.lir.gen;
 
+import static jdk.graal.compiler.core.common.GraalOptions.LoopHeaderAlignment;
 import static jdk.vm.ci.code.ValueUtil.asAllocatableValue;
 import static jdk.vm.ci.code.ValueUtil.asStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isAllocatableValue;
@@ -31,7 +32,6 @@ import static jdk.vm.ci.code.ValueUtil.isIllegal;
 import static jdk.vm.ci.code.ValueUtil.isLegal;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
-import static jdk.graal.compiler.core.common.GraalOptions.LoopHeaderAlignment;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -42,9 +42,7 @@ import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
-import jdk.graal.compiler.core.common.spi.CodeGenProviders;
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
-import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.spi.LIRKindTool;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.DebugCloseable;
@@ -61,13 +59,13 @@ import jdk.graal.compiler.lir.StandardOp;
 import jdk.graal.compiler.lir.SwitchStrategy;
 import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.hashing.IntHasher;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.nodes.spi.CoreProvidersDelegate;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterAttributes;
 import jdk.vm.ci.code.RegisterConfig;
@@ -77,7 +75,6 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
@@ -85,7 +82,7 @@ import jdk.vm.ci.meta.ValueKind;
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.
  */
-public abstract class LIRGenerator implements LIRGeneratorTool {
+public abstract class LIRGenerator extends CoreProvidersDelegate implements LIRGeneratorTool {
 
     private final int loopHeaderAlignment;
 
@@ -100,8 +97,6 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     private final LIRKindTool lirKindTool;
 
-    private final CodeGenProviders providers;
-
     private BasicBlock<?> currentBlock;
 
     private LIRGenerationResult res;
@@ -114,26 +109,22 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     private final boolean printIrWithLir;
     private final int traceLIRGeneratorLevel;
 
-    public LIRGenerator(LIRKindTool lirKindTool, ArithmeticLIRGenerator arithmeticLIRGen, BarrierSetLIRGenerator barrierSetLIRGen, MoveFactory moveFactory, CodeGenProviders providers,
+    @SuppressWarnings("this-escape")
+    public LIRGenerator(LIRKindTool lirKindTool, ArithmeticLIRGenerator arithmeticLIRGen, BarrierSetLIRGeneratorTool barrierSetLIRGen, MoveFactory moveFactory, CoreProviders providers,
                     LIRGenerationResult res) {
+        super(providers);
         this.lirKindTool = lirKindTool;
         this.arithmeticLIRGen = arithmeticLIRGen;
         this.barrierSetLIRGen = barrierSetLIRGen;
         this.res = res;
-        this.providers = providers;
         OptionValues options = res.getLIR().getOptions();
         this.printIrWithLir = !TTY.isSuppressed() && Options.PrintIRWithLIR.getValue(options);
         this.traceLIRGeneratorLevel = TTY.isSuppressed() ? 0 : Options.TraceLIRGeneratorLevel.getValue(options);
         this.loopHeaderAlignment = LoopHeaderAlignment.getValue(options);
 
-        assert arithmeticLIRGen.lirGen == null;
-        arithmeticLIRGen.lirGen = this;
-        if (barrierSetLIRGen != null) {
-            assert barrierSetLIRGen.lirGen == null;
-            barrierSetLIRGen.lirGen = this;
-        }
-
         this.moveFactory = moveFactory;
+
+        arithmeticLIRGen.setLirGen(this);
     }
 
     @Override
@@ -175,26 +166,6 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     @Override
     public TargetDescription target() {
         return getCodeCache().getTarget();
-    }
-
-    @Override
-    public CodeGenProviders getProviders() {
-        return providers;
-    }
-
-    @Override
-    public MetaAccessProvider getMetaAccess() {
-        return providers.getMetaAccess();
-    }
-
-    @Override
-    public CodeCacheProvider getCodeCache() {
-        return providers.getCodeCache();
-    }
-
-    @Override
-    public ForeignCallsProvider getForeignCalls() {
-        return providers.getForeignCalls();
     }
 
     public LIRKindTool getLIRKindTool() {
@@ -467,11 +438,19 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     public abstract void emitIntegerTestBranch(Value left, Value right, LabelRef trueDestination, LabelRef falseDestination, double trueSuccessorProbability);
 
+    public abstract void emitOpMaskTestBranch(Value left, boolean negateLeft, Value right, LabelRef trueDestination, LabelRef falseDestination, double trueSuccessorProbability);
+
+    public abstract void emitOpMaskOrTestBranch(Value left, Value right, boolean allZeros, LabelRef trueDestination, LabelRef falseDestination, double trueSuccessorProbability);
+
     @Override
     public abstract Variable emitConditionalMove(PlatformKind cmpKind, Value leftVal, Value right, Condition cond, boolean unorderedIsTrue, Value trueValue, Value falseValue);
 
     @Override
     public abstract Variable emitIntegerTestMove(Value leftVal, Value right, Value trueValue, Value falseValue);
+
+    public abstract Variable emitOpMaskTestMove(Value leftVal, boolean negateLeft, Value right, Value trueValue, Value falseValue);
+
+    public abstract Variable emitOpMaskOrTestMove(Value leftVal, Value right, boolean allZeros, Value trueValue, Value falseValue);
 
     /** Loads the target address for indirect {@linkplain #emitForeignCall foreign calls}. */
     protected Value emitIndirectForeignCallAddress(@SuppressWarnings("unused") ForeignCallLinkage linkage) {

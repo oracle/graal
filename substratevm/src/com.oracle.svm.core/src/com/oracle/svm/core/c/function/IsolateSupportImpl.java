@@ -26,25 +26,31 @@ package com.oracle.svm.core.c.function;
 
 import java.util.List;
 
+import com.oracle.svm.core.c.CGlobalData;
+import com.oracle.svm.core.c.CGlobalDataFactory;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Isolates.CreateIsolateParameters;
 import org.graalvm.nativeimage.Isolates.IsolateException;
 import org.graalvm.nativeimage.Isolates.ProtectionDomain;
-import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.impl.IsolateSupport;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.function.CEntryPointNativeFunctions.IsolateThreadPointer;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
+import com.oracle.svm.core.memory.NativeMemory;
+import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.os.MemoryProtectionProvider;
 import com.oracle.svm.core.os.MemoryProtectionProvider.UnsupportedDomainException;
+
+import static org.graalvm.word.LocationIdentity.ANY_LOCATION;
 
 @AutomaticallyRegisteredImageSingleton(IsolateSupport.class)
 public final class IsolateSupportImpl implements IsolateSupport {
@@ -57,6 +63,10 @@ public final class IsolateSupportImpl implements IsolateSupport {
 
     @Override
     public IsolateThread createIsolate(CreateIsolateParameters parameters) throws IsolateException {
+        return createIsolate(parameters, false);
+    }
+
+    public static IsolateThread createIsolate(CreateIsolateParameters parameters, boolean compilationIsolate) throws IsolateException {
         if (!SubstrateOptions.SpawnIsolates.getValue()) {
             throw new IsolateException(ISOLATES_DISABLED_MESSAGE);
         }
@@ -85,7 +95,7 @@ public final class IsolateSupportImpl implements IsolateSupport {
                 // Internally, we use C-style arguments, i.e., the first argument is reserved for
                 // the name of the binary. We use null when isolates are created manually.
                 argc = isolateArgCount + 1;
-                argv = UnmanagedMemory.malloc(SizeOf.unsigned(CCharPointerPointer.class).multiply(argc));
+                argv = NativeMemory.malloc(SizeOf.unsigned(CCharPointerPointer.class).multiply(argc), NmtCategory.Internal);
                 argv.write(0, WordFactory.nullPointer());
 
                 pointerHolders = new CTypeConversion.CCharPointerHolder[isolateArgCount];
@@ -100,11 +110,12 @@ public final class IsolateSupportImpl implements IsolateSupport {
             params.setReservedSpaceSize(parameters.getReservedAddressSpaceSize());
             params.setAuxiliaryImagePath(auxImagePath.get());
             params.setAuxiliaryImageReservedSpaceSize(parameters.getAuxiliaryImageReservedSpaceSize());
-            params.setVersion(4);
+            params.setVersion(5);
             params.setIgnoreUnrecognizedArguments(false);
             params.setExitWhenArgumentParsingFails(false);
             params.setArgc(argc);
             params.setArgv(argv);
+            params.setIsCompilationIsolate(compilationIsolate);
 
             // Try to create the isolate.
             IsolateThreadPointer isolateThreadPtr = UnsafeStackValue.get(IsolateThreadPointer.class);
@@ -116,7 +127,7 @@ public final class IsolateSupportImpl implements IsolateSupport {
                 for (CTypeConversion.CCharPointerHolder ph : pointerHolders) {
                     ph.close();
                 }
-                UnmanagedMemory.free(params.getArgv());
+                NativeMemory.free(params.getArgv());
             }
 
             throwOnError(result);
@@ -160,5 +171,32 @@ public final class IsolateSupportImpl implements IsolateSupport {
             String message = CEntryPointErrors.getDescription(code);
             throw new IsolateException(message);
         }
+    }
+
+    private static final CGlobalData<Pointer> nextIsolateId = CGlobalDataFactory.createWord((Pointer) WordFactory.unsigned(1L));
+
+    private volatile long isolateId = 0;
+
+    @Override
+    public long getIsolateID() {
+        if (isolateId == 0) {
+            synchronized (this) {
+                if (isolateId == 0) {
+                    Pointer p = nextIsolateId.get();
+                    long value;
+                    long nextValue;
+                    do {
+                        value = p.readLong(0);
+                        nextValue = value + 1;
+                        if (nextValue == 0) {
+                            // Avoid setting id to reserved 0 value after long integer overflow
+                            nextValue = 1;
+                        }
+                    } while (p.compareAndSwapLong(0, value, nextValue, ANY_LOCATION) != value);
+                    isolateId = value;
+                }
+            }
+        }
+        return isolateId;
     }
 }

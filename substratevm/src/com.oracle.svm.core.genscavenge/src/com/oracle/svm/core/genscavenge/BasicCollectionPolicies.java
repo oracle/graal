@@ -105,14 +105,12 @@ final class BasicCollectionPolicies {
              * size of the physical memory.
              */
             UnsignedWord addressSpaceSize = ReferenceAccess.singleton().getAddressSpaceSize();
-            if (PhysicalMemory.isInitialized()) {
-                UnsignedWord physicalMemorySize = PhysicalMemory.getCachedSize();
-                int maximumHeapSizePercent = HeapParameters.getMaximumHeapSizePercent();
-                /* Do not cache because `-Xmx` option parsing may not have happened yet. */
-                UnsignedWord result = physicalMemorySize.unsignedDivide(100).multiply(maximumHeapSizePercent);
-                if (result.belowThan(addressSpaceSize)) {
-                    return result;
-                }
+            UnsignedWord physicalMemorySize = PhysicalMemory.size();
+            int maximumHeapSizePercent = HeapParameters.getMaximumHeapSizePercent();
+            /* Do not cache because `-Xmx` option parsing may not have happened yet. */
+            UnsignedWord result = physicalMemorySize.unsignedDivide(100).multiply(maximumHeapSizePercent);
+            if (result.belowThan(addressSpaceSize)) {
+                return result;
             }
             return addressSpaceSize;
         }

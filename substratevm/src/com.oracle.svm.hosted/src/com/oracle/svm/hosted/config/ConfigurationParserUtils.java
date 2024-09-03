@@ -24,12 +24,16 @@
  */
 package com.oracle.svm.hosted.config;
 
+import static com.oracle.svm.core.configure.ConfigurationFiles.Options.ReachabilityMetadataResources;
+import static com.oracle.svm.core.configure.ConfigurationFiles.Options.TreatAllNameEntriesAsType;
+
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Spliterator;
@@ -38,24 +42,30 @@ import java.util.function.Consumer;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.ReflectionRegistry;
-import jdk.graal.compiler.util.json.JSONParserException;
 
-import com.oracle.svm.core.configure.ConditionalElement;
+import com.oracle.svm.core.configure.ConfigurationConditionResolver;
+import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.ConfigurationParser;
 import com.oracle.svm.core.configure.ReflectionConfigurationParser;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.hosted.reflect.proxy.ProxyRegistry;
+
+import jdk.graal.compiler.util.json.JsonParserException;
 
 public final class ConfigurationParserUtils {
 
-    public static ReflectionConfigurationParser<ConditionalElement<Class<?>>> create(ReflectionRegistry registry, ImageClassLoader imageClassLoader) {
-        return new ReflectionConfigurationParser<>(RegistryAdapter.create(registry, imageClassLoader),
+    public static ReflectionConfigurationParser<ConfigurationCondition, Class<?>> create(String combinedFileKey, boolean strictMetadata,
+                    ConfigurationConditionResolver<ConfigurationCondition> conditionResolver, ReflectionRegistry registry, ProxyRegistry proxyRegistry, ImageClassLoader imageClassLoader) {
+        return ReflectionConfigurationParser.create(combinedFileKey, strictMetadata, conditionResolver,
+                        RegistryAdapter.create(registry, proxyRegistry, imageClassLoader),
                         ConfigurationFiles.Options.StrictConfiguration.getValue(),
-                        ConfigurationFiles.Options.WarnAboutMissingReflectionOrJNIMetadataElements.getValue());
+                        ConfigurationFiles.Options.WarnAboutMissingReflectionOrJNIMetadataElements.getValue(), TreatAllNameEntriesAsType.getValue());
     }
 
     /**
@@ -68,11 +78,17 @@ public final class ConfigurationParserUtils {
      * @return the total number of successfully parsed configuration files and resources.
      */
     public static int parseAndRegisterConfigurations(ConfigurationParser parser, ImageClassLoader classLoader, String featureName,
-                    HostedOptionKey<LocatableMultiOptionValue.Paths> configFilesOption, HostedOptionKey<LocatableMultiOptionValue.Strings> configResourcesOption, String directoryFileName) {
+                    HostedOptionKey<AccumulatingLocatableMultiOptionValue.Paths> configFilesOption, HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> configResourcesOption,
+                    String directoryFileName) {
 
         List<Path> paths = configFilesOption.getValue().values();
         List<String> resourceValues = configResourcesOption.getValue().values();
         return parseAndRegisterConfigurations(parser, classLoader, featureName, directoryFileName, paths, resourceValues);
+    }
+
+    public static int parseAndRegisterConfigurationsFromCombinedFile(ConfigurationParser parser, ImageClassLoader classLoader, String featureName) {
+        return parseAndRegisterConfigurations(parser, classLoader, featureName, ConfigurationFile.REACHABILITY_METADATA.getFileName(), Collections.emptyList(),
+                        ReachabilityMetadataResources.getValue().values());
     }
 
     public static int parseAndRegisterConfigurations(ConfigurationParser parser, ImageClassLoader classLoader,
@@ -128,7 +144,7 @@ public final class ConfigurationParserUtils {
                 uri = ((URL) location).toURI();
             }
             parser.parseAndRegister(uri);
-        } catch (IOException | URISyntaxException | JSONParserException e) {
+        } catch (IOException | URISyntaxException | JsonParserException e) {
             String errorMessage = e.getMessage();
             if (errorMessage == null || errorMessage.isEmpty()) {
                 errorMessage = e.toString();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,17 +45,19 @@ import static com.oracle.truffle.api.source.Source.CONTENT_NONE;
 import static com.oracle.truffle.polyglot.EngineAccessor.INSTRUMENT;
 import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.Reader;
-import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.reflect.Method;
 import java.math.BigInteger;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.HashMap;
@@ -72,7 +74,7 @@ import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
-import org.graalvm.polyglot.impl.ModuleToUnnamedBridge;
+import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.io.ProcessHandler;
@@ -106,6 +108,24 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      */
     static final Object SECRET = new Object();
     static final Object[] EMPTY_ARGS = new Object[0];
+
+    static final String TRUFFLE_VERSION;
+    static {
+        if (Boolean.getBoolean("polyglotimpl.DisableVersionChecks")) {
+            TRUFFLE_VERSION = null;
+        } else {
+            InputStream in = PolyglotImpl.class.getResourceAsStream("/META-INF/graalvm/org.graalvm.truffle/version");
+            if (in == null) {
+                throw new InternalError("Truffle API must have a version file.");
+            }
+            try (BufferedReader r = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
+                TRUFFLE_VERSION = r.readLine();
+            } catch (IOException ioe) {
+                throw new InternalError(ioe);
+            }
+        }
+    }
+
     private final PolyglotSourceDispatch sourceDispatch = new PolyglotSourceDispatch(this);
     private final PolyglotSourceSectionDispatch sourceSectionDispatch = new PolyglotSourceSectionDispatch(this);
     private final PolyglotExecutionListenerDispatch executionListenerDispatch = new PolyglotExecutionListenerDispatch(this);
@@ -186,24 +206,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     }
 
     @Override
-    public Object initializeModuleToUnnamedAccess(Lookup unnamedLookup, Object unnamedAccess, Object unnamedAPIAccess, Object unnamedIOAccess, Object unnamedManagementAccess) {
-        ModuleToUnnamedBridge bridge = ModuleToUnnamedBridge.create(unnamedLookup, unnamedAccess, unnamedAPIAccess, unnamedIOAccess, unnamedManagementAccess);
-        AbstractPolyglotImpl impl = getRootImpl();
-        while (impl != null) {
-            initializeModuleToUnnamedBridge(impl, bridge);
-            impl = impl.getNextOrNull();
-        }
-        return bridge.getModuleAccess();
-    }
-
-    private static void initializeModuleToUnnamedBridge(AbstractPolyglotImpl impl, ModuleToUnnamedBridge bridge) {
-        impl.setConstructors(Objects.requireNonNull(bridge.getAPIAccess()));
-        impl.setIO(Objects.requireNonNull(bridge.getIOAccess()));
-        impl.setMonitoring(Objects.requireNonNull(bridge.getManagementAccess()));
-        impl.initialize();
-    }
-
-    @Override
     public Object buildLimits(long statementLimit, Predicate<Object> statementLimitSourceFilter,
                     Consumer<Object> onLimit) {
         try {
@@ -274,7 +276,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         PolyglotEngineImpl impl = null;
         try {
             validateSandbox(sandboxPolicy);
-            InternalResourceRoots.ensureInitialized();
             if (TruffleOptions.AOT) {
                 EngineAccessor.ACCESSOR.initializeNativeImageTruffleLocator();
             }
@@ -363,6 +364,10 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
     }
 
+    @Override
+    public void onEngineCreated(Object polyglotEngine) {
+    }
+
     private static void logTruffleRuntimeWarning(Map<String, String> options, OptionValuesImpl engineOptions, EngineLoggerProvider loggerProvider) {
         boolean warnInterpreterOnly;
         if (engineOptions == null) {
@@ -381,9 +386,10 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                             The polyglot engine uses a fallback runtime that does not support runtime compilation to native code.
                             Execution without runtime compilation will negatively impact the guest application performance.
                             The following cause was found: %s
-                            For more information see: https://www.graalvm.org/latest/reference-manual/embed-languages/.
+                            For more information see: https://www.graalvm.org/latest/reference-manual/embed-languages/#runtime-optimization-support.
                             To disable this warning use the '--engine.WarnInterpreterOnly=false' option or the '-Dpolyglot.engine.WarnInterpreterOnly=false' system property.""", reason));
         }
+
     }
 
     private void validateSandbox(SandboxPolicy sandboxPolicy) {
@@ -392,8 +398,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         // all sandboxing policies.
         if (this == getRootImpl() && sandboxPolicy.isStricterThan(SandboxPolicy.CONSTRAINED)) {
             throw PolyglotEngineException.illegalArgument(String.format(
-                            "The Builder.sandbox(SandboxPolicy) is set to %s, but the GraalVM community edition supports only sandbox policy TRUSTED or CONSTRAINED." +
-                                            "In order to resolve this switch to a less strict sandbox policy using Builder.sandbox(SandboxPolicy).",
+                            "The Builder.sandbox(SandboxPolicy) is configured to %s, but the current Truffle runtime only supports the TRUSTED or CONSTRAINED sandbox policies. " +
+                                            "This typically occurs when a non-Oracle GraalVM Java runtime is used, the org.graalvm.truffle:truffle-enterprise dependency is missing, or the fallback runtime was forced. " +
+                                            "The Truffle fallback runtime may be forced using the truffle.UseFallbackRuntime or truffle.TruffleRuntime system property. " +
+                                            "To resolve this make sure Oracle GraalVM is used, the truffle-enterprise dependency is on the class or module path and the fallback runtime is not forced. " +
+                                            "Alternatively, you can switch to a less strict sandbox policy using Builder.sandbox(SandboxPolicy).",
                             sandboxPolicy));
         }
     }
@@ -438,7 +447,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      * Used for preinitialized contexts and fallback engine.
      */
     PolyglotEngineImpl createDefaultEngine(TruffleLanguage<Object> hostLanguage) {
-        InternalResourceRoots.ensureInitialized();
         Map<String, String> options = getAPIAccess().readOptionsFromSystemProperties();
         LogConfig logConfig = new LogConfig();
         SandboxPolicy sandboxPolicy = SandboxPolicy.TRUSTED;
@@ -564,6 +572,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     }
 
     @Override
+    public ByteSequence asByteSequence(Object object) {
+        return (ByteSequence) object;
+    }
+
+    @Override
     public ProcessHandler newDefaultProcessHandler() {
         if (PolyglotEngineImpl.ALLOW_CREATE_PROCESS) {
             return ProcessHandlers.newDefaultProcessHandler();
@@ -642,6 +655,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     @Override
     public boolean copyResources(Path targetFolder, String... components) throws IOException {
         return InternalResourceCache.copyResourcesForNativeImage(targetFolder, components);
+    }
+
+    @Override
+    public String getTruffleVersion() {
+        return TRUFFLE_VERSION;
     }
 
     @Override

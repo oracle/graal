@@ -177,8 +177,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
 
     public void setTrueSuccessorProbability(BranchProbabilityData profileData) {
         double prob = profileData.getDesignatedSuccessorProbability();
-        assert prob >= -0.000000001 && prob <= 1.000000001 : "Probability out of bounds: " + prob;
-        double trueSuccessorProbability = Math.min(1.0, Math.max(0.0, prob));
+        assert ProfileData.isApproximatelyInRange(prob, 0.0, 1.0) : "Probability out of bounds: " + prob;
+        double trueSuccessorProbability = Math.clamp(prob, 0.0, 1.0);
         this.profileData = profileData.copy(trueSuccessorProbability);
     }
 
@@ -197,11 +197,11 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     }
 
     @Override
-    public boolean verify() {
+    public boolean verifyNode() {
         assertTrue(condition() != null, "missing condition");
         assertTrue(trueSuccessor() != null, "missing trueSuccessor");
         assertTrue(falseSuccessor() != null, "missing falseSuccessor");
-        return super.verify();
+        return super.verifyNode();
     }
 
     public void eliminateNegation() {
@@ -1327,7 +1327,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         } else if (next1 instanceof DeoptimizeNode && next2 instanceof DeoptimizeNode) {
             DeoptimizeNode deopt1 = (DeoptimizeNode) next1;
             DeoptimizeNode deopt2 = (DeoptimizeNode) next2;
-            if (deopt1.getReason() == deopt2.getReason() && deopt1.getAction() == deopt2.getAction()) {
+            if (deopt1.getReason() == deopt2.getReason() && deopt1.getAction() == deopt2.getAction() && deopt1.stateBefore() == deopt2.stateBefore()) {
                 // Same deoptimization reason and action.
                 return true;
             }

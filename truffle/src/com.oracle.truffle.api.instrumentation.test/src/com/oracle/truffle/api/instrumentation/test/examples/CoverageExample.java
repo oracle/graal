@@ -65,7 +65,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * Covered statements are printed to the instrument stream which should demonstrate an alternate way
  * of communication from the instrument to the user.
  */
-// BEGIN: com.oracle.truffle.api.instrumentation.test.examples.CoverageExample
+// @start region = "com.oracle.truffle.api.instrumentation.test.examples.CoverageExample"
 @Registration(id = CoverageExample.ID, services = Object.class)
 public final class CoverageExample extends TruffleInstrument {
 
@@ -111,4 +111,4 @@ public final class CoverageExample extends TruffleInstrument {
     }
 
 }
-// END: com.oracle.truffle.api.instrumentation.test.examples.CoverageExample
+// @end region = "com.oracle.truffle.api.instrumentation.test.examples.CoverageExample"

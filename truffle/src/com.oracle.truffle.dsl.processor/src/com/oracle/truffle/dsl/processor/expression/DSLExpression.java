@@ -150,7 +150,45 @@ public abstract class DSLExpression {
         return mayAllocate.get();
     }
 
+    /**
+     * Whether the node instance is bound. This includes @Bind("$node").
+     */
     public boolean isNodeReceiverBound() {
+        final AtomicBoolean bindsReceiver = new AtomicBoolean(false);
+        accept(new AbstractDSLExpressionVisitor() {
+
+            @Override
+            public void visitVariable(Variable var) {
+                if (var.getReceiver() == null) {
+                    VariableElement resolvedVar = var.getResolvedVariable();
+                    if (resolvedVar != null && !resolvedVar.getModifiers().contains(Modifier.STATIC) &&
+                                    (resolvedVar.getEnclosingElement() == null || resolvedVar.getEnclosingElement().getKind() != ElementKind.METHOD)) {
+                        String name = resolvedVar.getSimpleName().toString();
+                        if (!name.equals("null")) {
+                            bindsReceiver.set(true);
+                        }
+                    }
+                }
+            }
+
+            @Override
+            public void visitCall(Call binary) {
+                if (binary.getReceiver() == null) {
+                    ExecutableElement method = binary.getResolvedMethod();
+                    if (method != null && method.getKind() != ElementKind.CONSTRUCTOR && !method.getModifiers().contains(Modifier.STATIC)) {
+                        bindsReceiver.set(true);
+                    }
+                }
+            }
+
+        });
+        return bindsReceiver.get();
+    }
+
+    /**
+     * Whether the node instance is bound implicitly. This ignores @Bind("$node").
+     */
+    public boolean isNodeReceiverImplicitlyBound() {
         final AtomicBoolean bindsReceiver = new AtomicBoolean(false);
         accept(new AbstractDSLExpressionVisitor() {
 
@@ -741,7 +779,12 @@ public abstract class DSLExpression {
                     }
                     DeclaredType declaredReceiverType = (DeclaredType) receiverType;
                     if (foundIndex != -1) {
-                        return declaredReceiverType.getTypeArguments().get(foundIndex);
+                        List<? extends TypeMirror> typeArguments = declaredReceiverType.getTypeArguments();
+                        if (foundIndex < typeArguments.size()) {
+                            return typeArguments.get(foundIndex);
+                        }
+                        // fall-though: this will most likely generate wrong type, but user will get
+                        // type error from Java compiler in the right place
                     }
                 }
                 return resolvedMethod.getReturnType();

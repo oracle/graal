@@ -34,7 +34,6 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.replacements.nodes.MacroNode;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -59,7 +58,7 @@ public abstract class SnippetSubstitutionInvocationPlugin<T extends SnippetTempl
         }
         if (receiver != null) {
             // Perform the required null check
-            ValueNode r = receiver.get();
+            ValueNode r = receiver.get(true);
             assert args[0] == r : args;
         }
 

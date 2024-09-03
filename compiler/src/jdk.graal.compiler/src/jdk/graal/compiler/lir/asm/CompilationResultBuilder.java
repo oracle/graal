@@ -48,10 +48,9 @@ import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.code.CompilationResult.CodeAnnotation;
 import jdk.graal.compiler.code.CompilationResult.JumpTable;
 import jdk.graal.compiler.code.DataSection.Data;
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.cfg.AbstractControlFlowGraph;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
-import jdk.graal.compiler.core.common.spi.CodeGenProviders;
-import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.type.DataPointerConstant;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
@@ -67,12 +66,13 @@ import jdk.graal.compiler.lir.LabelRef;
 import jdk.graal.compiler.lir.StandardOp;
 import jdk.graal.compiler.lir.StandardOp.LabelHoldingOp;
 import jdk.graal.compiler.lir.framemap.FrameMap;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.nodes.spi.CoreProvidersDelegate;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.code.BailoutException;
-import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.StackSlot;
@@ -93,7 +93,7 @@ import jdk.vm.ci.meta.Value;
  *
  * @see CompilationResultBuilderFactory
  */
-public class CompilationResultBuilder {
+public class CompilationResultBuilder extends CoreProvidersDelegate {
 
     public static class Options {
         @Option(help = "Include the LIR as comments with the final assembly.", type = OptionType.Debug) //
@@ -129,9 +129,6 @@ public class CompilationResultBuilder {
     public final CompilationResult compilationResult;
     public final Register uncompressedNullRegister;
     public final TargetDescription target;
-    public final CodeGenProviders providers;
-    public final CodeCacheProvider codeCache;
-    public final ForeignCallsProvider foreignCalls;
     public final FrameMap frameMap;
 
     /**
@@ -184,7 +181,7 @@ public class CompilationResultBuilder {
 
     private final List<LIRInstructionVerifier> lirInstructionVerifiers;
 
-    public CompilationResultBuilder(CodeGenProviders providers,
+    public CompilationResultBuilder(CoreProviders providers,
                     FrameMap frameMap,
                     Assembler<?> asm,
                     DataBuilder dataBuilder,
@@ -193,13 +190,10 @@ public class CompilationResultBuilder {
                     DebugContext debug,
                     CompilationResult compilationResult,
                     Register uncompressedNullRegister,
-                    EconomicMap<Constant, Data> dataCache,
                     List<LIRInstructionVerifier> lirInstructionVerifiers,
                     LIR lir) {
+        super(providers);
         this.target = providers.getCodeCache().getTarget();
-        this.providers = providers;
-        this.codeCache = providers.getCodeCache();
-        this.foreignCalls = providers.getForeignCalls();
         this.frameMap = frameMap;
         this.asm = asm;
         this.dataBuilder = dataBuilder;
@@ -210,7 +204,7 @@ public class CompilationResultBuilder {
         this.options = options;
         this.debug = debug;
         assert frameContext != null;
-        this.dataCache = dataCache;
+        this.dataCache = EconomicMap.create(Equivalence.DEFAULT);
         this.lirInstructionVerifiers = Objects.requireNonNull(lirInstructionVerifiers);
     }
 
@@ -257,8 +251,8 @@ public class CompilationResultBuilder {
      * the compilation result and then {@linkplain #closeCompilationResult() closes} it.
      */
     public void finish() {
-        int position = asm.position();
-        compilationResult.setTargetCode(asm.close(false), position);
+        byte[] data = asm.close(false);
+        compilationResult.setTargetCode(data, asm.finalCodeSize());
 
         // Record exception handlers if they exist
         if (exceptionInfoList != null) {
@@ -395,10 +389,7 @@ public class CompilationResultBuilder {
         Data data = dataCache.get(constant);
         if (data == null) {
             data = dataBuilder.createDataItem(constant);
-            Data previousData = dataCache.putIfAbsent(constant, data);
-            if (previousData != null) {
-                data = previousData;
-            }
+            dataCache.put(constant, data);
         }
         return data;
     }
@@ -648,6 +639,14 @@ public class CompilationResultBuilder {
         currentBlockIndex = 0;
         lastImplicitExceptionOffset = Integer.MIN_VALUE;
         lir.resetLabels();
+        needsMHDeoptHandler = false;
+        conservativeLabelOffsets = false;
+        if (labelBindLirPositions != null) {
+            labelBindLirPositions.clear();
+        }
+        if (lirPositions != null) {
+            lirPositions.clear();
+        }
     }
 
     public OptionValues getOptions() {
@@ -695,7 +694,7 @@ public class CompilationResultBuilder {
         Integer instructionPosition = lirPositions.get(instruction);
         if (labelPosition != null && instructionPosition != null) {
             /* If both LIR positions are known, then check distance between instructions. */
-            return Math.abs(labelPosition - instructionPosition) < maxLIRDistance;
+            return NumUtil.safeAbs(labelPosition - instructionPosition) < maxLIRDistance;
         } else {
             /* Otherwise, it is not possible to make an estimation. */
             return false;
@@ -709,6 +708,14 @@ public class CompilationResultBuilder {
      */
     public void setConservativeLabelRanges() {
         this.conservativeLabelOffsets = true;
+    }
+
+    /**
+     * Query, whether this {@link CompilationResultBuilder} uses conservative label ranges. This
+     * allows for larger jump distances at the cost of increased code size.
+     */
+    public boolean usesConservativeLabelRanges() {
+        return this.conservativeLabelOffsets;
     }
 
     public final boolean needsClearUpperVectorRegisters() {

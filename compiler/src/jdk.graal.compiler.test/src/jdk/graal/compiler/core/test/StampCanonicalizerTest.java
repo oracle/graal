@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,11 +24,12 @@
  */
 package jdk.graal.compiler.core.test;
 
+import org.junit.Test;
+
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
-import org.junit.Test;
 
 /**
  * This class tests some specific patterns the stamp system should be able to canonicalize away
@@ -106,6 +107,51 @@ public class StampCanonicalizerTest extends GraalCompilerTest {
     @Test
     public void testDistinctMask() {
         testZeroReturn("distinctMask");
+    }
+
+    public static int negatePreservesTrailingZeros(int a) {
+        int twoTrailingZeros = a & ~0b11;
+        int negated = -twoTrailingZeros;
+        return (negated & 0b11) != 0 ? 1 : 0;
+    }
+
+    @Test
+    public void testNegatePreservesTrailingZeros() {
+        testZeroReturn("negatePreservesTrailingZeros");
+    }
+
+    public static int multiplyByMinValue(int a) {
+        int onlySignBitSet = a * Integer.MIN_VALUE;
+        return (onlySignBitSet & Integer.MAX_VALUE) != 0 ? 1 : 0;
+    }
+
+    @Test
+    public void testMultiplyByMinValue() {
+        testZeroReturn("multiplyByMinValue");
+    }
+
+    public static int multiplyAddsTrailingZeros(int a, int b) {
+        int twoTrailingZeros = a & ~0b11;
+        int threeTrailingZeros = b & ~0b111;
+        int fiveTrailingZeros = twoTrailingZeros * threeTrailingZeros;
+        return (fiveTrailingZeros & 0b11111) != 0 ? 1 : 0;
+    }
+
+    @Test
+    public void testMultiplyAddsTrailingZeros() {
+        testZeroReturn("multiplyAddsTrailingZeros");
+    }
+
+    public static int andPreservesPositiveBound(int a, int b) {
+        int unrestricted = a;
+        int positiveLessThan100 = Math.min(100, Math.max(0, b));
+        int stillPositiveLessThan100 = unrestricted & positiveLessThan100;
+        return stillPositiveLessThan100 < 0 || stillPositiveLessThan100 > 100 ? 1 : 0;
+    }
+
+    @Test
+    public void testAndPreservesPositiveBound() {
+        testZeroReturn("andPreservesPositiveBound");
     }
 
     private void testZeroReturn(String methodName) {

@@ -26,7 +26,6 @@ package com.oracle.svm.core.code;
 
 import java.nio.ByteOrder;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 
@@ -35,7 +34,9 @@ import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.ReferenceAccess;
+import com.oracle.svm.core.nmt.NmtCategory;
 
+import jdk.graal.compiler.api.replacements.Fold;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -53,8 +54,8 @@ public interface ReferenceAdjuster {
     void setConstantTargetAt(PointerBase address, int length, JavaConstant constant);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    default <T extends Constant> NonmovableObjectArray<Object> copyOfObjectConstantArray(T[] constants) {
-        NonmovableObjectArray<Object> objects = NonmovableArrays.createObjectArray(Object[].class, constants.length);
+    default <T extends Constant> NonmovableObjectArray<Object> copyOfObjectConstantArray(T[] constants, NmtCategory nmtCategory) {
+        NonmovableObjectArray<Object> objects = NonmovableArrays.createObjectArray(Object[].class, constants.length, nmtCategory);
         for (int i = 0; i < constants.length; i++) {
             setConstantTargetInArray(objects, i, (JavaConstant) constants[i]);
         }
@@ -62,7 +63,7 @@ public interface ReferenceAdjuster {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    <T> NonmovableObjectArray<T> copyOfObjectArray(T[] source);
+    <T> NonmovableObjectArray<T> copyOfObjectArray(T[] source, NmtCategory nmtCategory);
 
     /** Indicates whether all object references have been written. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

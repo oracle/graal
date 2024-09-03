@@ -35,7 +35,6 @@ import static jdk.graal.compiler.bytecode.Bytecodes.POP2;
 import static jdk.graal.compiler.bytecode.Bytecodes.SWAP;
 import static jdk.graal.compiler.debug.GraalError.shouldNotReachHereUnexpectedValue;
 import static jdk.graal.compiler.nodes.FrameState.TWO_SLOT_MARKER;
-import static jdk.graal.compiler.nodes.util.GraphUtil.originalValue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -207,7 +206,7 @@ public final class FrameStateBuilder implements SideEffectsState {
         }
     }
 
-    public void initializeForMethodStart(Assumptions assumptions, boolean eagerResolve, Plugins plugins) {
+    public void initializeForMethodStart(Assumptions assumptions, boolean eagerResolve, Plugins plugins, List<ValueNode> collectParameterNodes) {
 
         int javaIndex = 0;
         int index = 0;
@@ -236,7 +235,11 @@ public final class FrameStateBuilder implements SideEffectsState {
                 receiver = new ParameterNode(javaIndex, receiverStamp);
             }
 
-            locals[javaIndex] = graph.addOrUniqueWithInputs(receiver);
+            receiver = graph.addOrUniqueWithInputs(receiver);
+            locals[javaIndex] = receiver;
+            if (collectParameterNodes != null) {
+                collectParameterNodes.add(receiver);
+            }
             javaIndex = 1;
             index = 1;
         }
@@ -275,7 +278,11 @@ public final class FrameStateBuilder implements SideEffectsState {
                 param = new ParameterNode(index, stamp);
             }
 
-            locals[javaIndex] = graph.addOrUniqueWithInputs(param);
+            param = graph.addOrUniqueWithInputs(param);
+            locals[javaIndex] = param;
+            if (collectParameterNodes != null) {
+                collectParameterNodes.add(param);
+            }
             javaIndex++;
             if (kind.needsTwoSlots()) {
                 locals[javaIndex] = TWO_SLOT_MARKER;
@@ -510,11 +517,19 @@ public final class FrameStateBuilder implements SideEffectsState {
                 }
                 throw new PermanentBailoutException(incompatibilityErrorMessage("unbalanced monitors - monitors do not match", other));
             }
-            // ID's match now also the objects should match
-            if (originalValue(lockedObjects[i], false) != originalValue(other.lockedObjects[i], false)) {
-                throw new PermanentBailoutException(incompatibilityErrorMessage("unbalanced monitors - locked objects do not match", other));
+        }
+    }
+
+    public boolean areLocksMergeableWith(FrameStateBuilder other) {
+        if (lockedObjects.length != other.lockedObjects.length) {
+            return false;
+        }
+        for (int i = 0; i < lockedObjects.length; i++) {
+            if (!MonitorIdNode.monitorIdentityEquals(monitorIds[i], other.monitorIds[i])) {
+                return false;
             }
         }
+        return true;
     }
 
     public void merge(AbstractMergeNode block, FrameStateBuilder other) {
@@ -943,6 +958,17 @@ public final class FrameStateBuilder implements SideEffectsState {
         return x;
     }
 
+    public JavaKind peekKind() {
+        if (stackSize == 0) {
+            return JavaKind.Void;
+        }
+        ValueNode result = stack[stackSize - 1];
+        if (result == TWO_SLOT_MARKER) {
+            result = stack[stackSize - 2];
+        }
+        return result.getStackKind();
+    }
+
     /**
      * Pop the specified number of slots off of this stack and return them as an array of
      * instructions.
@@ -1183,6 +1209,18 @@ public final class FrameStateBuilder implements SideEffectsState {
         stateAfterStart = graph.add(
                         new FrameState(null, new ResolvedJavaMethodBytecode(original), 0, newLocals, newStack, stackSize, null, null, locks, Collections.emptyList(), FrameState.StackState.BeforePop));
         return stateAfterStart;
+    }
+
+    /**
+     * Sets monitorIds and lockedObjects of this FrameStateBuilder to the values in {@code from}.
+     */
+    public void setLocks(FrameStateBuilder from) {
+        lockedObjects = new ValueNode[from.lockedObjects.length];
+        monitorIds = new MonitorIdNode[from.lockedObjects.length];
+        for (int i = 0; i < from.lockedObjects.length; i++) {
+            lockedObjects[i] = from.lockedObjects[i];
+            monitorIds[i] = from.monitorIds[i];
+        }
     }
 
 }

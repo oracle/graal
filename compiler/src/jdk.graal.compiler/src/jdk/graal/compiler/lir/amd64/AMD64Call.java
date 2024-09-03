@@ -42,6 +42,7 @@ import jdk.graal.compiler.lir.gen.DiagnosticLIRGeneratorTool;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
+import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.site.Call;
@@ -188,7 +189,17 @@ public class AMD64Call {
      * @return the position of the emitted call instruction
      */
     public static int directCall(CompilationResultBuilder crb, AMD64MacroAssembler masm, InvokeTarget callTarget, Register scratch, boolean align, LIRFrameState info) {
-        int before;
+        int callPosition;
+        AMD64MacroAssembler.PostCallAction afterCall = (before, after) -> {
+            Call call = crb.recordDirectCall(before, after, callTarget, info);
+            if (align) {
+                checkCallDisplacementAlignment(crb, before, call);
+            }
+            crb.recordExceptionHandlers(after, info);
+            if (masm.position() == after) {
+                masm.postCallNop(call);
+            }
+        };
         if (scratch != null) {
             if (align) {
                 throw new GraalError("register call has no immediate displacement operand to be aligned");
@@ -198,20 +209,12 @@ public class AMD64Call {
             // This is an implicit contract between the backend and the JVMCI code installer. The
             // latter expects a mov instruction immediately preceding a call instruction. The jcc
             // erratum padding should be inserted before the mov instruction.
-            before = masm.directCall(0L, scratch);
+            callPosition = masm.directCall(afterCall, 0L, scratch, callTarget);
         } else {
             masm.alignBeforeCall(align, 0);
-            before = masm.position();
-            masm.call();
+            callPosition = masm.call(afterCall, callTarget);
         }
-        int after = masm.position();
-        Call call = crb.recordDirectCall(before, after, callTarget, info);
-        if (align) {
-            checkCallDisplacementAlignment(crb, before, call);
-        }
-        crb.recordExceptionHandlers(after, info);
-        masm.postCallNop(call);
-        return before;
+        return callPosition;
     }
 
     private static final int INLINE_CACHE_MOV_SIZE = 10;
@@ -231,14 +234,15 @@ public class AMD64Call {
         crb.recordMark(markId);
         int movPos = masm.position();
         masm.movq(AMD64.rax, nonOopBits);
-        int before = masm.position();
-        assert movPos + INLINE_CACHE_MOV_SIZE == before : Assertions.errorMessage(movPos, before);
-        masm.call();
-        int after = masm.position();
-        Call call = crb.recordDirectCall(before, after, callTarget, info);
-        checkCallDisplacementAlignment(crb, before, call);
-        crb.recordExceptionHandlers(after, info);
-        masm.postCallNop(call);
+        masm.call((before, after) -> {
+            assert movPos + INLINE_CACHE_MOV_SIZE == before : Assertions.errorMessage(movPos, before);
+            Call call = crb.recordDirectCall(before, after, callTarget, info);
+            checkCallDisplacementAlignment(crb, before, call);
+            crb.recordExceptionHandlers(after, info);
+            if (masm.position() == after) {
+                masm.postCallNop(call);
+            }
+        }, callTarget);
     }
 
     private static void checkCallDisplacementAlignment(CompilationResultBuilder crb, int before, Call call) throws GraalError {
@@ -268,15 +272,26 @@ public class AMD64Call {
         return indirectCall(crb, masm, dst, callTarget, info, false);
     }
 
+    public static int indirectCall(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register dst, InvokeTarget callTarget, LIRFrameState info, CallingConvention.Type callingConventionType) {
+        return indirectCall(crb, masm, dst, callTarget, info, false, callingConventionType);
+    }
+
+    public static int indirectCall(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register dst, InvokeTarget callTarget, LIRFrameState info, boolean mitigateDecodingAsDirectCall) {
+        return indirectCall(crb, masm, dst, callTarget, info, mitigateDecodingAsDirectCall, null);
+    }
+
     /**
      * @return the position of the emitted call instruction
      */
-    public static int indirectCall(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register dst, InvokeTarget callTarget, LIRFrameState info, boolean mitigateDecodingAsDirectCall) {
-        int before = masm.indirectCall(dst, mitigateDecodingAsDirectCall);
-        int after = masm.position();
-        Call call = crb.recordIndirectCall(before, after, callTarget, info);
-        crb.recordExceptionHandlers(after, info);
-        masm.postCallNop(call);
-        return before;
+    public static int indirectCall(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register dst, InvokeTarget callTarget, LIRFrameState info, boolean mitigateDecodingAsDirectCall,
+                    CallingConvention.Type callingConventionType) {
+        AMD64MacroAssembler.PostCallAction postCallAction = (before, after) -> {
+            Call call = crb.recordIndirectCall(before, after, callTarget, info);
+            crb.recordExceptionHandlers(after, info);
+            if (masm.position() == after) {
+                masm.postCallNop(call);
+            }
+        };
+        return masm.indirectCall(postCallAction, dst, mitigateDecodingAsDirectCall, callTarget, callingConventionType);
     }
 }

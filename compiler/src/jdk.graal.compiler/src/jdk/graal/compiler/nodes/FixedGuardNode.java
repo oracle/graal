@@ -34,13 +34,13 @@ import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
 import jdk.graal.compiler.nodes.extended.ValueAnchorNode;
 import jdk.graal.compiler.nodes.spi.Lowerable;
 import jdk.graal.compiler.nodes.spi.LoweringTool;
 import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.graal.compiler.nodes.spi.SwitchFoldable;
-import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
-
+import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.SpeculationLog;
@@ -77,14 +77,15 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
         if (getCondition() instanceof LogicConstantNode) {
             LogicConstantNode c = (LogicConstantNode) getCondition();
             if (c.getValue() == isNegated()) {
-                FixedNode currentNext = this.next();
-                if (currentNext != null) {
-                    tool.deleteBranch(currentNext);
-                }
-
+                /*
+                 * The guard will always deoptimize. Replace the guard and the remaining branch with
+                 * the corresponding deopt.
+                 */
                 DeoptimizeNode deopt = graph().add(new DeoptimizeNode(getAction(), getReason(), getSpeculation()));
                 deopt.setStateBefore(stateBefore());
-                setNext(deopt);
+                predecessor().replaceFirstSuccessor(this, deopt);
+                GraphUtil.killCFG(this);
+                return;
             }
             if (hasUsages()) {
                 /*
@@ -103,7 +104,7 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
                  * are required to be anchored. After guard lowering it might be possible to replace
                  * the ValueAnchorNode with the Begin of the current block.
                  */
-                graph().replaceFixedWithFixed(this, graph().add(new ValueAnchorNode(null)));
+                graph().replaceFixedWithFixed(this, graph().add(new ValueAnchorNode()));
             } else {
                 graph().removeFixed(this);
             }
@@ -114,6 +115,12 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
                                 graph().add(new FixedGuardNode(shortCircuitOr.getY(), getReason(), getAction(), getSpeculation(), !shortCircuitOr.isYNegated(), getNoDeoptSuccessorPosition())));
                 graph().replaceFixedWithFixed(this,
                                 graph().add(new FixedGuardNode(shortCircuitOr.getX(), getReason(), getAction(), getSpeculation(), !shortCircuitOr.isXNegated(), getNoDeoptSuccessorPosition())));
+            }
+        }
+
+        if (this.isAlive()) {
+            if (PiNode.guardTrySkipPi(this, getCondition(), isNegated(), NodeView.from(tool))) {
+                return;
             }
         }
     }

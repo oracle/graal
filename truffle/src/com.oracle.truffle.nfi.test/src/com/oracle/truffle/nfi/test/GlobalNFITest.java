@@ -40,18 +40,14 @@
  */
 package com.oracle.truffle.nfi.test;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.nfi.test.interop.TestCallback;
-import com.oracle.truffle.tck.TruffleRunner;
-import com.oracle.truffle.tck.TruffleRunner.Inject;
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.CoreMatchers.is;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.function.DoubleFunction;
-import static org.hamcrest.CoreMatchers.instanceOf;
-import static org.hamcrest.CoreMatchers.is;
+
+import org.hamcrest.MatcherAssert;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -59,6 +55,14 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
+
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.nfi.test.interop.TestCallback;
+import com.oracle.truffle.tck.TruffleRunner;
+import com.oracle.truffle.tck.TruffleRunner.Inject;
 
 @RunWith(Parameterized.class)
 @Parameterized.UseParametersRunnerFactory(TruffleRunner.ParametersFactory.class)
@@ -116,7 +120,7 @@ public class GlobalNFITest extends NFITest {
     @Test
     public void test(@Inject(TestGlobalMethod.class) CallTarget callTarget) {
         Object ret = callTarget.call(42.0);
-        Assert.assertThat("return value", ret, is(instanceOf(Double.class)));
+        MatcherAssert.assertThat("return value", ret, is(instanceOf(Double.class)));
         Assert.assertEquals("return value", op.apply(42.0), ret);
     }
 }

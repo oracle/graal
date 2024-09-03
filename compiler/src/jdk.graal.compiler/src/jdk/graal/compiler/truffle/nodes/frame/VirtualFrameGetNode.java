@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -85,9 +85,25 @@ public final class VirtualFrameGetNode extends VirtualFrameAccessorNode implemen
             VirtualObjectNode dataVirtual = (VirtualObjectNode) dataAlias;
 
             if (frameSlotIndex < tagVirtual.entryCount() && frameSlotIndex < dataVirtual.entryCount()) {
+                ensureStaticSlotAccessConsistency();
                 ValueNode actualTag = tool.getEntry(tagVirtual, frameSlotIndex);
                 final boolean staticAccess = accessFlags.isStatic();
-                if (!staticAccess && (!actualTag.isConstant() || actualTag.asJavaConstant().asInt() != accessTag)) {
+                if (staticAccess && accessKind.isPrimitive() &&
+                                (actualTag.isConstant() && actualTag.asJavaConstant().asInt() == 0)) {
+                    /*
+                     * Reading a primitive from an uninitialized static slot: return the default
+                     * value for the access kind. Reading an object can go through the regular
+                     * route.
+                     *
+                     * If it were allowed to go through the normal route, the value stored in the
+                     * virtual array will always be an i64, and it would have to be converted to the
+                     * access kind before returns. This shortcut ensures both correctness, and
+                     * removes the need for conversion.
+                     */
+                    ValueNode dataEntry = ConstantNode.defaultForKind(getStackKind(), graph());
+                    tool.replaceWith(dataEntry);
+                    return;
+                } else if (!staticAccess && (!actualTag.isConstant() || actualTag.asJavaConstant().asInt() != accessTag)) {
                     /*
                      * We cannot constant fold the tag-check immediately, so we need to create a
                      * guard comparing the actualTag with the accessTag.

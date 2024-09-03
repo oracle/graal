@@ -26,6 +26,7 @@ package com.oracle.svm.graal.hotspot.libgraal.truffle;
 
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.DoCompile;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetCompilerConfigurationFactoryName;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetCompilerVersion;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetDataPatchesCount;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetExceptionHandlersCount;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetInfopoints;
@@ -99,6 +100,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * system property to {@code 3}.
  */
 final class TruffleToLibGraalEntryPoints {
+
+    private static final String COMPILER_VERSION = HotSpotTruffleCompilationSupport.readCompilerVersion();
 
     @CEntryPoint(builtin = Builtin.GET_CURRENT_THREAD, name = "Java_com_oracle_truffle_runtime_hotspot_libgraal_LibGraalScope_getIsolateThreadIn")
     private static native IsolateThread getIsolateThreadIn(PointerBase env, PointerBase hsClazz, @IsolateContext Isolate isolate);
@@ -178,6 +181,13 @@ final class TruffleToLibGraalEntryPoints {
     @SuppressWarnings({"unused", "try"})
     @CEntryPoint(name = "Java_com_oracle_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls_newCompiler")
     public static long newCompiler(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long truffleRuntimeHandle) {
+        /*
+         * Unlike `LibGraalTruffleHostEnvironment`, Truffle libgraal entry points use the global
+         * compilation context by default, so we don't need to call
+         * `HotSpotGraalServices.enterGlobalCompilationContext()` before creating
+         * `TruffleCompilerImpl`. The `doCompile` method enters a local compilation context through
+         * its own call to `HotSpotGraalServices.openLocalCompilationContext`.
+         */
         try (JNIMethodScope s = LibGraalUtil.openScope(TruffleToLibGraalEntryPoints.class, NewCompiler, env)) {
             HSTruffleCompilerRuntime hsTruffleRuntime = LibGraalObjectHandles.resolve(truffleRuntimeHandle, HSTruffleCompilerRuntime.class);
             HotSpotTruffleCompilerImpl compiler = HotSpotTruffleCompilerImpl.create(hsTruffleRuntime);
@@ -470,11 +480,12 @@ final class TruffleToLibGraalEntryPoints {
     public static JString validateCompilerOption(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, JString optionName, JString optionValue) {
         JNIMethodScope scope = LibGraalUtil.openScope(TruffleToLibGraalEntryPoints.class, Id.ValidateCompilerOption, env);
         try (JNIMethodScope s = scope) {
-            return JNIUtil.createHSString(env, TruffleCompilerOptions.validateOption(JNIUtil.createString(env, optionName), JNIUtil.createString(env, optionValue)));
+            scope.setObjectResult(JNIUtil.createHSString(env, TruffleCompilerOptions.validateOption(JNIUtil.createString(env, optionName), JNIUtil.createString(env, optionValue))));
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
-            return WordFactory.nullPointer();
+            scope.setObjectResult(WordFactory.nullPointer());
         }
+        return scope.getObjectResult();
     }
 
     @TruffleToLibGraal(GetMarksCount)
@@ -513,6 +524,20 @@ final class TruffleToLibGraalEntryPoints {
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
         }
+    }
+
+    @TruffleToLibGraal(GetCompilerVersion)
+    @CEntryPoint(name = "Java_com_oracle_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls_getCompilerVersion")
+    @SuppressWarnings({"unused", "try"})
+    public static JString getCompilerVersion(JNIEnv env, JClass hsClass, @CEntryPoint.IsolateThreadContext long isolateThreadId) {
+        JNIMethodScope scope = LibGraalUtil.openScope(TruffleToLibGraalEntryPoints.class, GetCompilerVersion, env);
+        try (JNIMethodScope s = scope) {
+            scope.setObjectResult(createHSString(env, COMPILER_VERSION));
+        } catch (Throwable t) {
+            JNIExceptionWrapper.throwInHotSpot(env, t);
+            scope.setObjectResult(WordFactory.nullPointer());
+        }
+        return scope.getObjectResult();
     }
 
     static {

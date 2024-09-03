@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -63,7 +63,6 @@ import jdk.graal.compiler.lir.aarch64.AArch64ReinterpretOp;
 import jdk.graal.compiler.lir.aarch64.AArch64RoundFloatToIntegerOp;
 import jdk.graal.compiler.lir.gen.ArithmeticLIRGenerator;
 import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
-
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
@@ -242,7 +241,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     }
 
     @Override
-    public Value emitFloatConvert(FloatConvert op, Value inputVal) {
+    public Value emitFloatConvert(FloatConvert op, Value inputVal, boolean canBeNaN, boolean canOverflow) {
         PlatformKind resultPlatformKind = getFloatConvertResultKind(op);
         LIRKind resultLirKind = LIRKind.combine(inputVal).changeType(resultPlatformKind);
         Variable result = getLIRGen().newVariable(resultLirKind);
@@ -335,7 +334,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     }
 
     @Override
-    public Value emitZeroExtend(Value inputVal, int fromBits, int toBits) {
+    public Value emitZeroExtend(Value inputVal, int fromBits, int toBits, boolean requiresExplicitZeroExtend, boolean requiresLIRKindChange) {
         assert fromBits <= toBits && toBits <= 64 : fromBits + " " + toBits;
         if (fromBits == toBits) {
             return inputVal;
@@ -363,12 +362,11 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
             /*
              * Performing sign extend via a left shift followed by an arithmetic right shift. First,
              * a left shift of (64 - fromBits) is performed to remove non-meaningful bits, and then
-             * an arithmetic right shift is used to set correctly all sign bits. Note the "toBits"
-             * size is not considered, as the constant is saved as a long value.
+             * an arithmetic right shift is used to set correctly all sign bits.
              */
             int shiftSize = 64 - fromBits;
             long signExtendedValue = (constant << shiftSize) >> shiftSize;
-            return new ConstantValue(resultKind, JavaConstant.forLong(signExtendedValue));
+            return new ConstantValue(resultKind, JavaConstant.forPrimitiveInt(toBits, signExtendedValue));
         }
         Variable result = getLIRGen().newVariable(resultKind);
         getLIRGen().append(new AArch64Convert.SignExtendOp(result, asAllocatable(inputVal), fromBits, toBits));
@@ -452,7 +450,8 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
             case Long:
                 return AArch64MacroAssembler.isAddSubtractImmediate(constValue.asLong(), true);
             case Object:
-                return constValue.isNull();
+                /* Object constants can't be encoded as immediates in add/subtract. */
+                return false;
             default:
                 throw GraalError.shouldNotReachHereUnexpectedValue(constValue.getJavaKind().getStackKind()); // ExcludeFromJacocoGeneratedReport
         }
@@ -688,7 +687,8 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     }
 
     @Override
-    public Variable emitNormalizedUnsignedCompare(Value x, Value y) {
+    public Variable emitNormalizedUnsignedCompare(LIRKind compareKind, Value x, Value y) {
+        GraalError.guarantee(compareKind.getPlatformKind() == AArch64Kind.DWORD || compareKind.getPlatformKind() == AArch64Kind.QWORD, "unsupported subword comparison: %s", compareKind);
         Variable result = getLIRGen().newVariable(LIRKind.value(AArch64Kind.DWORD));
         getLIRGen().append(new AArch64NormalizedUnsignedCompareOp(result, asAllocatable(x), asAllocatable(y)));
         return result;

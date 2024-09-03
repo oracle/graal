@@ -31,10 +31,13 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
+import java.util.ServiceConfigurationError;
 
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.code.DisassemblerProvider;
+import jdk.graal.compiler.code.HexCodeFileDisassemblerProvider;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.gen.NodeLIRBuilder;
 import jdk.graal.compiler.debug.DebugContext;
@@ -52,12 +55,10 @@ import jdk.graal.compiler.nodes.StructuredGraph.ScheduleResult;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.GraalServices;
-
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.services.Services;
 
 /**
  * Observes compilation events and uses {@link CFGPrinter} to produce a control flow graph for the
@@ -202,12 +203,12 @@ public class CFGPrinterObserver implements DebugDumpHandler {
                 }
             } else if (object instanceof ScheduleResult) {
                 cfgPrinter.printSchedule(message, (ScheduleResult) object);
-            } else if (object instanceof CompilationResult) {
+            } else if (object instanceof CompilationResult && codeCache != null) {
                 final CompilationResult compResult = (CompilationResult) object;
                 cfgPrinter.printMachineCode(disassemble(options, codeCache, compResult, null), message);
             } else if (object instanceof InstalledCode) {
                 CompilationResult compResult = debug.contextLookup(CompilationResult.class);
-                if (compResult != null) {
+                if (compResult != null && codeCache != null) {
                     cfgPrinter.printMachineCode(disassemble(options, codeCache, compResult, (InstalledCode) object), message);
                 }
             } else if (object instanceof IntervalDumper) {
@@ -233,29 +234,32 @@ public class CFGPrinterObserver implements DebugDumpHandler {
 
     private static DisassemblerProvider selectDisassemblerProvider(OptionValues options) {
         DisassemblerProvider selected = null;
-        String arch = Services.getSavedProperty("os.arch");
+        String arch = GraalServices.getSavedProperty("os.arch");
         final boolean isAArch64 = arch.equals("aarch64");
-        for (DisassemblerProvider d : GraalServices.load(DisassemblerProvider.class)) {
-            if (d.isAvailable(options)) {
-                String name = d.getName();
-                if (isAArch64 && name.equals("objdump")) {
-                    // Prefer objdump disassembler over others
-                    return d;
-                } else if (name.equals("hcf")) {
-                    if (!isAArch64) {
+        Iterator<DisassemblerProvider> load = GraalServices.load(DisassemblerProvider.class).iterator();
+        while (load.hasNext()) {
+            try {
+                DisassemblerProvider d = load.next();
+                if (d.isAvailable(options)) {
+                    String name = d.getName();
+                    if (isAArch64 && name.equals("objdump")) {
+                        // Prefer objdump disassembler over others
                         return d;
+                    } else if (name.equals("hcf")) {
+                        if (!isAArch64) {
+                            return d;
+                        }
+                        selected = d;
                     }
-                    selected = d;
                 }
+            } catch (ServiceConfigurationError e) {
+                e.printStackTrace();
             }
         }
         if (selected == null) {
-            selected = new DisassemblerProvider() {
-                @Override
-                public String getName() {
-                    return "nop";
-                }
-            };
+            // This should normally be found through the service provider but we should handle any
+            // severe misconfiguration of the service correctly.
+            selected = new HexCodeFileDisassemblerProvider();
         }
         return selected;
     }

@@ -24,15 +24,21 @@
  */
 package jdk.graal.compiler.lir.asm;
 
-import jdk.graal.compiler.core.common.spi.CodeGenProviders;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
 
 /**
- * Helper class to allow emitting custom assembly at the normal entry point before any frame setup
- * has occurred.
+ * Helper class to allow emitting custom assembly at the normal entry point before or after the
+ * frame setup has occurred.
  */
 public interface EntryPointDecorator {
-    void initialize(CodeGenProviders providers, LIRGenerationResult lirGenRes);
+    void initialize(CoreProviders providers, LIRGenerationResult lirGenRes);
 
-    void emitEntryPoint(CompilationResultBuilder crb);
+    /**
+     * Permit the emission of code before or after the method prologue.
+     *
+     * @param crb the CompilationResultBuilder
+     * @param beforeFrameSetup true if before any frame setup has been performed
+     */
+    void emitEntryPoint(CompilationResultBuilder crb, boolean beforeFrameSetup);
 }

@@ -25,27 +25,30 @@
 package com.oracle.svm.core.reflect.proxy;
 
 import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Proxy;
 import java.util.Arrays;
 import java.util.regex.Pattern;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.EconomicSet;
-import org.graalvm.collections.Equivalence;
-import jdk.graal.compiler.debug.GraalError;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.configure.ConditionalRuntimeValue;
+import com.oracle.svm.core.configure.RuntimeConditionSet;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.util.ImageHeapMap;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
+
+import jdk.graal.compiler.debug.GraalError;
 
 public class DynamicProxySupport implements DynamicProxyRegistry {
 
@@ -79,8 +82,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
         }
     }
 
-    private final EconomicSet<Class<?>> hostedProxyClasses = EconomicSet.create(Equivalence.IDENTITY);
-    private final EconomicMap<ProxyCacheKey, Object> proxyCache = ImageHeapMap.create();
+    private final EconomicMap<ProxyCacheKey, ConditionalRuntimeValue<Object>> proxyCache = ImageHeapMap.create();
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicProxySupport() {
@@ -88,7 +90,8 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
 
     @Override
     @Platforms(Platform.HOSTED_ONLY.class)
-    public synchronized void addProxyClass(Class<?>... interfaces) {
+    public synchronized void addProxyClass(ConfigurationCondition condition, Class<?>... interfaces) {
+        VMError.guarantee(condition.isRuntimeChecked(), "The condition used must be a runtime condition.");
         /*
          * Make a defensive copy of the interfaces array to protect against the caller modifying the
          * array.
@@ -97,12 +100,13 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
         ProxyCacheKey key = new ProxyCacheKey(intfs);
 
         if (!proxyCache.containsKey(key)) {
-            proxyCache.put(key, createProxyClass(intfs));
+            proxyCache.put(key, new ConditionalRuntimeValue<>(RuntimeConditionSet.emptySet(), createProxyClass(intfs)));
         }
+        proxyCache.get(key).getConditions().addCondition(condition);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private Object createProxyClass(Class<?>[] interfaces) {
+    private static Object createProxyClass(Class<?>[] interfaces) {
         try {
             Class<?> clazz = createProxyClassFromImplementedInterfaces(interfaces);
 
@@ -134,8 +138,6 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
             for (Class<?> intf : interfaces) {
                 RuntimeReflection.register(intf.getMethods());
             }
-
-            hostedProxyClasses.add(clazz);
             return clazz;
         } catch (Throwable t) {
             LogUtils.warning("Could not create a proxy class from list of interfaces: %s. Reason: %s", Arrays.toString(interfaces), t.getMessage());
@@ -145,14 +147,15 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
 
     @Override
     @Platforms(Platform.HOSTED_ONLY.class)
-    public Class<?> createProxyClassForSerialization(Class<?>... interfaces) {
+    public Class<?> getProxyClassHosted(Class<?>... interfaces) {
         final Class<?>[] intfs = interfaces.clone();
         return createProxyClassFromImplementedInterfaces(intfs);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
+    @SuppressWarnings("deprecation")
     private static Class<?> createProxyClassFromImplementedInterfaces(Class<?>[] interfaces) {
-        return getJdkProxyClass(getCommonClassLoaderOrFail(null, interfaces), interfaces);
+        return Proxy.getProxyClass(getCommonClassLoaderOrFail(null, interfaces), interfaces);
     }
 
     private static ClassLoader getCommonClassLoaderOrFail(ClassLoader loader, Class<?>... intfs) {
@@ -171,14 +174,15 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
     @Override
     public Class<?> getProxyClass(ClassLoader loader, Class<?>... interfaces) {
         ProxyCacheKey key = new ProxyCacheKey(interfaces);
-        Object clazzOrError = proxyCache.get(key);
-        if (clazzOrError == null) {
-            MissingReflectionRegistrationUtils.forProxy(interfaces);
+        ConditionalRuntimeValue<Object> clazzOrError = proxyCache.get(key);
+
+        if (clazzOrError == null || !clazzOrError.getConditions().satisfied()) {
+            throw MissingReflectionRegistrationUtils.errorForProxy(interfaces);
         }
-        if (clazzOrError instanceof Throwable) {
-            throw new GraalError((Throwable) clazzOrError);
+        if (clazzOrError.getValue() instanceof Throwable) {
+            throw new GraalError((Throwable) clazzOrError.getValue());
         }
-        Class<?> clazz = (Class<?>) clazzOrError;
+        Class<?> clazz = (Class<?>) clazzOrError.getValue();
         if (!DynamicHub.fromClass(clazz).isLoaded()) {
             /*
              * NOTE: we might race with another thread in loading this proxy class.
@@ -226,22 +230,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
         }
     }
 
-    @Override
-    public boolean isProxyClass(Class<?> clazz) {
-        if (SubstrateUtil.HOSTED) {
-            return isHostedProxyClass(clazz);
-        }
-        return DynamicHub.fromClass(clazz).isProxyClass();
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    private synchronized boolean isHostedProxyClass(Class<?> clazz) {
-        return hostedProxyClasses.contains(clazz);
-    }
-
-    @SuppressWarnings("deprecation")
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static Class<?> getJdkProxyClass(ClassLoader loader, Class<?>... interfaces) {
-        return java.lang.reflect.Proxy.getProxyClass(loader, interfaces);
+    public static String proxyTypeDescriptor(String... interfaceNames) {
+        return "Proxy[" + String.join(", ", interfaceNames) + "]";
     }
 }

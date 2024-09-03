@@ -612,6 +612,11 @@ public class VerifyAssertionUsage extends VerifyStringFormatterUsage {
             throw new VerificationError("Checked callee graph %s has null method", checkedMethod);
         }
 
+        if (checkedMethod.getDeclaringClass().getName().startsWith("Ljdk/graal/compiler/graphio")) {
+            // This package is mirrored from the visualizer so explicitly ignore it
+            return;
+        }
+
         MethodInfo checkedMethodInfo = getMethodInfo(checkedMethod);
         checkedMethodInfo.allPathsAssertionDominated = verifyAllReturnPathsReturnTrue(graph, checkedMethodInfo);
         checkedMethodInfo.root = true;

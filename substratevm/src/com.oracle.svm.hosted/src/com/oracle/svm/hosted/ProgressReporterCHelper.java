@@ -46,7 +46,7 @@ public final class ProgressReporterCHelper {
         if (Files.exists(libRSSHelperPath)) {
             System.load(libRSSHelperPath.toString());
         } else {
-            System.load(Paths.get(System.getProperty("substratevm.reporterchelper.path"), libName).toString());
+            throw VMError.shouldNotReachHere("Helper library for ProgressReporterCHelper not available");
         }
     }
 

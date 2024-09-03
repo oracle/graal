@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@
  */
 package jdk.graal.compiler.hotspot;
 
-import static jdk.vm.ci.services.Services.getSavedProperty;
+import static jdk.graal.compiler.serviceprovider.GraalServices.getSavedProperty;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -37,7 +37,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import jdk.graal.compiler.debug.Assertions;
-
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
@@ -114,7 +113,6 @@ public class GraalHotSpotVMConfigAccess {
     }
 
     public static final int JDK = Runtime.version().feature();
-    public static final int JDK_BUILD = Runtime.version().build().orElse(0);
     public static final JVMCIVersionCheck.Version JVMCI_VERSION;
     public static final boolean JVMCI;
     public static final boolean JDK_PRERELEASE;
@@ -202,13 +200,13 @@ public class GraalHotSpotVMConfigAccess {
         }
     }
 
+    /**
+     * Name of system property that can be used to change behavior of reporting config errors.
+     */
+    private static final String JVMCI_CONFIG_CHECK_PROP_NAME = "debug.jdk.graal.jvmciConfigCheck";
+
     static void reportError(String rawErrorMessage) {
-        String value = System.getenv("JVMCI_CONFIG_CHECK");
-        if (!JVMCI && value == null) {
-            // We cannot control when VM config updates are made in non-JVMCI
-            // JDKs so disable this check by default.
-            value = "ignore";
-        }
+        String value = getSavedProperty(JVMCI_CONFIG_CHECK_PROP_NAME);
         if ("ignore".equals(value)) {
             return;
         }
@@ -217,10 +215,10 @@ public class GraalHotSpotVMConfigAccess {
         String javaHome = getSavedProperty("java.home");
         String vmName = getSavedProperty("java.vm.name");
         if (warn) {
-            message.format("%nSet the JVMCI_CONFIG_CHECK environment variable to \"ignore\" to suppress ");
+            message.format("%nSet the %s system property to \"ignore\" to suppress ", JVMCI_CONFIG_CHECK_PROP_NAME);
             message.format("this warning and continue execution.%n");
         } else {
-            message.format("%nSet the JVMCI_CONFIG_CHECK environment variable to \"ignore\" to suppress ");
+            message.format("%nSet the %s system property to \"ignore\" to suppress ", JVMCI_CONFIG_CHECK_PROP_NAME);
             message.format("this error or to \"warn\" to emit a warning and continue execution.%n");
         }
         message.format("Currently used Java home directory is %s.%n", javaHome);

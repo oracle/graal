@@ -24,78 +24,99 @@
  */
 package com.oracle.svm.hosted;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.graalvm.nativeimage.ImageSingletons;
-
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.jdk.JavaLangSubstitutions.ClassValueSupport;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.jdk.ClassValueSupport;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
+/**
+ * This feature reads ClassValues created by the hosted environment and stores them into the image.
+ */
 @AutomaticallyRegisteredFeature
 public final class ClassValueFeature implements InternalFeature {
-    private final Map<ClassValue<?>, Map<Class<?>, Object>> values = new ConcurrentHashMap<>();
-
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ClassValueSupport support = new ClassValueSupport(values);
-        ImageSingletons.add(ClassValueSupport.class, support);
-    }
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        access.registerObjectReplacer(this::processObject);
-    }
-
-    private Object processObject(Object obj) {
-        if (obj instanceof ClassValue) {
-            values.putIfAbsent((ClassValue<?>) obj, new ConcurrentHashMap<>());
-        }
-        return obj;
-    }
-
-    @Override
-    public void duringAnalysis(DuringAnalysisAccess access) {
-        FeatureImpl.DuringAnalysisAccessImpl impl = (FeatureImpl.DuringAnalysisAccessImpl) access;
-        List<AnalysisType> types = impl.getUniverse().getTypes();
-        for (AnalysisType t : types) {
-            if (!t.isReachable()) {
-                continue;
-            }
-            Class<?> clazz = t.getJavaClass();
-            for (Map.Entry<ClassValue<?>, Map<Class<?>, Object>> e : values.entrySet()) {
-                ClassValue<?> v = e.getKey();
-                Map<Class<?>, Object> m = e.getValue();
-                if (!m.containsKey(clazz) && hasValue(v, clazz)) {
-                    Object value = v.get(clazz);
-                    if (value == null) {
-                        value = ClassValueSupport.NULL_MARKER;
-                    }
-                    m.put(clazz, value);
-                    access.requireAnalysisIteration();
-                }
-            }
-        }
+        /*
+         * We must record all ClassValue instances seen to ensure they are properly patched from the
+         * hosted environment into the substrate world.
+         */
+        Map<ClassValue<?>, Map<Class<?>, Object>> values = ClassValueSupport.getValues();
+        ((FeatureImpl.DuringSetupAccessImpl) access).registerObjectReachableCallback(ClassValue.class, (a1, obj, reason) -> values.computeIfAbsent(obj, k -> new ConcurrentHashMap<>()));
     }
 
     private static final java.lang.reflect.Field IDENTITY = ReflectionUtil.lookupField(ClassValue.class, "identity");
     private static final java.lang.reflect.Field CLASS_VALUE_MAP = ReflectionUtil.lookupField(Class.class, "classValueMap");
 
-    private static boolean hasValue(ClassValue<?> v, Class<?> c) {
+    @Override
+    public void duringAnalysis(DuringAnalysisAccess access) {
+        /*
+         * Checking all ClassValues to see if there is anything stored in the hosted environment
+         * which needs to be patched into the substrate world.
+         */
+        Map<ClassValue<?>, Map<Class<?>, Object>> values = ClassValueSupport.getValues();
+
+        FeatureImpl.DuringAnalysisAccessImpl impl = (FeatureImpl.DuringAnalysisAccessImpl) access;
+        List<AnalysisType> types = impl.getUniverse().getTypes();
+
+        Set<Object> mapsToRescan = new HashSet<>();
         try {
-            Map<?, ?> map = (Map<?, ?>) CLASS_VALUE_MAP.get(c);
-            final Object id = IDENTITY.get(v);
-            final boolean res = map != null && map.containsKey(id);
-            return res;
-        } catch (RuntimeException ex) {
-            throw ex;
-        } catch (Exception ex) {
-            throw new IllegalStateException(ex);
+            for (AnalysisType t : types) {
+                if (!t.isReachable()) {
+                    continue;
+                    /*
+                     * If the type is not reachable, then ClassValues associated with it are
+                     * unneeded.
+                     */
+                }
+
+                /*
+                 * Directly calling ClassValue.get(Class) will cause a value to be computed.
+                 * Therefore, instead we query the Class#classValueMap. For a given class, its
+                 * classValueMap will contain a map of all user ClassValue objects which have a
+                 * value for the class.
+                 */
+                var clazz = t.getJavaClass();
+                var classValueMap = (Map<?, ?>) CLASS_VALUE_MAP.get(clazz);
+                if (classValueMap == null) {
+                    continue;
+                }
+
+                /*
+                 * Check all reachable ClassValues instances to see if new mappings exist within the
+                 * hostedCallValueMap which need to be placed within the svm objects.
+                 */
+                for (Map.Entry<ClassValue<?>, Map<Class<?>, Object>> svmClassValueEntry : values.entrySet()) {
+                    Map<Class<?>, Object> svmClassValueMap = svmClassValueEntry.getValue();
+                    if (!svmClassValueMap.containsKey(clazz)) {
+                        ClassValue<?> classValue = svmClassValueEntry.getKey();
+                        Object classValueMapKey = IDENTITY.get(classValue);
+                        if (classValueMap.containsKey(classValueMapKey)) {
+                            Object value = classValue.get(clazz);
+                            svmClassValueMap.put(clazz, value == null ? ClassValueSupport.NULL_MARKER : value);
+                            if (value != null) {
+                                mapsToRescan.add(svmClassValueMap);
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (IllegalAccessException ex) {
+            throw VMError.shouldNotReachHere(ex);
+        }
+
+        int numTypes = impl.getUniverse().getTypes().size();
+        mapsToRescan.forEach(impl::rescanObject);
+        if (numTypes != impl.getUniverse().getTypes().size()) {
+            access.requireAnalysisIteration();
         }
     }
-
 }

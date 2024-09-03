@@ -30,6 +30,10 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
+import org.junit.Assert;
+import org.junit.Ignore;
+import org.junit.Test;
+
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.graph.Node;
@@ -41,11 +45,9 @@ import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.StructuredGraph.ScheduleResult;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.java.InstanceOfNode;
+import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.ConditionalEliminationPhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
-import org.junit.Assert;
-import org.junit.Ignore;
-import org.junit.Test;
 
 /**
  * In the following tests, the scalar type system of the compiler should be complete enough to see
@@ -181,19 +183,18 @@ public class TypeSystemTest extends GraalCompilerTest {
         StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO);
         DebugContext debug = graph.getDebug();
         debug.dump(DebugContext.BASIC_LEVEL, graph, "Graph");
+        CanonicalizerPhase c = createCanonicalizerPhase();
         /*
          * When using FlowSensitiveReductionPhase instead of ConditionalEliminationPhase,
          * tail-duplication gets activated thus resulting in a graph with more nodes than the
          * reference graph.
          */
-        new ConditionalEliminationPhase(false).apply(graph, getProviders());
-        createCanonicalizerPhase().apply(graph, getProviders());
+        new ConditionalEliminationPhase(c, false).apply(graph, getProviders());
         // a second canonicalizer is needed to process nested MaterializeNodes
-        createCanonicalizerPhase().apply(graph, getProviders());
+        c.apply(graph, getProviders());
         StructuredGraph referenceGraph = parseEager(referenceSnippet, AllowAssumptions.NO);
-        new ConditionalEliminationPhase(false).apply(referenceGraph, getProviders());
-        this.createCanonicalizerPhase().apply(referenceGraph, getProviders());
-        this.createCanonicalizerPhase().apply(referenceGraph, getProviders());
+        new ConditionalEliminationPhase(c, false).apply(referenceGraph, getProviders());
+        c.apply(referenceGraph, getProviders());
         assertEquals(referenceGraph, graph);
     }
 

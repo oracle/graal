@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,6 +50,8 @@ import static jdk.vm.ci.amd64.AMD64.r13;
 import static jdk.vm.ci.amd64.AMD64.rbp;
 import static jdk.vm.ci.amd64.AMD64.rsp;
 
+import java.util.EnumSet;
+
 import org.graalvm.collections.EconomicSet;
 
 import jdk.graal.compiler.asm.Assembler;
@@ -67,6 +69,23 @@ import jdk.vm.ci.meta.PlatformKind;
  * This class implements an assembler that can encode most X86 instructions.
  */
 public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
+
+    /**
+     * If this check is false, AVX512 support is absent or incomplete, and it makes little sense to
+     * try to use AVX512 over SSE/AVX instructions.
+     *
+     * @param features feature set to check compatibility against
+     */
+    public static boolean supportsFullAVX512(EnumSet<CPUFeature> features) {
+        return features.contains(CPUFeature.AVX512F) &&
+                        features.contains(CPUFeature.AVX512BW) &&
+                        features.contains(CPUFeature.AVX512VL) &&
+                        features.contains(CPUFeature.AVX512DQ);
+    }
+
+    public boolean supportsFullAVX512() {
+        return supportsFullAVX512(getFeatures());
+    }
 
     /**
      * @see #getSimdEncoder()
@@ -268,6 +287,14 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
 
     public void setForce4ByteNonZeroDisplacements(boolean force4ByteNonZeroDisplacements) {
         this.force4ByteNonZeroDisplacements = force4ByteNonZeroDisplacements;
+    }
+
+    /**
+     * Returns {@code true}} if this assembler is configured to emit all non-zero displacements in
+     * addresses as 4 bytes even if they would fit into a byte.
+     */
+    public boolean force4ByteNonZeroDisplacements() {
+        return force4ByteNonZeroDisplacements;
     }
 
     protected void annotatePatchingImmediate(int operandOffset, int operandSize) {
@@ -1046,89 +1073,6 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
     }
 
     /**
-     * Emits a VEX or EVEX prefix depending on the target register length without considering
-     * variable-length ({@link CPUFeature#AVX512VL}) AVX-512 instructions. No {@code opmask}
-     * register is encoded for AVX-512 instructions.
-     *
-     * @see #vexPrefix(Register, Register, Register, Register, AVXKind.AVXSize, int, int, int, int,
-     *      boolean, CPUFeature, CPUFeature, int, int)
-     */
-    public final boolean vexPrefix(Register dst, Register nds, Register src, AVXKind.AVXSize size, int pp, int mmmmm, int w, int wEvex, boolean checkAVX) {
-        return vexPrefix(dst, nds, src, size, pp, mmmmm, w, wEvex, checkAVX, null, null);
-    }
-
-    /**
-     * Emits a VEX or EVEX prefix depending on the target register length and the given feature
-     * requirements for variable-length ({@link CPUFeature#AVX512VL}) AVX-512 instructions. Here,
-     * the {@code z} and {@code b} bits are unset ({@code 0}) when emitting an EVEX prefix and no
-     * {@code opmask} register is assumed.
-     *
-     * @see #vexPrefix(Register, Register, Register, Register, AVXKind.AVXSize, int, int, int, int,
-     *      boolean, CPUFeature, CPUFeature, int, int)
-     */
-    public final boolean vexPrefix(Register dst, Register nds, Register src, AVXKind.AVXSize size, int pp, int mmmmm, int w, int wEvex, boolean checkAVX, CPUFeature l128feature,
-                    CPUFeature l256feature) {
-        return vexPrefix(dst, nds, src, Register.None, size, pp, mmmmm, w, wEvex, checkAVX, l128feature, l256feature, Z0, B0);
-    }
-
-    /**
-     * Emits a VEX or EVEX prefix depending on the target register length as well as the given
-     * feature requirements. If the requirements indicate that a variable-length
-     * ({@link CPUFeature#AVX512VL}) variant of the target instruction exists, an EVEX prefix is
-     * emitted. {@code l128feature} denotes the requirements if the target register side
-     * ({@code size}) is {@link AVXKind.AVXSize#XMM} and {@code l256feature} defines the
-     * requirements for a register size of {@link AVXKind.AVXSize#YMM}. If any of those features is
-     * {@code null}, a VEX prefix is used for the corresponding register size.
-     * <p>
-     * The Opmask ({@code opmask}) register is only used when emitting an EVEX prefix.
-     * <p>
-     * {@code z} and {@code b} denote bits in the EVEX prefix that define the merging/zeroing
-     * behavior and are unused when emitting a VEX prefix.
-     */
-    public final boolean vexPrefix(Register dst, Register nds, Register src, Register opmask, AVXKind.AVXSize size, int pp, int mmmmm, int w, int wEvex, boolean checkAVX, CPUFeature l128feature,
-                    CPUFeature l256feature, int z, int b) {
-        if (isAVX512Register(dst) || isAVX512Register(nds) || isAVX512Register(src) || size == AVXKind.AVXSize.ZMM ||
-                        isVariableLengthAVX512Register(l128feature, l256feature, size)) {
-            evexPrefix(dst, opmask, nds, src, size, pp, mmmmm, wEvex, z, b);
-            return true;
-        }
-        emitVEX(getLFlag(size), pp, mmmmm, w, getRXB(dst, src), nds.isValid() ? nds.encoding() : 0, checkAVX);
-        return false;
-    }
-
-    /**
-     * Emits a VEX or EVEX prefix depending on the target register length and the given feature
-     * requirements for variable-length ({@link CPUFeature#AVX512VL}) AVX-512 instructions, where
-     * the source {@code src} operand is a memory location. Here, the {@code z} and {@code b} bits
-     * are unset ({@code 0}) when emitting an EVEX prefix and no {@code opmask} register is assumed.
-     *
-     * @see #vexPrefix(Register, Register, Register, Register, AVXKind.AVXSize, int, int, int, int,
-     *      boolean, CPUFeature, CPUFeature, int, int)
-     */
-    public final boolean vexPrefix(Register dst, Register nds, AMD64Address src, AVXKind.AVXSize size, int pp, int mmmmm, int w, int wEvex, boolean checkAVX, CPUFeature l128feature,
-                    CPUFeature l256feature) {
-        return vexPrefix(dst, nds, src, Register.None, size, pp, mmmmm, w, wEvex, checkAVX, l128feature, l256feature, Z0, B0);
-    }
-
-    /**
-     * Emits a VEX or EVEX prefix depending on the target register length and the given feature
-     * requirements for variable-length ({@link CPUFeature#AVX512VL}) AVX-512 instructions, where
-     * the source {@code src} operand is a memory location.
-     *
-     * @see #vexPrefix(Register, Register, Register, Register, AVXKind.AVXSize, int, int, int, int,
-     *      boolean, CPUFeature, CPUFeature, int, int)
-     */
-    public final boolean vexPrefix(Register dst, Register nds, AMD64Address src, Register opmask, AVXKind.AVXSize size, int pp, int mmmmm, int w, int wEvex, boolean checkAVX, CPUFeature l128feature,
-                    CPUFeature l256feature, int z, int b) {
-        if (isAVX512Register(dst) || isAVX512Register(nds) || size == AVXKind.AVXSize.ZMM || isVariableLengthAVX512Register(l128feature, l256feature, size)) {
-            evexPrefix(dst, opmask, nds, src, size, pp, mmmmm, wEvex, z, b);
-            return true;
-        }
-        emitVEX(getLFlag(size), pp, mmmmm, w, getRXB(dst, src), nds.isValid() ? nds.encoding() : 0, checkAVX);
-        return false;
-    }
-
-    /**
      * Contains flag values for the EVEX prefix used in AVX-512 instructions.
      * <p>
      * {@link EVEXPrefixConfig#Z0}/{@link EVEXPrefixConfig#Z1} denote possible values of the z-bit
@@ -1158,7 +1102,7 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
      * EVEX-encoded instructions use a compressed displacement scheme by multiplying disp8 with a
      * scaling factor N depending on the tuple type and the vector length.
      *
-     * Reference: Intel Software Developer's Manual Volume 2, Section 2.6.5
+     * Reference: Intel Software Developer's Manual Volume 2, Section 2.7.5
      */
     protected enum EVEXTuple {
         INVALID(NOT_SUPPORTED_VECTOR_LENGTH, NOT_SUPPORTED_VECTOR_LENGTH, NOT_SUPPORTED_VECTOR_LENGTH),
@@ -1180,11 +1124,11 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
         T4_32BIT(NOT_SUPPORTED_VECTOR_LENGTH, 16, 16),
         T4_64BIT(NOT_SUPPORTED_VECTOR_LENGTH, NOT_SUPPORTED_VECTOR_LENGTH, 32),
         T8_32BIT(NOT_SUPPORTED_VECTOR_LENGTH, NOT_SUPPORTED_VECTOR_LENGTH, 32),
-        HVM(8, 16, 32),
-        QVM(4, 8, 16),
-        OVM(2, 4, 8),
-        M128(16, 16, 16),
-        DUP(8, 32, 64);
+        HVM(8, 16, 32), // Half Mem; SubQword Conversion
+        QVM(4, 8, 16), // Quarter Mem; SubDword Conversion
+        OVM(2, 4, 8), // Eighth Mem; SubWord Conversion
+        M128(16, 16, 16), // Mem128; Shift count from memory
+        DUP(8, 32, 64); // MOVDDUP; VMOVDDUP
 
         private final int scalingFactorVL128;
         private final int scalingFactorVL256;

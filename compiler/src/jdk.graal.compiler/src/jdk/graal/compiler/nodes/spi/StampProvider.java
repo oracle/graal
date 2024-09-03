@@ -27,6 +27,7 @@ package jdk.graal.compiler.nodes.spi;
 import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.nodes.extended.LoadHubNode;
+import jdk.vm.ci.meta.Constant;
 
 /**
  * Provides a capability for creating platform dependent stamps.
@@ -42,4 +43,14 @@ public interface StampProvider {
      * Create the stamp of a pointer to a method.
      */
     AbstractPointerStamp createMethodStamp();
+
+    /**
+     * Create the stamp of an always null method pointer.
+     */
+    AbstractPointerStamp createMethodAlwaysNullStamp();
+
+    /**
+     * Create the method pointer always null value.
+     */
+    Constant methodPointerAlwaysNullConstant();
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import java.util.Map;
 import java.util.function.Function;
 
 import javax.annotation.processing.ProcessingEnvironment;
+import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
@@ -68,6 +69,7 @@ public class ProcessorContext implements AutoCloseable {
     private TruffleTypes types;
     private final Map<String, TypeElement> typeLookupCache = new HashMap<>();
     private final Map<Class<?>, Map<String, Object>> modelCache = new HashMap<>();
+    private final Map<String, ExecutableElement> inlineSignatureCache = new HashMap<>();
 
     private Timer currentTimer;
 
@@ -115,6 +117,10 @@ public class ProcessorContext implements AutoCloseable {
 
     public Log getLog() {
         return log;
+    }
+
+    public Map<String, ExecutableElement> getInlineSignatureCache() {
+        return inlineSignatureCache;
     }
 
     public ProcessingEnvironment getEnvironment() {

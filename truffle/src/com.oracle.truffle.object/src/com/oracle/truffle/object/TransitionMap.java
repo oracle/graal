@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,88 +42,69 @@ package com.oracle.truffle.object;
 
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
-import java.util.Objects;
+import java.util.Map;
 import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
-
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.Equivalence;
-import org.graalvm.collections.MapCursor;
 
 /**
- * A synchronized hash map with weakly referenced values. Cleared value references are expunged only
- * when the map is mutated. Keys may be strongly or weakly referenced.
+ * A hash map with weakly referenced values used for shape transitions. Keys may be strongly or
+ * weakly referenced (via {@link WeakKey}) and are compared by equality ({@link Object#equals}).
+ * Cleared value weak references are expunged only when the map is mutated.
+ *
+ * Note: Weak keys are not registered with a reference queue. It is assumed that these keys are held
+ * strongly by the weak value (i.e. the shape), so that the key will stay alive as long at least as
+ * long as the value, and that they will eventually be expunged together after the weak value dies.
  */
-final class TransitionMap<K, V> {
+abstract sealed class TransitionMap<K, V> permits EconomicTransitionMap, TrieTransitionMap {
 
-    /** Key is either {@code K} or {@code WeakKey<K>}. */
-    private final EconomicMap<Object, StrongKeyWeakValueEntry<Object, V>> map;
-    private final ReferenceQueue<V> queue;
-
-    private static final Equivalence WEAK_KEY_EQUIVALENCE = new WeakKeyEquivalence();
+    protected final ReferenceQueue<V> queue;
 
     TransitionMap() {
-        this.map = EconomicMap.create(WEAK_KEY_EQUIVALENCE);
         this.queue = new ReferenceQueue<>();
     }
 
-    public boolean containsKey(Object key) {
+    public static <K, V> TransitionMap<K, V> create() {
+        if (ObjectStorageOptions.TrieTransitionMap) {
+            return new TrieTransitionMap<>();
+        } else {
+            return new EconomicTransitionMap<>();
+        }
+    }
+
+    public final boolean containsKey(Object key) {
         return get(key) != null;
     }
 
-    private V getValue(StrongKeyWeakValueEntry<? super K, V> entry) {
-        return entry == null ? null : entry.get();
+    /**
+     * Get value from {@link Map.Entry}, if not null.
+     */
+    protected final V getValue(Map.Entry<? super K, V> entry) {
+        return entry == null ? null : entry.getValue();
     }
 
-    @SuppressWarnings("unchecked")
-    public V get(Object key) {
-        synchronized (queue) {
-            return getValue(map.get(key));
-        }
-    }
+    public abstract V get(Object key);
 
-    private V putAnyKey(Object key, V value) {
-        synchronized (queue) {
-            expungeStaleEntries();
-            return getValue(map.put(key, new StrongKeyWeakValueEntry<>(key, value, queue)));
-        }
-    }
+    protected abstract V putAnyKey(Object key, V value);
 
-    private V putAnyKeyIfAbsent(Object key, V value) {
-        synchronized (queue) {
-            expungeStaleEntries();
-            /*
-             * Note: We need to also consider stale weak entries as absent, so we cannot use the
-             * map's own putIfAbsent here. The reference may have not been enqueued yet either.
-             */
-            var prevValue = getValue(map.get(key));
-            if (prevValue != null) {
-                return prevValue;
-            } else {
-                map.put(key, new StrongKeyWeakValueEntry<>(key, value, queue));
-                return null;
-            }
-        }
-    }
+    protected abstract V putAnyKeyIfAbsent(Object key, V value);
 
     /**
      * Insert with strongly referenced key.
      */
-    public V put(K key, V value) {
+    public final V put(K key, V value) {
         return putAnyKey(key, value);
     }
 
     /**
      * Insert with strongly referenced key, if absent.
      */
-    public V putIfAbsent(K key, V value) {
+    public final V putIfAbsent(K key, V value) {
         return putAnyKeyIfAbsent(key, value);
     }
 
     /**
      * Insert with weakly referenced key.
      */
-    public V putWeakKey(K key, V value) {
+    public final V putWeakKey(K key, V value) {
         ShapeImpl.shapeCacheWeakKeys.inc();
         WeakKey<K> weakKey = new WeakKey<>(key);
         return putAnyKey(weakKey, value);
@@ -132,101 +113,33 @@ final class TransitionMap<K, V> {
     /**
      * Insert with weakly referenced key, if absent.
      */
-    public V putWeakKeyIfAbsent(K key, V value) {
+    public final V putWeakKeyIfAbsent(K key, V value) {
         ShapeImpl.shapeCacheWeakKeys.inc();
         WeakKey<K> weakKey = new WeakKey<>(key);
         return putAnyKeyIfAbsent(weakKey, value);
     }
 
-    public V remove(Object key) {
-        synchronized (queue) {
-            expungeStaleEntries();
-            return getValue(map.removeKey(key));
-        }
-    }
-
-    private void expungeStaleEntries() {
-        for (Reference<? extends V> r; (r = queue.poll()) != null;) {
-            if (r instanceof StrongKeyWeakValueEntry<?, ?>) {
-                StrongKeyWeakValueEntry<?, ?> entry = (StrongKeyWeakValueEntry<?, ?>) r;
-                if (map.get(entry.getKey()) == entry) {
-                    map.removeKey(entry.getKey());
-                    ShapeImpl.shapeCacheExpunged.inc();
-                }
-            }
-        }
-    }
-
-    public void clear() {
-        synchronized (queue) {
-            while (queue.poll() != null) {
-                // clear out ref queue.
-            }
-            map.clear();
-        }
-    }
-
-    public void forEach(BiConsumer<? super K, ? super V> consumer) {
-        synchronized (queue) {
-            MapCursor<Object, StrongKeyWeakValueEntry<Object, V>> cursor = map.getEntries();
-            while (cursor.advance()) {
-                V value = cursor.getValue().get();
-                if (value != null) {
-                    K key = unwrapKey(cursor.getKey());
-                    if (key != null) {
-                        consumer.accept(key, value);
-                    }
-                }
-            }
-        }
-    }
-
-    public <R> R iterateEntries(BiFunction<? super K, ? super V, R> consumer) {
-        synchronized (queue) {
-            MapCursor<Object, StrongKeyWeakValueEntry<Object, V>> cursor = map.getEntries();
-            while (cursor.advance()) {
-                V value = cursor.getValue().get();
-                if (value != null) {
-                    K key = unwrapKey(cursor.getKey());
-                    if (key != null) {
-                        R result = consumer.apply(key, value);
-                        if (result != null) {
-                            return result;
-                        }
-                    }
-                }
-            }
-        }
-        return null;
-    }
+    public abstract V remove(Object key);
 
     @SuppressWarnings("unchecked")
-    private K unwrapKey(Object key) {
+    protected final void expungeStaleEntries() {
+        for (Reference<? extends V> r; (r = queue.poll()) != null;) {
+            if (r instanceof StrongKeyWeakValueEntry<?, ?> entry) {
+                expungeStaleEntry((StrongKeyWeakValueEntry<Object, V>) entry);
+                ShapeImpl.shapeCacheExpunged.inc();
+            }
+        }
+    }
+
+    protected abstract void expungeStaleEntry(StrongKeyWeakValueEntry<Object, V> entry);
+
+    public abstract void forEach(BiConsumer<? super K, ? super V> consumer);
+
+    @SuppressWarnings("unchecked")
+    protected final K unwrapKey(Object key) {
         if (key instanceof WeakKey<?>) {
             return ((WeakKey<K>) key).get();
         }
         return (K) key;
     }
-
-    private static final class WeakKeyEquivalence extends Equivalence {
-
-        @Override
-        public int hashCode(Object o) {
-            return o.hashCode();
-        }
-
-        @Override
-        public boolean equals(Object a, Object b) {
-            boolean aIsWeak = a instanceof WeakKey<?>;
-            boolean bIsWeak = b instanceof WeakKey<?>;
-            if (aIsWeak && !bIsWeak) {
-                return Objects.equals(((WeakKey<?>) a).get(), b);
-            } else if (!aIsWeak && bIsWeak) {
-                return Objects.equals(a, ((WeakKey<?>) b).get());
-            }
-            return a.equals(b);
-        }
-
-    }
-
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,9 @@ package jdk.graal.compiler.replacements.nodes;
 
 import java.util.EnumSet;
 
+import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.Pointer;
+
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.NodeClass;
@@ -35,9 +38,9 @@ import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.Pointer;
-
+import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaKind;
 
 // JaCoCo Exclude
@@ -110,5 +113,14 @@ public class VectorizedMismatchNode extends PureFunctionStubIntrinsicNode {
     @Override
     public void emitIntrinsic(NodeLIRBuilderTool gen) {
         gen.setResult(this, gen.getLIRGeneratorTool().emitVectorizedMismatch(getRuntimeCheckedCPUFeatures(), gen.operand(arrayA), gen.operand(arrayB), gen.operand(length), gen.operand(stride)));
+    }
+
+    public static boolean isSupported(Architecture arch) {
+        if (arch instanceof AMD64) {
+            return true;
+        } else if (arch instanceof AArch64) {
+            return true;
+        }
+        return false;
     }
 }

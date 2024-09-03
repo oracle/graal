@@ -105,7 +105,7 @@ public class BenchmarkCounterOverflowTest extends LIRTest {
         Assume.assumeFalse("subprocess already spawned -> skip", Boolean.getBoolean(SUBPROCESS_PROPERTY));
         List<String> vmArgs = withoutDebuggerArguments(getVMCommandLine());
         vmArgs.add("-XX:JVMCICounterSize=1");
-        vmArgs.add("-Dgraal." + BenchmarkCounters.Options.AbortOnBenchmarkCounterOverflow.getName() + "=true");
+        vmArgs.add("-Djdk.graal." + BenchmarkCounters.Options.AbortOnBenchmarkCounterOverflow.getName() + "=true");
         vmArgs.add(SubprocessUtil.PACKAGE_OPENING_OPTIONS);
         vmArgs.add("-D" + SUBPROCESS_PROPERTY + "=true");
 

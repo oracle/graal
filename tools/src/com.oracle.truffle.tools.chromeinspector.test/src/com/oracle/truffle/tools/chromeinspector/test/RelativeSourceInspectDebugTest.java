@@ -119,7 +119,7 @@ public class RelativeSourceInspectDebugTest {
             resolvedURI[2] = fs.getPath(folderInZip3, relativePath[2]).toUri();
         }
 
-        InspectorTester tester = InspectorTester.start(true, false, false, Arrays.asList(sourcePathURI));
+        InspectorTester tester = InspectorTester.start(new InspectorTester.Options(true, false, false).setSourcePath(Arrays.asList(sourcePathURI)));
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
         assertEquals("{\"result\":{},\"id\":1}", tester.getMessages(true).trim());
         tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
@@ -303,7 +303,7 @@ public class RelativeSourceInspectDebugTest {
         ProxyLanguage.setDelegate(language);
         Source source = Source.create(ProxyLanguage.ID, sourceContent);
 
-        InspectorTester tester = InspectorTester.start(false, false, false, Collections.singletonList(sourcePathURI));
+        InspectorTester tester = InspectorTester.start(new InspectorTester.Options(false, false, false).setSourcePath(Collections.singletonList(sourcePathURI)));
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
         assertEquals("{\"result\":{},\"id\":1}", tester.getMessages(true).trim());
         tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
@@ -365,7 +365,7 @@ public class RelativeSourceInspectDebugTest {
         Files.write(filePath, sourceContent.getBytes());
         String fileURI = filePath.toUri().toString();
 
-        InspectorTester tester = InspectorTester.start(true, false, false, Collections.singletonList(sourcePathURI), (context) -> {
+        InspectorTester tester = InspectorTester.start(new InspectorTester.Options(true, false, false).setSourcePath(Collections.singletonList(sourcePathURI)).setProlog((context) -> {
             TestDebugNoContentLanguage language = new TestDebugNoContentLanguage(relativePathProlog1, true, true);
             ProxyLanguage.setDelegate(language);
             Source sourceProlog = Source.create(ProxyLanguage.ID, sourceContent);
@@ -375,7 +375,7 @@ public class RelativeSourceInspectDebugTest {
             ProxyLanguage.setDelegate(language);
             sourceProlog = Source.create(ProxyLanguage.ID, "relative source2\nVarB");
             context.eval(sourceProlog);
-        });
+        }));
 
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
         assertEquals("{\"result\":{},\"id\":1}", tester.getMessages(true).trim());

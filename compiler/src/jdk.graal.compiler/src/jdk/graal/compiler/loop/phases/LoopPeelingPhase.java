@@ -30,19 +30,20 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.loop.LoopEx;
+import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.loop.LoopPolicies;
 import jdk.graal.compiler.nodes.loop.LoopsData;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 
 public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
 
     public static class Options {
         // @formatter:off
-        @Option(help = "Allow iterative peeling of loops up to this many times (each time the peeling phase runs).")
+        @Option(help = "Allow iterative peeling of loops up to this many times (each time the peeling phase runs).", type = OptionType.Debug)
         public static final OptionKey<Integer> IterativePeelingLimit = new OptionKey<>(2);
         // @formatter:on
     }
@@ -54,7 +55,7 @@ public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
     /**
      * Determine if the given loop can be peeled.
      */
-    public static boolean canPeel(LoopEx loop) {
+    public static boolean canPeel(Loop loop) {
         return stateAllowsPeeling(loop.loopBegin().graph().getGraphState()) && loop.canDuplicateLoop() && loop.loopBegin().getLoopEndCount() > 0;
     }
 
@@ -81,7 +82,7 @@ public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
             boolean shouldPeelAlot = LoopPolicies.Options.PeelALot.getValue(graph.getOptions());
             int shouldPeelOnly = LoopPolicies.Options.PeelOnlyLoopWithNodeID.getValue(graph.getOptions());
             try (DebugContext.Scope s = debug.scope("peeling", data.getCFG())) {
-                for (LoopEx loop : data.outerFirst()) {
+                for (Loop loop : data.outerFirst()) {
                     if (canPeel(loop)) {
                         for (int iteration = 0; iteration < Options.IterativePeelingLimit.getValue(graph.getOptions()); iteration++) {
                             if ((shouldPeelAlot || getPolicies().shouldPeel(loop, data.getCFG(), context, iteration)) &&

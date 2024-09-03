@@ -76,9 +76,9 @@ public abstract class ProxyNode extends FloatingNode implements Proxy, ValueNumb
     }
 
     @Override
-    public boolean verify() {
+    public boolean verifyNode() {
         assert !(value() instanceof ProxyNode) || ((ProxyNode) value()).loopExit != loopExit : Assertions.errorMessageContext("this", this, "value", value());
-        return super.verify();
+        return super.verifyNode();
     }
 
     public static ValueProxyNode forValue(ValueNode value, LoopExitNode exit) {

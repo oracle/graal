@@ -7,7 +7,7 @@ permalink: /tools/dap/
 
 # Debug Adapter Protocol
 
-GraalVM supports debugging of guest language applications, written in any of the supported languages, i.e., JavaScript/TypeScript, Python, R, Ruby, and provides a built-in implementation of the [Debug Adapter Protocol (DAP)](https://microsoft.github.io/debug-adapter-protocol/).
+GraalVM supports debugging of guest language applications, written in any of the supported languages (JavaScript/TypeScript, Python, R, or Ruby), and provides a built-in implementation of the [Debug Adapter Protocol (DAP)](https://microsoft.github.io/debug-adapter-protocol/).
 By definition, Debug Adapter Protocol is to standardize the "communication" between the debugging component and a concrete debugger or runtime.
 This allows you to attach compatible debuggers such as Visual Studio Code (VS Code) to GraalVM.
 
@@ -97,4 +97,4 @@ To connect to the open DAP port in this scenario, the content of the _launch.jso
 }
 ```
 
-The advantage of using Debug Adapter Protocol over Chrome Dev Tools is that (1) it is 'native' to Visual Studio Code (VS Code), meaning it does not require any intermediate translatation, and (2) that it supports multithreading, which can be particually useful to debug, e.g., a Ruby application.
+The advantage of using Debug Adapter Protocol over Chrome Dev Tools is that (1) it is 'native' to Visual Studio Code (VS Code), meaning it does not require any intermediate translation, and (2) that it supports multithreading, which can be particularly useful to debug, for example, a Ruby application.

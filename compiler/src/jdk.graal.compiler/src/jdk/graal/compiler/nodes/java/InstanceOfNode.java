@@ -147,7 +147,10 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable {
             return IsNullNode.create(object);
         } else {
             ObjectStamp meetStamp = (ObjectStamp) checkedStamp.meet(inputStamp);
-            if (Objects.equals(checkedStamp.type(), meetStamp.type()) && checkedStamp.isExactType() == meetStamp.isExactType() && checkedStamp.alwaysNull() == meetStamp.alwaysNull()) {
+            if (Objects.equals(checkedStamp.type(), meetStamp.type()) &&
+                            checkedStamp.isExactType() == meetStamp.isExactType() &&
+                            checkedStamp.alwaysNull() == meetStamp.alwaysNull() &&
+                            checkedStamp.isAlwaysArray() == meetStamp.isAlwaysArray()) {
                 assert checkedStamp.nonNull() != inputStamp.nonNull() : Assertions.errorMessage(checkedStamp, inputStamp, object);
                 // The only difference between the two stamps is their null-ness => simplify the
                 // check.

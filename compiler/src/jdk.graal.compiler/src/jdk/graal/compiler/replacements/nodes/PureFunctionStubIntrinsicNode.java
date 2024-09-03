@@ -28,13 +28,14 @@ import static jdk.graal.compiler.nodeinfo.InputType.Memory;
 
 import java.util.EnumSet;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.memory.MemoryAccess;
 import jdk.graal.compiler.nodes.memory.MemoryKill;
-import org.graalvm.word.LocationIdentity;
 
 /**
  * Base class for nodes that represent large intrinsic methods without side effects, such as

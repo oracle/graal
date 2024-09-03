@@ -300,6 +300,8 @@ public interface Frame {
 
     /**
      * Check whether the given indexed slot is of type object.
+     * <p>
+     * This method should not be used with static slots.
      *
      * @param slot the slot of the local variable
      * @since 22.0
@@ -311,7 +313,9 @@ public interface Frame {
 
     /**
      * Check whether the given indexed slot is of type byte.
-     *
+     * <p>
+     * This method should not be used with static slots.
+     * 
      * @param slot the slot of the local variable
      * @since 22.0
      */
@@ -322,7 +326,9 @@ public interface Frame {
 
     /**
      * Check whether the given indexed slot is of type boolean.
-     *
+     * <p>
+     * This method should not be used with static slots.
+     * 
      * @param slot the slot of the local variable
      * @since 22.0
      */
@@ -333,7 +339,9 @@ public interface Frame {
 
     /**
      * Check whether the given indexed slot is of type int.
-     *
+     * <p>
+     * This method should not be used with static slots.
+     * 
      * @param slot the slot of the local variable
      * @since 22.0
      */
@@ -344,7 +352,9 @@ public interface Frame {
 
     /**
      * Check whether the given indexed slot is of type long.
-     *
+     * <p>
+     * This method should not be used with static slots.
+     * 
      * @param slot the slot of the local variable
      * @since 22.0
      */
@@ -355,7 +365,9 @@ public interface Frame {
 
     /**
      * Check whether the given indexed slot is of type float.
-     *
+     * <p>
+     * This method should not be used with static slots.
+     * 
      * @param slot the slot of the local variable
      * @since 22.0
      */
@@ -366,7 +378,9 @@ public interface Frame {
 
     /**
      * Check whether the given indexed slot is of type double.
-     *
+     * <p>
+     * This method should not be used with static slots.
+     * 
      * @param slot the slot of the local variable
      * @since 22.0
      */
@@ -377,7 +391,9 @@ public interface Frame {
 
     /**
      * Checks whether the given indexed slot is static.
-     *
+     * <p>
+     * This method should not be used with static slots.
+     * 
      * @param slot the slot of the local variable
      * @since 22.2
      */
@@ -436,7 +452,7 @@ public interface Frame {
      * {@link Object}.
      *
      * @param slot the slot of the local variable
-     * @return the current value of the local variable
+     * @return the current value of the local variable, or {@code null} if slot is uninitialized.
      * @since 22.2
      */
     default Object getObjectStatic(int slot) {
@@ -464,7 +480,7 @@ public interface Frame {
      * implementations have to guarantee that the variable in the given slot is of type byte.
      *
      * @param slot the slot of the local variable
-     * @return the current value of the local variable
+     * @return the current value of the local variable, or {@code 0} if slot is uninitialized.
      * @since 22.2
      */
     default byte getByteStatic(int slot) {
@@ -492,7 +508,7 @@ public interface Frame {
      * implementations have to guarantee that the variable in the given slot is of type boolean.
      *
      * @param slot the slot of the local variable
-     * @return the current value of the local variable
+     * @return the current value of the local variable, or {@code false} if slot is uninitialized.
      * @since 22.2
      */
     default boolean getBooleanStatic(int slot) {
@@ -520,7 +536,7 @@ public interface Frame {
      * implementations have to guarantee that the variable in the given slot can is of type int.
      *
      * @param slot the slot of the local variable
-     * @return the current value of the local variable
+     * @return the current value of the local variable, or {@code 0} if slot is uninitialized.
      * @since 22.2
      */
     default int getIntStatic(int slot) {
@@ -548,7 +564,7 @@ public interface Frame {
      * implementations have to guarantee that the variable in the given slot is of type long.
      *
      * @param slot the slot of the local variable
-     * @return the current value of the local variable
+     * @return the current value of the local variable, or {@code 0} if slot is uninitialized.
      * @since 22.2
      */
     default long getLongStatic(int slot) {
@@ -576,7 +592,7 @@ public interface Frame {
      * implementations have to guarantee that the variable in the given slot is of type float.
      *
      * @param slot the slot of the local variable
-     * @return the current value of the local variable
+     * @return the current value of the local variable, or {@code 0} if slot is uninitialized.
      * @since 22.2
      */
     default float getFloatStatic(int slot) {
@@ -604,7 +620,7 @@ public interface Frame {
      * implementations have to guarantee that the variable in the given slot is of type double.
      *
      * @param slot the slot of the local variable
-     * @return the current value of the local variable
+     * @return the current value of the local variable, or {@code 0} if slot is uninitialized.
      * @since 22.2
      */
     default double getDoubleStatic(int slot) {

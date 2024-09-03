@@ -60,7 +60,6 @@ import jdk.graal.compiler.replacements.aarch64.AArch64GraphBuilderPlugins;
 import jdk.graal.compiler.serviceprovider.ServiceProvider;
 
 import jdk.vm.ci.aarch64.AArch64;
-import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
@@ -80,8 +79,8 @@ public class AArch64HotSpotBackendFactory extends HotSpotBackendFactory {
     }
 
     @Override
-    public Class<? extends Architecture> getArchitecture() {
-        return AArch64.class;
+    public String getArchitecture() {
+        return "aarch64";
     }
 
     @Override

@@ -24,8 +24,8 @@
  */
 package jdk.graal.compiler.hotspot.meta;
 
-import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 import static jdk.graal.compiler.hotspot.HotSpotGraalServices.isIntrinsicAvailable;
+import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
@@ -37,6 +37,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.Pair;
+
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.graph.Node;
@@ -49,7 +50,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.tiers.CompilerConfiguration;
 import jdk.graal.compiler.replacements.nodes.MacroInvokable;
-
+import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.hotspot.VMIntrinsicMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -73,11 +74,11 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
 
     private final EconomicMap<String, EconomicSet<MethodKey>> disabledIntrinsics = EconomicMap.create();
 
-    HotSpotInvocationPlugins(HotSpotGraalRuntimeProvider graalRuntime, GraalHotSpotVMConfig config, CompilerConfiguration compilerConfiguration, OptionValues options) {
+    HotSpotInvocationPlugins(HotSpotGraalRuntimeProvider graalRuntime, GraalHotSpotVMConfig config, CompilerConfiguration compilerConfiguration, OptionValues options, TargetDescription target) {
         this.graalRuntime = graalRuntime;
         this.config = config;
         if (Options.WarnMissingIntrinsic.getValue(options)) {
-            this.unimplementedIntrinsics = new UnimplementedGraalIntrinsics();
+            this.unimplementedIntrinsics = new UnimplementedGraalIntrinsics(target.arch);
         } else {
             this.unimplementedIntrinsics = null;
         }
@@ -149,6 +150,24 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
     }
 
     @Override
+    protected boolean isDisabled(InvocationPlugin plugin, String declaringClassInternalName, String declaringClassJavaName, OptionValues options) {
+        if (super.isDisabled(plugin, declaringClassInternalName, declaringClassJavaName, options)) {
+            return true;
+        }
+        EconomicSet<MethodKey> disabledIntrinsicsSet = disabledIntrinsics.get(declaringClassInternalName);
+        if (disabledIntrinsicsSet != null) {
+            for (MethodKey mk : disabledIntrinsicsSet) {
+                if (mk.name.equals(plugin.name)) {
+                    if (mk.descriptor.startsWith(plugin.argumentsDescriptor)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    @Override
     public InvocationPlugin lookupInvocation(ResolvedJavaMethod method, boolean allowDecorators, boolean allowDisable, OptionValues options) {
         InvocationPlugin invocationPlugin = super.lookupInvocation(method, allowDecorators, allowDisable, options);
         if (invocationPlugin != null && allowDisable && !disabledIntrinsics.isEmpty()) {
@@ -157,7 +176,7 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
                 if (invocationPlugin.canBeDisabled()) {
                     if (invocationPlugin.isGraalOnly()) {
                         if (shouldLogDisabledIntrinsics(options)) {
-                            TTY.println("[Warning] Intrinsic for %s is only implemented in Graal and cannot be disabled via HotSpot flags. Use -Dgraal.DisableIntrinsics= instead.",
+                            TTY.println("[Warning] Intrinsic for %s is only implemented in Graal and cannot be disabled via HotSpot flags. Use -Djdk.graal.DisableIntrinsics= instead.",
                                             method.format("%H.%n(%p)"));
                         }
                     } else {

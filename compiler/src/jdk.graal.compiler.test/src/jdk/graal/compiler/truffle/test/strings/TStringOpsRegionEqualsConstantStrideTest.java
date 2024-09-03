@@ -28,15 +28,15 @@ import static org.junit.runners.Parameterized.Parameters;
 
 import java.util.List;
 
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.replacements.nodes.ArrayRegionEqualsNode;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.replacements.nodes.ArrayRegionEqualsNode;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -51,7 +51,7 @@ public class TStringOpsRegionEqualsConstantStrideTest extends TStringOpsRegionEq
         super(arrayA, offsetA, lengthA, strideA, fromIndexA, arrayB, offsetB, lengthB, strideB, fromIndexB, lengthCMP);
     }
 
-    @Parameters(name = "{index}: offset: {1}, {6}, stride: {3}, {8}, length: {12}")
+    @Parameters(name = "{index}: offset: {1}, {6}, stride: {3}, {8}, length: {10}")
     public static List<Object[]> data() {
         return TStringOpsRegionEqualsTest.data();
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,6 +36,7 @@ import org.graalvm.collections.UnmodifiableEconomicMap;
 
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugCloseable;
+import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Graph;
 import jdk.graal.compiler.graph.Graph.DuplicationReplacement;
@@ -62,26 +63,57 @@ import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.java.MonitorEnterNode;
 import jdk.graal.compiler.nodes.spi.NodeWithState;
+import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.nodes.virtual.CommitAllocationNode;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.vm.ci.meta.TriState;
 
+/**
+ * A data structure that represents parts {@code ="fragments"} of a loop. Used for the optimizer to
+ * have well defined sets for an entire loop, the body, the header only etc.
+ *
+ * There are 2 main implementations: {@link LoopFragmentWhole} which defines the entirety of a loop
+ * including all loop control nodes. The second one is {@link LoopFragmentInside} which includes all
+ * loop nodes of the body and no control variables.
+ */
 public abstract class LoopFragment {
 
-    private final LoopEx loop;
+    /**
+     * The original loop this fragment is defined over.
+     */
+    private final Loop loop;
+    /**
+     * In case this fragment was duplicated a link to the original one.
+     */
     private final LoopFragment original;
+    /**
+     * All the nodes considered to be part of this fragment.
+     */
     protected NodeBitMap nodes;
+    /**
+     * A flag indicating if the {@link #nodes} map is ready, i.e., if this fragment is a duplicate
+     * we have to recompute the nodes.
+     */
     protected boolean nodesReady;
+    /**
+     * A mapping of old to new nodes after duplication.
+     */
     private EconomicMap<Node, Node> duplicationMap;
+    /**
+     * Phi nodes introduced when merging early loop ends for loop optimizations.
+     */
     protected List<PhiNode> introducedPhis;
+    /**
+     * Merge nodes introduced when merging early loop ends for loop optimizations.
+     */
     protected List<MergeNode> introducedMerges;
 
-    public LoopFragment(LoopEx loop) {
+    public LoopFragment(Loop loop) {
         this(loop, null);
         this.nodesReady = true;
     }
 
-    public LoopFragment(LoopEx loop, LoopFragment original) {
+    public LoopFragment(Loop loop, LoopFragment original) {
         this.loop = loop;
         this.original = original;
         this.nodesReady = false;
@@ -90,13 +122,13 @@ public abstract class LoopFragment {
     /**
      * Return the original LoopEx for this fragment. For duplicated fragments this returns null.
      */
-    public LoopEx loop() {
+    public Loop loop() {
         return loop;
     }
 
     public abstract LoopFragment duplicate();
 
-    public abstract void insertBefore(LoopEx l);
+    public abstract void insertBefore(Loop l);
 
     public boolean contains(Node n) {
         return nodes().isMarkedAndGrow(n);
@@ -153,7 +185,7 @@ public abstract class LoopFragment {
     public abstract NodeBitMap nodes();
 
     public StructuredGraph graph() {
-        LoopEx l;
+        Loop l;
         if (isDuplicate()) {
             l = original().loop();
         } else {
@@ -167,10 +199,10 @@ public abstract class LoopFragment {
     protected abstract void beforeDuplication();
 
     protected void finishDuplication() {
-        LoopEx originalLoopEx = original().loop();
+        Loop originalLoopEx = original().loop();
         ControlFlowGraph cfg = originalLoopEx.loopsData().getCFG();
         for (LoopExitNode exit : originalLoopEx.loopBegin().loopExits().snapshot()) {
-            if (!originalLoopEx.loop().isLoopExit(cfg.blockFor(exit))) {
+            if (!originalLoopEx.getCFGLoop().isLoopExit(cfg.blockFor(exit))) {
                 // this LoopExitNode is too low, we need to remove it otherwise it will be below
                 // merged exits
                 exit.removeExit();
@@ -220,7 +252,7 @@ public abstract class LoopFragment {
         }
     }
 
-    protected static void computeNodes(NodeBitMap nodes, Graph graph, LoopEx loop, Iterable<AbstractBeginNode> blocks, Iterable<AbstractBeginNode> earlyExits) {
+    protected static void computeNodes(NodeBitMap nodes, Graph graph, Loop loop, Iterable<AbstractBeginNode> blocks, Iterable<AbstractBeginNode> earlyExits) {
         for (AbstractBeginNode b : blocks) {
             if (b.isDeleted()) {
                 continue;
@@ -392,7 +424,7 @@ public abstract class LoopFragment {
         workList.push(entry);
     }
 
-    private static void markFloating(WorkQueue workList, LoopEx loop, Node start, NodeBitMap loopNodes, NodeBitMap nonLoopNodes) {
+    private static void markFloating(WorkQueue workList, Loop loop, Node start, NodeBitMap loopNodes, NodeBitMap nonLoopNodes) {
         if (isLoopNode(start, loopNodes, nonLoopNodes).isKnown()) {
             return;
         }
@@ -488,7 +520,7 @@ public abstract class LoopFragment {
         StructuredGraph graph = graph();
         this.introducedPhis = new ArrayList<>();
         this.introducedMerges = new ArrayList<>();
-        for (AbstractBeginNode earlyExit : LoopFragment.toHirBlocks(original().loop().loop().getLoopExits())) {
+        for (AbstractBeginNode earlyExit : LoopFragment.toHirBlocks(original().loop().getCFGLoop().getLoopExits())) {
             FixedNode next = earlyExit.next();
             if (earlyExit.isDeleted() || !this.original().contains(earlyExit)) {
                 continue;
@@ -518,20 +550,87 @@ public abstract class LoopFragment {
                 LoopExitNode earlyLoopExit = (LoopExitNode) earlyExit;
                 exitState = earlyLoopExit.stateAfter();
                 if (exitState != null) {
+                    /**
+                     * We now have to build a proper state for the new merge node: the state needs
+                     * to be the same as the exit state except that all parts of it (including outer
+                     * and virtual object mappings etc) that reference proxies of the earlyExit must
+                     * be replaced by phis of those proxies. The phi is always merging the old exit
+                     * proxy with a new exit proxy.
+                     *
+                     * Given that the exit state can contain virtual object mappings and outer
+                     * states that are shared with portions inside the loop this complicates things
+                     * dramatically: some nodes can be referenced from within the loop and some
+                     * reference the proxies etc.
+                     *
+                     *
+                     * An example can be seen below
+                     *
+                     * <pre>
+                     * loop: while (tue) {
+                     *     lotsOfCode();
+                     *     virtualObjectNode v1;
+                     *     nodeWithStateUsingVirtualObject(v1);
+                     *     if (something) {
+                     *         break; // proxy p1
+                     *         // stateAfterOfExit: reference p1 via a virtual state mapping and
+                     *         // also reference the virtual object v1 via an outer state / virtual
+                     *         // object mapping
+                     *     }
+                     *     wayMoreCodeWithMoreExits();
+                     * }
+                     * </pre>
+                     *
+                     * where the exit state references a proxy and thus needs a phi if used as the
+                     * merge state. But we also reference a virtual object node that must be
+                     * duplicated if the loop is duplicated again (v1) because its used inside the
+                     * loop as well.
+                     *
+                     * While other loop optimizations ensure unique states always before starting a
+                     * loop optimization we cannot do this because we would need to recompute the
+                     * entire loop fragment after every duplication. This would be too costly. Thus,
+                     * we want to re-use as much as possible and only create necessary nodes newly
+                     * without re-computing the original fragment. Thus, we use the original exit
+                     * state as the merge state.
+                     *
+                     * However, we have to take caution here: when using the original exit state as
+                     * merge state the merge state might still reference virtual object nodes that
+                     * are used by other states inside the loop. Thus, we have to compute the
+                     * transitive closure from the merge state and only delete (clear in the
+                     * original loop) those nodes only reachable by the merge.
+                     *
+                     * To simplify this we do the following: we duplicate the state for the merge to
+                     * have a fresh state for the merge. We mark the new nodes from the new exit
+                     * state and then we kill all nodes reachable only from the old state that are
+                     * no longer reachable, by using a call back when killing floating nodes.
+                     *
+                     * So we have 3 states that we are dealing with:
+                     *
+                     * <ul>
+                     * <li>exitState: The one used at the loop exit is a fresh duplicate of the
+                     * original exit state and that fresh duplicate is not changed. Proxy inputs are
+                     * not replaced as its the finalExitState that is excluded from proxy processing
+                     * below. Its new virtual parts are added to the original.nodes map.</li>
+                     * <li>merge.stateAfter:The merge one is a fresh copy of the exit state as well
+                     * where all proxy inputs are replaced by phis.</li>
+                     * <li>originalExitState:The remaining original exit state can either be
+                     * retained if it still has usages (below the original exit) or its deleted. If
+                     * its deleted we dont want to duplicate any necessary remaining partial unused
+                     * state nodes as those are still part of original.nodes. Thus, we remove all of
+                     * its unused floating inputs and clear them from original.nodes. The next time
+                     * this fragment is then duplicated the exit state (parts) are no longer in the
+                     * map and not duplicated.</li>
+                     * </ul>
+                     */
+                    graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Before creating states for %s", earlyLoopExit);
                     FrameState originalExitState = exitState;
                     exitState = exitState.duplicateWithVirtualState();
                     earlyLoopExit.setStateAfter(exitState);
-                    merge.setStateAfter(originalExitState);
-                    /*
-                     * Using the old exit's state as the merge's state is necessary because some of
-                     * the VirtualState nodes contained in the old exit's state may be shared by
-                     * other dominated VirtualStates. Those dominated virtual states need to see the
-                     * proxy->phi update that are applied below.
-                     *
-                     * We now update the original fragment's nodes accordingly:
-                     */
-                    originalExitState.applyToVirtual(node -> original.nodes.clearAndGrow(node));
+                    graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Before creating states for %s for %s and merge gets %s", exitState, earlyLoopExit, originalExitState);
                     exitState.applyToVirtual(node -> original.nodes.markAndGrow(node));
+                    merge.setStateAfter(originalExitState.duplicateWithVirtualState());
+                    if (originalExitState.hasNoUsages()) {
+                        GraphUtil.killWithUnusedFloatingInputs(originalExitState, false, unusedInput -> original.nodes.clearAndGrow(unusedInput));
+                    }
                 }
             }
 
@@ -559,6 +658,7 @@ public abstract class LoopFragment {
                         phi.setNodeSourcePosition(merge.getNodeSourcePosition());
                         phi.addInput(vpn);
                         phi.addInput(newVpn);
+                        phi.inferStamp();
                         introducedPhis.add(phi);
                         replaceWith = phi;
                     } else {

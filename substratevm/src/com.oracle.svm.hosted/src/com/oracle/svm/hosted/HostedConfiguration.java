@@ -26,6 +26,7 @@ package com.oracle.svm.hosted;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
@@ -38,43 +39,49 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
+import com.oracle.graal.pointsto.heap.ImageLayerWriter;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccessExtensionProvider;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
-import com.oracle.graal.pointsto.results.AbstractAnalysisResultsBuilder;
-import com.oracle.graal.pointsto.results.DefaultResultsBuilder;
-import com.oracle.graal.pointsto.results.StaticAnalysisResultsBuilder;
+import com.oracle.graal.pointsto.results.StrengthenGraphs;
 import com.oracle.objectfile.ObjectFile;
+import com.oracle.svm.core.MissingRegistrationSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.config.ObjectLayout.IdentityHashMode;
 import com.oracle.svm.core.graal.code.SubstrateMetaAccessExtensionProvider;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.monitor.MultiThreadedMonitorSupport;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.analysis.flow.SVMMethodTypeFlowBuilder;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.CompileQueue;
+import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.config.HybridLayoutSupport;
+import com.oracle.svm.hosted.heap.SVMImageLayerLoaderHelper;
+import com.oracle.svm.hosted.heap.SVMImageLayerWriterHelper;
 import com.oracle.svm.hosted.image.LIRNativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageCodeCacheFactory;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.image.ObjectFileFactory;
+import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
+import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
-import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
+import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
+import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.internal.ValueBased;
 import jdk.vm.ci.meta.JavaKind;
@@ -102,40 +109,39 @@ public class HostedConfiguration {
             CompressEncoding compressEncoding = new CompressEncoding(SubstrateOptions.SpawnIsolates.getValue() ? 1 : 0, 0);
             ImageSingletons.add(CompressEncoding.class, compressEncoding);
 
-            ObjectLayout objectLayout = createObjectLayout();
+            ObjectLayout objectLayout = createObjectLayout(IdentityHashMode.TYPE_SPECIFIC);
             ImageSingletons.add(ObjectLayout.class, objectLayout);
 
             ImageSingletons.add(HybridLayoutSupport.class, new HybridLayoutSupport());
         }
     }
 
-    public static ObjectLayout createObjectLayout() {
-        return createObjectLayout(JavaKind.Object, false);
+    public static ObjectLayout createObjectLayout(IdentityHashMode identityHashMode) {
+        return createObjectLayout(JavaKind.Object, identityHashMode);
     }
 
     /**
-     * Defines the layout of objects. Identity hash code fields can be optional if the object header
-     * allows for it, in which case such a field is appended to individual objects after an identity
-     * hash code has been assigned to it (unless there is an otherwise unused gap in the object that
-     * can be used).
+     * Defines the serial/epsilon GC object layout. The monitor slot and the identity hash code
+     * fields are appended to instance objects (unless there is an otherwise unused gap in the
+     * object that can be used).
      *
      * The layout of instance objects is:
      * <ul>
-     * <li>object header with hub reference</li>
-     * <li>optional: identity hashcode (int)</li>
+     * <li>64 bit hub reference</li>
      * <li>instance fields (references, primitives)</li>
-     * <li>if needed, object monitor (reference)</li>
+     * <li>64 bit object monitor reference (if needed)</li>
+     * <li>32 bit identity hashcode (if needed)</li>
      * </ul>
      *
      * The layout of array objects is:
      * <ul>
-     * <li>object header with hub reference</li>
-     * <li>optional: identity hashcode (int)</li>
-     * <li>array length (int)</li>
-     * <li>array elements (length * reference or primitive)</li>
+     * <li>64 bit hub reference</li>
+     * <li>32 bit identity hashcode</li>
+     * <li>32 bit array length</li>
+     * <li>array elements (length * elementSize)</li>
      * </ul>
      */
-    public static ObjectLayout createObjectLayout(JavaKind referenceKind, boolean disableOptionalIdentityHash) {
+    public static ObjectLayout createObjectLayout(JavaKind referenceKind, IdentityHashMode identityHashMode) {
         SubstrateTargetDescription target = ConfigurationValues.getTarget();
         int referenceSize = target.arch.getPlatformKind(referenceKind).getSizeInBytes();
         int intSize = target.arch.getPlatformKind(JavaKind.Int).getSizeInBytes();
@@ -144,49 +150,102 @@ public class HostedConfiguration {
         int hubOffset = 0;
         int headerSize = hubOffset + referenceSize;
 
-        int identityHashCodeOffset;
-        if (!disableOptionalIdentityHash && SubstrateOptions.SpawnIsolates.getValue() && headerSize + referenceSize <= objectAlignment) {
-            /*
-             * References are relative to the heap base, so we should be able to use fewer bits in
-             * the object header to reference DynamicHubs which are located near the start of the
-             * heap. This means we could be unable to fit forwarding references in those header bits
-             * during GC, but every object is large enough to fit a separate forwarding reference
-             * outside its header. Therefore, we can avoid reserving an identity hash code field for
-             * every object during its allocation and use extra header bits to track if an
-             * individual object was assigned an identity hash code after allocation.
-             */
-            identityHashCodeOffset = -1;
-        } else { // need all object header bits except for lowest-order bits freed up by alignment
-            identityHashCodeOffset = headerSize;
+        int extraArrayHeaderSize = 0;
+        int headerIdentityHashOffset = headerSize;
+        if (identityHashMode == IdentityHashMode.OBJECT_HEADER) {
             headerSize += intSize;
+        } else if (identityHashMode == IdentityHashMode.TYPE_SPECIFIC) {
+            extraArrayHeaderSize = intSize;
+        } else {
+            assert identityHashMode == IdentityHashMode.OPTIONAL;
+            headerIdentityHashOffset = -1;
         }
 
         headerSize += SubstrateOptions.AdditionalHeaderBytes.getValue();
 
         int firstFieldOffset = headerSize;
-        int arrayLengthOffset = headerSize;
+        int arrayLengthOffset = headerSize + extraArrayHeaderSize;
         int arrayBaseOffset = arrayLengthOffset + intSize;
 
-        return new ObjectLayout(target, referenceSize, objectAlignment, hubOffset, firstFieldOffset, arrayLengthOffset, arrayBaseOffset, identityHashCodeOffset);
+        return new ObjectLayout(target, referenceSize, objectAlignment, hubOffset, firstFieldOffset, arrayLengthOffset, arrayBaseOffset, headerIdentityHashOffset, identityHashMode);
     }
 
-    public SVMHost createHostVM(OptionValues options, ClassLoader classLoader, ClassInitializationSupport classInitializationSupport,
-                    UnsafeAutomaticSubstitutionProcessor automaticSubstitutions, Platform platform) {
-        return new SVMHost(options, classLoader, classInitializationSupport, automaticSubstitutions, platform);
+    public static void initializeDynamicHubLayout(HostedMetaAccess hMeta) {
+        ImageSingletons.add(DynamicHubLayout.class, createDynamicHubLayout(hMeta));
     }
 
-    public CompileQueue createCompileQueue(DebugContext debug, FeatureHandler featureHandler, HostedUniverse hostedUniverse, RuntimeConfiguration runtimeConfiguration, boolean deoptimizeAll,
-                    SnippetReflectionProvider aSnippetReflection) {
+    private static DynamicHubLayout createDynamicHubLayout(HostedMetaAccess hMetaAccess) {
+        var dynamicHubType = hMetaAccess.lookupJavaType(Class.class);
 
-        return new CompileQueue(debug, featureHandler, hostedUniverse, runtimeConfiguration, deoptimizeAll, aSnippetReflection);
+        ObjectLayout layout = ConfigurationValues.getObjectLayout();
+        var vtableField = hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "vtable"));
+        JavaKind vTableSlotStorageKind = vtableField.getType().getComponentType().getStorageKind();
+        int vTableSlotSize = layout.sizeInBytes(vTableSlotStorageKind);
+
+        var closedTypeWorldTypeCheckSlotsField = hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "closedTypeWorldTypeCheckSlots"));
+        int closedTypeWorldTypeCheckSlotsOffset;
+        int closedTypeWorldTypeCheckSlotSize;
+
+        Set<HostedField> ignoredFields;
+        if (SubstrateOptions.closedTypeWorld()) {
+            closedTypeWorldTypeCheckSlotsOffset = layout.getArrayLengthOffset() + layout.sizeInBytes(JavaKind.Int);
+            closedTypeWorldTypeCheckSlotSize = layout.sizeInBytes(closedTypeWorldTypeCheckSlotsField.getType().getComponentType().getStorageKind());
+
+            ignoredFields = Set.of(
+                            closedTypeWorldTypeCheckSlotsField,
+                            vtableField,
+                            hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "typeIDDepth")),
+                            hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "numClassTypes")),
+                            hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "numInterfaceTypes")),
+                            hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "openTypeWorldTypeCheckSlots")));
+        } else {
+            closedTypeWorldTypeCheckSlotsOffset = -1;
+            closedTypeWorldTypeCheckSlotSize = -1;
+
+            ignoredFields = Set.of(
+                            closedTypeWorldTypeCheckSlotsField,
+                            vtableField,
+                            hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "typeCheckStart")),
+                            hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "typeCheckRange")),
+                            hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "typeCheckSlot")));
+
+        }
+        return new DynamicHubLayout(layout, dynamicHubType, closedTypeWorldTypeCheckSlotsField, closedTypeWorldTypeCheckSlotsOffset, closedTypeWorldTypeCheckSlotSize, vtableField,
+                        vTableSlotStorageKind,
+                        vTableSlotSize, ignoredFields);
+    }
+
+    public static boolean isArrayLikeLayout(HostedType clazz) {
+        return HybridLayout.isHybrid(clazz) || DynamicHubLayout.singleton().isDynamicHub(clazz);
+    }
+
+    /**
+     * The hybrid array field and the type fields of the dynamic hub are directly inlined to the
+     * object to remove a level of indirection.
+     */
+    public static boolean isInlinedField(HostedField field) {
+        return HybridLayout.isHybridField(field) || DynamicHubLayout.singleton().isInlinedField(field);
+    }
+
+    public SVMHost createHostVM(OptionValues options, ImageClassLoader loader, ClassInitializationSupport classInitializationSupport, AnnotationSubstitutionProcessor annotationSubstitutions,
+                    MissingRegistrationSupport missingRegistrationSupport) {
+        return new SVMHost(options, loader, classInitializationSupport, annotationSubstitutions, missingRegistrationSupport);
+    }
+
+    public SVMImageLayerWriterHelper createSVMImageLayerWriterHelper(ImageLayerWriter imageLayerWriter) {
+        return new SVMImageLayerWriterHelper(imageLayerWriter);
+    }
+
+    public SVMImageLayerLoaderHelper createSVMImageLayerLoaderHelper() {
+        return new SVMImageLayerLoaderHelper(HostedImageLayerBuildingSupport.singleton().getLoader());
+    }
+
+    public CompileQueue createCompileQueue(DebugContext debug, FeatureHandler featureHandler, HostedUniverse hostedUniverse, RuntimeConfiguration runtimeConfiguration, boolean deoptimizeAll) {
+        return new CompileQueue(debug, featureHandler, hostedUniverse, runtimeConfiguration, deoptimizeAll, Collections.emptyList());
     }
 
     public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod method, MethodFlowsGraph flowsGraph, MethodFlowsGraph.GraphKind graphKind) {
         return new SVMMethodTypeFlowBuilder(bb, method, flowsGraph, graphKind);
-    }
-
-    public void registerUsedElements(PointsToAnalysis bb, StructuredGraph graph, boolean registerEmbeddedRoots) {
-        SVMMethodTypeFlowBuilder.registerUsedElements(bb, graph, registerEmbeddedRoots);
     }
 
     public MetaAccessExtensionProvider createAnalysisMetaAccessExtensionProvider() {
@@ -200,16 +259,21 @@ public class HostedConfiguration {
     public void findAllFieldsForLayout(HostedUniverse universe, @SuppressWarnings("unused") HostedMetaAccess metaAccess,
                     @SuppressWarnings("unused") Map<AnalysisField, HostedField> universeFields,
                     ArrayList<HostedField> rawFields, ArrayList<HostedField> allFields, HostedInstanceClass clazz) {
+        DynamicHubLayout dynamicHubLayout = DynamicHubLayout.singleton();
         for (ResolvedJavaField javaField : clazz.getWrapped().getInstanceFields(false)) {
             AnalysisField aField = (AnalysisField) javaField;
             HostedField hField = universe.lookup(aField);
 
             /* Because of @Alias fields, the field lookup might not be declared in our class. */
             if (hField.getDeclaringClass().equals(clazz)) {
-                if (HybridLayout.isHybridField(hField)) {
+                if (dynamicHubLayout.isIgnoredField(hField)) {
                     /*
-                     * The array or bitset field of a hybrid is not materialized, so it needs no
-                     * field offset.
+                     * Ignored fields do not need a field offset.
+                     */
+                    allFields.add(hField);
+                } else if (HybridLayout.isHybridField(hField)) {
+                    /*
+                     * The array field of a hybrid is not materialized, so it needs no field offset.
                      */
                     allFields.add(hField);
                 } else if (hField.isAccessed()) {
@@ -220,17 +284,8 @@ public class HostedConfiguration {
         }
     }
 
-    public AbstractAnalysisResultsBuilder createStaticAnalysisResultsBuilder(Inflation bb, HostedUniverse universe) {
-        if (bb instanceof PointsToAnalysis) {
-            PointsToAnalysis pta = (PointsToAnalysis) bb;
-            if (SubstrateOptions.parseOnce()) {
-                return new SubstrateStrengthenGraphs(pta, universe);
-            } else {
-                return new StaticAnalysisResultsBuilder(pta, universe);
-            }
-        } else {
-            return new DefaultResultsBuilder(bb, universe);
-        }
+    public StrengthenGraphs createStrengthenGraphs(Inflation bb, HostedUniverse universe) {
+        return new SubstrateStrengthenGraphs(bb, universe);
     }
 
     public void collectMonitorFieldInfo(BigBang bb, HostedUniverse hUniverse, Set<AnalysisType> immutableTypes) {
@@ -246,9 +301,15 @@ public class HostedConfiguration {
 
     private static Set<AnalysisType> getForceMonitorSlotTypes(BigBang bb) {
         Set<AnalysisType> forceMonitorTypes = new HashSet<>();
-        for (Class<?> forceMonitorType : MultiThreadedMonitorSupport.FORCE_MONITOR_SLOT_TYPES) {
-            Optional<AnalysisType> aType = bb.getMetaAccess().optionalLookupJavaType(forceMonitorType);
-            aType.ifPresent(forceMonitorTypes::add);
+        for (var entry : MultiThreadedMonitorSupport.FORCE_MONITOR_SLOT_TYPES.entrySet()) {
+            Optional<AnalysisType> optionalType = bb.getMetaAccess().optionalLookupJavaType(entry.getKey());
+            if (optionalType.isPresent()) {
+                AnalysisType aType = optionalType.get();
+                forceMonitorTypes.add(aType);
+                if (entry.getValue()) {
+                    forceMonitorTypes.addAll(aType.getAllSubtypes());
+                }
+            }
         }
         return forceMonitorTypes;
     }

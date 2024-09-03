@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -299,7 +299,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
             return null;
         }
 
-        List<TypeElement> lookupTypes = collectSuperClasses(new ArrayList<TypeElement>(), templateType);
+        List<TypeElement> lookupTypes = collectSuperClasses(new ArrayList<>(), templateType);
 
         NodeData node = parseNodeData(templateType, lookupTypes);
 
@@ -435,6 +435,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         verifyConstructors(node);
         verifySpecializationThrows(node);
         verifyFrame(node);
+        verifyReportPolymorphism(node);
 
         if (isGenerateSlowPathOnly(node)) {
             removeFastPathSpecializations(node, node.getSharedCaches());
@@ -607,10 +608,12 @@ public final class NodeParser extends AbstractParser<NodeData> {
             boolean usesSpecializationClass = FlatNodeGenFactory.useSpecializationClass(specialization);
             boolean usesSharedInlineNodes = false;
             boolean usesExclusiveInlineNodes = false;
+            ArrayList<String> sharedInlinedCachesNames = new ArrayList<>(specialization.getCaches().size());
             for (CacheExpression cache : specialization.getCaches()) {
                 if (cache.getInlinedNode() != null) {
                     usesInlinedNodes = true;
                     if (cache.getSharedGroup() != null) {
+                        sharedInlinedCachesNames.add(cache.getParameter().getLocalName());
                         usesSharedInlineNodes = true;
                     } else {
                         usesExclusiveInlineNodes = true;
@@ -621,12 +624,12 @@ public final class NodeParser extends AbstractParser<NodeData> {
             if (usesInlinedNodes) {
                 if (usesSpecializationClass && usesSharedInlineNodes && usesExclusiveInlineNodes) {
                     specialization.addSuppressableWarning(TruffleSuppressedWarnings.INTERPRETED_PERFORMANCE,
-                                    "It is discouraged that specializations with specialization data class combine " + //
+                                    String.format("It is discouraged that specializations with specialization data class combine " + //
                                                     "shared and exclusive @Cached inline nodes or profiles arguments. Truffle inlining support code then must " + //
                                                     "traverse the parent pointer in order to resolve the inline data of the shared nodes or profiles, " + //
-                                                    "which incurs performance hit in the interpreter. To resolve this: make all the arguments @Exclusive, " + //
-                                                    "or merge specializations to avoid @Shared arguments, or if the footprint benefit outweighs the " + //
-                                                    "performance degradation, then suppress the warning.");
+                                                    "which incurs performance hit in the interpreter. To resolve this: make @Exclusive all the currently @Shared inline " + //
+                                                    "arguments (%s), or merge specializations to avoid @Shared arguments, or if the footprint benefit " + //
+                                                    "outweighs the performance degradation, then suppress the warning.", String.join(", ", sharedInlinedCachesNames)));
                 }
 
                 boolean isStatic = element.getModifiers().contains(Modifier.STATIC);
@@ -1101,7 +1104,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
                 TypeMirror type = cache.getParameter().getType();
                 if (NodeCodeGenerator.isSpecializedNode(type)) {
-                    List<TypeElement> lookupTypes = collectSuperClasses(new ArrayList<TypeElement>(), ElementUtils.castTypeElement(type));
+                    List<TypeElement> lookupTypes = collectSuperClasses(new ArrayList<>(), ElementUtils.castTypeElement(type));
                     AnnotationMirror generateAOT = findFirstAnnotation(lookupTypes, types.GenerateAOT);
                     if (generateAOT == null) {
                         cache.addError("Failed to generate code for @%s: " + //
@@ -1351,9 +1354,10 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 break;
             }
             for (GuardExpression guard : specialization.getGuards()) {
-                if (guard.getExpression().isNodeReceiverBound()) {
+                DSLExpression guardExpression = guard.getExpression();
+                if (guardExpression.isNodeReceiverBound()) {
                     nodeBound = true;
-                    if (requireNodeUnbound) {
+                    if (requireNodeUnbound && guardExpression.isNodeReceiverImplicitlyBound()) {
                         guard.addError("@%s annotated nodes must only refer to static guard methods or fields. " +
                                         "Add a static modifier to the bound guard method or field to resolve this.",
                                         types.ExportMessage.asElement().getSimpleName().toString());
@@ -1362,9 +1366,10 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 }
             }
             for (CacheExpression cache : specialization.getCaches()) {
-                if (cache.getDefaultExpression() != null && !cache.isMergedLibrary() && cache.getDefaultExpression().isNodeReceiverBound()) {
+                DSLExpression cachedInitializer = cache.getDefaultExpression();
+                if (cachedInitializer != null && !cache.isMergedLibrary() && cachedInitializer.isNodeReceiverBound()) {
                     nodeBound = true;
-                    if (requireNodeUnbound) {
+                    if (requireNodeUnbound && cachedInitializer.isNodeReceiverImplicitlyBound()) {
                         cache.addError("@%s annotated nodes must only refer to static cache initializer methods or fields. " +
                                         "Add a static modifier to the bound cache initializer method or field or " +
                                         "use the keyword 'this' to refer to the receiver type explicitly.",
@@ -1373,9 +1378,10 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     break;
                 }
             }
-            if (specialization.getLimitExpression() != null && specialization.getLimitExpression().isNodeReceiverBound()) {
+            DSLExpression limit = specialization.getLimitExpression();
+            if (limit != null && limit.isNodeReceiverBound()) {
                 nodeBound = true;
-                if (requireNodeUnbound) {
+                if (requireNodeUnbound && limit.isNodeReceiverImplicitlyBound()) {
                     specialization.addError("@%s annotated nodes must only refer to static limit initializer methods or fields. " +
                                     "Add a static modifier to the bound cache initializer method or field or " +
                                     "use the keyword 'this' to refer to the receiver type explicitly.",
@@ -1384,6 +1390,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 break;
             }
         }
+
         node.setNodeBound(nodeBound);
     }
 
@@ -1788,32 +1795,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         }
     }
 
-    private static class ImportsKey {
-
-        private final TypeElement relativeTo;
-        private final TypeElement importGuardsClass;
-        private final boolean includeConstructors;
-
-        ImportsKey(TypeElement relativeTo, TypeElement importGuardsClass, boolean includeConstructors) {
-            this.relativeTo = relativeTo;
-            this.importGuardsClass = importGuardsClass;
-            this.includeConstructors = includeConstructors;
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(relativeTo, importGuardsClass, includeConstructors);
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj instanceof ImportsKey) {
-                ImportsKey other = (ImportsKey) obj;
-                return Objects.equals(relativeTo, other.relativeTo) && Objects.equals(importGuardsClass, other.importGuardsClass) && Objects.equals(includeConstructors, other.includeConstructors);
-            }
-            return false;
-        }
-
+    private record ImportsKey(TypeElement relativeTo, TypeElement importGuardsClass, boolean includeConstructors) {
     }
 
     private final Map<ImportsKey, List<Element>> importCache = ProcessorContext.getInstance().getCacheMap(ImportsKey.class);
@@ -1838,7 +1820,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         TypeElement importElement = fromTypeMirror(context.reloadType(importType.asType()));
 
         List<Element> members = new ArrayList<>();
-        List<? extends Element> importMembers = context.getEnvironment().getElementUtils().getAllMembers(importType);
+        List<? extends Element> importMembers = CompilerFactory.getCompiler(importType).getAllMembersInDeclarationOrder(context.getEnvironment(), importType);
         // add default constructor
         if (includeConstructors && ElementUtils.isVisible(relativeTo, importElement) && ElementFilter.constructorsIn(importMembers).isEmpty()) {
             CodeExecutableElement executable = new CodeExecutableElement(modifiers(Modifier.PUBLIC), importElement.asType(), null);
@@ -2532,10 +2514,10 @@ public final class NodeParser extends AbstractParser<NodeData> {
             return null;
         }
 
-        List<TypeElement> lookupTypes = collectSuperClasses(new ArrayList<TypeElement>(), templateType);
+        List<TypeElement> lookupTypes = collectSuperClasses(new ArrayList<>(), templateType);
 
         // Declaration order is not required for child nodes.
-        List<? extends Element> members = processingEnv.getElementUtils().getAllMembers(templateType);
+        List<? extends Element> members = CompilerFactory.getCompiler(templateType).getAllMembersInDeclarationOrder(processingEnv, templateType);
         NodeData node = parseNodeData(templateType, lookupTypes);
         if (node.hasErrors()) {
             return node;
@@ -2829,7 +2811,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
             // transitively resolve includes
             Set<SpecializationData> foundSpecializations = new LinkedHashSet<>();
-            collectIncludes(specialization, foundSpecializations, new HashSet<SpecializationData>());
+            collectIncludes(specialization, foundSpecializations, new HashSet<>());
             specialization.getReplaces().addAll(foundSpecializations);
         }
 
@@ -3465,7 +3447,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         if (specialization.isFallback()) {
             for (int i = 0; i < libraries.size(); i++) {
                 CacheExpression cachedLibrary = libraries.get(i);
-                if (cachedLibrary.getCachedLibraryExpression() != null) {
+                if (cachedLibrary.getCachedLibraryExpression() != null && specialization.hasMultipleInstances()) {
                     cachedLibrary.addError("@%s annotations with specialized receivers are not supported in combination with @%s annotations. " +
                                     "Specify the @%s(limit=\"...\") attribute and remove the receiver expression to use an dispatched library instead.",
                                     getSimpleName(types.CachedLibrary), getSimpleName(types.Fallback), getSimpleName(types.CachedLibrary));
@@ -3959,7 +3941,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
     }
 
     private ExecutableElement lookupInlineMethod(DSLExpressionResolver resolver, NodeData node, CacheExpression cache, TypeMirror type, MessageContainer errorTarget) {
-
         String inlineMethodName = ElementUtils.getAnnotationValue(String.class, cache.getMessageAnnotation(), "inlineMethod", false);
         ExecutableElement inlineMethod = null;
         if (inlineMethodName != null) {
@@ -4001,15 +3982,27 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 return null;
             }
 
-            NodeData inlinedNode = lookupNodeData(node, type, errorTarget);
-            if (inlinedNode != null && inlinedNode.isGenerateInline()) {
-                CodeExecutableElement method = NodeFactoryFactory.createInlineMethod(inlinedNode, null);
-                method.setEnclosingElement(NodeCodeGenerator.nodeElement(inlinedNode));
-                inlineMethod = method;
+            Map<String, ExecutableElement> inlineSignatureCache = context.getInlineSignatureCache();
+            String id = ElementUtils.getUniqueIdentifier(parameterType.asType());
+            ExecutableElement cachedInline;
+            if (inlineSignatureCache.containsKey(id)) {
+                cachedInline = inlineSignatureCache.get(id);
+            } else {
+                NodeData inlinedNode = lookupNodeData(node, type, errorTarget);
+                if (inlinedNode != null && inlinedNode.isGenerateInline()) {
+                    CodeExecutableElement method = NodeFactoryFactory.createInlineMethod(inlinedNode, null);
+                    method.setEnclosingElement(NodeCodeGenerator.nodeElement(inlinedNode));
+                    cachedInline = method;
+                } else {
+                    cachedInline = null;
+                }
+                inlineSignatureCache.put(id, cachedInline);
+            }
+            if (cachedInline != null) {
+                inlineMethod = cachedInline;
             }
         }
         return inlineMethod;
-
     }
 
     private static boolean hasDefaultCreateCacheMethod(TypeMirror type) {
@@ -4419,6 +4412,26 @@ public final class NodeParser extends AbstractParser<NodeData> {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    private static void verifyReportPolymorphism(NodeData node) {
+        if (node.isReportPolymorphism()) {
+            List<SpecializationData> reachableSpecializations = node.getReachableSpecializations();
+            if (reachableSpecializations.size() == 1 && reachableSpecializations.get(0).getMaximumNumberOfInstances() == 1) {
+                node.addSuppressableWarning(TruffleSuppressedWarnings.SPLITTING,
+                                "This node uses @ReportPolymorphism but has a single specialization instance, so the annotation has no effect. Remove the annotation or move it to another node to resolve this.");
+            }
+
+            if (reachableSpecializations.stream().noneMatch(SpecializationData::isReportPolymorphism)) {
+                node.addSuppressableWarning(TruffleSuppressedWarnings.SPLITTING,
+                                "This node uses @ReportPolymorphism but all specializations use @ReportPolymorphism.Exclude. Remove some excludes or do not use ReportPolymorphism at all for this node to resolve this.");
+            }
+
+            if (reachableSpecializations.stream().anyMatch(SpecializationData::isReportMegamorphism)) {
+                node.addSuppressableWarning(TruffleSuppressedWarnings.SPLITTING,
+                                "This node uses @ReportPolymorphism on the class and @ReportPolymorphism.Megamorphic on some specializations, the latter annotation has no effect. Remove one of the annotations to resolve this.");
             }
         }
     }

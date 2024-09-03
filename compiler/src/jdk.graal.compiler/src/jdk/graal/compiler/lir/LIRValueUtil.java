@@ -139,7 +139,7 @@ public final class LIRValueUtil {
      * are not {@link RegisterValue registers} are ignored.
      */
     public static boolean differentRegisters(Object... values) {
-        List<Register> registers = collectRegisters(values, new ArrayList<Register>());
+        List<Register> registers = collectRegisters(values, new ArrayList<>());
         for (int i = 1; i < registers.size(); i++) {
             Register r1 = registers.get(i);
             for (int j = 0; j < i; j++) {

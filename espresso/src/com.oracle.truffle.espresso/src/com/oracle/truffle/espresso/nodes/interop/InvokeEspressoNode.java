@@ -34,16 +34,19 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.nodes.bytecodes.InitCheck;
+import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
 import com.oracle.truffle.espresso.runtime.InteropUtils;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 @GenerateUncached
-@ReportPolymorphism
 public abstract class InvokeEspressoNode extends EspressoNode {
     static final int LIMIT = 4;
 
@@ -55,12 +58,25 @@ public abstract class InvokeEspressoNode extends EspressoNode {
                             method,
                             method.isStatic() ? method.getDeclaringKlass() : ((StaticObject) receiver).getKlass()).getMethodVersion();
         }
-        Object result = executeMethod(resolutionSeed, receiver, arguments, argsConverted);
-        /*
-         * Unwrap foreign objects (invariant: foreign objects are always wrapped when coming in
-         * Espresso and unwrapped when going out)
-         */
-        return InteropUtils.unwrap(getLanguage(), result, getMeta());
+        EspressoLanguage language = getLanguage();
+        Meta meta = getMeta();
+        EspressoThreadLocalState tls = language.getThreadLocalState();
+        tls.blockContinuationSuspension();
+        try {
+            Object result = executeMethod(resolutionSeed, receiver, arguments, argsConverted);
+            /*
+             * Invariant: Foreign objects are always wrapped when coming into Espresso and unwrapped
+             * when going out.
+             */
+            return InteropUtils.unwrap(language, result, meta);
+        } catch (EspressoException e) {
+            /*
+             * Invariant: Foreign exceptions are always unwrapped when going out of Espresso.
+             */
+            throw InteropUtils.unwrapExceptionBoundary(language, e, meta);
+        } finally {
+            tls.unblockContinuationSuspension();
+        }
     }
 
     public final Object execute(Method method, Object receiver, Object[] arguments) throws ArityException, UnsupportedTypeException {
@@ -147,10 +163,7 @@ public abstract class InvokeEspressoNode extends EspressoNode {
             return indirectCallNode.call(method.getCallTarget(), argumentsWithReceiver);
         }
 
-        return indirectCallNode.call(method.getMethod().getCallTargetForceInit(), /*
-                                                                                   * static => no
-                                                                                   * receiver
-                                                                                   */ convertedArguments);
+        return indirectCallNode.call(method.getMethod().getCallTargetForceInit(), /*- static => no receiver */ convertedArguments);
     }
 
     @TruffleBoundary

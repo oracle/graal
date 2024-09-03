@@ -24,29 +24,33 @@
  */
 package jdk.graal.compiler.hotspot.aarch64;
 
+import jdk.graal.compiler.asm.Label;
+import jdk.graal.compiler.asm.aarch64.AArch64Address;
+import jdk.graal.compiler.asm.aarch64.AArch64Assembler;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
+import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
-
+import jdk.graal.compiler.lir.aarch64.AArch64Move;
 import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.site.Call;
-import jdk.vm.ci.code.site.Infopoint;
-import jdk.vm.ci.code.site.InfopointReason;
 
 public class AArch64HotSpotMacroAssembler extends AArch64MacroAssembler {
     private final GraalHotSpotVMConfig config;
+    private final Register heapBaseRegister;
 
-    public AArch64HotSpotMacroAssembler(TargetDescription target, GraalHotSpotVMConfig config) {
+    public AArch64HotSpotMacroAssembler(TargetDescription target, GraalHotSpotVMConfig config, Register heapBaseRegister) {
         super(target);
         this.config = config;
+        this.heapBaseRegister = heapBaseRegister;
     }
 
     @Override
-    public void postCallNop(Infopoint infopoint) {
-        if (config.continuationsEnabled && infopoint instanceof Call) {
+    public void postCallNop(Call call) {
+        if (config.continuationsEnabled) {
             // Support for loom requires custom nops after call sites that might deopt
-            Call call = (Call) infopoint;
-            if (call.debugInfo != null && call.reason == InfopointReason.CALL) {
+            if (call.debugInfo != null) {
                 // Expected post call nop pattern taken from
                 // src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp in
                 // MacroAssembler::post_call_nop(). JVMCI will add a relocation during installation.
@@ -60,6 +64,67 @@ public class AArch64HotSpotMacroAssembler extends AArch64MacroAssembler {
                 return;
             }
         }
-        super.postCallNop(infopoint);
+        super.postCallNop(call);
     }
+
+    /**
+     * Perform some lightweight verification that value is a valid object or null. It checks that
+     * the value is an instance of its own class though it only checks the primary super table for
+     * compactness.
+     */
+    public void verifyOop(Register value, Register tmp, Register tmp2, boolean compressed, boolean nonNull) {
+        guaranteeDifferentRegisters(value, tmp, tmp2);
+        Label ok = new Label();
+
+        if (!nonNull) {
+            // null check the value
+            cbz(compressed ? 32 : 64, value, ok);
+        }
+
+        AArch64Address hubAddress;
+        int hubSize = config.useCompressedClassPointers ? 32 : 64;
+        if (compressed) {
+            CompressEncoding encoding = config.getOopEncoding();
+            mov(32, tmp, value);
+            AArch64Move.UncompressPointerOp.emitUncompressCode(this, tmp, tmp, encoding, true, heapBaseRegister, false);
+            hubAddress = makeAddress(hubSize, tmp, config.hubOffset);
+        } else {
+            hubAddress = makeAddress(hubSize, value, config.hubOffset);
+        }
+
+        // Load the class
+        if (config.useCompressedClassPointers) {
+            ldr(32, tmp, hubAddress);
+            AArch64HotSpotMove.decodeKlassPointer(this, tmp, tmp, config.getKlassEncoding());
+        } else {
+            ldr(64, tmp, hubAddress);
+        }
+        // Klass::_super_check_offset
+        ldr(32, tmp2, makeAddress(32, tmp, config.superCheckOffsetOffset));
+        compare(32, tmp2, config.secondarySuperCacheOffset);
+        branchConditionally(AArch64Assembler.ConditionFlag.EQ, ok);
+
+        // Load the klass from the primary supers
+        ldr(64, tmp2, AArch64Address.createRegisterOffsetAddress(64, tmp, tmp2, false));
+        cmp(64, tmp2, tmp);
+        branchConditionally(AArch64Assembler.ConditionFlag.EQ, ok);
+        illegal();
+        bind(ok);
+    }
+
+    public void verifyHeapBase() {
+        if (heapBaseRegister != null && config.narrowOopBase != 0) {
+            try (AArch64MacroAssembler.ScratchRegister sc1 = getScratchRegister()) {
+                Label skip = new Label();
+                Register scratch1 = sc1.getRegister();
+                mov(scratch1, config.narrowOopBase);
+                cmp(64, heapBaseRegister, scratch1);
+                branchConditionally(AArch64Assembler.ConditionFlag.EQ, skip);
+                AArch64Address base = makeAddress(64, heapBaseRegister, 0);
+                ldr(64, scratch1, base);
+                bind(skip);
+            }
+        }
+    }
+
 }

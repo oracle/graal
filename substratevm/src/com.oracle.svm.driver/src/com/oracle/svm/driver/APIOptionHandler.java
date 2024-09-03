@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.driver;
 
-import java.lang.annotation.Annotation;
-import java.lang.reflect.Field;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -33,6 +31,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.ServiceLoader;
@@ -45,9 +44,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
-import jdk.graal.compiler.options.OptionDescriptor;
-import jdk.graal.compiler.options.OptionDescriptors;
-import jdk.graal.compiler.options.OptionStability;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -60,6 +56,7 @@ import com.oracle.svm.core.option.APIOptionGroup;
 import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.OptionOrigin;
+import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.driver.NativeImage.ArgumentQueue;
@@ -70,6 +67,10 @@ import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 import com.oracle.svm.util.StringUtil;
+
+import jdk.graal.compiler.options.OptionDescriptor;
+import jdk.graal.compiler.options.OptionDescriptors;
+import jdk.graal.compiler.options.OptionStability;
 
 class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     private static final String ENTER_UNLOCK_SCOPE = SubstrateOptionsParser.commandArgument(SubstrateOptions.UnlockExperimentalVMOptions, "+");
@@ -139,7 +140,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
     private static void extractOption(String optionPrefix, OptionDescriptor optionDescriptor, SortedMap<String, OptionInfo> apiOptions,
                     Map<String, GroupInfo> groupInfos, Map<Class<? extends APIOptionGroup>, APIOptionGroup> groupInstances, Set<String> stableOptionNames) {
-        for (APIOption apiAnnotation : getAnnotationsByType(optionDescriptor, APIOption.class)) {
+        for (APIOption apiAnnotation : OptionUtils.getAnnotationsByType(optionDescriptor, APIOption.class)) {
             String builderOption = optionPrefix;
             if (apiAnnotation.name().length <= 0) {
                 VMError.shouldNotReachHere(String.format("APIOption for %s does not provide a name entry", optionDescriptor.getLocation()));
@@ -276,7 +277,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 String rawOptionName = optionDescriptor.getName();
                 String builderOption = optionPrefix + rawOptionName;
                 BundleMember.Role role = BundleMember.Role.Ignore;
-                for (BundleMember bundleMember : getAnnotationsByType(optionDescriptor, BundleMember.class)) {
+                for (BundleMember bundleMember : OptionUtils.getAnnotationsByType(optionDescriptor, BundleMember.class)) {
                     role = bundleMember.role();
                 }
                 pathOptions.put(builderOption, new PathsOptionInfo(multiOptionDefaultValue.getDelimiter(), role));
@@ -284,17 +285,8 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         }
     }
 
-    private static <T extends Annotation> List<T> getAnnotationsByType(OptionDescriptor optionDescriptor, Class<T> annotationClass) {
-        try {
-            Field field = optionDescriptor.getDeclaringClass().getDeclaredField(optionDescriptor.getFieldName());
-            return List.of(field.getAnnotationsByType(annotationClass));
-        } catch (NoSuchFieldException e) {
-            return List.of();
-        }
-    }
-
     private static String startLowerCase(String str) {
-        return str.substring(0, 1).toLowerCase() + str.substring(1);
+        return str.substring(0, 1).toLowerCase(Locale.ROOT) + str.substring(1);
     }
 
     @Override
@@ -346,6 +338,13 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 String optionName;
                 if (optionInfo.group == null) {
                     optionName = APIOption.Utils.optionName(variant);
+                } else if (optionInfo.group.multiValueOption() != null) {
+                    String headArg = argQueue.peek();
+                    if (!headArg.startsWith(APIOption.Utils.groupName(optionInfo.group))) {
+                        continue;
+                    }
+
+                    return headArg.replace(APIOption.Utils.optionName(optionInfo.group.name()), "-H:" + optionInfo.group.multiValueOption().getName());
                 } else {
                     optionName = APIOption.Utils.groupName(optionInfo.group) + variant;
                 }

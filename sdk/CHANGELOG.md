@@ -2,8 +2,31 @@
 
 This changelog summarizes major changes between GraalVM SDK versions. The main focus is on APIs exported by GraalVM SDK.
 
+## Version 24.2.0
+* GR-54905 When using Truffle NFI with the Panama backend, native access must now be granted to the Truffle module instead of the NFI Panama module. Use the `--enable-native-access=org.graalvm.truffle` Java command line option to enable the native access for the NFI Panama backend.
+
+## Version 24.1.0
+* GR-51177 Enable random offsets of runtime compiled function entry points for the UNTRUSTED polyglot sandbox policy.
+* GR-51962 Added the system property `polyglot.engine.userResourceCache`, which enables embedders to override the default location of the resources cache folder for polyglot applications running on the JVM. By default, the resources cache folder is located in the `org.graalvm.polyglot` directory within the OS specific cache folder in the user's home directory. The main rationale behind this override is to accommodate applications running in containers where the user's home directory may not be writable.
+* GR-51402 Improved Polyglot guest function to host interface proxies to infer the expected return type from the corresponding type argument (`R`) of the generic target type (e.g. `BiFunction<T,U,R>`).
+* GR-53699 `RuntimeOptions.listDescriptors` and `getDescriptor` also returns graal compiler options (if any) that could already be accessed through `RuntimeOptions.get` and `set`.
+* GR-54310 Removed disabled-by-default class-path isolation feature if polyglot is used from the class-path. The option `-Dpolyglotimpl.DisableClassPathIsolation` has no longer any effect.
+* GR-49484 Added `PolyglotException.StackFrame.getBytecodeIndex()` which allows to access the internal bytecode index that the language uses to identify an execution location. 
+* GR-47956 Added the option `engine.InterpreterCallStackHeadRoom` to protect against stack overflow in the middle of a guest method execution in the interpreter. The new option is available only in the AOT mode.
+* GR-40931 Added experimental support for virtual threads on HotSpot. Not all languages are currently supported for use with virtual threads, please check the language changelog for further information. Truffle debugging, CPU time limits and some memory limits are currently not supported on virtual threads.
+* GR-40931 Using virtual threads in a native-image will now emulate virtual threads using platform threads until Loom support for Truffle languages in native-image is implemented.
+* GR-48481: It is now possible to depend on platform-specific Maven artifacts when using polyglot isolates. The `-isolate` Maven artifacts remain platform-independent. However, if platform specific builds are required, consider adding a platform specific suffix to the Maven artifact name, such as `-isolate-linux-amd64`. The reduced binary size of platform specific dependencies can improve build times and reduce the distribution size of your application. For more details, see [Embedding Languages](https://www.graalvm.org/latest/reference-manual/embed-languages/#polyglot-isolates).
+* GR-48481: The Python language is now available as a polyglot isolate.
+* GR-54674: Added the options `engine.TraceSourceCache` and `engine.TraceSourceCacheDetails` to allow tracing of source cache hits, misses, failures and evictions. 
+
 ## Version 24.0.0
 * (GR-49334) Deprecated the `FileSystems#allowLanguageHomeAccess()` method and introduced `FileSystem#allowInternalResourceAccess()` as a replacement. To ensure compatibility, both methods now provide support for language homes and internal resources.
+* (GR-49386) Added `Value#readBuffer(long, byte[], int, int)` to enable bulk reads of buffers into byte arrays.
+* (GR-49386) Added the ability to use `Value#as(ByteSequence.class)` to map guest language byte buffers (`Value#hasBufferElements()`) to the read-only `ByteSequence` interface in order to access the bytes without copying the guest language buffer.
+* (GR-49386) Custom implementations of `ByteSequence`, like the values returned by `ByteSequence.create(byte[])`, are now interpreted by guest languages as buffers.
+* (GR-38404) Added the ability to use `Value#as(Collection.class)` to map guest language arrays (`Value#hasArrayElements()`) to the `Collection` interface in order to access the array elements without copying the guest language array.
+* (GR-50682) The Truffle languages and instrument implementations are now loaded exclusively using the context class loader if it is set and Truffle is found there. If the context class loader is not set or Truffle is not found, then the system class loader is used instead. Previously, the context and system class loader were used to load Truffle languages and instruments which causes issues if the context class loader does not delegate to the system class loader and classes are loaded from both. Context class loaders that do not delegate to the system class loader are commonly used to implement hot-reload functionality.
+
 
 ## Version 23.1.0
 * (GR-43819) The GraalVM SDK was split into several more fine-grained modules. The use of the graalvm-sdk module is now deprecated. Please update your Maven and module dependencies accordingly. Note that all APIs remain compatible. The following new modules are available:

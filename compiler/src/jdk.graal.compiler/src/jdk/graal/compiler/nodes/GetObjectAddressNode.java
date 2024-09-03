@@ -34,7 +34,6 @@ import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaKind;
 
@@ -70,8 +69,8 @@ public final class GetObjectAddressNode extends FixedWithNextNode implements LIR
     }
 
     @Override
-    public boolean verify() {
+    public boolean verifyNode() {
         assert graph().getGuardsStage().areFrameStatesAtDeopts() || graph().isSubstitution() : "GetObjectAddressNode can't be used directly until frame states are fixed";
-        return super.verify();
+        return super.verifyNode();
     }
 }

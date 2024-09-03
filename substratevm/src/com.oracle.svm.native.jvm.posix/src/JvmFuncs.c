@@ -31,7 +31,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <sys/socket.h>
-#include <sys/poll.h>
+#include <poll.h>
 #include <netdb.h>
 #include <errno.h>
 #include <dlfcn.h>
@@ -277,6 +277,19 @@ JNIEXPORT jlong JNICALL Java_jdk_internal_misc_VM_getNanoTimeAdjustment(void *en
     return JVM_GetNanoTimeAdjustment(env, ignored, offset_secs);
 }
 
+JNIEXPORT void JNICALL JVM_ArrayCopy(JNIEnv *env, jclass ignored, jobject src, jint src_pos, jobject dst, jint dst_pos, jint length) {
+    jclass systemClass = (*env)->FindClass(env, "java/lang/System");
+    if (systemClass != NULL && !(*env)->ExceptionCheck(env)) {
+        jmethodID arraycopy = (*env)->GetStaticMethodID(env, systemClass, "arraycopy", "(Ljava/lang/Object;ILjava/lang/Object;II)V");
+        if (arraycopy != NULL && !(*env)->ExceptionCheck(env)) {
+            (*env)->CallStaticVoidMethod(env, systemClass, arraycopy, src, src_pos, dst, dst_pos, length);
+            return;
+        }
+    }
+
+    (*env)->FatalError(env, "JVM_ArrayCopy called: Could not find System#arraycopy");
+}
+
 JNIEXPORT void JNICALL JVM_Halt(int retcode) {
     exit(retcode);
 }
@@ -311,10 +324,15 @@ JNIEXPORT jobject JNICALL JVM_DoPrivileged(JNIEnv *env, jclass cls, jobject acti
             return (*env)->CallObjectMethod(env, action, run);
         }
     }
+
+    /* Some error occurred - clear pending exception and try to report the error. */
+    (*env)->ExceptionClear(env);
+
     jclass errorClass = (*env)->FindClass(env, "java/lang/InternalError");
     if (errorClass != NULL && !(*env)->ExceptionCheck(env)) {
         (*env)->ThrowNew(env, errorClass, "Could not invoke PrivilegedAction");
     } else {
+        (*env)->ExceptionClear(env);
         (*env)->FatalError(env, "PrivilegedAction could not be invoked and the error could not be reported");
     }
     return NULL;

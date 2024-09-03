@@ -86,7 +86,7 @@ public final class ConditionAnchorNode extends FixedWithNextNode implements Cano
             // An anchor that still has usages must still exist since it's possible the condition is
             // true for control flow reasons so the Pi stamp is also only valid for those reason.
             if (c.getValue() == negated || hasUsages()) {
-                return new ValueAnchorNode(null);
+                return new ValueAnchorNode();
             } else {
                 return null;
             }
@@ -100,7 +100,7 @@ public final class ConditionAnchorNode extends FixedWithNextNode implements Cano
     @Override
     public void lower(LoweringTool tool) {
         if (graph().getGuardsStage() == GraphState.GuardsStage.FIXED_DEOPTS) {
-            ValueAnchorNode newAnchor = graph().add(new ValueAnchorNode(null));
+            ValueAnchorNode newAnchor = graph().add(new ValueAnchorNode());
             graph().replaceFixedWithFixed(this, newAnchor);
         }
     }

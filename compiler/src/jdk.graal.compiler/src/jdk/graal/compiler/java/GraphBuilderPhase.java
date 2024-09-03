@@ -31,21 +31,20 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
-import jdk.graal.compiler.phases.Phase;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
+import jdk.graal.compiler.phases.Phase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Parses the bytecodes of a method and builds the IR graph.
  */
-public class GraphBuilderPhase extends BasePhase<HighTierContext> {
+public abstract class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
     private final GraphBuilderConfiguration graphBuilderConfig;
 
-    public GraphBuilderPhase(GraphBuilderConfiguration config) {
+    protected GraphBuilderPhase(GraphBuilderConfiguration config) {
         this.graphBuilderConfig = config;
     }
 
@@ -53,6 +52,11 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
     public boolean checkContract() {
         return false;
     }
+
+    /**
+     * Create a new instance of this GraphBuilderPhase with the supplied {@code config}.
+     */
+    public abstract GraphBuilderPhase copyWithConfig(GraphBuilderConfiguration config);
 
     @Override
     public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
@@ -68,19 +72,16 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         return graphBuilderConfig;
     }
 
-    protected Instance createInstance(CoreProviders providers, GraphBuilderConfiguration instanceGBConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
-        return new Instance(providers, instanceGBConfig, optimisticOpts, initialIntrinsicContext);
-    }
+    protected abstract Instance createInstance(CoreProviders providers, GraphBuilderConfiguration instanceGBConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext);
 
-    // Fully qualified name is a workaround for JDK-8056066
-    public static class Instance extends Phase {
+    public abstract static class Instance extends Phase {
 
         protected final CoreProviders providers;
         protected final GraphBuilderConfiguration graphBuilderConfig;
         protected final OptimisticOptimizations optimisticOpts;
         private final IntrinsicContext initialIntrinsicContext;
 
-        public Instance(CoreProviders providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
+        protected Instance(CoreProviders providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
             this.graphBuilderConfig = graphBuilderConfig;
             this.optimisticOpts = optimisticOpts;
             this.providers = providers;
@@ -103,8 +104,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         }
 
         /* Hook for subclasses of Instance to provide a subclass of BytecodeParser. */
-        protected BytecodeParser createBytecodeParser(StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI, IntrinsicContext intrinsicContext) {
-            return new BytecodeParser(this, graph, parent, method, entryBCI, intrinsicContext);
-        }
+        protected abstract BytecodeParser createBytecodeParser(StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI, IntrinsicContext intrinsicContext);
     }
 }

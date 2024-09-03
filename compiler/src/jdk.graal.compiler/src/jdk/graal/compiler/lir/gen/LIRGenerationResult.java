@@ -158,4 +158,19 @@ public class LIRGenerationResult {
         }
         return compilationId.toString(Verbosity.NAME);
     }
+
+    /**
+     * Return the first position to insert a LIR instruction. No instruction should be inserted
+     * before this position.
+     *
+     * @return index of the first insert position
+     */
+    @SuppressWarnings("static-method")
+    public final int getFirstInsertPosition() {
+        return 1;
+    }
+
+    public boolean emitIndirectTargetBranchMarkers() {
+        return false;
+    }
 }

@@ -40,7 +40,6 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.memory.MemoryAccess;
 import jdk.graal.compiler.nodes.memory.OrderedMemoryAccess;
 import jdk.graal.compiler.nodes.spi.Lowerable;
-
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
@@ -57,6 +56,11 @@ public abstract class AccessFieldNode extends FixedWithNextNode implements Lower
 
     public ValueNode object() {
         return object;
+    }
+
+    public void setObject(ValueNode otherObject) {
+        updateUsages(object, otherObject);
+        this.object = otherObject;
     }
 
     /**
@@ -129,9 +133,9 @@ public abstract class AccessFieldNode extends FixedWithNextNode implements Lower
     }
 
     @Override
-    public boolean verify() {
+    public boolean verifyNode() {
         assertTrue((object == null) == isStatic(), "static field must not have object, instance field must have object");
-        return super.verify();
+        return super.verifyNode();
     }
 
     @Override

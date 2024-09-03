@@ -39,6 +39,7 @@ import com.oracle.svm.hosted.c.DirectivesExtension;
 import com.oracle.svm.hosted.c.info.ConstantInfo;
 import com.oracle.svm.hosted.c.info.ElementInfo;
 import com.oracle.svm.hosted.c.info.EnumConstantInfo;
+import com.oracle.svm.hosted.c.info.EnumInfo;
 import com.oracle.svm.hosted.c.info.InfoTreeVisitor;
 import com.oracle.svm.hosted.c.info.NativeCodeInfo;
 import com.oracle.svm.hosted.c.info.PointerToInfo;
@@ -279,7 +280,7 @@ public class QueryCodeWriter extends InfoTreeVisitor {
 
     @Override
     protected void visitPointerToInfo(PointerToInfo pointerToInfo) {
-        String sizeOfExpr = sizeOf(pointerToInfo);
+        String sizeOfExpr;
         if (pointerToInfo.getKind() == ElementKind.POINTER && pointerToInfo.getName().startsWith("struct ")) {
             /* Eliminate need for struct forward declarations */
             sizeOfExpr = "sizeof(void *)";
@@ -305,6 +306,24 @@ public class QueryCodeWriter extends InfoTreeVisitor {
     @Override
     protected void visitRawPointerToInfo(RawPointerToInfo pointerToInfo) {
         /* Nothing to do, do not visit children. */
+    }
+
+    @Override
+    protected void visitEnumInfo(EnumInfo enumInfo) {
+        assert enumInfo.getKind() == ElementKind.INTEGER;
+        printUnsignedLong(enumInfo.getSizeInfo(), sizeOf(enumInfo));
+
+        registerElementForCurrentLine(enumInfo.getAnnotatedElement());
+        writer.indents().appendln("{");
+        writer.indent();
+        writer.indents().appendln(uInt64 + " all_bits_set = -1;");
+        writer.indents().appendln(enumInfo.getName() + " enumHolder = all_bits_set;");
+        writer.indents().appendln("int is_unsigned = enumHolder > 0;");
+        printIsUnsigned(enumInfo.getSignednessInfo(), "is_unsigned");
+        writer.outdent();
+        writer.indents().appendln("}");
+
+        super.visitEnumInfo(enumInfo);
     }
 
     @Override

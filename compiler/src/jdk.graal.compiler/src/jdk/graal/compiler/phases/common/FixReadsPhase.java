@@ -24,14 +24,13 @@
  */
 package jdk.graal.compiler.phases.common;
 
+import java.util.ListIterator;
 import java.util.Optional;
 
-import jdk.graal.compiler.phases.BasePhase;
-import jdk.graal.compiler.phases.graph.ScheduledNodeIterator;
-import jdk.graal.compiler.phases.util.Providers;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
+
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.core.common.type.FloatStamp;
@@ -69,9 +68,9 @@ import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.calc.BinaryNode;
 import jdk.graal.compiler.nodes.calc.ConditionalNode;
 import jdk.graal.compiler.nodes.calc.UnaryNode;
-import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph.RecursiveVisitor;
+import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.extended.IntegerSwitchNode;
 import jdk.graal.compiler.nodes.memory.FixedAccessNode;
@@ -84,13 +83,13 @@ import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.CoreProvidersDelegate;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.options.OptionValues;
-
+import jdk.graal.compiler.phases.BasePhase;
+import jdk.graal.compiler.phases.graph.ScheduledNodeIterator;
+import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.TriState;
-
-import java.util.ListIterator;
 
 /**
  * This phase lowers {@link FloatingReadNode FloatingReadNodes} into corresponding fixed reads.
@@ -125,12 +124,13 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
          */
         private final NodeBitMap inferStampBitmap;
 
-        FixReadsClosure(StructuredGraph graph) {
+        FixReadsClosure(StructuredGraph graph, ScheduleResult schedule) {
+            super(schedule);
             inferStampBitmap = graph.createNodeBitMap();
         }
 
         @Override
-        protected void processNode(Node node, HIRBlock block, ScheduleResult schedule, ListIterator<Node> iter) {
+        protected void processNode(Node node, HIRBlock block, ListIterator<Node> iter) {
             if (inferStampBitmap.isMarked(node) && node instanceof ValueNode) {
                 ValueNode valueNode = (ValueNode) node;
                 if (valueNode.inferStamp()) {
@@ -240,7 +240,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
             this.debug = graph.getDebug();
             this.schedule = schedule;
             this.metaAccess = metaAccess;
-            this.rawCanonicalizerTool = new RawCanonicalizerTool(new Providers(metaAccess, null, null, null, null, null, null, null, null, null, null, null, null));
+            this.rawCanonicalizerTool = new RawCanonicalizerTool(new Providers(metaAccess, null, null, null, null, null, null, null, null, null, null, null, null, null));
             blockActionStart = new BlockMap<>(schedule.getCFG());
             endMaps = EconomicMap.create(Equivalence.IDENTITY);
             stampMap = graph.createNodeMap();
@@ -681,15 +681,13 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
     @Override
     @SuppressWarnings("try")
     protected void run(StructuredGraph graph, CoreProviders context) {
-        assert graph.verify();
         schedulePhase.apply(graph, context);
         ScheduleResult schedule = graph.getLastSchedule();
-        FixReadsClosure fixReadsClosure = new FixReadsClosure(graph);
+        FixReadsClosure fixReadsClosure = new FixReadsClosure(graph, schedule);
         for (HIRBlock block : schedule.getCFG().getBlocks()) {
-            fixReadsClosure.processNodes(block, schedule);
+            fixReadsClosure.processNodes(block);
         }
 
-        assert graph.verify();
         if (GraalOptions.RawConditionalElimination.getValue(graph.getOptions())) {
             schedule.getCFG().visitDominatorTree(createVisitor(graph, schedule, context), false);
         }

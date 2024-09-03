@@ -28,8 +28,6 @@ import java.util.WeakHashMap;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
@@ -82,7 +80,7 @@ public final class Target_sun_misc_Signal {
 
     private static StaticObject asGuestSignal(Signal signal, Meta meta) {
         StaticObject guestSignal = meta.sun_misc_Signal.allocateInstance(meta.getContext());
-        meta.sun_misc_Signal_init_String.invokeDirect(guestSignal, meta.toGuestString(signal.getName()));
+        meta.sun_misc_Signal_init_String.invokeDirectSpecial(guestSignal, meta.toGuestString(signal.getName()));
         return guestSignal;
     }
 
@@ -168,10 +166,7 @@ public final class Target_sun_misc_Signal {
             // the VM will call this on an un-attached thread
             Object prev = meta.getContext().getEnv().getContext().enter(null);
             try {
-                int iTableIndex = meta.sun_misc_SignalHandler_handle.getITableIndex();
-                Method handleMethod = ((ObjectKlass) guestHandler.getKlass()).itableLookup(meta.sun_misc_SignalHandler, iTableIndex);
-                assert handleMethod != null;
-                handleMethod.invokeDirect(guestHandler, asGuestSignal(sig, meta));
+                meta.sun_misc_SignalHandler_handle.invokeDirectInterface(guestHandler, asGuestSignal(sig, meta));
             } finally {
                 meta.getContext().getEnv().getContext().leave(null, prev);
             }

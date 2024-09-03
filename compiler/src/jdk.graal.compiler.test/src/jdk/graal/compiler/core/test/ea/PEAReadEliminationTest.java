@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.core.test.ea;
 
+import org.junit.Test;
+
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
@@ -32,9 +34,7 @@ import jdk.graal.compiler.nodes.java.LoadIndexedNode;
 import jdk.graal.compiler.nodes.java.StoreIndexedNode;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
-import org.junit.Test;
-
-import sun.misc.Unsafe;
+import jdk.internal.misc.Unsafe;
 
 public class PEAReadEliminationTest extends GraalCompilerTest {
 
@@ -150,10 +150,10 @@ public class PEAReadEliminationTest extends GraalCompilerTest {
     private static final long offsetObject2 = Unsafe.ARRAY_OBJECT_BASE_OFFSET + Unsafe.ARRAY_OBJECT_INDEX_SCALE * 2;
 
     public static int testUnsafe3Snippet(int v, Object[] array) {
-        int s = (Integer) UNSAFE.getObject(array, offsetObject1);
-        UNSAFE.putObject(array, offsetObject1, v);
-        UNSAFE.putObject(array, offsetObject2, v);
-        return s + (Integer) UNSAFE.getObject(array, offsetObject1) + (Integer) UNSAFE.getObject(array, offsetObject2);
+        int s = (Integer) UNSAFE.getReference(array, offsetObject1);
+        UNSAFE.putReference(array, offsetObject1, v);
+        UNSAFE.putReference(array, offsetObject2, v);
+        return s + (Integer) UNSAFE.getReference(array, offsetObject1) + (Integer) UNSAFE.getReference(array, offsetObject2);
     }
 
     @Test
@@ -163,11 +163,11 @@ public class PEAReadEliminationTest extends GraalCompilerTest {
     }
 
     public static int testUnsafe4Snippet(int v, Object[] array) {
-        int s = (Integer) UNSAFE.getObject(array, offsetObject1);
-        UNSAFE.putObject(array, offsetObject1, v);
-        UNSAFE.putObject(array, offsetObject2, v);
+        int s = (Integer) UNSAFE.getReference(array, offsetObject1);
+        UNSAFE.putReference(array, offsetObject1, v);
+        UNSAFE.putReference(array, offsetObject2, v);
         array[v] = null;
-        return s + (Integer) UNSAFE.getObject(array, offsetObject1) + (Integer) UNSAFE.getObject(array, offsetObject2);
+        return s + (Integer) UNSAFE.getReference(array, offsetObject1) + (Integer) UNSAFE.getReference(array, offsetObject2);
     }
 
     @Test

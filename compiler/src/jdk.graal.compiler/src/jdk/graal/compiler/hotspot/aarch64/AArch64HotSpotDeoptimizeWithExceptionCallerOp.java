@@ -34,7 +34,6 @@ import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.Opcode;
 import jdk.graal.compiler.lir.aarch64.AArch64Call;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
-
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
 
@@ -63,6 +62,6 @@ public class AArch64HotSpotDeoptimizeWithExceptionCallerOp extends AArch64HotSpo
         // Store original return address in TLS
         masm.str(64, lr, masm.makeAddress(64, thread, config.threadExceptionPcOffset));
 
-        AArch64Call.directJmp(crb, masm, crb.foreignCalls.lookupForeignCall(HotSpotHostBackend.DEOPT_BLOB_UNPACK_WITH_EXCEPTION_IN_TLS));
+        AArch64Call.directJmp(crb, masm, crb.getForeignCalls().lookupForeignCall(HotSpotHostBackend.DEOPT_BLOB_UNPACK_WITH_EXCEPTION_IN_TLS));
     }
 }

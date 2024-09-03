@@ -299,7 +299,7 @@ public abstract class GraalCompilerState {
     }
 
     protected LIRSuites getLIRSuites() {
-        return request.lirSuites;
+        return request.lirSuites();
     }
 
     private Request<CompilationResult> request;
@@ -325,15 +325,15 @@ public abstract class GraalCompilerState {
         ResolvedJavaMethod installedCodeOwner = graph.method();
         request = new Request<>(graph, installedCodeOwner, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL,
                         graph.getProfilingInfo(), createSuites(getOptions()), createLIRSuites(getOptions()), new CompilationResult(graph.compilationId()), CompilationResultBuilderFactory.Default,
-                        null, true);
+                        null, null, true);
     }
 
     /**
      * Executes the high-level (FrontEnd) part of the compiler.
      */
     protected final void emitFrontEnd() {
-        GraalCompiler.emitFrontEnd(request.providers, request.backend, request.graph, request.graphBuilderSuite, request.optimisticOpts, request.profilingInfo, request.suites);
-        request.graph.freeze();
+        GraalCompiler.emitFrontEnd(request.providers(), request.backend(), request.graph(), request.graphBuilderSuite(), request.optimisticOpts(), request.profilingInfo(), request.suites());
+        request.graph().freeze();
     }
 
     /**
@@ -364,24 +364,24 @@ public abstract class GraalCompilerState {
      * Sets up {@link LIR} generation.
      */
     protected final void preLIRGeneration() {
-        assert request.graph.isFrozen() : "Graph not frozen.";
+        assert request.graph().isFrozen() : "Graph not frozen.";
         Object stub = null;
-        schedule = request.graph.getLastSchedule();
+        schedule = request.graph().getLastSchedule();
         ControlFlowGraph cfg = deepCopy(schedule.getCFG());
         HIRBlock[] blocks = cfg.getBlocks();
         HIRBlock startBlock = cfg.getStartBlock();
         assert startBlock != null;
         assert startBlock.getPredecessorCount() == 0;
 
-        blockOrder = request.backend.newBlockOrder(blocks.length, startBlock);
+        blockOrder = request.backend().newBlockOrder(blocks.length, startBlock);
         linearScanOrder = LinearScanOrder.computeLinearScanOrder(blocks.length, startBlock);
 
         LIR lir = new LIR(cfg, linearScanOrder, getGraphOptions(), getGraphDebug());
-        LIRGenerationProvider lirBackend = (LIRGenerationProvider) request.backend;
-        RegisterAllocationConfig registerAllocationConfig = request.backend.newRegisterAllocationConfig(registerConfig, null);
-        lirGenRes = lirBackend.newLIRGenerationResult(graph.compilationId(), lir, registerAllocationConfig, request.graph, stub);
+        LIRGenerationProvider lirBackend = (LIRGenerationProvider) request.backend();
+        RegisterAllocationConfig registerAllocationConfig = request.backend().newRegisterAllocationConfig(registerConfig, null, stub);
+        lirGenRes = lirBackend.newLIRGenerationResult(graph.compilationId(), lir, registerAllocationConfig, request.graph(), stub);
         lirGenTool = lirBackend.newLIRGenerator(lirGenRes);
-        nodeLirGen = lirBackend.newNodeLIRBuilder(request.graph, lirGenTool);
+        nodeLirGen = lirBackend.newNodeLIRBuilder(request.graph(), lirGenTool);
     }
 
     protected OptionValues getGraphOptions() {
@@ -401,8 +401,8 @@ public abstract class GraalCompilerState {
      * Executes the {@link LIRGenerationPhase}.
      */
     protected final void lirGeneration() {
-        LIRGenerationContext context = new LIRGenerationContext(lirGenTool, nodeLirGen, request.graph, schedule);
-        new LIRGenerationPhase().apply(request.backend.getTarget(), lirGenRes, context);
+        LIRGenerationContext context = new LIRGenerationContext(lirGenTool, nodeLirGen, request.graph(), schedule);
+        new LIRGenerationPhase().apply(request.backend().getTarget(), lirGenRes, context);
     }
 
     /**
@@ -418,7 +418,7 @@ public abstract class GraalCompilerState {
      * Executes a {@link LIRPhase} within a given {@code context}.
      */
     protected <C> void applyLIRPhase(LIRPhase<C> phase, C context) {
-        phase.apply(request.backend.getTarget(), lirGenRes, context);
+        phase.apply(request.backend().getTarget(), lirGenRes, context);
     }
 
     /**
@@ -464,12 +464,12 @@ public abstract class GraalCompilerState {
      * Emits the machine code.
      */
     protected final void emitCode() {
-        int bytecodeSize = request.graph.method() == null ? 0 : request.graph.getBytecodeSize();
+        int bytecodeSize = request.graph().method() == null ? 0 : request.graph().getBytecodeSize();
         SpeculationLog speculationLog = null;
-        request.compilationResult.setHasUnsafeAccess(request.graph.hasUnsafeAccess());
-        LIRCompilerBackend.emitCode(request.backend, request.graph.getAssumptions(), request.graph.method(), request.graph.getMethods(), speculationLog,
-                        bytecodeSize, lirGenRes, request.compilationResult,
-                        request.installedCodeOwner, request.factory, request.entryPointDecorator);
+        request.compilationResult().setHasUnsafeAccess(request.graph().hasUnsafeAccess());
+        LIRCompilerBackend.emitCode(request.backend(), request.graph().getAssumptions(), request.graph().method(), request.graph().getMethods(), speculationLog,
+                        bytecodeSize, lirGenRes, request.compilationResult(),
+                        request.installedCodeOwner(), request.factory(), request.entryPointDecorator());
     }
 
     protected StructuredGraph graph() {
@@ -495,7 +495,7 @@ public abstract class GraalCompilerState {
         public CompilationResult compile() {
             emitFrontEnd();
             emitBackEnd();
-            return super.request.compilationResult;
+            return super.request.compilationResult();
         }
 
     }
@@ -538,7 +538,7 @@ public abstract class GraalCompilerState {
 
         public CompilationResult compile() {
             emitBackEnd();
-            return super.request.compilationResult;
+            return super.request.compilationResult();
         }
     }
 

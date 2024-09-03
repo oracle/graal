@@ -29,18 +29,18 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.function.BooleanSupplier;
 
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import jdk.graal.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.svm.core.ParsingReason;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.util.ModuleSupport;
+
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import jdk.graal.compiler.phases.util.Providers;
 
 public class ScalaFeature implements InternalFeature {
 
@@ -73,9 +73,7 @@ public class ScalaFeature implements InternalFeature {
     @Override
     public void registerGraphBuilderPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, ScalaFeature.class, false, "jdk.internal.vm.ci", "jdk.vm.ci.meta");
-        if (SubstrateOptions.parseOnce() || reason.duringAnalysis()) {
-            plugins.appendNodePlugin(new ScalaAnalysisPlugin());
-        }
+        plugins.appendNodePlugin(new ScalaAnalysisPlugin());
     }
 
     private static boolean isValDef(Field[] fields, Method m) {

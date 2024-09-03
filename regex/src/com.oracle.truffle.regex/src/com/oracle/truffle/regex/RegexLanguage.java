@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.regex;
 
-import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import org.graalvm.polyglot.SandboxPolicy;
 
 import com.oracle.truffle.api.CallTarget;
@@ -54,7 +53,10 @@ import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.regex.analysis.InputStringGenerator;
 import com.oracle.truffle.regex.tregex.TRegexCompiler;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
+import com.oracle.truffle.regex.tregex.parser.RegexParser;
 import com.oracle.truffle.regex.tregex.parser.RegexParserGlobals;
 import com.oracle.truffle.regex.tregex.parser.RegexValidator;
 import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
@@ -156,10 +158,16 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
 
     @Override
     protected CallTarget parse(ParsingRequest parsingRequest) {
-        return RootNode.createConstantNode(createRegexObject(createRegexSource(parsingRequest.getSource()))).getCallTarget();
+        RegexSource source = createRegexSource(parsingRequest.getSource());
+        if (source.getOptions().isGenerateInput()) {
+            RegexFlavor flavor = source.getOptions().getFlavor();
+            RegexParser parser = flavor.createParser(this, source, new CompilationBuffer(source.getEncoding()));
+            return InputStringGenerator.generateRootNode(this, parser.parse()).getCallTarget();
+        }
+        return RootNode.createConstantNode(createRegexObject(source)).getCallTarget();
     }
 
-    private static RegexSource createRegexSource(Source source) {
+    public static RegexSource createRegexSource(Source source) {
         String srcStr = source.getCharacters().toString();
         if (srcStr.length() < 2) {
             throw CompilerDirectives.shouldNotReachHere("malformed regex");

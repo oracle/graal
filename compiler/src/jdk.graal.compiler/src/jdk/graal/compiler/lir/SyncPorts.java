@@ -30,7 +30,7 @@ import java.lang.annotation.Target;
 /**
  * Containing type for {@link SyncPort}.
  */
-@Target(ElementType.TYPE)
+@Target({ElementType.TYPE, ElementType.CONSTRUCTOR, ElementType.METHOD})
 public @interface SyncPorts {
     SyncPort[] value();
 }

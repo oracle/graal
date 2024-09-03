@@ -433,8 +433,14 @@ public class InliningUtil extends ValueMergeUtil {
 
             @Override
             public Node replacement(Node node) {
-                if (node instanceof ParameterNode) {
-                    return parameters.get(((ParameterNode) node).index());
+                if (node instanceof ParameterNode parameterNode) {
+                    ValueNode argument = parameters.get(parameterNode.index());
+                    /*
+                     * Create Pi nodes to correct mismatches between caller argument and callee
+                     * parameter stamps, which can be caused by e.g. invokes with an unresolved
+                     * return type, or OSRLocals which always have an unrestricted stamp.
+                     */
+                    return graph.addOrUnique(PiNode.create(argument, parameterNode.stamp(NodeView.DEFAULT)));
                 } else if (node == entryPointNode) {
                     return prevBegin;
                 }
@@ -661,9 +667,7 @@ public class InliningUtil extends ValueMergeUtil {
         // Copy inlined methods from inlinee to caller
         graph.updateMethods(inlineGraph);
 
-        if (inlineGraph.hasUnsafeAccess()) {
-            graph.markUnsafeAccess();
-        }
+        graph.maybeMarkUnsafeAccess(inlineGraph);
         assert inlineGraph.getSpeculationLog() == null ||
                         inlineGraph.getSpeculationLog() == graph.getSpeculationLog() : "Only the root graph should have a speculation log";
 
@@ -691,7 +695,7 @@ public class InliningUtil extends ValueMergeUtil {
                 StructuredGraph graph = origReturn.graph();
                 if (!(anchorCandidate instanceof AbstractBeginNode)) {
                     // Add anchor for pi after the original candidate
-                    ValueAnchorNode anchor = graph.add(new ValueAnchorNode(null));
+                    ValueAnchorNode anchor = graph.add(new ValueAnchorNode());
                     if (anchorCandidate.predecessor() == null) {
                         anchor.setNext(anchorCandidate);
                     } else {
@@ -805,16 +809,15 @@ public class InliningUtil extends ValueMergeUtil {
          * Not every duplicate node is newly created, so only update the position of the newly
          * created nodes.
          */
-        EconomicSet<Node> newNodes = EconomicSet.create(Equivalence.DEFAULT);
-        newNodes.addAll(invokeGraph.getNewNodes(mark));
         EconomicMap<NodeSourcePosition, NodeSourcePosition> posMap = EconomicMap.create(Equivalence.DEFAULT);
         UnmodifiableMapCursor<Node, Node> cursor = duplicates.getEntries();
         ResolvedJavaMethod inlineeRoot = null;
         while (cursor.advance()) {
             Node value = cursor.getValue();
-            if (!newNodes.contains(value)) {
+            if (!invokeGraph.isNew(mark, value)) {
                 continue;
             }
+
             if (isSubstitution && invokePos == null) {
                 // There's no caller information so the source position for this node will be
                 // invalid, so it should be cleared.
@@ -824,6 +827,10 @@ public class InliningUtil extends ValueMergeUtil {
                 if (oldPos != null) {
                     NodeSourcePosition updatedPos = posMap.get(oldPos);
                     if (updatedPos == null) {
+                        // This verifies that all the incoming source positions agree about their
+                        // root method. It then inserts invokePos as the caller so they will all
+                        // continue to agree about the root method since it will be
+                        // invokePos.getRootMethod.
                         if (inlineeRoot == null) {
                             assert (inlineeRoot = oldPos.getRootMethod()) != null;
                         } else {
@@ -848,7 +855,6 @@ public class InliningUtil extends ValueMergeUtil {
                 }
             }
         }
-        assert invokeGraph.verifySourcePositions(false);
     }
 
     public static void processMonitorId(FrameState stateAfter, MonitorIdNode monitorIdNode) {
@@ -1162,7 +1168,7 @@ public class InliningUtil extends ValueMergeUtil {
         assert frameState != null;
         ProfilingInfo profilingInfo = invoke.asNode().graph().getProfilingInfo(frameState.getCode().getMethod());
         return FALLBACK_DEOPT_SPECULATION.createSpeculationReason(frameState.getMethod(), invoke.bci(),
-                        profilingInfo == null ? TriState.FALSE : profilingInfo.getExceptionSeen(invoke.bci()),
+                        profilingInfo == null ? TriState.UNKNOWN : profilingInfo.getExceptionSeen(invoke.bci()),
                         new ReceiverTypeSpeculationContext(typeProfile));
     }
 

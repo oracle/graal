@@ -98,7 +98,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
     }
 
     @Override
-    public boolean verify() {
+    public boolean verifyNode() {
         assert getUsageCount() <= 1 : "call target may only be used by a single invoke";
         for (Node n : usages()) {
             assertTrue(n instanceof Invoke, "call target can only be used from an invoke (%s)", n);
@@ -111,7 +111,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
         } else {
             assertFalse(targetMethod().isStatic(), "static calls are only allowed for non-static methods (%s)", targetMethod());
         }
-        return super.verify();
+        return super.verifyNode();
     }
 
     @Override

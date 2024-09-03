@@ -54,14 +54,14 @@ public final class JDKCacheRedefinitionPlugin extends InternalRedefinitionPlugin
         synchronized (threadGroupContexts) {
             for (ObjectKlass changedKlass : changedKlasses) {
                 if (flushFromCachesMethod != null) {
-                    flushFromCachesMethod.invokeDirect(null, changedKlass.mirror());
+                    flushFromCachesMethod.invokeDirectStatic(changedKlass.mirror());
                 }
                 Iterator<WeakReference<StaticObject>> iterator = threadGroupContexts.iterator();
                 while (iterator.hasNext()) {
                     WeakReference<StaticObject> ref = iterator.next();
                     StaticObject context = ref.get();
                     if (context != null) {
-                        removeBeanInfoMethod.invokeDirect(context, changedKlass.mirror());
+                        removeBeanInfoMethod.invokeDirectSpecial(context, changedKlass.mirror());
                     } else {
                         // clean up list when context was reclaimed
                         iterator.remove();

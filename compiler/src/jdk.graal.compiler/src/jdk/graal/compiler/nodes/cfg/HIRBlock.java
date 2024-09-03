@@ -33,7 +33,7 @@ import java.util.Iterator;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
-import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
@@ -72,7 +72,7 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
 
     protected double relativeFrequency = -1D;
     protected ProfileSource frequencySource;
-    protected Loop<HIRBlock> loop;
+    protected CFGLoop<HIRBlock> loop;
 
     protected int numBackedges = -1;
 
@@ -80,9 +80,27 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
     private LocationSet killLocations;
     private LocationSet killLocationsBetweenThisAndDominator;
 
+    private boolean canUseBlockAsSpillTarget = true;
+
     HIRBlock(AbstractBeginNode node, ControlFlowGraph cfg) {
         super(cfg);
         this.beginNode = node;
+    }
+
+    @Override
+    public void setCanUseBlockAsSpillTarget(boolean canUseBlockAsSpillTarget) {
+        this.canUseBlockAsSpillTarget = canUseBlockAsSpillTarget;
+    }
+
+    @Override
+    public boolean canUseBlockAsSpillTarget() {
+        return canUseBlockAsSpillTarget;
+    }
+
+    @Override
+    public void resetDominators() {
+        super.resetDominators();
+        postdominator = INVALID_BLOCK_ID;
     }
 
     public AbstractBeginNode getBeginNode() {
@@ -94,11 +112,11 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
     }
 
     @Override
-    public Loop<HIRBlock> getLoop() {
+    public CFGLoop<HIRBlock> getLoop() {
         return loop;
     }
 
-    public void setLoop(Loop<HIRBlock> loop) {
+    public void setLoop(CFGLoop<HIRBlock> loop) {
         this.loop = loop;
         this.numBackedges = (isLoopHeader() ? loop.numBackedges() : -1);
     }
@@ -253,6 +271,8 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
         }
         return sb.toString();
     }
+
+    public abstract ModifiableBlock copyWithBegin(AbstractBeginNode newBegin, ControlFlowGraph newCFG);
 
     /**
      * Get the relative Frequency of a basic block.
@@ -461,7 +481,7 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
             return true;
         }
 
-        Loop<HIRBlock> l = block.loop;
+        CFGLoop<HIRBlock> l = block.loop;
         while (l != null) {
             if (l == this.loop) {
                 return true;
@@ -569,6 +589,7 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
          * blocks being deleted during LIR control flow optimization.
          */
         private boolean markedAsLoopEnd = false;
+        private boolean markedAsLoopHeader = false;
         /**
          * Index into {@link #getBlocks} of this block's first predecessor.
          */
@@ -596,6 +617,27 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
 
         ModifiableBlock(AbstractBeginNode node, ControlFlowGraph cfg) {
             super(node, cfg);
+        }
+
+        @Override
+        public ModifiableBlock copyWithBegin(AbstractBeginNode newBegin, ControlFlowGraph newCFG) {
+            ModifiableBlock b = new ModifiableBlock(newBegin, newCFG);
+            if (isLoopEnd()) {
+                b.markedAsLoopEnd = true;
+            }
+            if (isLoopHeader()) {
+                b.markedAsLoopHeader = true;
+            }
+            return b;
+        }
+
+        @Override
+        public boolean isLoopHeader() {
+            return markedAsLoopHeader || super.isLoopHeader();
+        }
+
+        public void markAsLoopHeader() {
+            this.markedAsLoopHeader = true;
         }
 
         @Override
@@ -724,7 +766,7 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
         @Override
         public void delete() {
             // adjust successor and predecessor lists
-            GraalError.guarantee(getSuccessorCount() == 1, "can only delete blocks with exactly one successor");
+            GraalError.guarantee(getSuccessorCount() == 1, "can only delete blocks with exactly one successor.");
             ModifiableBlock next = (ModifiableBlock) getSuccessorAt(0);
             int predecessorCount = getPredecessorCount();
             for (int i = 0; i < getPredecessorCount(); i++) {
@@ -758,8 +800,12 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
                 }
             }
             if (isLoopEnd()) {
-                GraalError.guarantee(next.isLoopHeader(), "a loop end's successor must be a loop header");
+                GraalError.guarantee(next.isLoopHeader(), "a loop end's successor must be a loop header, this=%s next=%s", this.getBeginNode(), next.getBeginNode());
                 next.numBackedges += predecessorCount - 1;
+            }
+
+            if (isLoopHeader()) {
+                next.markAsLoopHeader();
             }
 
             ArrayList<HIRBlock> newPreds = new ArrayList<>();
@@ -787,7 +833,7 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
             }
 
             // Remove the current block from the blocks of the loops it belongs to
-            for (Loop<HIRBlock> currLoop = loop; currLoop != null; currLoop = currLoop.getParent()) {
+            for (CFGLoop<HIRBlock> currLoop = loop; currLoop != null; currLoop = currLoop.getParent()) {
                 GraalError.guarantee(currLoop.getBlocks().contains(this), "block not contained in a loop it is referencing");
                 currLoop.getBlocks().remove(this);
             }
@@ -801,6 +847,11 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
 
         UnmodifiableBlock(AbstractBeginNode node, ControlFlowGraph cfg) {
             super(node, cfg);
+        }
+
+        @Override
+        public ModifiableBlock copyWithBegin(AbstractBeginNode newBegin, ControlFlowGraph newCFG) {
+            throw unsupported("do not use control flow graph transplant early in the compilation pipeline"); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override

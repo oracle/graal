@@ -48,4 +48,9 @@ int openSII(const char *pathname, int flags, int mode)
     return open(pathname, flags, mode);
 }
 
+int openatISII(int dirfd, const char *pathname, int flags, int mode)
+{
+    return openat(dirfd, pathname, flags, mode);
+}
+
 #endif

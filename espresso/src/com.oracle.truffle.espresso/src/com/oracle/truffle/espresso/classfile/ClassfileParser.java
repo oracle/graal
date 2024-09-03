@@ -26,6 +26,7 @@ import static com.oracle.truffle.espresso.EspressoOptions.SpecComplianceMode.STR
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_ABSTRACT;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_ANNOTATION;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_CALLER_SENSITIVE;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_DONT_INLINE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_ENUM;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINALIZER;
@@ -39,6 +40,7 @@ import static com.oracle.truffle.espresso.classfile.Constants.ACC_PRIVATE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PROTECTED;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PUBLIC;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_SCOPED;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_STABLE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_STATIC;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_STRICT;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_SUPER;
@@ -163,6 +165,7 @@ public final class ClassfileParser {
     private final ClassfileStream stream;
 
     private final ClassRegistry.ClassDefinitionInfo classDefinitionInfo;
+    private final boolean loaderIsBootOrPlatform;
 
     private Symbol<Type> classType;
 
@@ -175,20 +178,21 @@ public final class ClassfileParser {
 
     boolean verifiable;
 
-    private ConstantPool pool;
+    private ImmutableConstantPool pool;
 
-    private ClassfileParser(ClassLoadingEnv env, ClassfileStream stream, boolean verifiable, Symbol<Type> requestedClassType, ClassRegistry.ClassDefinitionInfo info) {
+    private ClassfileParser(ClassLoadingEnv env, ClassfileStream stream, boolean verifiable, boolean loaderIsBootOrPlatform, Symbol<Type> requestedClassType, ClassRegistry.ClassDefinitionInfo info) {
         this.requestedClassType = requestedClassType;
         this.env = env;
         this.classfile = null;
         this.stream = Objects.requireNonNull(stream);
         this.verifiable = verifiable;
+        this.loaderIsBootOrPlatform = loaderIsBootOrPlatform;
         this.classDefinitionInfo = info;
     }
 
     // Note: only used for reading the class name from class bytes
     private ClassfileParser(ClassLoadingEnv env, ClassfileStream stream) {
-        this(env, stream, false, null, ClassRegistry.ClassDefinitionInfo.EMPTY);
+        this(env, stream, false, false, null, ClassRegistry.ClassDefinitionInfo.EMPTY);
     }
 
     void handleBadConstant(Tag tag, ClassfileStream s) {
@@ -222,15 +226,12 @@ public final class ClassfileParser {
 
     public static ParserKlass parse(ClassLoadingEnv env, ClassfileStream stream, StaticObject loader, Symbol<Type> requestedClassName) {
         boolean verifiable = MethodVerifier.needsVerify(env.getLanguage(), loader);
-        return parse(env, stream, verifiable, requestedClassName, ClassRegistry.ClassDefinitionInfo.EMPTY);
+        return parse(env, stream, verifiable, env.loaderIsBootOrPlatform(loader), requestedClassName, ClassRegistry.ClassDefinitionInfo.EMPTY);
     }
 
-    public static ParserKlass parse(ClassLoadingEnv env, ClassfileStream stream, boolean verifiable, Symbol<Type> requestedClassName) {
-        return parse(env, stream, verifiable, requestedClassName, ClassRegistry.ClassDefinitionInfo.EMPTY);
-    }
-
-    public static ParserKlass parse(ClassLoadingEnv env, ClassfileStream stream, boolean verifiable, Symbol<Type> requestedClassType, ClassRegistry.ClassDefinitionInfo info) {
-        return new ClassfileParser(env, stream, verifiable, requestedClassType, info).parseClass();
+    public static ParserKlass parse(ClassLoadingEnv env, ClassfileStream stream, boolean verifiable, boolean loaderIsBootOrPlatform, Symbol<Type> requestedClassType,
+                    ClassRegistry.ClassDefinitionInfo info) {
+        return new ClassfileParser(env, stream, verifiable, loaderIsBootOrPlatform, requestedClassType, info).parseClass();
     }
 
     private ParserKlass parseClass() {
@@ -460,11 +461,11 @@ public final class ClassfileParser {
         return new ParserKlass(pool, classDefinitionInfo.patchFlags(classFlags), thisKlassName, thisKlassType, superKlass, superInterfaces, methods, fields, attributes, thisKlassIndex);
     }
 
-    public static Symbol<Symbol.Name> getClassName(ClassLoadingEnv env, byte[] bytes) {
+    public static Symbol<Name> getClassName(ClassLoadingEnv env, byte[] bytes) {
         return new ClassfileParser(env, new ClassfileStream(bytes, null)).getClassName();
     }
 
-    private Symbol<Symbol.Name> getClassName() {
+    private Symbol<Name> getClassName() {
 
         readMagic();
 
@@ -631,6 +632,18 @@ public final class ClassfileParser {
         }
     }
 
+    private enum AnnotationLocation {
+        Method,
+        Field,
+        Class
+    }
+
+    private record RuntimeVisibleAnnotationsAttribute(Attribute attribute, int flags) {
+        private RuntimeVisibleAnnotationsAttribute {
+            Objects.requireNonNull(attribute);
+        }
+    }
+
     private class CommonAttributeParser {
 
         final InfoType infoType;
@@ -694,6 +707,73 @@ public final class ClassfileParser {
                 return signature = parseSignatureAttribute(attributeName);
             }
             return null;
+        }
+
+        RuntimeVisibleAnnotationsAttribute parseRuntimeVisibleAnnotations(int attributeSize, AnnotationLocation location) {
+            assert infoType.supports(RUNTIME_VISIBLE_ANNOTATIONS);
+            if (runtimeVisibleAnnotations != null) {
+                throw ConstantPool.classFormatError("Duplicate RuntimeVisibleAnnotations attribute");
+            }
+
+            // Check for special internal annotations
+            byte[] data = stream.readByteArray(attributeSize);
+            ClassfileStream subStream = new ClassfileStream(data, classfile);
+            int flags = 0;
+            if (loaderIsBootOrPlatform || classDefinitionInfo.forceAllowVMAnnotations()) {
+                flags = switch (location) {
+                    case Method -> parseMethodVMAnnotations(subStream);
+                    case Field -> parseFieldVMAnnotations(subStream);
+                    case Class -> 0;
+                };
+            }
+
+            Attribute attribute = new Attribute(Name.RuntimeVisibleAnnotations, data);
+            runtimeVisibleAnnotations = attribute;
+            return new RuntimeVisibleAnnotationsAttribute(attribute, flags);
+        }
+
+        private int parseMethodVMAnnotations(ClassfileStream subStream) {
+            int flags = 0;
+            int count = subStream.readU2();
+            for (int j = 0; j < count; j++) {
+                int typeIndex = parseAnnotation(subStream);
+                Utf8Constant constant = pool.utf8At(typeIndex, "annotation type");
+                // Validation of the type is done at runtime by guest java code.
+                Symbol<Type> annotType = constant.value();
+                if (Type.java_lang_invoke_LambdaForm$Compiled.equals(annotType)) {
+                    flags |= ACC_LAMBDA_FORM_COMPILED;
+                } else if (Type.java_lang_invoke_LambdaForm$Hidden.equals(annotType) ||
+                                Type.jdk_internal_vm_annotation_Hidden.equals(annotType)) {
+                    flags |= ACC_HIDDEN;
+                } else if (Type.sun_reflect_CallerSensitive.equals(annotType) ||
+                                Type.jdk_internal_reflect_CallerSensitive.equals(annotType)) {
+                    flags |= ACC_CALLER_SENSITIVE;
+                } else if (Type.java_lang_invoke_ForceInline.equals(annotType) ||
+                                Type.jdk_internal_vm_annotation_ForceInline.equals(annotType)) {
+                    flags |= ACC_FORCE_INLINE;
+                } else if (Type.java_lang_invoke_DontInline.equals(annotType) ||
+                                Type.jdk_internal_vm_annotation_DontInline.equals(annotType)) {
+                    flags |= ACC_DONT_INLINE;
+                } else if (Type.jdk_internal_misc_ScopedMemoryAccess$Scoped.equals(annotType)) {
+                    flags |= ACC_SCOPED;
+                }
+            }
+            return flags;
+        }
+
+        private int parseFieldVMAnnotations(ClassfileStream subStream) {
+            int flags = 0;
+            int count = subStream.readU2();
+            for (int j = 0; j < count; j++) {
+                int typeIndex = parseAnnotation(subStream);
+                Utf8Constant constant = pool.utf8At(typeIndex, "annotation type");
+                // Validation of the type is done at runtime by guest java code.
+                Symbol<Type> annotType = constant.value();
+                if (Type.jdk_internal_vm_annotation_Stable.equals(annotType)) {
+                    flags |= ACC_STABLE;
+                }
+            }
+            return flags;
         }
     }
 
@@ -787,7 +867,6 @@ public final class ClassfileParser {
         CodeAttribute codeAttribute = null;
         Attribute checkedExceptions = null;
 
-        Attribute runtimeVisibleAnnotations = null;
         CommonAttributeParser commonAttributeParser = new CommonAttributeParser(InfoType.Method);
 
         MethodParametersAttribute methodParameters = null;
@@ -814,34 +893,9 @@ public final class ClassfileParser {
                 methodAttributes[i] = checkedExceptions = new Attribute(attributeName, null);
             } else if (majorVersion >= JAVA_1_5_VERSION) {
                 if (attributeName.equals(Name.RuntimeVisibleAnnotations)) {
-                    if (runtimeVisibleAnnotations != null) {
-                        throw ConstantPool.classFormatError("Duplicate RuntimeVisibleAnnotations attribute");
-                    }
-                    // Check if java.lang.invoke.LambdaForm.Compiled is present here.
-                    byte[] data = stream.readByteArray(attributeSize);
-                    ClassfileStream subStream = new ClassfileStream(data, this.classfile);
-                    int count = subStream.readU2();
-                    for (int j = 0; j < count; j++) {
-                        int typeIndex = parseAnnotation(subStream);
-                        Utf8Constant constant = pool.utf8At(typeIndex, "annotation type");
-                        // Validation of the type is done at runtime by guest java code.
-                        Symbol<Type> annotType = constant.value();
-                        if (Type.java_lang_invoke_LambdaForm$Compiled.equals(annotType)) {
-                            methodFlags |= ACC_LAMBDA_FORM_COMPILED;
-                        } else if (Type.java_lang_invoke_LambdaForm$Hidden.equals(annotType) ||
-                                        Type.jdk_internal_vm_annotation_Hidden.equals(annotType)) {
-                            methodFlags |= ACC_HIDDEN;
-                        } else if (Type.sun_reflect_CallerSensitive.equals(annotType) ||
-                                        Type.jdk_internal_reflect_CallerSensitive.equals(annotType)) {
-                            methodFlags |= ACC_CALLER_SENSITIVE;
-                        } else if (Type.java_lang_invoke_ForceInline.equals(annotType) ||
-                                        Type.jdk_internal_vm_annotation_ForceInline.equals(annotType)) {
-                            methodFlags |= ACC_FORCE_INLINE;
-                        } else if (Type.jdk_internal_misc_ScopedMemoryAccess$Scoped.equals(annotType)) {
-                            methodFlags |= ACC_SCOPED;
-                        }
-                    }
-                    methodAttributes[i] = runtimeVisibleAnnotations = new Attribute(attributeName, data);
+                    RuntimeVisibleAnnotationsAttribute annotations = commonAttributeParser.parseRuntimeVisibleAnnotations(attributeSize, AnnotationLocation.Method);
+                    methodFlags |= annotations.flags;
+                    methodAttributes[i] = annotations.attribute;
                 } else if (attributeName.equals(Name.MethodParameters)) {
                     if (methodParameters != null) {
                         throw ConstantPool.classFormatError("Duplicate MethodParameters attribute");
@@ -849,12 +903,9 @@ public final class ClassfileParser {
                     methodAttributes[i] = methodParameters = parseMethodParameters(attributeName);
                 } else {
                     Attribute attr = commonAttributeParser.parseCommonAttribute(attributeName, attributeSize);
-                    // stream.skip(attributeSize);
                     methodAttributes[i] = attr == null ? new Attribute(attributeName, stream.readByteArray(attributeSize)) : attr;
-
                 }
             } else {
-                // stream.skip(attributeSize);
                 methodAttributes[i] = new Attribute(attributeName, stream.readByteArray(attributeSize));
             }
 
@@ -1126,7 +1177,7 @@ public final class ClassfileParser {
                 throw ConstantPool.classFormatError("Invalid local variable table attribute entry: index points to an invalid frame slot: " + slot);
             }
 
-            locals[i] = new Local(poolName, typeName, bci, bci + length, slot);
+            locals[i] = new Local(poolName, typeName, bci, bci + length - 1, slot);
 
         }
         return new LocalVariableTable(name, locals);
@@ -1607,9 +1658,15 @@ public final class ClassfileParser {
                 fieldFlags |= ACC_SYNTHETIC;
                 fieldAttributes[i] = new Attribute(attributeName, null);
             } else if (majorVersion >= JAVA_1_5_VERSION) {
-                Attribute attr = commonAttributeParser.parseCommonAttribute(attributeName, attributeSize);
-                // stream.skip(attributeSize);
-                fieldAttributes[i] = attr == null ? new Attribute(attributeName, stream.readByteArray(attributeSize)) : attr;
+                if (attributeName.equals(Name.RuntimeVisibleAnnotations)) {
+                    RuntimeVisibleAnnotationsAttribute annotations = commonAttributeParser.parseRuntimeVisibleAnnotations(attributeSize, AnnotationLocation.Field);
+                    fieldFlags |= annotations.flags;
+                    fieldAttributes[i] = annotations.attribute;
+                } else {
+                    Attribute attr = commonAttributeParser.parseCommonAttribute(attributeName, attributeSize);
+                    // stream.skip(attributeSize);
+                    fieldAttributes[i] = attr == null ? new Attribute(attributeName, stream.readByteArray(attributeSize)) : attr;
+                }
             } else {
                 // stream.skip(attributeSize);
                 fieldAttributes[i] = new Attribute(attributeName, stream.readByteArray(attributeSize));

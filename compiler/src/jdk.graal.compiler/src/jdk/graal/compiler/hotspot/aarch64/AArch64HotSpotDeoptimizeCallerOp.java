@@ -46,6 +46,6 @@ public class AArch64HotSpotDeoptimizeCallerOp extends AArch64HotSpotEpilogueOp {
     @Override
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
         leaveFrame(crb, masm, /* emitSafepoint */false, false);
-        AArch64Call.directJmp(crb, masm, crb.foreignCalls.lookupForeignCall(HotSpotHostBackend.DEOPT_BLOB_UNCOMMON_TRAP));
+        AArch64Call.directJmp(crb, masm, crb.getForeignCalls().lookupForeignCall(HotSpotHostBackend.DEOPT_BLOB_UNCOMMON_TRAP));
     }
 }

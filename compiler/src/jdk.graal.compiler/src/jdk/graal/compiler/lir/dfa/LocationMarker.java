@@ -32,6 +32,7 @@ import java.util.EnumSet;
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
+import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.Indent;
@@ -79,6 +80,7 @@ public abstract class LocationMarker<S extends ValueSet<S>> {
             liveInMap.put(block, newLiveValueSet());
         }
         while (!worklist.isEmpty()) {
+            CompilationAlarm.checkProgress(lir.getOptions(), lir);
             BasicBlock<?> block = worklist.poll();
             processBlock(block, worklist);
         }

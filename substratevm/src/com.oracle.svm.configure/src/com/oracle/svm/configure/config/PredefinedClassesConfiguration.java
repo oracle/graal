@@ -31,24 +31,28 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import com.oracle.svm.core.configure.ConfigurationParser;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import jdk.graal.compiler.phases.common.LazyValue;
+import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
 import com.oracle.svm.configure.ConfigurationBase;
-import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.core.configure.ConfigurationFile;
+import com.oracle.svm.core.configure.ConfigurationParser;
 import com.oracle.svm.core.configure.PredefinedClassesConfigurationParser;
-import com.oracle.svm.core.hub.PredefinedClassesSupport;
+import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.util.Digest;
+import jdk.graal.compiler.util.json.JsonWriter;
 
 public final class PredefinedClassesConfiguration extends ConfigurationBase<PredefinedClassesConfiguration, PredefinedClassesConfiguration.Predicate> {
-    private final Path[] classDestinationDirs;
+    private final List<LazyValue<Path>> classDestinationDirs;
     private final ConcurrentMap<String, ConfigurationPredefinedClass> classes = new ConcurrentHashMap<>();
     private final java.util.function.Predicate<String> shouldExcludeClassWithHash;
 
-    public PredefinedClassesConfiguration(Path[] classDestinationDirs, java.util.function.Predicate<String> shouldExcludeClassWithHash) {
+    public PredefinedClassesConfiguration(List<LazyValue<Path>> classDestinationDirs, java.util.function.Predicate<String> shouldExcludeClassWithHash) {
         this.classDestinationDirs = classDestinationDirs;
         this.shouldExcludeClassWithHash = shouldExcludeClassWithHash;
     }
@@ -85,20 +89,20 @@ public final class PredefinedClassesConfiguration extends ConfigurationBase<Pred
     }
 
     @Override
-    public void mergeConditional(ConfigurationCondition condition, PredefinedClassesConfiguration other) {
+    public void mergeConditional(UnresolvedConfigurationCondition condition, PredefinedClassesConfiguration other) {
         /* Not implemented with conditions yet */
         classes.putAll(other.classes);
     }
 
     public void add(String nameInfo, byte[] classData) {
-        String hash = PredefinedClassesSupport.hash(classData, 0, classData.length);
+        String hash = Digest.digest(classData);
         if (shouldExcludeClassWithHash != null && shouldExcludeClassWithHash.test(hash)) {
             return;
         }
         if (classDestinationDirs != null) {
-            for (Path dir : classDestinationDirs) {
+            for (LazyValue<Path> dir : classDestinationDirs) {
                 try {
-                    Files.write(dir.resolve(getFileName(hash)), classData);
+                    Files.write(dir.get().resolve(getFileName(hash)), classData);
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
@@ -119,11 +123,11 @@ public final class PredefinedClassesConfiguration extends ConfigurationBase<Pred
             } catch (Exception ignored) {
                 localBaseDir = null;
             }
-            for (Path destDir : classDestinationDirs) {
-                if (!destDir.equals(localBaseDir)) {
+            for (LazyValue<Path> destDir : classDestinationDirs) {
+                if (!destDir.get().equals(localBaseDir)) {
                     try {
                         String fileName = getFileName(hash);
-                        Path target = destDir.resolve(fileName);
+                        Path target = destDir.get().resolve(fileName);
                         if (baseUri != null) {
                             try (InputStream is = PredefinedClassesConfigurationParser.openClassdataStream(baseUri, hash)) {
                                 Files.copy(is, target, StandardCopyOption.REPLACE_EXISTING);
@@ -164,13 +168,19 @@ public final class PredefinedClassesConfiguration extends ConfigurationBase<Pred
     }
 
     @Override
-    public ConfigurationParser createParser() {
+    public ConfigurationParser createParser(boolean strictMetadata) {
+        VMError.guarantee(!strictMetadata, "Predefined classes configuration is not supported with strict metadata");
         return new PredefinedClassesConfigurationParser(this::add, true);
     }
 
     @Override
     public boolean isEmpty() {
         return classes.isEmpty();
+    }
+
+    @Override
+    public boolean supportsCombinedFile() {
+        return false;
     }
 
     public boolean containsClassWithName(String className) {

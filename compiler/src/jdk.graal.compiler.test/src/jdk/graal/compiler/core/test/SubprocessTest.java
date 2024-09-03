@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.core.test;
 
+import static jdk.graal.compiler.test.SubprocessUtil.getProcessCommandLine;
 import static jdk.graal.compiler.test.SubprocessUtil.getVMCommandLine;
 import static jdk.graal.compiler.test.SubprocessUtil.java;
 import static jdk.graal.compiler.test.SubprocessUtil.withoutDebuggerArguments;
@@ -31,12 +32,30 @@ import static jdk.graal.compiler.test.SubprocessUtil.withoutDebuggerArguments;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.function.Predicate;
 
 import jdk.graal.compiler.test.SubprocessUtil;
 import jdk.graal.compiler.test.SubprocessUtil.Subprocess;
 
+/**
+ * Utility class for executing Graal compiler tests in a subprocess. This can be useful for tests
+ * that need special VM arguments or that produce textual output or a special process termination
+ * status that need to be analyzed. The class to be executed may be the current class or any other
+ * unit test class.
+ * <p/>
+ * If the test class contains multiple {@code @Test} methods, they will all be executed in the
+ * subprocess, except when using one of the methods that take a {@code testSelector} argument. All
+ * methods in this class take a {@link Runnable} argument. If the test class is the same as the
+ * calling class, this runnable defines the operation to be executed in the subprocess. If the test
+ * class is not the same as the calling class, the runnable is irrelevant and can be a nop.
+ * <p/>
+ * The subprocess will inherit any {@code -JUnitVerbose} flag (typically set through
+ * {@code mx unittest --verbose}) from the parent process. If this flag is set, the standard output
+ * of the child process will be echoed to the standard output of the parent process. If the child
+ * process terminates with an error, its standard output will always be printed.
+ */
 public abstract class SubprocessTest extends GraalCompilerTest {
 
     /**
@@ -48,15 +67,29 @@ public abstract class SubprocessTest extends GraalCompilerTest {
      *         {@link Subprocess} instance describing the process after its successful termination.
      */
     public SubprocessUtil.Subprocess launchSubprocess(Runnable runnable, String... args) throws InterruptedException, IOException {
-        return launchSubprocess(null, null, true, getClass(), runnable, args);
+        return launchSubprocess(null, null, true, getClass(), null, runnable, args);
+    }
+
+    /**
+     * Like {@link #launchSubprocess(Runnable, String...)}, but with an extra {@code testSelector}
+     * to specify a specific test method to execute in the test class.
+     */
+    public SubprocessUtil.Subprocess launchSubprocess(String testSelector, Runnable runnable, String... args) throws InterruptedException, IOException {
+        return launchSubprocess(null, null, true, getClass(), testSelector, runnable, args);
     }
 
     public SubprocessUtil.Subprocess launchSubprocess(Predicate<String> vmArgsFilter, Runnable runnable, String... args) throws InterruptedException, IOException {
-        return launchSubprocess(null, vmArgsFilter, true, getClass(), runnable, args);
+        return launchSubprocess(null, vmArgsFilter, true, getClass(), null, runnable, args);
     }
 
     public static SubprocessUtil.Subprocess launchSubprocess(Class<? extends GraalCompilerTest> testClass, Runnable runnable, String... args) throws InterruptedException, IOException {
-        return launchSubprocess(null, null, true, testClass, runnable, args);
+        return launchSubprocess(null, null, true, testClass, null, runnable, args);
+    }
+
+    public static SubprocessUtil.Subprocess launchSubprocess(Predicate<List<String>> testPredicate, Predicate<String> vmArgsFilter, boolean expectNormalExit,
+                    Class<? extends GraalCompilerTest> testClass, Runnable runnable, String... args)
+                    throws InterruptedException, IOException {
+        return launchSubprocess(testPredicate, vmArgsFilter, expectNormalExit, testClass, null, runnable, args);
     }
 
     private static List<String> filter(List<String> args, Predicate<String> vmArgsFilter) {
@@ -70,9 +103,9 @@ public abstract class SubprocessTest extends GraalCompilerTest {
     }
 
     public static SubprocessUtil.Subprocess launchSubprocess(Predicate<List<String>> testPredicate, Predicate<String> vmArgsFilter, boolean expectNormalExit,
-                    Class<? extends GraalCompilerTest> testClass, Runnable runnable, String... args)
+                    Class<? extends GraalCompilerTest> testClass, String testSelector, Runnable runnable, String... args)
                     throws InterruptedException, IOException {
-        String recursionPropName = testClass.getName() + ".subprocess";
+        String recursionPropName = "test." + testClass.getName() + ".subprocess";
         if (Boolean.getBoolean(recursionPropName)) {
             runnable.run();
             return null;
@@ -85,32 +118,31 @@ public abstract class SubprocessTest extends GraalCompilerTest {
                 vmArgs = filter(vmArgs, vmArgsFilter);
             }
 
-            String verboseProperty = testClass.getName() + ".verbose";
-            boolean verbose = Boolean.getBoolean(verboseProperty);
-            if (verbose) {
-                System.err.println(String.join(" ", vmArgs));
+            List<String> mainClassAndArgs = new LinkedList<>();
+            mainClassAndArgs.add("com.oracle.mxtool.junit.MxJUnitWrapper");
+            String testName = testClass.getName();
+            if (testSelector != null) {
+                testName += "#" + testSelector;
             }
-            SubprocessUtil.Subprocess proc = java(vmArgs, "com.oracle.mxtool.junit.MxJUnitWrapper", testClass.getName());
-            if (testPredicate != null) {
-                assertTrue(testPredicate.test(proc.output), proc.toString() + " produced unexpected output:\n\n" + String.join("\n", proc.output));
+            mainClassAndArgs.add(testName);
+            boolean junitVerbose = getProcessCommandLine().contains("-JUnitVerbose");
+            if (junitVerbose) {
+                mainClassAndArgs.add("-JUnitVerbose");
             }
-            if (verbose) {
-                for (String line : proc.output) {
-                    System.err.println(line);
-                }
-            }
-            String suffix = "";
-            if (!Boolean.getBoolean(SubprocessUtil.KEEP_TEMPORARY_ARGUMENT_FILES_PROPERTY_NAME)) {
-                suffix = String.format("%s%n%nSet -D%s=true to preserve subprocess temp files.", suffix, SubprocessUtil.KEEP_TEMPORARY_ARGUMENT_FILES_PROPERTY_NAME);
-            }
-            if (!verbose) {
-                suffix = String.format("%s%n%nSet -D%s=true for verbose output.", suffix, verboseProperty);
+            SubprocessUtil.Subprocess proc = java(vmArgs, mainClassAndArgs);
+
+            if (testPredicate != null && !testPredicate.test(proc.output)) {
+                fail("Subprocess produced unexpected output:%n%s", proc.preserveArgfile());
             }
             int exitCode = proc.exitCode;
-            if (expectNormalExit) {
-                assertTrue(exitCode == 0, String.format("%s produced exit code %d, but expected 0.%s", proc, exitCode, suffix));
-            } else {
-                assertTrue(exitCode != 0, String.format("%s produced normal exit code %d, but expected abnormal exit%s", proc, exitCode, suffix));
+            if ((exitCode == 0) != expectNormalExit) {
+                String expectExitCode = expectNormalExit ? "0" : "non-0";
+                fail("Subprocess produced exit code %d, but expected %s%n%s", exitCode, expectExitCode, proc.preserveArgfile());
+            }
+
+            // Test passed
+            if (junitVerbose) {
+                System.out.printf("%n%s%n", proc.preserveArgfile());
             }
             return proc;
         }

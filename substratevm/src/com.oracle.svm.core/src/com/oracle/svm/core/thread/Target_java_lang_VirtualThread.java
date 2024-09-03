@@ -28,42 +28,193 @@ import static com.oracle.svm.core.thread.VirtualThreadHelper.asTarget;
 import static com.oracle.svm.core.thread.VirtualThreadHelper.asThread;
 
 import java.util.Locale;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ScheduledExecutorService;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.annotate.Inject;
+import com.oracle.svm.core.annotate.InjectAccessors;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK22OrLater;
+import com.oracle.svm.core.jdk.JDK21OrEarlier;
+import com.oracle.svm.core.jdk.JDKLatest;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
+
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 
 @TargetClass(className = "java.lang.VirtualThread")
 public final class Target_java_lang_VirtualThread {
     // Checkstyle: stop
     @Alias static int NEW;
     @Alias static int STARTED;
-    @Alias static int RUNNABLE;
+    @Alias //
+    @TargetElement(onlyWith = JDK21OrEarlier.class) static int RUNNABLE;
     @Alias static int RUNNING;
     @Alias static int PARKING;
     @Alias static int PARKED;
     @Alias static int PINNED;
     @Alias static int YIELDING;
+    @TargetElement(onlyWith = JDKLatest.class) @Alias static int YIELDED;
     @Alias static int TERMINATED;
     @Alias static int SUSPENDED;
-    @TargetElement(onlyWith = JDK22OrLater.class) @Alias static int TIMED_PARKING;
-    @TargetElement(onlyWith = JDK22OrLater.class) @Alias static int TIMED_PARKED;
-    @TargetElement(onlyWith = JDK22OrLater.class) @Alias static int TIMED_PINNED;
+    @TargetElement(onlyWith = JDKLatest.class) @Alias static int TIMED_PARKING;
+    @TargetElement(onlyWith = JDKLatest.class) @Alias static int TIMED_PARKED;
+    @TargetElement(onlyWith = JDKLatest.class) @Alias static int TIMED_PINNED;
+    @TargetElement(onlyWith = JDKLatest.class) @Alias static int UNPARKED;
     @Alias static Target_jdk_internal_vm_ContinuationScope VTHREAD_SCOPE;
+
+    /**
+     * (Re)initialize the default scheduler at runtime so that it does not reference any platform
+     * threads of the image builder and uses the respective number of CPUs and system properties.
+     */
+    @Alias //
+    @InjectAccessors(DefaultSchedulerAccessor.class) //
+    public static ForkJoinPool DEFAULT_SCHEDULER;
+
+    /**
+     * (Re)initialize the unparker at runtime so that it does not reference any platform threads of
+     * the image builder.
+     */
+    @Alias //
+    @InjectAccessors(UnparkerAccessor.class) //
+    @TargetElement(onlyWith = JDK21OrEarlier.class) //
+    private static ScheduledExecutorService UNPARKER;
+
+    @Alias //
+    @InjectAccessors(DelayedTaskSchedulersAccessor.class) //
+    @TargetElement(onlyWith = JDKLatest.class) //
+    private static ScheduledExecutorService[] DELAYED_TASK_SCHEDULERS;
+
+    /** Go through {@link #nondefaultScheduler}. */
+    @Alias //
+    @InjectAccessors(SchedulerAccessor.class) //
+    public Executor scheduler;
+
+    /**
+     * {@code null} if using {@link #DEFAULT_SCHEDULER}, otherwise a specific {@link Executor}. This
+     * avoids references to the {@link #DEFAULT_SCHEDULER} of the image builder which can reference
+     * platform threads and fail the image build.
+     */
+    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = NondefaultSchedulerSupplier.class) //
+    private Executor nondefaultScheduler;
     // Checkstyle: resume
+
+    @Alias
+    private static native ForkJoinPool createDefaultScheduler();
+
+    @Alias
+    @TargetElement(onlyWith = JDK21OrEarlier.class)
+    private static native ScheduledExecutorService createDelayedTaskScheduler();
+
+    @Alias
+    @TargetElement(onlyWith = JDKLatest.class)
+    private static native ScheduledExecutorService[] createDelayedTaskSchedulers();
+
+    private static final class DefaultSchedulerAccessor {
+        private static volatile ForkJoinPool defaultScheduler;
+
+        public static ForkJoinPool get() {
+            ForkJoinPool result = defaultScheduler;
+            if (result == null) {
+                result = initializeDefaultScheduler();
+            }
+            return result;
+        }
+
+        private static synchronized ForkJoinPool initializeDefaultScheduler() {
+            ForkJoinPool result = defaultScheduler;
+            if (result == null) {
+                result = createDefaultScheduler();
+                defaultScheduler = result;
+            }
+            return result;
+        }
+    }
+
+    private static final class UnparkerAccessor {
+        private static volatile ScheduledExecutorService delayedTaskScheduler;
+
+        @SuppressWarnings("unused")
+        public static ScheduledExecutorService get() {
+            ScheduledExecutorService result = delayedTaskScheduler;
+            if (result == null) {
+                result = initializeDelayedTaskScheduler();
+            }
+            return result;
+        }
+
+        private static synchronized ScheduledExecutorService initializeDelayedTaskScheduler() {
+            ScheduledExecutorService result = delayedTaskScheduler;
+            if (result == null) {
+                result = createDelayedTaskScheduler();
+                delayedTaskScheduler = result;
+            }
+            return result;
+        }
+    }
+
+    private static final class DelayedTaskSchedulersAccessor {
+        private static volatile ScheduledExecutorService[] delayedTaskSchedulers;
+
+        @SuppressWarnings("unused")
+        public static ScheduledExecutorService[] get() {
+            ScheduledExecutorService[] result = delayedTaskSchedulers;
+            if (result == null) {
+                result = initializeDelayedTaskScheduler();
+            }
+            return result;
+        }
+
+        private static synchronized ScheduledExecutorService[] initializeDelayedTaskScheduler() {
+            ScheduledExecutorService[] result = delayedTaskSchedulers;
+            if (result == null) {
+                result = createDelayedTaskSchedulers();
+                delayedTaskSchedulers = result;
+            }
+            return result;
+        }
+    }
+
+    @SuppressWarnings("unused")
+    private static final class SchedulerAccessor {
+        static Executor get(Target_java_lang_VirtualThread self) {
+            Executor scheduler = self.nondefaultScheduler;
+            if (scheduler == null) {
+                scheduler = DefaultSchedulerAccessor.get();
+            }
+            return scheduler;
+        }
+
+        static void set(Target_java_lang_VirtualThread self, Executor executor) {
+            assert self.nondefaultScheduler == null;
+            if (executor != DefaultSchedulerAccessor.get()) {
+                self.nondefaultScheduler = executor;
+            }
+        }
+    }
+
+    private static final class NondefaultSchedulerSupplier implements FieldValueTransformer {
+        @Override
+        public Object transform(Object receiver, Object originalValue) {
+            Class<?> vthreadClass = ReflectionUtil.lookupClass(false, "java.lang.VirtualThread");
+            Object defaultScheduler = ReflectionUtil.readStaticField(vthreadClass, "DEFAULT_SCHEDULER");
+            return (originalValue == defaultScheduler) ? null : originalValue;
+        }
+    }
 
     @Substitute
     private static void registerNatives() {
@@ -94,9 +245,24 @@ public final class Target_java_lang_VirtualThread {
     }
 
     @Substitute
-    @SuppressWarnings({"static-method", "unused"})
-    private void notifyJvmtiHideFrames(boolean hide) {
+    @TargetElement(onlyWith = JDKLatest.class)
+    @SuppressWarnings("unused")
+    private static void notifyJvmtiHideFrames(boolean hide) {
         // unimplemented (GR-45392)
+    }
+
+    @Substitute
+    @TargetElement(name = "notifyJvmtiHideFrames", onlyWith = JDK21OrEarlier.class)
+    @SuppressWarnings({"static-method", "unused"})
+    private void notifyJvmtiHideFramesJDK22(boolean hide) {
+        // unimplemented (GR-45392)
+    }
+
+    @Substitute
+    @SuppressWarnings({"static-method", "unused"})
+    @TargetElement(onlyWith = JDKLatest.class)
+    private static void notifyJvmtiDisableSuspend(boolean enter) {
+        // unimplemented (GR-51158)
     }
 
     @Alias volatile Thread carrierThread;
@@ -114,8 +280,9 @@ public final class Target_java_lang_VirtualThread {
     @Alias
     native StackTraceElement[] tryGetStackTrace();
 
-    @Substitute
-    boolean getAndClearInterrupt() {
+    @Substitute // not needed on newer JDKs that use safe disableSuspendAndPreempt()
+    @TargetElement(name = "getAndClearInterrupt", onlyWith = JDK21OrEarlier.class)
+    boolean getAndClearInterruptJDK21() {
         assert Thread.currentThread() == SubstrateUtil.cast(this, Object.class);
         boolean oldValue = interrupted;
         if (oldValue) {
@@ -131,8 +298,20 @@ public final class Target_java_lang_VirtualThread {
     }
 
     @Alias
+    @TargetElement(onlyWith = JDKLatest.class)
+    native void disableSuspendAndPreempt();
+
+    @Alias
+    @TargetElement(onlyWith = JDKLatest.class)
+    native void enableSuspendAndPreempt();
+
+    @Alias
     private native void setCarrierThread(Target_java_lang_Thread carrier);
 
+    /*
+     * GR-57064: substitution should not be needed (acquireInterruptLockMaybeSwitch should not have
+     * been necessary here), but currently cannot be removed because of the JFR registration.
+     */
     @Substitute
     void mount() {
         Target_java_lang_Thread carrier = asTarget(Target_java_lang_Thread.currentCarrierThread());
@@ -143,13 +322,10 @@ public final class Target_java_lang_VirtualThread {
             // Checkstyle: allow Thread.isInterrupted: as in JDK
         } else if (carrier.isInterrupted()) {
             // Checkstyle: disallow Thread.isInterrupted
-            Object token = VirtualThreadHelper.acquireInterruptLockMaybeSwitch(this);
-            try {
+            synchronized (asTarget(this).interruptLock) {
                 if (!interrupted) {
                     carrier.clearInterrupt();
                 }
-            } finally {
-                VirtualThreadHelper.releaseInterruptLockMaybeSwitchBack(this, token);
             }
         }
 
@@ -159,8 +335,9 @@ public final class Target_java_lang_VirtualThread {
         }
     }
 
-    @Substitute
-    void unmount() {
+    @Substitute // not needed on newer JDKs that use safe disableSuspendAndPreempt()
+    @TargetElement(name = "unmount", onlyWith = JDK21OrEarlier.class)
+    void unmountJDK21() {
         Target_java_lang_Thread carrier = asTarget(this.carrierThread);
         carrier.setCurrentThread(asThread(carrier));
 
@@ -176,8 +353,65 @@ public final class Target_java_lang_VirtualThread {
     @Alias
     native int state();
 
+    /** Needed for handling monitor-specific states. */
     @Substitute
+    @TargetElement(onlyWith = JDKLatest.class)
     Thread.State threadState() {
+        int state = state() & ~SUSPENDED;
+        if (state == NEW) {
+            return Thread.State.NEW;
+        } else if (state == STARTED) {
+            if (asTarget(this).threadContainer() == null) {
+                return Thread.State.NEW;
+            } else {
+                return Thread.State.RUNNABLE;
+            }
+        } else if (state == UNPARKED || state == YIELDED) {
+            return Thread.State.RUNNABLE;
+        } else if (state == RUNNING) {
+            if (Thread.currentThread() != asThread(this)) {
+                disableSuspendAndPreempt();
+                try {
+                    synchronized (asTarget(this).interruptLock) {
+                        Thread carrier = this.carrierThread;
+                        if (carrier != null) {
+                            return asTarget(carrier).threadState();
+                        }
+                    }
+                } finally {
+                    enableSuspendAndPreempt();
+                }
+            }
+            return Thread.State.RUNNABLE;
+        } else if (state == PARKING || state == YIELDING) {
+            return Thread.State.RUNNABLE;
+        } else if (state == PARKED || state == PINNED) {
+            int parkedThreadStatus = MonitorSupport.singleton().getParkedThreadStatus(asThread(this), false);
+            switch (parkedThreadStatus) {
+                case ThreadStatus.BLOCKED_ON_MONITOR_ENTER:
+                    return Thread.State.BLOCKED;
+                case ThreadStatus.PARKED:
+                case ThreadStatus.IN_OBJECT_WAIT:
+                    return Thread.State.WAITING;
+                default:
+                    throw VMError.shouldNotReachHereUnexpectedInput(parkedThreadStatus); // ExcludeFromJacocoGeneratedReport
+            }
+        } else if (state == TERMINATED) {
+            return Thread.State.TERMINATED;
+        } else {
+            if (state == TIMED_PARKING) {
+                return Thread.State.RUNNABLE;
+            } else if (state == TIMED_PARKED || state == TIMED_PINNED) {
+                return Thread.State.TIMED_WAITING;
+            }
+        }
+        throw new InternalError();
+    }
+
+    /** Needed because {@link #disableSuspendAndPreempt()} does not exist on JDK 21. */
+    @Substitute
+    @TargetElement(name = "threadState", onlyWith = JDK21OrEarlier.class)
+    Thread.State threadStateJDK21() {
         int state = state() & ~SUSPENDED;
         if (state == NEW) {
             return Thread.State.NEW;
@@ -215,12 +449,6 @@ public final class Target_java_lang_VirtualThread {
             }
         } else if (state == TERMINATED) {
             return Thread.State.TERMINATED;
-        } else if (JavaVersionUtil.JAVA_SPEC >= 22) {
-            if (state == TIMED_PARKING) {
-                return Thread.State.RUNNABLE;
-            } else if (state == TIMED_PARKED || state == TIMED_PINNED) {
-                return Thread.State.TIMED_WAITING;
-            }
         }
         throw new InternalError();
     }
@@ -229,9 +457,9 @@ public final class Target_java_lang_VirtualThread {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     native boolean isTerminated();
 
-    @Substitute
-    @Override
-    public String toString() {
+    @Substitute // not needed on newer JDKs that use safe disableSuspendAndPreempt()
+    @TargetElement(name = "toString", onlyWith = JDK21OrEarlier.class)
+    public String toStringJDK21() {
         StringBuilder sb = new StringBuilder("VirtualThread[#");
         sb.append(asTarget(this).threadId());
         String name = asThread(this).getName();
@@ -258,7 +486,7 @@ public final class Target_java_lang_VirtualThread {
         }
         // include virtual thread state when not mounted
         if (carrier == null) {
-            String stateAsString = threadState().toString();
+            String stateAsString = threadStateJDK21().toString();
             sb.append(stateAsString.toLowerCase(Locale.ROOT));
         }
         return sb.toString();
@@ -281,6 +509,8 @@ public final class Target_java_lang_VirtualThread {
 
 final class VirtualThreadHelper {
     static void blockedOn(Target_sun_nio_ch_Interruptible b) {
+        assert JavaVersionUtil.JAVA_SPEC <= 21 : "blockedOn in newer JDKs uses safe disableSuspendAndPreempt";
+
         Target_java_lang_VirtualThread self = asVTarget(Thread.currentThread());
         Object token = acquireInterruptLockMaybeSwitch(self);
         try {
@@ -298,6 +528,8 @@ final class VirtualThreadHelper {
      * @see #releaseInterruptLockMaybeSwitchBack
      */
     static Object acquireInterruptLockMaybeSwitch(Target_java_lang_VirtualThread self) {
+        assert JavaVersionUtil.JAVA_SPEC <= 21 : "newer JDKs provide disableSuspendAndPreempt";
+
         Object token = null;
         if (SubstrateUtil.cast(self, Object.class) == Thread.currentThread()) {
             /*
@@ -317,6 +549,8 @@ final class VirtualThreadHelper {
 
     /** @see #acquireInterruptLockMaybeSwitch */
     static void releaseInterruptLockMaybeSwitchBack(Target_java_lang_VirtualThread self, Object token) {
+        assert JavaVersionUtil.JAVA_SPEC <= 21 : "newer JDKs provide enableSuspendAndPreempt";
+
         Object lock = asTarget(self).interruptLock;
         MonitorSupport.singleton().monitorExit(lock, MonitorInflationCause.VM_INTERNAL);
         if (token != null) {

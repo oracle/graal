@@ -307,9 +307,11 @@ import jdk.vm.ci.meta.JavaMethod;
  */
 public class BciBlockMapping implements JavaMethodContext {
     public static class Options {
-        @Option(help = "Max amount of extra effort to expend handling irreducible loops. " +
-                        "A value <= 1 disables support for irreducible loops.", type = OptionType.Expert)//
+        //@formatter:off
+        @Option(help = "Specifies the maximum amount of extra effort to expend handling irreducible loops. " +
+                       "A value <= 1 disables support for irreducible loops.", type = OptionType.Expert)//
         public static final OptionKey<Double> MaxDuplicationFactor = new OptionKey<>(2.0);
+        //@formatter:on
     }
 
     protected static final int UNASSIGNED_ID = -1;
@@ -443,6 +445,12 @@ public class BciBlockMapping implements JavaMethodContext {
             } catch (CloneNotSupportedException e) {
                 throw new RuntimeException(e);
             }
+        }
+
+        private BciBlock duplicateAsNoExceptionHandlerEntry() {
+            BciBlock dup = this.duplicate();
+            dup.isExceptionEntry = false;
+            return dup;
         }
 
         @Override
@@ -635,14 +643,16 @@ public class BciBlockMapping implements JavaMethodContext {
     public static class ExceptionDispatchBlock extends BciBlock {
         public final ExceptionHandler handler;
         public final int deoptBci;
+        public final int handlerID;
 
         /**
          * Constructor for a normal dispatcher.
          */
-        protected ExceptionDispatchBlock(ExceptionHandler handler, int deoptBci) {
+        protected ExceptionDispatchBlock(ExceptionHandler handler, int handlerID, int deoptBci) {
             super(handler.getHandlerBCI(), handler.getHandlerBCI());
             this.deoptBci = deoptBci;
             this.handler = handler;
+            this.handlerID = handlerID;
         }
 
         /**
@@ -652,6 +662,7 @@ public class BciBlockMapping implements JavaMethodContext {
             super(deoptBci, deoptBci);
             this.deoptBci = deoptBci;
             this.handler = null;
+            this.handlerID = -1;
         }
 
         @Override
@@ -743,6 +754,12 @@ public class BciBlockMapping implements JavaMethodContext {
     protected EconomicMap<Integer, BciBlock> branchTargetBlocksOOB;
     public final Bytecode code;
     public boolean hasJsrBytecodes;
+    /*
+     * Indicates whether the bytecode contains patterns where exception handler entries are
+     * reachable from normal control flow. Such patterns need to be resolved by duplicating the
+     * reachable exception handler entry blocks.
+     */
+    private boolean unresolvedExceptionHandlerReachability = false;
 
     protected final ExceptionHandler[] exceptionHandlers;
     protected BitSet[] bciExceptionHandlerIDs;
@@ -807,6 +824,8 @@ public class BciBlockMapping implements JavaMethodContext {
         computeBciExceptionHandlerIDs(stream);
         makeExceptionEntries(splitExceptionRanges);
         iterateOverBytecodes(stream);
+        resolveExceptionHandlerReachability();
+
         startBlock = blockMap[0];
         if (debug.isDumpEnabled(DebugContext.INFO_LEVEL)) {
             debug.dump(DebugContext.INFO_LEVEL, this, code.getMethod().format("After iterateOverBytecodes %f %R %H.%n(%P)"));
@@ -833,6 +852,76 @@ public class BciBlockMapping implements JavaMethodContext {
 
         if (debug.isLogEnabled()) {
             this.log(blockMap, "Before LivenessAnalysis");
+        }
+    }
+
+    /**
+     * Duplicates exception handler entry blocks if they are directly reachable from other blocks.
+     * Such patterns can be created by code shrinking or obfuscation tools. For example:
+     *
+     * <pre>
+     * try{
+     *   foo()
+     * } catch (Exception e) {
+     *   x = baz(x);
+     *   return x;
+     * }
+     * (...)
+     * try{
+     *   bar()
+     * } catch (Exception e) {
+     *   doSomething()
+     *   x = baz(x);
+     *   return x;
+     * }
+     * </pre>
+     *
+     * On bytecode level, the second exception handler can re-use the first handler:
+     *
+     * <pre>
+     * try{
+     *   bar()
+     * } catch (Exception e) {
+     *   doSomething()
+     *   goto handlerFoo
+     * }
+     * </pre>
+     *
+     * After duplicating the exception handler entry for {@code foo} and marking the duplicate as
+     * non-exception handler entry, it can be used normal control flow as well.
+     */
+    private void resolveExceptionHandlerReachability() {
+        if (!unresolvedExceptionHandlerReachability) {
+            return;
+        }
+        assert exceptionHandlers != null : "Cannot resolve exception handler reachability without exception handlers.";
+
+        /*
+         * Duplicate exception handler entry blocks if they are directly reachable from other
+         * blocks.
+         */
+        EconomicMap<BciBlock, BciBlock> duplicates = EconomicMap.create();
+        for (BciBlock b : blockMap) {
+            if (b == null) {
+                continue;
+            }
+            for (int i = 0; i < b.successors.size(); i++) {
+                BciBlock sux = b.successors.get(i);
+                if (sux.isExceptionEntry) {
+                    BciBlock dup = duplicates.get(sux);
+                    if (dup == null) {
+                        dup = sux.duplicateAsNoExceptionHandlerEntry();
+                        duplicates.put(sux, dup);
+                        blocksNotYetAssignedId++;
+                    }
+                    b.successors.set(i, dup);
+
+                    if (duplicates.get(b) != null) {
+                        // Patch successor of own duplicate.
+                        duplicates.get(b).successors.set(i, dup);
+                    }
+                }
+            }
         }
     }
 
@@ -1116,7 +1205,8 @@ public class BciBlockMapping implements JavaMethodContext {
                 case LDC:
                 case LDC_W:
                 case LDC2_W:
-                case MONITORENTER: {
+                case MONITORENTER:
+                case MONITOREXIT: {
                     /*
                      * All bytecodes that can trigger lazy class initialization via a
                      * ClassInitializationPlugin (allocations, static field access) must be listed
@@ -1262,11 +1352,11 @@ public class BciBlockMapping implements JavaMethodContext {
                 case FCMPG:
                 case DCMPL:
                 case DCMPG:
-                case MONITOREXIT:
-                    // All stack manipulation, comparison, conversion and arithmetic operators
-                    // except for idiv and irem can't throw exceptions so the don't need to connect
-                    // exception edges. MONITOREXIT can't throw exceptions in the context of
-                    // compiled code because of the structured locking requirement in the parser.
+                    /*
+                     * All stack manipulation, comparison, conversion and arithmetic operators
+                     * except for idiv and irem can't throw exceptions so the don't need to connect
+                     * exception edges.
+                     */
                     break;
 
                 case WIDE:
@@ -1354,7 +1444,11 @@ public class BciBlockMapping implements JavaMethodContext {
     private void addSuccessor(int predBci, BciBlock sux) {
         BciBlock predecessor = getInstructionBlock(predBci);
         if (sux.isExceptionEntry()) {
-            throw new PermanentBailoutException("Exception handler can be reached by both normal and exceptional control flow");
+            /*
+             * Indicates that exception handler entries are reachable from normal control flow.
+             * Setting this flag to true triggers a dedicated handling after all blocks are created.
+             */
+            unresolvedExceptionHandlerReachability = true;
         }
         predecessor.addSuccessor(sux);
     }
@@ -1458,7 +1552,7 @@ public class BciBlockMapping implements JavaMethodContext {
                      * We do not reuse exception dispatch blocks, because nested exception handlers
                      * might have problems reasoning about the correct frame state.
                      */
-                    ExceptionDispatchBlock curHandler = new ExceptionDispatchBlock(exceptionHandlers[handlerID], bci);
+                    ExceptionDispatchBlock curHandler = new ExceptionDispatchBlock(exceptionHandlers[handlerID], handlerID, bci);
                     dispatchBlocks++;
                     curHandler.addSuccessor(getHandlerBlock(handlerID));
                     if (lastHandler != null) {

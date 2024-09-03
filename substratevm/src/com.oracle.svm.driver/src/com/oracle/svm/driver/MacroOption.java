@@ -45,6 +45,7 @@ import java.util.stream.Stream;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.driver.NativeImage.BuildConfiguration;
 import com.oracle.svm.driver.metainf.NativeImageMetaInfWalker;
+import com.oracle.svm.core.util.ArchiveSupport;
 
 final class MacroOption {
 
@@ -382,7 +383,7 @@ final class MacroOption {
         this.kind = OptionUtils.MacroOptionKind.fromSubdir(optionDirectory.getParent().getFileName().toString());
         this.optionName = optionDirectory.getFileName().toString();
         this.optionDirectory = optionDirectory;
-        this.properties = NativeImage.loadProperties(optionDirectory.resolve(NativeImageMetaInfWalker.nativeImagePropertiesFilename));
+        this.properties = ArchiveSupport.loadProperties(optionDirectory.resolve(NativeImageMetaInfWalker.nativeImagePropertiesFilename));
     }
 
     @Override

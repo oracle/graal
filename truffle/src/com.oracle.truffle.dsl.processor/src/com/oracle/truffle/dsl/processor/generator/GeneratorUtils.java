@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -368,12 +368,18 @@ public class GeneratorUtils {
         return false;
     }
 
-    public static CodeExecutableElement override(DeclaredType type, String methodName) {
+    public static CodeExecutableElement override(DeclaredType type, String methodName, String... argumentNames) {
         ExecutableElement method = ElementUtils.findMethod(type, methodName);
         if (method == null) {
             return null;
         }
-        return CodeExecutableElement.clone(method);
+        if (method.getParameters().size() != argumentNames.length) {
+            throw new IllegalArgumentException(String.format("Wrong number of argument names for method '%s'. Expected: %d, got: %d.",
+                            method.getSimpleName(), method.getParameters().size(), argumentNames.length));
+        }
+        CodeExecutableElement result = CodeExecutableElement.clone(method);
+        result.renameArguments(argumentNames);
+        return result;
     }
 
     public static void addThrownExceptions(CodeExecutableElement executable, List<? extends TypeMirror> thrownTypes) {

@@ -168,6 +168,21 @@ public final class TruffleByteBuffer implements TruffleObject {
     }
 
     @ExportMessage
+    void readBuffer(long byteOffset, byte[] destination, int destinationOffset, int length, @Shared("error") @Cached BranchProfile error) throws InvalidBufferOffsetException {
+        if (length < 0) {
+            error.enter();
+            throw InvalidBufferOffsetException.create(byteOffset, length);
+        }
+        try {
+            int index = Math.toIntExact(byteOffset);
+            readBytes(this.byteBuffer, index, destination, destinationOffset, length);
+        } catch (ArithmeticException | IndexOutOfBoundsException e) {
+            error.enter();
+            throw InvalidBufferOffsetException.create(byteOffset, length);
+        }
+    }
+
+    @ExportMessage
     void writeBufferByte(long byteOffset, byte value, @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
         try {
             int index = Math.toIntExact(byteOffset);
@@ -309,6 +324,11 @@ public final class TruffleByteBuffer implements TruffleObject {
     @TruffleBoundary(allowInlining = true)
     private static byte readByte(ByteBuffer byteBuffer, int index) {
         return byteBuffer.get(index);
+    }
+
+    @TruffleBoundary(allowInlining = true)
+    private static void readBytes(ByteBuffer byteBuffer, int index, byte[] destination, int destinationOffset, int length) {
+        byteBuffer.get(index, destination, destinationOffset, length);
     }
 
     @TruffleBoundary(allowInlining = true)

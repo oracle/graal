@@ -76,8 +76,8 @@ public abstract class SLEvalBuiltin extends SLBuiltinNode {
 
     @TruffleBoundary
     @Specialization(replaces = "evalCached")
-    public Object evalUncached(TruffleString id, TruffleString code) {
-        return parse(id, code).call();
+    public Object evalGeneric(TruffleString id, TruffleString code) {
+        return parse(id, code).call(this);
     }
 
     protected CallTarget parse(TruffleString id, TruffleString code) {

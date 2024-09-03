@@ -60,7 +60,7 @@ final class AMD64HotSpotUnwindOp extends AMD64HotSpotEpilogueBlockEndOp {
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         leaveFrameAndRestoreRbp(crb, masm);
 
-        ForeignCallLinkage linkage = crb.foreignCalls.lookupForeignCall(HotSpotBackend.UNWIND_EXCEPTION_TO_CALLER);
+        ForeignCallLinkage linkage = crb.getForeignCalls().lookupForeignCall(HotSpotBackend.UNWIND_EXCEPTION_TO_CALLER);
         CallingConvention cc = linkage.getOutgoingCallingConvention();
         assert cc.getArgumentCount() == 2 : cc;
         assert exception.equals(cc.getArgument(0));

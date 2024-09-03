@@ -1,0 +1,141 @@
+From 3dcd12b7e6d7487de4df1f66f01cab6afe8a5e79 Mon Sep 17 00:00:00 2001
+From: Sacha Coppey <sacha.coppey@oracle.com>
+Date: Fri, 22 Mar 2024 18:08:13 +0100
+Subject: [PATCH 2/4] [RISCV][NFC] Add generateMCInstSeq in RISCVMatInt
+ (#84462)
+
+This allows to avoid duplicating the code handling the instructions
+outputted by `generateInstSeq` when emitting `MCInst`s.
+
+(cherry picked from commit d2f8ba7d6dc7251815f1431cf8715053576615f4)
+---
+ .../Target/RISCV/AsmParser/RISCVAsmParser.cpp | 31 ++-------------
+ .../Target/RISCV/MCTargetDesc/RISCVMatInt.cpp | 38 +++++++++++++++++++
+ .../Target/RISCV/MCTargetDesc/RISCVMatInt.h   |  5 +++
+ 3 files changed, 47 insertions(+), 27 deletions(-)
+
+diff --git a/llvm/lib/Target/RISCV/AsmParser/RISCVAsmParser.cpp b/llvm/lib/Target/RISCV/AsmParser/RISCVAsmParser.cpp
+index f6e8386aff45..aee63275a1a3 100644
+--- a/llvm/lib/Target/RISCV/AsmParser/RISCVAsmParser.cpp
++++ b/llvm/lib/Target/RISCV/AsmParser/RISCVAsmParser.cpp
+@@ -3081,34 +3081,11 @@ void RISCVAsmParser::emitToStreamer(MCStreamer &S, const MCInst &Inst) {
+ 
+ void RISCVAsmParser::emitLoadImm(MCRegister DestReg, int64_t Value,
+                                  MCStreamer &Out) {
+-  RISCVMatInt::InstSeq Seq = RISCVMatInt::generateInstSeq(Value, getSTI());
+-
+-  MCRegister SrcReg = RISCV::X0;
+-  for (const RISCVMatInt::Inst &Inst : Seq) {
+-    switch (Inst.getOpndKind()) {
+-    case RISCVMatInt::Imm:
+-      emitToStreamer(Out,
+-                     MCInstBuilder(Inst.getOpcode()).addReg(DestReg).addImm(Inst.getImm()));
+-      break;
+-    case RISCVMatInt::RegX0:
+-      emitToStreamer(
+-          Out, MCInstBuilder(Inst.getOpcode()).addReg(DestReg).addReg(SrcReg).addReg(
+-                   RISCV::X0));
+-      break;
+-    case RISCVMatInt::RegReg:
+-      emitToStreamer(
+-          Out, MCInstBuilder(Inst.getOpcode()).addReg(DestReg).addReg(SrcReg).addReg(
+-                   SrcReg));
+-      break;
+-    case RISCVMatInt::RegImm:
+-      emitToStreamer(
+-          Out, MCInstBuilder(Inst.getOpcode()).addReg(DestReg).addReg(SrcReg).addImm(
+-                   Inst.getImm()));
+-      break;
+-    }
++  SmallVector<MCInst, 8> Seq;
++  RISCVMatInt::generateMCInstSeq(Value, getSTI(), DestReg, Seq);
+ 
+-    // Only the first instruction has X0 as its source.
+-    SrcReg = DestReg;
++  for (MCInst &Inst : Seq) {
++    emitToStreamer(Out, Inst);
+   }
+ }
+ 
+diff --git a/llvm/lib/Target/RISCV/MCTargetDesc/RISCVMatInt.cpp b/llvm/lib/Target/RISCV/MCTargetDesc/RISCVMatInt.cpp
+index 4358a5b878e6..c3bae152993e 100644
+--- a/llvm/lib/Target/RISCV/MCTargetDesc/RISCVMatInt.cpp
++++ b/llvm/lib/Target/RISCV/MCTargetDesc/RISCVMatInt.cpp
+@@ -9,6 +9,7 @@
+ #include "RISCVMatInt.h"
+ #include "MCTargetDesc/RISCVMCTargetDesc.h"
+ #include "llvm/ADT/APInt.h"
++#include "llvm/MC/MCInstBuilder.h"
+ #include "llvm/Support/MathExtras.h"
+ using namespace llvm;
+ 
+@@ -436,6 +437,43 @@ InstSeq generateInstSeq(int64_t Val, const MCSubtargetInfo &STI) {
+   return Res;
+ }
+ 
++void generateMCInstSeq(int64_t Val, const MCSubtargetInfo &STI,
++                       MCRegister DestReg, SmallVectorImpl<MCInst> &Insts) {
++  RISCVMatInt::InstSeq Seq = RISCVMatInt::generateInstSeq(Val, STI);
++
++  MCRegister SrcReg = RISCV::X0;
++  for (RISCVMatInt::Inst &Inst : Seq) {
++    switch (Inst.getOpndKind()) {
++    case RISCVMatInt::Imm:
++      Insts.push_back(MCInstBuilder(Inst.getOpcode())
++                          .addReg(DestReg)
++                          .addImm(Inst.getImm()));
++      break;
++    case RISCVMatInt::RegX0:
++      Insts.push_back(MCInstBuilder(Inst.getOpcode())
++                          .addReg(DestReg)
++                          .addReg(SrcReg)
++                          .addReg(RISCV::X0));
++      break;
++    case RISCVMatInt::RegReg:
++      Insts.push_back(MCInstBuilder(Inst.getOpcode())
++                          .addReg(DestReg)
++                          .addReg(SrcReg)
++                          .addReg(SrcReg));
++      break;
++    case RISCVMatInt::RegImm:
++      Insts.push_back(MCInstBuilder(Inst.getOpcode())
++                          .addReg(DestReg)
++                          .addReg(SrcReg)
++                          .addImm(Inst.getImm()));
++      break;
++    }
++
++    // Only the first instruction has X0 as its source.
++    SrcReg = DestReg;
++  }
++}
++
+ InstSeq generateTwoRegInstSeq(int64_t Val, const MCSubtargetInfo &STI,
+                               unsigned &ShiftAmt, unsigned &AddOpc) {
+   int64_t LoVal = SignExtend64<32>(Val);
+diff --git a/llvm/lib/Target/RISCV/MCTargetDesc/RISCVMatInt.h b/llvm/lib/Target/RISCV/MCTargetDesc/RISCVMatInt.h
+index 780f685463f3..e87e0f325647 100644
+--- a/llvm/lib/Target/RISCV/MCTargetDesc/RISCVMatInt.h
++++ b/llvm/lib/Target/RISCV/MCTargetDesc/RISCVMatInt.h
+@@ -10,6 +10,7 @@
+ #define LLVM_LIB_TARGET_RISCV_MCTARGETDESC_MATINT_H
+ 
+ #include "llvm/ADT/SmallVector.h"
++#include "llvm/MC/MCRegister.h"
+ #include "llvm/MC/MCSubtargetInfo.h"
+ #include <cstdint>
+ 
+@@ -48,6 +49,10 @@ using InstSeq = SmallVector<Inst, 8>;
+ // instruction selection.
+ InstSeq generateInstSeq(int64_t Val, const MCSubtargetInfo &STI);
+ 
++// Helper to generate the generateInstSeq instruction sequence using MCInsts
++void generateMCInstSeq(int64_t Val, const MCSubtargetInfo &STI,
++                       MCRegister DestReg, SmallVectorImpl<MCInst> &Insts);
++
+ // Helper to generate an instruction sequence that can materialize the given
+ // immediate value into a register using an additional temporary register. This
+ // handles cases where the constant can be generated by (ADD (SLLI X, C), X) or
+-- 
+2.42.0
+

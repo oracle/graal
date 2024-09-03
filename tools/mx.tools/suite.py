@@ -21,12 +21,12 @@
 # questions.
 #
 suite = {
-    "mxversion": "6.41.0",
+    "mxversion": "7.28.0",
     "name": "tools",
     "defaultLicense" : "GPLv2-CPE",
 
     "groupId" : "org.graalvm.tools",
-    "version" : "24.0.0",
+    "version" : "24.2.0",
     "release" : False,
     "url" : "http://openjdk.java.net/projects/graal",
     "developer" : {
@@ -364,6 +364,10 @@ suite = {
             # This distribution defines a module.
             "moduleInfo" : {
                 "name" : "com.oracle.truffle.tools.chromeinspector",
+                "requires": [
+                  "org.graalvm.collections",
+                  "org.graalvm.polyglot",
+                ],
             },
             "dependencies": ["com.oracle.truffle.tools.chromeinspector"],
             "distDependencies" : [
@@ -404,6 +408,7 @@ suite = {
               "mx:JUNIT",
             ],
             "maven": False,
+            "unittestConfig": "tools",
         },
         "CHROMEINSPECTOR_GRAALVM_SUPPORT" : {
             "native" : True,
@@ -419,6 +424,10 @@ suite = {
                 "name" : "org.graalvm.tools.insight",
                 "exports" : [
                   "org.graalvm.tools.insight"
+                ],
+                "requires": [
+                  "org.graalvm.polyglot",
+                  "org.graalvm.collections",
                 ],
             },
             "dependencies": [
@@ -452,6 +461,10 @@ suite = {
             # This distribution defines a module.
             "moduleInfo" : {
                 "name" : "org.graalvm.tools.insight.heap",
+                "requires": [
+                  "org.graalvm.collections",
+                  "org.graalvm.polyglot",
+                ],
             },
             "dependencies": [
                 "org.graalvm.tools.insight.heap"
@@ -495,6 +508,7 @@ suite = {
             ],
             "description" : "Tests for the Ultimate Insights Gathering Platform",
             "maven" : False,
+            "unittestConfig": "tools",
         },
         "INSIGHT_GRAALVM_SUPPORT" : {
             "native" : True,
@@ -518,6 +532,9 @@ suite = {
                 "exports" : [
                     # chromeinspector and smoke tests use CPUSampler
                     "com.oracle.truffle.tools.profiler",
+                ],
+                "requires": [
+                  "org.graalvm.polyglot",
                 ],
             },
             "dependencies": [
@@ -575,6 +592,9 @@ suite = {
             # This distribution defines a module.
             "moduleInfo" : {
                 "name" : "com.oracle.truffle.tools.coverage",
+                "requires": [
+                  "org.graalvm.polyglot",
+                ],
             },
             "dependencies": [
                 "com.oracle.truffle.tools.coverage",
@@ -618,6 +638,7 @@ suite = {
             ],
             "description" : "Tests for the truffle coverage tool.",
             "maven" : False,
+            "unittestConfig": "tools",
          },
         "TRUFFLE_COVERAGE_GRAALVM_SUPPORT" : {
             "native" : True,
@@ -631,6 +652,10 @@ suite = {
             # This distribution defines a module.
             "moduleInfo" : {
                 "name" : "com.oracle.truffle.tools.dap",
+                "requires": [
+                  "org.graalvm.collections",
+                  "org.graalvm.polyglot",
+                ],
             },
             "dependencies": [
                 "com.oracle.truffle.tools.dap",
@@ -673,6 +698,7 @@ suite = {
             ],
             "description" : "Tests for the Truffle Debug Protocol Server.",
             "maven" : False,
+            "unittestConfig": "tools",
          },
         "DAP_GRAALVM_SUPPORT" : {
             "native" : True,
@@ -713,6 +739,11 @@ suite = {
             # This distribution defines a module.
             "moduleInfo" : {
                 "name" : "org.graalvm.tools.lsp",
+                "requires": [
+                  "org.graalvm.collections",
+                  "org.graalvm.polyglot",
+                  "org.graalvm.truffle",
+                ],
             },
             "dependencies": [
                 "org.graalvm.tools.api.lsp",
@@ -746,6 +777,7 @@ suite = {
             "distDependencies" : [
                 "LSP",
                 "truffle:TRUFFLE_SL",
+                "truffle:TRUFFLE_TEST",  # runtime dependency for unittest config
             ],
             "exclude": [
               "mx:HAMCREST",
@@ -753,6 +785,7 @@ suite = {
             ],
             "description" : "Tests for the Truffle Language Server backend.",
             "maven": False,
+            "unittestConfig": "tools",
         },
         "LSP_GRAALVM_SUPPORT" : {
             "native" : True,

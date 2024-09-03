@@ -1,0 +1,10 @@
+Trigger exact handling of reflection, resources, JNI, and serialization from all types in the given class-path or module-path entries.
+
+This option requires arguments that are of the same type as the arguments passed via -p (--module-path) or -cp (--class-path):
+
+  --exact-reachability-metadata-path <class-search path of directories and jar files>
+
+The given entries are searched and all classes inside are registered as '--exact-reachability-metadata' classes.
+
+This option is only allowed to be used on command line. The option will be rejected if it is provided
+by 'Args' in a 'native-image.properties' file that is embedded in a jar file.

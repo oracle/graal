@@ -24,18 +24,16 @@
  */
 package com.oracle.svm.hosted.ameta;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
-import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
-import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.meta.BaseLayerMethod;
 import com.oracle.graal.pointsto.util.GraalAccess;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MethodHandleAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -55,13 +53,14 @@ final class AnalysisMethodHandleAccessProvider implements MethodHandleAccessProv
 
     @Override
     public IntrinsicMethod lookupMethodHandleIntrinsic(ResolvedJavaMethod method) {
-        ResolvedJavaMethod unwrapped = ((AnalysisMethod) method).getWrapped();
-        unwrapped = analysisUniverse.resolveSubstitution(unwrapped);
-        assert !(unwrapped instanceof WrappedJavaMethod || unwrapped instanceof OriginalMethodProvider);
-        if (unwrapped instanceof GraphProvider) {
+        ResolvedJavaMethod original = OriginalMethodProvider.getOriginalMethod(method);
+        if (original instanceof BaseLayerMethod baseLayerMethod) {
+            return baseLayerMethod.getMethodHandleIntrinsic();
+        }
+        if (original == null) {
             return null;
         }
-        return originalMethodHandleAccess.lookupMethodHandleIntrinsic(unwrapped);
+        return originalMethodHandleAccess.lookupMethodHandleIntrinsic(original);
     }
 
     @Override
@@ -85,13 +84,8 @@ final class AnalysisMethodHandleAccessProvider implements MethodHandleAccessProv
         return analysisUniverse.lookup(method);
     }
 
-    private JavaConstant toOriginalConstant(JavaConstant c) {
-        JavaConstant constant = c;
-        if (constant instanceof ImageHeapConstant imageHeapConstant) {
-            constant = imageHeapConstant.getHostedObject();
-        }
-
-        if (constant == null) {
+    private JavaConstant toOriginalConstant(JavaConstant constant) {
+        if (constant instanceof ImageHeapConstant imageHeapConstant && !imageHeapConstant.isBackedByHostedObject()) {
             return null;
         }
         Object obj = analysisUniverse.getSnippetReflection().asObject(Object.class, constant);

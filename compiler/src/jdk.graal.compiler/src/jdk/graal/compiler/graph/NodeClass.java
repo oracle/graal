@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -70,8 +70,7 @@ import jdk.graal.compiler.nodeinfo.NodeCycles;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodeinfo.Verbosity;
-import jdk.graal.compiler.serviceprovider.GraalUnsafeAccess;
-import sun.misc.Unsafe;
+import jdk.internal.misc.Unsafe;
 
 /**
  * Metadata for every {@link Node} type. The metadata includes:
@@ -83,7 +82,7 @@ import sun.misc.Unsafe;
  */
 public final class NodeClass<T> extends FieldIntrospection<T> {
 
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
     // Timers for creation of a NodeClass instance
     private static final TimerKey Init_FieldScanning = DebugContext.timer("NodeClass.Init.FieldScanning");
     private static final TimerKey Init_FieldScanningInner = DebugContext.timer("NodeClass.Init.FieldScanning.Inner");
@@ -312,7 +311,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
         for (int i = offsets.length - 1; i >= 0; i--) {
             long offset = offsets[i];
-            assert ((offset & 0xFF) == offset) : "field offset too large!";
+            assert ((offset & OFFSET_MASK) == offset) : Assertions.errorMessageContext("field offset too large or has low bits set", offset);
             mask <<= NodeClass.NEXT_EDGE;
             mask |= offset;
             if (i >= directCount) {
@@ -862,6 +861,11 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     }
 
     static EconomicMap<Node, Node> addGraphDuplicate(final Graph graph, final Graph oldGraph, int estimatedNodeCount, Iterable<? extends Node> nodes, final Graph.DuplicationReplacement replacements) {
+        return addGraphDuplicate(graph, oldGraph, estimatedNodeCount, nodes, replacements, true);
+    }
+
+    static EconomicMap<Node, Node> addGraphDuplicate(final Graph graph, final Graph oldGraph, int estimatedNodeCount, Iterable<? extends Node> nodes, final Graph.DuplicationReplacement replacements,
+                    boolean applyGVN) {
         final EconomicMap<Node, Node> newNodes;
         int denseThreshold = oldGraph.getNodeCount() + oldGraph.getNodesDeletedSinceLastCompression() >> 4;
         if (estimatedNodeCount > denseThreshold) {
@@ -872,7 +876,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
             newNodes = EconomicMap.create(Equivalence.IDENTITY);
         }
         graph.beforeNodeDuplication(oldGraph);
-        createNodeDuplicates(graph, nodes, replacements, newNodes);
+        createNodeDuplicates(graph, nodes, replacements, newNodes, applyGVN);
 
         InplaceUpdateClosure replacementClosure = new InplaceUpdateClosure() {
 
@@ -911,7 +915,8 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         return newNodes;
     }
 
-    private static void createNodeDuplicates(final Graph graph, Iterable<? extends Node> nodes, final Graph.DuplicationReplacement replacements, final EconomicMap<Node, Node> newNodes) {
+    private static void createNodeDuplicates(final Graph graph, Iterable<? extends Node> nodes, final Graph.DuplicationReplacement replacements, final EconomicMap<Node, Node> newNodes,
+                    boolean applyGVN) {
         for (Node node : nodes) {
             if (node != null) {
                 assert !node.isDeleted() : "trying to duplicate deleted node: " + node;
@@ -923,7 +928,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
                     assert replacement != null;
                     newNodes.put(node, replacement);
                 } else {
-                    Node newNode = node.clone(graph, WithAllEdges);
+                    Node newNode = node.clone(graph, WithAllEdges, applyGVN);
                     assert newNode.getNodeClass().isLeafNode() || newNode.hasNoUsages() : Assertions.errorMessageContext("newNode", newNode);
                     assert newNode.getClass() == node.getClass() : Assertions.errorMessageContext("newNode", newNode, "node", node);
                     newNodes.put(node, newNode);
@@ -1340,7 +1345,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
             if ((myMask & LIST_MASK) == 0) {
                 Node curNode = Edges.getNodeUnsafe(node, offset);
                 if (curNode != null) {
-                    assert curNode.isAlive() : "Successor not alive";
+                    GraalError.guarantee(curNode.isAlive(), "Adding %s to the graph but its successor %s is not alive", node, curNode);
                     node.updatePredecessor(null, curNode);
                 }
             } else {
@@ -1356,7 +1361,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
             for (int i = 0; i < list.size(); ++i) {
                 Node curNode = list.get(i);
                 if (curNode != null) {
-                    assert curNode.isAlive() : "Successor not alive";
+                    GraalError.guarantee(curNode.isAlive(), "Adding %s to the graph but its successor %s is not alive", node, curNode);
                     node.updatePredecessor(null, curNode);
                 }
             }
@@ -1419,7 +1424,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
             if ((myMask & LIST_MASK) == 0) {
                 Node curNode = Edges.getNodeUnsafe(node, offset);
                 if (curNode != null) {
-                    assert curNode.isAlive() : "Input " + curNode + " of node " + node + " is not alive";
+                    GraalError.guarantee(curNode.isAlive(), "Adding %s to the graph but its input %s is not alive", node, curNode);
                     curNode.addUsage(node);
                 }
             } else {
@@ -1435,7 +1440,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
             for (int i = 0; i < list.size(); ++i) {
                 Node curNode = list.get(i);
                 if (curNode != null) {
-                    assert curNode.isAlive() : "Input not alive " + curNode;
+                    GraalError.guarantee(curNode.isAlive(), "Adding %s to the graph but its input %s is not alive", node, curNode);
                     curNode.addUsage(node);
                 }
             }

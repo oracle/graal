@@ -25,8 +25,11 @@
 package com.oracle.svm.core.thread;
 
 import java.lang.reflect.Field;
+import java.util.List;
 
+import com.oracle.svm.core.SubstrateControlFlowIntegrityFeature;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.SubstrateControlFlowIntegrity;
 import com.oracle.svm.core.SubstrateOptions;
@@ -48,10 +51,15 @@ public class ContinuationsFeature implements InternalFeature {
     }
 
     @Override
+    public List<Class<? extends Feature>> getRequiredFeatures() {
+        return List.of(SubstrateControlFlowIntegrityFeature.class);
+    }
+
+    @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         /* If continuations are not supported, "virtual" threads are bound to platform threads. */
         if (ContinuationSupport.Options.VMContinuations.getValue()) {
-            supported = !DeoptimizationSupport.enabled() && !SubstrateOptions.useLLVMBackend() && !SubstrateControlFlowIntegrity.enabled();
+            supported = !DeoptimizationSupport.enabled() && !SubstrateOptions.useLLVMBackend() && SubstrateControlFlowIntegrity.singleton().continuationsSupported();
             UserError.guarantee(supported || !ContinuationSupport.Options.VMContinuations.hasBeenSet(),
                             "Continuation support has been explicitly enabled with option %s but is not available " +
                                             "because of the runtime compilation, LLVM backend, or control flow integrity features.",

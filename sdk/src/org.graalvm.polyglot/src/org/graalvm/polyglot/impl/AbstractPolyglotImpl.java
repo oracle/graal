@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,7 +48,6 @@ import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.Reader;
 import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Type;
@@ -75,6 +74,7 @@ import java.util.function.Predicate;
 import java.util.logging.LogRecord;
 
 import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.HostAccess.MutableTargetMapping;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.SandboxPolicy;
@@ -94,14 +94,6 @@ import org.graalvm.polyglot.io.ProcessHandler;
 public abstract class AbstractPolyglotImpl {
 
     protected AbstractPolyglotImpl() {
-    }
-
-    Lookup getLookup() {
-        try {
-            return MethodHandles.privateLookupIn(AbstractPolyglotImpl.class, MethodHandles.lookup());
-        } catch (IllegalAccessException e) {
-            throw new AssertionError(e);
-        }
     }
 
     public abstract static class ManagementAccess {
@@ -151,7 +143,7 @@ public abstract class AbstractPolyglotImpl {
 
         protected APIAccess() {
             String name = getClass().getCanonicalName();
-            if (!name.equals("org.graalvm.polyglot.Engine.APIAccessImpl") && getClass() != ModuleToUnnamedAPIAccessGen.class) {
+            if (!name.equals("org.graalvm.polyglot.Engine.APIAccessImpl")) {
                 throw new AssertionError("Only one implementation of APIAccess allowed. " + getClass().getCanonicalName());
             }
         }
@@ -286,7 +278,15 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract boolean isByteSequence(Object origin);
 
+        public abstract Class<?> getByteSequenceClass();
+
         public abstract ByteSequence asByteSequence(Object origin);
+
+        public abstract Object toByteSequence(Object origin);
+
+        public abstract int byteSequenceLength(Object origin);
+
+        public abstract byte byteSequenceByteAt(Object origin, int index);
 
         public abstract boolean isProxyArray(Object proxy);
 
@@ -515,15 +515,15 @@ public abstract class AbstractPolyglotImpl {
     public void initialize() {
     }
 
-    public Object initializeModuleToUnnamedAccess(Lookup unnamedLookup, Object unnamedAccess, Object unnamedAPIAccess, Object unnamedIOAccess, Object unnamedManagementAccess) {
-        return getNext().initializeModuleToUnnamedAccess(unnamedLookup, unnamedAccess, unnamedAPIAccess, unnamedIOAccess, unnamedManagementAccess);
-    }
-
     public Object buildEngine(String[] permittedLanguages, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in, Map<String, String> options,
                     boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor, Object logHandler, Object hostLanguage,
                     boolean hostLanguageOnly, boolean registerInActiveEngines, Object polyglotHostService) {
         return getNext().buildEngine(permittedLanguages, sandboxPolicy, out, err, in, options, allowExperimentalOptions, boundEngine, messageInterceptor, logHandler, hostLanguage,
                         hostLanguageOnly, registerInActiveEngines, polyglotHostService);
+    }
+
+    public void onEngineCreated(Object polyglotEngine) {
+        getNext().onEngineCreated(polyglotEngine);
     }
 
     public abstract int getPriority();
@@ -576,6 +576,10 @@ public abstract class AbstractPolyglotImpl {
 
     public boolean copyResources(Path targetFolder, String... components) throws IOException {
         return getNext().copyResources(targetFolder, components);
+    }
+
+    public String getTruffleVersion() {
+        return null;
     }
 
     /**
@@ -883,6 +887,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Object getSourceLocation();
 
+        public abstract int getBytecodeIndex();
+
         public abstract String getRootName();
 
         public abstract Object getLanguage();
@@ -953,6 +959,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract <T> List<T> toList(Object internalContext, Object guestValue, boolean implementFunction, Class<T> elementClass, Type elementType);
 
+        public abstract Object toByteSequence(Object internalContext, Object guestValue);
+
         public abstract <K, V> Map<K, V> toMap(Object internalContext, Object foreignObject, boolean implementsFunction, Class<K> keyClass, Type keyType, Class<V> valueClass, Type valueType);
 
         public abstract <K, V> Map.Entry<K, V> toMapEntry(Object internalContext, Object foreignObject, boolean implementsFunction,
@@ -960,9 +968,9 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract <T> Function<?, ?> toFunction(Object internalContext, Object function, Class<?> returnClass, Type returnType, Class<?> paramClass, Type paramType);
 
-        public abstract Object toObjectProxy(Object internalContext, Class<?> clazz, Object obj) throws IllegalArgumentException;
+        public abstract Object toObjectProxy(Object internalContext, Class<?> clazz, Type genericType, Object obj) throws IllegalArgumentException;
 
-        public abstract <T> T toFunctionProxy(Object internalContext, Class<T> functionalType, Object function);
+        public abstract <T> T toFunctionProxy(Object internalContext, Class<T> functionalType, Type genericType, Object function);
 
         public abstract <T> Iterable<T> toIterable(Object internalContext, Object iterable, boolean implementFunction, Class<T> elementClass, Type elementType);
 
@@ -1111,6 +1119,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract long getBufferSize(Object context, Object receiver);
 
         public abstract byte readBufferByte(Object context, Object receiver, long byteOffset);
+
+        public abstract void readBuffer(Object context, Object receiver, long byteOffset, byte[] destination, int destinationOffset, int length);
 
         public abstract void writeBufferByte(Object context, Object receiver, long byteOffset, byte value);
 
@@ -1401,6 +1411,10 @@ public abstract class AbstractPolyglotImpl {
         return getNext().newNIOFileSystem(fileSystem);
     }
 
+    public ByteSequence asByteSequence(Object object) {
+        return getNext().asByteSequence(object);
+    }
+
     public ProcessHandler newDefaultProcessHandler() {
         return getNext().newDefaultProcessHandler();
     }
@@ -1435,6 +1449,9 @@ public abstract class AbstractPolyglotImpl {
 
     public Object newFileSystem(FileSystem fs) {
         return getNext().newFileSystem(fs);
+    }
+
+    public void validateVirtualThreadCreation(OptionValues engineOptions) {
     }
 
     /**

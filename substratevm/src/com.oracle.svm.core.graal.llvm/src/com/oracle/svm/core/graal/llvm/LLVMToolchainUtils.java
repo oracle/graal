@@ -110,7 +110,7 @@ public class LLVMToolchainUtils {
 
     private static int optimizationLevel() {
         return switch (SubstrateOptions.optimizationLevel()) {
-            case O0, BUILD_TIME -> 0;
+            case O0, BUILD_TIME, SIZE -> 0;
             case O1 -> 1;
             case O2 -> 2;
             case O3 -> 3;

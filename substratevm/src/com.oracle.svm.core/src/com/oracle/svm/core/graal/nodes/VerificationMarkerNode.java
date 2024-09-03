@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,9 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
+import com.oracle.svm.core.graal.code.SubstrateLIRGenerator;
+
 import jdk.graal.compiler.core.common.type.StampFactory;
-import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeCycles;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -34,9 +35,6 @@ import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.debug.ControlFlowAnchored;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-
-import com.oracle.svm.core.graal.code.SubstrateLIRGenerator;
-import com.oracle.svm.core.util.VMError;
 
 @NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
 public final class VerificationMarkerNode extends FixedWithNextNode implements LIRLowerable, ControlFlowAnchored {
@@ -47,11 +45,6 @@ public final class VerificationMarkerNode extends FixedWithNextNode implements L
     public VerificationMarkerNode(Object marker) {
         super(TYPE, StampFactory.forVoid());
         this.marker = marker;
-    }
-
-    @Override
-    protected void afterClone(Node other) {
-        throw VMError.shouldNotReachHere("Marker must be unique, therefore the node cannot be cloned");
     }
 
     @Override

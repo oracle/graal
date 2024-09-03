@@ -51,8 +51,8 @@ public final class MergeNode extends AbstractMergeNode {
     }
 
     @Override
-    public boolean verify() {
+    public boolean verifyNode() {
         assertTrue(this.forwardEndCount() > 1, "Must merge more than one end.");
-        return super.verify();
+        return super.verifyNode();
     }
 }

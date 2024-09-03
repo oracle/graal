@@ -58,9 +58,18 @@ class CompilationFailureEventImpl extends RootFunctionEventImpl {
 
     @Label("Failure Reason") @Description("Failure Reason") public String failureReason;
 
-    CompilationFailureEventImpl(String source, String language, String rootFunction, boolean permanent, CharSequence reason) {
-        super(source, language, rootFunction);
-        this.permanentFailure = permanent;
-        this.failureReason = reason == null ? null : reason.toString();
+    @Label("Tier") @Description("The Tier of the Truffle Compiler") public int truffleTier;
+
+    @Label("Exception Stack Trace") @Description("Exception Stack Trace") public String stackTrace;
+
+    CompilationFailureEventImpl(long engineId, long id, String source, String language, String rootFunction) {
+        super(engineId, id, source, language, rootFunction);
+    }
+
+    void setFailureData(int tier, boolean permanent, String reason, String stackTrace) {
+        truffleTier = tier;
+        permanentFailure = permanent;
+        failureReason = reason;
+        this.stackTrace = stackTrace;
     }
 }

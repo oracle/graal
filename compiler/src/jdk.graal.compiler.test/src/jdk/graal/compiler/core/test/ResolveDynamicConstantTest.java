@@ -24,9 +24,11 @@
  */
 package jdk.graal.compiler.core.test;
 
-import jdk.graal.compiler.serviceprovider.GraalServices;
+import java.lang.reflect.Method;
+import java.time.Clock;
+import java.time.Instant;
+
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Test;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.ConstantDynamic;
@@ -37,17 +39,12 @@ import org.objectweb.asm.MethodVisitor;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-import java.lang.reflect.Method;
-import java.time.Clock;
-import java.time.Instant;
-
 public class ResolveDynamicConstantTest extends CustomizedBytecodePatternTest {
 
     private static final int PUBLIC_STATIC = ACC_PUBLIC | ACC_STATIC;
 
     @Test
     public void test00601m001() throws Throwable {
-        Assume.assumeTrue(GraalServices.supportsNonresolvingLookupConstant());
         runTest("test.resolveDynamicConstant00601m001");
     }
 
@@ -64,7 +61,6 @@ public class ResolveDynamicConstantTest extends CustomizedBytecodePatternTest {
 
     @Test
     public void test00602m008() throws Throwable {
-        Assume.assumeTrue(GraalServices.supportsNonresolvingLookupConstant());
         runTest("test.resolveDynamicConstant00602m008");
     }
 

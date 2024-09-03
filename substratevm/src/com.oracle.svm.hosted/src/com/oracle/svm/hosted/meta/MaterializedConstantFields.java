@@ -51,14 +51,14 @@ public class MaterializedConstantFields {
     private boolean sealed = false;
 
     public void register(AnalysisField field) {
-        assert field.isStatic() && field.isFinal() : "Only required for static final fields";
-        assert field.isAccessed() : "Field must be accessed as read";
-        assert !sealed : "Already sealed";
+        assert field.isStatic() : "Only required for static final fields: " + field;
+        assert field.isAccessed() : "Field must be accessed as read: " + field;
+        assert !sealed : "Already sealed: " + field;
         fields.add(field);
     }
 
     public boolean contains(AnalysisField field) {
-        if (field.isStatic() && field.isFinal()) {
+        if (field.isStatic()) {
             return fields.contains(field);
         }
         return false;
@@ -77,7 +77,7 @@ class MaterializedConstantFieldsFeature implements InternalFeature {
     }
 
     @Override
-    public void afterAnalysis(AfterAnalysisAccess access) {
+    public void beforeCompilation(BeforeCompilationAccess access) {
         MaterializedConstantFields.singleton().seal();
     }
 }

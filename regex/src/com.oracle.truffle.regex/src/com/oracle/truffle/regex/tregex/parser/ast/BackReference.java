@@ -133,6 +133,14 @@ public class BackReference extends QuantifiableTerm {
         setFlag(FLAG_BACK_REFERENCE_IS_IGNORE_CASE, true);
     }
 
+    public boolean isIgnoreCaseReferenceAltMode() {
+        return isFlagSet(FLAG_BACK_REFERENCE_IS_IGNORE_CASE_ALTERNATIVE_MODE);
+    }
+
+    public void setIgnoreCaseReferenceAltMode() {
+        setFlag(FLAG_BACK_REFERENCE_IS_IGNORE_CASE_ALTERNATIVE_MODE, true);
+    }
+
     @Override
     public boolean isUnrollingCandidate() {
         return hasQuantifier() && getQuantifier().isUnrollTrivial();

@@ -24,12 +24,45 @@
  */
 package com.oracle.svm.core.graal.snippets;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.EXTREMELY_SLOW_PATH_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 
 import java.util.Map;
 import java.util.function.Predicate;
+
+import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
+
+import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.code.CodeInfoAccess;
+import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.graal.code.SubstrateBackend;
+import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.heap.RestrictHeapAccess.Access;
+import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.core.snippets.ImplicitExceptions;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.snippets.SnippetRuntime;
+import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
+import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.core.thread.PlatformThreads;
+import com.oracle.svm.core.thread.ThreadingSupportImpl;
+import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.threadlocal.FastThreadLocal;
+import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
+import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
+import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
@@ -58,35 +91,6 @@ import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.Snippets;
-import org.graalvm.nativeimage.ImageInfo;
-import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.c.type.WordPointer;
-import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
-
-import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.code.CodeInfoAccess;
-import com.oracle.svm.core.code.CodeInfoTable;
-import com.oracle.svm.core.graal.code.SubstrateBackend;
-import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.heap.RestrictHeapAccess;
-import com.oracle.svm.core.heap.RestrictHeapAccess.Access;
-import com.oracle.svm.core.meta.SharedMethod;
-import com.oracle.svm.core.snippets.ImplicitExceptions;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.core.snippets.SnippetRuntime;
-import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
-import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
-import com.oracle.svm.core.stack.StackOverflowCheck;
-import com.oracle.svm.core.thread.PlatformThreads;
-import com.oracle.svm.core.thread.ThreadingSupportImpl;
-import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.threadlocal.FastThreadLocal;
-import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
-import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
-import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
-import com.oracle.svm.core.util.VMError;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public final class StackOverflowCheckImpl implements StackOverflowCheck {
@@ -108,6 +112,10 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
     public static final SubstrateForeignCallDescriptor THROW_NEW_STACK_OVERFLOW_ERROR = SnippetRuntime.findForeignCall(StackOverflowCheckImpl.class, "throwNewStackOverflowError", NO_SIDE_EFFECT);
 
     static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{THROW_CACHED_STACK_OVERFLOW_ERROR, THROW_NEW_STACK_OVERFLOW_ERROR};
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public StackOverflowCheckImpl() {
+    }
 
     @Uninterruptible(reason = "Called while thread is being attached to the VM, i.e., when the thread state is not yet set up.")
     @Override
@@ -144,6 +152,15 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isWithinBounds(UnsignedWord address) {
         return stackBoundaryTL.get().belowOrEqual(address) && VMThreads.StackBase.get().aboveOrEqual(address);
+    }
+
+    @NodeIntrinsic(value = ForeignCallNode.class)
+    private static native void callSlowPath(@ConstantNodeParameter ForeignCallDescriptor descriptor);
+
+    @Override
+    @AlwaysInline(value = "Performance critical")
+    public void throwStackOverflowError() {
+        callSlowPath(StackOverflowCheckImpl.THROW_NEW_STACK_OVERFLOW_ERROR);
     }
 
     @Override
@@ -204,6 +221,7 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
     }
 
     @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean isYellowZoneAvailable() {
         return yellowZoneStateTL.get() > STATE_YELLOW_ENABLED;
     }
@@ -382,8 +400,11 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
         }
 
         long outerFrameSize = state.outerFrameState() == null ? 0 : computeDeoptFrameSize(state.outerFrameState(), deoptFrameSizeCache);
-        long myFrameSize = CodeInfoAccess.lookupTotalFrameSize(CodeInfoTable.getImageCodeInfo(), ((SharedMethod) state.getMethod()).getDeoptOffsetInImage());
-
+        long myFrameSize = 0;
+        SharedMethod method = (SharedMethod) state.getMethod();
+        if (method.getImageCodeDeoptOffset() != 0) {
+            myFrameSize = CodeInfoAccess.lookupTotalFrameSize(CodeInfoTable.getImageCodeInfo(method), method.getImageCodeDeoptOffset());
+        }
         long result = outerFrameSize + myFrameSize;
         deoptFrameSizeCache.put(state, result);
         return result;

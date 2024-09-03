@@ -6,6 +6,7 @@
   local tools      = import "ci_common/tools.libsonnet",
   local sg         = import "ci_common/svm-gate.libsonnet",
   local run_spec   = import "../../ci/ci_common/run-spec.libsonnet",
+  local galahad    = import "../../ci/ci_common/galahad-common.libsonnet",
   local exclude    = run_spec.exclude,
 
   local task_spec = run_spec.task_spec,
@@ -15,14 +16,19 @@
   local t(limit) = task_spec({timelimit: limit}),
 
   // mx gate build config
-  local mxgate(tags) = os_arch_jdk_mixin + sg.mxgate(tags, suite="substratevm", suite_short="svm"),
+  local mxgate(tags) = os_arch_jdk_mixin + sg.mxgate(tags, suite="substratevm", suite_short="svm") + task_spec(common.deps.svm),
 
   local eclipse = task_spec(common.deps.eclipse),
   local jdt = task_spec(common.deps.jdt),
   local gate = sg.gate,
   local gdb(version) = task_spec(sg.gdb(version)),
-  local use_musl = sg.use_musl,
+  local use_musl_static = sg.use_musl_static,
+  local use_musl_dynamic = sg.use_musl_dynamic,
   local add_quickbuild = sg.add_quickbuild,
+
+  local use_oraclejdk_latest = task_spec(run_spec.evaluate_late({
+    "use_oraclejdk_latest": common.oraclejdkLatest + galahad.exclude
+  })),
 
   local maven = task_spec(evaluate_late('05_add_maven', function(b)
   if b.os == 'windows' then {
@@ -53,7 +59,7 @@
   // JDKs
   local jdk_name_to_dict = {
     "jdk21"+: common.labsjdk21,
-    "jdk-latest"+: common.labsjdkLatest,
+    "jdk-latest"+: common.labsjdkLatest + galahad.exclude,
   },
 
   local default_os_arch(b) = {
@@ -87,8 +93,11 @@
 
   local feature_map = {
     libc: {
-      musl: no_jobs {
-        "*"+: use_musl,
+      musl_static: no_jobs {
+        "*"+: use_musl_static,
+      },
+      musl_dynamic: no_jobs {
+        "*"+: use_musl_dynamic,
       },
     },
     optlevel: {
@@ -108,7 +117,7 @@
 
   // START MAIN BUILD DEFINITION
   local task_dict = {
-    "style-fullbuild": mxgate("fullbuild,style,nativeimagehelp") + eclipse + jdt + maven + mx_build_exploded + gdb("10.2") + platform_spec(no_jobs) + platform_spec({
+    "style-fullbuild": mxgate("fullbuild,style,nativeimagehelp,check_libcontainer_annotations,check_libcontainer_namespace") + eclipse + jdt + maven + mx_build_exploded + gdb("10.2") + platform_spec(no_jobs) + platform_spec({
       // We could run the style gate on JDK 22 as well, and use old JDKs for running tools like StopBugs etc.,
       // but since we support JDK 21 anyways, there is not good reason to do so.
       "linux:amd64:jdk21": gate + t("30:00"),
@@ -120,12 +129,15 @@
       "optlevel:quickbuild": {
         "windows:amd64:jdk-latest": gate + t("1:30:00"),
       },
-      "libc:musl": {
+      "libc:musl_static": {
         "linux:amd64:jdk-latest": gate + gdb("10.2") + t("55:00"),
       },
       "java-compiler:ecj": {
         "linux:amd64:jdk-latest": gate + gdb("10.2") + t("55:00"),
       },
+    }),
+    "oraclejdk-helloworld": mxgate("build,helloworld,hellomodule") + maven + jsonschema + platform_spec(no_jobs) + platform_spec({
+      "linux:amd64:jdk-latest": gate + use_oraclejdk_latest + t("30:00"),
     }),
   },
   // END MAIN BUILD DEFINITION

@@ -35,6 +35,10 @@ import java.lang.annotation.Target;
 import java.util.List;
 import java.util.ListIterator;
 
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.graph.Node;
@@ -49,7 +53,7 @@ import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.nodes.java.LoadIndexedNode;
 import jdk.graal.compiler.nodes.java.StoreFieldNode;
-import jdk.graal.compiler.nodes.loop.LoopEx;
+import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.loop.LoopsData;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.BasePhase;
@@ -59,9 +63,6 @@ import jdk.graal.compiler.phases.common.ConditionalEliminationPhase;
 import jdk.graal.compiler.phases.common.DominatorBasedGlobalValueNumberingPhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
 
 public class EarlyGVNTest extends GraalCompilerTest {
 
@@ -149,7 +150,7 @@ public class EarlyGVNTest extends GraalCompilerTest {
             if (count.invariantCount != 0) {
                 int invariantCount = count.count;
                 for (Node node : nodes) {
-                    for (LoopEx loop : loops.loops()) {
+                    for (Loop loop : loops.loops()) {
                         if (loop.whole().contains(node)) {
                             invariantCount--;
                             break;
@@ -626,11 +627,9 @@ public class EarlyGVNTest extends GraalCompilerTest {
 
         c.apply(g, getDefaultHighTierContext());
         new ConvertDeoptimizeToGuardPhase(c).apply(g, highTierContext);
-        new ConditionalEliminationPhase(false).apply(g, highTierContext);
-        c.apply(g, getDefaultHighTierContext());
+        new ConditionalEliminationPhase(c, false).apply(g, highTierContext);
         new DominatorBasedGlobalValueNumberingPhase(c).apply(g, highTierContext);
-        new ConditionalEliminationPhase(false).apply(g, highTierContext);
-        c.apply(g, getDefaultHighTierContext());
+        new ConditionalEliminationPhase(c, false).apply(g, highTierContext);
         new DominatorBasedGlobalValueNumberingPhase(c).apply(g, highTierContext);
 
         checkHighTierGraph(g, count(FixedGuardNode.TYPE, 4),

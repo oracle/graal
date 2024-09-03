@@ -26,36 +26,38 @@ package com.oracle.svm.core.jni.functions;
 
 import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 
+import java.lang.invoke.MethodType;
 import java.lang.reflect.Array;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
-import jdk.graal.compiler.core.common.SuppressFBWarnings;
-import jdk.graal.compiler.nodes.java.ArrayLengthNode;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.c.function.CEntryPoint.FatalExceptionHandler;
 import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CConst;
 import org.graalvm.nativeimage.c.type.CShortPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.PointerBase;
+import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.JavaMemoryUtil;
 import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
@@ -67,16 +69,19 @@ import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.ReturnNullPointer;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.handles.PrimitiveArrayView;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.jdk.DirectByteBufferUtil;
+import com.oracle.svm.core.jni.JNIObjectFieldAccess;
 import com.oracle.svm.core.jni.JNIObjectHandles;
 import com.oracle.svm.core.jni.JNIThreadLocalPendingException;
 import com.oracle.svm.core.jni.JNIThreadLocalPrimitiveArrayViews;
 import com.oracle.svm.core.jni.JNIThreadOwnedMonitors;
+import com.oracle.svm.core.jni.access.JNIAccessibleField;
 import com.oracle.svm.core.jni.access.JNIAccessibleMethod;
 import com.oracle.svm.core.jni.access.JNIAccessibleMethodDescriptor;
 import com.oracle.svm.core.jni.access.JNINativeLinkage;
@@ -106,7 +111,7 @@ import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import com.oracle.svm.core.jni.headers.JNIObjectRefType;
 import com.oracle.svm.core.jni.headers.JNIValue;
 import com.oracle.svm.core.jni.headers.JNIVersion;
-import com.oracle.svm.core.jni.headers.JNIVersionJDK22OrLater;
+import com.oracle.svm.core.jni.headers.JNIVersionJDKLatest;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
@@ -117,10 +122,15 @@ import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.Target_java_lang_BaseVirtualThread;
 import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
+import com.oracle.svm.core.util.ArrayUtil;
 import com.oracle.svm.core.util.Utf8;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.nodes.java.ArrayLengthNode;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.internal.misc.Unsafe;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaUtil;
 
 /**
@@ -148,6 +158,7 @@ import jdk.vm.ci.meta.MetaUtil;
  */
 @SuppressWarnings("unused")
 public final class JNIFunctions {
+    private static final Unsafe U = Unsafe.getUnsafe();
 
     // Checkstyle: stop
 
@@ -159,13 +170,10 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = CEntryPointOptions.NoPrologue.class, epilogue = CEntryPointOptions.NoEpilogue.class)
     @Uninterruptible(reason = "No need to enter the isolate and also no way to report errors if unable to.")
     static int GetVersion(JNIEnvironment env) {
-        switch (JavaVersionUtil.JAVA_SPEC) {
-            case 21:
-                return JNIVersion.JNI_VERSION_21();
-            case 22:
-                return JNIVersionJDK22OrLater.JNI_VERSION_22();
-            default:
-                throw VMError.shouldNotReachHere("Unsupported Java version " + JavaVersionUtil.JAVA_SPEC);
+        if (JavaVersionUtil.JAVA_SPEC == 21) {
+            return JNIVersion.JNI_VERSION_21();
+        } else {
+            return JNIVersionJDKLatest.JNI_VERSION_LATEST();
         }
     }
 
@@ -442,7 +450,7 @@ public final class JNIFunctions {
     }
 
     /*
-     * jfieldID GetFieldID(JNIEnv *env, jclass clazz, const char *name, const char *sig);\
+     * jfieldID GetFieldID(JNIEnv *env, jclass clazz, const char *name, const char *sig);
      *
      * jfieldID GetStaticFieldID(JNIEnv *env, jclass clazz, const char *name, const char *sig);
      */
@@ -467,7 +475,7 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class)
     static JNIObjectHandle AllocObject(JNIEnvironment env, JNIObjectHandle classHandle) throws InstantiationException {
         Class<?> clazz = JNIObjectHandles.getObject(classHandle);
-        Object instance = Unsafe.getUnsafe().allocateInstance(clazz);
+        Object instance = U.allocateInstance(clazz);
         return JNIObjectHandles.createLocal(instance);
     }
 
@@ -997,22 +1005,15 @@ public final class JNIFunctions {
         JNIAccessibleMethodDescriptor descriptor = JNIReflectionDictionary.getMethodDescriptor(jniMethod);
         if (descriptor != null) {
             Class<?> clazz = jniMethod.getDeclaringClass().getClassObject();
-            if (descriptor.isConstructor()) {
-                for (Constructor<?> ctor : clazz.getDeclaredConstructors()) {
-                    if (descriptor.equals(JNIAccessibleMethodDescriptor.of(ctor))) {
-                        result = ctor;
-                        break;
-                    }
-                }
-            } else {
-                for (Method method : clazz.getDeclaredMethods()) {
-                    if (descriptor.getName().equals(method.getName())) {
-                        if (descriptor.equals(JNIAccessibleMethodDescriptor.of(method))) {
-                            result = method;
-                            break;
-                        }
-                    }
-                }
+            Class<?>[] parameter = MethodType.fromMethodDescriptorString(descriptor.getSignature(), JNIFunctions.class.getClassLoader()).parameterArray();
+            try {
+                result = descriptor.isConstructor() ? clazz.getDeclaredConstructor(parameter) : clazz.getDeclaredMethod(descriptor.getName(), parameter);
+            } catch (NoSuchMethodException e) {
+                /*
+                 * The method might have been registered for JNI access but not for reflection. When
+                 * missing registration errors are not thrown, this results in a
+                 * NoSuchMethodException, which means we have to return null.
+                 */
             }
         }
         return JNIObjectHandles.createLocal(result);
@@ -1134,6 +1135,501 @@ public final class JNIFunctions {
     static boolean IsVirtualThread(JNIEnvironment env, JNIObjectHandle handle) {
         Object obj = JNIObjectHandles.getObject(handle);
         return obj instanceof Target_java_lang_BaseVirtualThread;
+    }
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static PointerBase GetBooleanArrayElements(JNIEnvironment env, JNIObjectHandle array, CCharPointer isCopy) {
+        return Support.createArrayViewAndGetAddress(array, isCopy);
+    }
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static PointerBase GetByteArrayElements(JNIEnvironment env, JNIObjectHandle array, CCharPointer isCopy) {
+        return Support.createArrayViewAndGetAddress(array, isCopy);
+    }
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static PointerBase GetShortArrayElements(JNIEnvironment env, JNIObjectHandle array, CCharPointer isCopy) {
+        return Support.createArrayViewAndGetAddress(array, isCopy);
+    }
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static PointerBase GetCharArrayElements(JNIEnvironment env, JNIObjectHandle array, CCharPointer isCopy) {
+        return Support.createArrayViewAndGetAddress(array, isCopy);
+    }
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static PointerBase GetIntArrayElements(JNIEnvironment env, JNIObjectHandle array, CCharPointer isCopy) {
+        return Support.createArrayViewAndGetAddress(array, isCopy);
+    }
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static PointerBase GetLongArrayElements(JNIEnvironment env, JNIObjectHandle array, CCharPointer isCopy) {
+        return Support.createArrayViewAndGetAddress(array, isCopy);
+    }
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static PointerBase GetFloatArrayElements(JNIEnvironment env, JNIObjectHandle array, CCharPointer isCopy) {
+        return Support.createArrayViewAndGetAddress(array, isCopy);
+    }
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static PointerBase GetDoubleArrayElements(JNIEnvironment env, JNIObjectHandle array, CCharPointer isCopy) {
+        return Support.createArrayViewAndGetAddress(array, isCopy);
+    }
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void ReleaseBooleanArrayElements(JNIEnvironment env, JNIObjectHandle array, PointerBase elements, int mode) {
+        Support.destroyNewestArrayViewByAddress(elements, mode);
+    }
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void ReleaseByteArrayElements(JNIEnvironment env, JNIObjectHandle array, PointerBase elements, int mode) {
+        Support.destroyNewestArrayViewByAddress(elements, mode);
+    }
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void ReleaseShortArrayElements(JNIEnvironment env, JNIObjectHandle array, PointerBase elements, int mode) {
+        Support.destroyNewestArrayViewByAddress(elements, mode);
+    }
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void ReleaseCharArrayElements(JNIEnvironment env, JNIObjectHandle array, PointerBase elements, int mode) {
+        Support.destroyNewestArrayViewByAddress(elements, mode);
+    }
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void ReleaseIntArrayElements(JNIEnvironment env, JNIObjectHandle array, PointerBase elements, int mode) {
+        Support.destroyNewestArrayViewByAddress(elements, mode);
+    }
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void ReleaseLongArrayElements(JNIEnvironment env, JNIObjectHandle array, PointerBase elements, int mode) {
+        Support.destroyNewestArrayViewByAddress(elements, mode);
+    }
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void ReleaseFloatArrayElements(JNIEnvironment env, JNIObjectHandle array, PointerBase elements, int mode) {
+        Support.destroyNewestArrayViewByAddress(elements, mode);
+    }
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void ReleaseDoubleArrayElements(JNIEnvironment env, JNIObjectHandle array, PointerBase elements, int mode) {
+        Support.destroyNewestArrayViewByAddress(elements, mode);
+    }
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void GetBooleanArrayRegion(JNIEnvironment env, JNIObjectHandle array, int start, int count, PointerBase buffer) {
+        Support.getPrimitiveArrayRegion(JavaKind.Boolean, array, start, count, buffer);
+    }
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void GetByteArrayRegion(JNIEnvironment env, JNIObjectHandle array, int start, int count, PointerBase buffer) {
+        Support.getPrimitiveArrayRegion(JavaKind.Byte, array, start, count, buffer);
+    }
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void GetShortArrayRegion(JNIEnvironment env, JNIObjectHandle array, int start, int count, PointerBase buffer) {
+        Support.getPrimitiveArrayRegion(JavaKind.Short, array, start, count, buffer);
+    }
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void GetCharArrayRegion(JNIEnvironment env, JNIObjectHandle array, int start, int count, PointerBase buffer) {
+        Support.getPrimitiveArrayRegion(JavaKind.Char, array, start, count, buffer);
+    }
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void GetIntArrayRegion(JNIEnvironment env, JNIObjectHandle array, int start, int count, PointerBase buffer) {
+        Support.getPrimitiveArrayRegion(JavaKind.Int, array, start, count, buffer);
+    }
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void GetLongArrayRegion(JNIEnvironment env, JNIObjectHandle array, int start, int count, PointerBase buffer) {
+        Support.getPrimitiveArrayRegion(JavaKind.Long, array, start, count, buffer);
+    }
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void GetFloatArrayRegion(JNIEnvironment env, JNIObjectHandle array, int start, int count, PointerBase buffer) {
+        Support.getPrimitiveArrayRegion(JavaKind.Float, array, start, count, buffer);
+    }
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void GetDoubleArrayRegion(JNIEnvironment env, JNIObjectHandle array, int start, int count, PointerBase buffer) {
+        Support.getPrimitiveArrayRegion(JavaKind.Double, array, start, count, buffer);
+    }
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void SetBooleanArrayRegion(JNIEnvironment env, JNIObjectHandle array, int start, int count, @CConst PointerBase buffer) {
+        Support.setPrimitiveArrayRegion(JavaKind.Boolean, array, start, count, buffer);
+    }
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void SetByteArrayRegion(JNIEnvironment env, JNIObjectHandle array, int start, int count, @CConst PointerBase buffer) {
+        Support.setPrimitiveArrayRegion(JavaKind.Byte, array, start, count, buffer);
+    }
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void SetShortArrayRegion(JNIEnvironment env, JNIObjectHandle array, int start, int count, @CConst PointerBase buffer) {
+        Support.setPrimitiveArrayRegion(JavaKind.Short, array, start, count, buffer);
+    }
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void SetCharArrayRegion(JNIEnvironment env, JNIObjectHandle array, int start, int count, @CConst PointerBase buffer) {
+        Support.setPrimitiveArrayRegion(JavaKind.Char, array, start, count, buffer);
+    }
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void SetIntArrayRegion(JNIEnvironment env, JNIObjectHandle array, int start, int count, @CConst PointerBase buffer) {
+        Support.setPrimitiveArrayRegion(JavaKind.Int, array, start, count, buffer);
+    }
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void SetLongArrayRegion(JNIEnvironment env, JNIObjectHandle array, int start, int count, @CConst PointerBase buffer) {
+        Support.setPrimitiveArrayRegion(JavaKind.Long, array, start, count, buffer);
+    }
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void SetFloatArrayRegion(JNIEnvironment env, JNIObjectHandle array, int start, int count, @CConst PointerBase buffer) {
+        Support.setPrimitiveArrayRegion(JavaKind.Float, array, start, count, buffer);
+    }
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void SetDoubleArrayRegion(JNIEnvironment env, JNIObjectHandle array, int start, int count, @CConst PointerBase buffer) {
+        Support.setPrimitiveArrayRegion(JavaKind.Double, array, start, count, buffer);
+    }
+
+    /* It is not correct to return null when an exception is thrown, see GR-54276. */
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static JNIObjectHandle GetObjectField(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId) {
+        return JNIObjectFieldAccess.singleton().getObjectField(obj, fieldId);
+    }
+
+    @Uninterruptible(reason = "Must not throw any exceptions.")
+    @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static boolean GetBooleanField(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId) {
+        Object o = JNIObjectHandles.getObject(obj);
+        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        return U.getBoolean(o, offset);
+    }
+
+    @Uninterruptible(reason = "Must not throw any exceptions.")
+    @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static byte GetByteField(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId) {
+        Object o = JNIObjectHandles.getObject(obj);
+        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        return U.getByte(o, offset);
+    }
+
+    @Uninterruptible(reason = "Must not throw any exceptions.")
+    @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static short GetShortField(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId) {
+        Object o = JNIObjectHandles.getObject(obj);
+        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        return U.getShort(o, offset);
+    }
+
+    @Uninterruptible(reason = "Must not throw any exceptions.")
+    @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static char GetCharField(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId) {
+        Object o = JNIObjectHandles.getObject(obj);
+        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        return U.getChar(o, offset);
+    }
+
+    @Uninterruptible(reason = "Must not throw any exceptions.")
+    @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static int GetIntField(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId) {
+        Object o = JNIObjectHandles.getObject(obj);
+        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        return U.getInt(o, offset);
+    }
+
+    @Uninterruptible(reason = "Must not throw any exceptions.")
+    @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static long GetLongField(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId) {
+        Object o = JNIObjectHandles.getObject(obj);
+        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        return U.getLong(o, offset);
+    }
+
+    @Uninterruptible(reason = "Must not throw any exceptions.")
+    @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static float GetFloatField(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId) {
+        Object o = JNIObjectHandles.getObject(obj);
+        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        return U.getFloat(o, offset);
+    }
+
+    @Uninterruptible(reason = "Must not throw any exceptions.")
+    @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static double GetDoubleField(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId) {
+        Object o = JNIObjectHandles.getObject(obj);
+        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        return U.getDouble(o, offset);
+    }
+
+    /* It is not correct to return null when an exception is thrown, see GR-54276. */
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static JNIObjectHandle GetStaticObjectField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId) {
+        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        Object result = U.getReference(StaticFieldsSupport.getStaticObjectFields(), offset);
+        return JNIObjectHandles.createLocal(result);
+    }
+
+    @Uninterruptible(reason = "Must not throw any exceptions.")
+    @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static boolean GetStaticBooleanField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId) {
+        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        return U.getBoolean(StaticFieldsSupport.getStaticPrimitiveFields(), offset);
+    }
+
+    @Uninterruptible(reason = "Must not throw any exceptions.")
+    @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static byte GetStaticByteField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId) {
+        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        return U.getByte(StaticFieldsSupport.getStaticPrimitiveFields(), offset);
+    }
+
+    @Uninterruptible(reason = "Must not throw any exceptions.")
+    @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static short GetStaticShortField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId) {
+        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        return U.getShort(StaticFieldsSupport.getStaticPrimitiveFields(), offset);
+    }
+
+    @Uninterruptible(reason = "Must not throw any exceptions.")
+    @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static char GetStaticCharField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId) {
+        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        return U.getChar(StaticFieldsSupport.getStaticPrimitiveFields(), offset);
+    }
+
+    @Uninterruptible(reason = "Must not throw any exceptions.")
+    @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static int GetStaticIntField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId) {
+        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        return U.getInt(StaticFieldsSupport.getStaticPrimitiveFields(), offset);
+    }
+
+    @Uninterruptible(reason = "Must not throw any exceptions.")
+    @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static long GetStaticLongField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId) {
+        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        return U.getLong(StaticFieldsSupport.getStaticPrimitiveFields(), offset);
+    }
+
+    @Uninterruptible(reason = "Must not throw any exceptions.")
+    @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static float GetStaticFloatField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId) {
+        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        return U.getFloat(StaticFieldsSupport.getStaticPrimitiveFields(), offset);
+    }
+
+    @Uninterruptible(reason = "Must not throw any exceptions.")
+    @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static double GetStaticDoubleField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId) {
+        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        return U.getDouble(StaticFieldsSupport.getStaticPrimitiveFields(), offset);
+    }
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void SetObjectField(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId, JNIObjectHandle value) {
+        Object o = JNIObjectHandles.getObject(obj);
+        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        U.putReference(o, offset, JNIObjectHandles.getObject(value));
+    }
+
+    @Uninterruptible(reason = "Must not throw any exceptions.")
+    @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void SetBooleanField(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId, boolean value) {
+        Object o = JNIObjectHandles.getObject(obj);
+        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        U.putBoolean(o, offset, value);
+    }
+
+    @Uninterruptible(reason = "Must not throw any exceptions.")
+    @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void SetByteField(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId, byte value) {
+        Object o = JNIObjectHandles.getObject(obj);
+        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        U.putByte(o, offset, value);
+    }
+
+    @Uninterruptible(reason = "Must not throw any exceptions.")
+    @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void SetShortField(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId, short value) {
+        Object o = JNIObjectHandles.getObject(obj);
+        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        U.putShort(o, offset, value);
+    }
+
+    @Uninterruptible(reason = "Must not throw any exceptions.")
+    @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void SetCharField(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId, char value) {
+        Object o = JNIObjectHandles.getObject(obj);
+        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        U.putChar(o, offset, value);
+    }
+
+    @Uninterruptible(reason = "Must not throw any exceptions.")
+    @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void SetIntField(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId, int value) {
+        Object o = JNIObjectHandles.getObject(obj);
+        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        U.putInt(o, offset, value);
+    }
+
+    @Uninterruptible(reason = "Must not throw any exceptions.")
+    @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void SetLongField(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId, long value) {
+        Object o = JNIObjectHandles.getObject(obj);
+        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        U.putLong(o, offset, value);
+    }
+
+    @Uninterruptible(reason = "Must not throw any exceptions.")
+    @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void SetFloatField(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId, float value) {
+        Object o = JNIObjectHandles.getObject(obj);
+        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        U.putFloat(o, offset, value);
+    }
+
+    @Uninterruptible(reason = "Must not throw any exceptions.")
+    @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void SetDoubleField(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId, double value) {
+        Object o = JNIObjectHandles.getObject(obj);
+        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        U.putDouble(o, offset, value);
+    }
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void SetStaticObjectField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId, JNIObjectHandle value) {
+        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        U.putReference(StaticFieldsSupport.getStaticObjectFields(), offset, JNIObjectHandles.getObject(value));
+    }
+
+    @Uninterruptible(reason = "Must not throw any exceptions.")
+    @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void SetStaticBooleanField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId, boolean value) {
+        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        U.putBoolean(StaticFieldsSupport.getStaticPrimitiveFields(), offset, value);
+    }
+
+    @Uninterruptible(reason = "Must not throw any exceptions.")
+    @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void SetStaticByteField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId, byte value) {
+        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        U.putByte(StaticFieldsSupport.getStaticPrimitiveFields(), offset, value);
+    }
+
+    @Uninterruptible(reason = "Must not throw any exceptions.")
+    @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void SetStaticShortField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId, short value) {
+        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        U.putShort(StaticFieldsSupport.getStaticPrimitiveFields(), offset, value);
+    }
+
+    @Uninterruptible(reason = "Must not throw any exceptions.")
+    @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void SetStaticCharField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId, char value) {
+        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        U.putChar(StaticFieldsSupport.getStaticPrimitiveFields(), offset, value);
+    }
+
+    @Uninterruptible(reason = "Must not throw any exceptions.")
+    @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void SetStaticIntField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId, int value) {
+        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        U.putInt(StaticFieldsSupport.getStaticPrimitiveFields(), offset, value);
+    }
+
+    @Uninterruptible(reason = "Must not throw any exceptions.")
+    @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void SetStaticLongField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId, long value) {
+        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        U.putLong(StaticFieldsSupport.getStaticPrimitiveFields(), offset, value);
+    }
+
+    @Uninterruptible(reason = "Must not throw any exceptions.")
+    @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void SetStaticFloatField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId, float value) {
+        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        U.putFloat(StaticFieldsSupport.getStaticPrimitiveFields(), offset, value);
+    }
+
+    @Uninterruptible(reason = "Must not throw any exceptions.")
+    @CEntryPoint(exceptionHandler = FatalExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static void SetStaticDoubleField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId, double value) {
+        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        U.putDouble(StaticFieldsSupport.getStaticPrimitiveFields(), offset, value);
     }
 
     // Checkstyle: resume
@@ -1317,6 +1813,8 @@ public final class JNIFunctions {
                     case CEntryPointErrors.RESERVE_ADDRESS_SPACE_FAILED:
                     case CEntryPointErrors.INSUFFICIENT_ADDRESS_SPACE:
                         return JNIErrors.JNI_ENOMEM();
+                    case CEntryPointErrors.SINGLE_ISOLATE_ALREADY_CREATED:
+                        return JNIErrors.JNI_EEXIST();
                 }
             }
 
@@ -1443,6 +1941,51 @@ public final class JNIFunctions {
                 return (Target_java_nio_Buffer) obj;
             } else {
                 return null;
+            }
+        }
+
+        static PointerBase createArrayViewAndGetAddress(JNIObjectHandle handle, CCharPointer isCopy) {
+            Object obj = JNIObjectHandles.getObject(handle);
+            if (!obj.getClass().isArray()) {
+                throw new IllegalArgumentException("Argument is not an array");
+            }
+
+            /* Create a view for the non-null array object. */
+            PrimitiveArrayView ref = JNIThreadLocalPrimitiveArrayViews.createArrayView(obj);
+            if (isCopy.isNonNull()) {
+                isCopy.write(ref.isCopy() ? (byte) 1 : (byte) 0);
+            }
+            return ref.addressOfArrayElement(0);
+        }
+
+        static void destroyNewestArrayViewByAddress(PointerBase address, int mode) {
+            JNIThreadLocalPrimitiveArrayViews.destroyNewestArrayViewByAddress(address, mode);
+        }
+
+        static void getPrimitiveArrayRegion(JavaKind elementKind, JNIObjectHandle handle, int start, int count, PointerBase buffer) {
+            Object obj = JNIObjectHandles.getObject(handle);
+            /* Check if we have a non-null array object and if start/count are valid. */
+            if (ArrayUtil.isOutOfBounds(obj, start, count)) {
+                throw new ArrayIndexOutOfBoundsException();
+            }
+            if (count > 0) {
+                long offset = ConfigurationValues.getObjectLayout().getArrayElementOffset(elementKind, start);
+                int elementSize = ConfigurationValues.getObjectLayout().sizeInBytes(elementKind);
+                UnsignedWord bytes = WordFactory.unsigned(count).multiply(elementSize);
+                JavaMemoryUtil.copyOnHeap(obj, WordFactory.unsigned(offset), null, WordFactory.unsigned(buffer.rawValue()), bytes);
+            }
+        }
+
+        static void setPrimitiveArrayRegion(JavaKind elementKind, JNIObjectHandle handle, int start, int count, PointerBase buffer) {
+            Object obj = JNIObjectHandles.getObject(handle);
+            if (ArrayUtil.isOutOfBounds(obj, start, count)) {
+                throw new ArrayIndexOutOfBoundsException();
+            }
+            if (count > 0) {
+                long offset = ConfigurationValues.getObjectLayout().getArrayElementOffset(elementKind, start);
+                int elementSize = ConfigurationValues.getObjectLayout().sizeInBytes(elementKind);
+                UnsignedWord bytes = WordFactory.unsigned(count).multiply(elementSize);
+                JavaMemoryUtil.copyOnHeap(null, WordFactory.unsigned(buffer.rawValue()), obj, WordFactory.unsigned(offset), bytes);
             }
         }
     }

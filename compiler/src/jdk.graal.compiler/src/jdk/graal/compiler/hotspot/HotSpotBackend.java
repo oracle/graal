@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,6 +41,9 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
+import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.WordBase;
+
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
@@ -77,9 +80,6 @@ import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.tiers.SuitesProvider;
 import jdk.graal.compiler.word.Word;
-import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.WordBase;
-
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.code.CompiledCode;
@@ -192,6 +192,13 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     @NodeIntrinsic(ForeignCallNode.class)
     private static native int sha3ImplCompressMBStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word bufAddr, Object state, int blockSize, int ofs, int limit);
 
+    public static void unsafeSetMemory(Word objAddr, Word size, byte value) {
+        unsafeSetMemoryStub(UNSAFE_SETMEMORY, objAddr, size, value);
+    }
+
+    @NodeIntrinsic(ForeignCallNode.class)
+    private static native void unsafeSetMemoryStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word objAddr, Word size, byte value);
+
     public static void unsafeArraycopy(Word srcAddr, Word dstAddr, Word size) {
         unsafeArraycopyStub(UNSAFE_ARRAYCOPY, srcAddr, dstAddr, size);
     }
@@ -245,6 +252,12 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     public static final HotSpotForeignCallDescriptor CHACHA20Block = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, any(), "_chacha20Block", int.class,
                     WordBase.class, WordBase.class);
 
+    public static final HotSpotForeignCallDescriptor INTPOLY_MONTGOMERYMULT_P256 = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, any(), "_intpoly_montgomeryMult_P256", void.class,
+                    WordBase.class, WordBase.class, WordBase.class);
+
+    public static final HotSpotForeignCallDescriptor INTPOLY_ASSIGN = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, any(), "_intpoly_assign", void.class,
+                    int.class, WordBase.class, WordBase.class, int.class);
+
     public static final HotSpotForeignCallDescriptor SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_START = new HotSpotForeignCallDescriptor(SAFEPOINT, HAS_SIDE_EFFECT, any(),
                     "notify_jvmti_vthread_start", void.class,
                     Object.class, boolean.class, Word.class);
@@ -261,6 +274,9 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
                     "notify_jvmti_vthread_unmount", void.class,
                     Object.class, boolean.class, Word.class);
 
+    public static final HotSpotForeignCallDescriptor UNSAFE_SETMEMORY = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, any(),
+                    "unsafe_setmemory", void.class, Word.class, Word.class, byte.class);
+
     /**
      * @see VMErrorNode
      */
@@ -270,21 +286,10 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     private static final LocationIdentity[] TLAB_LOCATIONS = new LocationIdentity[]{TLAB_TOP_LOCATION, TLAB_END_LOCATION};
 
     /**
-     * New multi array stub that throws an {@link OutOfMemoryError} on allocation failure.
-     */
-    public static final HotSpotForeignCallDescriptor NEW_MULTI_ARRAY = new HotSpotForeignCallDescriptor(SAFEPOINT, NO_SIDE_EFFECT, TLAB_LOCATIONS, "new_multi_array", Object.class, KlassPointer.class,
-                    int.class, Word.class);
-
-    /**
      * New multi array stub that will return null on allocation failure.
      */
     public static final HotSpotForeignCallDescriptor NEW_MULTI_ARRAY_OR_NULL = new HotSpotForeignCallDescriptor(SAFEPOINT, NO_SIDE_EFFECT, TLAB_LOCATIONS, "new_multi_array_or_null", Object.class,
                     KlassPointer.class, int.class, Word.class);
-
-    /**
-     * New array stub that throws an {@link OutOfMemoryError} on allocation failure.
-     */
-    public static final HotSpotForeignCallDescriptor NEW_ARRAY = new HotSpotForeignCallDescriptor(SAFEPOINT, NO_SIDE_EFFECT, TLAB_LOCATIONS, "new_array", Object.class, KlassPointer.class, int.class);
 
     /**
      * New array stub that will return null on allocation failure.
@@ -294,15 +299,14 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
                     int.class);
 
     /**
-     * New instance stub that throws an {@link OutOfMemoryError} on allocation failure.
-     */
-    public static final HotSpotForeignCallDescriptor NEW_INSTANCE = new HotSpotForeignCallDescriptor(SAFEPOINT, NO_SIDE_EFFECT, TLAB_LOCATIONS, "new_instance", Object.class, KlassPointer.class);
-
-    /**
      * New instance stub that will return null on allocation failure.
      */
     public static final HotSpotForeignCallDescriptor NEW_INSTANCE_OR_NULL = new HotSpotForeignCallDescriptor(SAFEPOINT, NO_SIDE_EFFECT, TLAB_LOCATIONS, "new_instance_or_null", Object.class,
                     KlassPointer.class);
+
+    /** New dynamic array stub that returns null on allocation failure. */
+    public static final HotSpotForeignCallDescriptor DYNAMIC_NEW_INSTANCE_OR_NULL = new HotSpotForeignCallDescriptor(SAFEPOINT, NO_SIDE_EFFECT, NO_LOCATIONS, "dynamic_new_instance_or_null",
+                    Object.class, Class.class);
 
     public HotSpotBackend(HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers) {
         super(providers);
@@ -411,7 +415,7 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
         // Only allocatable registers must be described as killed. This works around an issue where
         // the set of allocatable registers is different than the registers actually used for
         // allocation by linear scan on AVX512.
-        RegisterAllocationConfig registerAllocationConfig = newRegisterAllocationConfig(frameMap.getRegisterConfig(), null);
+        RegisterAllocationConfig registerAllocationConfig = newRegisterAllocationConfig(frameMap.getRegisterConfig(), null, stub);
         EconomicSet<Register> allocatableRegisters = EconomicSet.create();
         for (Register r : registerAllocationConfig.getAllocatableRegisters()) {
             allocatableRegisters.add(r);

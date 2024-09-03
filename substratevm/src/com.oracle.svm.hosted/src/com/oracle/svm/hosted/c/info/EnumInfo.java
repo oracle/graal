@@ -24,20 +24,29 @@
  */
 package com.oracle.svm.hosted.c.info;
 
-import com.oracle.svm.core.c.enums.EnumRuntimeData;
+import java.util.ArrayList;
+
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.core.c.enums.CEnumRuntimeData;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class EnumInfo extends ElementInfo {
+public class EnumInfo extends SizableInfo {
 
     private final ResolvedJavaType annotatedType;
+    private final ArrayList<AnalysisMethod> valueMethods = new ArrayList<>();
+    private final ArrayList<AnalysisMethod> lookupMethods = new ArrayList<>();
 
-    protected boolean needsLookup;
-    private EnumRuntimeData runtimeData;
+    private CEnumRuntimeData runtimeData;
 
     public EnumInfo(String name, ResolvedJavaType annotatedType) {
-        super(name);
+        super(name, ElementKind.INTEGER);
         this.annotatedType = annotatedType;
+    }
+
+    @Override
+    public void accept(InfoTreeVisitor visitor) {
+        visitor.visitEnumInfo(this);
     }
 
     @Override
@@ -45,22 +54,33 @@ public class EnumInfo extends ElementInfo {
         return annotatedType;
     }
 
-    public boolean getNeedsLookup() {
-        return needsLookup;
-    }
-
-    public EnumRuntimeData getRuntimeData() {
+    public CEnumRuntimeData getRuntimeData() {
         assert runtimeData != null;
         return runtimeData;
     }
 
-    public void setRuntimeData(EnumRuntimeData runtimeData) {
+    public void setRuntimeData(CEnumRuntimeData runtimeData) {
         assert this.runtimeData == null;
         this.runtimeData = runtimeData;
     }
 
-    @Override
-    public void accept(InfoTreeVisitor visitor) {
-        visitor.visitEnumInfo(this);
+    public Iterable<AnalysisMethod> getCEnumValueMethods() {
+        return valueMethods;
+    }
+
+    public Iterable<AnalysisMethod> getCEnumLookupMethods() {
+        return lookupMethods;
+    }
+
+    public void addCEnumValueMethod(AnalysisMethod method) {
+        valueMethods.add(method);
+    }
+
+    public void addCEnumLookupMethod(AnalysisMethod method) {
+        lookupMethods.add(method);
+    }
+
+    public boolean hasCEnumLookupMethods() {
+        return !lookupMethods.isEmpty();
     }
 }

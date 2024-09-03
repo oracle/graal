@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,19 +27,27 @@ package com.oracle.svm.core.jdk.resources;
 
 import java.util.List;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 import com.oracle.svm.core.util.VMError;
 
 public class ResourceStorageEntryBase {
     public boolean isDirectory() {
-        throw VMError.shouldNotReachHere("This should only be called entries with data.");
+        throw VMError.shouldNotReachHere("This should only be called on entries with data.");
     }
 
     public boolean isFromJar() {
-        throw VMError.shouldNotReachHere("This should only be called entries with data.");
+        throw VMError.shouldNotReachHere("This should only be called on entries with data.");
     }
 
     public List<byte[]> getData() {
-        throw VMError.shouldNotReachHere("This should only be called entries with data.");
+        throw VMError.shouldNotReachHere("This should only be called on entries with data.");
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void addData(@SuppressWarnings("unused") byte[] data) {
+        throw VMError.shouldNotReachHere("This should only be called on entries with data.");
     }
 
     public boolean isException() {

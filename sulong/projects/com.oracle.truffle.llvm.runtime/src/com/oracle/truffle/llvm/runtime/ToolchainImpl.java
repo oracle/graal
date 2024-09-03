@@ -34,8 +34,6 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.llvm.api.Toolchain;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMInfo;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 public final class ToolchainImpl implements Toolchain {
@@ -123,14 +121,17 @@ public final class ToolchainImpl implements Toolchain {
             return null;
         }
 
-        switch (pathName) {
-            case "PATH":
-                return Collections.unmodifiableList(Arrays.asList(getWrappersRoot().resolve("bin")));
-            case "LD_LIBRARY_PATH":
-                return Collections.unmodifiableList(Arrays.asList(getSysroot().resolve("lib")));
-            default:
-                return null;
-        }
+        return switch (pathName) {
+            case "PATH" -> {
+                TruffleFile wrappersRoot = getWrappersRoot();
+                yield wrappersRoot != null ? List.of(wrappersRoot.resolve("bin")) : List.of();
+            }
+            case "LD_LIBRARY_PATH" -> {
+                TruffleFile sysRoot = getSysroot();
+                yield sysRoot != null ? List.of(sysRoot.resolve("lib")) : List.of();
+            }
+            default -> null;
+        };
     }
 
     /**
@@ -153,7 +154,12 @@ public final class ToolchainImpl implements Toolchain {
      */
     private TruffleFile getSysroot() {
         TruffleLanguage.Env env = LLVMLanguage.getContext().getEnv();
-        return env.getInternalTruffleFile(language.getLLVMLanguageHome()).resolve(toolchainConfig.getToolchainSubdir());
+        String home = language.getLLVMLanguageHome();
+        if (home != null) {
+            return env.getInternalTruffleFile(home).resolve(toolchainConfig.getToolchainSubdir());
+        } else {
+            return null;
+        }
     }
 
     @Override

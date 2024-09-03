@@ -27,6 +27,8 @@ package jdk.graal.compiler.nodes.java;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_8;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_2;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -34,8 +36,7 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.memory.AbstractMemoryCheckpoint;
 import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
 import jdk.graal.compiler.nodes.spi.Lowerable;
-import org.graalvm.word.LocationIdentity;
-
+import jdk.graal.compiler.nodes.spi.TrackedUnsafeAccess;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
@@ -43,7 +44,7 @@ import jdk.vm.ci.meta.JavaKind;
  * {@code sun.misc.Unsafe.getAndSetInt(Object, long, int)}.
  */
 @NodeInfo(cycles = CYCLES_8, size = SIZE_2)
-public final class AtomicReadAndWriteNode extends AbstractMemoryCheckpoint implements Lowerable, SingleMemoryKill {
+public final class AtomicReadAndWriteNode extends AbstractMemoryCheckpoint implements Lowerable, SingleMemoryKill, TrackedUnsafeAccess {
 
     public static final NodeClass<AtomicReadAndWriteNode> TYPE = NodeClass.create(AtomicReadAndWriteNode.class);
     @Input ValueNode object;

@@ -24,6 +24,7 @@
  */
 package com.oracle.graal.pointsto.heap.value;
 
+import java.util.Objects;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 
@@ -42,7 +43,7 @@ import java.util.function.Supplier;
 public interface ValueSupplier<V> {
 
     static <V> ValueSupplier<V> eagerValue(V value) {
-        return new EagerValueSupplier<>(value);
+        return new EagerValueSupplier<>(Objects.requireNonNull(value));
     }
 
     static <V> ValueSupplier<V> lazyValue(Supplier<V> valueSupplier, BooleanSupplier isAvailable) {

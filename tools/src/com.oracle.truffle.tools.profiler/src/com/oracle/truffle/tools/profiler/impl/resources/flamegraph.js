@@ -78,7 +78,7 @@ function fg_create_element_for_sample(sample, width, x) {
     t.style.textAnchor = "left";
     t.setAttribute("x", x + 3);
     t.setAttribute("y", y - 5 + fg_frameheight);
-    t.style.fontSize = fontSize;
+    t.style.fontSize = fontSize + "px";
     t.style.fontFamily = "Verdana";
     t.style.fill = "rgb(0, 0, 0)";
 

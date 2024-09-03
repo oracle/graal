@@ -27,13 +27,13 @@ package jdk.graal.compiler.replacements.test;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 
+import org.junit.Assert;
+import org.junit.Test;
+
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.replacements.ReplacementsImpl;
 import jdk.graal.compiler.replacements.classfile.ClassfileBytecodeProvider;
-import org.junit.Assert;
-import org.junit.Test;
-
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -50,7 +50,7 @@ public class ReplacementsTest extends GraalCompilerTest {
     protected final ClassfileBytecodeProvider getSystemClassLoaderBytecodeProvider() {
         ReplacementsImpl d = (ReplacementsImpl) getReplacements();
         MetaAccessProvider metaAccess = d.getProviders().getMetaAccess();
-        ClassfileBytecodeProvider bytecodeProvider = new ClassfileBytecodeProvider(metaAccess, d.snippetReflection, ClassLoader.getSystemClassLoader());
+        ClassfileBytecodeProvider bytecodeProvider = new ClassfileBytecodeProvider(metaAccess, d.getProviders().getSnippetReflection(), ClassLoader.getSystemClassLoader());
         return bytecodeProvider;
     }
 

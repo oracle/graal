@@ -108,7 +108,7 @@ public final class NFAGenerator {
         this.compilationBuffer = compilationBuffer;
         dummyInitialState = new NFAState((short) stateID.inc(), StateSet.create(ast, ast.getWrappedRoot()), CodePointSet.getEmpty(), Collections.emptySet(), false, ast.getOptions().isMustAdvance());
         nfaStates.put(NFAStateID.create(dummyInitialState), dummyInitialState);
-        anchoredFinalState = createFinalState(StateSet.create(ast, ast.getReachableDollars()), false);
+        anchoredFinalState = createFinalState(StateSet.create(ast, ast.getRoot().getSubTreeParent().getAnchoredFinalState()), false);
         anchoredFinalState.setAnchoredFinalState();
         finalState = createFinalState(StateSet.create(ast, ast.getRoot().getSubTreeParent().getMatchFound()), false);
         finalState.setUnAnchoredFinalState();

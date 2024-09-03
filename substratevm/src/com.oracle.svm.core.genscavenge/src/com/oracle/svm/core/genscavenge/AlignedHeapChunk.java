@@ -24,23 +24,22 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.word.Word;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectVisitor;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.util.PointerUtils;
+
+import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.Word;
 
 /**
  * An AlignedHeapChunk can hold many Objects.
@@ -53,17 +52,14 @@ import com.oracle.svm.core.util.PointerUtils;
  * Most allocation within a AlignedHeapChunk is via fast-path allocation snippets, but a slow-path
  * allocation method is available.
  * <p>
- * Objects in a AlignedHeapChunk have to be promoted by copying from their current HeapChunk to a
- * destination HeapChunk.
- * <p>
- * An AlignedHeapChunk is laid out:
+ * An AlignedHeapChunk is laid out as follows:
  *
  * <pre>
- * +===============+-------+--------+----------------------+
- * | AlignedHeader | Card  | First  | Object ...           |
- * | Fields        | Table | Object |                      |
- * |               |       | Table  |                      |
- * +===============+-------+--------+----------------------+
+ * +===============+-------+--------+-----------------+-----------------+
+ * | AlignedHeader | Card  | First  | Initial Object  | Object ...      |
+ * | Fields        | Table | Object | Move Info (only |                 |
+ * |               |       | Table  | Compacting GC)  |                 |
+ * +===============+-------+--------+-----------------+-----------------+
  * </pre>
  *
  * The size of both the CardTable and the FirstObjectTable depends on the used {@link RememberedSet}
@@ -81,15 +77,24 @@ public final class AlignedHeapChunk {
      */
     @RawStructure
     public interface AlignedHeader extends HeapChunk.Header<AlignedHeader> {
+        @RawField
+        boolean getShouldSweepInsteadOfCompact();
+
+        @RawField
+        void setShouldSweepInsteadOfCompact(boolean value);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void initialize(AlignedHeader chunk, UnsignedWord chunkSize) {
+        assert chunkSize.equal(HeapParameters.getAlignedHeapChunkSize()) : "expecting all aligned chunks to be the same size";
         HeapChunk.initialize(chunk, AlignedHeapChunk.getObjectsStart(chunk), chunkSize);
+        chunk.setShouldSweepInsteadOfCompact(false);
     }
 
     public static void reset(AlignedHeader chunk) {
-        HeapChunk.initialize(chunk, AlignedHeapChunk.getObjectsStart(chunk), HeapChunk.getEndOffset(chunk));
+        long alignedChunkSize = SerialAndEpsilonGCOptions.AlignedHeapChunkSize.getValue();
+        assert HeapChunk.getEndOffset(chunk).rawValue() == alignedChunkSize;
+        initialize(chunk, WordFactory.unsigned(alignedChunkSize));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -99,6 +104,10 @@ public final class AlignedHeapChunk {
 
     public static Pointer getObjectsEnd(AlignedHeader that) {
         return HeapChunk.getEndPointer(that);
+    }
+
+    public static boolean isEmpty(AlignedHeader that) {
+        return HeapChunk.getTopOffset(that).equal(getObjectsStartOffset());
     }
 
     /** Allocate uninitialized memory within this AlignedHeapChunk. */
@@ -115,11 +124,6 @@ public final class AlignedHeapChunk {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static UnsignedWord getCommittedObjectMemory(AlignedHeader that) {
-        return HeapChunk.getEndOffset(that).subtract(getObjectsStartOffset());
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static AlignedHeader getEnclosingChunk(Object obj) {
         Pointer ptr = Word.objectToUntrackedPointer(obj);
         return getEnclosingChunkFromObjectPointer(ptr);
@@ -127,6 +131,9 @@ public final class AlignedHeapChunk {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static AlignedHeader getEnclosingChunkFromObjectPointer(Pointer ptr) {
+        if (!GraalDirectives.inIntrinsic()) {
+            assert HeapImpl.isImageHeapAligned() || !HeapImpl.getHeapImpl().isInImageHeap(ptr) : "can't be used because the image heap is unaligned";
+        }
         return (AlignedHeader) PointerUtils.roundDown(ptr, HeapParameters.getAlignedHeapChunkAlignment());
     }
 
@@ -143,8 +150,8 @@ public final class AlignedHeapChunk {
 
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static boolean walkObjectsInline(AlignedHeader that, ObjectVisitor visitor) {
-        return HeapChunk.walkObjectsFromInline(that, getObjectsStart(that), visitor);
+    static boolean walkObjectsFromInline(AlignedHeader that, Pointer start, ObjectVisitor visitor) {
+        return HeapChunk.walkObjectsFromInline(that, start, visitor);
     }
 
     @Fold
@@ -153,26 +160,18 @@ public final class AlignedHeapChunk {
     }
 
     @Fold
-    static MemoryWalker.HeapChunkAccess<AlignedHeapChunk.AlignedHeader> getMemoryWalkerAccess() {
-        return ImageSingletons.lookup(AlignedHeapChunk.MemoryWalkerAccessImpl.class);
+    public static UnsignedWord getUsableSizeForObjects() {
+        return HeapParameters.getAlignedHeapChunkSize().subtract(getObjectsStartOffset());
     }
 
-    /** Methods for a {@link MemoryWalker} to access an aligned heap chunk. */
-    @AutomaticallyRegisteredImageSingleton(onlyWith = UseSerialOrEpsilonGC.class)
-    static final class MemoryWalkerAccessImpl extends HeapChunk.MemoryWalkerAccessImpl<AlignedHeapChunk.AlignedHeader> {
-
-        @Platforms(Platform.HOSTED_ONLY.class)
-        MemoryWalkerAccessImpl() {
-        }
-
-        @Override
-        public boolean isAligned(AlignedHeapChunk.AlignedHeader heapChunk) {
-            return true;
-        }
-
-        @Override
-        public UnsignedWord getAllocationStart(AlignedHeapChunk.AlignedHeader heapChunk) {
-            return getObjectsStart(heapChunk);
-        }
+    public interface Visitor {
+        /**
+         * Visit an {@link AlignedHeapChunk}.
+         *
+         * @param chunk The {@link AlignedHeapChunk} to be visited.
+         * @return {@code true} if visiting should continue, {@code false} if visiting should stop.
+         */
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while visiting the heap.")
+        boolean visitChunk(AlignedHeapChunk.AlignedHeader chunk);
     }
 }

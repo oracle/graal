@@ -29,7 +29,7 @@ import java.util.Set;
 
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.loop.LoopEx;
+import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.loop.LoopsData;
 import org.junit.Assert;
 import org.junit.Test;
@@ -74,18 +74,18 @@ public class LoopsDataTest extends GraalCompilerTest {
     public void sanityTests() {
         LoopsData loops = getLoopsData();
         Assert.assertEquals(8, loops.outerFirst().size());
-        Assert.assertEquals(1, loops.outerFirst().get(0).loop().getDepth());
-        Assert.assertEquals(1, loops.outerFirst().get(1).loop().getDepth());
-        Assert.assertEquals(2, loops.outerFirst().get(2).loop().getDepth());
-        Assert.assertEquals(3, loops.outerFirst().get(3).loop().getDepth());
-        Assert.assertEquals(2, loops.outerFirst().get(4).loop().getDepth());
-        Assert.assertEquals(2, loops.outerFirst().get(5).loop().getDepth());
-        Assert.assertEquals(3, loops.outerFirst().get(6).loop().getDepth());
-        Assert.assertEquals(4, loops.outerFirst().get(7).loop().getDepth());
+        Assert.assertEquals(1, loops.outerFirst().get(0).getCFGLoop().getDepth());
+        Assert.assertEquals(1, loops.outerFirst().get(1).getCFGLoop().getDepth());
+        Assert.assertEquals(2, loops.outerFirst().get(2).getCFGLoop().getDepth());
+        Assert.assertEquals(3, loops.outerFirst().get(3).getCFGLoop().getDepth());
+        Assert.assertEquals(2, loops.outerFirst().get(4).getCFGLoop().getDepth());
+        Assert.assertEquals(2, loops.outerFirst().get(5).getCFGLoop().getDepth());
+        Assert.assertEquals(3, loops.outerFirst().get(6).getCFGLoop().getDepth());
+        Assert.assertEquals(4, loops.outerFirst().get(7).getCFGLoop().getDepth());
 
-        for (LoopEx loop : loops.loops()) {
+        for (Loop loop : loops.loops()) {
             if (loop.parent() != null) {
-                Assert.assertEquals(loop.parent().loop().getDepth() + 1, loop.loop().getDepth());
+                Assert.assertEquals(loop.parent().getCFGLoop().getDepth() + 1, loop.getCFGLoop().getDepth());
             }
         }
     }
@@ -94,8 +94,8 @@ public class LoopsDataTest extends GraalCompilerTest {
     public void testInnerFirst() {
         LoopsData loops = getLoopsData();
 
-        Set<LoopEx> seen = new HashSet<>();
-        for (LoopEx loop : loops.innerFirst()) {
+        Set<Loop> seen = new HashSet<>();
+        for (Loop loop : loops.innerFirst()) {
             assertFalse(seen.contains(loop), "%s has already been seen", loop);
             if (loop.parent() != null) {
                 assertFalse(seen.contains(loop.parent()), "%s's parent (%s) should not have already been seen", loop, loop.parent());
@@ -108,8 +108,8 @@ public class LoopsDataTest extends GraalCompilerTest {
     public void testOuterFirst() {
         LoopsData loops = getLoopsData();
 
-        Set<LoopEx> seen = new HashSet<>();
-        for (LoopEx loop : loops.outerFirst()) {
+        Set<Loop> seen = new HashSet<>();
+        for (Loop loop : loops.outerFirst()) {
             assertFalse(seen.contains(loop), "%s has already been seen", loop);
             if (loop.parent() != null) {
                 assertTrue(seen.contains(loop.parent()), "%s's parent (%s) should have already been seen", loop, loop.parent());

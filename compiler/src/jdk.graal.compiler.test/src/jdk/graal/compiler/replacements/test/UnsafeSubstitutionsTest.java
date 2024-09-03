@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,10 +27,10 @@ package jdk.graal.compiler.replacements.test;
 import org.junit.Assert;
 import org.junit.Test;
 
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import sun.misc.Unsafe;
 
 /**
  * Tests the VM independent intrinsification of {@link Unsafe} methods.
@@ -59,7 +59,7 @@ public class UnsafeSubstitutionsTest extends MethodSubstitutionTest {
 
     static long off(Object o, String name) {
         try {
-            return getObjectFieldOffset(o.getClass().getDeclaredField(name));
+            return UNSAFE.objectFieldOffset(o.getClass().getDeclaredField(name));
         } catch (Exception e) {
             Assert.fail(e.toString());
             return 0L;
@@ -149,7 +149,7 @@ public class UnsafeSubstitutionsTest extends MethodSubstitutionTest {
 
     private static long fooOffset(String name) {
         try {
-            return getObjectFieldOffset(Foo.class.getDeclaredField(name));
+            return UNSAFE.objectFieldOffset(Foo.class.getDeclaredField(name));
         } catch (NoSuchFieldException | SecurityException e) {
             throw new AssertionError(e);
         }
@@ -157,17 +157,17 @@ public class UnsafeSubstitutionsTest extends MethodSubstitutionTest {
 
     @SuppressWarnings("all")
     public static boolean unsafeCompareAndSwapInt(Unsafe unsafe, Object obj, long offset) {
-        return unsafe.compareAndSwapInt(obj, offset, 0, 1);
+        return unsafe.compareAndSetInt(obj, offset, 0, 1);
     }
 
     @SuppressWarnings("all")
     public static boolean unsafeCompareAndSwapLong(Unsafe unsafe, Object obj, long offset) {
-        return unsafe.compareAndSwapLong(obj, offset, 0, 1);
+        return unsafe.compareAndSetLong(obj, offset, 0, 1);
     }
 
     @SuppressWarnings("all")
     public static boolean unsafeCompareAndSwapObject(Unsafe unsafe, Object obj, long offset) {
-        return unsafe.compareAndSwapObject(obj, offset, null, new Object());
+        return unsafe.compareAndSetReference(obj, offset, null, new Object());
     }
 
     @SuppressWarnings("all")
@@ -212,7 +212,7 @@ public class UnsafeSubstitutionsTest extends MethodSubstitutionTest {
 
     @SuppressWarnings("all")
     public static boolean unsafeGetObject(Unsafe unsafe, Object obj, long offset) {
-        return unsafe.getObject(obj, offset) == unsafe.getObjectVolatile(obj, offset);
+        return unsafe.getReference(obj, offset) == unsafe.getReferenceVolatile(obj, offset);
     }
 
     @SuppressWarnings("all")
@@ -262,7 +262,7 @@ public class UnsafeSubstitutionsTest extends MethodSubstitutionTest {
         res += unsafe.getInt(obj, offset);
         unsafe.putIntVolatile(obj, offset, value + 1);
         res += unsafe.getInt(obj, offset);
-        unsafe.putOrderedInt(obj, offset, value + 2);
+        unsafe.putIntRelease(obj, offset, value + 2);
         res += unsafe.getInt(obj, offset);
         return res;
     }
@@ -274,7 +274,7 @@ public class UnsafeSubstitutionsTest extends MethodSubstitutionTest {
         res += unsafe.getLong(obj, offset);
         unsafe.putLongVolatile(obj, offset, value + 2);
         res += unsafe.getLong(obj, offset);
-        unsafe.putOrderedLong(obj, offset, value + 3);
+        unsafe.putLongRelease(obj, offset, value + 3);
         res += unsafe.getLong(obj, offset);
         return res;
     }
@@ -302,12 +302,12 @@ public class UnsafeSubstitutionsTest extends MethodSubstitutionTest {
     @SuppressWarnings("all")
     public static Object[] unsafePutObject(Unsafe unsafe, Object obj, long offset, Object value1, Object value2, Object value3) {
         Object[] res = new Object[3];
-        unsafe.putObject(obj, offset, value1);
-        res[0] = unsafe.getObject(obj, offset);
-        unsafe.putObjectVolatile(obj, offset, value2);
-        res[1] = unsafe.getObject(obj, offset);
-        unsafe.putOrderedObject(obj, offset, value3);
-        res[2] = unsafe.getObject(obj, offset);
+        unsafe.putReference(obj, offset, value1);
+        res[0] = unsafe.getReference(obj, offset);
+        unsafe.putReferenceVolatile(obj, offset, value2);
+        res[1] = unsafe.getReference(obj, offset);
+        unsafe.putReferenceRelease(obj, offset, value3);
+        res[2] = unsafe.getReference(obj, offset);
         return res;
     }
 
@@ -449,7 +449,7 @@ public class UnsafeSubstitutionsTest extends MethodSubstitutionTest {
     }
 
     @Test
-    public void testGetAndSetObject() throws Exception {
+    public void testGetAndSetReference() throws Exception {
         Foo f1 = new Foo();
         Foo f2 = new Foo();
         long offset = off(f1, "o");
@@ -458,13 +458,13 @@ public class UnsafeSubstitutionsTest extends MethodSubstitutionTest {
             Object o = new Object();
             Object[] args1 = new Object[]{f1, offset, o};
             Object[] args2 = new Object[]{f2, offset, o};
-            testSubstitution("getAndSetObject", Unsafe.class, "getAndSetObject", parameterTypes, UNSAFE, args1, args2);
+            testSubstitution("getAndSetReference", Unsafe.class, "getAndSetReference", parameterTypes, UNSAFE, args1, args2);
             System.gc();
         }
     }
 
-    public static Object getAndSetObject(Object obj, long offset, Object newValue) {
-        return UNSAFE.getAndSetObject(obj, offset, newValue);
+    public static Object getAndSetReference(Object obj, long offset, Object newValue) {
+        return UNSAFE.getAndSetReference(obj, offset, newValue);
     }
 
 }

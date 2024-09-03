@@ -25,7 +25,9 @@
 
 from __future__ import print_function
 import os
+from functools import total_ordering
 from os.path import join, exists, basename, dirname, isdir
+import argparse
 from argparse import ArgumentParser, RawDescriptionHelpFormatter, REMAINDER
 import re
 import stat
@@ -35,11 +37,12 @@ import subprocess
 import tempfile
 import csv
 
-import mx_java_benchmarks
+import mx
 import mx_truffle
 import mx_sdk_vm
+from mx_sdk_benchmark import JVMCI_JDK_TAG, DaCapoBenchmarkSuite, ScalaDaCapoBenchmarkSuite, RenaissanceBenchmarkSuite
+import mx_graal_benchmark #pylint: disable=unused-import
 
-import mx
 import mx_gate
 from mx_gate import Task
 
@@ -50,14 +53,14 @@ from mx_javamodules import as_java_module
 import mx_sdk_vm_impl
 
 import mx_benchmark
-import mx_graal_benchmark #pylint: disable=unused-import
-import mx_graal_tools #pylint: disable=unused-import
 
-import argparse
 import shlex
 import json
 
+import mx_graal_tools #pylint: disable=unused-import
+
 _suite = mx.suite('compiler')
+
 
 """ Prefix for running the VM. """
 _vm_prefix = None
@@ -75,7 +78,7 @@ jdk = mx.get_jdk(tag='default')
 
 
 class JavaLangRuntimeVersion(mx.Comparable):
-    """Wrapper for by java.lang.Runtime.Version"""
+    """Wrapper for java.lang.Runtime.Version"""
 
     _cmp_cache = {}
     _feature_re = re.compile('[1-9][0-9]*')
@@ -120,10 +123,48 @@ class JavaLangRuntimeVersion(mx.Comparable):
             self._feature = int(JavaLangRuntimeVersion._feature_re.match(self.version).group(0))
         return self._feature
 
+@total_ordering
+class JVMCIVersionCheckVersion(object):
+    def __init__(self, jdk_version, jvmci_major, jvmci_minor, jvmci_build):
+        """
+        Python version of jdk.graal.compiler.hotspot.JVMCIVersionCheck.Version
 
-#: 4-tuple (jdk_version, jvmci_major, jvmci_minor, jvmci_build) of JVMCI version, if any, denoted by `jdk`
-# jdk_version is a JavaLangRuntimeVersion
-# jvmci_major and jvmci_minor might be 0 if not needed (JDK 22+)
+        jdk_version is a JavaLangRuntimeVersion
+        jvmci_major and jvmci_minor might be 0 if not needed (JDK 22+)
+        """
+        assert isinstance(jdk_version, JavaLangRuntimeVersion)
+        assert isinstance(jvmci_major, int)
+        assert isinstance(jvmci_minor, int)
+        assert isinstance(jvmci_build, int)
+        self.jdk_version = jdk_version
+        self.jvmci_major = jvmci_major
+        self.jvmci_minor = jvmci_minor
+        self.jvmci_build = jvmci_build
+
+    def _as_tuple(self):
+        return (self.jdk_version, self.jvmci_major, self.jvmci_minor, self.jvmci_build)
+
+    def __eq__(self, other):
+        if not isinstance(other, JVMCIVersionCheckVersion):
+            return False
+        return self._as_tuple() == other._as_tuple()
+
+    def __lt__(self, other):
+        if not isinstance(other, JVMCIVersionCheckVersion):
+            return NotImplemented
+        return self._as_tuple() < other._as_tuple()
+
+    def __str__(self):
+        jdk_version, jvmci_major, jvmci_minor, jvmci_build = self._as_tuple()
+        if jvmci_major == 0:
+            if jvmci_build == 0:
+                return f'(openjdk|oraclejdk)-{jdk_version}'
+            else:
+                return f'labsjdk-(ce|ee)-{jdk_version}-jvmci-b{jvmci_build:02d}'
+        else:
+            return f'labsjdk-(ce|ee)-{jdk_version}-jvmci-{jvmci_major}.{jvmci_minor}-b{jvmci_build:02d}'
+
+
 _jdk_jvmci_version = None
 _jdk_min_jvmci_version = None
 
@@ -141,7 +182,7 @@ def _check_jvmci_version(jdk):
         if out.data:
             try:
                 (jdk_version, jvmci_major, jvmci_minor, jvmci_build) = out.data.split(',')
-                return (JavaLangRuntimeVersion(jdk_version), int(jvmci_major), int(jvmci_minor), int(jvmci_build))
+                return JVMCIVersionCheckVersion(JavaLangRuntimeVersion(jdk_version), int(jvmci_major), int(jvmci_minor), int(jvmci_build))
             except ValueError:
                 mx.warn(f'Could not parse jvmci version from JVMCIVersionCheck output:\n{out.data}')
             return None
@@ -163,12 +204,7 @@ def _run_jvmci_version_check(args=None, jdk=jdk, **kwargs):
 if os.environ.get('JVMCI_VERSION_CHECK', None) != 'ignore':
     _check_jvmci_version(jdk)
 
-mx_gate.add_jacoco_includes(['org.graalvm.*'])
-mx_gate.add_jacoco_includes(['jdk.graal.compiler.*'])
-mx_gate.add_jacoco_excludes(['com.oracle.truffle'])
-mx_gate.add_jacoco_excluded_annotations(['@Snippet', '@ClassSubstitution', '@ExcludeFromJacocoInstrumentation'])
-
-def _get_graal_option(vmargs, name, default=None, prefix='-Dgraal.'):
+def _get_graal_option(vmargs, name, default=None, prefix='-Djdk.graal.'):
     """
     Gets the value of the `name` Graal option in `vmargs`.
 
@@ -271,14 +307,15 @@ def ctw(args, extraVMarguments=None):
         # To be able to load all classes in the JRT with Class.forName,
         # all JDK modules need to be made root modules.
         limitmods = frozenset(args.limitmods.split(',')) if args.limitmods else None
-        nonBootJDKModules = [m.name for m in jdk.get_modules() if not m.boot and (limitmods is None or m.name in limitmods)]
+        graaljdk = get_graaljdk()
+        nonBootJDKModules = [m.name for m in graaljdk.get_modules() if not m.boot and (limitmods is None or m.name in limitmods)]
         if nonBootJDKModules:
             vmargs.append('--add-modules=' + ','.join(nonBootJDKModules))
         if args.limitmods:
             vmargs.append('-DCompileTheWorld.limitmods=' + args.limitmods)
         if cp is not None:
             vmargs.append('-DCompileTheWorld.Classpath=' + cp)
-        cp = _remove_redundant_entries(mx.classpath('GRAAL_TEST', jdk=jdk))
+        cp = _remove_redundant_entries(mx.classpath('GRAAL_TEST', jdk=graaljdk))
         vmargs.extend(_ctw_jvmci_export_args() + ['-cp', cp])
         mainClassAndArgs = ['jdk.graal.compiler.hotspot.test.CompileTheWorld']
 
@@ -350,7 +387,7 @@ def _remove_empty_entries(a, filter_gcs=False):
         a = [x for x in a if not x.endswith('GC') or not x.startswith('-XX:+Use')]
     return [x for x in a if x]
 
-def _compiler_error_options(default_compilation_failure_action='ExitVM', vmargs=None, prefix='-Dgraal.'):
+def _compiler_error_options(default_compilation_failure_action='ExitVM', vmargs=None, prefix='-Djdk.graal.'):
     """
     Gets options to be prefixed to the VM command line related to Graal compilation errors to improve
     the chance of graph dumps being emitted and preserved in CI build logs.
@@ -381,13 +418,11 @@ def _compiler_error_options(default_compilation_failure_action='ExitVM', vmargs=
             res.append(prefix + 'ShowDumpFiles=true')
     return res
 
-def _gate_dacapo(name, iterations, extraVMarguments=None, force_serial_gc=True, set_start_heap_size=True, threads=None):
+def _gate_dacapo(name, iterations, extraVMarguments=None, force_serial_gc=True, threads=None):
     if iterations == -1:
         return
     vmargs = ['-XX:+UseSerialGC'] if force_serial_gc else []
-    if set_start_heap_size:
-        vmargs += ['-Xms2g']
-    vmargs += ['-XX:-UseCompressedOops', '-Djava.net.preferIPv4Stack=true'] + _compiler_error_options() + _remove_empty_entries(extraVMarguments, filter_gcs=force_serial_gc)
+    vmargs += ['-Xmx8g', '-XX:-UseCompressedOops', '-Djava.net.preferIPv4Stack=true'] + _compiler_error_options() + _remove_empty_entries(extraVMarguments, filter_gcs=force_serial_gc)
     args = ['-n', str(iterations), '--preserve']
     if threads is not None:
         args += ['-t', str(threads)]
@@ -401,7 +436,7 @@ def jdk_includes_corba(jdk):
 def _gate_scala_dacapo(name, iterations, extraVMarguments=None):
     if iterations == -1:
         return
-    vmargs = ['-Xms2g', '-XX:+UseSerialGC', '-XX:-UseCompressedOops'] + _compiler_error_options() + _remove_empty_entries(extraVMarguments, filter_gcs=True)
+    vmargs = ['-Xmx8g', '-XX:+UseSerialGC', '-XX:-UseCompressedOops'] + _compiler_error_options() + _remove_empty_entries(extraVMarguments, filter_gcs=True)
     args = ['-n', str(iterations), '--preserve']
     return _run_benchmark('scala-dacapo', name, args, vmargs)
 
@@ -409,12 +444,14 @@ def _gate_scala_dacapo(name, iterations, extraVMarguments=None):
 def _gate_renaissance(name, iterations, extraVMarguments=None):
     if iterations == -1:
         return
-    vmargs = ['-Xms2g', '-XX:-UseCompressedOops'] + _compiler_error_options() + _remove_empty_entries(extraVMarguments)
+    vmargs = ['-Xmx8g', '-XX:-UseCompressedOops'] + _compiler_error_options() + _remove_empty_entries(extraVMarguments)
     args = ['-r', str(iterations)]
     return _run_benchmark('renaissance', name, args, vmargs)
 
 
 def _run_benchmark(suite, name, args, vmargs):
+    if not [vmarg for vmarg in vmargs if vmarg.startswith('-Xmx')]:
+        vmargs += ['-Xmx8g']
     out = mx.TeeOutputCapture(mx.OutputCapture())
     exit_code, suite, results = mx_benchmark.gate_mx_benchmark(["{}:{}".format(suite, name), "--tracker=none", "--"] + vmargs + ["--"] + args, out=out, err=out, nonZeroIsFatal=False)
     if exit_code != 0:
@@ -476,31 +513,13 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
     for r in unit_test_runs:
         r.run(suites, tasks, ['-XX:-UseJVMCICompiler'] + _remove_empty_entries(extraVMarguments), extraUnitTestArguments=extraUnitTestArguments)
 
-    # Run selected tests (initially those from GR-6581) under -Xcomp
-    xcompTests = [
-        'BlackholeDirectiveTest',
-        'OpaqueDirectiveTest',
-        'CompiledMethodTest',
-        'ControlFlowAnchorDirectiveTest',
-        'ConditionalElimination',
-        'MarkUnsafeAccessTest',
-        'PEAAssertionsTest',
-        'MergeCanonicalizerTest',
-        'ExplicitExceptionTest',
-        'GuardedIntrinsicTest',
-        'HashCodeTest',
-        'ProfilingInfoTest',
-        'GraalOSRLockTest'
-    ]
-    UnitTestRun('XcompUnitTests', [], tags=GraalTags.test).run(['compiler'], tasks, ['-Xcomp', '-XX:-UseJVMCICompiler'] + _remove_empty_entries(extraVMarguments) + xcompTests)
-
     # Run ctw against rt.jar on hosted
     ctw_flags = [
         '-DCompileTheWorld.Config=Inline=false CompilationFailureAction=ExitVM CompilationBailoutAsFailure=false', '-esa', '-XX:-UseJVMCICompiler', '-XX:+EnableJVMCI',
-        '-DCompileTheWorld.MultiThreaded=true', '-Dgraal.InlineDuringParsing=false', '-Dgraal.TrackNodeSourcePosition=true',
+        '-DCompileTheWorld.MultiThreaded=true', '-Djdk.graal.InlineDuringParsing=false', '-Djdk.graal.TrackNodeSourcePosition=true',
         '-DCompileTheWorld.Verbose=false', '-XX:ReservedCodeCacheSize=300m',
     ]
-    ctw_phaseplan_fuzzing_flags = ['-DCompileTheWorld.FuzzPhasePlan=true', '-Dgraal.PrintGraphStateDiff=true']
+    ctw_phaseplan_fuzzing_flags = ['-DCompileTheWorld.FuzzPhasePlan=true', '-Djdk.graal.PrintGraphStateDiff=true']
     with Task('CTW:hosted', tasks, tags=GraalTags.ctw, report=True) as t:
         if t:
             ctw(ctw_flags, _remove_empty_entries(extraVMarguments))
@@ -552,7 +571,7 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
     bmSuiteArgs = ["--jvm", "server"]
     benchVmArgs = bmSuiteArgs + _remove_empty_entries(extraVMarguments)
 
-    dacapo_suite = mx_java_benchmarks.DaCapoBenchmarkSuite()
+    dacapo_suite = DaCapoBenchmarkSuite()
     dacapo_gate_iterations = {
         k: default_iterations for k, v in dacapo_suite.daCapoIterations().items() if v > 0
     }
@@ -560,21 +579,21 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
     for name in dacapo_suite.benchmarkList(bmSuiteArgs):
         iterations = dacapo_gate_iterations.get(name, -1)
         with Task(prefix + 'DaCapo:' + name, tasks, tags=GraalTags.benchmarktest, report=task_report_component) as t:
-            if t: _gate_dacapo(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + dacapo_esa)
+            if t: _gate_dacapo(name, iterations, benchVmArgs + ['-Djdk.graal.TrackNodeSourcePosition=true'] + dacapo_esa)
 
     with mx_gate.Task('Dacapo benchmark daily workload', tasks, tags=['dacapo_daily'], report=task_report_component) as t:
         if t:
             for name in dacapo_suite.benchmarkList(bmSuiteArgs):
                 iterations = int(dacapo_suite.daCapoIterations().get(name, -1) * default_iterations_reduction)
                 for _ in range(default_iterations * scala_daily_scaling_factor):
-                    _gate_dacapo(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + dacapo_esa)
+                    _gate_dacapo(name, iterations, benchVmArgs + ['-Djdk.graal.TrackNodeSourcePosition=true'] + dacapo_esa)
 
     with mx_gate.Task('Dacapo benchmark weekly workload', tasks, tags=['dacapo_weekly'], report=task_report_component) as t:
         if t:
             for name in dacapo_suite.benchmarkList(bmSuiteArgs):
                 iterations = int(dacapo_suite.daCapoIterations().get(name, -1) * default_iterations_reduction)
                 for _ in range(default_iterations * scala_weekly_scaling_factor):
-                    _gate_dacapo(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + dacapo_esa)
+                    _gate_dacapo(name, iterations, benchVmArgs + ['-Djdk.graal.TrackNodeSourcePosition=true'] + dacapo_esa)
 
     # ensure we can also run on C2
     with Task(prefix + 'DaCapo_C2:fop', tasks, tags=GraalTags.test, report=task_report_component) as t:
@@ -586,65 +605,64 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
     # ensure we can run with --enable-preview
     with Task(prefix + 'DaCapo_enable-preview:fop', tasks, tags=GraalTags.test, report=task_report_component) as t:
         if t:
-            _gate_dacapo('fop', 8, ['--enable-preview', '-Dgraal.CompilationFailureAction=ExitVM'])
+            _gate_dacapo('fop', 8, benchVmArgs + ['--enable-preview', '-Djdk.graal.CompilationFailureAction=ExitVM'])
 
     # run Scala DaCapo benchmarks #
     ###############################
-    scala_dacapo_suite = mx_java_benchmarks.ScalaDaCapoBenchmarkSuite()
+    scala_dacapo_suite = ScalaDaCapoBenchmarkSuite()
     scala_dacapo_gate_iterations = {
         k: default_iterations for k, v in scala_dacapo_suite.daCapoIterations().items() if v > 0
     }
     for name in scala_dacapo_suite.benchmarkList(bmSuiteArgs):
         iterations = scala_dacapo_gate_iterations.get(name, -1)
         with Task(prefix + 'ScalaDaCapo:' + name, tasks, tags=GraalTags.benchmarktest, report=task_report_component) as t:
-            if t: _gate_scala_dacapo(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + dacapo_esa)
+            if t: _gate_scala_dacapo(name, iterations, benchVmArgs + ['-Djdk.graal.TrackNodeSourcePosition=true'] + dacapo_esa)
 
     with mx_gate.Task('ScalaDacapo benchmark daily workload', tasks, tags=['scala_dacapo_daily'], report=task_report_component) as t:
         if t:
             for name in scala_dacapo_suite.benchmarkList(bmSuiteArgs):
                 iterations = int(scala_dacapo_suite.daCapoIterations().get(name, -1) * default_iterations_reduction)
                 for _ in range(default_iterations * scala_dacapo_daily_scaling_factor):
-                    _gate_scala_dacapo(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + dacapo_esa)
+                    _gate_scala_dacapo(name, iterations, benchVmArgs + ['-Djdk.graal.TrackNodeSourcePosition=true'] + dacapo_esa)
 
     with mx_gate.Task('ScalaDacapo benchmark weekly workload', tasks, tags=['scala_dacapo_weekly'], report=task_report_component) as t:
         if t:
             for name in scala_dacapo_suite.benchmarkList(bmSuiteArgs):
                 iterations = int(scala_dacapo_suite.daCapoIterations().get(name, -1) * default_iterations_reduction)
                 for _ in range(default_iterations * scala_dacapo_weekly_scaling_factor):
-                    _gate_scala_dacapo(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + dacapo_esa)
+                    _gate_scala_dacapo(name, iterations, benchVmArgs + ['-Djdk.graal.TrackNodeSourcePosition=true'] + dacapo_esa)
 
     # run Renaissance benchmarks #
     ###############################
-    renaissance_suite = mx_java_benchmarks.RenaissanceBenchmarkSuite()
+    renaissance_suite = RenaissanceBenchmarkSuite()
     renaissance_gate_iterations = {
         k: default_iterations for k, v in renaissance_suite.renaissanceIterations().items() if v > 0
     }
 
-    for name in renaissance_suite.benchmarkList(bmSuiteArgs):
-        iterations = renaissance_gate_iterations.get(name, -1)
-        with Task(prefix + 'Renaissance:' + name, tasks, tags=GraalTags.benchmarktest, report=task_report_component) as t:
+    # Renaissance is missing the msvc redistributable on Windows [GR-50132]
+    if not mx.is_windows():
+        for name in renaissance_suite.benchmarkList(bmSuiteArgs):
+            iterations = renaissance_gate_iterations.get(name, -1)
+            with Task(prefix + 'Renaissance:' + name, tasks, tags=GraalTags.benchmarktest, report=task_report_component) as t:
+                if t:
+                    _gate_renaissance(name, iterations, benchVmArgs + ['-Djdk.graal.TrackNodeSourcePosition=true'] + enable_assertions)
+
+        with mx_gate.Task('Renaissance benchmark daily workload', tasks, tags=['renaissance_daily'], report=task_report_component) as t:
             if t:
-                _gate_renaissance(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + enable_assertions)
+                for name in renaissance_suite.benchmarkList(bmSuiteArgs):
+                    iterations = int(renaissance_suite.renaissanceIterations().get(name, -1) * default_iterations_reduction)
+                    for _ in range(default_iterations):
+                        _gate_renaissance(name, iterations, benchVmArgs + ['-Djdk.graal.TrackNodeSourcePosition=true'] + enable_assertions)
 
-    with mx_gate.Task('Renaissance benchmark daily workload', tasks, tags=['renaissance_daily'], report=task_report_component) as t:
-        if t:
-            for name in renaissance_suite.benchmarkList(bmSuiteArgs):
-                iterations = int(renaissance_suite.renaissanceIterations().get(name, -1) * default_iterations_reduction)
-                for _ in range(default_iterations):
-                    _gate_renaissance(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + enable_assertions)
-
-    with mx_gate.Task('Renaissance benchmark weekly workload', tasks, tags=['renaissance_weekly'], report=task_report_component) as t:
-        if t:
-            for name in renaissance_suite.benchmarkList(bmSuiteArgs):
-                iterations = int(renaissance_suite.renaissanceIterations().get(name, -1) * default_iterations_reduction)
-                for _ in range(default_iterations * daily_weekly_jobs_ratio):
-                    _gate_renaissance(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + enable_assertions)
+        with mx_gate.Task('Renaissance benchmark weekly workload', tasks, tags=['renaissance_weekly'], report=task_report_component) as t:
+            if t:
+                for name in renaissance_suite.benchmarkList(bmSuiteArgs):
+                    iterations = int(renaissance_suite.renaissanceIterations().get(name, -1) * default_iterations_reduction)
+                    for _ in range(default_iterations * daily_weekly_jobs_ratio):
+                        _gate_renaissance(name, iterations, benchVmArgs + ['-Djdk.graal.TrackNodeSourcePosition=true'] + enable_assertions)
 
     # run benchmark with non default setup #
     ########################################
-    # ensure -Xbatch still works
-    with Task(prefix + 'DaCapo_pmd:BatchMode', tasks, tags=GraalTags.test, report=task_report_component) as t:
-        if t: _gate_dacapo('pmd', 1, benchVmArgs + ['-Xbatch'])
 
     # Ensure benchmark counters still work but omit this test on
     # fastdebug as benchmark counter threads may not produce
@@ -658,7 +676,7 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
                 fd, logFile = tempfile.mkstemp()
                 os.close(fd) # Don't leak file descriptors
                 try:
-                    _gate_dacapo('pmd', default_iterations, benchVmArgs + ['-Dgraal.LogFile=' + logFile, '-Dgraal.LIRProfileMoves=true', '-Dgraal.GenericDynamicCounters=true', '-Dgraal.TimedDynamicCounters=1000', '-XX:JVMCICounterSize=10'])
+                    _gate_dacapo('pmd', default_iterations, benchVmArgs + ['-Djdk.graal.LogFile=' + logFile, '-Djdk.graal.LIRProfileMoves=true', '-Djdk.graal.GenericDynamicCounters=true', '-Djdk.graal.TimedDynamicCounters=1000', '-XX:JVMCICounterSize=10'])
                     with open(logFile) as fp:
                         haystack = fp.read()
                         needle = 'MoveOperations (dynamic counters)'
@@ -673,17 +691,13 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
                 finally:
                     os.remove(logFile)
 
-    # ensure -Xcomp still works
-    with Task(prefix + 'XCompMode:product', tasks, tags=GraalTags.test, report=task_report_component) as t:
-        if t: run_vm(_remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xcomp', '-version'])
-
     # ensure -XX:+PreserveFramePointer  still works
     with Task(prefix + 'DaCapo_pmd:PreserveFramePointer', tasks, tags=GraalTags.test, report=task_report_component) as t:
-        if t: _gate_dacapo('pmd', default_iterations, benchVmArgs + ['-Xmx256M', '-XX:+PreserveFramePointer'], threads=4, force_serial_gc=False, set_start_heap_size=False)
+        if t: _gate_dacapo('pmd', default_iterations, benchVmArgs + ['-Xmx256M', '-XX:+PreserveFramePointer'], threads=4, force_serial_gc=False)
 
     # stress entry barrier deopt
     with Task(prefix + 'DaCapo_pmd:DeoptimizeNMethodBarriersALot', tasks, tags=GraalTags.test, report=task_report_component) as t:
-        if t: _gate_dacapo('pmd', default_iterations, benchVmArgs + ['-Xmx256M', '-XX:+UnlockDiagnosticVMOptions', '-XX:+DeoptimizeNMethodBarriersALot'], threads=4, force_serial_gc=False, set_start_heap_size=False)
+        if t: _gate_dacapo('pmd', default_iterations, benchVmArgs + ['-Xmx256M', '-XX:+UnlockDiagnosticVMOptions', '-XX:+DeoptimizeNMethodBarriersALot'], threads=4, force_serial_gc=False)
 
 graal_unit_test_runs = [
     UnitTestRun('UnitTests', [], tags=GraalTags.unittest + GraalTags.coverage),
@@ -697,26 +711,27 @@ _registers = {
 if mx.get_arch() not in _registers:
     mx.warn('No registers for register pressure tests are defined for architecture ' + mx.get_arch())
 
-_defaultFlags = ['-Dgraal.CompilationWatchDogStartDelay=60']
-_assertionFlags = ['-esa', '-Dgraal.DetailedAsserts=true']
+_bootstrapFlags = ['-XX:-UseJVMCINativeLibrary']
+_defaultFlags = ['-Djdk.graal.CompilationWatchDogStartDelay=60']
+_assertionFlags = ['-esa', '-Djdk.graal.DetailedAsserts=true']
 _graalErrorFlags = _compiler_error_options()
-_graalEconomyFlags = ['-Dgraal.CompilerConfiguration=economy']
-_verificationFlags = ['-Dgraal.VerifyGraalGraphs=true', '-Dgraal.VerifyGraalGraphEdges=true', '-Dgraal.VerifyGraalPhasesSize=true']
+_graalEconomyFlags = ['-Djdk.graal.CompilerConfiguration=economy']
+_verificationFlags = ['-Djdk.graal.VerifyGraalGraphs=true', '-Djdk.graal.VerifyGraalGraphEdges=true', '-Djdk.graal.VerifyGraalPhasesSize=true']
 _coopFlags = ['-XX:-UseCompressedOops']
 _gcVerificationFlags = ['-XX:+UnlockDiagnosticVMOptions', '-XX:+VerifyBeforeGC', '-XX:+VerifyAfterGC']
 _g1VerificationFlags = ['-XX:-UseSerialGC', '-XX:+UseG1GC']
-_exceptionFlags = ['-Dgraal.StressInvokeWithExceptionNode=true']
-_registerPressureFlags = ['-Dgraal.RegisterPressure=' + _registers[mx.get_arch()]]
+_exceptionFlags = ['-Djdk.graal.StressInvokeWithExceptionNode=true']
+_registerPressureFlags = ['-Djdk.graal.RegisterPressure=' + _registers[mx.get_arch()]]
 
 graal_bootstrap_tests = [
-    BootstrapTest('BootstrapWithSystemAssertionsFullVerify', _defaultFlags + _assertionFlags + _verificationFlags + _graalErrorFlags, tags=GraalTags.bootstrapfullverify),
-    BootstrapTest('BootstrapWithSystemAssertions', _defaultFlags + _assertionFlags + _graalErrorFlags, tags=GraalTags.bootstraplite),
-    BootstrapTest('BootstrapWithSystemAssertionsNoCoop', _defaultFlags + _assertionFlags + _coopFlags + _graalErrorFlags, tags=GraalTags.bootstrap),
-    BootstrapTest('BootstrapWithGCVerification', _defaultFlags + _gcVerificationFlags + _graalErrorFlags, tags=GraalTags.bootstrap, suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
-    BootstrapTest('BootstrapWithG1GCVerification', _defaultFlags + _g1VerificationFlags + _gcVerificationFlags + _graalErrorFlags, tags=GraalTags.bootstrap, suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
-    BootstrapTest('BootstrapWithSystemAssertionsEconomy', _defaultFlags + _assertionFlags + _graalEconomyFlags + _graalErrorFlags, tags=GraalTags.bootstrapeconomy),
-    BootstrapTest('BootstrapWithSystemAssertionsExceptionEdges', _defaultFlags + _assertionFlags + _exceptionFlags + _graalErrorFlags, tags=GraalTags.bootstrap),
-    BootstrapTest('BootstrapWithSystemAssertionsRegisterPressure', _defaultFlags + _assertionFlags + _registerPressureFlags + _graalErrorFlags, tags=GraalTags.bootstrap),
+    BootstrapTest('BootstrapWithSystemAssertionsFullVerify', _bootstrapFlags + _defaultFlags + _assertionFlags + _verificationFlags + _graalErrorFlags, tags=GraalTags.bootstrapfullverify),
+    BootstrapTest('BootstrapWithSystemAssertions', _bootstrapFlags + _defaultFlags + _assertionFlags + _graalErrorFlags, tags=GraalTags.bootstraplite),
+    BootstrapTest('BootstrapWithSystemAssertionsNoCoop', _bootstrapFlags + _defaultFlags + _assertionFlags + _coopFlags + _graalErrorFlags, tags=GraalTags.bootstrap),
+    BootstrapTest('BootstrapWithGCVerification', _bootstrapFlags + _defaultFlags + _gcVerificationFlags + _graalErrorFlags, tags=GraalTags.bootstrap, suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
+    BootstrapTest('BootstrapWithG1GCVerification', _bootstrapFlags + _defaultFlags + _g1VerificationFlags + _gcVerificationFlags + _graalErrorFlags, tags=GraalTags.bootstrap, suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
+    BootstrapTest('BootstrapWithSystemAssertionsEconomy', _bootstrapFlags + _defaultFlags + _assertionFlags + _graalEconomyFlags + _graalErrorFlags, tags=GraalTags.bootstrapeconomy),
+    BootstrapTest('BootstrapWithSystemAssertionsExceptionEdges', _bootstrapFlags + _defaultFlags + _assertionFlags + _exceptionFlags + _graalErrorFlags, tags=GraalTags.bootstrap),
+    BootstrapTest('BootstrapWithSystemAssertionsRegisterPressure', _bootstrapFlags + _defaultFlags + _assertionFlags + _registerPressureFlags + _graalErrorFlags, tags=GraalTags.bootstrap),
 ]
 
 def _graal_gate_runner(args, tasks):
@@ -735,6 +750,8 @@ class ShellEscapedStringAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         # do not override existing values
         old_values = getattr(namespace, self.dest)
+        # shlex.split interprets '\' as an escape char so it needs to be escaped itself
+        values = values.replace("\\", "\\\\")
         setattr(namespace, self.dest, (old_values if old_values else []) + shlex.split(values))
 
 mx_gate.add_gate_runner(_suite, _graal_gate_runner)
@@ -772,61 +789,72 @@ def _remove_redundant_entries(cp):
                         redundantClasspathEntries.add(path)
     return os.pathsep.join([e for e in cp if e not in redundantClasspathEntries])
 
-def _unittest_config_participant(config):
-    vmArgs, mainClass, mainClassArgs = config
-    cpIndex, cp = mx.find_classpath_arg(vmArgs)
-    if cp:
-        cp = _remove_redundant_entries(cp)
 
-        vmArgs[cpIndex] = cp
-        # JVMCI is dynamically exported to Graal when JVMCI is initialized. This is too late
-        # for the junit harness which uses reflection to find @Test methods. In addition, the
-        # tests widely use JVMCI classes so JVMCI needs to also export all its packages to
-        # ALL-UNNAMED.
-        mainClassArgs.extend(['-JUnitOpenPackages', 'jdk.internal.vm.ci/*=org.graalvm.truffle.runtime,jdk.graal.compiler,ALL-UNNAMED'])
+class GraalUnittestConfig(mx_unittest.MxUnittestConfig):
 
-        limited_modules = None
-        for arg in vmArgs:
-            if arg.startswith('--limit-modules'):
-                assert arg.startswith('--limit-modules='), ('--limit-modules must be separated from its value by "="')
-                limited_modules = arg[len('--limit-modules='):].split(',')
+    def __init__(self):
+        super(GraalUnittestConfig, self).__init__('graal')
 
-        # Export packages in all Graal modules and their dependencies
-        for dist in _graal_config().dists:
-            jmd = as_java_module(dist, jdk)
-            if limited_modules is None or jmd.name in limited_modules:
-                mainClassArgs.extend(['-JUnitOpenPackages', jmd.name + '/*'])
-                vmArgs.append('--add-modules=' + jmd.name)
+    def apply(self, config):
+        vmArgs, mainClass, mainClassArgs = config
+        cpIndex, cp = mx.find_classpath_arg(vmArgs)
+        if cp:
+            cp = _remove_redundant_entries(cp)
 
-    vmArgs.append('-Dgraal.TrackNodeSourcePosition=true')
-    vmArgs.append('-esa')
+            vmArgs[cpIndex] = cp
+            # JVMCI is dynamically exported to Graal when JVMCI is initialized. This is too late
+            # for the junit harness which uses reflection to find @Test methods. In addition, the
+            # tests widely use JVMCI classes so JVMCI needs to also export all its packages to
+            # ALL-UNNAMED.
+            mainClassArgs.extend(['-JUnitOpenPackages', 'jdk.internal.vm.ci/*=org.graalvm.truffle.runtime,jdk.graal.compiler,ALL-UNNAMED'])
 
-    # Always run unit tests without UseJVMCICompiler unless explicitly requested
-    if _get_XX_option_value(vmArgs, 'UseJVMCICompiler', None) is None:
-        vmArgs.append('-XX:-UseJVMCICompiler')
+            limited_modules = None
+            for arg in vmArgs:
+                if arg.startswith('--limit-modules'):
+                    assert arg.startswith('--limit-modules='), ('--limit-modules must be separated from its value by "="')
+                    limited_modules = arg[len('--limit-modules='):].split(',')
 
-    # The type-profile width 8 is the default when using the JVMCI compiler.
-    # This value must be forced, because we do not used the JVMCI compiler
-    # in the unit tests by default.
-    if _get_XX_option_value(vmArgs, 'TypeProfileWidth', None) is None:
-        vmArgs.append('-XX:TypeProfileWidth=8')
+            # Export packages in all Graal modules and their dependencies
+            for dist in _graal_config().dists:
+                jmd = as_java_module(dist, jdk)
+                if limited_modules is None or jmd.name in limited_modules:
+                    mainClassArgs.extend(['-JUnitOpenPackages', jmd.name + '/*'])
+                    vmArgs.append('--add-modules=' + jmd.name)
 
-    # TODO: GR-31197, this should be removed.
-    vmArgs.append('-Dpolyglot.engine.DynamicCompilationThresholds=false')
-    vmArgs.append('-Dpolyglot.engine.AllowExperimentalOptions=true')
+        vmArgs.append('-Djdk.graal.TrackNodeSourcePosition=true')
+        vmArgs.append('-esa')
 
-    return (vmArgs, mainClass, mainClassArgs)
+        # Always run unit tests without UseJVMCICompiler unless explicitly requested
+        if _get_XX_option_value(vmArgs, 'UseJVMCICompiler', None) is None:
+            vmArgs.append('-XX:-UseJVMCICompiler')
 
-mx_unittest.add_config_participant(_unittest_config_participant)
+        # Always run unit tests without UseJVMCINativeLibrary unless explicitly requested
+        if _get_XX_option_value(vmArgs, 'UseJVMCINativeLibrary', None) is None:
+            vmArgs.append('-XX:-UseJVMCINativeLibrary')
+
+        # The type-profile width 8 is the default when using the JVMCI compiler.
+        # This value must be forced, because we do not used the JVMCI compiler
+        # in the unit tests by default.
+        if _get_XX_option_value(vmArgs, 'TypeProfileWidth', None) is None:
+            vmArgs.append('-XX:TypeProfileWidth=8')
+
+        vmArgs.append('--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED')
+        # TODO: GR-31197, this should be removed.
+        vmArgs.append('-Dpolyglot.engine.DynamicCompilationThresholds=false')
+        vmArgs.append('-Dpolyglot.engine.AllowExperimentalOptions=true')
+        return (vmArgs, mainClass, mainClassArgs)
+
+
+mx_unittest.register_unittest_config(GraalUnittestConfig())
 
 _use_graalvm = False
 
-class SwitchToGraalVMJDK(mx_unittest.Action):
+class SwitchToGraalVMJDK(argparse.Action):
     def __init__(self, **kwargs):
         global _use_graalvm
         kwargs['required'] = False
         kwargs['nargs'] = 0
-        mx_unittest.Action.__init__(self, **kwargs)
+        argparse.Action.__init__(self, **kwargs)
         _use_graalvm = False
     def __call__(self, parser, namespace, values, option_string=None):
         global _use_graalvm
@@ -878,12 +906,7 @@ def _check_using_latest_jars(dists):
 
 def _parseVmArgs(args, addDefaultArgs=True):
     args = mx.expand_project_in_args(args, insitu=False)
-
-    # add default graal.options.file
     argsPrefix = []
-    options_file = join(mx.primary_suite().dir, 'graal.options')
-    if exists(options_file):
-        argsPrefix.append('-Dgraal.options.file=' + options_file)
 
     if '-version' in args:
         ignoredArgs = args[args.index('-version') + 1:]
@@ -899,12 +922,12 @@ def _parseVmArgs(args, addDefaultArgs=True):
 
     # It is safe to assume that Network dumping is the desired default when using mx.
     # Mx is never used in production environments.
-    if not any(a.startswith('-Dgraal.PrintGraph=') for a in args):
-        argsPrefix.append('-Dgraal.PrintGraph=Network')
+    if not any(a.startswith('-Djdk.graal.PrintGraph=') for a in args):
+        argsPrefix.append('-Djdk.graal.PrintGraph=Network')
 
     # Likewise, one can assume that objdump is safe to access when using mx.
-    if not any(a.startswith('-Dgraal.ObjdumpExecutables=') for a in args):
-        argsPrefix.append('-Dgraal.ObjdumpExecutables=objdump,gobjdump')
+    if not any(a.startswith('-Djdk.graal.ObjdumpExecutables=') for a in args):
+        argsPrefix.append('-Djdk.graal.ObjdumpExecutables=objdump,gobjdump')
 
     # The GraalVM locator must be disabled so that Truffle languages
     # are loaded from the class path. This is the configuration expected
@@ -1097,7 +1120,7 @@ def collate_metrics(args):
 def run_java(args, out=None, err=None, addDefaultArgs=True, command_mapper_hooks=None, jdk=None, **kw_args):
     graaljdk = jdk or get_graaljdk()
     vm_args = _parseVmArgs(args, addDefaultArgs=addDefaultArgs)
-    args = ['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'] + vm_args
+    args = ['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI', '--add-exports=java.base/jdk.internal.misc=jdk.graal.compiler'] + vm_args
     _check_bootstrap_config(args)
     cmd = get_vm_prefix() + [graaljdk.java] + ['-server'] + args
     map_file = join(graaljdk.home, 'proguard.map')
@@ -1109,19 +1132,18 @@ def run_java(args, out=None, err=None, addDefaultArgs=True, command_mapper_hooks
         finally:
             # Collate AggratedMetricsFile
             for a in vm_args:
-                if a.startswith('-Dgraal.AggregatedMetricsFile='):
-                    metrics_file = a[len('-Dgraal.AggregatedMetricsFile='):]
+                if a.startswith('-Djdk.graal.AggregatedMetricsFile='):
+                    metrics_file = a[len('-Djdk.graal.AggregatedMetricsFile='):]
                     if metrics_file:
                         collate_metrics([metrics_file])
 
-_JVMCI_JDK_TAG = 'jvmci'
 
 class GraalJVMCIJDKConfig(mx.JDKConfig):
     """
     A JDKConfig that configures Graal as the JVMCI compiler.
     """
     def __init__(self):
-        mx.JDKConfig.__init__(self, jdk.home, tag=_JVMCI_JDK_TAG)
+        mx.JDKConfig.__init__(self, jdk.home, tag=JVMCI_JDK_TAG)
 
     def run_java(self, args, **kwArgs):
         return run_java(args, **kwArgs)
@@ -1158,7 +1180,7 @@ def _check_latest_jvmci_version():
     ``common.json`` file and issues a warning if not.
     """
     jvmci_re = re.compile(r'(?:ce|ee)-(?P<jdk_version>.+)-jvmci(?:-(?P<jvmci_major>\d+)\.(?P<jvmci_minor>\d+))?-b(?P<jvmci_build>\d+)')
-    common_path = join(_suite.dir, '..', 'common.json')
+    common_path = os.path.normpath(join(_suite.dir, '..', 'common.json'))
 
     if _jdk_jvmci_version is None:
         # Not using a JVMCI JDK
@@ -1176,8 +1198,13 @@ def _check_latest_jvmci_version():
                 if not match:
                     mx.abort(f'Cannot parse version {version}')
                 (jdk_version, jvmci_major, jvmci_minor, jvmci_build) = match.groups(default=0)
-                current = (JavaLangRuntimeVersion(jdk_version), int(jvmci_major), int(jvmci_minor), int(jvmci_build))
-                if current[0].feature() == _jdk_jvmci_version[0].feature():
+                if _jdk_jvmci_version.jvmci_build == 0:
+                    # jvmci_build == 0 indicates an OpenJDK version has been specified in JVMCIVersionCheck.java.
+                    # The JDK does not know the jvmci_build number that might have been specified in common.json,
+                    # as it is only a repackaged JDK. Thus, we reset the jvmci_build because we cannot validate it.
+                    jvmci_build = 0
+                current = JVMCIVersionCheckVersion(JavaLangRuntimeVersion(jdk_version), int(jvmci_major), int(jvmci_minor), int(jvmci_build))
+                if current.jdk_version.feature() == _jdk_jvmci_version.jdk_version.feature():
                     # only compare the same major versions
                     if latest == 'not found':
                         latest = current
@@ -1189,20 +1216,13 @@ def _check_latest_jvmci_version():
                         return False, distribution
         return not isinstance(latest, str), latest
 
-    def jvmci_version_str(version):
-        jdk_version, jvmci_major, jvmci_minor, jvmci_build = version
-        if jvmci_major == 0:
-            return f'labsjdk-(ce|ee)-{jdk_version}-jvmci-b{jvmci_build:02d}'
-        else:
-            return f'labsjdk-(ce|ee)-{jdk_version}-jvmci-{jvmci_major}.{jvmci_minor}-b{jvmci_build:02d}'
-
     version_check_setting = os.environ.get('JVMCI_VERSION_CHECK', None)
 
     success, latest = get_latest_jvmci_version()
 
     if version_check_setting == 'strict' and _jdk_jvmci_version != _jdk_min_jvmci_version:
         msg = f'JVMCI_MIN_VERSION specified in JVMCIVersionCheck.java is older than in {common_path}:'
-        msg += os.linesep + f'{jvmci_version_str(_jdk_min_jvmci_version)} < {jvmci_version_str(_jdk_jvmci_version)} '
+        msg += os.linesep + f'{_jdk_min_jvmci_version} < {_jdk_jvmci_version} '
         msg += os.linesep + f'Did you forget to update JVMCI_MIN_VERSION after updating {common_path}?'
         msg += os.linesep + 'Set the JVMCI_VERSION_CHECK environment variable to something else then "strict" to'
         msg += ' suppress this error.'
@@ -1210,7 +1230,7 @@ def _check_latest_jvmci_version():
 
     if version_check_setting == 'strict' and not success:
         if latest == 'not found':
-            msg = f'No JVMCI JDK found in {common_path} that matches {jvmci_version_str(_jdk_jvmci_version)}.'
+            msg = f'No JVMCI JDK found in {common_path} that matches {_jdk_jvmci_version}.'
             msg += os.linesep + f'Check that {latest} matches the versions of the other JVMCI JDKs.'
         else:
             msg = f'Version mismatch in {common_path}:'
@@ -1220,10 +1240,9 @@ def _check_latest_jvmci_version():
         mx.abort(msg)
 
     if success and _jdk_jvmci_version < latest:
-        common_path = os.path.normpath(common_path)
-        msg = f'JVMCI version of JAVA_HOME is older than in {common_path}: {jvmci_version_str(_jdk_jvmci_version)} < {jvmci_version_str(latest)} '
+        msg = f'JVMCI version of JAVA_HOME is older than in {common_path}: {_jdk_jvmci_version} < {latest} '
         msg += os.linesep + 'This poses the risk of hitting JVMCI bugs that have already been fixed.'
-        msg += os.linesep + f'Consider using {jvmci_version_str(latest)}, which you can get via:'
+        msg += os.linesep + f'Consider using {latest}, which you can get via:'
         msg += os.linesep + f'mx fetch-jdk --configuration {common_path}'
         mx.abort_or_warn(msg, version_check_setting == 'strict')
 
@@ -1343,7 +1362,7 @@ def phaseplan_fuzz_jtt_tests(args, extraVMarguments=None, extraUnitTestArguments
         help='Determine the odds of skipping the insertion of a phase in low tier')
 
     args, parsed_args = parse_split_args(args, parser, "--")
-    vm_args = _remove_empty_entries(extraVMarguments) + ['-Dtest.graal.compilationplan.fuzzing=true', '-Dgraal.PrintGraphStateDiff=true', '--verbose']
+    vm_args = _remove_empty_entries(extraVMarguments) + ['-Dtest.graal.compilationplan.fuzzing=true', '-Djdk.graal.PrintGraphStateDiff=true', '--verbose']
 
     if parsed_args.seed:
         vm_args.append('-Dtest.graal.compilationplan.fuzzing.seed=' + parsed_args.seed)
@@ -1518,6 +1537,12 @@ def profdiff(args):
     vm_args = ['-cp', cp, 'org.graalvm.profdiff.Profdiff'] + args
     return jdk.run_java(args=vm_args)
 
+def igvutil(args):
+    """various utilities to inspect and modify IGV graphs"""
+    cp = mx.classpath('GRAAL_IGVUTIL', jdk=jdk)
+    vm_args = ['-cp', cp, 'org.graalvm.igvutil.IgvUtility'] + args
+    return jdk.run_java(args=vm_args)
+
 mx.update_commands(_suite, {
     'sl' : [sl, '[SL args|@VM options]'],
     'vm': [run_vm_with_jvmci_compiler, '[-options] class [args...]'],
@@ -1530,10 +1555,13 @@ mx.update_commands(_suite, {
     'graaljdk-show': [print_graaljdk_config, '[options]'],
     'phaseplan-fuzz-jtt-tests': [phaseplan_fuzz_jtt_tests, "Runs JTT's unit tests with fuzzed phase plans."],
     'profdiff': [profdiff, '[options] proftool_output1 optimization_log1 proftool_output2 optimization_log2'],
+    'igvutil': [igvutil, '[subcommand] [options]'],
 })
 
+mx.add_argument('--no-jacoco-exclude-truffle', action='store_false', dest='jacoco_exclude_truffle', help="Don't exclude Truffle classes from jacoco annotations.")
+
 def mx_post_parse_cmd_line(opts):
-    mx.addJDKFactory(_JVMCI_JDK_TAG, jdk.javaCompliance, GraalJDKFactory())
+    mx.addJDKFactory(JVMCI_JDK_TAG, jdk.javaCompliance, GraalJDKFactory())
     mx.add_ide_envvar('JVMCI_VERSION_CHECK')
     for dist in _suite.dists:
         if hasattr(dist, 'set_archiveparticipant'):
@@ -1541,3 +1569,9 @@ def mx_post_parse_cmd_line(opts):
 
     global _vm_prefix
     _vm_prefix = opts.vm_prefix
+
+    mx_gate.add_jacoco_includes(['org.graalvm.*'])
+    mx_gate.add_jacoco_includes(['jdk.graal.compiler.*'])
+    mx_gate.add_jacoco_excluded_annotations(['@Snippet', '@ClassSubstitution', '@ExcludeFromJacocoInstrumentation'])
+    if opts.jacoco_exclude_truffle:
+        mx_gate.add_jacoco_excludes(['com.oracle.truffle'])

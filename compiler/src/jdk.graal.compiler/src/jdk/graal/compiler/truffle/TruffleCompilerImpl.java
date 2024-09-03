@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
+import jdk.vm.ci.meta.ProfilingInfo;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.compiler.OptimizedAssumptionDependency;
@@ -79,9 +80,7 @@ import jdk.graal.compiler.debug.TimerKey;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilderFactory;
 import jdk.graal.compiler.lir.phases.LIRSuites;
-import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
@@ -95,7 +94,6 @@ import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.serviceprovider.GraalServices;
-import jdk.graal.compiler.truffle.nodes.AnyExtendNode;
 import jdk.graal.compiler.truffle.nodes.TruffleAssumption;
 import jdk.graal.compiler.truffle.phases.InstrumentPhase;
 import jdk.graal.compiler.truffle.phases.InstrumentationSuite;
@@ -208,9 +206,16 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
 
     /**
      * General options configured for the compiler. E.g. default values set with
-     * -Dgraal.OptionKey=value.
+     * -Djdk.graal.OptionKey=value.
      */
     protected abstract OptionValues getGraalOptions();
+
+    /**
+     * Parse general options configured for the compiler, e.g. default values set with
+     * OptionKey=value (with no prefix), from {@code options}, storing parsed options in
+     * {@code values}.
+     */
+    protected abstract void parseGraalOptions(String[] options, EconomicMap<OptionKey<?>, Object> values);
 
     @SuppressWarnings("try")
     public final void doCompile(TruffleCompilation compilation, TruffleCompilerListener listener) {
@@ -242,8 +247,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
             OptionValues graalOptions = getGraalOptions();
             Map<String, String> options = compilable.getCompilerOptions();
             EconomicMap<OptionKey<?>, Object> map = parseOptions(options);
+            graalOptions = TruffleCompilerOptions.updateValues(graalOptions);
             map.putAll(graalOptions.getMap());
-            TruffleCompilerOptions.updateValues(graalOptions);
             return new OptionValues(map);
         });
     }
@@ -309,7 +314,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
     // Hook for SVM
     protected TruffleTier newTruffleTier(OptionValues options) {
         return new TruffleTier(options, partialEvaluator,
-                        new InstrumentationSuite(partialEvaluator.instrumentationCfg, config.snippetReflection(), partialEvaluator.getInstrumentation()),
+                        new InstrumentationSuite(partialEvaluator.instrumentationCfg, partialEvaluator.getInstrumentation()),
                         new PostPartialEvaluationSuite(options, TruffleCompilerOptions.IterativePartialEscape.getValue(options)));
     }
 
@@ -515,7 +520,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
             if (wrapper.listener != null) {
                 BailoutException bailout = t instanceof BailoutException ? (BailoutException) t : null;
                 boolean permanentBailout = bailout != null ? bailout.isPermanent() : false;
-                wrapper.listener.onFailure(compilable, t.toString(), bailout != null, permanentBailout, task.tier());
+                wrapper.listener.onFailure(compilable, t.toString(), bailout != null, permanentBailout, task.tier(), bailout != null ? null : () -> TruffleCompilable.serializeException(t));
             }
             throw t;
         }
@@ -550,6 +555,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
             } catch (Throwable e) {
                 throw context.debug.handle(e);
             }
+
         }
         if (wrapper.statistics != null) {
             wrapper.statistics.afterTruffleTier(wrapper.compilable, graph);
@@ -558,13 +564,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
             wrapper.listener.onTruffleTierFinished(wrapper.compilable, wrapper.task, new GraphInfoImpl(graph));
         }
         return graph;
-    }
-
-    private static void replaceAnyExtendNodes(StructuredGraph graph) {
-        // replace all AnyExtendNodes with ZeroExtendNodes
-        for (AnyExtendNode node : graph.getNodes(AnyExtendNode.TYPE)) {
-            node.replaceAndDelete(graph.addOrUnique(ZeroExtendNode.create(node.getValue(), 64, NodeView.DEFAULT)));
-        }
     }
 
     /**
@@ -588,7 +587,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
                     InstalledCode[] outInstalledCode,
                     TruffleInliningScope inlining) {
 
-        replaceAnyExtendNodes(graph);
         DebugContext debug = graph.getDebug();
         try (DebugContext.Scope s = debug.scope("TruffleFinal")) {
             debug.dump(DebugContext.BASIC_LEVEL, graph, "After TruffleTier");
@@ -609,8 +607,19 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
             LIRSuites selectedLirSuites = tier.lirSuites();
             Providers selectedProviders = tier.providers();
             CompilationResult compilationResult = createCompilationResult(name, graph.compilationId(), compilable);
-            result = GraalCompiler.compileGraph(graph, graph.method(), selectedProviders, tier.backend(), graphBuilderSuite, Optimizations, graph.getProfilingInfo(), selectedSuites,
-                            selectedLirSuites, compilationResult, CompilationResultBuilderFactory.Default, false);
+            ProfilingInfo profilingInfo = graph.getProfilingInfo();
+            result = GraalCompiler.compile(new GraalCompiler.Request<>(graph,
+                            graph.method(),
+                            selectedProviders,
+                            tier.backend(),
+                            graphBuilderSuite,
+                            Optimizations,
+                            profilingInfo,
+                            selectedSuites,
+                            selectedLirSuites,
+                            compilationResult,
+                            CompilationResultBuilderFactory.Default,
+                            false));
         } catch (Throwable e) {
             throw debug.handle(e);
         }
@@ -702,6 +711,12 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
         @Override
         public String toString() {
             return compilable.toString();
+        }
+
+        @Override
+        protected void parseRetryOptions(String[] optionSettings, EconomicMap<OptionKey<?>, Object> values) {
+            parseGraalOptions(optionSettings, values);
+            // No support for Truffle-specific retry options for now
         }
 
         @SuppressWarnings("try")

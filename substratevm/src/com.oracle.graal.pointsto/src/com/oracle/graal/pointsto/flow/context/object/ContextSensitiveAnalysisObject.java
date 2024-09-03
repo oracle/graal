@@ -163,9 +163,9 @@ public class ContextSensitiveAnalysisObject extends AnalysisObject {
     @Override
     protected void linkFieldFlows(PointsToAnalysis bb, AnalysisField field, FieldTypeStore fieldStore) {
         // link the initial instance field flow to the field write flow
-        field.getInitialInstanceFieldFlow().addUse(bb, fieldStore.writeFlow());
-        // link the field read flow to the instance field flow
-        fieldStore.readFlow().addUse(bb, field.getInstanceFieldFlow());
+        field.getInitialFlow().addUse(bb, fieldStore.writeFlow());
+        // link the field read flow to the sink flow that accumulates all field types
+        fieldStore.readFlow().addUse(bb, field.getSinkFlow());
         // Also link the field read flow the field flow on the context insensitive object.
         // This ensures that the all values flowing into a context-sensitive field flow
         // are also visible from the context-insensitive field flow.

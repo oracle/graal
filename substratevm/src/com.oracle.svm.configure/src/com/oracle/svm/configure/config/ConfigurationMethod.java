@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,12 +25,14 @@
 package com.oracle.svm.configure.config;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
-import com.oracle.svm.core.util.json.JsonPrintable;
-import com.oracle.svm.core.util.json.JsonWriter;
+import com.oracle.svm.core.configure.NamedConfigurationTypeDescriptor;
 
+import jdk.graal.compiler.util.json.JsonPrintable;
+import jdk.graal.compiler.util.json.JsonWriter;
 import jdk.vm.ci.meta.MetaUtil;
 
 public class ConfigurationMethod implements JsonPrintable {
@@ -43,7 +45,7 @@ public class ConfigurationMethod implements JsonPrintable {
     public static String toInternalParamsSignature(List<ConfigurationType> types) {
         StringBuilder sb = new StringBuilder("(");
         for (ConfigurationType type : types) {
-            sb.append(MetaUtil.toInternalName(type.getQualifiedJavaName()));
+            sb.append(MetaUtil.toInternalName(((NamedConfigurationTypeDescriptor) type.getTypeDescriptor()).name()));
         }
         sb.append(')');
         // we are missing the return type, so this is only a partial signature
@@ -84,15 +86,10 @@ public class ConfigurationMethod implements JsonPrintable {
 
     @Override
     public void printJson(JsonWriter writer) throws IOException {
-        writer.append('{');
-        writer.quote("name").append(':').quote(name).append(',');
-        writer.quote("parameterTypes").append(":[");
-        String prefix = "";
-        for (String type : SignatureUtil.toParameterTypes(internalSignature)) {
-            writer.append(prefix).quote(type);
-            prefix = ",";
-        }
-        writer.append("] }");
+        writer.appendObjectStart();
+        writer.quote("name").appendFieldSeparator().quote(name).appendSeparator();
+        writer.quote("parameterTypes").appendFieldSeparator().print(Arrays.asList(SignatureUtil.toParameterTypes(internalSignature)));
+        writer.appendObjectEnd();
     }
 
     @Override

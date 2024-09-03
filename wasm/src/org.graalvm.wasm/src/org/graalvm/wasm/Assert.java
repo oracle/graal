@@ -70,7 +70,7 @@ public class Assert {
 
     public static void assertIntGreaterOrEqual(int n1, int n2, Failure failure) throws WasmException {
         if (n1 < n2) {
-            fail(failure, format("%s: %d should be > %d", failure.name, n1, n2));
+            fail(failure, format("%s: %d should be >= %d", failure.name, n1, n2));
         }
     }
 
@@ -86,7 +86,7 @@ public class Assert {
 
     public static void assertIntLess(int n1, int n2, Failure failure) throws WasmException {
         if (n1 >= n2) {
-            fail(failure, format("%s: %d should be <= %d", failure.name, n1, n2));
+            fail(failure, format("%s: %d should be < %d", failure.name, n1, n2));
         }
     }
 

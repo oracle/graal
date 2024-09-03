@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -129,7 +129,6 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             case "--enable-preview":
                 args.poll();
                 nativeImage.addCustomJavaArgs("--enable-preview");
-                nativeImage.enablePreview();
                 return true;
             case nativeAccessOption:
                 args.poll();
@@ -252,7 +251,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         }
         if (!jarFileNameBase.isEmpty()) {
             String origin = "manifest from " + jarFilePath.toUri();
-            nativeImage.addPlainImageBuilderArg(nativeImage.oHName + jarFileNameBase, origin);
+            nativeImage.addPlainImageBuilderArg(nativeImage.oHName + jarFileNameBase, origin, false);
         }
         Path finalFilePath = nativeImage.useBundle() ? nativeImage.bundleSupport.substituteClassPath(jarFilePath) : jarFilePath;
         if (!NativeImage.processJarManifestMainAttributes(finalFilePath, nativeImage::handleManifestFileAttributes)) {

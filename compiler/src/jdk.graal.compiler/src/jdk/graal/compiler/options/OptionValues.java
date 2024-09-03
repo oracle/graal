@@ -188,15 +188,14 @@ public class OptionValues {
     }
 
     /**
-     * Prints a help message to {@code out} describing all options available via {@code loader}. The
+     * Prints a help message to {@code out} describing the options available via {@code loader}. The
      * key/value for each option is separated by {@code :=} if the option has an entry in this
      * object otherwise {@code =} is used as the separator.
      *
-     * @param loader
-     * @param out
-     * @param namePrefix
+     * @param all if true, all options are printed otherwise only {@linkplain #excludeOptionFromHelp
+     *            non-excluded} options are printed.
      */
-    public void printHelp(Iterable<OptionDescriptors> loader, PrintStream out, String namePrefix) {
+    public void printHelp(Iterable<OptionDescriptors> loader, PrintStream out, String namePrefix, boolean all) {
         SortedMap<String, OptionDescriptor> sortedOptions = new TreeMap<>();
         for (OptionDescriptors opts : loader) {
             for (OptionDescriptor desc : opts) {
@@ -205,35 +204,66 @@ public class OptionValues {
                 assert existing == null || existing == desc : "Option named \"" + name + "\" has multiple definitions: " + existing.getLocation() + " and " + desc.getLocation();
             }
         }
-        for (Map.Entry<String, OptionDescriptor> e : sortedOptions.entrySet()) {
-            OptionDescriptor desc = e.getValue();
-            Object value = desc.getOptionKey().getValue(this);
-            if (value instanceof String) {
-                value = '"' + String.valueOf(value) + '"';
-            }
-            String name = namePrefix + e.getKey();
-            String assign = containsKey(desc.getOptionKey()) ? ":=" : "=";
-            String typeName = desc.getOptionKey() instanceof EnumOptionKey ? "String" : desc.getOptionValueType().getSimpleName();
-            String linePrefix = String.format("%s %s %s ", name, assign, value);
-            int typeStartPos = PROPERTY_LINE_WIDTH - typeName.length();
-            int linePad = typeStartPos - linePrefix.length();
-            if (linePad > 0) {
-                out.printf("%s%-" + linePad + "s[%s]%n", linePrefix, "", typeName);
-            } else {
-                out.printf("%s[%s]%n", linePrefix, typeName);
-            }
-
-            List<String> helpLines;
-            String help = desc.getHelp();
-            if (help.length() != 0) {
-                helpLines = wrap(help, PROPERTY_LINE_WIDTH - PROPERTY_HELP_INDENT);
-                helpLines.addAll(desc.getExtraHelp());
-            } else {
-                helpLines = desc.getExtraHelp();
-            }
-            for (String line : helpLines) {
-                out.printf("%" + PROPERTY_HELP_INDENT + "s%s%n", "", line);
+        int size = 0;
+        if (all) {
+            size = sortedOptions.entrySet().size();
+        } else {
+            for (Map.Entry<String, OptionDescriptor> e : sortedOptions.entrySet()) {
+                OptionDescriptor desc = e.getValue();
+                if (!excludeOptionFromHelp(desc)) {
+                    size++;
+                }
             }
         }
+        int i = 0;
+        for (Map.Entry<String, OptionDescriptor> e : sortedOptions.entrySet()) {
+            String key = e.getKey();
+            OptionDescriptor desc = e.getValue();
+            if (all || !excludeOptionFromHelp(desc)) {
+                printHelp(out, namePrefix, key, desc);
+                if (i++ != size - 1) {
+                    // print new line between options
+                    out.printf("%n");
+                }
+            }
+        }
+    }
+
+    private void printHelp(PrintStream out, String namePrefix, String key, OptionDescriptor desc) {
+        Object value = desc.getOptionKey().getValue(this);
+        if (value instanceof String) {
+            value = '"' + String.valueOf(value) + '"';
+        }
+        String name = namePrefix + key;
+        String assign = containsKey(desc.getOptionKey()) ? ":=" : "=";
+        String typeName = desc.getOptionKey() instanceof EnumOptionKey ? "String" : desc.getOptionValueType().getSimpleName();
+
+        String edition = String.format("[%s edition]", OptionsParser.isEnterpriseOption(desc) ? "enterprise" : "community");
+        String linePrefix = String.format("%s %s %s %s", name, assign, value, edition);
+
+        int typeStartPos = PROPERTY_LINE_WIDTH - typeName.length();
+        int linePad = typeStartPos - linePrefix.length();
+        if (linePad > 0) {
+            out.printf("%s%-" + linePad + "s[%s]%n", linePrefix, "", typeName);
+        } else {
+            out.printf("%s[%s]%n", linePrefix, typeName);
+        }
+
+        List<String> helpLines;
+        String help = desc.getHelp();
+        if (help.length() != 0) {
+            helpLines = wrap(help, PROPERTY_LINE_WIDTH - PROPERTY_HELP_INDENT);
+            helpLines.addAll(desc.getExtraHelp());
+        } else {
+            helpLines = desc.getExtraHelp();
+        }
+        for (String line : helpLines) {
+            out.printf("%" + PROPERTY_HELP_INDENT + "s%s%n", "", line);
+        }
+    }
+
+    private static boolean excludeOptionFromHelp(OptionDescriptor desc) {
+        /* Filter out debug options. */
+        return desc.getOptionType() == OptionType.Debug;
     }
 }

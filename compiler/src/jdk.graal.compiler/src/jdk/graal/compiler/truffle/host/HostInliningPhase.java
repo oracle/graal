@@ -85,6 +85,7 @@ import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.truffle.KnownTruffleTypes;
 import jdk.graal.compiler.truffle.PartialEvaluator;
 import jdk.vm.ci.meta.JavaTypeProfile;
+import jdk.vm.ci.meta.JavaTypeProfile.ProfiledType;
 import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -1093,7 +1094,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
     }
 
     /**
-     * Returns <code>true</code> if the a non direct call should be inlined using type checked
+     * Returns <code>true</code> if the non direct call should be inlined using type checked
      * inlining, else <code>false</code>. This depends on whether type profiling is available and
      * whether this kind of speculation is enabled.
      */
@@ -1117,7 +1118,12 @@ public class HostInliningPhase extends AbstractInliningPhase {
         }
 
         if (ptypes.length != 1) {
-            call.reason = "not direct call: polymorphic inlining not supported";
+            var sb = new StringBuilder("not direct call: polymorphic inlining not supported. Types: ");
+            for (ProfiledType type : ptypes) {
+                sb.append(type.getType().toJavaName(false)).append(", ");
+            }
+            sb.setLength(sb.length() - 2);
+            call.reason = sb.toString();
             return false;
         }
 

@@ -26,16 +26,16 @@ package com.oracle.svm.hosted.phases;
 
 import java.util.function.Supplier;
 
+import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
+import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
+
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-
-import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
-import com.oracle.svm.hosted.SVMHost;
-
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -60,7 +60,10 @@ public class SubstrateClassInitializationPlugin implements ClassInitializationPl
 
     @Override
     public boolean apply(GraphBuilderContext builder, ResolvedJavaType type, Supplier<FrameState> frameState) {
-        if (EnsureClassInitializedNode.needsRuntimeInitialization(builder.getMethod().getDeclaringClass(), type)) {
+        var requiredForTypeReached = ClassInitializationSupport.singleton().requiresInitializationNodeForTypeReached(type);
+        if (requiredForTypeReached ||
+                        EnsureClassInitializedNode.needsRuntimeInitialization(builder.getMethod().getDeclaringClass(), type)) {
+            assert !type.isArray() : "Array types must not have initialization nodes: " + type.getName();
             SnippetReflectionProvider snippetReflection = builder.getSnippetReflection();
             emitEnsureClassInitialized(builder, snippetReflection.forObject(host.dynamicHub(type)), frameState.get());
             return true;

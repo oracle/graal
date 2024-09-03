@@ -28,6 +28,7 @@ import java.util.Optional;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Graph;
 import jdk.graal.compiler.nodes.GraphState;
@@ -35,13 +36,14 @@ import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.LoopBeginNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.extended.OpaqueNode;
-import jdk.graal.compiler.nodes.loop.LoopEx;
+import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.loop.LoopPolicies;
 import jdk.graal.compiler.nodes.loop.LoopsData;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.LoopsDataProvider;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.util.EconomicSetNodeEventListener;
+import jdk.graal.compiler.phases.common.util.LoopUtility;
 
 public class LoopPartialUnrollPhase extends LoopPhase<LoopPolicies> {
 
@@ -62,13 +64,14 @@ public class LoopPartialUnrollPhase extends LoopPhase<LoopPolicies> {
                 dataCounted.detectCountedLoops();
                 graph.getDebug().log(DebugContext.INFO_LEVEL, "Detected %d counted loops", dataCounted.countedLoops().size());
                 Graph.Mark mark = graph.getMark();
-                for (LoopEx loop : dataCounted.countedLoops()) {
+                for (Loop loop : dataCounted.countedLoops()) {
                     if (LoopTransformations.isUnrollableLoop(loop)) {
                         graph.getDebug().log(DebugContext.INFO_LEVEL, "Loop %s can be unrolled, now checking if we should", loop);
                         if (getPolicies().shouldPartiallyUnroll(loop, context)) {
                             if (loop.loopBegin().isSimpleLoop()) {
                                 // First perform the pre/post transformation and do the partial
                                 // unroll when we come around again.
+                                LoopUtility.preserveCounterStampsForDivAfterUnroll(loop);
                                 LoopTransformations.insertPrePostLoops(loop);
                                 prePostInserted = true;
                                 changed = true;
@@ -133,7 +136,7 @@ public class LoopPartialUnrollPhase extends LoopPhase<LoopPolicies> {
         LoopsData dataCounted;
         dataCounted = loopsDataProvider.getLoopsData(graph);
         dataCounted.detectCountedLoops();
-        for (LoopEx anyLoop : dataCounted.loops()) {
+        for (Loop anyLoop : dataCounted.loops()) {
             if (graph.isNew(mark, anyLoop.loopBegin())) {
                 assert anyLoop.isCounted() : "pre/post transformation loses counted loop " + anyLoop.loopBegin();
             }

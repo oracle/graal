@@ -591,9 +591,7 @@ public class GraphDecoder {
                 }
             }
 
-            if (encodedGraph.hasUnsafeAccess()) {
-                graph.markUnsafeAccess();
-            }
+            graph.maybeMarkUnsafeAccess(encodedGraph);
         } catch (Throwable ex) {
             debug.handle(ex);
         }
@@ -615,9 +613,7 @@ public class GraphDecoder {
         } else {
             assert inlinedAssumptions == null : String.format("cannot inline graph (%s) which makes assumptions into a graph (%s) that doesn't", encodedGraph, graph);
         }
-        if (encodedGraph.hasUnsafeAccess()) {
-            graph.markUnsafeAccess();
-        }
+        graph.maybeMarkUnsafeAccess(encodedGraph);
     }
 
     protected final LoopScope createInitialLoopScope(MethodScope methodScope, FixedWithNextNode startNode) {
@@ -2550,7 +2546,8 @@ class LoopDetector implements Runnable {
     }
 
     /**
-     * Print information about irreducible loops, when enabled with -Dgraal.Log=IrreducibleLoops.
+     * Print information about irreducible loops, when enabled with
+     * -Djdk.graal.Log=IrreducibleLoops.
      */
     @SuppressWarnings("try")
     private void logIrreducibleLoops() {

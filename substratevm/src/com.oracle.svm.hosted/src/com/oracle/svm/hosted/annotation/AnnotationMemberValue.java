@@ -29,10 +29,7 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-
 import jdk.internal.reflect.ConstantPool;
-import jdk.vm.ci.meta.JavaConstant;
 
 public abstract class AnnotationMemberValue {
     static AnnotationMemberValue extract(ByteBuffer buf, ConstantPool cp, Class<?> container, boolean skip) {
@@ -70,14 +67,6 @@ public abstract class AnnotationMemberValue {
     }
 
     public List<Class<?>> getTypes() {
-        return Collections.emptyList();
-    }
-
-    public List<String> getStrings() {
-        return Collections.emptyList();
-    }
-
-    public List<JavaConstant> getExceptionProxies(@SuppressWarnings("unused") SnippetReflectionProvider snippetReflection) {
         return Collections.emptyList();
     }
 

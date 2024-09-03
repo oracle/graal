@@ -31,8 +31,6 @@ import java.util.Comparator;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
-import jdk.graal.compiler.core.common.util.TypeConversion;
-import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -47,17 +45,15 @@ import com.oracle.svm.core.heap.dump.HeapDumpShutdownHook;
 import com.oracle.svm.core.heap.dump.HeapDumpStartupHook;
 import com.oracle.svm.core.heap.dump.HeapDumpWriter;
 import com.oracle.svm.core.heap.dump.HeapDumping;
-import com.oracle.svm.core.heapdump.HeapDumpSupportImpl;
-import com.oracle.svm.core.heapdump.HeapDumpUtils;
-import com.oracle.svm.core.heapdump.HeapDumpWriterImpl;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedType;
-import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.AfterCompilationAccessImpl;
 
+import jdk.graal.compiler.core.common.util.TypeConversion;
+import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
@@ -82,26 +78,12 @@ public class HeapDumpFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        if (useLegacyImplementation()) {
-            HeapDumping heapDumpSupport = new HeapDumpSupportImpl();
+        HeapDumpMetadata metadata = new HeapDumpMetadata();
+        HeapDumping heapDumpSupport = new com.oracle.svm.core.heap.dump.HeapDumpSupportImpl(metadata);
 
-            ImageSingletons.add(HeapDumpSupport.class, heapDumpSupport);
-            ImageSingletons.add(HeapDumping.class, heapDumpSupport);
-            ImageSingletons.add(HeapDumpUtils.class, new HeapDumpUtils());
-            ImageSingletons.add(com.oracle.svm.core.heapdump.HeapDumpWriter.class, new HeapDumpWriterImpl());
-        } else {
-            HeapDumpMetadata metadata = new HeapDumpMetadata();
-            HeapDumping heapDumpSupport = new com.oracle.svm.core.heap.dump.HeapDumpSupportImpl(metadata);
-
-            ImageSingletons.add(HeapDumpSupport.class, heapDumpSupport);
-            ImageSingletons.add(HeapDumping.class, heapDumpSupport);
-            ImageSingletons.add(HeapDumpMetadata.class, metadata);
-        }
-    }
-
-    public static boolean useLegacyImplementation() {
-        /* See GR-44538. */
-        return !RawFileOperationSupport.isPresent();
+        ImageSingletons.add(HeapDumpSupport.class, heapDumpSupport);
+        ImageSingletons.add(HeapDumping.class, heapDumpSupport);
+        ImageSingletons.add(HeapDumpMetadata.class, metadata);
     }
 
     @Override
@@ -116,16 +98,9 @@ public class HeapDumpFeature implements InternalFeature {
     @Override
     public void afterCompilation(Feature.AfterCompilationAccess access) {
         AfterCompilationAccessImpl accessImpl = (AfterCompilationAccessImpl) access;
-        if (useLegacyImplementation()) {
-            byte[] fieldMap = HeapDumpHostedUtils.dumpFieldsMap(accessImpl.getTypes());
-
-            HeapDumpUtils.getHeapDumpUtils().setFieldsMap(fieldMap);
-            access.registerAsImmutable(fieldMap);
-        } else {
-            byte[] metadata = encodeMetadata(accessImpl.getTypes());
-            HeapDumpMetadata.singleton().setData(metadata);
-            access.registerAsImmutable(metadata);
-        }
+        byte[] metadata = encodeMetadata(accessImpl.getTypes());
+        HeapDumpMetadata.singleton().setData(metadata);
+        access.registerAsImmutable(metadata);
     }
 
     /**

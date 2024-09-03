@@ -30,6 +30,12 @@ import java.util.List;
 
 import org.junit.Test;
 
+import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.java.BytecodeParserOptions;
+import jdk.graal.compiler.nodes.spi.ProfileProvider;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+
 public class ArrayLengthProviderTest extends GraalCompilerTest {
 
     public static Object test0Snippet(ArrayList<?> list, boolean a) {
@@ -56,7 +62,7 @@ public class ArrayLengthProviderTest extends GraalCompilerTest {
         }
     }
 
-    public static Object test1Snippet(ArrayList<?> list, boolean a, boolean b) {
+    public static Object test1Snippet(List<?> list, boolean a, boolean b) {
         while (true) {
             Object[] array = toArray(list);
             if (a || b) {
@@ -72,6 +78,16 @@ public class ArrayLengthProviderTest extends GraalCompilerTest {
         return new Object[list.size()];
     }
 
+    @Override
+    protected ProfileProvider getProfileProvider(ResolvedJavaMethod method) {
+        if (profile) {
+            return null;
+        }
+        return NO_PROFILE_PROVIDER;
+    }
+
+    boolean profile = true;
+
     @Test
     public void test0() {
         test("test0Snippet", new ArrayList<>(Arrays.asList("a", "b")), true);
@@ -80,5 +96,15 @@ public class ArrayLengthProviderTest extends GraalCompilerTest {
     @Test
     public void test1() {
         test("test1Snippet", new ArrayList<>(Arrays.asList("a", "b")), true, true);
+
+    }
+
+    @Test
+    public void test2() {
+        resetCache();
+        profile = false;
+        OptionValues o = new OptionValues(getInitialOptions(), GraalOptions.LoopUnswitch, false, BytecodeParserOptions.InlineDuringParsing, false);
+        test(o, "test1Snippet", new ArrayList<>(Arrays.asList("a", "b")), true, true);
+        profile = true;
     }
 }

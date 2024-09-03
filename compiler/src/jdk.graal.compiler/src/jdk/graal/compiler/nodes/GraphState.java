@@ -26,6 +26,7 @@ package jdk.graal.compiler.nodes;
 
 import java.util.EnumSet;
 import java.util.Formatter;
+import java.util.Locale;
 import java.util.Objects;
 
 import jdk.graal.compiler.api.replacements.Snippet;
@@ -53,7 +54,7 @@ public final class GraphState {
      * These sets of {@link StageFlag}s represent the necessary stages that must be applied to a
      * {@link StructuredGraph} for a complete compilation.
      */
-    private static final EnumSet<StageFlag> HIGH_TIER_MANDATORY_STAGES = EnumSet.of(
+    private static final EnumSet<StageFlag> HIGH_TIER_MANDATORY_STAGES = EnumSet.of(StageFlag.LOOP_OVERFLOWS_CHECKED,
                     StageFlag.HIGH_TIER_LOWERING);
     private static final EnumSet<StageFlag> MID_TIER_MANDATORY_STAGES = EnumSet.of(
                     StageFlag.VALUE_PROXY_REMOVAL,
@@ -65,7 +66,9 @@ public final class GraphState {
     private static final EnumSet<StageFlag> LOW_TIER_MANDATORY_STAGES = EnumSet.of(
                     StageFlag.LOW_TIER_LOWERING,
                     StageFlag.EXPAND_LOGIC,
-                    StageFlag.ADDRESS_LOWERING);
+                    StageFlag.ADDRESS_LOWERING,
+                    StageFlag.REMOVE_OPAQUE_VALUES,
+                    StageFlag.FINAL_SCHEDULE);
     private static final EnumSet<StageFlag> ENTERPRISE_MID_TIER_MANDATORY_STAGES = EnumSet.of(
                     StageFlag.OPTIMISTIC_ALIASING,
                     StageFlag.GUARD_LOWERING,
@@ -604,6 +607,7 @@ public final class GraphState {
     public enum StageFlag {
         CANONICALIZATION,
         /* Stages applied by high tier. */
+        LOOP_OVERFLOWS_CHECKED,
         FINAL_PARTIAL_ESCAPE,
         HIGH_TIER_LOWERING,
         /* Stages applied by mid tier. */
@@ -628,7 +632,9 @@ public final class GraphState {
         PARTIAL_REDUNDANCY_SCHEDULE,
         ADDRESS_LOWERING,
         FINAL_CANONICALIZATION,
+        REMOVE_OPAQUE_VALUES,
         TARGET_VECTOR_LOWERING,
+        FINAL_SCHEDULE
     }
 
     /**
@@ -773,7 +779,7 @@ public final class GraphState {
          *         is found, returns {@link #COMMUNITY}.
          */
         public static MandatoryStages getFromName(String name) {
-            switch (name.toLowerCase()) {
+            switch (name.toLowerCase(Locale.ROOT)) {
                 case "economy":
                     return ECONOMY;
                 case "community":

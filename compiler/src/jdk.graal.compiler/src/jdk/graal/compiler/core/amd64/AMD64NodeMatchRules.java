@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -53,19 +53,23 @@ import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.calc.CanonicalCondition;
 import jdk.graal.compiler.core.common.calc.Condition;
+import jdk.graal.compiler.core.common.calc.FloatConvertCategory;
 import jdk.graal.compiler.core.common.memory.MemoryExtendKind;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
+import jdk.graal.compiler.core.common.type.PrimitiveStamp;
 import jdk.graal.compiler.core.gen.NodeLIRBuilder;
 import jdk.graal.compiler.core.gen.NodeMatchRules;
 import jdk.graal.compiler.core.match.ComplexMatchResult;
 import jdk.graal.compiler.core.match.MatchRule;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.lir.CastValue;
 import jdk.graal.compiler.lir.LIRFrameState;
 import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.LabelRef;
 import jdk.graal.compiler.lir.amd64.AMD64AddressValue;
 import jdk.graal.compiler.lir.amd64.AMD64BinaryConsumer;
+import jdk.graal.compiler.lir.amd64.AMD64ControlFlow;
 import jdk.graal.compiler.lir.amd64.AMD64ControlFlow.TestBranchOp;
 import jdk.graal.compiler.lir.amd64.AMD64ControlFlow.TestConstBranchOp;
 import jdk.graal.compiler.lir.amd64.AMD64UnaryConsumer;
@@ -370,6 +374,21 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
         }
     }
 
+    @MatchRule("(If (IntegerTest value Constant=a))")
+    public ComplexMatchResult testBitAndBranch(IfNode root, ValueNode value, ConstantNode a) {
+        long constant = a.asJavaConstant().asLong();
+        if (Long.bitCount(constant) == 1) {
+            return builder -> {
+                LabelRef trueDestination = getLIRBlock(root.trueSuccessor());
+                LabelRef falseDestination = getLIRBlock(root.falseSuccessor());
+                gen.append(new AMD64ControlFlow.BitTestAndBranchOp(trueDestination, falseDestination, gen.asAllocatable(operand(value)),
+                                root.getTrueSuccessorProbability(), Long.numberOfTrailingZeros(constant)));
+                return null;
+            };
+        }
+        return null;
+    }
+
     @MatchRule("(If (IntegerTest Read=access value))")
     @MatchRule("(If (IntegerTest FloatingRead=access value))")
     public ComplexMatchResult integerTestBranchMemory(IfNode root, LIRLowerableAccess access, ValueNode value) {
@@ -409,7 +428,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
                 Value expectedValue = operand(cas.getExpectedValue());
                 Value newValue = operand(cas.getNewValue());
                 AMD64AddressValue address = (AMD64AddressValue) operand(cas.getAddress());
-                getLIRGeneratorTool().emitCompareAndSwapBranch(kind, address, expectedValue, newValue, Condition.EQ, trueLabel, falseLabel, trueLabelProbability, cas.getBarrierType());
+                getLIRGeneratorTool().emitCompareAndSwapBranch(false, kind, address, expectedValue, newValue, Condition.EQ, trueLabel, falseLabel, trueLabelProbability, cas.getBarrierType());
                 return null;
             };
         }
@@ -442,7 +461,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
                 Value newValue = operand(cas.getNewValue());
                 AMD64AddressValue address = (AMD64AddressValue) operand(cas.getAddress());
                 Condition condition = successIsTrue ? Condition.EQ : Condition.NE;
-                getLIRGeneratorTool().emitCompareAndSwapBranch(kind, address, expectedValue, newValue, condition, trueLabel, falseLabel, trueLabelProbability, cas.getBarrierType());
+                getLIRGeneratorTool().emitCompareAndSwapBranch(true, kind, address, expectedValue, newValue, condition, trueLabel, falseLabel, trueLabelProbability, cas.getBarrierType());
                 return null;
             };
         }
@@ -632,7 +651,10 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
     public ComplexMatchResult writeNarrow(WriteNode root, NarrowNode narrow) {
         return builder -> {
             LIRKind writeKind = getLIRGeneratorTool().getLIRKind(root.value().stamp(NodeView.DEFAULT));
-            getArithmeticLIRGenerator().emitStore(writeKind, operand(root.getAddress()), operand(narrow.getValue()), state(root), root.getMemoryOrder());
+            Value input = operand(narrow.getValue());
+            LIRKind inputKind = LIRKind.combine(input).changeType(writeKind.getPlatformKind());
+            Value narrowed = new CastValue(inputKind, getLIRGeneratorTool().asAllocatable(input));
+            getArithmeticLIRGenerator().emitStore(writeKind, operand(root.getAddress()), narrowed, state(root), root.getMemoryOrder());
             return null;
         };
     }
@@ -677,6 +699,10 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
     @MatchRule("(FloatConvert Read=access)")
     @MatchRule("(FloatConvert FloatingRead=access)")
     public ComplexMatchResult floatConvert(FloatConvertNode root, LIRLowerableAccess access) {
+        if (root.getFloatConvert().getCategory().equals(FloatConvertCategory.FloatingPointToInteger) && (root.inputCanBeNaN() || root.canOverflow())) {
+            /* We need to fix up the result of the conversion, the input should be in a register. */
+            return null;
+        }
         switch (root.getFloatConvert()) {
             case D2F:
                 return emitConvertMemoryOp(AMD64Kind.SINGLE, SSEOp.CVTSD2SS, SD, access);
@@ -729,7 +755,11 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
     public ComplexMatchResult normalizedIntegerCompare(ValueNode x, ValueNode y, ConstantNode cm1, ConstantNode c0, ConstantNode c1) {
         if (cm1.getStackKind() == JavaKind.Int && cm1.asJavaConstant().asInt() == -1 && c0.getStackKind() == JavaKind.Int && c0.asJavaConstant().asInt() == 0 && c1.getStackKind() == JavaKind.Int &&
                         c1.asJavaConstant().asInt() == 1) {
-            return builder -> getArithmeticLIRGenerator().emitNormalizedUnsignedCompare(operand(x), operand(y));
+            GraalError.guarantee(PrimitiveStamp.getBits(x.stamp(NodeView.DEFAULT)) == PrimitiveStamp.getBits(y.stamp(NodeView.DEFAULT)), "need compatible inputs: %s, %s", x, y);
+            return builder -> {
+                LIRKind compareKind = gen.getLIRKind(x.stamp(NodeView.DEFAULT));
+                return getArithmeticLIRGenerator().emitNormalizedUnsignedCompare(compareKind, operand(x), operand(y));
+            };
         }
         return null;
     }

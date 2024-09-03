@@ -31,14 +31,10 @@ import java.util.function.Consumer;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.flow.InstanceOfTypeFlow;
-import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.results.StaticAnalysisResultsBuilder;
-import com.oracle.graal.pointsto.typestate.TypeState;
 
 public final class StatisticsPrinter {
 
@@ -183,32 +179,11 @@ public final class StatisticsPrinter {
                 continue;
             }
 
-            boolean runtimeMethod = isRuntimeLibraryType(method.getDeclaringClass());
             MethodTypeFlow methodFlow = PointsToAnalysis.assertPointsToAnalysisMethod(method).getTypeFlow();
             if (!methodFlow.flowsGraphCreated()) {
                 continue;
             }
-            MethodFlowsGraph originalFlows = methodFlow.getMethodFlowsGraph();
-
-            var cursor = originalFlows.getInstanceOfFlows().getEntries();
-            while (cursor.advance()) {
-                if (StaticAnalysisResultsBuilder.isValidBci(cursor.getKey())) {
-                    totalFilters++;
-                    InstanceOfTypeFlow originalInstanceOf = cursor.getValue();
-
-                    boolean isSaturated = methodFlow.isSaturated(pta, originalInstanceOf);
-                    TypeState instanceOfTypeState = methodFlow.foldTypeFlow(pta, originalInstanceOf);
-                    if (!isSaturated && instanceOfTypeState.typesCount() < 2) {
-                        totalRemovableFilters++;
-                    }
-                    if (!runtimeMethod) {
-                        appTotalFilters++;
-                        if (!isSaturated && instanceOfTypeState.typesCount() < 2) {
-                            appTotalRemovableFilters++;
-                        }
-                    }
-                }
-            }
+            methodFlow.getMethodFlowsGraph();
         }
 
         return new long[]{totalFilters, totalRemovableFilters, appTotalFilters, appTotalRemovableFilters};

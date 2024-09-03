@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,12 +27,16 @@ package com.oracle.truffle.tools.agentscript.impl;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
+
+import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -56,8 +60,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
 
-import org.graalvm.collections.EconomicMap;
-
 final class InsightPerSource implements ContextsListener, AutoCloseable, LoadSourceListener {
     private final InsightInstrument instrument;
     private final Supplier<Source> src;
@@ -75,6 +77,8 @@ final class InsightPerSource implements ContextsListener, AutoCloseable, LoadSou
     private Map<Object, InsightInstrument.Key> bindings = new HashMap<>();
     /* @GuardedBy("this") */
     private final Map<TruffleContext, Source> registeredSource = new WeakHashMap<>();
+    /* @GuardedBy("this") */
+    private final Map<TruffleContext, Set<String>> contextLanguagesInitializing = new WeakHashMap<>();
     private final EventBinding<InsightPerSource> onInit;
 
     InsightPerSource(Instrumenter instrumenter, InsightInstrument instrument, Supplier<Source> src, IgnoreSources ignoredSources) {
@@ -120,8 +124,47 @@ final class InsightPerSource implements ContextsListener, AutoCloseable, LoadSou
     public void onContextCreated(TruffleContext context) {
     }
 
+    private synchronized void pushLanguageContextCreateOrInitialize(TruffleContext context, LanguageInfo language) {
+        contextLanguagesInitializing.putIfAbsent(context, new HashSet<>());
+        contextLanguagesInitializing.get(context).add(language.getId());
+    }
+
+    private synchronized boolean popLanguageContextCreateOrInitialize(TruffleContext context, LanguageInfo language) {
+        boolean currentlyInitializing = false;
+        var languagesInitializing = contextLanguagesInitializing.get(context);
+        if (languagesInitializing != null) {
+            languagesInitializing.remove(language.getId());
+            if (languagesInitializing.isEmpty()) {
+                contextLanguagesInitializing.remove(context);
+            } else {
+                currentlyInitializing = true;
+            }
+        }
+        return currentlyInitializing;
+    }
+
+    @Override
+    public void onLanguageContextCreate(TruffleContext context, LanguageInfo language) {
+        if (language.isInternal()) {
+            return;
+        }
+        pushLanguageContextCreateOrInitialize(context, language);
+    }
+
     @Override
     public void onLanguageContextCreated(TruffleContext context, LanguageInfo language) {
+        if (language.isInternal()) {
+            return;
+        }
+        popLanguageContextCreateOrInitialize(context, language);
+    }
+
+    @Override
+    public void onLanguageContextInitialize(TruffleContext context, LanguageInfo language) {
+        if (language.isInternal()) {
+            return;
+        }
+        pushLanguageContextCreateOrInitialize(context, language);
     }
 
     @Override
@@ -129,7 +172,14 @@ final class InsightPerSource implements ContextsListener, AutoCloseable, LoadSou
         if (language.isInternal()) {
             return;
         }
-        if (context.isEntered()) {
+        /*
+         * Only parse the script eagerly if we're not currently creating or initializing a context;
+         * otherwise we might introduce an initialization cycle (e.g.: language A (during context
+         * create or initialize) initializing language B, initializing Insight script, initializing
+         * language A (via TruffleInstrument.Env#parse).
+         */
+        boolean currentlyInitializing = popLanguageContextCreateOrInitialize(context, language);
+        if (context.isEntered() && !currentlyInitializing) {
             EventBinding<?> agentBinding;
             synchronized (this) {
                 agentBinding = initializeBindings.removeKey(context);

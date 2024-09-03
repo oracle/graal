@@ -104,4 +104,7 @@ public class WindowsLibC {
 
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)
     public static native UnsignedWord strtoull(CCharPointer string, CCharPointerPointer endPtr, int base);
+
+    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
+    public static native double log(double value);
 }

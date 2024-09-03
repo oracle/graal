@@ -395,7 +395,7 @@ public class EditProfilePanel extends javax.swing.JPanel implements ExplorerMana
             try {
                 Pattern.compile(exprText, Pattern.CASE_INSENSITIVE);
             } catch (PatternSyntaxException ex) {
-                reportError(Bundle.ERROR_ProfileBadNamePattern(ex.getLocalizedMessage()));
+                reportError(Bundle.ERROR_ProfileBadNamePattern(ex.toString()));
                 return;
             }
         }
@@ -404,7 +404,7 @@ public class EditProfilePanel extends javax.swing.JPanel implements ExplorerMana
             try {
                 Pattern.compile(exprText, Pattern.CASE_INSENSITIVE);
             } catch (PatternSyntaxException ex) {
-                reportError(Bundle.ERROR_ProfileBadNamePattern(ex.getLocalizedMessage()));
+                reportError(Bundle.ERROR_ProfileBadNamePattern(ex.toString()));
                 return;
             }
         }

@@ -1,0 +1,8 @@
+# FILE redefined
+gcc-5.2.0/gcc/testsuite/g++.dg/opt/builtins1.C
+
+# __null is not supported
+gcc-5.2.0/gcc/testsuite/g++.dg/opt/cleanup1.C
+gcc-5.2.0/gcc/testsuite/g++.dg/opt/pr23478.C
+gcc-5.2.0/gcc/testsuite/g++.dg/opt/pr56999.C
+gcc-5.2.0/gcc/testsuite/g++.dg/opt/vrp2.C

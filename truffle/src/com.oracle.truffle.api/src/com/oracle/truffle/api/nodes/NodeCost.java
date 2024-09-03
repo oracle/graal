@@ -48,7 +48,9 @@ import com.oracle.truffle.api.CompilerDirectives;
  *
  * @see Node#getCost()
  * @since 0.8 or earlier
+ * @deprecated in 24.1 without replacement
  */
+@Deprecated
 public enum NodeCost {
 
     /**

@@ -25,6 +25,9 @@
  */
 package com.oracle.svm.hosted.image;
 
+import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange.Type.CONTRACT;
+import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange.Type.EXTEND;
+
 import java.lang.reflect.Modifier;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -39,12 +42,6 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import jdk.graal.compiler.code.CompilationResult;
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.graph.NodeSourcePosition;
-import jdk.graal.compiler.java.StableMethodNameFormatter;
-import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.meta.AllocatableValue;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
@@ -62,6 +59,7 @@ import com.oracle.svm.core.code.CompilationResultFrameTree.CallNode;
 import com.oracle.svm.core.code.CompilationResultFrameTree.FrameNode;
 import com.oracle.svm.core.code.CompilationResultFrameTree.Visitor;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.image.ImageHeapPartition;
@@ -91,13 +89,19 @@ import com.oracle.svm.hosted.substitute.SubstitutionField;
 import com.oracle.svm.hosted.substitute.SubstitutionMethod;
 import com.oracle.svm.util.ClassUtil;
 
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.java.StableMethodNameFormatter;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaValue;
@@ -110,9 +114,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.Value;
-
-import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange.Type.CONTRACT;
-import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange.Type.EXTEND;
 
 /**
  * Implementation of the DebugInfoProvider API interface that allows type, code and heap data info
@@ -186,10 +187,7 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
             } else {
                 javaType = method.getDeclaringClass();
             }
-            Class<?> clazz = null;
-            if (javaType instanceof OriginalClassProvider) {
-                clazz = ((OriginalClassProvider) javaType).getJavaClass();
-            }
+            Class<?> clazz = OriginalClassProvider.getJavaClass(javaType);
             SourceManager sourceManager = ImageSingletons.lookup(SourceManager.class);
             try (DebugContext.Scope s = debugContext.scope("DebugFileInfo", javaType)) {
                 fullFilePath = sourceManager.findAndCacheSource(javaType, clazz, debugContext);
@@ -428,15 +426,17 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
     }
 
     private Stream<DebugTypeInfo> computeHeaderTypeInfo() {
+        ObjectLayout ol = getObjectLayout();
+
         List<DebugTypeInfo> infos = new LinkedList<>();
-        int hubOffset = getObjectLayout().getHubOffset();
+        int hubOffset = ol.getHubOffset();
         int hubFieldSize = referenceSize;
         int objHeaderSize = hubOffset + hubFieldSize;
 
-        int idHashSize = getObjectLayout().sizeInBytes(JavaKind.Int);
+        int idHashSize = ol.sizeInBytes(JavaKind.Int);
         int fixedIdHashOffset = -1;
-        if (getObjectLayout().hasFixedIdentityHashField()) {
-            fixedIdHashOffset = getObjectLayout().getFixedIdentityHashOffset();
+        if (ol.isIdentityHashFieldInObjectHeader()) {
+            fixedIdHashOffset = ol.getObjectHeaderIdentityHashOffset();
             objHeaderSize = Math.max(objHeaderSize, fixedIdHashOffset + idHashSize);
         }
 
@@ -770,7 +770,7 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
 
         @Override
         public int size() {
-            return structFieldInfo.getSizeInfo().getProperty();
+            return structFieldInfo.getSizeInBytes();
         }
 
         @Override
@@ -2218,7 +2218,9 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
 
     public class NativeImageDebugLocalInfo implements DebugLocalInfo {
         protected final String name;
-        protected ResolvedJavaType type;
+        protected final ResolvedJavaType type;
+        protected final ResolvedJavaType valueType;
+        protected final String typeName;
         protected final JavaKind kind;
         protected int slot;
         protected int line;
@@ -2231,14 +2233,14 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
             // if we don't have a type default it for the JavaKind
             // it may still end up null when kind is Undefined.
             this.type = (resolvedType != null ? resolvedType : hostedTypeForKind(kind));
+
+            this.valueType = (type != null && type instanceof HostedType) ? getOriginal((HostedType) type) : type;
+            this.typeName = valueType == null ? "" : valueType().toJavaName();
         }
 
         @Override
         public ResolvedJavaType valueType() {
-            if (type != null && type instanceof HostedType) {
-                return getOriginal((HostedType) type);
-            }
-            return type;
+            return valueType;
         }
 
         @Override
@@ -2248,8 +2250,7 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
 
         @Override
         public String typeName() {
-            ResolvedJavaType valueType = valueType();
-            return (valueType == null ? "" : valueType().toJavaName());
+            return typeName;
         }
 
         @Override
@@ -2617,11 +2618,6 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
         @Override
         public long getOffset() {
             return objectInfo.getOffset();
-        }
-
-        @Override
-        public long getAddress() {
-            return objectInfo.getAddress();
         }
 
         @Override

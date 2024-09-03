@@ -1,0 +1,66 @@
+name: Build GraalVM JDK
+description: 'Build GraalVM JDK and set up environment for testing'
+
+inputs:
+  native-images:
+    description: 'Internal GraalVM native images to build'
+    required: false
+    default: 'native-image'
+  components:
+    description: 'Internal GraalVM components to build'
+    required: false
+    default: 'Native Image'
+  java-version:
+    description: 'Java version to use'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up environment variables
+      shell: bash
+      run: |
+        echo "GRAALVM_HOME=${{ github.workspace }}/graalvm" >> ${GITHUB_ENV}
+        echo "LABSJDK_HOME=${{ github.workspace }}/labsjdk" >> ${GITHUB_ENV}
+        echo "MX_GIT_CACHE=refcache" >> ${GITHUB_ENV}
+        echo "MX_PATH=${{ github.workspace }}/mx" >> ${GITHUB_ENV}
+        echo "MX_PYTHON=python3.8" >> ${GITHUB_ENV}
+        echo "MX_VERSION=$(jq -r '.mx_version' common.json)" >> ${GITHUB_ENV}
+        # Workaround testsuite locale issue
+        echo "LANG=en_US.UTF-8" >> ${GITHUB_ENV}
+    - name: Checkout graalvm/mx
+      uses: actions/checkout@v4
+      with:
+        repository: graalvm/mx
+        ref: ${{ env.MX_VERSION }}
+        path: ${{ env.MX_PATH }}
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.8'
+    - name: Update mx cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.mx
+        key: ${{ runner.os }}-mx-${{ hashFiles('**/suite.py') }}
+        restore-keys: ${{ runner.os }}-mx-
+    - name: Fetch LabsJDK
+      shell: bash
+      run: |
+        mkdir jdk-dl
+        ${MX_PATH}/mx --java-home= fetch-jdk --jdk-id labsjdk-ce-latest --to jdk-dl --alias ${LABSJDK_HOME}
+    - name: Build GraalVM JDK
+      shell: bash
+      run: |
+        cd substratevm
+        ${MX_PATH}/mx --java-home=${LABSJDK_HOME} --native-images="${{ inputs.native-images }}" --components="${{ inputs.components }}" build
+        ln -s $(${MX_PATH}/mx --java-home=${LABSJDK_HOME} --native-images="${{ inputs.native-images }}" --components="${{ inputs.components }}" graalvm-home) ${GRAALVM_HOME}
+        ${GRAALVM_HOME}/bin/native-image --version
+    - name: Set up JAVA_HOME
+      if: ${{ inputs.java-version }} != ''
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'oracle'
+        java-version: '${{ inputs.java-version }}'
+  

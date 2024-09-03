@@ -24,14 +24,20 @@
  */
 package com.oracle.graal.pointsto.api;
 
-import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 import static jdk.graal.compiler.options.OptionType.Expert;
+import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
+
+import java.util.Locale;
 
 import org.graalvm.collections.EconomicMap;
+
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 
 public class PointstoOptions {
+
+    @Option(help = "Track primitive values using the infrastructure of points-to analysis.")//
+    public static final OptionKey<Boolean> TrackPrimitiveValues = new OptionKey<>(false);
 
     @Option(help = "Use experimental Reachability Analysis instead of points-to.")//
     public static final OptionKey<Boolean> UseExperimentalReachabilityAnalysis = new OptionKey<>(false);
@@ -85,9 +91,6 @@ public class PointstoOptions {
     @Option(help = "Analysis: Detect methods that return one of their parameters and hardwire the parameter straight to the return.")//
     public static final OptionKey<Boolean> OptimizeReturnedParameter = new OptionKey<>(true);
 
-    @Option(help = "Enable extended asserts which slow down analysis.")//
-    public static final OptionKey<Boolean> ExtendedAsserts = new OptionKey<>(false);
-
     @Option(help = "Track the callers for methods and accessing methods for fields.")//
     public static final OptionKey<Boolean> TrackAccessChain = new OptionKey<>(false);
 
@@ -128,8 +131,8 @@ public class PointstoOptions {
     @Option(help = "Allow a type flow state to contain types not compatible with its declared type.")//
     public static final OptionKey<Boolean> RelaxTypeFlowStateConstraints = new OptionKey<>(true);
 
-    @Option(help = "Report unresolved elements as errors.")//
-    public static final OptionKey<Boolean> UnresolvedIsError = new OptionKey<>(true);
+    @Option(help = "Deprecated, option no longer has any effect.", deprecated = true)//
+    static final OptionKey<Boolean> UnresolvedIsError = new OptionKey<>(true);
 
     @Option(help = "Report analysis statistics.")//
     public static final OptionKey<Boolean> PrintPointsToStatistics = new OptionKey<>(false);
@@ -145,6 +148,9 @@ public class PointstoOptions {
 
     @Option(help = "Run conditional elimination before static analysis.", type = Expert)//
     public static final OptionKey<Boolean> ConditionalEliminationBeforeAnalysis = new OptionKey<>(true);
+
+    @Option(help = "Track in the static analysis whether an instance field is never null.")//
+    public static final OptionKey<Boolean> TrackNeverNullInstanceFields = new OptionKey<>(true);
 
     /**
      * Controls the static analysis context sensitivity. Available values:
@@ -164,7 +170,7 @@ public class PointstoOptions {
     public static final OptionKey<String> AnalysisContextSensitivity = new OptionKey<>("insens") {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
-            switch (newValue.toLowerCase()) {
+            switch (newValue.toLowerCase(Locale.ROOT)) {
                 case "insens":
                     AllocationSiteSensitiveHeap.update(values, false);
                     MinHeapContextDepth.update(values, 0);

@@ -75,7 +75,7 @@ public abstract class InfoTreeVisitor {
             try {
                 child.accept(this);
             } catch (NumberFormatException e) {
-                throw UserError.abort("Missing CAP cache value for: %s", child.getUniqueID());
+                throw UserError.abort(e, "Missing CAP cache value for: %s", child.getUniqueID());
             }
         }
     }
@@ -125,14 +125,6 @@ public abstract class InfoTreeVisitor {
     }
 
     protected void visitEnumConstantInfo(EnumConstantInfo info) {
-        processChildren(info);
-    }
-
-    protected void visitEnumValueInfo(EnumValueInfo info) {
-        processChildren(info);
-    }
-
-    protected void visitEnumLookupInfo(EnumLookupInfo info) {
         processChildren(info);
     }
 }

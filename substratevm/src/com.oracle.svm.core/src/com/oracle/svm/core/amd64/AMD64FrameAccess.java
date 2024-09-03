@@ -24,54 +24,13 @@
  */
 package com.oracle.svm.core.amd64;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.Platform.AMD64;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.function.CodePointer;
-import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 
 @AutomaticallyRegisteredImageSingleton(FrameAccess.class)
 @Platforms(AMD64.class)
 public final class AMD64FrameAccess extends FrameAccess {
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public CodePointer readReturnAddress(Pointer sourceSp) {
-        /* Read the return address, which is stored just below the stack pointer. */
-        return sourceSp.readWord(-returnAddressSize());
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void writeReturnAddress(Pointer sourceSp, CodePointer newReturnAddress) {
-        sourceSp.writeWord(-returnAddressSize(), newReturnAddress);
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public Pointer getReturnAddressLocation(Pointer sourceSp) {
-        return sourceSp.subtract(returnAddressSize());
-    }
-
-    @Fold
-    @Override
-    public int savedBasePointerSize() {
-        if (SubstrateOptions.PreserveFramePointer.getValue()) {
-            return wordSize();
-        } else {
-            return 0;
-        }
-    }
-
-    @Override
-    @Fold
-    public int stackPointerAdjustmentOnCall() {
-        // A call on AMD64 pushes %rip onto the stack and increments %rsp by wordSize().
-        return wordSize();
-    }
 }

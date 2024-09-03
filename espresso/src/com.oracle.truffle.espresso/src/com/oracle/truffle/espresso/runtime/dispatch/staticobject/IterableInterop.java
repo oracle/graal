@@ -36,7 +36,6 @@ import com.oracle.truffle.espresso.runtime.dispatch.messages.Shareable;
 
 @GenerateInteropNodes
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
-@SuppressWarnings("truffle-abstract-export") // TODO GR-44080 Adopt BigInteger Interop
 public class IterableInterop extends EspressoInterop {
     // region ### Iterable
 

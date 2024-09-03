@@ -25,7 +25,6 @@
 package com.oracle.svm.core.jdk;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.util.VMError;
 
 public final class JDKUtils {
@@ -40,17 +39,22 @@ public final class JDKUtils {
     }
 
     /**
+     * Returns the raw cause stored in {@link Throwable} and returned by default from
+     * {@link Throwable#getCause}. This method ignores possible overrides of
+     * {@link Throwable#getCause} and is therefore guaranteed to be allocation free.
+     */
+    public static Throwable getRawCause(Throwable ex) {
+        Throwable cause = SubstrateUtil.cast(ex, Target_java_lang_Throwable.class).cause;
+        return cause == ex ? null : cause;
+    }
+
+    /**
      * Gets the materialized {@link StackTraceElement} array stored in a {@link Throwable} object.
      * Must only be called if {@link #isStackTraceValid} returns (or would return) {@code true}.
      */
     public static StackTraceElement[] getRawStackTrace(Throwable ex) {
         VMError.guarantee(isStackTraceValid(ex));
-        StackTraceElement[] stackTrace = SubstrateUtil.cast(ex, Target_java_lang_Throwable.class).stackTrace;
-        if (!DeoptimizationSupport.enabled() || (stackTrace != Target_java_lang_Throwable.UNASSIGNED_STACK && stackTrace != null)) {
-            return stackTrace;
-        }
-        /* Runtime compilation and deoptimized frames are not yet optimized (GR-45765). */
-        return (StackTraceElement[]) SubstrateUtil.cast(ex, Target_java_lang_Throwable.class).backtrace;
+        return SubstrateUtil.cast(ex, Target_java_lang_Throwable.class).stackTrace;
     }
 
     /**
@@ -60,11 +64,7 @@ public final class JDKUtils {
      */
     public static boolean isStackTraceValid(Throwable ex) {
         StackTraceElement[] stackTrace = SubstrateUtil.cast(ex, Target_java_lang_Throwable.class).stackTrace;
-        if (stackTrace != Target_java_lang_Throwable.UNASSIGNED_STACK && stackTrace != null) {
-            return true;
-        }
-        /* Runtime compilation and deoptimized frames are not yet optimized (GR-45765). */
-        return DeoptimizationSupport.enabled() && SubstrateUtil.cast(ex, Target_java_lang_Throwable.class).backtrace instanceof StackTraceElement[];
+        return stackTrace != Target_java_lang_Throwable.UNASSIGNED_STACK && stackTrace != null;
     }
 
     /**

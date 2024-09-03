@@ -35,11 +35,14 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.function.Predicate;
 
+import jdk.vm.ci.meta.JavaType;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
@@ -61,18 +64,21 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
+import jdk.graal.compiler.serviceprovider.IsolateUtil;
+import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Manages a set of {@link InvocationPlugin}s.
- *
+ * <p>
  * Most plugins are registered during initialization (i.e., before {@link #lookupInvocation} or
  * {@link #getInvocationPlugins} is called). These registrations can be made with
  * {@link Registration}, {@link #register(Type, InvocationPlugin)} . Initialization is not
  * thread-safe and so must only be performed by a single thread.
- *
+ * <p>
  * Plugins that are not guaranteed to be made during initialization must use
  * {@link LateRegistration}.
  */
@@ -80,6 +86,8 @@ public class InvocationPlugins {
 
     public static class Options {
         // @formatter:off
+        @Option(help = "Print the registered intrinsics in a format compatible with DisableIntrinsics.", type = OptionType.Debug)
+        public static final OptionKey<Boolean> PrintIntrinsics = new OptionKey<>(false);
         @Option(help = "Disable intrinsics matching the given method filter (see MethodFilter " +
                 "option for details). For example, 'DisableIntrinsics=String.equals' disables " +
                 "intrinsics for any method named 'equals' in a class whose simple name is 'String'. " +
@@ -94,11 +102,6 @@ public class InvocationPlugins {
     public static class InvocationPluginReceiver implements InvocationPlugin.Receiver {
         private final GraphBuilderContext parser;
         private ValueNode[] args;
-        /**
-         * Caches the null checked receiver value. If still {@code null} after application of a
-         * plugin, then the plugin never called {@link #get(boolean)} with {@code true}.
-         */
-        private ValueNode value;
 
         public InvocationPluginReceiver(GraphBuilderContext parser) {
             this.parser = parser;
@@ -107,25 +110,13 @@ public class InvocationPlugins {
         @Override
         public ValueNode get(boolean performNullCheck) {
             assert args != null : "Cannot get the receiver of a static method";
-            if (!performNullCheck) {
-                return args[0];
+            if (performNullCheck) {
+                args[0] = parser.nullCheckedValue(args[0]);
             }
-            if (value == null) {
-                value = parser.nullCheckedValue(args[0]);
-                if (value != args[0]) {
-                    args[0] = value;
-                }
-            }
-            return value;
-        }
-
-        @Override
-        public boolean isConstant() {
-            return args[0].isConstant();
+            return args[0];
         }
 
         public InvocationPluginReceiver init(ResolvedJavaMethod targetMethod, ValueNode[] newArgs) {
-            this.value = null;
             if (!targetMethod.isStatic()) {
                 this.args = newArgs;
                 return this;
@@ -134,23 +125,11 @@ public class InvocationPlugins {
             return null;
         }
 
-        @Override
-        public ValueNode requireNonNull() {
-            if (value == null) {
-                GraalError.guarantee(args != null, "target method is static");
-                if (!StampTool.isPointerNonNull(args[0])) {
-                    throw new GraalError("receiver might be null: %s", value);
-                }
-                value = args[0];
-            }
-            return value;
-        }
-
         /**
          * Determines if {@link #get(boolean)} was called with {@code true}.
          */
         public boolean nullCheckPerformed() {
-            return value != null;
+            return StampTool.isPointerNonNull(args[0]);
         }
     }
 
@@ -471,11 +450,15 @@ public class InvocationPlugins {
         private final String className;
         private final LateClassPlugins next;
 
-        @SuppressFBWarnings(value = "ES_COMPARING_STRINGS_WITH_EQ", justification = "identity comparison against sentinel string value")
         LateClassPlugins(LateClassPlugins next, String className) {
-            assert next == null || next.className != CLOSED_LATE_CLASS_PLUGIN : "Late registration of invocation plugins is closed";
+            assert next == null || !next.isClosed() : "Late registration of invocation plugins is closed";
             this.next = next;
             this.className = className;
+        }
+
+        @SuppressFBWarnings(value = "ES_COMPARING_STRINGS_WITH_EQ", justification = "identity comparison against sentinel string value")
+        boolean isClosed() {
+            return className == CLOSED_LATE_CLASS_PLUGIN;
         }
     }
 
@@ -650,7 +633,7 @@ public class InvocationPlugins {
     /**
      * Extends the plugins in this object with those from {@code other}. The added plugins should be
      * {@linkplain #removeTestPlugins(InvocationPlugins) removed} after the test.
-     *
+     * <p>
      * This extension mechanism exists only for tests that want to add extra invocation plugins
      * after the compiler has been initialized.
      *
@@ -723,9 +706,8 @@ public class InvocationPlugins {
         lateRegistrations = lateClassPlugins;
     }
 
-    @SuppressFBWarnings(value = "ES_COMPARING_STRINGS_WITH_EQ", justification = "string literal object identity used as sentinel")
     private synchronized boolean closeLateRegistrations() {
-        if (lateRegistrations == null || lateRegistrations.className != CLOSED_LATE_CLASS_PLUGIN) {
+        if (lateRegistrations == null || !lateRegistrations.isClosed()) {
             lateRegistrations = new LateClassPlugins(lateRegistrations, CLOSED_LATE_CLASS_PLUGIN);
         }
         return true;
@@ -956,9 +938,10 @@ public class InvocationPlugins {
                 cp.collectInvocationPluginsTo(pluginsPerClass);
             }
             for (LateClassPlugins lcp = lateRegistrations; lcp != null; lcp = lcp.next) {
-                String type = lcp.className;
-                List<InvocationPlugin> pluginsPerClass = getOrCreate(res, type);
-                lcp.collectInvocationPluginsTo(pluginsPerClass);
+                if (!lcp.isClosed()) {
+                    List<InvocationPlugin> pluginsPerClass = getOrCreate(res, lcp.className);
+                    lcp.collectInvocationPluginsTo(pluginsPerClass);
+                }
             }
             if (testExtensions != null) {
                 // Avoid the synchronization in the common case that there
@@ -981,29 +964,94 @@ public class InvocationPlugins {
     @Override
     public String toString() {
         UnmodifiableMapCursor<String, List<InvocationPlugin>> entries = getInvocationPlugins(false, false).getEntries();
-        List<String> all = new ArrayList<>();
+        Set<String> all = new TreeSet<>();
         while (entries.advance()) {
             String c = MetaUtil.internalNameToJava(entries.getKey(), true, false);
             for (InvocationPlugin invocationPlugin : entries.getValue()) {
                 all.add(c + '.' + invocationPlugin.getMethodNameWithArgumentsDescriptor());
             }
         }
-        Collections.sort(all);
-        StringBuilder buf = new StringBuilder();
-        String nl = String.format("%n");
-        for (String s : all) {
-            if (buf.length() != 0) {
-                buf.append(nl);
+        return String.join(System.lineSeparator(), all);
+    }
+
+    /**
+     * The id of the single isolate to emit output for {@link Options#PrintIntrinsics}.
+     */
+    private static final GlobalAtomicLong PRINTING_ISOLATE = new GlobalAtomicLong(0L);
+
+    /**
+     * The intrinsic methods (in {@link Options#DisableIntrinsics} format) that have been printed by
+     * {@link #maybePrintIntrinsics}.
+     */
+    @NativeImageReinitialize private static Set<String> PrintedIntrinsics = new HashSet<>();
+
+    /**
+     * Determines if {@code plugin} is disabled by {@link Options#DisableIntrinsics}.
+     *
+     * @param declaringClassInternalName name of the declaring class for {@code plugin} as returned
+     *            by {@link JavaType#getName()}
+     * @param declaringClassJavaName name of the declaring class for {@code plugin} as returned by
+     *            by {@link JavaType#toJavaName()}
+     */
+    protected boolean isDisabled(InvocationPlugin plugin, String declaringClassInternalName, String declaringClassJavaName, OptionValues options) {
+        initializeDisabledIntrinsicsFilter(options);
+        if (disabledIntrinsicsFilter != null) {
+            if (disabledIntrinsicsFilter.matchesWithArgs(declaringClassJavaName, plugin.name, List.of(plugin.argumentTypes))) {
+                return true;
             }
-            buf.append(s);
         }
-        if (parent != null) {
-            if (buf.length() != 0) {
-                buf.append(nl);
+        return false;
+    }
+
+    /**
+     * Prints the methods for which there are intrinsics in this object if this is the first (or
+     * only) isolate in which this method is called and {@link Options#PrintIntrinsics} is true in
+     * {@code options}. Intrinsics that have already been printed are skipped.
+     * <p>
+     * Printing goes to {@link TTY} and emits one method per line in a format compatible with
+     * {@link Options#DisableIntrinsics}. A header line of {@code "<Intrinsics>"} and a trailer line
+     * of {@code "</Intrinsics>"} is also emitted around each batch of printing.
+     *
+     * @return whether printing was performed
+     */
+    public boolean maybePrintIntrinsics(OptionValues options) {
+        if (InvocationPlugins.Options.PrintIntrinsics.getValue(options)) {
+            long isolateID = IsolateUtil.getIsolateID();
+            if (PRINTING_ISOLATE.get() == isolateID || PRINTING_ISOLATE.compareAndSet(0, isolateID)) {
+                synchronized (PRINTING_ISOLATE) {
+                    if (IS_IN_NATIVE_IMAGE && PrintedIntrinsics == null) {
+                        PrintedIntrinsics = new HashSet<>();
+                    }
+                    UnmodifiableMapCursor<String, List<InvocationPlugin>> entries = getInvocationPlugins(false, true).getEntries();
+                    Set<String> unique = new TreeSet<>();
+                    while (entries.advance()) {
+                        String declaringClassName = entries.getKey();
+                        String c = MetaUtil.internalNameToJava(declaringClassName, true, false);
+                        for (InvocationPlugin plugin : entries.getValue()) {
+                            String method = c + '.' + plugin.asMethodFilterString();
+                            if (!plugin.canBeDisabled()) {
+                                method += " [cannot be disabled]";
+                            } else if (isDisabled(plugin, declaringClassName, c, options)) {
+                                method += " [disabled]";
+                            }
+                            if (PrintedIntrinsics.add(method)) {
+                                unique.add(method);
+                            }
+                        }
+                    }
+                    boolean printedParent = false;
+                    if (parent != null) {
+                        printedParent = parent.maybePrintIntrinsics(options);
+                    }
+                    if (!unique.isEmpty()) {
+                        TTY.printf("<Intrinsics>%n%s%n</Intrinsics>%n", String.join(System.lineSeparator(), unique));
+                        return true;
+                    }
+                    return printedParent;
+                }
             }
-            buf.append("// parent").append(nl).append(parent);
         }
-        return buf.toString();
+        return false;
     }
 
     /**

@@ -105,24 +105,27 @@ public final class RegexResult extends AbstractConstantKeysObject {
 
     private final TruffleString input;
     private final int fromIndex;
-
+    private final int regionFrom;
+    private final int regionTo;
     private final int start;
     private final int end;
     private int[] result;
 
     private final CallTarget lazyCallTarget;
 
-    protected RegexResult(TruffleString input, int fromIndex, int start, int end, int[] result, CallTarget lazyCallTarget) {
+    protected RegexResult(TruffleString input, int fromIndex, int regionFrom, int regionTo, int start, int end, int[] result, CallTarget lazyCallTarget) {
         this.input = input;
         this.fromIndex = fromIndex;
+        this.regionFrom = regionFrom;
+        this.regionTo = regionTo;
         this.start = start;
         this.end = end;
         this.result = result;
         this.lazyCallTarget = lazyCallTarget;
     }
 
-    private static final RegexResult NO_MATCH_RESULT = new RegexResult(null, -1, -1, -1, EmptyArrays.INT, null);
-    private static final RegexResult BOOLEAN_MATCH_RESULT = new RegexResult(null, -1, -1, -1, EmptyArrays.INT, null);
+    private static final RegexResult NO_MATCH_RESULT = new RegexResult(null, -1, -1, -1, -1, -1, EmptyArrays.INT, null);
+    private static final RegexResult BOOLEAN_MATCH_RESULT = new RegexResult(null, -1, -1, -1, -1, -1, EmptyArrays.INT, null);
 
     public static RegexResult getNoMatchInstance() {
         return NO_MATCH_RESULT;
@@ -133,12 +136,12 @@ public final class RegexResult extends AbstractConstantKeysObject {
     }
 
     public static RegexResult create(int start, int end) {
-        return new RegexResult(null, -1, 0, 0, new int[]{start, end}, null);
+        return new RegexResult(null, -1, 0, 0, 0, 0, new int[]{start, end}, null);
     }
 
     public static RegexResult create(int[] result) {
         assert result != null && result.length >= 2;
-        return new RegexResult(null, -1, 0, 0, result, null);
+        return new RegexResult(null, -1, 0, 0, 0, 0, result, null);
     }
 
     public static RegexResult createFromExecutorResult(Object executorResult) {
@@ -148,8 +151,8 @@ public final class RegexResult extends AbstractConstantKeysObject {
         return RegexResult.create((int[]) executorResult);
     }
 
-    public static RegexResult createLazy(TruffleString input, int fromIndex, int start, int end, CallTarget lazyCallTarget) {
-        return new RegexResult(input, fromIndex, start, end, null, lazyCallTarget);
+    public static RegexResult createLazy(TruffleString input, int fromIndex, int regionFrom, int regionTo, int start, int end, CallTarget lazyCallTarget) {
+        return new RegexResult(input, fromIndex, regionFrom, regionTo, start, end, null, lazyCallTarget);
     }
 
     public TruffleString getInput() {
@@ -158,6 +161,14 @@ public final class RegexResult extends AbstractConstantKeysObject {
 
     public int getFromIndex() {
         return fromIndex;
+    }
+
+    public int getRegionFrom() {
+        return regionFrom;
+    }
+
+    public int getRegionTo() {
+        return regionTo;
     }
 
     public int getStart() {

@@ -28,11 +28,12 @@ import static jdk.graal.compiler.nodes.type.StampTool.stampForTrailingZeros;
 import static jdk.graal.compiler.test.GraalTest.assertFalse;
 import static jdk.graal.compiler.test.GraalTest.assertTrue;
 
+import org.junit.Test;
+
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.graph.test.GraphTest;
 import jdk.graal.compiler.nodes.type.StampTool;
-import org.junit.Test;
 
 public class StampToolTest extends GraphTest {
 
@@ -66,10 +67,10 @@ public class StampToolTest extends GraphTest {
         assertTrue(StampTool.unsignedCompare(stamp2, stamp1) == null);
     }
 
-    @Test
     /**
      * Tests certain paths not reached by other testing.
      */
+    @Test
     public void testStampToolPaths() {
         Stamp stamp1 = stampForTrailingZeros(forInt(0));
         assertFalse(StampTool.isAlwaysArray(stamp1));

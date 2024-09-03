@@ -25,14 +25,16 @@
 package jdk.graal.compiler.asm;
 
 import java.util.ArrayDeque;
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.function.Consumer;
 
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.code.site.Infopoint;
+import jdk.vm.ci.code.site.Call;
 
 /**
  * The platform-independent base class for the assembler.
@@ -198,7 +200,18 @@ public abstract class Assembler<T extends Enum<T>> {
      */
     public byte[] close(boolean trimmedCopy) {
         checkAndClearLabelsWithPatches();
+        finalCodeSize = position();
         return codeBuffer.close(trimmedCopy);
+    }
+
+    private int finalCodeSize = -1;
+
+    /**
+     * Returns the final code size after code emission has been completed.
+     */
+    public int finalCodeSize() {
+        assert codeBuffer.data == null : "Buffer is expected to be closed";
+        return finalCodeSize;
     }
 
     public byte[] copy(int start, int end) {
@@ -255,13 +268,30 @@ public abstract class Assembler<T extends Enum<T>> {
      */
     public abstract void ensureUniquePC();
 
+    public void maybeEmitIndirectTargetMarker() {
+        // intentionally empty
+    }
+
+    /**
+     * Passes CompilationResultBuilder and Label so the underlying block's indirect branch target
+     * information can be queried.
+     */
+    @SuppressWarnings("unused")
+    public void maybeEmitIndirectTargetMarker(CompilationResultBuilder crb, Label label) {
+        // intentionally empty
+    }
+
     /**
      * Some platforms might require special post call code emission.
-     *
-     * @param infopoint The infopoint assoicated with the call if any
      */
-    public void postCallNop(Infopoint infopoint) {
-        ensureUniquePC();
+    public void postCallNop(Call call) {
+        if (call.debugInfo != null) {
+            // The nop inserted after a call is only required to distinguish
+            // debug info associated with the call from debug info associated
+            // with an instruction after the call. If the call has no debug
+            // info, the extra nop is not required.
+            ensureUniquePC();
+        }
     }
 
     public void reset() {
@@ -283,5 +313,15 @@ public abstract class Assembler<T extends Enum<T>> {
 
     public boolean inlineObjects() {
         return target.inlineObjects;
+    }
+
+    public static void guaranteeDifferentRegisters(Register... registers) {
+        for (int i = 0; i < registers.length - 1; ++i) {
+            for (int j = i + 1; j < registers.length; ++j) {
+                if (registers[i].equals(registers[j])) {
+                    throw new GraalError("Multiple uses of register: %s %s", registers[i], Arrays.toString(registers));
+                }
+            }
+        }
     }
 }

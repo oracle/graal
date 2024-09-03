@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -80,6 +80,7 @@ import org.graalvm.polyglot.PolyglotException;
  * @see ProxyTimeZone to mimic timezone objects
  * @see ProxyDuration to mimic duration objects
  * @see ProxyInstant to mimic timestamp objects
+ * @see ProxyInstantiable to mimic objects that are instantiable
  * @see ProxyIterable to mimic iterable objects
  * @see ProxyIterator to mimic iterator objects
  * @see ProxyHashMap to mimic map objects

@@ -47,10 +47,8 @@ import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.graph.Node.InjectedNodeParameter;
 import jdk.graal.compiler.graph.Node.NodeIntrinsicFactory;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.LogicNode;
@@ -265,8 +263,8 @@ public final class RuntimeCPUFeatureCheckImpl {
         return EnumSet.of(first, rest);
     }
 
-    public static boolean intrinsify(GraphBuilderContext b, @InjectedNodeParameter SnippetReflectionProvider snippetReflection, Enum<?> first, Enum<?>... rest) {
-        return buildRuntimeCPUFeatureCheck(b, snippetReflection, toEnumSet(first, rest));
+    public static boolean intrinsify(GraphBuilderContext b, Enum<?> first, Enum<?>... rest) {
+        return buildRuntimeCPUFeatureCheck(b, toEnumSet(first, rest));
     }
 
     /**
@@ -279,7 +277,7 @@ public final class RuntimeCPUFeatureCheckImpl {
      * The root node built by this intrinsic includes a branch probability annotation. It must be
      * used directly as the condition of an {@code if} statement.
      */
-    private static boolean buildRuntimeCPUFeatureCheck(GraphBuilderContext b, SnippetReflectionProvider snippetReflection, EnumSet<?> allFeatures) {
+    private static boolean buildRuntimeCPUFeatureCheck(GraphBuilderContext b, EnumSet<?> allFeatures) {
         // remove static features from the set
         EnumSet<?> features = removeStaticFeatures(allFeatures);
         if (features.isEmpty()) {
@@ -301,7 +299,7 @@ public final class RuntimeCPUFeatureCheckImpl {
              */
             MetaAccessProvider metaAccess = b.getMetaAccess();
             ResolvedJavaField field = getMaskField(metaAccess);
-            ConstantNode object = b.add(ConstantNode.forConstant(snippetReflection.forObject(instance()), metaAccess));
+            ConstantNode object = b.add(ConstantNode.forConstant(b.getSnippetReflection().forObject(instance()), metaAccess));
             ValueNode featureMask = b.add(LoadFieldNode.create(null, object, field));
             int mask = instance().computeFeatureMask(features);
             GraalError.guarantee(JavaKind.Int.equals(field.getType().getJavaKind()), "Expected field to be an int");

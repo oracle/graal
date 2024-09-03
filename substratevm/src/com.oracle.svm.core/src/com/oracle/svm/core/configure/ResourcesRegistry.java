@@ -27,56 +27,35 @@ package com.oracle.svm.core.configure;
 import java.util.Collection;
 import java.util.Locale;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
-public interface ResourcesRegistry extends RuntimeResourceSupport {
+public interface ResourcesRegistry<C> extends RuntimeResourceSupport<C> {
 
-    /**
-     * @deprecated Use {@link RuntimeResourceSupport#addResources(ConfigurationCondition, String)}
-     *             instead.
-     */
-    @Deprecated
-    default void addResources(String pattern) {
-        addResources(ConfigurationCondition.alwaysTrue(), pattern);
+    @SuppressWarnings("unchecked")
+    static ResourcesRegistry<ConfigurationCondition> singleton() {
+        return ImageSingletons.lookup(ResourcesRegistry.class);
     }
 
-    /**
-     * @deprecated Use
-     *             {@link RuntimeResourceSupport#ignoreResources(ConfigurationCondition, String)}
-     *             instead.
-     */
-    @Deprecated
-    default void ignoreResources(String pattern) {
-        ignoreResources(ConfigurationCondition.alwaysTrue(), pattern);
-    }
-
-    /**
-     * @deprecated Use
-     *             {@link RuntimeResourceSupport#addResourceBundles(ConfigurationCondition, String)}
-     *             instead.
-     */
-    @Deprecated
-    default void addResourceBundles(String name) {
-        addResourceBundles(ConfigurationCondition.alwaysTrue(), name);
-    }
-
-    void addClassBasedResourceBundle(ConfigurationCondition condition, String basename, String className);
+    void addClassBasedResourceBundle(C condition, String basename, String className);
 
     /**
      * Although the interface-methods below are already defined in the super-interface
      * {@link RuntimeResourceSupport} they are also needed here for legacy code that accesses them
      * reflectively.
      */
-    @Override
-    void addResources(ConfigurationCondition condition, String pattern);
+    @Deprecated
+    default void addResources(C condition, String pattern) {
+        addResources(condition, pattern, "unknown");
+    }
 
     @Override
-    void ignoreResources(ConfigurationCondition condition, String pattern);
+    void ignoreResources(C condition, String pattern);
 
     @Override
-    void addResourceBundles(ConfigurationCondition condition, String name);
+    void addResourceBundles(C condition, String name);
 
     @Override
-    void addResourceBundles(ConfigurationCondition condition, String basename, Collection<Locale> locales);
+    void addResourceBundles(C condition, String basename, Collection<Locale> locales);
 }

@@ -30,6 +30,9 @@ import static jdk.graal.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO;
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.NO_LOCATIONS;
 
+import org.graalvm.word.Pointer;
+import org.graalvm.word.WordFactory;
+
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
@@ -39,11 +42,11 @@ import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.meta.HotSpotRegistersProvider;
 import jdk.graal.compiler.hotspot.nodes.HotSpotCompressionNode;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.gc.G1ArrayRangePostWriteBarrier;
-import jdk.graal.compiler.nodes.gc.G1ArrayRangePreWriteBarrier;
-import jdk.graal.compiler.nodes.gc.G1PostWriteBarrier;
-import jdk.graal.compiler.nodes.gc.G1PreWriteBarrier;
-import jdk.graal.compiler.nodes.gc.G1ReferentFieldReadBarrier;
+import jdk.graal.compiler.nodes.gc.G1ArrayRangePostWriteBarrierNode;
+import jdk.graal.compiler.nodes.gc.G1ArrayRangePreWriteBarrierNode;
+import jdk.graal.compiler.nodes.gc.G1PostWriteBarrierNode;
+import jdk.graal.compiler.nodes.gc.G1PreWriteBarrierNode;
+import jdk.graal.compiler.nodes.gc.G1ReferentFieldReadBarrierNode;
 import jdk.graal.compiler.nodes.spi.LoweringTool;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
@@ -53,12 +56,8 @@ import jdk.graal.compiler.replacements.SnippetTemplate.AbstractTemplates;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.gc.G1WriteBarrierSnippets;
 import jdk.graal.compiler.word.Word;
-import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
-
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class HotSpotG1WriteBarrierSnippets extends G1WriteBarrierSnippets {
     public static final HotSpotForeignCallDescriptor G1WBPRECALL = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NO_SIDE_EFFECT, KILLED_PRE_WRITE_BARRIER_STUB_LOCATIONS, "write_barrier_pre",
@@ -176,16 +175,6 @@ public final class HotSpotG1WriteBarrierSnippets extends G1WriteBarrierSnippets 
         return Log.LOG_PRINTF;
     }
 
-    @Override
-    protected ResolvedJavaType referenceType() {
-        return HotSpotReplacementsUtil.referenceType(INJECTED_METAACCESS);
-    }
-
-    @Override
-    protected long referentOffset() {
-        return HotSpotReplacementsUtil.referentOffset(INJECTED_METAACCESS);
-    }
-
     public static class Templates extends AbstractTemplates {
         private final SnippetInfo g1PreWriteBarrier;
         private final SnippetInfo g1ReferentReadBarrier;
@@ -248,23 +237,23 @@ public final class HotSpotG1WriteBarrierSnippets extends G1WriteBarrierSnippets 
                             CARD_QUEUE_BUFFER_LOCATION);
         }
 
-        public void lower(G1PreWriteBarrier barrier, LoweringTool tool) {
+        public void lower(G1PreWriteBarrierNode barrier, LoweringTool tool) {
             lowerer.lower(this, g1PreWriteBarrier, barrier, tool);
         }
 
-        public void lower(G1ReferentFieldReadBarrier barrier, LoweringTool tool) {
+        public void lower(G1ReferentFieldReadBarrierNode barrier, LoweringTool tool) {
             lowerer.lower(this, g1ReferentReadBarrier, barrier, tool);
         }
 
-        public void lower(G1PostWriteBarrier barrier, LoweringTool tool) {
+        public void lower(G1PostWriteBarrierNode barrier, LoweringTool tool) {
             lowerer.lower(this, g1PostWriteBarrier, barrier, tool);
         }
 
-        public void lower(G1ArrayRangePreWriteBarrier barrier, LoweringTool tool) {
+        public void lower(G1ArrayRangePreWriteBarrierNode barrier, LoweringTool tool) {
             lowerer.lower(this, g1ArrayRangePreWriteBarrier, barrier, tool);
         }
 
-        public void lower(G1ArrayRangePostWriteBarrier barrier, LoweringTool tool) {
+        public void lower(G1ArrayRangePostWriteBarrierNode barrier, LoweringTool tool) {
             lowerer.lower(this, g1ArrayRangePostWriteBarrier, barrier, tool);
         }
     }

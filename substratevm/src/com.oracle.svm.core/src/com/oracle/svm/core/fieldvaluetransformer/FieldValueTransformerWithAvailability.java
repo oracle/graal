@@ -28,6 +28,10 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.vm.ci.meta.JavaConstant;
+
 @Platforms(Platform.HOSTED_ONLY.class)
 public interface FieldValueTransformerWithAvailability extends FieldValueTransformer {
 
@@ -60,4 +64,14 @@ public interface FieldValueTransformerWithAvailability extends FieldValueTransfo
      * Returns information about when the value for this custom computation is available.
      */
     ValueAvailability valueAvailability();
+
+    /**
+     * Optionally provide a Graal IR node to intrinsify the field access before the static analysis.
+     * This allows the compiler to optimize field values that are not available yet, as long as
+     * there is a dedicated high-level node available.
+     */
+    @SuppressWarnings("unused")
+    default ValueNode intrinsify(CoreProviders providers, JavaConstant receiver) {
+        return null;
+    }
 }

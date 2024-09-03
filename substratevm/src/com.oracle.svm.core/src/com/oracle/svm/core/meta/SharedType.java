@@ -45,6 +45,8 @@ public interface SharedType extends ResolvedJavaType {
      */
     JavaKind getStorageKind();
 
+    int getTypeID();
+
     @Override
     default ResolvedJavaMethod resolveMethod(ResolvedJavaMethod method, ResolvedJavaType callerType) {
         /*

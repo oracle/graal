@@ -132,6 +132,7 @@ public class ModuleTable extends EntryTable<ModuleTable.ModuleEntry, ClassRegist
         }
 
         public void setModule(StaticObject module) {
+            assert this.module == StaticObject.NULL;
             this.module = module;
         }
 

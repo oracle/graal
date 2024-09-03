@@ -27,10 +27,12 @@ package jdk.graal.compiler.truffle.test;
 import static jdk.graal.compiler.graph.test.matchers.NodeIterableCount.hasCount;
 import static jdk.graal.compiler.graph.test.matchers.NodeIterableIsEmpty.isEmpty;
 import static jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.IsInstanceOf.instanceOf;
-import static org.junit.Assert.assertThat;
 
 import java.lang.reflect.Field;
+
+import org.junit.Test;
 
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
@@ -56,11 +58,8 @@ import jdk.graal.compiler.phases.common.HighTierLoweringPhase;
 import jdk.graal.compiler.phases.common.LoweringPhase;
 import jdk.graal.compiler.truffle.nodes.ObjectLocationIdentity;
 import jdk.graal.compiler.truffle.substitutions.TruffleGraphBuilderPlugins;
-import org.junit.Test;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import sun.misc.Unsafe;
 
 public class ConditionAnchoringTest extends GraalCompilerTest {
     private static final long offset;
@@ -70,7 +69,7 @@ public class ConditionAnchoringTest extends GraalCompilerTest {
         long fieldOffset = 0;
         try {
             Field field = CheckedObject.class.getDeclaredField("field");
-            fieldOffset = getObjectFieldOffset(field);
+            fieldOffset = UNSAFE.objectFieldOffset(field);
         } catch (NoSuchFieldException | SecurityException e) {
             e.printStackTrace();
         }
@@ -134,7 +133,7 @@ public class ConditionAnchoringTest extends GraalCompilerTest {
         NodeIterable<FloatingReadNode> floatingReads = graph.getNodes().filter(FloatingReadNode.class);
         assertThat(floatingReads, hasCount(ids + 1)); // 1 id read, 1 'field' access
 
-        new ConditionalEliminationPhase(false).apply(graph, context);
+        new ConditionalEliminationPhase(canonicalizerPhase, false).apply(graph, context);
 
         floatingReads = graph.getNodes().filter(FloatingReadNode.class).filter(n -> ((FloatingReadNode) n).getLocationIdentity() instanceof ObjectLocationIdentity);
         conditionAnchors = graph.getNodes().filter(ConditionAnchorNode.class);
@@ -170,14 +169,13 @@ public class ConditionAnchoringTest extends GraalCompilerTest {
 
     @SuppressWarnings({"unused", "hiding"})
     private static final class MyUnsafeAccess {
-        private static final Unsafe MY_UNSAFE = UNSAFE;
 
         static int unsafeGetInt(Object receiver, long offset, boolean condition, Object locationIdentity) {
-            return MY_UNSAFE.getInt(receiver, offset);
+            return UNSAFE.getInt(receiver, offset);
         }
 
         static void unsafePutInt(Object receiver, long offset, int value, Object locationIdentity) {
-            MY_UNSAFE.putInt(receiver, offset, value);
+            UNSAFE.putInt(receiver, offset, value);
         }
     }
 }

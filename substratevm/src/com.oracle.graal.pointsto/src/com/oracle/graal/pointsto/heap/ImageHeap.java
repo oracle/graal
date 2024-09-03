@@ -33,6 +33,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 
+import jdk.graal.compiler.core.common.type.CompressibleConstant;
 import jdk.vm.ci.meta.JavaConstant;
 
 /**
@@ -45,7 +46,7 @@ public class ImageHeap {
      * not-yet-executed {@link AnalysisFuture} of {@link ImageHeapConstant} or its results, an
      * {@link ImageHeapConstant}. Not all objects in this cache are reachable.
      */
-    private final ConcurrentHashMap<JavaConstant, /* ImageHeapObject */ Object> objectsCache;
+    private final ConcurrentHashMap<JavaConstant, /* ImageHeapConstant */ Object> objectsCache;
     /** Store a mapping from types to object snapshots. */
     private final Map<AnalysisType, Set<ImageHeapConstant>> reachableObjects;
 
@@ -77,28 +78,37 @@ public class ImageHeap {
 
     /** Get the constant snapshot from the cache. */
     public Object getSnapshot(JavaConstant constant) {
-        if (constant instanceof ImageHeapConstant imageHeapConstant) {
-            assert imageHeapConstant.getHostedObject() == null || objectsCache.get(imageHeapConstant.getHostedObject()) == imageHeapConstant;
+        JavaConstant uncompressed = CompressibleConstant.uncompress(constant);
+        if (uncompressed instanceof ImageHeapConstant imageHeapConstant) {
+            /*
+             * A base layer constant was in the objectsCache from the base image. It might not have
+             * been put in the objectsCache of the extension image yet.
+             */
+            assert imageHeapConstant.getHostedObject() == null || imageHeapConstant.isInBaseLayer() || objectsCache.get(imageHeapConstant.getHostedObject()).equals(imageHeapConstant);
             return imageHeapConstant;
         }
-        return objectsCache.get(constant);
+        return objectsCache.get(uncompressed);
     }
 
     /** Record the future computing the snapshot in the heap. */
     public Object setTask(JavaConstant constant, AnalysisFuture<ImageHeapConstant> task) {
         assert !(constant instanceof ImageHeapConstant) : constant;
-        return objectsCache.putIfAbsent(constant, task);
+        return objectsCache.putIfAbsent(CompressibleConstant.uncompress(constant), task);
     }
 
     /** Record the snapshot in the heap. */
     public void setValue(JavaConstant constant, ImageHeapConstant value) {
         assert !(constant instanceof ImageHeapConstant) : constant;
-        Object previous = objectsCache.put(constant, value);
-        AnalysisError.guarantee(!(previous instanceof ImageHeapConstant), "An ImageHeapConstant: %s is already registered for hosted JavaConstant: %s.", previous, constant);
+        Object previous = objectsCache.put(CompressibleConstant.uncompress(constant), value);
+        AnalysisError.guarantee(!(previous instanceof ImageHeapConstant) || previous == value, "An ImageHeapConstant: %s is already registered for hosted JavaConstant: %s.", previous, constant);
     }
 
     public Set<ImageHeapConstant> getReachableObjects(AnalysisType type) {
         return reachableObjects.getOrDefault(type, Collections.emptySet());
+    }
+
+    public Map<AnalysisType, Set<ImageHeapConstant>> getReachableObjects() {
+        return reachableObjects;
     }
 
     public boolean addReachableObject(AnalysisType type, ImageHeapConstant heapObj) {

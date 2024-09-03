@@ -389,6 +389,12 @@ abstract class SerializeArgumentNode extends Node {
         short readOther(ByteOrder order, long offset) throws UnsupportedMessageException {
             throw UnsupportedMessageException.create();
         }
+
+        @SuppressWarnings({"static-method", "unused"})
+        @ExportMessage
+        void readBuffer(long offset, byte[] destination, int destinationOffset, int length) throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
+        }
     }
 
     abstract static class SerializeSerializableNode extends SerializeArgumentNode {

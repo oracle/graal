@@ -36,7 +36,9 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.Pair;
-import jdk.graal.compiler.core.common.cfg.Loop;
+import org.graalvm.word.LocationIdentity;
+
+import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.FieldLocationIdentity;
@@ -70,8 +72,6 @@ import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.nodes.virtual.VirtualArrayNode;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.virtual.phases.ea.PEReadEliminationBlockState.ReadCacheEntry;
-import org.graalvm.word.LocationIdentity;
-
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -308,7 +308,7 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
 
     @SuppressWarnings("unchecked")
     @Override
-    protected void processInitialLoopState(Loop<HIRBlock> loop, PEReadEliminationBlockState initialState) {
+    protected void processInitialLoopState(CFGLoop<HIRBlock> loop, PEReadEliminationBlockState initialState) {
         super.processInitialLoopState(loop, initialState);
 
         if (!initialState.getReadCache().isEmpty()) {
@@ -441,6 +441,13 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
             values[0] = states.get(0).getReadCache(getPhiValueAt(phi, 0), identity, index, kind, PEReadEliminationClosure.this);
             if (values[0] != null) {
                 for (int i = 1; i < states.size(); i++) {
+                    ObjectState obj = getObjectState(states.get(i), getPhiValueAt(phi, i));
+                    if (obj != null && obj.isVirtual()) {
+                        // abort, the alias is still virtual and we cannot materialize it here
+                        // during read elimination
+                        return;
+                    }
+
                     ValueNode value = states.get(i).getReadCache(getPhiValueAt(phi, i), identity, index, kind, PEReadEliminationClosure.this);
                     // e.g. unsafe loads / stores with same identity and different access kinds see
                     // mergeReadCache(states)
@@ -461,7 +468,7 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
     }
 
     @Override
-    protected void processKilledLoopLocations(Loop<HIRBlock> loop, PEReadEliminationBlockState initialState, PEReadEliminationBlockState mergedStates) {
+    protected void processKilledLoopLocations(CFGLoop<HIRBlock> loop, PEReadEliminationBlockState initialState, PEReadEliminationBlockState mergedStates) {
         assert initialState != null;
         assert mergedStates != null;
         if (initialState.readCache.size() > 0) {
@@ -492,7 +499,7 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
                     for (LocationIdentity location : forwardEndLiveLocations) {
                         loopKilledLocations.rememberLoopKilledLocation(location);
                     }
-                    if (debug.isLogEnabled() && loopKilledLocations != null) {
+                    if (debug.isLogEnabled()) {
                         debug.log("[Early Read Elimination] Setting loop killed locations of loop at node %s with %s",
                                         beginNode, forwardEndLiveLocations);
                     }
@@ -504,7 +511,7 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
     }
 
     @Override
-    protected PEReadEliminationBlockState stripKilledLoopLocations(Loop<HIRBlock> loop, PEReadEliminationBlockState originalInitialState) {
+    protected PEReadEliminationBlockState stripKilledLoopLocations(CFGLoop<HIRBlock> loop, PEReadEliminationBlockState originalInitialState) {
         PEReadEliminationBlockState initialState = super.stripKilledLoopLocations(loop, originalInitialState);
         LoopKillCache loopKilledLocations = loopLocationKillCache.get(loop);
         if (loopKilledLocations != null && loopKilledLocations.loopKillsLocations()) {

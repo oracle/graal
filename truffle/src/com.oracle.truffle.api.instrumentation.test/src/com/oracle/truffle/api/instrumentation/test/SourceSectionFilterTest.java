@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -952,6 +952,24 @@ public class SourceSectionFilterTest extends AbstractPolyglotTest {
         root = createRootNode(nonInternalSource.createSection(0, 23), false);
         Assert.assertFalse(
                         isInstrumented(internalFilter, root, createNode(internalSource.createSection(1))));
+    }
+
+    @Test
+    public void testAvailableSections() throws Exception {
+        SourceSectionFilter availableFilter = SourceSectionFilter.newBuilder().sourceSectionAvailableOnly(true).build();
+        // Available-only filter instruments available source sections
+        Assert.assertTrue(isInstrumented(availableFilter, null, source()));
+
+        SourceSection unavailableSourceSection = Source.newBuilder(InstrumentationTestLanguage.ID, "foo", "sampleSource1").build().createUnavailableSection();
+        Node unavailableNode = createNode(unavailableSourceSection);
+
+        // Available-only filter does not instrument unavailable or null source sections
+        Assert.assertFalse(isInstrumented(availableFilter, null, unavailableNode));
+        Assert.assertFalse(isInstrumented(availableFilter, null, null));
+
+        // Any root source section does not affect available filter
+        Assert.assertTrue(isInstrumented(availableFilter, new SourceSectionRootNode(null, null), source()));
+        Assert.assertTrue(isInstrumented(availableFilter, new SourceSectionRootNode(unavailableSourceSection, null), source()));
     }
 
     @Test

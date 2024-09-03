@@ -43,7 +43,6 @@ import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
 import jdk.graal.compiler.nodes.FixedGuardNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
-import jdk.graal.compiler.nodes.GuardNode;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.InvokeNode;
 import jdk.graal.compiler.nodes.LogicNode;
@@ -51,16 +50,13 @@ import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.extended.AnchoringNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
-import jdk.graal.compiler.nodes.extended.ValueAnchorNode;
 import jdk.graal.compiler.nodes.java.InstanceOfNode;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.spi.Simplifiable;
 import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.nodes.util.GraphUtil;
-
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -131,20 +127,12 @@ public final class MethodHandleNode extends MacroNode implements Simplifiable {
         }
 
         /**
-         * Call {@link StructuredGraph#addOrUnique(Node)} on {@code node} and link any
-         * {@link FixedWithNextNode}s into the current control flow.
+         * Call {@link jdk.graal.compiler.nodes.StructuredGraph#addOrUnique(Node)} on {@code node}
+         * and link any {@link FixedWithNextNode}s into the current control flow.
          *
          * @return the newly added node
          */
         public abstract <T extends ValueNode> T add(T node);
-
-        /**
-         * @return an {@link AnchoringNode} if floating guards should be created, otherwise
-         *         {@link FixedGuardNode}s will be used.
-         */
-        public AnchoringNode getGuardAnchor() {
-            return null;
-        }
 
         public Assumptions getAssumptions() {
             return graph.getAssumptions();
@@ -331,19 +319,10 @@ public final class MethodHandleNode extends MacroNode implements Simplifiable {
                     assert !inst.isAlive();
                     if (!inst.isTautology()) {
                         inst = adder.add(inst);
-                        AnchoringNode guardAnchor = adder.getGuardAnchor();
                         DeoptimizationReason reason = DeoptimizationReason.ClassCastException;
                         DeoptimizationAction action = DeoptimizationAction.InvalidateRecompile;
                         Speculation speculation = SpeculationLog.NO_SPECULATION;
-                        GuardingNode guard;
-                        if (guardAnchor == null) {
-                            FixedGuardNode fixedGuard = adder.add(new FixedGuardNode(inst, reason, action, speculation, false));
-                            guard = fixedGuard;
-                        } else {
-                            GuardNode newGuard = adder.add(new GuardNode(inst, guardAnchor, reason, action, false, speculation, null));
-                            adder.add(new ValueAnchorNode(newGuard));
-                            guard = newGuard;
-                        }
+                        GuardingNode guard = adder.add(new FixedGuardNode(inst, reason, action, speculation, false));
                         ValueNode valueNode = adder.add(PiNode.create(argument, StampFactory.object(targetType), guard.asNode()));
                         arguments[index] = valueNode;
                     }

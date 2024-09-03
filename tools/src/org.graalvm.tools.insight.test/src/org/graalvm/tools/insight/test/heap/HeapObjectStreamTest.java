@@ -24,11 +24,22 @@
  */
 package org.graalvm.tools.insight.test.heap;
 
+import static org.graalvm.tools.insight.test.heap.HeapApi.invokeDump;
+import static org.graalvm.tools.insight.test.heap.HeapApi.invokeFlush;
+import static org.graalvm.tools.insight.test.heap.HeapObjectTest.createDumpObject;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Proxy;
 import java.util.Map;
 import java.util.function.Consumer;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Instrument;
@@ -39,16 +50,7 @@ import org.graalvm.tools.insight.test.heap.HeapApi.Event;
 import org.graalvm.tools.insight.test.heap.HeapApi.Source;
 import org.graalvm.tools.insight.test.heap.HeapApi.StackElement;
 import org.graalvm.tools.insight.test.heap.HeapApi.StackEvent;
-import static org.graalvm.tools.insight.test.heap.HeapApi.invokeDump;
-import static org.graalvm.tools.insight.test.heap.HeapApi.invokeFlush;
-import static org.graalvm.tools.insight.test.heap.HeapObjectTest.createDumpObject;
 import org.graalvm.tools.insight.test.heap.HeapResourceRule.HeapParams;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -68,7 +70,7 @@ public class HeapObjectStreamTest {
             b.allowHostAccess(HostAccess.EXPLICIT);
             Context ctx = InsightObjectFactory.newContext(b);
 
-            // BEGIN: org.graalvm.tools.insight.test.heap.HeapObjectStreamTest
+            // @start region = "org.graalvm.tools.insight.test.heap.HeapObjectStreamTest"
             Map<String, Instrument> instruments = ctx.getEngine().getInstruments();
             Instrument heapInstrument = instruments.get("heap");
 
@@ -77,7 +79,7 @@ public class HeapObjectStreamTest {
 
             heapOutput = new ByteArrayOutputStream();
             consumeOutput.accept(heapOutput);
-            // END: org.graalvm.tools.insight.test.heap.HeapObjectStreamTest
+            // @end region = "org.graalvm.tools.insight.test.heap.HeapObjectStreamTest"
 
             heap = InsightObjectFactory.readObject(ctx, "heap");
             assertFalse("Heap object is defined", heap.isNull());

@@ -86,7 +86,7 @@ final class Target_jdk_internal_module_SystemModuleFinders {
     @TruffleBoundary
     private static StaticObject getEspressoExtensionPaths(EspressoContext context) {
         ArrayList<StaticObject> extensionPaths = new ArrayList<>(2);
-        for (ModuleExtension me : ModuleExtension.get(context)) {
+        for (ModuleExtension me : ModuleExtension.getAllExtensions(context)) {
             extensionPaths.add(getEspressoModulePath(context, me.jarName()));
         }
         if (extensionPaths.isEmpty()) {
@@ -100,12 +100,12 @@ final class Target_jdk_internal_module_SystemModuleFinders {
     private static StaticObject extendModuleFinders(EspressoLanguage language, Meta meta, StaticObject moduleFinder, StaticObject pathArray) {
         // ModuleFinder extension = ModulePath.of(pathArray);
         // moduleFinder = ModuleFinder.compose(extension, moduleFinder);
-        StaticObject extension = (StaticObject) meta.jdk_internal_module_ModulePath_of.invokeDirect(StaticObject.NULL, pathArray);
+        StaticObject extension = (StaticObject) meta.jdk_internal_module_ModulePath_of.invokeDirectStatic(pathArray);
         StaticObject moduleFinderArray = meta.java_lang_module_ModuleFinder.allocateReferenceArray(2);
         StaticObject[] unwrapped = moduleFinderArray.unwrap(language);
         unwrapped[0] = extension;
         unwrapped[1] = moduleFinder;
-        return (StaticObject) meta.java_lang_module_ModuleFinder_compose.invokeDirect(StaticObject.NULL, moduleFinderArray);
+        return (StaticObject) meta.java_lang_module_ModuleFinder_compose.invokeDirectStatic(moduleFinderArray);
     }
 
     @TruffleBoundary
@@ -115,7 +115,7 @@ final class Target_jdk_internal_module_SystemModuleFinders {
         // Paths.get(guestPath);
         StaticObject guestPath = meta.toGuestString(jar.toFile().getAbsolutePath());
         StaticObject emptyArray = meta.java_nio_file_Path.allocateReferenceArray(0);
-        return (StaticObject) meta.java_nio_file_Paths_get.invokeDirect(StaticObject.NULL, guestPath, emptyArray);
+        return (StaticObject) meta.java_nio_file_Paths_get.invokeDirectStatic(guestPath, emptyArray);
     }
 
 }

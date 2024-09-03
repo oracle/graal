@@ -29,7 +29,17 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
 import java.util.Objects;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.LocationIdentity;
+
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.meta.SharedField;
+import com.oracle.svm.core.util.VMError;
+
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -42,19 +52,9 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import jdk.graal.compiler.nodes.spi.Lowerable;
 import jdk.graal.compiler.nodes.spi.LoweringTool;
 import jdk.graal.compiler.phases.util.Providers;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.LocationIdentity;
-
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.meta.SharedField;
-import com.oracle.svm.core.util.VMError;
-
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -110,6 +110,10 @@ public final class StaticFieldsSupport {
         return result;
     }
 
+    public static FloatingNode createStaticFieldBaseNode(ResolvedJavaField field) {
+        return new StaticFieldBaseNode(field);
+    }
+
     public static FloatingNode createStaticFieldBaseNode(boolean primitive) {
         return new StaticFieldBaseNode(primitive);
     }
@@ -119,6 +123,7 @@ public final class StaticFieldsSupport {
         public static final NodeClass<StaticFieldBaseNode> TYPE = NodeClass.create(StaticFieldBaseNode.class);
 
         public final boolean primitive;
+        public final ResolvedJavaField field;
 
         /**
          * We must not expose that the stamp will eventually be an array, to avoid memory graph
@@ -126,7 +131,14 @@ public final class StaticFieldsSupport {
          */
         protected StaticFieldBaseNode(boolean primitive) {
             super(TYPE, StampFactory.objectNonNull());
+            this.field = null;
             this.primitive = primitive;
+        }
+
+        protected StaticFieldBaseNode(ResolvedJavaField field) {
+            super(TYPE, StampFactory.objectNonNull());
+            this.field = Objects.requireNonNull(field);
+            this.primitive = false; // this value doesn't matter if field is not-null
         }
 
         /**
@@ -157,8 +169,22 @@ public final class StaticFieldsSupport {
                  */
                 return;
             }
-
-            JavaConstant constant = tool.getSnippetReflection().forObject(primitive ? StaticFieldsSupport.getStaticPrimitiveFields() : StaticFieldsSupport.getStaticObjectFields());
+            JavaConstant constant;
+            if (field != null) {
+                SharedField sharedField = (SharedField) field;
+                if (sharedField.isInBaseLayer()) {
+                    constant = sharedField.getStaticFieldBase();
+                } else {
+                    /*
+                     * Cannot check primitive flag before we know that the field is SharedField, so
+                     * we can access the storage kind.
+                     */
+                    boolean isPrimitive = sharedField.getStorageKind().isPrimitive();
+                    constant = tool.getSnippetReflection().forObject(isPrimitive ? StaticFieldsSupport.getStaticPrimitiveFields() : StaticFieldsSupport.getStaticObjectFields());
+                }
+            } else {
+                constant = tool.getSnippetReflection().forObject(primitive ? StaticFieldsSupport.getStaticPrimitiveFields() : StaticFieldsSupport.getStaticObjectFields());
+            }
             assert constant.isNonNull() : constant;
             replaceAndDelete(ConstantNode.forConstant(constant, tool.getMetaAccess(), graph()));
         }
@@ -169,7 +195,7 @@ public final class StaticFieldsSupport {
 final class StaticFieldsFeature implements InternalFeature {
 
     @Override
-    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, Plugins plugins, ParsingReason reason) {
+    public void registerInvocationPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
         Registration r = new Registration(plugins.getInvocationPlugins(), StaticFieldsSupport.class);
         r.register(new RequiredInvocationPlugin("getStaticObjectFields") {
             @Override

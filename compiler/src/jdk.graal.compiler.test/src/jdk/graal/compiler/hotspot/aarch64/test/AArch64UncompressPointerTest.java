@@ -26,19 +26,21 @@
 
 package jdk.graal.compiler.hotspot.aarch64.test;
 
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assume.assumeTrue;
+
+import org.junit.Before;
+import org.junit.Test;
+
+import jdk.graal.compiler.asm.aarch64.AArch64Assembler;
+import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
+import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
+import jdk.graal.compiler.hotspot.aarch64.AArch64HotSpotMove;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.runtime.JVMCI;
-import jdk.graal.compiler.asm.aarch64.AArch64Assembler;
-import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
-import jdk.graal.compiler.hotspot.aarch64.AArch64HotSpotMove;
-import org.junit.Before;
-import org.junit.Test;
-
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assume.assumeTrue;
 
 public class AArch64UncompressPointerTest extends GraalCompilerTest {
 
@@ -61,8 +63,8 @@ public class AArch64UncompressPointerTest extends GraalCompilerTest {
         result = AArch64.r11;
     }
 
-    private void emitUncompressPointer(Register base, int shift) {
-        AArch64HotSpotMove.UncompressPointer.emitUncompressCode(masm2, input, result, base, shift, true);
+    private void emitUncompressPointer(Register base, CompressEncoding encoding) {
+        AArch64HotSpotMove.UncompressPointer.emitUncompressCode(masm2, input, result, base, encoding, true);
     }
 
     private void compareAssembly() {
@@ -76,7 +78,7 @@ public class AArch64UncompressPointerTest extends GraalCompilerTest {
         Register base = AArch64.r12;
         int shift = 3;
         masm1.add(64, result, base, input, AArch64Assembler.ShiftType.LSL, shift);
-        emitUncompressPointer(base, shift);
+        emitUncompressPointer(base, new CompressEncoding(8, shift));
         compareAssembly();
     }
 
@@ -84,14 +86,14 @@ public class AArch64UncompressPointerTest extends GraalCompilerTest {
     public void testUncompressPointerWithZeroBase() {
         int shift = 3;
         masm1.lsl(64, result, input, shift);
-        emitUncompressPointer(null, shift);
+        emitUncompressPointer(null, new CompressEncoding(0, shift));
         compareAssembly();
     }
 
     @Test
     public void testUncompressPointerWithZeroBaseAndShift() {
         masm1.orr(64, result, AArch64.zr, input);
-        emitUncompressPointer(null, 0);
+        emitUncompressPointer(null, new CompressEncoding(0, 0));
         compareAssembly();
     }
 

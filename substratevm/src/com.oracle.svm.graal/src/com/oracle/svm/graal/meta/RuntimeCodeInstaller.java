@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,13 +29,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 
-import jdk.graal.compiler.code.CompilationResult;
-import jdk.graal.compiler.code.CompilationResult.CodeAnnotation;
-import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.core.common.type.CompressibleConstant;
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.debug.Indent;
-import jdk.graal.compiler.truffle.TruffleCompilerImpl;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.Pointer;
@@ -50,6 +43,7 @@ import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoEncoder;
 import com.oracle.svm.core.code.DeoptimizationSourcePositionEncoder;
+import com.oracle.svm.core.code.FrameInfoDecoder;
 import com.oracle.svm.core.code.FrameInfoEncoder;
 import com.oracle.svm.core.code.InstalledCodeObserver;
 import com.oracle.svm.core.code.InstalledCodeObserver.InstalledCodeObserverHandle;
@@ -74,6 +68,13 @@ import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.code.CompilationResult.CodeAnnotation;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.type.CompressibleConstant;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.Indent;
+import jdk.graal.compiler.truffle.TruffleCompilerImpl;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.ConstantReference;
@@ -265,11 +266,13 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
     }
 
     private void createCodeChunkInfos(CodeInfo runtimeMethodInfo, ReferenceAdjuster adjuster) {
-        CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(new RuntimeFrameInfoCustomization(), new CodeInfoEncoder.Encoders());
+        CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(new RuntimeFrameInfoCustomization(), new CodeInfoEncoder.Encoders(false, null));
         codeInfoEncoder.addMethod(method, compilation, 0, compilation.getTargetCodeSize());
-        codeInfoEncoder.encodeAllAndInstall(runtimeMethodInfo, adjuster);
+        Runnable noop = () -> {
+        };
+        codeInfoEncoder.encodeAllAndInstall(runtimeMethodInfo, adjuster, noop);
 
-        assert !adjuster.isFinished() || CodeInfoEncoder.verifyMethod(method, compilation, 0, compilation.getTargetCodeSize(), runtimeMethodInfo);
+        assert !adjuster.isFinished() || CodeInfoEncoder.verifyMethod(method, compilation, 0, compilation.getTargetCodeSize(), runtimeMethodInfo, FrameInfoDecoder.SubstrateConstantAccess);
         assert !adjuster.isFinished() || codeInfoEncoder.verifyFrameInfo(runtimeMethodInfo);
 
         DeoptimizationSourcePositionEncoder sourcePositionEncoder = new DeoptimizationSourcePositionEncoder();
@@ -284,12 +287,10 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
             boolean noPriorMatch = patchedOffsets.add(dataPatch.pcOffset);
             VMError.guarantee(noPriorMatch, "Patching same offset twice.");
             patchesHandled++;
-            if (dataPatch.reference instanceof DataSectionReference) {
-                DataSectionReference ref = (DataSectionReference) dataPatch.reference;
+            if (dataPatch.reference instanceof DataSectionReference ref) {
                 int pcDisplacement = dataOffset + ref.getOffset() - dataPatch.pcOffset;
                 patch.patchCode(code.rawValue(), pcDisplacement, compiledBytes);
-            } else if (dataPatch.reference instanceof ConstantReference) {
-                ConstantReference ref = (ConstantReference) dataPatch.reference;
+            } else if (dataPatch.reference instanceof ConstantReference ref) {
                 SubstrateObjectConstant refConst = (SubstrateObjectConstant) ref.getConstant();
                 objectConstants.add(patch.getOffset(), patch.getLength(), refConst);
             } else {

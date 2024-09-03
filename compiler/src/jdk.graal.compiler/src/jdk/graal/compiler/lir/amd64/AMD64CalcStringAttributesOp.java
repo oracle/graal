@@ -24,10 +24,6 @@
  */
 package jdk.graal.compiler.lir.amd64;
 
-import static jdk.vm.ci.amd64.AMD64.rcx;
-import static jdk.vm.ci.amd64.AMD64.rdx;
-import static jdk.vm.ci.amd64.AMD64.rsi;
-import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.Equal;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.Less;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.NotEqual;
@@ -37,6 +33,10 @@ import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.DWORD;
 import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.QWORD;
 import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.XMM;
 import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.YMM;
+import static jdk.vm.ci.amd64.AMD64.rcx;
+import static jdk.vm.ci.amd64.AMD64.rdx;
+import static jdk.vm.ci.amd64.AMD64.rsi;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -56,7 +56,7 @@ import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.Opcode;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-
+import jdk.graal.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
@@ -68,6 +68,8 @@ import jdk.vm.ci.meta.Value;
  * This intrinsic calculates the code range and codepoint length of strings in various encodings.
  * The code range of a string is a flag that coarsely describes upper and lower bounds of all
  * codepoints contained in a string, or indicates whether a string was encoded correctly.
+ *
+ * @see CalcStringAttributesEncoding
  */
 @Opcode("AMD64_CALC_STRING_ATTRIBUTES")
 public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
@@ -77,11 +79,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
     private static final Register REG_OFFSET = rcx;
     private static final Register REG_LENGTH = rdx;
 
-    // NOTE:
-    // The following fields must be kept in sync with com.oracle.truffle.api.strings.TSCodeRange,
-    // TStringOpsCalcStringAttributesReturnValuesInSyncTest verifies this.
-
-    private final LIRGeneratorTool.CalcStringAttributesEncoding encoding;
+    private final CalcStringAttributesEncoding encoding;
 
     private final Stride stride;
     private final int vectorLength;
@@ -102,7 +100,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
     @Temp({OperandFlag.REG}) private Value[] temp;
     @Temp({OperandFlag.REG}) private Value[] vectorTemp;
 
-    private AMD64CalcStringAttributesOp(LIRGeneratorTool tool, LIRGeneratorTool.CalcStringAttributesEncoding encoding, EnumSet<CPUFeature> runtimeCheckedCPUFeatures, Value array, Value offset,
+    private AMD64CalcStringAttributesOp(LIRGeneratorTool tool, CalcStringAttributesEncoding encoding, EnumSet<CPUFeature> runtimeCheckedCPUFeatures, Value array, Value offset,
                     Value length, Value result, boolean assumeValid) {
         super(TYPE, tool, runtimeCheckedCPUFeatures, YMM);
         this.encoding = encoding;
@@ -128,7 +126,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         }
     }
 
-    private static int getNumberOfTempRegisters(LIRGeneratorTool.CalcStringAttributesEncoding encoding, boolean assumeValid) {
+    private static int getNumberOfTempRegisters(CalcStringAttributesEncoding encoding, boolean assumeValid) {
         switch (encoding) {
             case UTF_8:
                 return assumeValid ? 1 : 3;
@@ -139,7 +137,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         }
     }
 
-    private static int getNumberOfRequiredVectorRegisters(LIRGeneratorTool.CalcStringAttributesEncoding encoding, boolean isAVX, boolean assumeValid) {
+    private static int getNumberOfRequiredVectorRegisters(CalcStringAttributesEncoding encoding, boolean isAVX, boolean assumeValid) {
         switch (encoding) {
             case LATIN1:
                 return isAVX ? 1 : 2;
@@ -172,10 +170,10 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
      * @param array arbitrary array.
      * @param byteOffset byteOffset to start from. Must include array base byteOffset!
      * @param length length of the array region to consider, scaled to
-     *            {@link LIRGeneratorTool.CalcStringAttributesEncoding#stride}.
+     *            {@link CalcStringAttributesEncoding#stride}.
      * @param assumeValid assume that the string is encoded correctly.
      */
-    public static AMD64CalcStringAttributesOp movParamsAndCreate(LIRGeneratorTool tool, LIRGeneratorTool.CalcStringAttributesEncoding encoding, EnumSet<CPUFeature> runtimeCheckedCPUFeatures,
+    public static AMD64CalcStringAttributesOp movParamsAndCreate(LIRGeneratorTool tool, CalcStringAttributesEncoding encoding, EnumSet<CPUFeature> runtimeCheckedCPUFeatures,
                     Value array, Value byteOffset,
                     Value length, Value result,
                     boolean assumeValid) {
@@ -253,7 +251,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             emitPTestTail(asm, XMM, arr, lengthTail, vecArray, vecMask, null, returnLatin1, returnAscii);
         }
 
-        emitExit(asm, ret, returnLatin1, end, LIRGeneratorTool.CalcStringAttributesEncoding.CR_8BIT);
+        emitExit(asm, ret, returnLatin1, end, CalcStringAttributesEncoding.CR_8BIT);
 
         asm.bind(tailLessThan16);
         // move mask into general purpose register for regular TEST instructions
@@ -272,7 +270,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         asm.testAndJcc(AMD64BaseAssembler.OperandSize.QWORD, len, 0x80, NotZero, returnLatin1, true);
         asm.jmpb(returnAscii);
 
-        emitExitAtEnd(asm, ret, returnAscii, end, LIRGeneratorTool.CalcStringAttributesEncoding.CR_7BIT);
+        emitExitAtEnd(asm, ret, returnAscii, end, CalcStringAttributesEncoding.CR_7BIT);
     }
 
     private void latin1Tail(AMD64MacroAssembler asm, AMD64BaseAssembler.OperandSize size,
@@ -398,9 +396,9 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             bmpTail(asm, arr, lengthTail, vecArray, vecMaskAscii, vecMaskBMP, tailLessThan32, tailLessThan16, returnBMP, returnLatin1, returnAscii);
         }
 
-        emitExit(asm, ret, returnAscii, end, LIRGeneratorTool.CalcStringAttributesEncoding.CR_7BIT);
-        emitExit(asm, ret, returnLatin1, end, LIRGeneratorTool.CalcStringAttributesEncoding.CR_8BIT);
-        emitExit(asm, ret, returnBMP, end, LIRGeneratorTool.CalcStringAttributesEncoding.CR_16BIT);
+        emitExit(asm, ret, returnAscii, end, CalcStringAttributesEncoding.CR_7BIT);
+        emitExit(asm, ret, returnLatin1, end, CalcStringAttributesEncoding.CR_8BIT);
+        emitExit(asm, ret, returnBMP, end, CalcStringAttributesEncoding.CR_16BIT);
 
         asm.bind(tailLessThan16);
         // move masks into general purpose registers for regular TEST instructions
@@ -528,52 +526,11 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
     };
 
     /**
-     * Copyright (c) 2008-2010 Bjoern Hoehrmann <bjoern@hoehrmann.de>
-     *
-     * Permission is hereby granted, free of charge, to any person obtaining a copy of this software
-     * and associated documentation files (the "Software"), to deal in the Software without
-     * restriction, including without limitation the rights to use, copy, modify, merge, publish,
-     * distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the
-     * Software is furnished to do so, subject to the following conditions:
-     *
-     * The above copyright notice and this permission notice shall be included in all copies or
-     * substantial portions of the Software.
-     *
-     * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
-     * BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-     * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-     * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-     * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-     *
-     * See http://bjoern.hoehrmann.de/utf-8/decoder/dfa/ for details.
-     */
-    private static final byte[] UTF_8_STATE_MACHINE = {
-                    // The first part of the table maps bytes to character classes
-                    // to reduce the size of the transition table and create bitmasks.
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
-                    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-                    8, 8, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-                    10, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 3, 3, 11, 6, 6, 6, 5, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-
-                    // The second part is a transition table that maps a combination
-                    // of a state of the automaton and a character class to a state.
-                    0, 12, 24, 36, 60, 96, 84, 12, 12, 12, 48, 72, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
-                    12, 0, 12, 12, 12, 12, 12, 0, 12, 0, 12, 12, 12, 24, 12, 12, 12, 12, 12, 24, 12, 24, 12, 12,
-                    12, 12, 12, 12, 12, 12, 12, 24, 12, 12, 12, 12, 12, 24, 12, 12, 12, 12, 12, 12, 12, 24, 12, 12,
-                    12, 12, 12, 12, 12, 12, 12, 36, 12, 36, 12, 12, 12, 36, 12, 12, 12, 12, 12, 36, 12, 36, 12, 12,
-                    12, 36, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
-    };
-
-    /**
      * Based on the paper <a href="https://arxiv.org/abs/2010.03090">Validating UTF-8 In Less Than
      * One Instruction Per Byte</a> by John Keiser and Daniel Lemire, and the author's
      * implementation in <a href=
      * "https://github.com/simdjson/simdjson/blob/d996ffc49423cee75922c30432323288c34f3c04/src/generic/stage1/utf8_lookup4_algorithm.h">
-     * the simdjson library</a>.
+     * the simdjson library</a>. Follow-up changes made sure this is compatible with simdjson 3.6.4.
      *
      * @see <a href="https://github.com/simdjson/simdjson">https://github.com/simdjson/simdjson</a>
      * @see <a href="https://lemire.me/blog/2020/10/20/ridiculously-fast-unicode-utf-8-validation/">
@@ -799,7 +756,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             asm.ptest(vectorSize, vecError, vecError);
             asm.jcc(Zero, returnValid);
             asm.shlq(ret, 32);
-            asm.orq(ret, LIRGeneratorTool.CalcStringAttributesEncoding.CR_BROKEN_MULTIBYTE);
+            asm.orq(ret, CalcStringAttributesEncoding.CR_BROKEN_MULTIBYTE);
             asm.jmp(end);
 
             asm.bind(tailLessThan32);
@@ -857,7 +814,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             // without the actual codepoint computation.
             Register state = asRegister(temp[1]);
             Register type = asRegister(temp[2]);
-            asm.leaq(len, getMaskOnce(crb, UTF_8_STATE_MACHINE));
+            asm.leaq(len, getMaskOnce(crb, LIRGeneratorTool.CalcStringAttributesEncoding.UTF_8_STATE_MACHINE));
             asm.xorq(state, state);
             asm.align(preferredLoopAlignment(crb));
             asm.bind(labelScalarMultiByteLoop);
@@ -873,12 +830,12 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
 
             asm.testqAndJcc(state, state, Zero, returnValid, true);
             asm.shlq(ret, 32);
-            asm.orq(ret, LIRGeneratorTool.CalcStringAttributesEncoding.CR_BROKEN_MULTIBYTE);
+            asm.orq(ret, CalcStringAttributesEncoding.CR_BROKEN_MULTIBYTE);
             asm.jmpb(end);
         }
 
-        emitExitMultiByte(asm, ret, returnValid, end, LIRGeneratorTool.CalcStringAttributesEncoding.CR_VALID_MULTIBYTE);
-        emitExitMultiByteAtEnd(asm, ret, returnAscii, end, LIRGeneratorTool.CalcStringAttributesEncoding.CR_7BIT);
+        emitExitMultiByte(asm, ret, returnValid, end, CalcStringAttributesEncoding.CR_VALID_MULTIBYTE);
+        emitExitMultiByteAtEnd(asm, ret, returnAscii, end, CalcStringAttributesEncoding.CR_7BIT);
     }
 
     /**
@@ -988,7 +945,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         asm.movl(ret, len);
 
         if (!assumeValid) {
-            asm.movl(retBroken, LIRGeneratorTool.CalcStringAttributesEncoding.CR_VALID_MULTIBYTE);
+            asm.movl(retBroken, CalcStringAttributesEncoding.CR_VALID_MULTIBYTE);
             asm.pxor(vectorSize, vecResult, vecResult);
         }
 
@@ -1056,7 +1013,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             asm.movzwl(tmp, new AMD64Address(arr, len, stride));
             asm.shrl(tmp, 10);
             asm.cmpl(tmp, 0x37);
-            asm.movl(tmp, LIRGeneratorTool.CalcStringAttributesEncoding.CR_BROKEN_MULTIBYTE);
+            asm.movl(tmp, CalcStringAttributesEncoding.CR_BROKEN_MULTIBYTE);
             asm.cmovl(Equal, retBroken, tmp);
             // high surrogate mask: 0x1b << 1 == 0x36
             asm.psllw(vectorSize, vecMaskSurrogate, vecMaskSurrogate, 1);
@@ -1101,7 +1058,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             asm.shrl(tmp, 10);
             // if last char is a high surrogate, return BROKEN
             asm.cmpl(tmp, 0x36);
-            asm.movl(tmp, LIRGeneratorTool.CalcStringAttributesEncoding.CR_BROKEN_MULTIBYTE);
+            asm.movl(tmp, CalcStringAttributesEncoding.CR_BROKEN_MULTIBYTE);
             asm.cmovl(Equal, retBroken, tmp);
             asm.jmp(returnValidOrBroken);
         }
@@ -1168,7 +1125,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             asm.movzwl(tmp, new AMD64Address(arr, -2));
             asm.shrl(tmp, 10);
             asm.cmpl(tmp, 0x36);
-            asm.movl(tmp, LIRGeneratorTool.CalcStringAttributesEncoding.CR_BROKEN_MULTIBYTE);
+            asm.movl(tmp, CalcStringAttributesEncoding.CR_BROKEN_MULTIBYTE);
             asm.cmovl(Equal, retBroken, tmp);
 
             asm.bind(tailSingleVectorSurrogate);
@@ -1186,17 +1143,17 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             utf16ValidateSurrogates(asm, ret, vecArrayTail, vecArray, vecMaskSurrogate, vecMaskAscii, vecTmp, vecResult, tmp);
             asm.jmpb(returnValidOrBroken);
         }
-        emitExitMultiByte(asm, ret, returnAscii, end, LIRGeneratorTool.CalcStringAttributesEncoding.CR_7BIT);
-        emitExitMultiByte(asm, ret, returnLatin1, end, LIRGeneratorTool.CalcStringAttributesEncoding.CR_8BIT);
-        emitExitMultiByte(asm, ret, returnBMP, end, LIRGeneratorTool.CalcStringAttributesEncoding.CR_16BIT);
+        emitExitMultiByte(asm, ret, returnAscii, end, CalcStringAttributesEncoding.CR_7BIT);
+        emitExitMultiByte(asm, ret, returnLatin1, end, CalcStringAttributesEncoding.CR_8BIT);
+        emitExitMultiByte(asm, ret, returnBMP, end, CalcStringAttributesEncoding.CR_16BIT);
 
         asm.bind(returnValidOrBroken);
         asm.shlq(ret, 32);
         if (assumeValid) {
-            asm.orq(ret, LIRGeneratorTool.CalcStringAttributesEncoding.CR_VALID_MULTIBYTE);
+            asm.orq(ret, CalcStringAttributesEncoding.CR_VALID_MULTIBYTE);
         } else {
             asm.ptest(vectorSize, vecResult, vecResult);
-            asm.movl(tmp, LIRGeneratorTool.CalcStringAttributesEncoding.CR_BROKEN_MULTIBYTE);
+            asm.movl(tmp, CalcStringAttributesEncoding.CR_BROKEN_MULTIBYTE);
             asm.cmovl(NotZero, retBroken, tmp);
             asm.orq(ret, retBroken);
         }
@@ -1313,8 +1270,8 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         utf32CheckInvalid(asm, vecArrayTail, vecArrayTail, vecArrayTmp, vecMaskSurrogate, vecMaskOutOfRange, returnBroken, true);
         asm.jmpb(returnBMP);
 
-        emitExit(asm, ret, returnBroken, end, LIRGeneratorTool.CalcStringAttributesEncoding.CR_BROKEN, false);
-        emitExit(asm, ret, returnBMP, end, LIRGeneratorTool.CalcStringAttributesEncoding.CR_16BIT, false);
+        emitExit(asm, ret, returnBroken, end, CalcStringAttributesEncoding.CR_BROKEN, false);
+        emitExit(asm, ret, returnBMP, end, CalcStringAttributesEncoding.CR_16BIT, false);
 
         // astral loop: check if any codepoints are in the forbidden UTF-16 surrogate range;
         // if so, break immediately and return BROKEN
@@ -1363,10 +1320,10 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         asm.ptest(vectorSize, vecArray, vecMaskBMP);
         asm.jcc(Zero, returnBMP);
 
-        emitExit(asm, ret, returnAstral, end, LIRGeneratorTool.CalcStringAttributesEncoding.CR_VALID);
+        emitExit(asm, ret, returnAstral, end, CalcStringAttributesEncoding.CR_VALID);
 
-        emitExit(asm, ret, returnLatin1, end, LIRGeneratorTool.CalcStringAttributesEncoding.CR_8BIT);
-        emitExitAtEnd(asm, ret, returnAscii, end, LIRGeneratorTool.CalcStringAttributesEncoding.CR_7BIT);
+        emitExit(asm, ret, returnLatin1, end, CalcStringAttributesEncoding.CR_8BIT);
+        emitExitAtEnd(asm, ret, returnAscii, end, CalcStringAttributesEncoding.CR_7BIT);
     }
 
     private void utf32CheckInvalid(AMD64MacroAssembler asm, Register vecArrayDst, Register vecArraySrc, Register vecArrayTmp, Register vecMaskBroken, Register vecMaskOutOfRange, Label returnBroken,

@@ -29,7 +29,7 @@ Valid values for `<tool>` are `CC`, `CXX`, `LD`, `AR`, `NM`, `OBJCOPY`, `OBJDUMP
 Valid values for `<path>` are `PATH` and `LD_LIBRARY_PATH`.
 
 * `--print-toolchain-api-identifier`: print a unique identifier of the LLVM toolchain.
-Different modes of the LLVM runtime (e.g., `--llvm.managed`) might require compilation
+Different modes of the LLVM runtime (for example, `--llvm.managed`) might require compilation
 of bitcode with a different LLVM toolchain. This identifier can be used as a stable
 directory name to store build outputs for different modes.
 

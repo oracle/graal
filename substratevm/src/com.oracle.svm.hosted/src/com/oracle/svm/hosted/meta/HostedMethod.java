@@ -28,7 +28,6 @@ import static com.oracle.svm.core.util.VMError.intentionallyUnimplemented;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHereAtRuntime;
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Executable;
 import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.Collections;
@@ -39,26 +38,20 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Function;
 
 import org.graalvm.collections.Pair;
-import jdk.graal.compiler.api.replacements.Snippet;
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.debug.JavaMethodContext;
-import jdk.graal.compiler.java.StableMethodNameFormatter;
-import jdk.graal.compiler.nodes.StructuredGraph;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
-import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
+import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.graal.pointsto.results.StaticAnalysisResults;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -75,8 +68,13 @@ import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.CompilationInfo;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
+import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 
+import jdk.graal.compiler.api.replacements.Snippet;
+import jdk.graal.compiler.debug.JavaMethodContext;
+import jdk.graal.compiler.java.StableMethodNameFormatter;
 import jdk.internal.vm.annotation.ForceInline;
+import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ExceptionHandler;
@@ -85,22 +83,28 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.LineNumberTable;
 import jdk.vm.ci.meta.Local;
 import jdk.vm.ci.meta.LocalVariableTable;
+import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.SpeculationLog;
 
-public final class HostedMethod extends HostedElement implements SharedMethod, WrappedJavaMethod, GraphProvider, JavaMethodContext, OriginalMethodProvider, MultiMethod {
+public final class HostedMethod extends HostedElement implements SharedMethod, WrappedJavaMethod, JavaMethodContext, OriginalMethodProvider, MultiMethod {
 
     public static final String METHOD_NAME_COLLISION_SEPARATOR = "%";
 
     public final AnalysisMethod wrapped;
 
     private final HostedType holder;
-    private final Signature signature;
+    private final ResolvedSignature<HostedType> signature;
     private final ConstantPool constantPool;
     private final ExceptionHandler[] handlers;
-    StaticAnalysisResults staticAnalysisResults;
+    /**
+     * Contains the index of the method within the appropriate table.
+     *
+     * Within the closed type world, there exists a single table which describes all methods.
+     * However, within the open type world, each type and interface has a unique table, so this
+     * index is relative to the start of the appropriate table.
+     */
     int vtableIndex = -1;
 
     /**
@@ -110,6 +114,7 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     private int codeAddressOffset;
     private boolean codeAddressOffsetValid;
     private boolean compiled;
+    private boolean compiledInPriorLayer;
 
     /**
      * All concrete methods that can actually be called when calling this method. This includes all
@@ -141,14 +146,14 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
 
     public static final HostedMethod[] EMPTY_ARRAY = new HostedMethod[0];
 
-    static HostedMethod create(HostedUniverse universe, AnalysisMethod wrapped, HostedType holder, Signature signature,
+    static HostedMethod create(HostedUniverse universe, AnalysisMethod wrapped, HostedType holder, ResolvedSignature<HostedType> signature,
                     ConstantPool constantPool, ExceptionHandler[] handlers) {
         LocalVariableTable localVariableTable = createLocalVariableTable(universe, wrapped);
 
         return create0(wrapped, holder, signature, constantPool, handlers, wrapped.getMultiMethodKey(), null, localVariableTable);
     }
 
-    private static HostedMethod create0(AnalysisMethod wrapped, HostedType holder, Signature signature,
+    private static HostedMethod create0(AnalysisMethod wrapped, HostedType holder, ResolvedSignature<HostedType> signature,
                     ConstantPool constantPool, ExceptionHandler[] handlers, MultiMethodKey key, Map<MultiMethodKey, MultiMethod> multiMethodMap, LocalVariableTable localVariableTable) {
         Function<Integer, Pair<String, String>> nameGenerator = (collisionCount) -> {
             String name = wrapped.wrapped.getName(); // want name w/o any multimethodkey suffix
@@ -191,7 +196,7 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
         }
     }
 
-    private HostedMethod(AnalysisMethod wrapped, HostedType holder, Signature signature, ConstantPool constantPool,
+    private HostedMethod(AnalysisMethod wrapped, HostedType holder, ResolvedSignature<HostedType> signature, ConstantPool constantPool,
                     ExceptionHandler[] handlers, String name, String uniqueShortName, LocalVariableTable localVariableTable, MultiMethodKey multiMethodKey,
                     Map<MultiMethodKey, MultiMethod> multiMethodMap) {
         this.wrapped = wrapped;
@@ -247,6 +252,14 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
         return compiled;
     }
 
+    public void setCompiledInPriorLayer() {
+        this.compiledInPriorLayer = true;
+    }
+
+    public boolean isCompiledInPriorLayer() {
+        return compiledInPriorLayer;
+    }
+
     public String getUniqueShortName() {
         return uniqueShortName;
     }
@@ -256,23 +269,32 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
      */
     public void clear() {
         compilationInfo.clear();
-        staticAnalysisResults = null;
     }
 
     @Override
-    public boolean hasCodeOffsetInImage() {
+    public ImageCodeInfo getImageCodeInfo() {
         throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
-    public int getCodeOffsetInImage() {
+    public boolean forceIndirectCall() {
+        return isCompiledInPriorLayer();
+    }
+
+    @Override
+    public boolean hasImageCodeOffset() {
         throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
-    public int getDeoptOffsetInImage() {
+    public int getImageCodeOffset() {
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @Override
+    public int getImageCodeDeoptOffset() {
         int result = 0;
-        HostedMethod deoptTarget = getMultiMethod(DEOPT_TARGET_METHOD);
+        HostedMethod deoptTarget = getMultiMethod(SubstrateCompilationDirectives.DEOPT_TARGET_METHOD);
         if (deoptTarget != null && deoptTarget.isCodeAddressOffsetValid()) {
             result = deoptTarget.getCodeAddressOffset();
             assert result != 0;
@@ -292,7 +314,7 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
 
     @Override
     public boolean isDeoptTarget() {
-        return MultiMethod.super.isDeoptTarget();
+        return SubstrateCompilationDirectives.isDeoptTarget(this);
     }
 
     @Override
@@ -371,18 +393,13 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     }
 
     @Override
-    public Signature getSignature() {
+    public ResolvedSignature<HostedType> getSignature() {
         return signature;
     }
 
     @Override
-    public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
-        return wrapped.buildGraph(debug, method, providers, purpose);
-    }
-
-    @Override
-    public boolean allowRuntimeCompilation() {
-        return wrapped.allowRuntimeCompilation();
+    public JavaType[] toParameterTypes() {
+        throw JVMCIError.shouldNotReachHere("ResolvedJavaMethod.toParameterTypes returns the wrong result for constructors.");
     }
 
     @Override
@@ -456,13 +473,8 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     }
 
     @Override
-    public StaticAnalysisResults getProfilingInfo() {
-        return staticAnalysisResults;
-    }
-
-    @Override
-    public StaticAnalysisResults getProfilingInfo(boolean includeNormal, boolean includeOSR) {
-        return staticAnalysisResults;
+    public ProfilingInfo getProfilingInfo(boolean includeNormal, boolean includeOSR) {
+        return null;
     }
 
     @Override
@@ -482,7 +494,15 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
 
     @Override
     public boolean canBeInlined() {
-        return !hasNeverInlineDirective();
+        /*
+         * GR-55278: Graphs that contain references to $$Lambda types cannot be persisted. Those
+         * methods should not be inlined in the base layer as we need to be able to call them from
+         * the extension layers.
+         */
+        if (HostedImageLayerBuildingSupport.buildingSharedLayer() && !HostedImageLayerBuildingSupport.singleton().getWriter().persistedMethodGraph(wrapped)) {
+            return false;
+        }
+        return wrapped.canBeInlined();
     }
 
     @Override
@@ -495,9 +515,14 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
         return getAnnotation(AlwaysInline.class) != null || getAnnotation(ForceInline.class) != null;
     }
 
+    private LineNumberTable lineNumberTable;
+
     @Override
     public LineNumberTable getLineNumberTable() {
-        return wrapped.getLineNumberTable();
+        if (lineNumberTable == null) {
+            lineNumberTable = wrapped.getLineNumberTable();
+        }
+        return lineNumberTable;
     }
 
     @Override
@@ -546,8 +571,8 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     }
 
     @Override
-    public Executable getJavaMethod() {
-        return wrapped.getJavaMethod();
+    public ResolvedJavaMethod unwrapTowardsOriginalMethod() {
+        return wrapped;
     }
 
     @Override
@@ -576,7 +601,6 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
 
         return (HostedMethod) multiMethodMap.computeIfAbsent(key, (k) -> {
             HostedMethod newMultiMethod = create0(wrapped, holder, signature, constantPool, handlers, k, multiMethodMap, localVariableTable);
-            newMultiMethod.staticAnalysisResults = staticAnalysisResults;
             newMultiMethod.implementations = implementations;
             newMultiMethod.vtableIndex = vtableIndex;
             return newMultiMethod;

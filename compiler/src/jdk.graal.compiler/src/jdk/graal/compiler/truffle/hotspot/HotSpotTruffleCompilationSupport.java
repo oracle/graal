@@ -26,13 +26,21 @@ package jdk.graal.compiler.truffle.hotspot;
 
 import jdk.graal.compiler.hotspot.CompilerConfigurationFactory;
 import jdk.graal.compiler.hotspot.HotSpotGraalOptionValues;
+import jdk.graal.compiler.hotspot.JVMCIVersionCheck;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.truffle.AbstractTruffleCompilationSupport;
 
 import com.oracle.truffle.compiler.TruffleCompiler;
 import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 
 public final class HotSpotTruffleCompilationSupport extends AbstractTruffleCompilationSupport {
 
@@ -71,4 +79,24 @@ public final class HotSpotTruffleCompilationSupport extends AbstractTruffleCompi
         HotSpotTruffleHostEnvironmentLookup.registerRuntime(runtime);
     }
 
+    @Override
+    public String getCompilerVersion() {
+        return readCompilerVersion();
+    }
+
+    public static String readCompilerVersion() {
+        InputStream in = HotSpotTruffleCompilationSupport.class.getResourceAsStream("/META-INF/graalvm/jdk.graal.compiler/version");
+        if (in == null) {
+            throw new InternalError("Compiler must have a version file.");
+        }
+        try (BufferedReader r = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
+            return r.readLine();
+        } catch (IOException ioe) {
+            throw new InternalError(ioe);
+        }
+    }
+
+    public static String verifyJVMCIVersion() {
+        return JVMCIVersionCheck.check(GraalServices.getSavedProperties());
+    }
 }

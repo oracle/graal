@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,11 +24,7 @@
  */
 package jdk.graal.compiler.core.common.util;
 
-import static jdk.graal.compiler.serviceprovider.GraalUnsafeAccess.getUnsafe;
-
-import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.debug.Assertions;
-import sun.misc.Unsafe;
+import jdk.internal.misc.Unsafe;
 
 /**
  * Provides low-level read access from a byte[] array for signed and unsigned values of size 1, 2,
@@ -44,7 +40,7 @@ import sun.misc.Unsafe;
  */
 public abstract class UnsafeArrayTypeReader extends AbstractTypeReader {
 
-    private static final Unsafe UNSAFE = getUnsafe();
+    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     public static int getS1(byte[] data, long byteIndex) {
         return UNSAFE.getByte(data, readOffset(data, byteIndex, Byte.BYTES));
@@ -87,12 +83,10 @@ public abstract class UnsafeArrayTypeReader extends AbstractTypeReader {
     }
 
     protected static long readOffset(byte[] data, long byteIndex, int numBytes) {
-        assert NumUtil.assertNonNegativeLong(byteIndex);
-        assert NumUtil.assertPositiveInt(numBytes);
-        int length = data.length;
-        assert byteIndex + numBytes <= length : Assertions.errorMessageContext("byteIndex", byteIndex, "numBytes", numBytes, "length", length);
-        int arrayByteIndexScale = Unsafe.ARRAY_BYTE_INDEX_SCALE;
-        assert arrayByteIndexScale == 1 : Assertions.errorMessageContext("unsafe array byte index scale ", arrayByteIndexScale);
+        assert byteIndex >= 0 : "(no detailed message because code must be allocation free)";
+        assert numBytes > 0 : "(no detailed message because code must be allocation free)";
+        assert byteIndex + numBytes <= data.length : "(no detailed message because code must be allocation free)";
+        assert Unsafe.ARRAY_BYTE_INDEX_SCALE == 1 : "(no detailed message because code must be allocation free)";
 
         return byteIndex + Unsafe.ARRAY_BYTE_BASE_OFFSET;
     }
@@ -149,7 +143,7 @@ public abstract class UnsafeArrayTypeReader extends AbstractTypeReader {
 }
 
 final class UnalignedUnsafeArrayTypeReader extends UnsafeArrayTypeReader {
-    private static final Unsafe UNSAFE = getUnsafe();
+    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     protected static int getS2(byte[] data, long byteIndex) {
         return UNSAFE.getShort(data, readOffset(data, byteIndex, Short.BYTES));
@@ -190,7 +184,7 @@ final class UnalignedUnsafeArrayTypeReader extends UnsafeArrayTypeReader {
 }
 
 class AlignedUnsafeArrayTypeReader extends UnsafeArrayTypeReader {
-    private static final Unsafe UNSAFE = getUnsafe();
+    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     protected static int getS2(byte[] data, long byteIndex) {
         long offset = readOffset(data, byteIndex, Short.BYTES);

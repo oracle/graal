@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -221,12 +221,14 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.PUTSTATIC;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.QUICK;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.RET;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.RETURN;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.RETURN_VALUE;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.SALOAD;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.SASTORE;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.SIPUSH;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.SLIM_QUICK;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.SWAP;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.TABLESWITCH;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.THROW_VALUE;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.WIDE;
 import static com.oracle.truffle.espresso.nodes.EspressoFrame.clear;
 import static com.oracle.truffle.espresso.nodes.EspressoFrame.createFrameDescriptor;
@@ -266,6 +268,7 @@ import static com.oracle.truffle.espresso.nodes.EspressoFrame.setLocalObjectOrRe
 import static com.oracle.truffle.espresso.nodes.EspressoFrame.startingStackOffset;
 import static com.oracle.truffle.espresso.nodes.EspressoFrame.swapSingle;
 
+import java.io.Serial;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -283,10 +286,12 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleSafepoint;
+import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper.YieldException;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
@@ -310,6 +315,7 @@ import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.attributes.BootstrapMethodsAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableAttribute;
 import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.ClassMethodRefConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.DoubleConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.DynamicConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.FloatConstant;
@@ -333,7 +339,9 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.helper.EspressoReferenceArrayStoreNode;
+import com.oracle.truffle.espresso.nodes.methodhandle.MHInvokeGenericNode.MethodHandleInvoker;
 import com.oracle.truffle.espresso.nodes.quick.BaseQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.CheckCastQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.InstanceOfQuickNode;
@@ -358,6 +366,7 @@ import com.oracle.truffle.espresso.nodes.quick.interop.ReferenceArrayLoadQuickNo
 import com.oracle.truffle.espresso.nodes.quick.interop.ReferenceArrayStoreQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.ShortArrayLoadQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.ShortArrayStoreQuickNode;
+import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeContinuableNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeDynamicCallSiteNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeHandleNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeInterfaceQuickNode;
@@ -373,10 +382,11 @@ import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
+import com.oracle.truffle.espresso.vm.continuation.HostFrameRecord;
+import com.oracle.truffle.espresso.vm.continuation.UnwindContinuationException;
 
 /**
  * Bytecode interpreter loop.
- *
  *
  * Calling convention uses strict Java primitive types although internally the VM basic types are
  * used with conversions at the boundaries.
@@ -389,7 +399,6 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
  * {@code top} of the stack index is adjusted depending on the bytecode stack offset.
  */
 public final class BytecodeNode extends AbstractInstrumentableBytecodeNode implements BytecodeOSRNode, GuestAllocator.AllocationProfiler {
-
     private static final DebugCounter EXECUTED_BYTECODES_COUNT = DebugCounter.create("Executed bytecodes");
     private static final DebugCounter QUICKENED_BYTECODES = DebugCounter.create("Quickened bytecodes");
     private static final DebugCounter QUICKENED_INVOKES = DebugCounter.create("Quickened invokes (excluding INDY)");
@@ -404,9 +413,12 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         assert Integer.bitCount(REPORT_LOOP_STRIDE) == 1 : "must be a power of 2";
     }
 
-    // must not be of type QuickNode as it might be wrapped by instrumentation
-    @Children private BaseQuickNode[] nodes = QuickNode.EMPTY_ARRAY;
-    @Children private BaseQuickNode[] sparseNodes = QuickNode.EMPTY_ARRAY;
+    // Nodes for bytecodes that were replaced with QUICK, indexed by the constant pool index
+    // referenced by the bytecode.
+    // Must not be of type QuickNode as it might be wrapped by instrumentation
+    @Children private BaseQuickNode[] nodes = BaseQuickNode.EMPTY_ARRAY;
+    @Children private BaseQuickNode[] sparseNodes = BaseQuickNode.EMPTY_ARRAY;
+
     /**
      * Ideally, we would want one such node per AASTORE bytecode. Unfortunately, the AASTORE
      * bytecode is a single byte long, so we cannot quicken it, and it is far too common to pay for
@@ -436,7 +448,6 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     // All implicit exception paths in the method will be compiled if at least one implicit
     // exception is thrown.
     @CompilationFinal private boolean implicitExceptionProfile;
-
     @CompilationFinal private boolean linkageExceptionProfile;
 
     private final LivenessAnalysis livenessAnalysis;
@@ -449,22 +460,31 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
     private final MethodVersion methodVersion;
 
+    @CompilationFinal(dimensions = 1) private final byte[] code;
+    private final int returnValueBci;
+    private final int throwValueBci;
+
     public BytecodeNode(MethodVersion methodVersion) {
         CompilerAsserts.neverPartOfCompilation();
         Method method = methodVersion.getMethod();
         assert method.hasBytecodes();
         this.methodVersion = methodVersion;
-        this.bs = new BytecodeStream(methodVersion.getCode());
+        byte[] originalCode = method.getOriginalCode();
+        byte[] customCode = Arrays.copyOf(originalCode, originalCode.length + 2);
+        customCode[returnValueBci = originalCode.length] = (byte) Bytecodes.RETURN_VALUE;
+        customCode[throwValueBci = originalCode.length + 1] = (byte) THROW_VALUE;
+        this.code = customCode;
+        this.bs = new BytecodeStream(code);
         this.stackOverflowErrorInfo = method.getSOEHandlerInfo();
         this.frameDescriptor = createFrameDescriptor(methodVersion.getMaxLocals(), methodVersion.getMaxStackSize());
         this.noForeignObjects = Truffle.getRuntime().createAssumption("noForeignObjects");
         this.implicitExceptionProfile = false;
-        this.livenessAnalysis = LivenessAnalysis.analyze(methodVersion);
+        this.livenessAnalysis = methodVersion.getLivenessAnalysis();
         /*
          * The "triviality" is partially computed here since isTrivial is called from a compiler
          * thread where the context is not accessible.
          */
-        this.trivialBytecodesCache = method.getOriginalCode().length <= method.getContext().getEspressoEnv().TrivialMethodSize
+        this.trivialBytecodesCache = originalCode.length <= method.getContext().getEspressoEnv().TrivialMethodSize
                         ? TRIVIAL_UNINITIALIZED
                         : TRIVIAL_NO;
     }
@@ -478,18 +498,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     }
 
     public SourceSection getSourceSectionAtBCI(int bci) {
-        Source s = getSource();
-        if (s == null) {
-            return null;
-        }
-
-        LineNumberTableAttribute table = getMethodVersion().getLineNumberTableAttribute();
-
-        if (table == LineNumberTableAttribute.EMPTY) {
-            return null;
-        }
-        int line = table.getLineNumber(bci);
-        return s.createSection(line);
+        return getMethodVersion().getSourceSectionAtBCI(bci);
     }
 
     @ExplodeLoop
@@ -539,6 +548,59 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         }
     }
 
+    // region continuation
+
+    public void createContinuableNode(int bci, int top) {
+        int opcode = bs.opcode(bci);
+        if (opcode == QUICK && nodes[bs.readCPI2(bci)] instanceof InvokeContinuableNode) {
+            return;
+        }
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        for (;;) { // At most 2 iterations
+            opcode = bs.volatileOpcode(bci);
+            if (opcode == QUICK) {
+                assert nodes[bs.readCPI2(bci)] instanceof InvokeQuickNode;
+                InvokeQuickNode quick = (InvokeQuickNode) nodes[bs.readCPI2(bci)];
+                // Atomically place a continuable node.
+                while (!(quick instanceof InvokeContinuableNode)) {
+                    InvokeContinuableNode icn = new InvokeContinuableNode(top, bci, quick);
+                    quick = (InvokeQuickNode) replaceQuickAt(opcode, bci, quick, icn);
+                }
+                return;
+            } else {
+                InstrumentationSupport instrument = instrumentation;
+                int statementIndex = instrument == null ? 0 : instrument.getStatementIndexAfterJump(0, 0, bs.endBCI());
+                quickenInvoke(top, bci, opcode, statementIndex);
+                // continue loop, will execute at most once more.
+            }
+        }
+    }
+
+    /**
+     * Entry point for rewinding continuations.
+     * <p>
+     * The first executed {@code bci} goes to a special {@link InvokeContinuableNode}, which handles
+     * frame restoration and re-winding of further frames. Further executions of this node delegates
+     * to a regular invoke node.
+     */
+    @Override
+    public Object resumeContinuation(VirtualFrame frame, int bci, int top) {
+        CompilerAsserts.partialEvaluationConstant(bci);
+        CompilerAsserts.partialEvaluationConstant(top);
+
+        // Ensure the InvokeContinuableNode for this BCI is spawned.
+        createContinuableNode(bci, top);
+
+        // set up local state.
+        InstrumentationSupport instrument = instrumentation;
+        int statementIndex = instrument == null ? 0 : instrument.getStatementIndexAfterJump(0, 0, bs.endBCI());
+        assert bs.opcode(bci) == QUICK && nodes[bs.readCPI2(bci)] instanceof InvokeContinuableNode;
+
+        return executeBodyFromBCI(frame, bci, top, statementIndex, true, true);
+    }
+
+    // endregion continuation
+
     public void checkNoForeignObjectAssumption(StaticObject object) {
         if (noForeignObjects.isValid() && object.isForeignObject()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -548,7 +610,13 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
     @Override
     void initializeFrame(VirtualFrame frame) {
+        // Before arguments are set up, the frame is in a weird spot in which inspecting the frame
+        // is pretty meaningless. Return the 'Unknown bci' value to signify that.
+        setBCI(frame, -1);
+        // Push frame arguments into locals.
         initArguments(frame);
+        // Initialize the BCI slot.
+        setBCI(frame, 0);
     }
 
     // region OSR support
@@ -567,7 +635,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     }
 
     @SuppressWarnings("serial")
-    private static final class EspressoOSRReturnException extends ControlFlowException {
+    public static final class EspressoOSRReturnException extends ControlFlowException implements YieldException {
         private final Object result;
         private final Throwable throwable;
 
@@ -576,7 +644,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             this.throwable = null;
         }
 
-        EspressoOSRReturnException(Throwable throwable) {
+        public EspressoOSRReturnException(Throwable throwable) {
             this.result = null;
             this.throwable = throwable;
         }
@@ -592,12 +660,17 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         private static <T extends Throwable> RuntimeException sneakyThrow(Throwable ex) throws T {
             throw (T) ex;
         }
+
+        @Override
+        public Object getYieldValue() {
+            return null;
+        }
     }
 
     @Override
     public Object executeOSR(VirtualFrame osrFrame, int target, Object interpreterState) {
         EspressoOSRInterpreterState state = (EspressoOSRInterpreterState) interpreterState;
-        return executeBodyFromBCI(osrFrame, target, state.top, state.nextStatementIndex, true);
+        return executeBodyFromBCI(osrFrame, target, state.top, state.nextStatementIndex, true, false);
     }
 
     @Override
@@ -639,29 +712,50 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     @Override
     public Object execute(VirtualFrame frame) {
         int startTop = startingStackOffset(getMethodVersion().getMaxLocals());
-        return executeBodyFromBCI(frame, 0, startTop, 0, false);
+        if (methodVersion.hasJsr()) {
+            getLanguage().getThreadLocalState().blockContinuationSuspension();
+        }
+        try {
+            return executeBodyFromBCI(frame, 0, startTop, 0, false, false);
+        } finally {
+            if (methodVersion.hasJsr()) {
+                getLanguage().getThreadLocalState().unblockContinuationSuspension();
+            }
+        }
     }
 
+    @SuppressWarnings("DataFlowIssue")   // Too complex for IntelliJ to analyze.
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
     @BytecodeInterpreterSwitch
-    Object executeBodyFromBCI(VirtualFrame frame, int startBCI, int startTop, int startStatementIndex, boolean isOSR) {
+    private Object executeBodyFromBCI(VirtualFrame frame, int startBCI, int startTop, int startStatementIndex,
+                    boolean isOSR, boolean resumeContinuation) {
         CompilerAsserts.partialEvaluationConstant(startBCI);
-        int curBCI = startBCI;
-        int top = startTop;
         final InstrumentationSupport instrument = this.instrumentation;
         int statementIndex = InstrumentationSupport.NO_STATEMENT;
         int nextStatementIndex = startStatementIndex;
         boolean skipEntryInstrumentation = isOSR;
         boolean skipLivenessActions = false;
+        boolean shouldResumeContinuation = resumeContinuation;
 
         final Counter loopCount = new Counter();
 
-        setBCI(frame, curBCI);
+        // The canonical program counter (bci) is in the first slot of the stack frame, but we
+        // prefer to work with a shadow copy in a local variable and only update the frame when
+        // needed, because that's faster.
+        setBCI(frame, startBCI);
+        int curBCI = startBCI;
+        int top = startTop;
 
-        if (instrument != null && !skipEntryInstrumentation) {
-            instrument.notifyEntry(frame, this);
+        if (instrument != null) {
+            if (resumeContinuation) {
+                instrument.notifyResume(frame, this, startStatementIndex);
+            } else if (!skipEntryInstrumentation) {
+                instrument.notifyEntry(frame, this);
+            }
         }
-        // During OSR, the method is not executed from the beginning hence onStart is not applicable
+
+        // During OSR or continuation resume, the method is not executed from the beginning hence
+        // onStart is not applicable.
         if (!isOSR) {
             livenessAnalysis.onStart(frame, skipLivenessActions);
         }
@@ -1199,7 +1293,14 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                         if (instrument != null) {
                             instrument.exitAt(frame, statementIndex, returnValue);
                         }
-                        return returnValue;
+
+                        // This branch must not be a loop exit.
+                        // Let the next loop iteration return this
+                        top = startingStackOffset(getMethodVersion().getMaxLocals());
+                        frame.setObjectStatic(top, returnValue);
+                        top++;
+                        curBCI = returnValueBci;
+                        continue loop;
                     }
                     // @formatter:off
                     // TODO(peterssen): Order shuffled.
@@ -1230,7 +1331,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                     case ARRAYLENGTH : arrayLength(frame, top, curBCI); break;
 
                     case ATHROW      :
-                        throw getMeta().throwException(nullCheck(popObject(frame, top - 1)));
+                        throw getMethod().getMeta().throwException(nullCheck(popObject(frame, top - 1)));
 
                     case CHECKCAST   : {
                         StaticObject receiver = peekObject(frame, top - 1);
@@ -1393,17 +1494,52 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                             CompilerDirectives.transferToInterpreterAndInvalidate();
                             quickNode = getBaseQuickNode(curBCI, top, statementIndex, quickNode);
                         }
-                        top += quickNode.execute(frame);
+                        top += quickNode.execute(frame, shouldResumeContinuation);
+                        shouldResumeContinuation = false;
                         break;
                     }
                     case SLIM_QUICK:
-                        top += sparseNodes[curBCI].execute(frame);
+                        top += sparseNodes[curBCI].execute(frame, false);
                         break;
+                    case RETURN_VALUE:
+                        /*
+                         * Synthetic bytecode used to avoid merging interpreter loop exits too early
+                         * (and thus lose partial-evaluation constants too early). When reached, the
+                         * object at stack slot 0 should be returned.
+                         */
+                        assert top == startingStackOffset(getMethodVersion().getMaxLocals()) + 1;
+                        assert curBCI == returnValueBci;
+                        return frame.getObjectStatic(top - 1);
+                    case THROW_VALUE:
+                        /*
+                         * Synthetic bytecode used to avoid merging interpreter loop exits too early
+                         * (and thus lose partial-evaluation constants too early). When reached, the
+                         * object at stack slot 0 should be thrown.
+                         */
+                        assert top == startingStackOffset(getMethodVersion().getMaxLocals()) + 1;
+                        assert curBCI == throwValueBci;
+                        throw new ThrowOutOfInterpreterLoop((RuntimeException) frame.getObjectStatic(top - 1));
 
                     default:
                         CompilerDirectives.transferToInterpreterAndInvalidate();
                         throw EspressoError.shouldNotReachHere(Bytecodes.nameOf(curOpcode));
                 }
+            } catch (UnwindContinuationException unwindContinuationExceptionRequest) {
+                /*
+                 * Note: The absence of a continuum record for the bci in the method acts as a
+                 * per-bci profile.
+                 */
+                // Get the frame from the stack into the VM heap.
+                copyFrameToUnwindRequest(frame, unwindContinuationExceptionRequest, curBCI, top);
+                if (instrument != null) {
+                    instrument.notifyYieldAt(frame, unwindContinuationExceptionRequest.getContinuation(), statementIndex);
+                }
+                // This branch must not be a loop exit. Let the next loop iteration throw this
+                top = startingStackOffset(getMethodVersion().getMaxLocals());
+                frame.setObjectStatic(top, unwindContinuationExceptionRequest);
+                top++;
+                curBCI = throwValueBci;
+                continue loop;
             } catch (AbstractTruffleException | StackOverflowError | OutOfMemoryError e) {
                 CompilerAsserts.partialEvaluationConstant(curBCI);
                 // Handle both guest and host StackOverflowError.
@@ -1443,6 +1579,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                     if (CompilerDirectives.hasNextTier() && loopCount.value > 0) {
                         LoopNode.reportLoopCount(this, loopCount.value);
                     }
+                    // this branch is not compiled, it can be a loop exit
                     throw wrappedStackOverflowError;
 
                 } else /* EspressoException or AbstractTruffleException or OutOfMemoryError */ {
@@ -1454,12 +1591,14 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                             CompilerDirectives.transferToInterpreter();
                             getRoot().abortMonitor(frame);
                             // Tearing down the VM, no need to report loop count.
+                            // this branch is not compiled, it can be a loop exit
                             throw e;
                         }
                         assert getContext().getEspressoEnv().Polyglot;
-                        getMeta().polyglot.ForeignException.safeInitialize(); // should fold
+                        Meta meta = getMethod().getMeta();
+                        meta.polyglot.ForeignException.safeInitialize(); // should fold
                         wrappedException = EspressoException.wrap(
-                                        getAllocator().createForeignException(getContext(), e, InteropLibrary.getUncached(e)), getMeta());
+                                        getAllocator().createForeignException(getContext(), e, InteropLibrary.getUncached(e)), meta);
                     } else {
                         assert e instanceof OutOfMemoryError;
                         CompilerDirectives.transferToInterpreter();
@@ -1470,7 +1609,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                     ExceptionHandler handler = null;
                     for (ExceptionHandler toCheck : handlers) {
                         CompilerAsserts.partialEvaluationConstant(toCheck);
-                        if (curBCI >= toCheck.getStartBCI() && curBCI < toCheck.getEndBCI()) {
+                        if (toCheck.covers(curBCI)) {
                             Klass catchType = null;
                             if (!toCheck.isCatchAll()) {
                                 // exception handlers are similar to instanceof bytecodes, so we
@@ -1486,6 +1625,10 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                         }
                     }
                     if (handler != null) {
+                        // If there is a lazy stack trace being collected
+                        // we need to materialize here since the handler is likely
+                        // on a different line than the exception point
+                        TruffleStackTrace.fillIn(wrappedException);
                         clearOperandStack(frame, top);
                         top = startingStackOffset(getMethodVersion().getMaxLocals());
                         checkNoForeignObjectAssumption(wrappedException.getGuestException());
@@ -1502,7 +1645,14 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                         if (CompilerDirectives.hasNextTier() && loopCount.value > 0) {
                             LoopNode.reportLoopCount(this, loopCount.value);
                         }
-                        throw e;
+
+                        // This branch must not be a loop exit.
+                        // Let the next loop iteration throw this
+                        top = startingStackOffset(getMethodVersion().getMaxLocals());
+                        frame.setObjectStatic(top, wrappedException);
+                        top++;
+                        curBCI = throwValueBci;
+                        continue loop;
                     }
                 }
             } catch (EspressoOSRReturnException e) {
@@ -1513,7 +1663,15 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 if (instrument != null) {
                     instrument.notifyReturn(frame, statementIndex, returnValue);
                 }
-                return returnValue;
+
+                // This branch must not be a loop exit. Let the next loop iteration return this
+                top = startingStackOffset(getMethodVersion().getMaxLocals());
+                frame.setObjectStatic(top, returnValue);
+                top++;
+                curBCI = returnValueBci;
+                continue loop;
+            } catch (ThrowOutOfInterpreterLoop e) {
+                throw e.reThrow();
             }
             assert curOpcode != WIDE && curOpcode != LOOKUPSWITCH && curOpcode != TABLESWITCH;
 
@@ -1525,6 +1683,24 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             top += Bytecodes.stackEffectOf(curOpcode);
             curBCI = targetBCI;
         }
+    }
+
+    private static final class ThrowOutOfInterpreterLoop extends ControlFlowException {
+        @Serial private static final long serialVersionUID = 774753014650104744L;
+        private final RuntimeException exception;
+
+        private ThrowOutOfInterpreterLoop(RuntimeException exception) {
+            this.exception = exception;
+        }
+
+        RuntimeException reThrow() {
+            throw exception;
+        }
+    }
+
+    private void copyFrameToUnwindRequest(VirtualFrame frame, UnwindContinuationException unwindContinuationExceptionRequest, int bci, int top) {
+        // Extend the linked list of frame records as we unwind.
+        unwindContinuationExceptionRequest.head = HostFrameRecord.recordFrame(frame, getMethodVersion(), bci, top, unwindContinuationExceptionRequest.head);
     }
 
     @Override
@@ -1544,23 +1720,24 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
     private StaticObject newReferenceObject(Klass klass) {
         assert !klass.isPrimitive() : "Verifier guarantee";
-        GuestAllocator.AllocationChecks.checkCanAllocateNewReference(getMeta(), klass, true, this);
+        GuestAllocator.AllocationChecks.checkCanAllocateNewReference(getMethod().getMeta(), klass, true, this);
         return getAllocator().createNew((ObjectKlass) klass);
     }
 
     private StaticObject newPrimitiveArray(byte jvmPrimitiveType, int length) {
-        GuestAllocator.AllocationChecks.checkCanAllocateArray(getMeta(), length, this);
-        return getAllocator().createNewPrimitiveArray(getMeta(), jvmPrimitiveType, length);
+        Meta meta = getMethod().getMeta();
+        GuestAllocator.AllocationChecks.checkCanAllocateArray(meta, length, this);
+        return getAllocator().createNewPrimitiveArray(meta, jvmPrimitiveType, length);
     }
 
     private StaticObject newReferenceArray(Klass componentType, int length) {
-        GuestAllocator.AllocationChecks.checkCanAllocateArray(getMeta(), length, this);
+        GuestAllocator.AllocationChecks.checkCanAllocateArray(getMethod().getMeta(), length, this);
         return getAllocator().createNewReferenceArray(componentType, length);
     }
 
     private BaseQuickNode getBaseQuickNode(int curBCI, int top, int statementIndex, BaseQuickNode quickNode) {
         // block while class redefinition is ongoing
-        quickNode.getContext().getClassRedefinition().check();
+        getMethod().getContext().getClassRedefinition().check();
         BaseQuickNode result = quickNode;
         result = atomic(() -> {
             // re-check if node was already replaced by another thread
@@ -1574,7 +1751,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 char cpi = original.readCPI(curBCI);
                 int nodeOpcode = original.currentBC(curBCI);
                 Method resolutionSeed = resolveMethodNoCache(nodeOpcode, cpi);
-                BaseQuickNode toInsert = insert(dispatchQuickened(top, curBCI, cpi, nodeOpcode, statementIndex, resolutionSeed, getContext().getEspressoEnv().bytecodeLevelInlining));
+                BaseQuickNode toInsert = insert(dispatchQuickened(top, curBCI, cpi, nodeOpcode, statementIndex, resolutionSeed, getMethod().getContext().getEspressoEnv().bytecodeLevelInlining));
                 nodes[readCPI(curBCI)] = toInsert;
                 return toInsert;
             }
@@ -1821,7 +1998,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 }
             });
         }
-        refArrayStoreNode.arrayStore(getLanguage(), getContext().getMeta(), popObject(frame, top - 1), index, array);
+        refArrayStoreNode.arrayStore(getLanguage(), getMethod().getMeta(), popObject(frame, top - 1), index, array);
     }
 
     private int beforeJumpChecks(VirtualFrame frame, int curBCI, int targetBCI, int top, int statementIndex, InstrumentationSupport instrument, Counter loopCount, boolean skipLivenessActions) {
@@ -1872,7 +2049,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         ExceptionHandler[] handlers = getMethodVersion().getExceptionHandlers();
         ExceptionHandler resolved = null;
         for (ExceptionHandler toCheck : handlers) {
-            if (bci >= toCheck.getStartBCI() && bci < toCheck.getEndBCI()) {
+            if (toCheck.covers(bci)) {
                 Klass catchType = null;
                 if (!toCheck.isCatchAll()) {
                     // exception handlers are similar to instanceof bytecodes, so we pass instanceof
@@ -1963,7 +2140,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         CompilerAsserts.neverPartOfCompilation();
         Objects.requireNonNull(node);
         if (sparseNodes == QuickNode.EMPTY_ARRAY) {
-            sparseNodes = new QuickNode[getMethodVersion().getCode().length];
+            sparseNodes = new QuickNode[code.length];
         }
         sparseNodes[curBCI] = insert(node);
     }
@@ -1971,7 +2148,6 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     private void patchBci(int bci, byte opcode, char nodeIndex) {
         CompilerAsserts.neverPartOfCompilation();
         assert Bytecodes.isQuickened(opcode);
-        byte[] code = getMethodVersion().getCode();
 
         int oldBC = code[bci];
         if (opcode == (byte) QUICK) {
@@ -2014,7 +2190,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         CompilerAsserts.neverPartOfCompilation();
         assert opcode == CHECKCAST;
         BaseQuickNode quick = tryPatchQuick(curBCI, () -> new CheckCastQuickNode(resolveType(CHECKCAST, readCPI(curBCI)), top, curBCI));
-        quick.execute(frame);
+        quick.execute(frame, false);
         assert Bytecodes.stackEffectOf(opcode) == 0;
         return 0; // Bytecodes.stackEffectOf(opcode);
     }
@@ -2023,24 +2199,39 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         CompilerAsserts.neverPartOfCompilation();
         assert opcode == INSTANCEOF;
         BaseQuickNode quick = tryPatchQuick(curBCI, () -> new InstanceOfQuickNode(resolveType(INSTANCEOF, readCPI(curBCI)), top, curBCI));
-        quick.execute(frame);
+        quick.execute(frame, false);
         assert Bytecodes.stackEffectOf(opcode) == 0;
         return 0; // Bytecodes.stackEffectOf(opcode);
     }
 
+    @SuppressWarnings("try")
     private int quickenInvoke(VirtualFrame frame, int top, int curBCI, int opcode, int statementIndex) {
+        InvokeQuickNode quick = quickenInvoke(top, curBCI, opcode, statementIndex);
+        if (opcode == INVOKESTATIC && quick instanceof InvokeStaticQuickNode invokeStaticQuickNode) {
+            try (EspressoLanguage.DisableSingleStepping ignored = getLanguage().disableStepping()) {
+                invokeStaticQuickNode.initializeResolvedKlass();
+            }
+        }
+        // Perform the call outside of the lock.
+        // We _subtract_ the stack effect here to undo its effect, as the stack effect of the
+        // replaced opcode will be computed by quick.execute(frame), and then re-applied at
+        // the bottom of the interpreter loop. So we have to subtract the stack effect to
+        // prevent double counting.
+        return quick.execute(frame, false) - Bytecodes.stackEffectOf(opcode);
+    }
+
+    private InvokeQuickNode quickenInvoke(int top, int curBCI, int opcode, int statementIndex) {
         QUICKENED_INVOKES.inc();
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert Bytecodes.isInvoke(opcode);
-        BaseQuickNode quick = tryPatchQuick(curBCI, () -> {
+        InvokeQuickNode quick = (InvokeQuickNode) tryPatchQuick(curBCI, () -> {
             // During resolution of the symbolic reference to the method, any of the exceptions
             // pertaining to method resolution (&sect;5.4.3.3) can be thrown.
             char cpi = readCPI(curBCI);
             Method resolutionSeed = resolveMethod(opcode, cpi);
-            return dispatchQuickened(top, curBCI, cpi, opcode, statementIndex, resolutionSeed, getContext().getEspressoEnv().bytecodeLevelInlining);
+            return dispatchQuickened(top, curBCI, cpi, opcode, statementIndex, resolutionSeed, getMethod().getContext().getEspressoEnv().bytecodeLevelInlining);
         });
-        // Perform the call outside of the lock.
-        return quick.execute(frame) - Bytecodes.stackEffectOf(opcode);
+        return quick;
     }
 
     /**
@@ -2052,15 +2243,21 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         assert Bytecodes.isInvoke(opcode);
         BaseQuickNode invoke = generifyInlinedMethodNode(top, opcode, curBCI, statementIndex, resolutionSeed);
         // Perform the call outside of the lock.
-        return invoke.execute(frame);
+        return invoke.execute(frame, false);
     }
 
     /**
      * Atomically replaces a quick node with another one.
      */
     public int replaceQuickAt(VirtualFrame frame, int opcode, int curBCI, BaseQuickNode old, BaseQuickNode replacement) {
+        BaseQuickNode invoke = replaceQuickAt(opcode, curBCI, old, replacement);
+        // Perform the call outside of the lock.
+        return invoke.execute(frame, false);
+    }
+
+    private BaseQuickNode replaceQuickAt(int opcode, int curBCI, BaseQuickNode old, BaseQuickNode replacement) {
         CompilerAsserts.neverPartOfCompilation();
-        assert Bytecodes.isInvoke(opcode);
+        assert Bytecodes.isInvoke(opcode) || opcode == QUICK;
         BaseQuickNode invoke = atomic(() -> {
             assert bs.currentBC(curBCI) == QUICK;
             char nodeIndex = readCPI(curBCI);
@@ -2072,8 +2269,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             nodes[nodeIndex] = currentQuick.replace(replacement);
             return replacement;
         });
-        // Perform the call outside of the lock.
-        return invoke.execute(frame);
+        return invoke;
     }
 
     /**
@@ -2115,14 +2311,14 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert opcode == GETFIELD;
         BaseQuickNode getField = tryPatchQuick(curBCI, () -> new QuickenedGetFieldNode(top, curBCI, statementIndex, field));
-        return getField.execute(frame) - Bytecodes.stackEffectOf(opcode);
+        return getField.execute(frame, false) - Bytecodes.stackEffectOf(opcode);
     }
 
     public int quickenPutField(VirtualFrame frame, int top, int curBCI, int opcode, int statementIndex, Field field) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert opcode == PUTFIELD;
         BaseQuickNode putField = tryPatchQuick(curBCI, () -> new QuickenedPutFieldNode(top, curBCI, field, statementIndex));
-        return putField.execute(frame) - Bytecodes.stackEffectOf(opcode);
+        return putField.execute(frame, false) - Bytecodes.stackEffectOf(opcode);
     }
 
     private int quickenArrayLength(VirtualFrame frame, int top, int curBCI) {
@@ -2134,7 +2330,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 return injectQuick(curBCI, new ArrayLengthQuickNode(top, curBCI), SLIM_QUICK);
             }
         });
-        return arrayLengthNode.execute(frame) - Bytecodes.stackEffectOf(ARRAYLENGTH);
+        return arrayLengthNode.execute(frame, false) - Bytecodes.stackEffectOf(ARRAYLENGTH);
     }
 
     private int quickenArrayLoad(VirtualFrame frame, int top, int curBCI, int loadOpcode) {
@@ -2163,7 +2359,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 return injectQuick(curBCI, quickNode, SLIM_QUICK);
             }
         });
-        return arrayLoadNode.execute(frame) - Bytecodes.stackEffectOf(loadOpcode);
+        return arrayLoadNode.execute(frame, false) - Bytecodes.stackEffectOf(loadOpcode);
     }
 
     private int quickenArrayStore(final VirtualFrame frame, int top, int curBCI, int storeOpcode) {
@@ -2192,13 +2388,12 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 return injectQuick(curBCI, quickNode, SLIM_QUICK);
             }
         });
-        return arrayStoreNode.execute(frame) - Bytecodes.stackEffectOf(storeOpcode);
+        return arrayStoreNode.execute(frame, false) - Bytecodes.stackEffectOf(storeOpcode);
     }
 
     // endregion quickenForeign
 
-    private BaseQuickNode dispatchQuickened(int top, int curBCI, char cpi, int opcode, int statementIndex, Method resolutionSeed, boolean allowBytecodeInlining) {
-        InvokeQuickNode invoke;
+    private InvokeQuickNode dispatchQuickened(int top, int curBCI, char cpi, int opcode, int statementIndex, Method resolutionSeed, boolean allowBytecodeInlining) {
         Method resolved = resolutionSeed;
         int resolvedOpCode = opcode;
         switch (opcode) {
@@ -2207,16 +2402,22 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 // instruction throws an IncompatibleClassChangeError.
                 if (!resolved.isStatic()) {
                     enterLinkageExceptionProfile();
-                    throw throwBoundary(getMeta().java_lang_IncompatibleClassChangeError);
+                    throw throwBoundary(getMethod().getMeta().java_lang_IncompatibleClassChangeError, "Expected static method '%s.%s%s'",
+                                    resolved.getDeclaringKlass().getName(),
+                                    resolved.getName(),
+                                    resolved.getRawSignature());
                 }
                 break;
             case INVOKEINTERFACE:
                 // Otherwise, if the resolved method is static or (jdk8 or earlier) private, the
                 // invokeinterface instruction throws an IncompatibleClassChangeError.
                 if (resolved.isStatic() ||
-                                (getContext().getJavaVersion().java8OrEarlier() && resolved.isPrivate())) {
+                                (getMethod().getContext().getJavaVersion().java8OrEarlier() && resolved.isPrivate())) {
                     enterLinkageExceptionProfile();
-                    throw throwBoundary(getMeta().java_lang_IncompatibleClassChangeError);
+                    throw throwBoundary(getMethod().getMeta().java_lang_IncompatibleClassChangeError, "Expected instance method '%s.%s%s'",
+                                    resolved.getDeclaringKlass().getName(),
+                                    resolved.getName(),
+                                    resolved.getRawSignature());
                 }
                 if (resolved.getITableIndex() < 0) {
                     if (resolved.isPrivate()) {
@@ -2234,7 +2435,10 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 // instruction throws an IncompatibleClassChangeError.
                 if (resolved.isStatic()) {
                     enterLinkageExceptionProfile();
-                    throw throwBoundary(getMeta().java_lang_IncompatibleClassChangeError);
+                    throw throwBoundary(getMethod().getMeta().java_lang_IncompatibleClassChangeError, "Expected instance not static method '%s.%s%s'",
+                                    resolved.getDeclaringKlass().getName(),
+                                    resolved.getName(),
+                                    resolved.getRawSignature());
                 }
                 if (resolved.isFinalFlagSet() || resolved.getDeclaringKlass().isFinalFlagSet() || resolved.isPrivate()) {
                     resolvedOpCode = INVOKESPECIAL;
@@ -2247,18 +2451,21 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 if (resolved.isConstructor()) {
                     if (resolved.getDeclaringKlass().getName() != getConstantPool().methodAt(cpi).getHolderKlassName(getConstantPool())) {
                         enterLinkageExceptionProfile();
-                        throw throwBoundary(getMeta().java_lang_NoSuchMethodError,
+                        throw throwBoundary(getMethod().getMeta().java_lang_NoSuchMethodError,
                                         "%s.%s%s",
-                                        resolved.getDeclaringKlass().getNameAsString(),
-                                        resolved.getNameAsString(),
-                                        resolved.getSignatureAsString());
+                                        resolved.getDeclaringKlass().getName(),
+                                        resolved.getName(),
+                                        resolved.getRawSignature());
                     }
                 }
                 // Otherwise, if the resolved method is a class (static) method, the invokespecial
                 // instruction throws an IncompatibleClassChangeError.
                 if (resolved.isStatic()) {
                     enterLinkageExceptionProfile();
-                    throw throwBoundary(getMeta().java_lang_IncompatibleClassChangeError);
+                    throw throwBoundary(getMethod().getMeta().java_lang_IncompatibleClassChangeError, "Expected instance not static method '%s.%s%s'",
+                                    resolved.getDeclaringKlass().getName(),
+                                    resolved.getName(),
+                                    resolved.getRawSignature());
                 }
                 // If all of the following are true, let C be the direct superclass of the current
                 // class:
@@ -2273,7 +2480,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 // class file, regardless of the actual value of the flag in the class file and the
                 // version of the class file.
                 if (!resolved.isConstructor()) {
-                    Klass declaringKlass = getMethod().getDeclaringKlass();
+                    ObjectKlass declaringKlass = getMethod().getDeclaringKlass();
                     Klass symbolicRef = ((MethodRefConstant.Indexes) getConstantPool().methodAt(cpi)).getResolvedHolderKlass(declaringKlass, getConstantPool());
                     if (!symbolicRef.isInterface() &&
                                     symbolicRef != declaringKlass &&
@@ -2288,19 +2495,26 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.unimplemented("Quickening for " + Bytecodes.nameOf(opcode));
         }
+
         // Skip inlined nodes if instrumentation is live.
         // Lock must be owned for correctness.
         assert lockIsHeld();
         boolean tryBytecodeLevelInlining = this.instrumentation == null && allowBytecodeInlining;
         if (tryBytecodeLevelInlining) {
-            invoke = InlinedMethodNode.createFor(resolved, top, resolvedOpCode, curBCI, statementIndex);
-            if (invoke != null) {
-                return invoke;
+            var node = InlinedMethodNode.createFor(resolved, top, resolvedOpCode, curBCI, statementIndex);
+            if (node != null) {
+                return node;
             }
         }
 
+        InvokeQuickNode invoke;
         if (resolved.isPolySignatureIntrinsic()) {
-            invoke = new InvokeHandleNode(resolved, getDeclaringKlass(), top, curBCI);
+            MethodHandleInvoker invoker = null;
+            if ((resolvedOpCode == INVOKEVIRTUAL || resolvedOpCode == INVOKESPECIAL) && (getConstantPool().resolvedMethodRefAt(getDeclaringKlass(), cpi) instanceof ClassMethodRefConstant methodRef)) {
+                // There might be an invoker if it's an InvokeGeneric
+                invoker = methodRef.invoker();
+            }
+            invoke = new InvokeHandleNode(resolved, invoker, top, curBCI);
         } else {
             // @formatter:off
             switch (resolvedOpCode) {
@@ -2328,8 +2542,8 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     }
 
     @TruffleBoundary
-    private RuntimeException throwBoundary(ObjectKlass exceptionKlass, String messageFormat, String... args) {
-        throw getMeta().throwExceptionWithMessage(exceptionKlass, String.format(Locale.ENGLISH, messageFormat, (Object[]) args));
+    private RuntimeException throwBoundary(ObjectKlass exceptionKlass, String messageFormat, Object... args) {
+        throw getMeta().throwExceptionWithMessage(exceptionKlass, String.format(Locale.ENGLISH, messageFormat, args));
     }
 
     private int quickenInvokeDynamic(final VirtualFrame frame, int top, int curBCI, int opcode) {
@@ -2353,11 +2567,10 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         }
         if (quick != null) {
             // Do invocation outside of the lock.
-            return quick.execute(frame) - Bytecodes.stackEffectOf(opcode);
+            return quick.execute(frame, false) - Bytecodes.stackEffectOf(opcode);
         }
-
         // Resolution should happen outside of the bytecode patching lock.
-        InvokeDynamicConstant.CallSiteLink link = pool.linkInvokeDynamic(getMethod().getDeclaringKlass(), indyIndex);
+        InvokeDynamicConstant.CallSiteLink link = pool.linkInvokeDynamic(getMethod().getDeclaringKlass(), indyIndex, curBCI, getMethod());
 
         // re-lock to check if someone did the job for us, since this was a heavy operation.
         quick = atomic(() -> {
@@ -2365,10 +2578,10 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 // someone beat us to it, just trust him.
                 return nodes[readCPI(curBCI)];
             } else {
-                return injectQuick(curBCI, new InvokeDynamicCallSiteNode(link.getMemberName(), link.getUnboxedAppendix(), link.getParsedSignature(), getMeta(), top, curBCI), QUICK);
+                return injectQuick(curBCI, new InvokeDynamicCallSiteNode(link.getMemberName(), link.getUnboxedAppendix(), link.getParsedSignature(), getMethod().getMeta(), top, curBCI), QUICK);
             }
         });
-        return quick.execute(frame) - Bytecodes.stackEffectOf(opcode);
+        return quick.execute(frame, false) - Bytecodes.stackEffectOf(opcode);
     }
 
     // endregion Bytecode quickening
@@ -2417,7 +2630,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             dimensions[i] = popInt(frame, top - allocatedDimensions + i);
         }
         Klass component = ((ArrayKlass) klass).getComponentType();
-        GuestAllocator.AllocationChecks.checkCanAllocateMultiArray(getMeta(), component, dimensions, this);
+        GuestAllocator.AllocationChecks.checkCanAllocateMultiArray(getMethod().getMeta(), component, dimensions, this);
         StaticObject value = getAllocator().createNewMultiArray(component, dimensions);
         putObject(frame, top - allocatedDimensions, value);
         return -allocatedDimensions; // Does not include the created (pushed) array.
@@ -2537,7 +2750,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             return value;
         }
         enterImplicitExceptionProfile();
-        throw getMeta().throwNullPointerException();
+        throw getMethod().getMeta().throwNullPointerException();
     }
 
     private int checkNonZero(int value) {
@@ -2545,7 +2758,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             return value;
         }
         enterImplicitExceptionProfile();
-        throw throwBoundary(getMeta().java_lang_ArithmeticException, "/ by zero");
+        throw throwBoundary(getMethod().getMeta().java_lang_ArithmeticException, "/ by zero");
     }
 
     private long checkNonZero(long value) {
@@ -2553,7 +2766,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             return value;
         }
         enterImplicitExceptionProfile();
-        throw throwBoundary(getMeta().java_lang_ArithmeticException, "/ by zero");
+        throw throwBoundary(getMethod().getMeta().java_lang_ArithmeticException, "/ by zero");
     }
 
     // endregion Misc. checks
@@ -2584,11 +2797,11 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
          */
         if (field.isStatic() != (opcode == PUTSTATIC)) {
             enterLinkageExceptionProfile();
-            throw throwBoundary(getMeta().java_lang_IncompatibleClassChangeError,
+            throw throwBoundary(getMethod().getMeta().java_lang_IncompatibleClassChangeError,
                             "Expected %s field %s.%s",
                             (opcode == PUTSTATIC) ? "static" : "non-static",
-                            field.getDeclaringKlass().getNameAsString(),
-                            field.getNameAsString());
+                            field.getDeclaringKlass().getName(),
+                            field.getName());
         }
 
         /*
@@ -2603,12 +2816,12 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         if (field.isFinalFlagSet()) {
             if (field.getDeclaringKlass() != getDeclaringKlass()) {
                 enterLinkageExceptionProfile();
-                throw throwBoundary(getMeta().java_lang_IllegalAccessError,
+                throw throwBoundary(getMethod().getMeta().java_lang_IllegalAccessError,
                                 "Update to %s final field %s.%s attempted from a different class (%s) than the field's declaring class",
                                 (opcode == PUTSTATIC) ? "static" : "non-static",
-                                field.getDeclaringKlass().getNameAsString(),
-                                field.getNameAsString(),
-                                getDeclaringKlass().getNameAsString());
+                                field.getDeclaringKlass().getName(),
+                                field.getName(),
+                                getDeclaringKlass().getName());
             }
 
             boolean enforceInitializerCheck = (getLanguage().getSpecComplianceMode() == STRICT) ||
@@ -2619,12 +2832,12 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                             ((opcode == PUTFIELD && !getMethod().isConstructor()) ||
                                             (opcode == PUTSTATIC && !getMethod().isClassInitializer()))) {
                 enterLinkageExceptionProfile();
-                throw throwBoundary(getMeta().java_lang_IllegalAccessError,
+                throw throwBoundary(getMethod().getMeta().java_lang_IllegalAccessError,
                                 "Update to %s final field %s.%s attempted from a different method (%s) than the initializer method %s ",
                                 (opcode == PUTSTATIC) ? "static" : "non-static",
-                                field.getDeclaringKlass().getNameAsString(),
-                                field.getNameAsString(),
-                                getMethod().getNameAsString(),
+                                field.getDeclaringKlass().getName(),
+                                field.getName(),
+                                getMethod().getName(),
                                 (opcode == PUTSTATIC) ? "<clinit>" : "<init>");
             }
         }
@@ -2635,17 +2848,22 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         int slotCount = (typeHeader == 'J' || typeHeader == 'D') ? 2 : 1;
         assert slotCount == field.getKind().getSlotCount();
         int slot = top - slotCount - 1; // -receiver
-        StaticObject receiver = (opcode == PUTSTATIC)
-                        ? field.getDeclaringKlass().tryInitializeAndGetStatics()
-                        // Do not release the object, it might be read again in PutFieldNode
-                        : nullCheck(popObject(frame, slot));
-
-        if (!noForeignObjects.isValid() && opcode == PUTFIELD) {
-            if (receiver.isForeignObject()) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                // Restore the receiver for quickening.
-                putObject(frame, slot, receiver);
-                return quickenPutField(frame, top, curBCI, opcode, statementIndex, field);
+        StaticObject receiver;
+        if (opcode == PUTSTATIC) {
+            receiver = initializeAndGetStatics(field);
+        } else {
+            if (!noForeignObjects.isValid()) {
+                // Do not release the object, it might be read again in PutFieldNode
+                receiver = nullCheck(peekObject(frame, slot));
+                if (receiver.isForeignObject()) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    // Restore the receiver for quickening.
+                    putObject(frame, slot, receiver);
+                    return quickenPutField(frame, top, curBCI, opcode, statementIndex, field);
+                }
+                popObject(frame, slot); // clear the slot
+            } else {
+                receiver = nullCheck(popObject(frame, slot));
             }
         }
 
@@ -2745,7 +2963,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
          */
         if (field.isStatic() != (opcode == GETSTATIC)) {
             enterLinkageExceptionProfile();
-            throw throwBoundary(getMeta().java_lang_IncompatibleClassChangeError,
+            throw throwBoundary(getMethod().getMeta().java_lang_IncompatibleClassChangeError,
                             "Expected %s field %s.%s",
                             (opcode == GETSTATIC) ? "static" : "non-static",
                             field.getDeclaringKlass().getNameAsString(),
@@ -2755,17 +2973,22 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         assert field.isStatic() == (opcode == GETSTATIC);
 
         int slot = top - 1;
-        StaticObject receiver = opcode == GETSTATIC
-                        ? field.getDeclaringKlass().tryInitializeAndGetStatics()
-                        // Do not release the object, it might be read again in GetFieldNode
-                        : nullCheck(peekObject(frame, slot));
-
-        if (!noForeignObjects.isValid() && opcode == GETFIELD) {
-            if (receiver.isForeignObject()) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                // Restore the receiver for quickening.
-                putObject(frame, slot, receiver);
-                return quickenGetField(frame, top, curBCI, opcode, statementIndex, field);
+        StaticObject receiver;
+        if (opcode == GETSTATIC) {
+            receiver = initializeAndGetStatics(field);
+        } else {
+            if (!noForeignObjects.isValid()) {
+                // Do not release the object yet, it might be read again in GetFieldNode
+                receiver = nullCheck(peekObject(frame, slot));
+                if (receiver.isForeignObject()) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    // Restore the receiver for quickening.
+                    putObject(frame, slot, receiver);
+                    return quickenGetField(frame, top, curBCI, opcode, statementIndex, field);
+                }
+                popObject(frame, slot); // clear the slot
+            } else {
+                receiver = nullCheck(popObject(frame, slot));
             }
         }
 
@@ -2800,6 +3023,18 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         int slotCount = (typeHeader == 'J' || typeHeader == 'D') ? 2 : 1;
         assert slotCount == field.getKind().getSlotCount();
         return slotCount;
+    }
+
+    @SuppressWarnings("try")
+    private StaticObject initializeAndGetStatics(Field field) {
+        ObjectKlass declaringKlass = field.getDeclaringKlass();
+        if (!declaringKlass.isInitialized()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            try (EspressoLanguage.DisableSingleStepping ignored = getLanguage().disableStepping()) {
+                declaringKlass.safeInitialize();
+            }
+        }
+        return declaringKlass.getStatics();
     }
 
     // endregion Field read/write
@@ -2899,6 +3134,14 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             }
         }
 
+        public void notifyResume(@SuppressWarnings("unused") VirtualFrame frame, AbstractInstrumentableBytecodeNode instrumentableNode, int statementIndex) {
+            if (context.shouldReportVMEvents() && method.hasActiveHook()) {
+                if (context.reportOnMethodEntry(method, instrumentableNode.getScope(frame, true))) {
+                    resumeAt(frame, statementIndex);
+                }
+            }
+        }
+
         public void notifyReturn(VirtualFrame frame, int statementIndex, Object returnValue) {
             if (context.shouldReportVMEvents() && method.hasActiveHook()) {
                 if (context.reportOnMethodReturn(method, returnValue)) {
@@ -2914,6 +3157,15 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             }
             ProbeNode probeNode = wrapperNode.getProbeNode();
             probeNode.onReturnExceptionalOrUnwind(frame, t, false);
+        }
+
+        void notifyYieldAt(VirtualFrame frame, Object o, int statementIndex) {
+            WrapperNode wrapperNode = getWrapperAt(statementIndex);
+            if (wrapperNode == null) {
+                return;
+            }
+            ProbeNode probeNode = wrapperNode.getProbeNode();
+            probeNode.onYield(frame, o);
         }
 
         public void notifyFieldModification(VirtualFrame frame, int index, Field field, StaticObject receiver, Object value) {
@@ -2940,6 +3192,29 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             ProbeNode probeNode = wrapperNode.getProbeNode();
             try {
                 probeNode.onEnter(frame);
+            } catch (Throwable t) {
+                Object result = probeNode.onReturnExceptionalOrUnwind(frame, t, false);
+                if (result == ProbeNode.UNWIND_ACTION_REENTER) {
+                    // TODO maybe support this by returning a new bci?
+                    CompilerDirectives.transferToInterpreter();
+                    throw new UnsupportedOperationException();
+                } else if (result != null) {
+                    // ignore result values;
+                    // we are instrumentation statements only.
+                    return;
+                }
+                throw t;
+            }
+        }
+
+        private void resumeAt(VirtualFrame frame, int index) {
+            WrapperNode wrapperNode = getWrapperAt(index);
+            if (wrapperNode == null) {
+                return;
+            }
+            ProbeNode probeNode = wrapperNode.getProbeNode();
+            try {
+                probeNode.onResume(frame);
             } catch (Throwable t) {
                 Object result = probeNode.onReturnExceptionalOrUnwind(frame, t, false);
                 if (result == ProbeNode.UNWIND_ACTION_REENTER) {

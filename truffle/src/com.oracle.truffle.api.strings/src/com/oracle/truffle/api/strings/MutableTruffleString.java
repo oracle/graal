@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -82,7 +82,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
     private static MutableTruffleString create(Object data, int offset, int length, Encoding encoding) {
         final int codePointLength;
         if (encoding.isFixedWidth()) {
-            codePointLength = encoding.isSupported() ? length : length / JCodings.getInstance().minLength(encoding.jCoding);
+            codePointLength = encoding.isSupported() ? length : length / JCodings.getInstance().minLength(encoding);
         } else {
             codePointLength = -1;
         }
@@ -839,10 +839,11 @@ public final class MutableTruffleString extends AbstractTruffleString {
                     codeRange = TStringGuards.is8Bit(cr) ? TSCodeRange.asciiLatinBytesNonAsciiCodeRange(encoding) : cr;
                     codePointLength = length;
                 } else {
+                    JCodings jcodings = JCodings.getInstance();
                     if (data instanceof NativePointer) {
                         ((NativePointer) data).materializeByteArray(node, a, exoticMaterializeNativeProfile);
                     }
-                    long attrs = JCodings.getInstance().calcStringAttributes(node, data, offset, length, Encoding.get(encoding), 0, exoticValidProfile, exoticFixedWidthProfile);
+                    long attrs = jcodings.calcStringAttributes(node, data, offset, length, Encoding.get(encoding), 0, exoticValidProfile, exoticFixedWidthProfile);
                     codeRange = StringAttributes.getCodeRange(attrs);
                     codePointLength = StringAttributes.getCodePointLength(attrs);
                 }

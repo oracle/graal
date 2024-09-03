@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.posix.linux;
 
+import com.oracle.svm.core.util.BasedOnJDKFile;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.StackValue;
@@ -65,10 +66,7 @@ final class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
         return fastCpuTime(pthread);
     }
 
-    /**
-     * Based on jdk-20-ga, see <a href=
-     * "https://github.com/openjdk/jdk/blob/df6cf1e41d0fc2dd5f5c094f66c7c8969cf5548d/src/hotspot/os/linux/os_linux.cpp#L4976">fast_cpu_time(...)</a>.
-     */
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+10/src/hotspot/os/linux/os_linux.cpp#L5113-L5125")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static long fastCpuTime(pthread_t pthread) {
         CIntPointer threadsClockId = StackValue.get(Integer.BYTES);
@@ -79,6 +77,7 @@ final class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+10/src/hotspot/os/linux/os_linux.cpp#L4317-L4322")
     private static long fastThreadCpuTime(int clockId) {
         timespec time = UnsafeStackValue.get(timespec.class);
         if (LinuxTime.NoTransitions.clock_gettime(clockId, time) != 0) {

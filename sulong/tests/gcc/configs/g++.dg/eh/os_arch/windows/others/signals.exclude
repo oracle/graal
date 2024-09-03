@@ -1,0 +1,2 @@
+# The follow tests use signal apis not supported on Windows
+gcc-5.2.0/gcc/testsuite/g++.dg/eh/sighandle.C

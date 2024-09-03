@@ -42,14 +42,15 @@ import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-import jdk.graal.compiler.core.test.GraalCompilerTest;
-import jdk.graal.compiler.core.GraalCompilerOptions;
-import jdk.graal.compiler.test.SubprocessUtil;
-import jdk.graal.compiler.test.SubprocessUtil.Subprocess;
-import jdk.graal.compiler.truffle.test.SLTruffleGraalTestSuite;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
+
+import jdk.graal.compiler.core.GraalCompilerOptions;
+import jdk.graal.compiler.core.test.GraalCompilerTest;
+import jdk.graal.compiler.test.SubprocessUtil;
+import jdk.graal.compiler.test.SubprocessUtil.Subprocess;
+import jdk.graal.compiler.truffle.test.SLTruffleGraalTestSuite;
 
 /**
  * Tests support for dumping graphs and other info useful for debugging a compiler crash.
@@ -65,9 +66,10 @@ public class CompilationWrapperTest extends GraalCompilerTest {
         assumeManagementLibraryIsLoadable();
         testHelper(Collections.emptyList(), Arrays.asList("-XX:-TieredCompilation",
                         "-XX:+UseJVMCICompiler",
+                        "-XX:-UseJVMCINativeLibrary",
                         "-XX:JVMCIThreads=1",
-                        "-Dgraal.CompilationFailureAction=ExitVM",
-                        "-Dgraal.CrashAt=TestProgram.*",
+                        "-Djdk.graal.CompilationFailureAction=ExitVM",
+                        "-Djdk.graal.CrashAt=TestProgram.*",
                         "-Xcomp",
                         "-XX:CompileCommand=compileonly,*/TestProgram.print*",
                         TestProgram.class.getName()));
@@ -82,18 +84,25 @@ public class CompilationWrapperTest extends GraalCompilerTest {
         Assume.assumeTrue("-Xcomp broken", version.feature() < 22 || version.compareTo(jdk8316453) >= 0);
     }
 
-    static class Probe {
+    public static class Probe {
         final String substring;
-        final int expectedOccurrences;
+        final int minOccurrences;
+        final int maxOccurrences;
+
         int actualOccurrences;
         String lastMatchingLine;
 
-        Probe(String substring, int expectedOccurrences) {
-            this.substring = substring;
-            this.expectedOccurrences = expectedOccurrences;
+        public Probe(String substring, int expectedOccurrences) {
+            this(substring, expectedOccurrences, expectedOccurrences);
         }
 
-        boolean matches(String line) {
+        public Probe(String substring, int minOccurrences, int maxOccurrences) {
+            this.substring = substring;
+            this.minOccurrences = minOccurrences;
+            this.maxOccurrences = maxOccurrences;
+        }
+
+        public boolean matches(String line) {
             if (line.contains(substring)) {
                 actualOccurrences++;
                 lastMatchingLine = line;
@@ -102,8 +111,47 @@ public class CompilationWrapperTest extends GraalCompilerTest {
             return false;
         }
 
-        String test() {
-            return expectedOccurrences == actualOccurrences ? null : String.format("expected %d, got %d occurrences", expectedOccurrences, actualOccurrences);
+        public String test() {
+            if (actualOccurrences >= minOccurrences && actualOccurrences <= maxOccurrences) {
+                return null;
+            }
+            if (maxOccurrences == Integer.MAX_VALUE) {
+                return String.format("expected at least %d occurrences, found %d", minOccurrences, actualOccurrences);
+            }
+            return String.format("expected occurrences to be in [%d .. %d], found %d", minOccurrences, maxOccurrences, actualOccurrences);
+        }
+    }
+
+    public static class ZipProbe {
+        final String suffix;
+        final int minOccurrences;
+
+        int actualOccurrences = 0;
+
+        public ZipProbe(String suffix, int minOccurrences) {
+            this.suffix = suffix;
+            this.minOccurrences = minOccurrences;
+        }
+
+        public boolean matches(ZipEntry entry, ZipFile zipFile) throws IOException {
+            if (entry.getName().endsWith(suffix)) {
+                actualOccurrences++;
+                verify(entry, zipFile);
+                return true;
+            }
+            return false;
+        }
+
+        @SuppressWarnings("unused")
+        public void verify(ZipEntry entry, ZipFile zipFile) throws IOException {
+            // Meant to be overridden
+        }
+
+        public String test() {
+            if (actualOccurrences >= minOccurrences) {
+                return null;
+            }
+            return String.format("expected at least %d occurrences, found %d", minOccurrences, actualOccurrences);
         }
     }
 
@@ -116,21 +164,11 @@ public class CompilationWrapperTest extends GraalCompilerTest {
         assumeNotImpactedByJDK8316453();
         assumeManagementLibraryIsLoadable();
         final int maxProblems = 2;
-        Probe failurePatternProbe = new Probe("[[[Graal compilation failure]]]", maxProblems) {
-            @Override
-            String test() {
-                return actualOccurrences > 0 && actualOccurrences <= maxProblems ? null : String.format("expected occurrences to be in [1 .. %d]", maxProblems);
-            }
-        };
-        Probe retryingProbe = new Probe("Retrying compilation of", maxProblems) {
-            @Override
-            String test() {
-                return actualOccurrences > 0 && actualOccurrences <= maxProblems ? null : String.format("expected occurrences to be in [1 .. %d]", maxProblems);
-            }
-        };
+        Probe failurePatternProbe = new Probe("[[[Graal compilation failure]]]", 1, maxProblems);
+        Probe retryingProbe = new Probe("Retrying compilation of", maxProblems);
         Probe adjustmentProbe = new Probe("adjusting CompilationFailureAction from Diagnose to Print", 1) {
             @Override
-            String test() {
+            public String test() {
                 if (retryingProbe.actualOccurrences >= maxProblems) {
                     if (actualOccurrences == 0) {
                         return "expected at least one occurrence";
@@ -146,11 +184,12 @@ public class CompilationWrapperTest extends GraalCompilerTest {
         };
         testHelper(Arrays.asList(probes), Arrays.asList("-XX:-TieredCompilation",
                         "-XX:+UseJVMCICompiler",
+                        "-XX:-UseJVMCINativeLibrary",
                         "-XX:JVMCIThreads=1",
-                        "-Dgraal.SystemicCompilationFailureRate=0",
-                        "-Dgraal.CompilationFailureAction=Diagnose",
-                        "-Dgraal.MaxCompilationProblemsPerAction=" + maxProblems,
-                        "-Dgraal.CrashAt=TestProgram.*",
+                        "-Djdk.graal.SystemicCompilationFailureRate=0",
+                        "-Djdk.graal.CompilationFailureAction=Diagnose",
+                        "-Djdk.graal.MaxCompilationProblemsPerAction=" + maxProblems,
+                        "-Djdk.graal.CrashAt=TestProgram.*",
                         "-Xcomp",
                         "-XX:CompileCommand=compileonly,*/TestProgram.print*",
                         TestProgram.class.getName()));
@@ -165,10 +204,10 @@ public class CompilationWrapperTest extends GraalCompilerTest {
         testHelper(Collections.emptyList(),
                         Arrays.asList(
                                         SubprocessUtil.PACKAGE_OPENING_OPTIONS,
-                                        "-Dgraal.CompilationFailureAction=ExitVM",
+                                        "-Djdk.graal.CompilationFailureAction=ExitVM",
                                         "-Dpolyglot.engine.CompilationFailureAction=ExitVM",
                                         "-Dpolyglot.engine.TreatPerformanceWarningsAsErrors=all",
-                                        "-Dgraal.CrashAt=root test1"),
+                                        "-Djdk.graal.CrashAt=root test1"),
                         SLTruffleGraalTestSuite.class.getName(), "test");
     }
 
@@ -184,44 +223,48 @@ public class CompilationWrapperTest extends GraalCompilerTest {
         testHelper(Arrays.asList(probes),
                         Arrays.asList(
                                         SubprocessUtil.PACKAGE_OPENING_OPTIONS,
-                                        "-Dgraal.CompilationFailureAction=Silent",
+                                        "-Djdk.graal.CompilationFailureAction=Silent",
                                         "-Dpolyglot.engine.CompilationFailureAction=ExitVM",
                                         "-Dpolyglot.engine.TreatPerformanceWarningsAsErrors=all",
-                                        "-Dgraal.CrashAt=root test1:PermanentBailout"),
+                                        "-Djdk.graal.CrashAt=root test1:PermanentBailout"),
                         SLTruffleGraalTestSuite.class.getName(), "test");
     }
 
     private static final boolean VERBOSE = Boolean.getBoolean("CompilationWrapperTest.verbose");
 
-    private static void testHelper(List<Probe> initialProbes, List<String> extraVmArgs, String... mainClassAndArgs) throws IOException, InterruptedException {
-        final File dumpPath = new File(CompilationWrapperTest.class.getSimpleName() + "_" + System.currentTimeMillis()).getAbsoluteFile();
+    public static void testHelper(List<Probe> initialProbes,
+                    List<String> extraVmArgs,
+                    String... mainClassAndArgs) throws IOException, InterruptedException {
+        testHelper(initialProbes, List.of(), extraVmArgs, mainClassAndArgs);
+    }
+
+    public static void testHelper(List<Probe> initialOutputProbes,
+                    List<ZipProbe> initialZipProbes,
+                    List<String> extraVmArgs,
+                    String... mainClassAndArgs) throws IOException, InterruptedException {
+        final Path dumpPath = getOutputDirectory().resolve(CompilationWrapperTest.class.getSimpleName() + "_" + nowAsFileName());
         List<String> vmArgs = withoutDebuggerArguments(getVMCommandLine());
-        vmArgs.removeIf(a -> a.startsWith("-Dgraal."));
+        vmArgs.removeIf(a -> a.startsWith("-Djdk.graal."));
         vmArgs.remove("-esa");
         vmArgs.remove("-ea");
-        vmArgs.add("-Dgraal.DumpPath=" + dumpPath);
+        vmArgs.add("-Djdk.graal.DumpPath=" + dumpPath);
         // Force output to a file even if there's a running IGV instance available.
-        vmArgs.add("-Dgraal.PrintGraphFile=true");
+        vmArgs.add("-Djdk.graal.PrintGraph=File");
         vmArgs.addAll(extraVmArgs);
 
         Subprocess proc = SubprocessUtil.java(vmArgs, mainClassAndArgs);
         if (VERBOSE) {
-            System.out.println(proc);
+            System.out.printf("%n%s%n", proc.preserveArgfile());
         }
 
         try {
-            List<Probe> probes = new ArrayList<>(initialProbes);
+            List<Probe> probes = new ArrayList<>(initialOutputProbes);
             String format = DIAGNOSTIC_OUTPUT_DIRECTORY_MESSAGE_FORMAT;
             assert format.endsWith("'%s'") : format;
             String prefix = format.substring(0, format.length() - "'%s'".length());
             Probe diagnosticProbe = new Probe(prefix, 1);
             probes.add(diagnosticProbe);
-            probes.add(new Probe("Forced crash after compiling", Integer.MAX_VALUE) {
-                @Override
-                String test() {
-                    return actualOccurrences > 0 ? null : "expected at least 1 occurrence";
-                }
-            });
+            probes.add(new Probe("Forced crash after compiling", 1, Integer.MAX_VALUE));
 
             for (String line : proc.output) {
                 for (Probe probe : probes) {
@@ -233,7 +276,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
             for (Probe probe : probes) {
                 String error = probe.test();
                 if (error != null) {
-                    Assert.fail(String.format("Did not find expected occurrences of '%s' in output of command: %s%n%s", probe.substring, error, proc));
+                    Assert.fail(String.format("Did not find expected occurrences of '%s' in output of command: %s%n%s", probe.substring, error, proc.preserveArgfile()));
                 }
             }
 
@@ -243,37 +286,47 @@ public class CompilationWrapperTest extends GraalCompilerTest {
             Assert.assertTrue(line, m.find());
             String diagnosticOutputZip = m.group(1);
 
-            List<String> dumpPathEntries = Arrays.asList(dumpPath.list());
+            List<String> dumpPathEntries = List.of(dumpPath.toFile().list());
 
             File zip = new File(diagnosticOutputZip).getAbsoluteFile();
             Assert.assertTrue(zip.toString(), zip.exists());
             Assert.assertTrue(zip + " not in " + dumpPathEntries, dumpPathEntries.contains(zip.getName()));
             try {
-                int bgvOrCfgFiles = 0;
                 ZipFile dd = new ZipFile(diagnosticOutputZip);
                 List<String> entries = new ArrayList<>();
-                for (Enumeration<? extends ZipEntry> e = dd.entries(); e.hasMoreElements();) {
-                    ZipEntry ze = e.nextElement();
-                    String name = ze.getName();
-                    entries.add(name);
-                    if (name.endsWith(".bgv") || name.endsWith(".cfg")) {
-                        bgvOrCfgFiles++;
-                    } else if (name.endsWith("retry.log")) {
-                        String log = new String(dd.getInputStream(ze).readAllBytes());
+                List<ZipProbe> zipProbes = new ArrayList<>(initialZipProbes);
+                zipProbes.add(new ZipProbe(".bgv", 1));
+                zipProbes.add(new ZipProbe(".cfg", 1));
+                zipProbes.add(new ZipProbe("retry.log", 0) {
+                    @Override
+                    public void verify(ZipEntry entry, ZipFile file) throws IOException {
+                        String log = new String(file.getInputStream(entry).readAllBytes());
                         Pattern re = Pattern.compile("<Metrics>.*</Metrics>", Pattern.DOTALL);
                         if (!re.matcher(log).find()) {
-                            Assert.fail(String.format("Could not find %s in %s:%n%s", re.pattern(), name, log));
+                            Assert.fail(String.format("Could not find %s in %s:%n%s", re.pattern(), entry.getName(), log));
+                        }
+                    }
+                });
+                for (Enumeration<? extends ZipEntry> e = dd.entries(); e.hasMoreElements();) {
+                    ZipEntry ze = e.nextElement();
+                    entries.add(ze.getName());
+                    for (ZipProbe probe : zipProbes) {
+                        if (probe.matches(ze, dd)) {
+                            break;
                         }
                     }
                 }
-                if (bgvOrCfgFiles == 0) {
-                    Assert.fail(String.format("Expected at least one .bgv or .cfg file in %s: %s%n%s", diagnosticOutputZip, entries, proc));
+                for (ZipProbe probe : zipProbes) {
+                    String error = probe.test();
+                    if (error != null) {
+                        Assert.fail(String.format("Did not find expected occurrences of '%s' files in %s: %s%n%s", probe.suffix, entries, error, proc.preserveArgfile()));
+                    }
                 }
             } finally {
                 zip.delete();
             }
         } finally {
-            Path directory = dumpPath.toPath();
+            Path directory = dumpPath;
             removeDirectory(directory);
         }
     }

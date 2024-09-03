@@ -17,12 +17,12 @@ bci). However, in the presence of inlining, we need to collect the bci of each m
 
 The `report` method handles the following use cases:
 
-| Concern                          | Option                    | Output                                                                   |
-|----------------------------------|---------------------------|--------------------------------------------------------------------------|
-| `log` using a `DebugContext`     | `-Dgraal.Log`             | log `Performed {optimizationName} {eventName} at bci {bci} {properties}` |
-| `dump` using a `DebugContext`    | `-Dgraal.Dump`            | dump with caption `{optimizationName} {eventName} for node {nodeName}`   |
-| increment a `CounterKey`         | `-Dgraal.Count`           | increment the counter `{optimizationName}_{eventName}`                   |
-| structured optimization logging  | `-Dgraal.OptimizationLog` | optimization info dumped to stdout, a JSON file or an IGV graph          |
+| Concern                          | Option                        | Output                                                                   |
+|----------------------------------|-------------------------------|--------------------------------------------------------------------------|
+| `log` using a `DebugContext`     | `-Djdk.graal.Log`             | log `Performed {optimizationName} {eventName} at bci {bci} {properties}` |
+| `dump` using a `DebugContext`    | `-Djdk.graal.Dump`            | dump with caption `{optimizationName} {eventName} for node {nodeName}`   |
+| increment a `CounterKey`         | `-Djdk.graal.Count`           | increment the counter `Optimization_{optimizationName}_{eventName}`      |
+| structured optimization logging  | `-Djdk.graal.OptimizationLog` | optimization info dumped to stdout, a JSON file or an IGV graph          |
 
 The method logs and dumps at `DETAILED_LEVEL` by default. There is a variant of the method which allows the log level to
 be specified as the first argument.
@@ -35,29 +35,29 @@ graph.getOptimizationLog().report(DeadCodeEliminationPhase.class, "NodeRemoved",
 
 ## Command-line options
 
-Structured optimization logging is enabled by the `-Dgraal.OptimizationLog` option. It is recommended to enable the
-option jointly with node source position tracking (`-Dgraal.TrackNodeSourcePosition`) so that the bytecode position of
+Structured optimization logging is enabled by the `-Djdk.graal.OptimizationLog` option. It is recommended to enable the
+option jointly with node source position tracking (`-Djdk.graal.TrackNodeSourcePosition`) so that the bytecode position of
 nodes can be logged. Otherwise, a warning is emitted.
 
 Similarly, the equivalent options `-H:OptimizationLog` and `-H:OptimizationLogPath` can be used with Native Image.
 
-The value of the option `-Dgraal.OptimizationLog` specifies where the structured optimization log is printed.
+The value of the option `-Djdk.graal.OptimizationLog` specifies where the structured optimization log is printed.
 The accepted values are:
 
 - `Directory` - format the structured optimization as JSON and print it to files in a directory. The directory
-  is specified by the option `-Dgraal.OptimizationLogPath`. If `OptimizationLogPath` is not set, the target directory is
-  `DumpPath/optimization_log` (specified by `-Dgraal.DumpPath`). Directories are created if they do not exist.
+  is specified by the option `-Djdk.graal.OptimizationLogPath`. If `OptimizationLogPath` is not set, the target directory is
+  `DumpPath/optimization_log` (specified by `-Djdk.graal.DumpPath`). Directories are created if they do not exist.
 - `Stdout` - print the structured optimization log to the standard output.
-- `Dump` - dump optimization trees for IdealGraphVisualizer according to the `-Dgraal.PrintGraph` option.
+- `Dump` - dump optimization trees for IdealGraphVisualizer according to the `-Djdk.graal.PrintGraph` option.
 
-Multiple targets can be specified together by separating them with a comma, e.g., `-Dgraal.OptimizationLog=Stdout,Dump`.
+Multiple targets can be specified together by separating them with a comma, e.g., `-Djdk.graal.OptimizationLog=Stdout,Dump`.
 The generated files are human-readable but verbose. Therefore, it is best to inspect them with `mx profdiff`. Read
 `Profdiff.md` for more information.
 
 ## Additional key/value properties
 
 It is possible to provide additional key/value properties to the `report` method. The provided properties are included
-both in the optimization log and in the regular log messages (`-Dgraal.Log`). Consider the example
+both in the optimization log and in the regular log messages (`-Djdk.graal.Log`). Consider the example
 from `LoopTransformations#peel`.
 
 ```java
@@ -81,7 +81,7 @@ graph.getOptimizationLog().withLazyProperty("replacedNodeClass", nodeClass::shor
 
 ## Optimization tree
 
-The context of optimizations is also collected when `-Dgraal.OptimizationLog` is enabled. This is achieved by
+The context of optimizations is also collected when `-Djdk.graal.OptimizationLog` is enabled. This is achieved by
 notifying the graph's `OptimizationLog` whenever an optimization phase is entered or exited. We establish parent-child
 relationships between the optimization phases and the optimizations. The result is an optimization tree.
 
@@ -131,7 +131,7 @@ tree in IGV.
 
 ## Inlining tree
 
-`-Dgraal.OptimizationLog` also collects inlining trees. The inlining tree of a compilation is a call tree with inlining
+`-Djdk.graal.OptimizationLog` also collects inlining trees. The inlining tree of a compilation is a call tree with inlining
 decisions. The root of the tree is the root-compiled method. Each node of the tree corresponds to one method, which may
 have been inlined to the caller or not. We store the result of the decision (i.e., inlined or not) and also the reason
 for this decision. There may be several negative decisions until a method is finally inlined. The children of a node are
@@ -222,13 +222,13 @@ profdiff and indirect calls in `Profdiff.md`.
 
 ## Example: optimization log of a benchmark
 
-Run a benchmark with the flag `-Dgraal.OptimizationLog=Directory` to produce an output and save it to the directory
-specified by the `-Dgraal.OptimizationLogPath` option. Run it jointly with `-Dgraal.TrackNodeSourcePosition=true`, so
+Run a benchmark with the flag `-Djdk.graal.OptimizationLog=Directory` to produce an output and save it to the directory
+specified by the `-Djdk.graal.OptimizationLogPath` option. Run it jointly with `-Djdk.graal.TrackNodeSourcePosition=true`, so
 that optimizations can be linked with a source position.
 
 ```sh
-mx benchmark renaissance:scrabble -- -Dgraal.TrackNodeSourcePosition=true -Dgraal.OptimizationLog=Directory \
-  -Dgraal.OptimizationLogPath=$PWD/optimization_log
+mx benchmark renaissance:scrabble -- -Djdk.graal.TrackNodeSourcePosition=true -Djdk.graal.OptimizationLog=Directory \
+  -Djdk.graal.OptimizationLogPath=$PWD/optimization_log
 ```
 
 An equivalent set of commands for Native Image is:
@@ -416,19 +416,19 @@ whose callsite is at bci 27 in the root method. Note that the order of keys is i
 ## IGV output
 
 Optimization trees can be printed to Ideal Graph Visualizer. First, start an IGV instance. After that, run a benchmark
-with the flag `-Dgraal.OptimizationLog=Dump`. Run it jointly with `-Dgraal.TrackNodeSourcePosition=true`, so that
+with the flag `-Djdk.graal.OptimizationLog=Dump`. Run it jointly with `-Djdk.graal.TrackNodeSourcePosition=true`, so that
 optimizations can be linked with a source position.
 
 ```sh
-mx benchmark renaissance:scrabble -- -Dgraal.TrackNodeSourcePosition=true -Dgraal.OptimizationLog=Dump \
-  -Dgraal.PrintGraph=Network
+mx benchmark renaissance:scrabble -- -Djdk.graal.TrackNodeSourcePosition=true -Djdk.graal.OptimizationLog=Dump \
+  -Djdk.graal.PrintGraph=Network
 ```
 
 Optimization trees for each compilation should now be available in IGV.
 
 ## Overhead of optimization logging
 
-Enabling `-Dgraal.OptimizationLog` as well as `-Dgraal.TrackNodeSourcePosition` comes with an overhead. It may slow the
+Enabling `-Djdk.graal.OptimizationLog` as well as `-Djdk.graal.TrackNodeSourcePosition` comes with an overhead. It may slow the
 compilation down in terms of CPU time and the logs may generate hundreds of MB of many small files. Depending on the
 workload, node source positions can decrease the compile speed (measured in bytes/sec) by up to 15%. Optimization log
 with node source positions can decrease the speed by up to 25%.

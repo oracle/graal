@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.host;
 
+import java.lang.reflect.Type;
 import java.math.BigInteger;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -174,6 +175,16 @@ final class HostAccessor extends Accessor {
         @Override
         public boolean bigIntegerFitsInDouble(BigInteger b) {
             return HostObject.bigIntegerFitsInDouble(b);
+        }
+
+        @Override
+        public Class<?> getRawTypeFromGenericType(Type genericType, Class<?> defaultRawType) {
+            return HostToTypeNode.getRawTypeFromGenericType(genericType, defaultRawType);
+        }
+
+        @Override
+        public Type findActualTypeArgument(Type typeOrTypeVar, Type genericTargetType) {
+            return HostToTypeNode.findActualTypeArgument(typeOrTypeVar, genericTargetType);
         }
     }
 

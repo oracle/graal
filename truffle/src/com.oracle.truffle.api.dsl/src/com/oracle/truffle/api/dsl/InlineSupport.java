@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1200,7 +1200,6 @@ public final class InlineSupport {
             }
 
             if (receiver == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw nullError(node);
             }
             return receiver;
@@ -1233,6 +1232,7 @@ public final class InlineSupport {
         }
 
         private RuntimeException nullError(Object node) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             if (node == null) {
                 throw nullReceiver(node);
             } else {
@@ -1241,6 +1241,7 @@ public final class InlineSupport {
         }
 
         private NullPointerException nullReceiver(Object node) {
+            CompilerAsserts.neverPartOfCompilation();
             return new NullPointerException(String.format(
                             "Invalid inline context node passed to an inlined field. A receiver of type '%s' was expected but is null. " +
                                             "Did you pass the wrong node to an execute method of an inlined cached node?",
@@ -1248,6 +1249,7 @@ public final class InlineSupport {
         }
 
         private RuntimeException invalidReceiver(Object inlineTarget) {
+            CompilerAsserts.neverPartOfCompilation();
             throw new ClassCastException(String.format("Invalid inline context node passed to an inlined field. A receiver of type '%s' was expected but is '%s'. " + //
                             "Did you pass the wrong node to an execute method of an inlined cached node?",
                             getEnclosingSimpleName(receiverClass), getEnclosingSimpleName(((Node) inlineTarget).getClass())));

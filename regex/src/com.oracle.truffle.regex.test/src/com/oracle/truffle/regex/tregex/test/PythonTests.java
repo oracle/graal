@@ -40,14 +40,13 @@
  */
 package com.oracle.truffle.regex.tregex.test;
 
+import com.oracle.truffle.regex.errors.PyErrorMessages;
+import com.oracle.truffle.regex.tregex.TRegexOptions;
+import com.oracle.truffle.regex.tregex.string.Encodings;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Test;
-
-import com.oracle.truffle.regex.errors.PyErrorMessages;
-import com.oracle.truffle.regex.tregex.TRegexOptions;
-import com.oracle.truffle.regex.tregex.string.Encodings;
 
 public class PythonTests extends RegexTestBase {
 
@@ -504,13 +503,16 @@ public class PythonTests extends RegexTestBase {
     }
 
     @Test
-    public void testCasefixEquivalences() {
-        // Generated using re._casefix._EXTRA_CASES from CPython 3.11.4
-        test("\u0069", "i", "\u0131", 0, true, 0, 1);
-        test("\u0073", "i", "\u017f", 0, true, 0, 1);
+    public void generatedTests() {
+        /* GENERATED CODE BEGIN - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
+
+        // Generated using sre from CPython 3.12.4
+        // re._casefix._EXTRA_CASES
+        test("i", "i", "\u0131", 0, true, 0, 1);
+        test("s", "i", "\u017f", 0, true, 0, 1);
         test("\u00b5", "i", "\u03bc", 0, true, 0, 1);
-        test("\u0131", "i", "\u0069", 0, true, 0, 1);
-        test("\u017f", "i", "\u0073", 0, true, 0, 1);
+        test("\u0131", "i", "i", 0, true, 0, 1);
+        test("\u017f", "i", "s", 0, true, 0, 1);
         test("\u0345", "i", "\u03b9", 0, true, 0, 1);
         test("\u0345", "i", "\u1fbe", 0, true, 0, 1);
         test("\u0390", "i", "\u1fd3", 0, true, 0, 1);
@@ -562,71 +564,67 @@ public class PythonTests extends RegexTestBase {
         test("\ua64b", "i", "\u1c88", 0, true, 0, 1);
         test("\ufb05", "i", "\ufb06", 0, true, 0, 1);
         test("\ufb06", "i", "\ufb05", 0, true, 0, 1);
-    }
+        // Syntax errors
+        expectSyntaxError("()\\2", "", "", getTRegexEncoding(), "", 0, "invalid group reference 2", 3);
+        expectSyntaxError("()\\378", "", "", getTRegexEncoding(), "", 0, "invalid group reference 37", 3);
+        expectSyntaxError("()\\777", "", "", getTRegexEncoding(), "", 0, "octal escape value \\777 outside of range 0-0o377", 2);
+        expectSyntaxError("(\\1)", "", "", getTRegexEncoding(), "", 0, "cannot refer to an open group", 1);
+        expectSyntaxError("(?<=()\\1)", "", "", getTRegexEncoding(), "", 0, "cannot refer to group defined in the same lookbehind subpattern", 8);
+        expectSyntaxError("()(?P=1)", "", "", getTRegexEncoding(), "", 0, "bad character in group name '1'", 6);
+        expectSyntaxError("(?P<1)", "", "", getTRegexEncoding(), "", 0, "missing >, unterminated name", 4);
+        expectSyntaxError("(?P<1>)", "", "", getTRegexEncoding(), "", 0, "bad character in group name '1'", 4);
+        expectSyntaxError("(?P<a>)(?P<a>})", "", "", getTRegexEncoding(), "", 0, "redefinition of group name 'a' as group 2; was group 1", 11);
+        expectSyntaxError("[]", "", "", getTRegexEncoding(), "", 0, "unterminated character set", 0);
+        expectSyntaxError("[a-", "", "", getTRegexEncoding(), "", 0, "unterminated character set", 0);
+        expectSyntaxError("[b-a]", "", "", getTRegexEncoding(), "", 0, "bad character range b-a", 1);
+        expectSyntaxError("[\\d-e]", "", "", getTRegexEncoding(), "", 0, "bad character range \\d-e", 1);
+        expectSyntaxError("\\x", "", "", getTRegexEncoding(), "", 0, "incomplete escape \\x", 0);
+        expectSyntaxError("\\x1", "", "", getTRegexEncoding(), "", 0, "incomplete escape \\x1", 0);
+        expectSyntaxError("\\u111", "", "", getTRegexEncoding(), "", 0, "incomplete escape \\u111", 0);
+        expectSyntaxError("\\U1111", "", "", getTRegexEncoding(), "", 0, "incomplete escape \\U1111", 0);
+        expectSyntaxError("\\U1111111", "", "", getTRegexEncoding(), "", 0, "incomplete escape \\U1111111", 0);
+        expectSyntaxError("\\U11111111", "", "", getTRegexEncoding(), "", 0, "bad escape \\U11111111", 0);
+        expectSyntaxError("\\N1", "", "", getTRegexEncoding(), "", 0, "missing {", 2);
+        expectSyntaxError("\\N{1", "", "", getTRegexEncoding(), "", 0, "missing }, unterminated name", 3);
+        expectSyntaxError("\\N{}", "", "", getTRegexEncoding(), "", 0, "missing character name", 3);
+        expectSyntaxError("\\N{a}", "", "", getTRegexEncoding(), "", 0, "undefined character name 'a'", 0);
+        expectSyntaxError("x{2,1}", "", "", getTRegexEncoding(), "", 0, "min repeat greater than max repeat", 2);
+        expectSyntaxError("x**", "", "", getTRegexEncoding(), "", 0, "multiple repeat", 2);
+        expectSyntaxError("^*", "", "", getTRegexEncoding(), "", 0, "nothing to repeat", 1);
+        expectSyntaxError("\\A*", "", "", getTRegexEncoding(), "", 0, "nothing to repeat", 2);
+        expectSyntaxError("\\Z*", "", "", getTRegexEncoding(), "", 0, "nothing to repeat", 2);
+        expectSyntaxError("\\b*", "", "", getTRegexEncoding(), "", 0, "nothing to repeat", 2);
+        expectSyntaxError("\\B*", "", "", getTRegexEncoding(), "", 0, "nothing to repeat", 2);
+        expectSyntaxError("(?", "", "", getTRegexEncoding(), "", 0, "unexpected end of pattern", 2);
+        expectSyntaxError("(?P", "", "", getTRegexEncoding(), "", 0, "unexpected end of pattern", 3);
+        expectSyntaxError("(?P<", "", "", getTRegexEncoding(), "", 0, "missing group name", 4);
+        expectSyntaxError("(?Px", "", "", getTRegexEncoding(), "", 0, "unknown extension ?Px", 1);
+        expectSyntaxError("(?<", "", "", getTRegexEncoding(), "", 0, "unexpected end of pattern", 3);
+        expectSyntaxError("(?x", "", "", getTRegexEncoding(), "", 0, "missing -, : or )", 3);
+        expectSyntaxError("(?P<>)", "", "", getTRegexEncoding(), "", 0, "missing group name", 4);
+        expectSyntaxError("(?P<?>)", "", "", getTRegexEncoding(), "", 0, "bad character in group name '?'", 4);
+        expectSyntaxError("(?P=a)", "", "", getTRegexEncoding(), "", 0, "unknown group name 'a'", 4);
+        expectSyntaxError("(?#", "", "", getTRegexEncoding(), "", 0, "missing ), unterminated comment", 0);
+        expectSyntaxError("(", "", "", getTRegexEncoding(), "", 0, "missing ), unterminated subpattern", 0);
+        expectSyntaxError("(?i", "", "", getTRegexEncoding(), "", 0, "missing -, : or )", 3);
+        expectSyntaxError("(?L", "", "", getTRegexEncoding(), "", 0, "bad inline flags: cannot use 'L' flag with a str pattern", 3);
+        expectSyntaxError("(?t:)", "", "", getTRegexEncoding(), "", 0, "bad inline flags: cannot turn on global flag", 3);
+        expectSyntaxError("(?-t:)", "", "", getTRegexEncoding(), "", 0, "bad inline flags: cannot turn off global flag", 4);
+        expectSyntaxError("(?-:)", "", "", getTRegexEncoding(), "", 0, "missing flag", 3);
+        expectSyntaxError("(?ij:)", "", "", getTRegexEncoding(), "", 0, "unknown flag", 3);
+        expectSyntaxError("(?i-i:)", "", "", getTRegexEncoding(), "", 0, "bad inline flags: flag turned on and off", 5);
+        expectSyntaxError(")", "", "", getTRegexEncoding(), "", 0, "unbalanced parenthesis", 0);
+        expectSyntaxError("\\", "", "", getTRegexEncoding(), "", 0, "bad escape (end of pattern)", 0);
+        expectSyntaxError("(?P<a>)(?(0)a|b)", "", "", getTRegexEncoding(), "", 0, "bad group number", 10);
+        expectSyntaxError("()(?(1", "", "", getTRegexEncoding(), "", 0, "missing ), unterminated name", 5);
+        expectSyntaxError("()(?(1)a", "", "", getTRegexEncoding(), "", 0, "missing ), unterminated subpattern", 2);
+        expectSyntaxError("()(?(1)a|b", "", "", getTRegexEncoding(), "", 0, "missing ), unterminated subpattern", 2);
+        expectSyntaxError("()(?(2)a)", "", "", getTRegexEncoding(), "", 0, "invalid group reference 2", 5);
+        expectSyntaxError("(?(a))", "", "", getTRegexEncoding(), "", 0, "unknown group name 'a'", 3);
+        expectSyntaxError("(a)b(?<=(?(2)b|x))(c)", "", "", getTRegexEncoding(), "", 0, "cannot refer to an open group", 13);
+        expectSyntaxError("(?(2147483648)a|b)", "", "", getTRegexEncoding(), "", 0, "invalid group reference 2147483648", 3);
+        expectSyntaxError("(?(42)a|b)[", "", "", getTRegexEncoding(), "", 0, "unterminated character set", 10);
 
-    @Test
-    public void testSyntaxErrors() {
-        // Generated using sre from CPython 3.10.8
-        expectSyntaxError("()\\2", "", "invalid group reference 2", 3);
-        expectSyntaxError("()\\378", "", "invalid group reference 37", 3);
-        expectSyntaxError("()\\777", "", "octal escape value \\777 outside of range 0-0o377", 2);
-        expectSyntaxError("(\\1)", "", "cannot refer to an open group", 1);
-        expectSyntaxError("(?<=()\\1)", "", "cannot refer to group defined in the same lookbehind subpattern", 8);
-        expectSyntaxError("()(?P=1)", "", "bad character in group name '1'", 6);
-        expectSyntaxError("(?P<1)", "", "missing >, unterminated name", 4);
-        expectSyntaxError("(?P<1>)", "", "bad character in group name '1'", 4);
-        expectSyntaxError("(?P<a>)(?P<a>})", "", "redefinition of group name 'a' as group 2; was group 1", 11);
-        expectSyntaxError("[]", "", "unterminated character set", 0);
-        expectSyntaxError("[a-", "", "unterminated character set", 0);
-        expectSyntaxError("[b-a]", "", "bad character range b-a", 1);
-        expectSyntaxError("[\\d-e]", "", "bad character range \\d-e", 1);
-        expectSyntaxError("\\x", "", "incomplete escape \\x", 0);
-        expectSyntaxError("\\x1", "", "incomplete escape \\x1", 0);
-        expectSyntaxError("\\u111", "", "incomplete escape \\u111", 0);
-        expectSyntaxError("\\U1111", "", "incomplete escape \\U1111", 0);
-        expectSyntaxError("\\U1111111", "", "incomplete escape \\U1111111", 0);
-        expectSyntaxError("\\U11111111", "", "bad escape \\U11111111", 0);
-        expectSyntaxError("\\u2B50", "", "Encoding=LATIN-1", "bad escape \\u", 0);
-        expectSyntaxError("\\U0001FA99", "", "Encoding=LATIN-1", "bad escape \\U", 0);
-        expectSyntaxError("\\N1", "", "missing {", 2);
-        expectSyntaxError("\\N{1", "", "missing }, unterminated name", 3);
-        expectSyntaxError("\\N{}", "", "missing character name", 3);
-        expectSyntaxError("\\N{a}", "", "undefined character name 'a'", 0);
-        expectSyntaxError("x{2,1}", "", "min repeat greater than max repeat", 2);
-        expectSyntaxError("x**", "", "multiple repeat", 2);
-        expectSyntaxError("^*", "", "nothing to repeat", 1);
-        expectSyntaxError("\\A*", "", "nothing to repeat", 2);
-        expectSyntaxError("\\Z*", "", "nothing to repeat", 2);
-        expectSyntaxError("\\b*", "", "nothing to repeat", 2);
-        expectSyntaxError("\\B*", "", "nothing to repeat", 2);
-        expectSyntaxError("(?", "", "unexpected end of pattern", 2);
-        expectSyntaxError("(?P", "", "unexpected end of pattern", 3);
-        expectSyntaxError("(?P<", "", "missing group name", 4);
-        expectSyntaxError("(?Px", "", "unknown extension ?Px", 1);
-        expectSyntaxError("(?<", "", "unexpected end of pattern", 3);
-        expectSyntaxError("(?x", "", "missing -, : or )", 3);
-        expectSyntaxError("(?P<>)", "", "missing group name", 4);
-        expectSyntaxError("(?P<?>)", "", "bad character in group name '?'", 4);
-        expectSyntaxError("(?P=a)", "", "unknown group name 'a'", 4);
-        expectSyntaxError("(?#", "", "missing ), unterminated comment", 0);
-        expectSyntaxError("(", "", "missing ), unterminated subpattern", 0);
-        expectSyntaxError("(?i", "", "missing -, : or )", 3);
-        expectSyntaxError("(?L", "", "bad inline flags: cannot use 'L' flag with a str pattern", 3);
-        expectSyntaxError("(?t:)", "", "bad inline flags: cannot turn on global flag", 3);
-        expectSyntaxError("(?-t:)", "", "bad inline flags: cannot turn off global flag", 4);
-        expectSyntaxError("(?-:)", "", "missing flag", 3);
-        expectSyntaxError("(?ij:)", "", "unknown flag", 3);
-        expectSyntaxError("(?i-i:)", "", "bad inline flags: flag turned on and off", 5);
-        expectSyntaxError(")", "", "unbalanced parenthesis", 0);
-        expectSyntaxError("\\", "", "bad escape (end of pattern)", 0);
-        expectSyntaxError("(?P<a>)(?(0)a|b)", "", "bad group number", 10);
-        expectSyntaxError("()(?(1", "", "missing ), unterminated name", 5);
-        expectSyntaxError("()(?(1)a", "", "missing ), unterminated subpattern", 2);
-        expectSyntaxError("()(?(1)a|b", "", "missing ), unterminated subpattern", 2);
-        expectSyntaxError("()(?(2)a)", "", "invalid group reference 2", 5);
-        expectSyntaxError("(?(a))", "", "unknown group name 'a'", 3);
-        expectSyntaxError("(a)b(?<=(?(2)b|x))(c)", "", "cannot refer to an open group", 13);
-        expectSyntaxError("(?(2147483648)a|b)", "", "invalid group reference 2147483648", 3);
-        expectSyntaxError("(?(42)a|b)[", "", "unterminated character set", 10);
+        /* GENERATED CODE END - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
     }
 }

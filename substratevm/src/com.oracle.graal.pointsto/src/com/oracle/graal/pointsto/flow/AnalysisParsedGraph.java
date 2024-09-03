@@ -24,6 +24,14 @@
  */
 package com.oracle.graal.pointsto.flow;
 
+import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.api.HostVM;
+import com.oracle.graal.pointsto.infrastructure.GraphProvider.Purpose;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.phases.SubstrateIntrinsicGraphBuilder;
+import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.svm.util.ClassUtil;
+
 import jdk.graal.compiler.api.runtime.GraalJVMCICompiler;
 import jdk.graal.compiler.bytecode.Bytecode;
 import jdk.graal.compiler.bytecode.ResolvedJavaMethodBytecode;
@@ -42,16 +50,6 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.runtime.RuntimeProvider;
-
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.api.HostVM;
-import com.oracle.graal.pointsto.api.PointstoOptions;
-import com.oracle.graal.pointsto.infrastructure.GraphProvider.Purpose;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.phases.SubstrateIntrinsicGraphBuilder;
-import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.svm.util.ClassUtil;
-
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.runtime.JVMCI;
 
@@ -72,7 +70,7 @@ public final class AnalysisParsedGraph {
     private final EncodedGraph encodedGraph;
     private final boolean isIntrinsic;
 
-    private AnalysisParsedGraph(EncodedGraph encodedGraph, boolean isIntrinsic) {
+    public AnalysisParsedGraph(EncodedGraph encodedGraph, boolean isIntrinsic) {
         this.isIntrinsic = isIntrinsic;
         this.encodedGraph = encodedGraph;
     }
@@ -127,7 +125,7 @@ public final class AnalysisParsedGraph {
 
             graph = new StructuredGraph.Builder(options, debug)
                             .method(method)
-                            .recordInlinedMethods(false)
+                            .recordInlinedMethods(bb.getHostVM().recordInlinedMethods(method))
                             .build();
             try (DebugContext.Scope s = debug.scope("ClosedWorldAnalysis", graph, method)) {
 
@@ -136,7 +134,7 @@ public final class AnalysisParsedGraph {
 
                     GraphBuilderConfiguration config = GraphBuilderConfiguration.getDefault(bb.getProviders(method).getGraphBuilderPlugins())
                                     .withEagerResolving(true)
-                                    .withUnresolvedIsError(PointstoOptions.UnresolvedIsError.getValue(bb.getOptions()))
+                                    .withUnresolvedIsError(false)
                                     .withNodeSourcePosition(true)
                                     .withBytecodeExceptionMode(BytecodeExceptionMode.CheckAll)
                                     .withRetainLocalVariables(true);

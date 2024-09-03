@@ -24,7 +24,7 @@
  */
 package jdk.graal.compiler.replacements.test;
 
-import jdk.graal.compiler.java.GraphBuilderPhase;
+import jdk.graal.compiler.core.test.TestGraphBuilderPhase;
 import jdk.graal.compiler.java.GraphBuilderPhase.Instance;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.Builder;
@@ -36,7 +36,6 @@ import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.ReplacementsImpl;
 import jdk.graal.compiler.replacements.classfile.ClassfileBytecodeProvider;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public abstract class SnippetsTest extends ReplacementsTest {
@@ -48,7 +47,7 @@ public abstract class SnippetsTest extends ReplacementsTest {
     protected SnippetsTest() {
         ReplacementsImpl d = (ReplacementsImpl) getReplacements();
         bytecodeProvider = getSystemClassLoaderBytecodeProvider();
-        installer = new ReplacementsImpl(null, d.getProviders(), d.snippetReflection, bytecodeProvider, d.target) {
+        installer = new ReplacementsImpl(null, d.getProviders(), bytecodeProvider, d.target) {
 
             @Override
             protected GraphMaker createGraphMaker(ResolvedJavaMethod substitute, ResolvedJavaMethod original) {
@@ -57,7 +56,7 @@ public abstract class SnippetsTest extends ReplacementsTest {
                     @Override
                     protected Instance createGraphBuilder(Providers providers1, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
                                     IntrinsicContext initialIntrinsicContext) {
-                        return new GraphBuilderPhase.Instance(providers1, graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
+                        return new TestGraphBuilderPhase.Instance(providers1, graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
                     }
                 };
             }

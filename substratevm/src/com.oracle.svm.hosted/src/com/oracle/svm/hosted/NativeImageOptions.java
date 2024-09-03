@@ -33,26 +33,27 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.concurrent.ForkJoinPool;
 
-import com.oracle.svm.util.LogUtils;
 import org.graalvm.collections.EconomicMap;
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.options.OptionKey;
-import jdk.graal.compiler.options.OptionStability;
-import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.serviceprovider.GraalServices;
 
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
 import com.oracle.svm.hosted.util.CPUType;
+import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.StringUtil;
+
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionStability;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.serviceprovider.GraalServices;
 
 public class NativeImageOptions {
 
@@ -64,7 +65,7 @@ public class NativeImageOptions {
                     "may result in application crashes. The specific options available are target " +
                     "platform dependent. See --list-cpu-features for feature list. These features " +
                     "are in addition to -march.", type = User, stability = OptionStability.STABLE)//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> CPUFeatures = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> CPUFeatures = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
     @APIOption(name = "list-cpu-features")//
     @Option(help = "Show CPU features specific to the target platform and exit.", type = User)//
@@ -79,7 +80,8 @@ public class NativeImageOptions {
                     "option to the empty string. The specific options available are target platform " +
                     "dependent. See --list-cpu-features for feature list. The default values are: " +
                     "AMD64: 'AVX,AVX2'; AArch64: ''", type = User)//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> RuntimeCheckedCPUFeatures = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> RuntimeCheckedCPUFeatures = new HostedOptionKey<>(
+                    AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
     public static final String MICRO_ARCHITECTURE_NATIVE = "native";
     public static final String MICRO_ARCHITECTURE_COMPATIBILITY = "compatibility";
@@ -131,7 +133,7 @@ public class NativeImageOptions {
 
     @Option(help = "Directory for temporary files generated during native image generation. If this option is specified, the temporary files are not deleted so that you can inspect them after native image generation")//
     @BundleMember(role = BundleMember.Role.Output)//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Paths> TempDirectory = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.build());
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Paths> TempDirectory = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Paths.build());
 
     @Option(help = "Suppress console error output for unittests")//
     public static final HostedOptionKey<Boolean> SuppressStderr = new HostedOptionKey<>(false);
@@ -142,16 +144,13 @@ public class NativeImageOptions {
     @Option(help = "Allow MethodTypeFlow to see @Fold methods")//
     public static final HostedOptionKey<Boolean> AllowFoldMethods = new HostedOptionKey<>(false);
 
-    @APIOption(name = "report-unsupported-elements-at-runtime")//
-    @Option(help = "Report usage of unsupported methods and fields at run time when they are accessed the first time, instead of as an error during image building", type = User)//
-    public static final HostedOptionKey<Boolean> ReportUnsupportedElementsAtRuntime = new HostedOptionKey<>(false);
+    @APIOption(name = "report-unsupported-elements-at-runtime", deprecated = "The option is deprecated and will be removed in the future. The use of unsupported elements is always reported at run time.")//
+    @Option(help = "Report usage of unsupported methods and fields at run time when they are accessed the first time, instead of as an error during image building", type = Debug)//
+    public static final HostedOptionKey<Boolean> ReportUnsupportedElementsAtRuntime = new HostedOptionKey<>(true);
 
     @APIOption(name = "allow-incomplete-classpath", deprecated = "Allowing an incomplete classpath is now the default. Use --link-at-build-time to report linking errors at image build time for a class or package.")//
     @Option(help = "Deprecated", type = User)//
     static final HostedOptionKey<Boolean> AllowIncompleteClasspath = new HostedOptionKey<>(false);
-
-    @Option(help = "Disable substitution return type checking", type = Debug, deprecated = true, stability = OptionStability.EXPERIMENTAL, deprecationMessage = "This option will be removed soon and the return type check will be mandatory.")//
-    public static final HostedOptionKey<Boolean> DisableSubstitutionReturnTypeCheck = new HostedOptionKey<>(false);
 
     @SuppressWarnings("all")
     private static boolean areAssertionsEnabled() {
@@ -294,8 +293,8 @@ public class NativeImageOptions {
 
     @Option(help = "Sets the dir where diagnostic information is dumped.")//
     @BundleMember(role = BundleMember.Role.Output)//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Paths> DiagnosticsDir = new HostedOptionKey<>(
-                    LocatableMultiOptionValue.Paths.buildWithDefaults(Paths.get("reports", ReportUtils.timeStampedFileName("diagnostics", ""))));
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Paths> DiagnosticsDir = new HostedOptionKey<>(
+                    AccumulatingLocatableMultiOptionValue.Paths.buildWithDefaults(Paths.get("reports", ReportUtils.timeStampedFileName("diagnostics", ""))));
 
     @Option(help = "Enables the diagnostic mode.")//
     public static final HostedOptionKey<Boolean> DiagnosticsMode = new HostedOptionKey<>(false) {

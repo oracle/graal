@@ -24,6 +24,9 @@
  */
 package com.oracle.truffle.tools.profiler.impl;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -36,12 +39,12 @@ import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionType;
+import org.graalvm.shadowed.org.json.JSONArray;
+import org.graalvm.shadowed.org.json.JSONObject;
 
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.tools.profiler.CPUTracer;
-import org.graalvm.shadowed.org.json.JSONArray;
-import org.graalvm.shadowed.org.json.JSONObject;
 
 @Option.Group(CPUTracerInstrument.ID)
 class CPUTracerCLI extends ProfilerCLI {
@@ -83,16 +86,16 @@ class CPUTracerCLI extends ProfilerCLI {
     @Option(name = "TraceInternal", help = "Trace internal elements (default: false).", category = OptionCategory.INTERNAL) //
     static final OptionKey<Boolean> TRACE_INTERNAL = new OptionKey<>(false);
 
-    @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (eg. Math.*) (default: no filter).", usageSyntax = "<filter>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (for example, Math.*) (default: no filter).", usageSyntax = "<filter>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<WildcardFilter> FILTER_ROOT = new OptionKey<>(WildcardFilter.DEFAULT, WildcardFilter.WILDCARD_FILTER_TYPE);
 
-    @Option(name = "FilterFile", help = "Wildcard filter for source file paths. (eg. *program*.sl) (default: no filter).", usageSyntax = "<filter>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "FilterFile", help = "Wildcard filter for source file paths. (for example, *program*.sl) (default: no filter).", usageSyntax = "<filter>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<WildcardFilter> FILTER_FILE = new OptionKey<>(WildcardFilter.DEFAULT, WildcardFilter.WILDCARD_FILTER_TYPE);
 
-    @Option(name = "FilterMimeType", help = "Only profile languages with mime-type. (eg. application/javascript) (default: no filter).", usageSyntax = "<mime-type>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "FilterMimeType", help = "Only profile languages with mime-type. (for example, application/javascript) (default: no filter).", usageSyntax = "<mime-type>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<String> FILTER_MIME_TYPE = new OptionKey<>("");
 
-    @Option(name = "FilterLanguage", help = "Only profile languages with given ID. (eg. js) (default: no filter).", usageSyntax = "<languageId>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "FilterLanguage", help = "Only profile languages with given ID. (for example, js) (default: no filter).", usageSyntax = "<languageId>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<String> FILTER_LANGUAGE = new OptionKey<>("");
 
     @Option(name = "Output", help = "Print a 'histogram' or 'json' as output (default: histogram).", usageSyntax = "histogram|json", category = OptionCategory.USER, stability = OptionStability.STABLE) //
@@ -101,8 +104,8 @@ class CPUTracerCLI extends ProfilerCLI {
     @Option(name = "OutputFile", help = "Save output to the given file. Output is printed to standard output stream by default.", usageSyntax = "<path>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<String> OUTPUT_FILE = new OptionKey<>("");
 
-    public static void handleOutput(TruffleInstrument.Env env, CPUTracer tracer) {
-        PrintStream out = chooseOutputStream(env, OUTPUT_FILE);
+    public static void handleOutput(TruffleInstrument.Env env, CPUTracer tracer, String absoluteOutputPath) {
+        PrintStream out = chooseOutputStream(env, absoluteOutputPath);
         switch (env.getOptions().get(OUTPUT)) {
             case HISTOGRAM:
                 printTracerHistogram(out, tracer);
@@ -110,6 +113,19 @@ class CPUTracerCLI extends ProfilerCLI {
             case JSON:
                 printTracerJson(out, tracer);
                 break;
+        }
+    }
+
+    protected static PrintStream chooseOutputStream(TruffleInstrument.Env env, String absoluteOutputPath) {
+        try {
+            if (absoluteOutputPath != null) {
+                final File file = new File(absoluteOutputPath);
+                return new PrintStream(new FileOutputStream(file));
+            } else {
+                return new PrintStream(env.out());
+            }
+        } catch (FileNotFoundException e) {
+            throw handleFileNotFound();
         }
     }
 

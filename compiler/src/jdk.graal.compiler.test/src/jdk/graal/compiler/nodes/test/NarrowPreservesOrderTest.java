@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,8 @@ import static jdk.graal.compiler.core.common.calc.CanonicalCondition.LT;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import org.junit.Test;
+
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.calc.CanonicalCondition;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
@@ -38,8 +40,6 @@ import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.graph.test.GraphTest;
 import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.calc.NarrowNode;
-import org.junit.Test;
-
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaKind;
 
@@ -97,7 +97,7 @@ public class NarrowPreservesOrderTest extends GraphTest {
         testPreserveOrder(forConstantInt(NumUtil.maxValueUnsigned(8)), 8, LT, false);
         testPreserveOrder(forConstantInt(NumUtil.maxValueUnsigned(8)), 8, BT, true);
         testPreserveOrder(signExtend(StampFactory.forKind(JavaKind.Byte), 32), 8, LT, true);
-        testPreserveOrder(signExtend(StampFactory.forKind(JavaKind.Byte), 32), 8, BT, true);
+        testPreserveOrder(signExtend(StampFactory.forKind(JavaKind.Byte), 32), 8, BT, false);
         testPreserveOrder(zeroExtend(StampFactory.forUnsignedInteger(8), 32), 8, LT, false);
         testPreserveOrder(zeroExtend(StampFactory.forUnsignedInteger(8), 32), 8, BT, true);
 
@@ -114,7 +114,7 @@ public class NarrowPreservesOrderTest extends GraphTest {
         testPreserveOrder(forConstantInt(NumUtil.maxValueUnsigned(16)), 16, LT, false);
         testPreserveOrder(forConstantInt(NumUtil.maxValueUnsigned(16)), 16, BT, true);
         testPreserveOrder(signExtend(StampFactory.forKind(JavaKind.Short), 32), 16, LT, true);
-        testPreserveOrder(signExtend(StampFactory.forKind(JavaKind.Short), 32), 16, BT, true);
+        testPreserveOrder(signExtend(StampFactory.forKind(JavaKind.Short), 32), 16, BT, false);
         testPreserveOrder(zeroExtend(StampFactory.forUnsignedInteger(16), 32), 16, LT, false);
         testPreserveOrder(zeroExtend(StampFactory.forUnsignedInteger(16), 32), 16, BT, true);
 
@@ -131,7 +131,7 @@ public class NarrowPreservesOrderTest extends GraphTest {
         testPreserveOrder(forConstantLong(NumUtil.maxValueUnsigned(32)), 32, LT, false);
         testPreserveOrder(forConstantLong(NumUtil.maxValueUnsigned(32)), 32, BT, true);
         testPreserveOrder(signExtend(StampFactory.forKind(JavaKind.Int), 64), 32, LT, true);
-        testPreserveOrder(signExtend(StampFactory.forKind(JavaKind.Int), 64), 32, BT, true);
+        testPreserveOrder(signExtend(StampFactory.forKind(JavaKind.Int), 64), 32, BT, false);
         testPreserveOrder(zeroExtend(StampFactory.forUnsignedInteger(32), 64), 32, LT, false);
         testPreserveOrder(zeroExtend(StampFactory.forUnsignedInteger(32), 64), 32, BT, true);
 

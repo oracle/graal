@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -89,10 +89,23 @@ public interface LanguageProvider {
      *
      * <p>
      * The JavaScript sample implementation:
-     * {@codesnippet LanguageProviderSnippets#JsSnippets#createIdentityFunction}
+     * 
+     * <pre>
+     * &#64;Override
+     * public Value createIdentityFunction(Context context) {
+     *     return context.eval("js", "(function (a){ return a; })");
+     * }
+     * </pre>
+     * 
      * <p>
      * The R sample implementation:
-     * {@codesnippet LanguageProviderSnippets#RSnippets#createIdentityFunction}
+     * 
+     * <pre>
+     * &#64;Override
+     * public Value createIdentityFunction(Context context) {
+     *     return context.eval("R", "function (a){ a }");
+     * }
+     * </pre>
      *
      * @param context the context for a guest language code literal evaluation
      * @return the {@link Value} representing the identity function
@@ -130,10 +143,35 @@ public interface LanguageProvider {
      *
      * <p>
      * The JavaScript sample implementation creating a boolean type:
-     * {@codesnippet LanguageProviderSnippets#JsSnippets#createValueConstructors}
+     * 
+     * <pre>
+     * @Override
+     * public Collection<? extends Snippet> createValueConstructors(Context context) {
+     *     final Collection<Snippet> valueConstructors = new ArrayList<>();
+     *     Snippet.Builder builder = Snippet.newBuilder(
+     *                     "boolean",
+     *                     context.eval("js", "(function (){ return false;})"),
+     *                     TypeDescriptor.BOOLEAN);
+     *     valueConstructors.add(builder.build());
+     *     return valueConstructors;
+     * }
+     * </pre>
+     * 
      * <p>
      * The R sample implementation creating a boolean type:
-     * {@codesnippet LanguageProviderSnippets#RSnippets#createValueConstructors}
+     * 
+     * <pre>
+     * &#64;Override
+     * public Collection&lt;? extends Snippet&gt; createValueConstructors(Context context) {
+     *     final Collection&lt;Snippet&gt; valueConstructors = new ArrayList<>();
+     *     Snippet.Builder builder = Snippet.newBuilder(
+     *                     "boolean",
+     *                     context.eval("R", "function (){ FALSE }"),
+     *                     TypeDescriptor.BOOLEAN);
+     *     valueConstructors.add(builder.build());
+     *     return valueConstructors;
+     * }
+     * </pre>
      *
      * @param context the context for a guest language code literal evaluation
      * @return factories creating the language data types
@@ -150,10 +188,64 @@ public interface LanguageProvider {
      *
      * <p>
      * The JavaScript sample implementation creating a plus operator:
-     * {@codesnippet LanguageProviderSnippets#JsSnippets#createExpressions}
-     * <p>
+     * 
+     * <pre>
+     * &#64;Override
+     * public Collection&lt;? extends Snippet&gt; createExpressions(Context context) {
+     *     final Collection&lt;Snippet&gt; expressions = new ArrayList&lt;&gt;();
+     *     final TypeDescriptor numeric = TypeDescriptor.union(
+     *                     TypeDescriptor.NUMBER,
+     *                     TypeDescriptor.BOOLEAN);
+     *     final TypeDescriptor nonNumeric = TypeDescriptor.union(
+     *                     TypeDescriptor.STRING,
+     *                     TypeDescriptor.OBJECT,
+     *                     TypeDescriptor.ARRAY,
+     *                     TypeDescriptor.EXECUTABLE_ANY);
+     *     Snippet.Builder builder = Snippet.newBuilder(
+     *                     "+",
+     *                     context.eval("js",
+     *                                     "(function (a, b){ return a + b;})"),
+     *                     TypeDescriptor.NUMBER).parameterTypes(numeric, numeric);
+     *     expressions.add(builder.build());
+     *     builder = Snippet.newBuilder(
+     *                     "+",
+     *                     context.eval("js",
+     *                                     "(function (a, b){ return a + b;})"),
+     *                     TypeDescriptor.STRING).parameterTypes(nonNumeric, TypeDescriptor.ANY);
+     *     expressions.add(builder.build());
+     *     builder = Snippet.newBuilder(
+     *                     "+",
+     *                     context.eval("js",
+     *                                     "(function (a, b){ return a + b;})"),
+     *                     TypeDescriptor.STRING).parameterTypes(TypeDescriptor.ANY, nonNumeric);
+     *     expressions.add(builder.build());
+     *     return expressions;
+     * }
+     * </pre>
+     * 
      * The R sample implementation creating a plus operator:
-     * {@codesnippet LanguageProviderSnippets#RSnippets#createExpressions}
+     * 
+     * <pre>
+     * &#64;Override
+     * public Collection&lt;? extends Snippet&gt; createExpressions(Context context) {
+     *     final Collection&lt;Snippet&gt; expressions = new ArrayList&lt;&gt;();
+     *     final TypeDescriptor numOrBool = TypeDescriptor.union(
+     *                     TypeDescriptor.NUMBER,
+     *                     TypeDescriptor.BOOLEAN);
+     *     final TypeDescriptor arrNumOrBool = TypeDescriptor.array(
+     *                     numOrBool);
+     *     final TypeDescriptor numeric = TypeDescriptor.union(
+     *                     numOrBool,
+     *                     arrNumOrBool);
+     *     Snippet.Builder builder = Snippet.newBuilder(
+     *                     "+",
+     *                     context.eval("R",
+     *                                     "function (a, b){ a + b}"),
+     *                     numeric).parameterTypes(numeric, numeric);
+     *     expressions.add(builder.build());
+     *     return expressions;
+     * }
+     * </pre>
      *
      * @param context the context for a guest language code literal evaluation
      * @return factories creating the language expressions
@@ -170,10 +262,53 @@ public interface LanguageProvider {
      *
      * <p>
      * The JavaScript sample implementation creating the {@code if} statement:
-     * {@codesnippet LanguageProviderSnippets#JsSnippets#createStatements}
+     * 
+     * <pre>
+     * &#64;Override
+     * public Collection&lt;? extends Snippet&gt; createStatements(Context context) {
+     *     final Collection&lt;Snippet&gt; statements = new ArrayList&lt;&gt;();
+     *     Snippet.Builder builder = Snippet.newBuilder(
+     *                     "if",
+     *                     context.eval("js",
+     *                                     "(function (p){\n" +
+     *                                                     "  if (p) return true ; else  return false;\n" +
+     *                                                     "})"),
+     *                     TypeDescriptor.BOOLEAN).parameterTypes(
+     *                                     TypeDescriptor.union(
+     *                                                     TypeDescriptor.STRING,
+     *                                                     TypeDescriptor.OBJECT,
+     *                                                     TypeDescriptor.NUMBER,
+     *                                                     TypeDescriptor.BOOLEAN));
+     *     statements.add(builder.build());
+     *     return statements;
+     * }
+     * </pre>
      * <p>
      * The R sample implementation creating the {@code if} statement:
-     * {@codesnippet LanguageProviderSnippets#RSnippets#createStatements}
+     *
+     * <pre>
+     * &#64;Override
+     * public Collection&lt;? extends Snippet&gt; createStatements(Context context) {
+     *     final Collection&lt;Snippet&gt; statements = new ArrayList&lt;&gt;();
+     *     final TypeDescriptor numberOrBoolean = TypeDescriptor.union(
+     *                     TypeDescriptor.NUMBER,
+     *                     TypeDescriptor.BOOLEAN);
+     *     final TypeDescriptor arrayNumberOrBoolean = TypeDescriptor.array(
+     *                     numberOrBoolean);
+     *     Snippet.Builder builder = Snippet.newBuilder(
+     *                     "if",
+     *                     context.eval("R",
+     *                                     "function(p){\n" +
+     *                                                     "  if (p) { return (TRUE) } else { return (FALSE) }\n" +
+     *                                                     "}"),
+     *                     TypeDescriptor.BOOLEAN).parameterTypes(
+     *                                     TypeDescriptor.union(
+     *                                                     numberOrBoolean,
+     *                                                     arrayNumberOrBoolean));
+     *     statements.add(builder.build());
+     *     return statements;
+     * }
+     * </pre>
      *
      * @param context the context for a guest language code literal evaluation
      * @return factories creating the language statements
@@ -187,7 +322,30 @@ public interface LanguageProvider {
      * but may return a result which can be asserted by {@link ResultVerifier}.
      * <p>
      * The JavaScript sample implementation:
-     * {@codesnippet LanguageProviderSnippets#JsSnippets#createScripts}
+     * 
+     * <pre>
+     * &#64;Override
+     * public Collection&lt;? extends Snippet&gt; createScripts(Context context) {
+     *     try {
+     *         final Collection&lt;Snippet&gt; scripts = new ArrayList&lt;&gt;();
+     *         Reader reader = new InputStreamReader(
+     *                         getClass().getResourceAsStream("sample.js"),
+     *                         "UTF-8");
+     *         Source source = Source.newBuilder(
+     *                         "js",
+     *                         reader,
+     *                         "sample.js").build();
+     *         Snippet.Builder builder = Snippet.newBuilder(
+     *                         source.getName(),
+     *                         context.eval(source),
+     *                         TypeDescriptor.NULL);
+     *         scripts.add(builder.build());
+     *         return scripts;
+     *     } catch (IOException ioe) {
+     *         throw new RuntimeException(ioe);
+     *     }
+     * }
+     * </pre>
      *
      * @param context the context for a guest language code literal evaluation
      * @return the language scripts
@@ -199,7 +357,25 @@ public interface LanguageProvider {
      * Creates a collection of scripts containing a syntax error.
      * <p>
      * The JavaScript sample implementation:
-     * {@codesnippet LanguageProviderSnippets#JsSnippets#createInvalidSyntaxScripts}
+     * 
+     * <pre>
+     * &#64;Override
+     * public Collection&lt;? extends Source&gt; createInvalidSyntaxScripts(Context ctx) {
+     *     try {
+     *         final Collection<Source> scripts = new ArrayList&lt;&gt;();
+     *         Reader reader = new InputStreamReader(
+     *                         getClass().getResourceAsStream("invalidSyntax.js"),
+     *                         "UTF-8");
+     *         scripts.add(Source.newBuilder(
+     *                         "js",
+     *                         reader,
+     *                         "invalidSyntax.js").build());
+     *         return scripts;
+     *     } catch (IOException ioe) {
+     *         throw new RuntimeException(ioe);
+     *     }
+     * }
+     * </pre>
      *
      * @param context the context for a guest language code literal evaluation
      * @return the scripts
@@ -215,7 +391,38 @@ public interface LanguageProvider {
      * list by default.
      * <p>
      * The JavaScript sample implementation creating inline code snippets:
-     * {@codesnippet LanguageProviderSnippets#JsSnippets#createInlineScripts}
+     * 
+     * <pre>
+     * &#64;Override
+     * public Collection&lt;? extends InlineSnippet&gt; createInlineScripts(Context context) {
+     *     final Collection&lt;InlineSnippet&gt; inlineScripts = new ArrayList&lt;&gt;();
+     *     Snippet.Builder scriptBuilder = Snippet.newBuilder(
+     *                     "factorial",
+     *                     context.eval("js",
+     *                                     "(function (){\n" +
+     *                                                     "  let factorial = function(n) {\n" +
+     *                                                     "    let f = 1;\n" +
+     *                                                     "    for (let i = 2; i &lt;= n; i++) {\n" +
+     *                                                     "      f *= i;\n" +
+     *                                                     "    }\n" +
+     *                                                     "  };\n" +
+     *                                                     "  return factorial(10);\n" +
+     *                                                     "})"),
+     *                     TypeDescriptor.NUMBER);
+     *     InlineSnippet.Builder builder = InlineSnippet.newBuilder(
+     *                     scriptBuilder.build(),
+     *                     "n * n").locationPredicate((SourceSection section) -> {
+     *                         int line = section.getStartLine();
+     *                         return 3 &lt;= line &amp;&amp; line &lt;= 6;
+     *                     });
+     *     inlineScripts.add(builder.build());
+     *     builder = InlineSnippet.newBuilder(
+     *                     scriptBuilder.build(),
+     *                     "Math.sin(Math.PI)");
+     *     inlineScripts.add(builder.build());
+     *     return inlineScripts;
+     * }
+     * </pre>
      *
      * @param context the context for a guest language code literal evaluation
      * @return A collection of inline code snippets.

@@ -26,8 +26,10 @@ import static com.oracle.truffle.espresso.libjavavm.jniapi.JNIErrors.JNI_ERR;
 
 import java.io.File;
 import java.io.PrintStream;
+import java.io.Serial;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -70,12 +72,14 @@ public final class Arguments {
     private static final Set<String> IGNORED_XX_OPTIONS = Set.of(
                     "ReservedCodeCacheSize",
                     // `TieredStopAtLevel=0` is handled separately, other values are ignored
-                    "TieredStopAtLevel");
+                    "TieredStopAtLevel",
+                    "MaxMetaspaceSize",
+                    "HeapDumpOnOutOfMemoryError");
 
     private static final Map<String, String> MAPPED_XX_OPTIONS = Map.of(
                     "TieredCompilation", "engine.MultiTier");
 
-    public static int setupContext(Context.Builder builder, JNIJavaVMInitArgs args) {
+    public static int setupContext(Context.Builder builder, JNIJavaVMInitArgs args, BitSet ignoredArgs) {
         Pointer p = (Pointer) args.getOptions();
         int count = args.getNOptions();
         String classpath = null;
@@ -85,7 +89,8 @@ public final class Arguments {
         ArgumentsHandler handler = new ArgumentsHandler(builder, IGNORED_XX_OPTIONS, MAPPED_XX_OPTIONS, args);
         List<String> jvmArgs = new ArrayList<>();
 
-        boolean ignoreUnrecognized = false;
+        boolean ignoreUnrecognized = args.getIgnoreUnrecognized();
+        List<String> xOptions = new ArrayList<>();
 
         for (int i = 0; i < count; i++) {
             JNIJavaVMOption option = (JNIJavaVMOption) p.add(i * SizeOf.get(JNIJavaVMOption.class));
@@ -94,6 +99,10 @@ public final class Arguments {
                 if (str.isNonNull()) {
                     String optionString = CTypeConversion.toJavaString(option.getOptionString());
                     buildJvmArg(jvmArgs, optionString);
+                    if (ignoredArgs.get(i)) {
+                        // this argument participates in jvmArgs but should otherwise be ignored
+                        continue;
+                    }
                     if (optionString.startsWith("-Xbootclasspath:")) {
                         bootClasspathPrepend = null;
                         bootClasspathAppend = null;
@@ -123,7 +132,7 @@ public final class Arguments {
                         builder.option(AGENT_PATH + split[0], split[1]);
                     } else if (optionString.startsWith("-D")) {
                         String key = optionString.substring("-D".length());
-                        int splitAt = key.indexOf("=");
+                        int splitAt = key.indexOf('=');
                         String value = "";
                         if (splitAt >= 0) {
                             value = key.substring(splitAt + 1);
@@ -169,7 +178,7 @@ public final class Arguments {
                     } else if (optionString.startsWith("--enable-native-access=")) {
                         handler.enableNativeAccess(optionString.substring("--enable-native-access=".length()));
                     } else if (optionString.startsWith("--module-path=")) {
-                        builder.option(JAVA_PROPS + "jdk.module.path", optionString.substring("--module-path=".length()));
+                        builder.option("java.ModulePath", optionString.substring("--module-path=".length()));
                     } else if (optionString.startsWith("--upgrade-module-path=")) {
                         builder.option(JAVA_PROPS + "jdk.module.upgrade.path", optionString.substring("--upgrade-module-path=".length()));
                     } else if (optionString.startsWith("--limit-modules=")) {
@@ -177,7 +186,7 @@ public final class Arguments {
                     } else if (optionString.equals("--enable-preview")) {
                         builder.option("java.EnablePreview", "true");
                     } else if (isXOption(optionString)) {
-                        RuntimeOptions.set(optionString.substring("-X".length()), null);
+                        xOptions.add(optionString);
                     } else if (optionString.equals("-XX:+IgnoreUnrecognizedVMOptions")) {
                         ignoreUnrecognized = true;
                     } else if (optionString.equals("-XX:-IgnoreUnrecognizedVMOptions")) {
@@ -223,6 +232,10 @@ public final class Arguments {
             }
         }
 
+        for (String xOption : xOptions) {
+            RuntimeOptions.set(xOption.substring(2 /* drop the -X */), null);
+        }
+
         if (bootClasspathPrepend != null) {
             builder.option("java.BootClasspathPrepend", bootClasspathPrepend);
         }
@@ -230,18 +243,9 @@ public final class Arguments {
             builder.option("java.BootClasspathAppend", bootClasspathAppend);
         }
 
-        // classpath provenance order:
-        // (1) the java.class.path property
-        if (classpath == null) {
-            // (2) the environment variable CLASSPATH
-            classpath = System.getenv("CLASSPATH");
-            if (classpath == null) {
-                // (3) the current working directory only
-                classpath = ".";
-            }
+        if (classpath != null) {
+            builder.option("java.Classpath", classpath);
         }
-
-        builder.option("java.Classpath", classpath);
 
         for (int i = 0; i < jvmArgs.size(); i++) {
             builder.option("java.VMArguments." + i, jvmArgs.get(i));
@@ -274,16 +278,16 @@ public final class Arguments {
     }
 
     private static String appendPath(String paths, String toAppend) {
-        if (paths != null && paths.length() != 0) {
-            return toAppend != null && toAppend.length() != 0 ? paths + File.pathSeparator + toAppend : paths;
+        if (paths != null && !paths.isEmpty()) {
+            return toAppend != null && !toAppend.isEmpty() ? paths + File.pathSeparator + toAppend : paths;
         } else {
             return toAppend;
         }
     }
 
     private static String prependPath(String toPrepend, String paths) {
-        if (paths != null && paths.length() != 0) {
-            return toPrepend != null && toPrepend.length() != 0 ? toPrepend + File.pathSeparator + paths : paths;
+        if (paths != null && !paths.isEmpty()) {
+            return toPrepend != null && !toPrepend.isEmpty() ? toPrepend + File.pathSeparator + paths : paths;
         } else {
             return toPrepend;
         }
@@ -304,7 +308,7 @@ public final class Arguments {
     }
 
     public static class ArgumentException extends RuntimeException {
-        private static final long serialVersionUID = 5430103471994299046L;
+        @Serial private static final long serialVersionUID = 5430103471994299046L;
 
         private final boolean isExperimental;
 

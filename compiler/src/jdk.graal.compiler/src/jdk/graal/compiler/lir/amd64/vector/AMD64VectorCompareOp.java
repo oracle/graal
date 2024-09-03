@@ -34,7 +34,6 @@ import jdk.graal.compiler.asm.amd64.AVXKind.AVXSize;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.Opcode;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
-
 import jdk.vm.ci.meta.AllocatableValue;
 
 public final class AMD64VectorCompareOp extends AMD64VectorInstruction {

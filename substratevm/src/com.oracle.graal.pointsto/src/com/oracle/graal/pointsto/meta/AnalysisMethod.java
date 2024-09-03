@@ -34,6 +34,7 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -41,8 +42,26 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
+
+import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
+
+import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.api.PointstoOptions;
+import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
+import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
+import com.oracle.graal.pointsto.infrastructure.GraphProvider;
+import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
+import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
+import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
+import com.oracle.graal.pointsto.reports.ReportUtils;
+import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.graal.pointsto.util.AtomicUtils;
+import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
+import com.oracle.svm.common.meta.MultiMethod;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.NodeSourcePosition;
@@ -53,24 +72,9 @@ import jdk.graal.compiler.nodes.EncodedGraph.EncodedNodeReference;
 import jdk.graal.compiler.nodes.GraphDecoder;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
-import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
-
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.api.PointstoOptions;
-import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
-import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
-import com.oracle.graal.pointsto.infrastructure.GraphProvider;
-import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
-import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
-import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
-import com.oracle.graal.pointsto.reports.ReportUtils;
-import com.oracle.graal.pointsto.results.StaticAnalysisResults;
-import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.graal.pointsto.util.AtomicUtils;
-import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
-import com.oracle.svm.common.meta.MultiMethod;
-
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ExceptionHandler;
@@ -105,19 +109,30 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     private static final AtomicReferenceFieldUpdater<AnalysisMethod, Object> isInlinedUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisMethod.class, Object.class, "isInlined");
 
+    static final AtomicReferenceFieldUpdater<AnalysisMethod, Object> allImplementationsUpdater = AtomicReferenceFieldUpdater
+                    .newUpdater(AnalysisMethod.class, Object.class, "allImplementations");
+
     public record Signature(String name, AnalysisType[] parameterTypes) {
     }
 
     public final ResolvedJavaMethod wrapped;
 
+    private AnalysisMethod indirectCallTarget = null;
+    public boolean invalidIndirectCallTarget = false;
+
     private final int id;
+    /** Marks a method loaded from a base layer. */
+    private final boolean isInBaseLayer;
+    private final boolean analyzedInPriorLayer;
     private final boolean hasNeverInlineDirective;
     private final ExceptionHandler[] exceptionHandlers;
     private final LocalVariableTable localVariableTable;
     private final String name;
     private final String qualifiedName;
+    private final int modifiers;
 
     protected final AnalysisType declaringClass;
+    protected final ResolvedSignature<AnalysisType> signature;
     private final int parsingContextMaxDepth;
 
     private final MultiMethodKey multiMethodKey;
@@ -159,31 +174,62 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     private EncodedGraph analyzedGraph;
 
     /**
-     * All concrete methods that can actually be called when calling this method. This includes all
-     * overridden methods in subclasses, as well as this method if it is non-abstract.
+     * Concrete methods that could possibly be called when calling this method. This also includes
+     * methods that are not reachable yet, i.e., this set must be filtered before it can be used. It
+     * never includes the method itself to reduce the size. See
+     * {@link AnalysisMethod#collectMethodImplementations} for more details.
      */
-    protected AnalysisMethod[] implementations;
+    @SuppressWarnings("unused") private volatile Object allImplementations;
 
     /**
-     * Indicates that this method returns all instantiated types. This is necessary when there are
-     * control flows present which cannot be tracked by analysis, which happens for continuation
-     * support.
+     * Indicates that this method has opaque return. This is necessary when there are control flows
+     * present which cannot be tracked by analysis, which happens for continuation support.
      *
      * This should only be set via calling
      * {@code FeatureImpl.BeforeAnalysisAccessImpl#registerOpaqueMethodReturn}.
      */
-    private boolean returnsAllInstantiatedTypes;
+    private boolean hasOpaqueReturn;
 
-    @SuppressWarnings("this-escape")
+    @SuppressWarnings({"this-escape", "unchecked"})
     protected AnalysisMethod(AnalysisUniverse universe, ResolvedJavaMethod wrapped, MultiMethodKey multiMethodKey, Map<MultiMethodKey, MultiMethod> multiMethodMap) {
         this.wrapped = wrapped;
-        id = universe.nextMethodId.getAndIncrement();
 
         declaringClass = universe.lookup(wrapped.getDeclaringClass());
+        var wrappedSignature = wrapped.getSignature();
+        if (wrappedSignature instanceof ResolvedSignature<?> resolvedSignature) {
+            /* BaseLayerMethods return fully resolved signatures */
+            if (resolvedSignature.getReturnType() instanceof AnalysisType) {
+                signature = (ResolvedSignature<AnalysisType>) resolvedSignature;
+            } else {
+                signature = getUniverse().lookup(wrappedSignature, wrapped.getDeclaringClass());
+            }
+        } else {
+            signature = getUniverse().lookup(wrappedSignature, wrapped.getDeclaringClass());
+        }
         hasNeverInlineDirective = universe.hostVM().hasNeverInlineDirective(wrapped);
 
         name = createName(wrapped, multiMethodKey);
         qualifiedName = format("%H.%n(%P)");
+        modifiers = wrapped.getModifiers();
+
+        if (universe.hostVM().useBaseLayer() && declaringClass.isInBaseLayer()) {
+            int mid = universe.getImageLayerLoader().lookupHostedMethodInBaseLayer(this);
+            if (mid != -1) {
+                /*
+                 * This id is the actual link between the corresponding method from the base layer
+                 * and this new method.
+                 */
+                id = mid;
+                isInBaseLayer = true;
+            } else {
+                id = universe.computeNextMethodId();
+                isInBaseLayer = false;
+            }
+        } else {
+            id = universe.computeNextMethodId();
+            isInBaseLayer = false;
+        }
+        analyzedInPriorLayer = isInBaseLayer && universe.hostVM().analyzedInPriorLayer(this);
 
         ExceptionHandler[] original = wrapped.getExceptionHandlers();
         exceptionHandlers = new ExceptionHandler[original.length];
@@ -218,7 +264,6 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         if (PointstoOptions.TrackAccessChain.getValue(declaringClass.universe.hostVM().options())) {
             startTrackInvocations();
         }
-        registerSignatureTypes();
         parsingContextMaxDepth = PointstoOptions.ParsingContextMaxDepth.getValue(declaringClass.universe.hostVM.options());
     }
 
@@ -226,7 +271,10 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     protected AnalysisMethod(AnalysisMethod original, MultiMethodKey multiMethodKey) {
         wrapped = original.wrapped;
         id = original.id;
+        isInBaseLayer = original.isInBaseLayer;
+        analyzedInPriorLayer = original.analyzedInPriorLayer;
         declaringClass = original.declaringClass;
+        signature = original.signature;
         hasNeverInlineDirective = original.hasNeverInlineDirective;
         exceptionHandlers = original.exceptionHandlers;
         localVariableTable = original.localVariableTable;
@@ -234,11 +282,12 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
         name = createName(wrapped, multiMethodKey);
         qualifiedName = format("%H.%n(%P)");
+        modifiers = original.modifiers;
 
         this.multiMethodKey = multiMethodKey;
         assert original.multiMethodMap != null;
         multiMethodMap = original.multiMethodMap;
-        returnsAllInstantiatedTypes = original.returnsAllInstantiatedTypes;
+        hasOpaqueReturn = original.hasOpaqueReturn;
 
         if (PointstoOptions.TrackAccessChain.getValue(declaringClass.universe.hostVM().options())) {
             startTrackInvocations();
@@ -251,22 +300,6 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
             aName += StableMethodNameFormatter.MULTI_METHOD_KEY_SEPARATOR + multiMethodKey;
         }
         return aName;
-    }
-
-    /**
-     * Lookup the parameters and return type so that they are added to the universe even if the
-     * method is never linked and parsed.
-     */
-    private void registerSignatureTypes() {
-        boolean isStatic = Modifier.isStatic(getModifiers());
-        int parameterCount = getSignature().getParameterCount(!isStatic);
-
-        int offset = isStatic ? 0 : 1;
-        for (int i = offset; i < parameterCount; i++) {
-            getSignature().getParameterType(i - offset, getDeclaringClass());
-        }
-
-        getSignature().getReturnType(getDeclaringClass());
     }
 
     public String getQualifiedName() {
@@ -293,9 +326,79 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     }
 
     @Override
-    protected AnalysisUniverse getUniverse() {
+    public AnalysisUniverse getUniverse() {
         /* Access the universe via the declaring class to avoid storing it here. */
         return declaringClass.getUniverse();
+    }
+
+    private static boolean matchingSignature(AnalysisMethod o1, AnalysisMethod o2) {
+        if (o1.equals(o2)) {
+            return true;
+        }
+
+        if (!o1.getName().equals(o2.getName())) {
+            return false;
+        }
+
+        return o1.getSignature().equals(o2.getSignature());
+    }
+
+    private AnalysisMethod setIndirectCallTarget(AnalysisMethod method, boolean foundMatch) {
+        indirectCallTarget = method;
+        invalidIndirectCallTarget = !foundMatch;
+        return indirectCallTarget;
+    }
+
+    /**
+     * For methods where its {@link #getDeclaringClass()} does not explicitly declare the method,
+     * find an alternative explicit declaration for the method which can be used as an indirect call
+     * target. This logic is currently used for deciding the target of virtual/interface calls when
+     * using the open type world.
+     */
+    public AnalysisMethod getIndirectCallTarget() {
+        if (indirectCallTarget != null) {
+            return indirectCallTarget;
+        }
+        if (isStatic()) {
+            /*
+             * Static methods must always be explicitly declared.
+             */
+            return setIndirectCallTarget(this, true);
+        }
+
+        var dispatchTableMethods = declaringClass.getOrCalculateOpenTypeWorldDispatchTableMethods();
+
+        if (isConstructor()) {
+            /*
+             * Constructors can only be found in their declaring class.
+             */
+            return setIndirectCallTarget(this, dispatchTableMethods.contains(this));
+        }
+
+        if (dispatchTableMethods.contains(this)) {
+            return setIndirectCallTarget(this, true);
+        }
+
+        for (AnalysisType interfaceType : declaringClass.getAllInterfaces()) {
+            if (interfaceType.equals(declaringClass)) {
+                // already checked
+                continue;
+            }
+            dispatchTableMethods = interfaceType.getOrCalculateOpenTypeWorldDispatchTableMethods();
+            for (AnalysisMethod candidate : dispatchTableMethods) {
+                if (matchingSignature(candidate, this)) {
+                    return setIndirectCallTarget(candidate, true);
+                }
+            }
+        }
+
+        /*
+         * For some methods (e.g., methods labeled as @PolymorphicSignature or @Delete), we
+         * currently do not find matches. However, these methods will not be indirect calls within
+         * our generated code, so it is not necessary to determine an accurate virtual/interface
+         * call target.
+         */
+        return setIndirectCallTarget(this, false);
     }
 
     public void cleanupAfterAnalysis() {
@@ -346,6 +449,14 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         return id;
     }
 
+    public boolean isInBaseLayer() {
+        return isInBaseLayer;
+    }
+
+    public boolean analyzedInPriorLayer() {
+        return analyzedInPriorLayer;
+    }
+
     /**
      * Registers this method as intrinsified to Graal nodes via a {@link InvocationPlugin graph
      * builder plugin}. Such a method is treated similar to an invoked method. For example, method
@@ -373,7 +484,6 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     public boolean registerAsImplementationInvoked(Object reason) {
         assert isValidReason(reason) : "Registering a method as implementation invoked needs to provide a valid reason, found: " + reason;
-        assert isImplementationInvokable() : this;
         assert !Modifier.isAbstract(getModifiers()) : this;
 
         /*
@@ -482,6 +592,10 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         return AtomicUtils.isSet(this, isDirectRootMethodUpdater);
     }
 
+    public boolean isSimplyInvoked() {
+        return AtomicUtils.isSet(this, isInvokedUpdater);
+    }
+
     public boolean isSimplyImplementationInvoked() {
         return AtomicUtils.isSet(this, isImplementationInvokedUpdater);
     }
@@ -493,7 +607,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         return isIntrinsicMethod() || isVirtualRootMethod() || isDirectRootMethod() || AtomicUtils.isSet(this, isInvokedUpdater);
     }
 
-    protected Object getInvokedReason() {
+    public Object getInvokedReason() {
         return isInvoked;
     }
 
@@ -505,7 +619,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         return !Modifier.isAbstract(getModifiers()) && (isIntrinsicMethod() || AtomicUtils.isSet(this, isImplementationInvokedUpdater));
     }
 
-    protected Object getImplementationInvokedReason() {
+    public Object getImplementationInvokedReason() {
         return isImplementationInvoked;
     }
 
@@ -538,81 +652,10 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     @Override
     public void onReachable() {
         notifyReachabilityCallbacks(declaringClass.getUniverse(), new ArrayList<>());
-        processMethodOverrides();
-    }
-
-    private void processMethodOverrides() {
-        if (wrapped.canBeStaticallyBound() || isConstructor()) {
-            notifyMethodOverride(this);
-        } else if (declaringClass.isAnySubtypeInstantiated()) {
-            /*
-             * If neither the declaring class nor a subtype is instantiated then this method cannot
-             * be marked as invoked, so it cannot be an override.
-             */
-            declaringClass.forAllSuperTypes(superType -> {
-                /*
-                 * Iterate all the super types (including this type itself) looking for installed
-                 * override notifications. If this method is found in a super type, and it has an
-                 * override handler installed in that type, pass this method to the callback. It
-                 * doesn't matter if the superMethod is actually reachable, only if it has any
-                 * override handlers installed. Note that ResolvedJavaType.resolveMethod() cannot be
-                 * used here because it only resolves methods declared by the type itself or if the
-                 * method's declaring class is assignable from the type.
-                 */
-                AnalysisMethod superMethod = findInType(superType);
-                if (superMethod != null) {
-                    superMethod.notifyMethodOverride(AnalysisMethod.this);
-                }
-            });
-        }
-    }
-
-    /** Find if the type declares a method with the same name and signature as this method. */
-    private AnalysisMethod findInType(AnalysisType type) {
-        try {
-            return type.findMethod(wrapped.getName(), getSignature());
-        } catch (UnsupportedFeatureException | LinkageError e) {
-            /* Ignore linking errors and deleted methods. */
-            return null;
-        }
-    }
-
-    protected void notifyMethodOverride(AnalysisMethod override) {
-        declaringClass.getOverrideReachabilityNotifications(this).forEach(n -> n.notifyCallback(getUniverse(), override));
     }
 
     public void registerOverrideReachabilityNotification(MethodOverrideReachableNotification notification) {
-        declaringClass.registerOverrideReachabilityNotification(this, notification);
-    }
-
-    /**
-     * Resolves this method in the provided type, but only if the type or any of its subtypes is
-     * marked as instantiated.
-     */
-    protected AnalysisMethod resolveInType(AnalysisType holder) {
-        return resolveInType(holder, holder.isAnySubtypeInstantiated());
-    }
-
-    protected AnalysisMethod resolveInType(AnalysisType holder, boolean holderOrSubtypeInstantiated) {
-        /*
-         * If the holder and all subtypes are not instantiated, then we do not need to resolve the
-         * method. The method cannot be marked as invoked.
-         */
-        if (holderOrSubtypeInstantiated || isIntrinsicMethod()) {
-            AnalysisMethod resolved;
-            try {
-                resolved = holder.resolveConcreteMethod(this, null);
-            } catch (UnsupportedFeatureException e) {
-                /* An unsupported overriding method is not reachable. */
-                resolved = null;
-            }
-            /*
-             * resolved == null means that the method in the base class was called, but never with
-             * this holder.
-             */
-            return resolved;
-        }
-        return null;
+        getUniverse().registerOverrideReachabilityNotification(this, notification);
     }
 
     @Override
@@ -626,22 +669,31 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     }
 
     @Override
-    public WrappedSignature getSignature() {
-        return getUniverse().lookup(wrapped.getSignature(), wrapped.getDeclaringClass());
+    public ResolvedSignature<AnalysisType> getSignature() {
+        return signature;
     }
 
     @Override
-    public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
-        if (wrapped instanceof GraphProvider) {
-            return ((GraphProvider) wrapped).buildGraph(debug, method, providers, purpose);
+    public JavaType[] toParameterTypes() {
+        throw JVMCIError.shouldNotReachHere("ResolvedJavaMethod.toParameterTypes returns the wrong result for constructors. Use toParameterList instead.");
+    }
+
+    public List<AnalysisType> toParameterList() {
+        return getSignature().toParameterList(isStatic() ? null : getDeclaringClass());
+    }
+
+    @Override
+    public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
+        if (wrapped instanceof GraphProvider graphProvider) {
+            return graphProvider.buildGraph(debug, method, providers, purpose);
         }
         return null;
     }
 
     @Override
     public boolean allowRuntimeCompilation() {
-        if (wrapped instanceof GraphProvider) {
-            return ((GraphProvider) wrapped).allowRuntimeCompilation();
+        if (wrapped instanceof GraphProvider graphProvider) {
+            return graphProvider.allowRuntimeCompilation();
         }
         return true;
     }
@@ -678,7 +730,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     @Override
     public int getModifiers() {
-        return wrapped.getModifiers();
+        return modifiers;
     }
 
     @Override
@@ -714,12 +766,46 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     }
 
-    public AnalysisMethod[] getImplementations() {
-        assert getUniverse().analysisDataValid : this;
-        if (implementations == null) {
-            return new AnalysisMethod[0];
+    /**
+     * Returns all methods that override (= implement) this method. If the
+     * {@code includeInlinedMethods} parameter is true, all reachable overrides are returned; if it
+     * is false, only invoked methods are returned (and methods that are already inlined at all call
+     * sites are excluded).
+     *
+     * In the parallel static analysis, it is difficult to have this information always available:
+     * when a method becomes reachable or invoked, it is not known which other methods it overrides.
+     * Therefore, we collect all possible implementations in {@link #allImplementations} without
+     * taking reachability into account, and then filter this too-large set of methods here on
+     * demand.
+     */
+    public Set<AnalysisMethod> collectMethodImplementations(boolean includeInlinedMethods) {
+        /*
+         * To keep the allImplementations set as small as possible (and empty for most methods), the
+         * set never includes this method itself. It is clear that every method is always an
+         * implementation of itself.
+         */
+        boolean includeOurselfs = (isStatic() || getDeclaringClass().isAnySubtypeInstantiated()) &&
+                        (includeInlinedMethods ? isReachable() : isImplementationInvoked());
+
+        int allImplementationsSize = ConcurrentLightHashSet.size(this, allImplementationsUpdater);
+        if (allImplementationsSize == 0) {
+            /* Fast-path that avoids allocation of a full HashSet. */
+            return includeOurselfs ? Set.of(this) : Set.of();
         }
-        return implementations;
+
+        Set<AnalysisMethod> result = new HashSet<>(allImplementationsSize + 1);
+        if (includeOurselfs) {
+            result.add(this);
+        }
+        ConcurrentLightHashSet.forEach(this, allImplementationsUpdater, (AnalysisMethod override) -> {
+            if (override.getDeclaringClass().isAnySubtypeInstantiated()) {
+                if (includeInlinedMethods ? override.isReachable() : override.isImplementationInvoked()) {
+                    result.add(override);
+                }
+            }
+        });
+
+        return result;
     }
 
     @Override
@@ -734,11 +820,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     @Override
     public ProfilingInfo getProfilingInfo(boolean includeNormal, boolean includeOSR) {
-        /*
-         * This is also the profiling information used when parsing methods for static analysis, so
-         * it needs to be conservative.
-         */
-        return StaticAnalysisResults.NO_RESULTS;
+        return null;
     }
 
     @Override
@@ -824,8 +906,12 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     }
 
     @Override
+    public ResolvedJavaMethod unwrapTowardsOriginalMethod() {
+        return wrapped;
+    }
+
     public Executable getJavaMethod() {
-        return OriginalMethodProvider.getJavaMethod(wrapped);
+        return OriginalMethodProvider.getJavaMethod(this);
     }
 
     /**
@@ -833,6 +919,10 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      */
     public AnalysisParsedGraph reparseGraph(BigBang bb) {
         return ensureGraphParsedHelper(bb, true);
+    }
+
+    public Object getGraph() {
+        return parsedGraphCacheState.get();
     }
 
     /**
@@ -857,7 +947,12 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
              */
 
             if (curState == GRAPH_CACHE_UNPARSED || (forceReparse && curState instanceof AnalysisParsedGraph)) {
-                AnalysisParsedGraph graph = parseGraph(bb, curState);
+                AnalysisParsedGraph graph;
+                if (isInBaseLayer && getUniverse().getImageLayerLoader().hasAnalysisParsedGraph(this)) {
+                    graph = getBaseLayerGraph(curState);
+                } else {
+                    graph = parseGraph(bb, curState);
+                }
                 if (graph != null) {
                     return graph;
                 }
@@ -879,7 +974,15 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         }
     }
 
+    private AnalysisParsedGraph getBaseLayerGraph(Object expectedValue) {
+        return setGraph(expectedValue, () -> getUniverse().getImageLayerLoader().getAnalysisParsedGraph(this));
+    }
+
     private AnalysisParsedGraph parseGraph(BigBang bb, Object expectedValue) {
+        return setGraph(expectedValue, () -> AnalysisParsedGraph.parseBytecode(bb, this));
+    }
+
+    private AnalysisParsedGraph setGraph(Object expectedValue, Supplier<AnalysisParsedGraph> graphSupplier) {
         ReentrantLock lock = new ReentrantLock();
         lock.lock();
         try {
@@ -892,7 +995,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
                 return null;
             }
 
-            AnalysisParsedGraph graph = AnalysisParsedGraph.parseBytecode(bb, this);
+            AnalysisParsedGraph graph = graphSupplier.get();
 
             /*
              * Since we still hold the parsing lock, the transition form "parsing" to "parsed"
@@ -932,23 +1035,26 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
             return null;
         }
 
-        return decodeAnalyzedGraph(debug, nodeReferences, analyzedGraph.trackNodeSourcePosition());
+        return decodeAnalyzedGraph(debug, nodeReferences, analyzedGraph.trackNodeSourcePosition(), analyzedGraph.isRecordingInlinedMethods(), GraphDecoder::new);
     }
 
     /**
      * Returns the {@link StructuredGraph Graal IR} for the method that has been processed by the
      * static analysis.
      */
-    public StructuredGraph decodeAnalyzedGraph(DebugContext debug, Iterable<EncodedNodeReference> nodeReferences, boolean trackNodeSourcePosition) {
+    public StructuredGraph decodeAnalyzedGraph(DebugContext debug, Iterable<EncodedNodeReference> nodeReferences, boolean trackNodeSourcePosition, boolean recordInlinedMethods,
+                    BiFunction<Architecture, StructuredGraph, GraphDecoder> decoderProvider) {
         if (analyzedGraph == null) {
             return null;
         }
 
         var allowAssumptions = getUniverse().hostVM().allowAssumptions(this);
-        // Note we never record inlined methods. This is correct even for runtime compiled methods
-        StructuredGraph result = new StructuredGraph.Builder(debug.getOptions(), debug, allowAssumptions).method(this).recordInlinedMethods(false).trackNodeSourcePosition(
-                        trackNodeSourcePosition).build();
-        GraphDecoder decoder = new GraphDecoder(AnalysisParsedGraph.HOST_ARCHITECTURE, result);
+        StructuredGraph result = new StructuredGraph.Builder(debug.getOptions(), debug, allowAssumptions)
+                        .method(this)
+                        .trackNodeSourcePosition(trackNodeSourcePosition)
+                        .recordInlinedMethods(recordInlinedMethods)
+                        .build();
+        GraphDecoder decoder = decoderProvider.apply(AnalysisParsedGraph.HOST_ARCHITECTURE, result);
         decoder.decode(analyzedGraph, nodeReferences);
         /*
          * Since we are merely decoding the graph, the resulting graph should have the same
@@ -967,6 +1073,10 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     public void setAnalyzedGraph(EncodedGraph analyzedGraph) {
         this.analyzedGraph = analyzedGraph;
+    }
+
+    public void clearAnalyzedGraph() {
+        this.analyzedGraph = null;
     }
 
     public EncodedGraph getAnalyzedGraph() {
@@ -1027,15 +1137,13 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      * This should only be set via calling
      * {@code FeatureImpl.BeforeAnalysisAccessImpl#registerOpaqueMethodReturn}.
      */
-    public void setReturnsAllInstantiatedTypes() {
-        returnsAllInstantiatedTypes = true;
+    public void setOpaqueReturn() {
+        hasOpaqueReturn = true;
     }
 
-    public boolean getReturnsAllInstantiatedTypes() {
-        return returnsAllInstantiatedTypes;
+    public boolean hasOpaqueReturn() {
+        return hasOpaqueReturn;
     }
 
     protected abstract AnalysisMethod createMultiMethod(AnalysisMethod analysisMethod, MultiMethodKey newMultiMethodKey);
-
-    public abstract boolean isImplementationInvokable();
 }

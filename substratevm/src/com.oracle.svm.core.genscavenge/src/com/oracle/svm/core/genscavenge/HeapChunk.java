@@ -26,10 +26,6 @@ package com.oracle.svm.core.genscavenge;
 
 import java.util.function.IntUnaryOperator;
 
-import jdk.graal.compiler.api.directives.GraalDirectives;
-import jdk.graal.compiler.word.Word;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.UniqueLocationIdentity;
@@ -42,13 +38,15 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.struct.PinnedObjectField;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
+
+import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.word.Word;
 
 /**
  * The common structure of the chunks of memory which make up the heap. HeapChunks are aggregated
@@ -172,8 +170,8 @@ public final class HeapChunk {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void initialize(Header<?> chunk, Pointer objectsStart, UnsignedWord chunkSize) {
-        HeapChunk.setEndOffset(chunk, chunkSize);
+    public static void initialize(Header<?> chunk, Pointer objectsStart, UnsignedWord endOffset) {
+        HeapChunk.setEndOffset(chunk, endOffset);
         HeapChunk.setTopPointer(chunk, objectsStart);
         HeapChunk.setSpace(chunk, null);
         HeapChunk.setNext(chunk, WordFactory.nullPointer());
@@ -205,7 +203,7 @@ public final class HeapChunk {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static void setTopPointerCarefully(Header<?> that, Pointer newTop) {
+    public static void setTopPointerCarefully(Header<?> that, Pointer newTop) {
         assert getTopPointer(that).isNonNull() : "Not safe: top currently points to NULL.";
         assert getTopPointer(that).belowOrEqual(newTop) : "newTop too low.";
         assert newTop.belowOrEqual(getEndPointer(that)) : "newTop too high.";
@@ -296,24 +294,26 @@ public final class HeapChunk {
     }
 
     @NeverInline("Not performance critical")
-    public static boolean walkObjectsFrom(Header<?> that, Pointer offset, ObjectVisitor visitor) {
-        return walkObjectsFromInline(that, offset, visitor);
+    @Uninterruptible(reason = "Forced inlining (StoredContinuation objects must not move).")
+    public static boolean walkObjectsFrom(Header<?> that, Pointer start, ObjectVisitor visitor) {
+        return walkObjectsFromInline(that, start, visitor);
     }
 
     @AlwaysInline("GC performance")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean walkObjectsFromInline(Header<?> that, Pointer startOffset, ObjectVisitor visitor) {
-        Pointer offset = startOffset;
-        while (offset.belowThan(getTopPointer(that))) { // crucial: top can move, so always re-read
-            Object obj = offset.toObject();
+    @Uninterruptible(reason = "Forced inlining (StoredContinuation objects must not move).", callerMustBe = true)
+    public static boolean walkObjectsFromInline(Header<?> that, Pointer start, ObjectVisitor visitor) {
+        Pointer p = start;
+        while (p.belowThan(getTopPointer(that))) { // crucial: top can move, so always re-read
+            Object obj = p.toObject();
             if (!callVisitor(visitor, obj)) {
                 return false;
             }
-            offset = offset.add(LayoutEncoding.getSizeFromObjectInlineInGC(obj));
+            p = p.add(LayoutEncoding.getSizeFromObjectInlineInGC(obj));
         }
         return true;
     }
 
+    @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
     @Uninterruptible(reason = "Bridge between uninterruptible and potentially interruptible code.", mayBeInlined = true, calleeMustBe = false)
     private static boolean callVisitor(ObjectVisitor visitor, Object obj) {
         return visitor.visitObjectInline(obj);
@@ -332,7 +332,6 @@ public final class HeapChunk {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static HeapChunk.Header<?> getEnclosingHeapChunk(Object obj) {
         if (!GraalDirectives.inIntrinsic()) {
-            assert !HeapImpl.getHeapImpl().isInImageHeap(obj) || HeapImpl.usesImageHeapChunks() : "Must be checked before calling this method";
             assert !ObjectHeaderImpl.isPointerToForwardedObject(Word.objectToUntrackedPointer(obj)) : "Forwarded objects must be a pointer and not an object";
         }
         if (ObjectHeaderImpl.isAlignedObject(obj)) {
@@ -351,42 +350,5 @@ public final class HeapChunk {
         } else {
             return UnalignedHeapChunk.getEnclosingChunkFromObjectPointer(ptrToObj);
         }
-    }
-
-    abstract static class MemoryWalkerAccessImpl<T extends HeapChunk.Header<?>> implements MemoryWalker.HeapChunkAccess<T> {
-        @Platforms(Platform.HOSTED_ONLY.class)
-        MemoryWalkerAccessImpl() {
-        }
-
-        @Override
-        public UnsignedWord getStart(T heapChunk) {
-            return (UnsignedWord) heapChunk;
-        }
-
-        @Override
-        public UnsignedWord getSize(T heapChunk) {
-            return HeapChunk.getEndOffset(heapChunk);
-        }
-
-        @Override
-        public UnsignedWord getAllocationEnd(T heapChunk) {
-            return HeapChunk.getTopPointer(heapChunk);
-        }
-
-        @Override
-        public String getRegion(T heapChunk) {
-            /* This method knows too much about spaces, especially the "free" space. */
-            Space space = getSpace(heapChunk);
-            String result;
-            if (space == null) {
-                result = "free";
-            } else if (space.isYoungSpace()) {
-                result = "young";
-            } else {
-                result = "old";
-            }
-            return result;
-        }
-
     }
 }

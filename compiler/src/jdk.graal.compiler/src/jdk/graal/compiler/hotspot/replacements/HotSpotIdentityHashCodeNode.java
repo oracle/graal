@@ -24,16 +24,14 @@
  */
 package jdk.graal.compiler.hotspot.replacements;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeCycles;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.replacements.nodes.IdentityHashCodeNode;
-import org.graalvm.word.LocationIdentity;
-
-import jdk.vm.ci.hotspot.HotSpotObjectConstant;
-import jdk.vm.ci.meta.JavaConstant;
 
 @NodeInfo(cycles = NodeCycles.CYCLES_4, size = NodeSize.SIZE_16)
 public class HotSpotIdentityHashCodeNode extends IdentityHashCodeNode {
@@ -47,10 +45,5 @@ public class HotSpotIdentityHashCodeNode extends IdentityHashCodeNode {
     @Override
     public LocationIdentity getKilledLocationIdentity() {
         return HotSpotReplacementsUtil.MARK_WORD_LOCATION;
-    }
-
-    @Override
-    protected int getIdentityHashCode(JavaConstant constant) {
-        return ((HotSpotObjectConstant) constant).getIdentityHashCode();
     }
 }

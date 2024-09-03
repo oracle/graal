@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,7 +31,6 @@ import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRFrameState;
 import jdk.graal.compiler.lir.Variable;
-
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
 
@@ -82,7 +81,18 @@ public interface ArithmeticLIRGeneratorTool {
 
     Value emitUShr(Value a, Value b);
 
-    Value emitFloatConvert(FloatConvert op, Value inputVal);
+    /**
+     * Emit a floating point to floating point, floating point to integer, or integer to floating
+     * point conversion.
+     *
+     * @param op the conversion to be performed
+     * @param inputVal the input value
+     * @param canBeNaN whether the input can be NaN; only relevant for floating point to integer
+     *            conversions
+     * @param canOverflow whether the input can be infinite or otherwise outside the target type's
+     *            range; only relevant for floating point to integer conversions
+     */
+    Value emitFloatConvert(FloatConvert op, Value inputVal, boolean canBeNaN, boolean canOverflow);
 
     Value emitReinterpret(LIRKind to, Value inputVal);
 
@@ -90,7 +100,16 @@ public interface ArithmeticLIRGeneratorTool {
 
     Value emitSignExtend(Value inputVal, int fromBits, int toBits);
 
-    Value emitZeroExtend(Value inputVal, int fromBits, int toBits);
+    default Value emitZeroExtend(Value inputVal, int fromBits, int toBits) {
+        return emitZeroExtend(inputVal, fromBits, toBits, true, true);
+    }
+
+    /**
+     * Some architectures support implicit zero extend. Hint the backend to omit zero extend where
+     * possible by passing false to {@code requiresExplicitZeroExtend}, and to avoid generating
+     * intermediate value of the result LIRKind by passing false to {@code requiresLIRKindChange}.
+     */
+    Value emitZeroExtend(Value inputVal, int fromBits, int toBits, boolean requiresExplicitZeroExtend, boolean requiresLIRKindChange);
 
     Value emitMathAbs(Value input);
 
@@ -110,10 +129,10 @@ public interface ArithmeticLIRGeneratorTool {
 
     void emitStore(ValueKind<?> kind, Value address, Value input, LIRFrameState state, MemoryOrderMode memoryOrder);
 
-    @SuppressWarnings("unused")
-    default Value emitFusedMultiplyAdd(Value a, Value b, Value c) {
-        throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
-    }
+    /**
+     * Generate an fma instruction to calculate the value of a * b + c.
+     */
+    Value emitFusedMultiplyAdd(Value a, Value b, Value c);
 
     @SuppressWarnings("unused")
     default Value emitMathLog(Value input, boolean base10) {
@@ -206,7 +225,7 @@ public interface ArithmeticLIRGeneratorTool {
     }
 
     @SuppressWarnings("unused")
-    default Variable emitNormalizedUnsignedCompare(Value x, Value y) {
+    default Variable emitNormalizedUnsignedCompare(LIRKind compareKind, Value x, Value y) {
         throw GraalError.unimplemented("No specialized implementation available");
     }
 

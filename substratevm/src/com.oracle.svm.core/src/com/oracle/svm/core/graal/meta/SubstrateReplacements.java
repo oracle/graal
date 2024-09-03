@@ -42,8 +42,19 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
+import org.graalvm.nativeimage.AnnotationAccess;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature.BeforeHeapLayoutAccess;
+
+import com.oracle.svm.core.SubstrateTargetDescription;
+import com.oracle.svm.core.code.ImageCodeInfo;
+import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.core.option.HostedOptionValues;
+import com.oracle.svm.core.util.VMError;
+
 import jdk.graal.compiler.api.replacements.Snippet;
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.type.Stamp;
@@ -78,17 +89,6 @@ import jdk.graal.compiler.replacements.ConstantBindingParameterPlugin;
 import jdk.graal.compiler.replacements.PEGraphDecoder;
 import jdk.graal.compiler.replacements.ReplacementsImpl;
 import jdk.graal.compiler.word.WordTypes;
-import org.graalvm.nativeimage.AnnotationAccess;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature.BeforeHeapLayoutAccess;
-
-import com.oracle.svm.core.SubstrateTargetDescription;
-import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.meta.SharedMethod;
-import com.oracle.svm.core.option.HostedOptionValues;
-import com.oracle.svm.core.util.VMError;
-
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -150,14 +150,11 @@ public class SubstrateReplacements extends ReplacementsImpl {
     private Object[] snippetObjects;
     private NodeClass<?>[] snippetNodeClasses;
     private Map<ResolvedJavaMethod, Integer> snippetStartOffsets;
-    private final WordTypes wordTypes;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public SubstrateReplacements(Providers providers, SnippetReflectionProvider snippetReflection, BytecodeProvider bytecodeProvider, TargetDescription target,
-                    WordTypes wordTypes, GraphMakerFactory graphMakerFactory) {
+    public SubstrateReplacements(Providers providers, BytecodeProvider bytecodeProvider, TargetDescription target, GraphMakerFactory graphMakerFactory) {
         // Snippets cannot have optimistic assumptions.
-        super(new GraalDebugHandlersFactory(snippetReflection), providers, snippetReflection, bytecodeProvider, target);
-        this.wordTypes = wordTypes;
+        super(new GraalDebugHandlersFactory(providers.getSnippetReflection()), providers, bytecodeProvider, target);
         this.builder = new Builder(graphMakerFactory);
     }
 
@@ -175,14 +172,14 @@ public class SubstrateReplacements extends ReplacementsImpl {
      * as immutable.
      */
     private static boolean isImmutable(Object o) {
-        return !(o instanceof SubstrateForeignCallLinkage) && !(o instanceof SubstrateTargetDescription);
+        return !(o instanceof SubstrateForeignCallLinkage) && !(o instanceof SubstrateTargetDescription) && !(o instanceof ImageCodeInfo);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public Collection<StructuredGraph> getSnippetGraphs(boolean trackNodeSourcePosition, OptionValues options) {
+    public Collection<StructuredGraph> getSnippetGraphs(boolean trackNodeSourcePosition, OptionValues options, Function<Object, Object> objectTransformer) {
         List<StructuredGraph> result = new ArrayList<>(snippetStartOffsets.size());
         for (ResolvedJavaMethod method : snippetStartOffsets.keySet()) {
-            result.add(getSnippet(method, null, null, null, trackNodeSourcePosition, null, options));
+            result.add(getSnippet(method, null, trackNodeSourcePosition, options, objectTransformer));
         }
         return result;
     }
@@ -210,6 +207,10 @@ public class SubstrateReplacements extends ReplacementsImpl {
     @Override
     public StructuredGraph getSnippet(ResolvedJavaMethod method, ResolvedJavaMethod recursiveEntry, Object[] args, BitSet nonNullParameters, boolean trackNodeSourcePosition,
                     NodeSourcePosition replaceePosition, OptionValues options) {
+        return getSnippet(method, args, trackNodeSourcePosition, options, Function.identity());
+    }
+
+    public StructuredGraph getSnippet(ResolvedJavaMethod method, Object[] args, boolean trackNodeSourcePosition, OptionValues options, Function<Object, Object> objectTransformer) {
         Integer startOffset = snippetStartOffsets.get(method);
         if (startOffset == null) {
             throw VMError.shouldNotReachHere("snippet not found: " + method.format("%H.%n(%p)"));
@@ -217,7 +218,7 @@ public class SubstrateReplacements extends ReplacementsImpl {
 
         ParameterPlugin parameterPlugin = null;
         if (args != null) {
-            parameterPlugin = new ConstantBindingParameterPlugin(args, providers.getMetaAccess(), snippetReflection);
+            parameterPlugin = new ConstantBindingParameterPlugin(args, providers.getMetaAccess(), providers.getSnippetReflection());
         }
 
         OptionValues optionValues = new OptionValues(options, GraalOptions.TraceInlining, GraalOptions.TraceInliningForStubsAndSnippets.getValue(options),
@@ -226,7 +227,7 @@ public class SubstrateReplacements extends ReplacementsImpl {
             StructuredGraph result = new StructuredGraph.Builder(optionValues, debug)
                             .method(method)
                             .trackNodeSourcePosition(trackNodeSourcePosition)
-                            .recordInlinedMethods(false)
+                            .recordInlinedMethods(true)
                             .setIsSubstitution(true)
                             .build();
 
@@ -249,6 +250,11 @@ public class SubstrateReplacements extends ReplacementsImpl {
                 @Override
                 public IntrinsicContext getIntrinsic() {
                     return intrinsic;
+                }
+
+                @Override
+                protected Object readObject(MethodScope methodScope) {
+                    return objectTransformer.apply(super.readObject(methodScope));
                 }
             };
 
@@ -300,8 +306,7 @@ public class SubstrateReplacements extends ReplacementsImpl {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void encodeSnippets() {
-        GraphEncoder encoder = new GraphEncoder(ConfigurationValues.getTarget().arch);
+    public void encodeSnippets(GraphEncoder encoder) {
         while (!builder.deferred.isEmpty()) {
             builder.deferred.pop().run();
         }
@@ -383,7 +388,7 @@ public class SubstrateReplacements extends ReplacementsImpl {
     @Override
     public <T> T getInjectedArgument(Class<T> capability) {
         if (capability.isAssignableFrom(WordTypes.class)) {
-            return (T) wordTypes;
+            return (T) providers.getWordTypes();
         }
         return super.getInjectedArgument(capability);
     }
@@ -393,8 +398,8 @@ public class SubstrateReplacements extends ReplacementsImpl {
         JavaKind kind = JavaKind.fromJavaClass(type);
         if (kind == JavaKind.Object) {
             ResolvedJavaType returnType = providers.getMetaAccess().lookupJavaType(type);
-            if (wordTypes.isWord(returnType)) {
-                return wordTypes.getWordStamp(returnType);
+            if (providers.getWordTypes().isWord(returnType)) {
+                return providers.getWordTypes().getWordStamp(returnType);
             } else {
                 return StampFactory.object(TypeReference.createWithoutAssumptions(returnType), nonNull);
             }

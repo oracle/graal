@@ -33,7 +33,6 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-import org.graalvm.collections.EconomicMap;
 import jdk.graal.compiler.options.EnumMultiOptionKey;
 import jdk.graal.compiler.options.EnumOptionKey;
 import jdk.graal.compiler.options.Option;
@@ -122,7 +121,7 @@ public class DebugOptions {
     @Option(help = "Pattern for specifying scopes in which logging is enabled. " +
                    "See the Dump option for the pattern syntax.", type = OptionType.Debug)
     public static final OptionKey<String> Log = new OptionKey<>(null);
-    @Option(help = "file:doc-files/MethodFilterHelp.txt", stability = OptionStability.STABLE)
+    @Option(help = "file:doc-files/MethodFilterHelp.txt")
     public static final OptionKey<String> MethodFilter = new OptionKey<>(null);
     @Option(help = "Only check MethodFilter against the root method in the context if true, otherwise check all methods", type = OptionType.Debug)
     public static final OptionKey<Boolean> MethodFilterRootOnly = new OptionKey<>(false);
@@ -144,9 +143,11 @@ public class DebugOptions {
     public static final OptionKey<Boolean> DebugStubsAndSnippets = new OptionKey<>(false);
     @Option(help = "Send compiler IR to dump handlers on error.", type = OptionType.Debug)
     public static final OptionKey<Boolean> DumpOnError = new OptionKey<>(false);
-    @Option(help = "Specify the dump level if CompilationFailureAction#Diagnose is used." +
-                    "See CompilationFailureAction for details. file:doc-files/CompilationFailureActionHelp.txt", type = OptionType.Debug)
-    public static final OptionKey<Integer> DiagnoseDumpLevel = new OptionKey<>(DebugContext.VERBOSE_LEVEL);
+    @Option(help = "Option values to use during a retry compilation triggered by CompilationFailureAction=Diagnose " +
+                   "or CompilationFailureAction=ExitVM. If the value starts with a non-letter character, that " +
+                   "character is used as the separator between options instead of a space. For example: " +
+                   "\\\"DiagnoseOptions=@Log=Inlining@LogFile=/path/with space.\\\"", type = OptionType.User)
+    public static final OptionKey<String> DiagnoseOptions = new OptionKey<>("Dump=:" + DebugContext.VERBOSE_LEVEL);
     @Option(help = "Disable intercepting exceptions in debug scopes.", type = OptionType.Debug)
     public static final OptionKey<Boolean> DisableIntercept = new OptionKey<>(false);
     @Option(help = "Intercept also bailout exceptions", type = OptionType.Debug)
@@ -154,7 +155,7 @@ public class DebugOptions {
     @Option(help = "Enable more verbose log output when available", type = OptionType.Debug)
     public static final OptionKey<Boolean> LogVerbose = new OptionKey<>(false);
 
-    @Option(help = "The directory where various Graal dump files are written.")
+    @Option(help = "The directory where various Graal dump files are written.", type = OptionType.User)
     public static final OptionKey<String> DumpPath = new OptionKey<>("graal_dumps");
     @Option(help = "Print the name of each dump file path as it's created.")
     public static final OptionKey<Boolean> ShowDumpFiles = new OptionKey<>(false);
@@ -173,23 +174,6 @@ public class DebugOptions {
     @Option(help = "Dump a graph even if it has not changed since it was last dumped.  " +
             "Change detection is based on adding and deleting nodes or changing inputs.", type = OptionType.Debug)
     public static final OptionKey<Boolean> PrintUnmodifiedGraphs = new OptionKey<>(true);
-
-    @Option(help = "Setting to true sets PrintGraph=file, setting to false sets PrintGraph=network", type = OptionType.Debug)
-    public static final OptionKey<Boolean> PrintGraphFile = new OptionKey<>(true) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
-            PrintGraphTarget v = PrintGraph.getValueOrDefault(values);
-            if (newValue.booleanValue()) {
-                if (v != PrintGraphTarget.File) {
-                    PrintGraph.update(values, PrintGraphTarget.File);
-                }
-            } else {
-                if (v != PrintGraphTarget.Network) {
-                    PrintGraph.update(values, PrintGraphTarget.Network);
-                }
-            }
-        }
-    };
 
     @Option(help = "Host part of the address to which graphs are dumped.", type = OptionType.Debug)
     public static final OptionKey<String> PrintGraphHost = new OptionKey<>("127.0.0.1");

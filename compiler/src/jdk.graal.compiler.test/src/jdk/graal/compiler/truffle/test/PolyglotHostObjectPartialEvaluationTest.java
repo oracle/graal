@@ -24,6 +24,15 @@
  */
 package jdk.graal.compiler.truffle.test;
 
+import java.nio.Buffer;
+
+import jdk.graal.compiler.test.SubprocessUtil;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
+import org.junit.Assume;
+import org.junit.Before;
+import org.junit.Test;
+
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
@@ -32,12 +41,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
 import com.oracle.truffle.api.test.polyglot.ValueAPITest;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.HostAccess;
-import org.junit.Before;
-import org.junit.Test;
-
-import java.nio.Buffer;
 
 public class PolyglotHostObjectPartialEvaluationTest extends PartialEvaluationTest {
 
@@ -58,6 +61,7 @@ public class PolyglotHostObjectPartialEvaluationTest extends PartialEvaluationTe
 
     @Test
     public void hasBufferElements() {
+        Assume.assumeFalse("JaCoCo causes failure", SubprocessUtil.isJaCoCoAttached()); // GR-50672
         for (final Buffer buffer : ValueAPITest.makeTestBuffers()) {
             getContext().initialize(ProxyLanguage.ID);
             final Object bufferHostObject = LanguageContext.get(null).getEnv().asGuestValue(buffer);
@@ -75,6 +79,7 @@ public class PolyglotHostObjectPartialEvaluationTest extends PartialEvaluationTe
 
     @Test
     public void isBufferWritable() {
+        Assume.assumeFalse("JaCoCo causes failure", SubprocessUtil.isJaCoCoAttached()); // GR-50672
         for (final Buffer buffer : ValueAPITest.makeTestBuffers()) {
             getContext().initialize(ProxyLanguage.ID);
             final Object bufferHostObject = LanguageContext.get(null).getEnv().asGuestValue(buffer);

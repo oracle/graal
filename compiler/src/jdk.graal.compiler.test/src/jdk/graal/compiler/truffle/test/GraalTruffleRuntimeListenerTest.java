@@ -37,6 +37,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.function.Supplier;
 
 import com.oracle.truffle.api.test.SubprocessTestUtils;
 import com.oracle.truffle.compiler.TruffleCompilerListener;
@@ -205,49 +206,51 @@ public final class GraalTruffleRuntimeListenerTest extends TestWithPolyglotOptio
     }
 
     @Test
-    public void testBlockCompilationMaximumGraalGraphSize() {
-        int blockSize = 100;
-        int nodeCount = 1000;
-        setupContext("engine.CompileImmediately", "true",
-                        "engine.BackgroundCompilation", "false",
-                        "engine.PartialBlockCompilationSize", String.valueOf(blockSize),
-                        "compiler.MaximumGraalGraphSize", "20000");
-        OptimizedTruffleRuntime runtime = OptimizedTruffleRuntime.getRuntime();
-        AbstractTestNode[] children = new AbstractTestNode[nodeCount];
-        for (int i = 0; i < children.length; i++) {
-            children[i] = new ExpensiveTestNode();
-        }
-        BlockNode<AbstractTestNode> block = BlockNode.create(children, new NodeExecutor());
-        OptimizedCallTarget compilable = (OptimizedCallTarget) new TestRootNode(block).getCallTarget();
-        TestListener listener = new TestListener(compilable);
-        try {
-            runtime.addListener(listener);
-            compilable.compile(!compilable.engine.multiTier);
-            List<EventType> expectedEvents = new ArrayList<>();
-            // Main CallTarget
-            expectedEvents.add(EventType.ENQUEUED);
-            expectedEvents.add(EventType.COMPILATION_STARTED);
-            expectedEvents.add(EventType.COMPILATION_FAILURE);
-            expectedEvents.add(EventType.DEQUEUED);
-            // Main CallTarget enqueued for re-compilation
-            expectedEvents.add(EventType.ENQUEUED);
-            // New partial blocks CallTargets
-            for (int i = 0; i < nodeCount / blockSize; i++) {
+    public void testBlockCompilationMaximumGraalGraphSize() throws Exception {
+        executeInSubprocess(() -> {
+            int blockSize = 100;
+            int nodeCount = 1000;
+            setupContext("engine.CompileImmediately", "true",
+                            "engine.BackgroundCompilation", "false",
+                            "engine.PartialBlockCompilationSize", String.valueOf(blockSize),
+                            "compiler.MaximumGraalGraphSize", "20000");
+            OptimizedTruffleRuntime runtime = OptimizedTruffleRuntime.getRuntime();
+            AbstractTestNode[] children = new AbstractTestNode[nodeCount];
+            for (int i = 0; i < children.length; i++) {
+                children[i] = new ExpensiveTestNode();
+            }
+            BlockNode<AbstractTestNode> block = BlockNode.create(children, new NodeExecutor());
+            OptimizedCallTarget compilable = (OptimizedCallTarget) new TestRootNode(block).getCallTarget();
+            TestListener listener = new TestListener(compilable);
+            try {
+                runtime.addListener(listener);
+                compilable.compile(!compilable.engine.multiTier);
+                List<EventType> expectedEvents = new ArrayList<>();
+                // Main CallTarget
                 expectedEvents.add(EventType.ENQUEUED);
+                expectedEvents.add(EventType.COMPILATION_STARTED);
+                expectedEvents.add(EventType.COMPILATION_FAILURE);
+                expectedEvents.add(EventType.DEQUEUED);
+                // Main CallTarget enqueued for re-compilation
+                expectedEvents.add(EventType.ENQUEUED);
+                // New partial blocks CallTargets
+                for (int i = 0; i < nodeCount / blockSize; i++) {
+                    expectedEvents.add(EventType.ENQUEUED);
+                    expectedEvents.add(EventType.COMPILATION_STARTED);
+                    expectedEvents.add(EventType.TRUFFLE_TIER_FINISHED);
+                    expectedEvents.add(EventType.GRAAL_TIER_FINISHED);
+                    expectedEvents.add(EventType.COMPILATION_SUCCESS);
+                }
+                // Main CallTarget re-compilation
                 expectedEvents.add(EventType.COMPILATION_STARTED);
                 expectedEvents.add(EventType.TRUFFLE_TIER_FINISHED);
                 expectedEvents.add(EventType.GRAAL_TIER_FINISHED);
                 expectedEvents.add(EventType.COMPILATION_SUCCESS);
+                listener.assertEvents(expectedEvents.toArray(new EventType[expectedEvents.size()]));
+            } finally {
+                runtime.removeListener(listener);
             }
-            // Main CallTarget re-compilation
-            expectedEvents.add(EventType.COMPILATION_STARTED);
-            expectedEvents.add(EventType.TRUFFLE_TIER_FINISHED);
-            expectedEvents.add(EventType.GRAAL_TIER_FINISHED);
-            expectedEvents.add(EventType.COMPILATION_SUCCESS);
-            listener.assertEvents(expectedEvents.toArray(new EventType[expectedEvents.size()]));
-        } finally {
-            runtime.removeListener(listener);
-        }
+        });
     }
 
     private static RootNode createFailureNode() {
@@ -423,7 +426,7 @@ public final class GraalTruffleRuntimeListenerTest extends TestWithPolyglotOptio
         }
 
         @Override
-        public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier) {
+        public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> serializedException) {
             if ((isImportant(target))) {
                 events.add(EventType.COMPILATION_FAILURE);
             }
@@ -461,7 +464,7 @@ public final class GraalTruffleRuntimeListenerTest extends TestWithPolyglotOptio
     private static void executeInSubprocess(Runnable action) throws IOException, InterruptedException {
         Path tmpDir = SubprocessTestUtils.isSubprocess() ? null : Files.createTempDirectory(GraalTruffleRuntimeListenerTest.class.getSimpleName());
         try {
-            SubprocessTestUtils.executeInSubprocess(GraalTruffleRuntimeListenerTest.class, action, String.format("-Dgraal.DumpPath=%s", tmpDir));
+            SubprocessTestUtils.newBuilder(GraalTruffleRuntimeListenerTest.class, action).prefixVmOption(String.format("-Djdk.graal.DumpPath=%s", tmpDir)).run();
         } finally {
             if (tmpDir != null) {
                 Files.walk(tmpDir).sorted(Comparator.reverseOrder()).forEach(GraalTruffleRuntimeListenerTest::delete);

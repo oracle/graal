@@ -32,20 +32,17 @@ import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
-import jdk.graal.compiler.nodes.spi.Lowerable;
-import jdk.graal.compiler.nodes.spi.LoweringTool;
-
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @NodeInfo
-public abstract class ReflectionGetCallerClassNode extends MacroNode implements Canonicalizable, Lowerable {
+public abstract class ReflectionGetCallerClassNode extends MacroWithExceptionNode implements Canonicalizable {
 
     public static final NodeClass<ReflectionGetCallerClassNode> TYPE = NodeClass.create(ReflectionGetCallerClassNode.class);
 
-    protected ReflectionGetCallerClassNode(NodeClass<? extends ReflectionGetCallerClassNode> c, MacroParams p) {
+    protected ReflectionGetCallerClassNode(NodeClass<? extends ReflectionGetCallerClassNode> c, MacroNode.MacroParams p) {
         super(c, p);
     }
 
@@ -56,17 +53,6 @@ public abstract class ReflectionGetCallerClassNode extends MacroNode implements 
             return callerClassNode;
         }
         return this;
-    }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        ConstantNode callerClassNode = getCallerClassNode(tool.getMetaAccess(), tool.getConstantReflection());
-
-        if (callerClassNode != null) {
-            graph().replaceFixedWithFloating(this, graph().addOrUniqueWithInputs(callerClassNode));
-        } else {
-            super.lower(tool);
-        }
     }
 
     /**

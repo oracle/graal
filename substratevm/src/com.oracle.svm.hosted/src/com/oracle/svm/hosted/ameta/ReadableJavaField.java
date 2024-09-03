@@ -26,26 +26,16 @@ package com.oracle.svm.hosted.ameta;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.util.GraalAccess;
-import com.oracle.svm.core.BuildPhaseProvider;
-import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability.ValueAvailability;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.meta.HostedField;
 
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 public interface ReadableJavaField extends ResolvedJavaField {
 
-    static boolean isValueAvailable(AnalysisField field) {
-        if (field.wrapped instanceof ReadableJavaField readableField) {
-            return readableField.isValueAvailable();
-        }
-        return field.isValueAvailable();
-    }
-
-    static JavaConstant readFieldValue(MetaAccessProvider metaAccess, ClassInitializationSupport classInitializationSupport, ResolvedJavaField field, JavaConstant receiver) {
+    static JavaConstant readFieldValue(ClassInitializationSupport classInitializationSupport, ResolvedJavaField field, JavaConstant receiver) {
         assert !(field instanceof AnalysisField) && !(field instanceof HostedField) : "must have been unwrapped";
 
         if (field instanceof ReadableJavaField readableField) {
@@ -55,7 +45,7 @@ public interface ReadableJavaField extends ResolvedJavaField {
              * below.
              */
             assert readableField.isValueAvailable() : "Field " + readableField.format("%H.%n") + " value not available for reading.";
-            return readableField.readValue(metaAccess, classInitializationSupport, receiver);
+            return readableField.readValue(classInitializationSupport, receiver);
 
         } else if (!classInitializationSupport.maybeInitializeAtBuildTime(field.getDeclaringClass())) {
             /*
@@ -94,21 +84,9 @@ public interface ReadableJavaField extends ResolvedJavaField {
         }
     }
 
-    JavaConstant readValue(MetaAccessProvider metaAccess, ClassInitializationSupport classInitializationSupport, JavaConstant receiver);
+    JavaConstant readValue(ClassInitializationSupport classInitializationSupport, JavaConstant receiver);
 
-    /**
-     * When this method returns true, image heap snapshotting can access the value before analysis.
-     * If the field is final, then the value can also be constant folded before analysis.
-     *
-     * The introduction of this method pre-dates {@link ValueAvailability}, i.e., we could combine
-     * this method and {@link #isValueAvailable} into a single method that returns the
-     * {@link ValueAvailability} of the field.
-     */
-    boolean isValueAvailableBeforeAnalysis();
-
-    default boolean isValueAvailable() {
-        return isValueAvailableBeforeAnalysis() || BuildPhaseProvider.isAnalysisFinished();
-    }
+    boolean isValueAvailable();
 
     boolean injectFinalForRuntimeCompilation();
 

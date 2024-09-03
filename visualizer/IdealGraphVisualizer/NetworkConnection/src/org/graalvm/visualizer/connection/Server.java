@@ -215,7 +215,7 @@ public class Server implements PreferenceChangeListener {
                             return;
                         } catch (IOException ex) {
                             NotifyDescriptor message = new NotifyDescriptor.Message(
-                                            Bundle.ERR_ProcessingAccept(ex.getLocalizedMessage()), NotifyDescriptor.ERROR_MESSAGE);
+                                            Bundle.ERR_ProcessingAccept(ex.toString()), NotifyDescriptor.ERROR_MESSAGE);
                             DialogDisplayer.getDefault().notifyLater(message);
                             return;
                         }

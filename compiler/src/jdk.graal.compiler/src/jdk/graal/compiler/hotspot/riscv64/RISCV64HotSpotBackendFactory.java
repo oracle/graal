@@ -57,7 +57,6 @@ import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.common.AddressLoweringPhase;
 import jdk.graal.compiler.phases.tiers.CompilerConfiguration;
 import jdk.graal.compiler.serviceprovider.ServiceProvider;
-import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
@@ -77,8 +76,8 @@ public class RISCV64HotSpotBackendFactory extends HotSpotBackendFactory {
     }
 
     @Override
-    public Class<? extends Architecture> getArchitecture() {
-        return RISCV64.class;
+    public String getArchitecture() {
+        return "riscv64";
     }
 
     @Override
@@ -104,7 +103,7 @@ public class RISCV64HotSpotBackendFactory extends HotSpotBackendFactory {
     protected HotSpotBackend createBackend(GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers) {
         return new HotSpotBackend(runtime, providers) {
             @Override
-            public RegisterAllocationConfig newRegisterAllocationConfig(RegisterConfig registerConfig, String[] allocationRestrictedTo) {
+            public RegisterAllocationConfig newRegisterAllocationConfig(RegisterConfig registerConfig, String[] allocationRestrictedTo, Object stub) {
                 throw GraalError.unimplementedOverride();
             }
 

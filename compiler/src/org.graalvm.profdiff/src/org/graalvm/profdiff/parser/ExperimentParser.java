@@ -30,11 +30,12 @@ import java.util.List;
 import java.util.Optional;
 
 import org.graalvm.collections.EconomicMap;
-import jdk.graal.compiler.nodes.OptimizationLogImpl;
 import org.graalvm.profdiff.core.Experiment;
 import org.graalvm.profdiff.core.ExperimentId;
 import org.graalvm.profdiff.core.ProftoolMethod;
 import org.graalvm.profdiff.core.Writer;
+
+import jdk.graal.compiler.nodes.OptimizationLogImpl;
 
 /**
  * Parses an experiment from its files.
@@ -297,7 +298,7 @@ public class ExperimentParser {
                     compilationUnit.methodName = map.property(OptimizationLogImpl.METHOD_NAME_PROPERTY).asString();
                     compilationUnit.compilationId = map.property(OptimizationLogImpl.COMPILATION_ID_PROPERTY).asString();
                     partialCompilationUnits.add(compilationUnit);
-                } catch (ExperimentParserError e) {
+                } catch (ExperimentParserError | IOException e) {
                     warningWriter.writeln("Warning: Invalid compilation unit: " + e.getMessage());
                 }
             });

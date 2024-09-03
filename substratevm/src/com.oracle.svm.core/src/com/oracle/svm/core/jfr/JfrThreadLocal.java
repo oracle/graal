@@ -24,7 +24,8 @@
  */
 package com.oracle.svm.core.jfr;
 
-import jdk.graal.compiler.api.replacements.Fold;
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -41,7 +42,7 @@ import com.oracle.svm.core.jfr.events.ThreadCPULoadEvent;
 import com.oracle.svm.core.jfr.events.ThreadEndEvent;
 import com.oracle.svm.core.jfr.events.ThreadStartEvent;
 import com.oracle.svm.core.sampler.SamplerBuffer;
-import com.oracle.svm.core.sampler.SamplerSampleWriterData;
+import com.oracle.svm.core.sampler.SamplerStatistics;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.Target_java_lang_Thread;
@@ -52,6 +53,8 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.FastThreadLocalLong;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 /**
  * This class holds various JFR-specific thread local values.
@@ -90,12 +93,11 @@ public class JfrThreadLocal implements ThreadListener {
     private static final FastThreadLocalWord<SamplerBuffer> samplerBuffer = FastThreadLocalFactory.createWord("JfrThreadLocal.samplerBuffer");
     private static final FastThreadLocalLong missedSamples = FastThreadLocalFactory.createLong("JfrThreadLocal.missedSamples");
     private static final FastThreadLocalLong unparseableStacks = FastThreadLocalFactory.createLong("JfrThreadLocal.unparseableStacks");
-    private static final FastThreadLocalWord<SamplerSampleWriterData> samplerWriterData = FastThreadLocalFactory.createWord("JfrThreadLocal.samplerWriterData");
 
     /* Non-thread-local fields. */
     private static final JfrBufferList javaBufferList = new JfrBufferList();
     private static final JfrBufferList nativeBufferList = new JfrBufferList();
-    private long threadLocalBufferSize;
+    private UnsignedWord threadLocalBufferSize;
 
     @Fold
     public static JfrBufferList getNativeBufferList() {
@@ -111,12 +113,12 @@ public class JfrThreadLocal implements ThreadListener {
     public JfrThreadLocal() {
     }
 
-    public void initialize(long bufferSize) {
+    public void initialize(UnsignedWord bufferSize) {
         this.threadLocalBufferSize = bufferSize;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public long getThreadLocalBufferSize() {
+    public UnsignedWord getThreadLocalBufferSize() {
         return threadLocalBufferSize;
     }
 
@@ -171,9 +173,10 @@ public class JfrThreadLocal implements ThreadListener {
         dataLost.set(isolateThread, WordFactory.unsigned(0));
 
         /* Clear stacktrace-related thread-locals. */
+        SamplerStatistics.singleton().addMissedSamples(getMissedSamples(isolateThread));
         missedSamples.set(isolateThread, 0);
+        SamplerStatistics.singleton().addUnparseableSamples(getUnparseableStacks(isolateThread));
         unparseableStacks.set(isolateThread, 0);
-        assert samplerWriterData.get(isolateThread).isNull();
 
         SamplerBuffer buffer = samplerBuffer.get(isolateThread);
         if (buffer.isNonNull()) {
@@ -326,7 +329,7 @@ public class JfrThreadLocal implements ThreadListener {
     public JfrBuffer getJavaBuffer() {
         JfrBuffer buffer = javaBuffer.get();
         if (buffer.isNull()) {
-            buffer = JfrBufferAccess.allocate(WordFactory.unsigned(threadLocalBufferSize), JfrBufferType.THREAD_LOCAL_JAVA);
+            buffer = JfrBufferAccess.allocate(threadLocalBufferSize, JfrBufferType.THREAD_LOCAL_JAVA);
             if (buffer.isNull()) {
                 return WordFactory.nullPointer();
             }
@@ -345,7 +348,7 @@ public class JfrThreadLocal implements ThreadListener {
     public JfrBuffer getNativeBuffer() {
         JfrBuffer buffer = nativeBuffer.get();
         if (buffer.isNull()) {
-            buffer = JfrBufferAccess.allocate(WordFactory.unsigned(threadLocalBufferSize), JfrBufferType.THREAD_LOCAL_NATIVE);
+            buffer = JfrBufferAccess.allocate(threadLocalBufferSize, JfrBufferType.THREAD_LOCAL_NATIVE);
             if (buffer.isNull()) {
                 return WordFactory.nullPointer();
             }
@@ -474,6 +477,11 @@ public class JfrThreadLocal implements ThreadListener {
         return missedSamples.get();
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static long getMissedSamples(IsolateThread thread) {
+        return missedSamples.get(thread);
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void increaseUnparseableStacks() {
         unparseableStacks.set(getUnparseableStacks() + 1);
@@ -484,14 +492,8 @@ public class JfrThreadLocal implements ThreadListener {
         return unparseableStacks.get();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void setSamplerWriterData(SamplerSampleWriterData data) {
-        assert samplerWriterData.get().isNull() || data.isNull();
-        samplerWriterData.set(data);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static SamplerSampleWriterData getSamplerWriterData() {
-        return samplerWriterData.get();
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static long getUnparseableStacks(IsolateThread thread) {
+        return unparseableStacks.get(thread);
     }
 }

@@ -65,7 +65,7 @@ public class Fcntl {
         @CFunction(value = "openSII", transition = NO_TRANSITION)
         public static native int open(CCharPointer pathname, int flags, int mode);
 
-        @CFunction(transition = NO_TRANSITION)
+        @CFunction(value = "openatISII", transition = NO_TRANSITION)
         public static native int openat(int dirfd, @CConst CCharPointer pathname, int flags, int mode);
 
         @CFunction(transition = NO_TRANSITION)

@@ -29,7 +29,6 @@ import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
-
 import jdk.vm.ci.meta.JavaMethodProfile;
 import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -46,11 +45,8 @@ public final class SubstrateMethodCallTargetNode extends MethodCallTargetNode {
      */
     private JavaTypeProfile staticTypeProfile;
 
-    public SubstrateMethodCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, StampPair returnStamp, JavaTypeProfile typeProfile,
-                    JavaMethodProfile methodProfile, JavaTypeProfile staticTypeProfile) {
-        super(TYPE, invokeKind, targetMethod, arguments, returnStamp, typeProfile);
-        this.methodProfile = methodProfile;
-        this.staticTypeProfile = staticTypeProfile;
+    public SubstrateMethodCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, StampPair returnStamp) {
+        super(TYPE, invokeKind, targetMethod, arguments, returnStamp, null);
     }
 
     public void setProfiles(JavaTypeProfile typeProfile, JavaMethodProfile methodProfile) {

@@ -63,7 +63,7 @@ final class GuestRunnable implements Runnable {
             try {
                 // Execute the payload
                 context.getThreadAccess().fullSafePoint(thread);
-                thread.getKlass().vtableLookup(context.getMeta().java_lang_Thread_run.getVTableIndex()).invokeDirect(thread);
+                context.getMeta().java_lang_Thread_run.invokeDirectVirtual(thread);
                 context.getThreadAccess().fullSafePoint(thread);
             } catch (EspressoException uncaught) {
                 dispatchUncaught.call(thread, uncaught.getGuestException());

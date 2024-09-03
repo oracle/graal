@@ -91,7 +91,8 @@ public class BundleLauncher {
     }
 
     public static void main(String[] args) {
-        bundleFilePath = Paths.get(BundleLauncher.class.getProtectionDomain().getCodeSource().getLocation().getPath());
+        String bundleLauncherPath = BundleLauncher.class.getProtectionDomain().getCodeSource().getLocation().getPath();
+        bundleFilePath = Paths.get(isWindows() ? bundleLauncherPath.substring(1) : bundleLauncherPath);
         bundleName = bundleFilePath.getFileName().toString().replace(BUNDLE_FILE_EXTENSION, "");
         agentOutputDir = bundleFilePath.getParent().resolve(Paths.get(bundleName + ".output", "launcher"));
         unpackBundle();
@@ -342,6 +343,10 @@ public class BundleLauncher {
         return getJavaHomeExecutable(binJava);
     }
 
+    private static boolean isWindows() {
+        return System.getProperty("os.name").contains("Windows");
+    }
+
     private static Path getJavaHomeExecutable(Path executable) {
         String javaHome = System.getenv("JAVA_HOME");
         if (javaHome == null) {
@@ -358,7 +363,7 @@ public class BundleLauncher {
     }
 
     private static Path getNativeImageExecutable() {
-        Path binNativeImage = Paths.get("bin", System.getProperty("os.name").contains("Windows") ? "native-image.exe" : "native-image");
+        Path binNativeImage = Paths.get("bin", isWindows() ? "native-image.exe" : "native-image");
         if (Files.isExecutable(buildTimeJavaHome.resolve(binNativeImage))) {
             return buildTimeJavaHome.resolve(binNativeImage);
         }

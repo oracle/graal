@@ -37,9 +37,11 @@ import java.util.List;
 import java.util.ServiceLoader;
 import java.util.stream.Collectors;
 
-import jdk.graal.compiler.api.test.Graal;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
+import org.junit.Test;
+
+import jdk.graal.compiler.api.test.Graal;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
@@ -50,8 +52,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.runtime.RuntimeProvider;
 import jdk.graal.compiler.test.GraalTest;
-import org.junit.Test;
-
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
 import jdk.vm.ci.hotspot.VMIntrinsicMethod;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -142,7 +142,7 @@ public class CheckGraalIntrinsics extends GraalTest {
 
     public final HotSpotGraalRuntimeProvider rt = (HotSpotGraalRuntimeProvider) Graal.getRequiredCapability(RuntimeProvider.class);
     public final GraalHotSpotVMConfig config = rt.getVMConfig();
-    public final UnimplementedGraalIntrinsics unimplementedGraalIntrinsics = new UnimplementedGraalIntrinsics();
+    public final UnimplementedGraalIntrinsics unimplementedGraalIntrinsics = new UnimplementedGraalIntrinsics(rt.getTarget().arch);
 
     @Test
     @SuppressWarnings("try")
@@ -163,7 +163,6 @@ public class CheckGraalIntrinsics extends GraalTest {
         List<String> mischaracterizedAsIgnored = new ArrayList<>();
         List<String> notAvailableYetIntrinsified = new ArrayList<>();
 
-        Field toBeInvestigated = UnimplementedGraalIntrinsics.class.getDeclaredField("toBeInvestigated");
         for (VMIntrinsicMethod intrinsic : intrinsics) {
             ResolvedJavaMethod method = resolveIntrinsic(providers.getMetaAccess(), intrinsic);
             if (method == null) {
@@ -195,6 +194,7 @@ public class CheckGraalIntrinsics extends GraalTest {
 
         Formatter errorMsgBuf = new Formatter();
         if (!missing.isEmpty()) {
+            Field toBeInvestigated = UnimplementedGraalIntrinsics.class.getDeclaredField("toBeInvestigated");
             Collections.sort(missing);
             String missingString = missing.stream().map(s -> '"' + s + '"').collect(Collectors.joining(String.format(",%n    ")));
             errorMsgBuf.format("missing Graal intrinsics for:%n    %s%n", missingString);

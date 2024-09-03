@@ -45,10 +45,12 @@ import java.util.Arrays;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.regex.tregex.buffer.IntRingBuffer;
 import com.oracle.truffle.regex.tregex.nfa.PureNFATransition;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
-import com.oracle.truffle.regex.tregex.parser.Token.Quantifier;
+import com.oracle.truffle.regex.tregex.parser.CaseFoldData;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
+import com.oracle.truffle.regex.tregex.util.MathUtil;
 import com.oracle.truffle.regex.util.BitSets;
 
 /**
@@ -80,6 +82,9 @@ import com.oracle.truffle.regex.util.BitSets;
  */
 public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLocals {
 
+    private static final int MULTI_CHAR_EXPANSION_LENGTH_POWER_OF_2 = MathUtil.log2ceil(CaseFoldData.MAX_MULTI_CHAR_SEQUENCE_LENGTH);
+    private static final int FLAG_MATCH_END_ASSERTION = 1;
+
     private final int stackFrameSize;
     private final int nQuantifierCounts;
     private final int nZeroWidthQuantifiers;
@@ -94,12 +99,18 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
     private final boolean trackLastGroup;
     private final boolean dontOverwriteLastGroup;
     private final boolean recursiveBackReferences;
+    private final boolean matchBoundaryAssertions;
     private int lastResultSp = -1;
     private int lastResultIndex = -1;
     private int lastInnerLiteralIndex;
     private int lastInitialStateIndex;
+    private final IntRingBuffer backrefMultiCharExpansionBufferA;
+    private final IntRingBuffer backrefMultiCharExpansionBufferB;
 
-    private TRegexBacktrackingNFAExecutorLocals(TruffleString input, int fromIndex, int index, int maxIndex, int nCaptureGroups, int nQuantifiers, int nZeroWidthQuantifiers,
+    private TRegexBacktrackingNFAExecutorLocals(TruffleString input, int fromIndex, int maxIndex, int regionFrom, int regionTo, int index,
+                    int nCaptureGroups,
+                    int nQuantifiers,
+                    int nZeroWidthQuantifiers,
                     int[] zeroWidthTermEnclosedCGLow,
                     int[] zeroWidthQuantifierCGOffsets,
                     int[] stackFrameBuffer,
@@ -109,8 +120,11 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
                     long[] transitionBitSet,
                     boolean trackLastGroup,
                     boolean dontOverwriteLastGroup,
-                    boolean recursiveBackReferences) {
-        super(input, fromIndex, maxIndex, index);
+                    boolean recursiveBackReferences,
+                    boolean matchBoundaryAssertions,
+                    IntRingBuffer backrefMultiCharExpansionBufferA,
+                    IntRingBuffer backrefMultiCharExpansionBufferB) {
+        super(input, fromIndex, maxIndex, regionFrom, regionTo, index);
         this.stackFrameSize = stackFrameSize;
         this.nQuantifierCounts = nQuantifiers;
         this.nZeroWidthQuantifiers = nZeroWidthQuantifiers;
@@ -125,13 +139,18 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
         this.trackLastGroup = trackLastGroup;
         this.dontOverwriteLastGroup = dontOverwriteLastGroup;
         this.recursiveBackReferences = recursiveBackReferences;
+        this.matchBoundaryAssertions = matchBoundaryAssertions;
+        this.backrefMultiCharExpansionBufferA = backrefMultiCharExpansionBufferA;
+        this.backrefMultiCharExpansionBufferB = backrefMultiCharExpansionBufferB;
     }
 
     public static TRegexBacktrackingNFAExecutorLocals create(
                     TruffleString input,
                     int fromIndex,
-                    int index,
                     int maxIndex,
+                    int regionFrom,
+                    int regionTo,
+                    int index,
                     int nCaptureGroups,
                     int nQuantifiers,
                     int nZeroWidthQuantifiers,
@@ -141,13 +160,17 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
                     int maxNTransitions,
                     boolean trackLastGroup,
                     boolean dontOverwriteLastGroup,
-                    boolean recursiveBackrefs) {
-        int stackFrameSize = getStackFrameSize(nCaptureGroups, nQuantifiers, nZeroWidthQuantifiers, zeroWidthQuantifierCGOffsets, trackLastGroup, recursiveBackrefs);
+                    boolean recursiveBackrefs,
+                    boolean backrefMultiCharExpansion,
+                    boolean matchBoundaryAssertions) {
+        int stackFrameSize = getStackFrameSize(nCaptureGroups, nQuantifiers, nZeroWidthQuantifiers, zeroWidthQuantifierCGOffsets, trackLastGroup, recursiveBackrefs, matchBoundaryAssertions);
         TRegexBacktrackingNFAExecutorLocals ret = new TRegexBacktrackingNFAExecutorLocals(
                         input,
                         fromIndex,
-                        index,
                         maxIndex,
+                        regionFrom,
+                        regionTo,
+                        index,
                         nCaptureGroups,
                         nQuantifiers,
                         nZeroWidthQuantifiers,
@@ -160,7 +183,10 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
                         BitSets.createBitSetArray(maxNTransitions),
                         trackLastGroup,
                         dontOverwriteLastGroup,
-                        recursiveBackrefs);
+                        recursiveBackrefs,
+                        matchBoundaryAssertions,
+                        backrefMultiCharExpansion ? new IntRingBuffer(MULTI_CHAR_EXPANSION_LENGTH_POWER_OF_2) : null,
+                        backrefMultiCharExpansion ? new IntRingBuffer(MULTI_CHAR_EXPANSION_LENGTH_POWER_OF_2) : null);
         ret.setIndex(fromIndex);
         ret.clearCaptureGroups();
         if (recursiveBackrefs) {
@@ -173,8 +199,9 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
         return stack.stack;
     }
 
-    private static int getStackFrameSize(int nCaptureGroups, int nQuantifiers, int nZeroWidthQuantifiers, int[] zeroWidthQuantifierCGOffsets, boolean trackLastGroup, boolean recursiveBackrefs) {
-        return 2 + nCaptureGroups * (recursiveBackrefs ? 3 : 2) + (trackLastGroup ? 1 : 0) + nQuantifiers + nZeroWidthQuantifiers +
+    private static int getStackFrameSize(int nCaptureGroups, int nQuantifiers, int nZeroWidthQuantifiers, int[] zeroWidthQuantifierCGOffsets, boolean trackLastGroup, boolean recursiveBackrefs,
+                    boolean matchBoundaryAssertions) {
+        return 2 + (matchBoundaryAssertions ? 1 : 0) + nCaptureGroups * (recursiveBackrefs ? 3 : 2) + (trackLastGroup ? 1 : 0) + nQuantifiers + nZeroWidthQuantifiers +
                         zeroWidthQuantifierCGOffsets[zeroWidthQuantifierCGOffsets.length - 1];
     }
 
@@ -198,55 +225,66 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
     }
 
     private TRegexBacktrackingNFAExecutorLocals newSubLocals(boolean newDontOverwriteLastGroup) {
-        return new TRegexBacktrackingNFAExecutorLocals(getInput(), getFromIndex(), getIndex(), getMaxIndex(), result.length / 2, nQuantifierCounts, nZeroWidthQuantifiers, zeroWidthTermEnclosedCGLow,
+        TRegexBacktrackingNFAExecutorLocals locals = new TRegexBacktrackingNFAExecutorLocals(getInput(), getFromIndex(), getMaxIndex(), getRegionFrom(), getRegionTo(), getIndex(),
+                        result.length / 2,
+                        nQuantifierCounts,
+                        nZeroWidthQuantifiers,
+                        zeroWidthTermEnclosedCGLow,
                         zeroWidthQuantifierCGOffsets, stackFrameBuffer, stack, sp + stackFrameSize, stackFrameSize,
-                        transitionBitSet, trackLastGroup, newDontOverwriteLastGroup, recursiveBackReferences);
+                        transitionBitSet, trackLastGroup, newDontOverwriteLastGroup, recursiveBackReferences, matchBoundaryAssertions,
+                        backrefMultiCharExpansionBufferA,
+                        backrefMultiCharExpansionBufferB);
+        if (matchBoundaryAssertions) {
+            locals.clearMatchEndAssertionTraversed();
+        }
+        return locals;
     }
 
     private int offsetIP() {
         return sp + 1;
     }
 
+    private int offsetFlags() {
+        assert matchBoundaryAssertions;
+        return sp + 2;
+    }
+
     private int offsetCaptureGroups() {
         return offsetCaptureGroups(sp);
     }
 
-    private static int offsetCaptureGroups(int framePointer) {
-        return framePointer + 2;
+    private int offsetCaptureGroups(int framePointer) {
+        return framePointer + 2 + (matchBoundaryAssertions ? 1 : 0);
     }
 
     private int offsetLastGroup() {
-        return trackLastGroup ? sp + 2 + result.length - 1 : -1;
+        return trackLastGroup ? offsetCaptureGroups(sp) + result.length - 1 : -1;
     }
 
     private int offsetQuantifierCounts() {
-        return sp + 2 + result.length;
+        return offsetCaptureGroups(sp) + result.length;
     }
 
     private int offsetZeroWidthQuantifierIndices() {
-        return sp + 2 + result.length + nQuantifierCounts;
+        return offsetCaptureGroups(sp) + result.length + nQuantifierCounts;
     }
 
     private int offsetZeroWidthQuantifierCG() {
-        return sp + 2 + result.length + nQuantifierCounts + nZeroWidthQuantifiers;
+        return offsetCaptureGroups(sp) + result.length + nQuantifierCounts + nZeroWidthQuantifiers;
     }
 
     private int offsetRecursiveBackReferences() {
-        return sp + 2 + result.length + nQuantifierCounts + nZeroWidthQuantifiers + zeroWidthQuantifierCGOffsets[zeroWidthQuantifierCGOffsets.length - 1];
+        return offsetCaptureGroups(sp) + result.length + nQuantifierCounts + nZeroWidthQuantifiers + zeroWidthQuantifierCGOffsets[zeroWidthQuantifierCGOffsets.length - 1];
     }
 
-    private int offsetQuantifierCount(Quantifier q) {
-        CompilerAsserts.partialEvaluationConstant(q.getIndex());
-        return offsetQuantifierCounts() + q.getIndex();
+    private int offsetQuantifierCount(int quantifierIndex) {
+        CompilerAsserts.partialEvaluationConstant(quantifierIndex);
+        return offsetQuantifierCounts() + quantifierIndex;
     }
 
-    private int offsetZeroWidthQuantifierIndex(Quantifier q) {
-        CompilerAsserts.partialEvaluationConstant(q.getZeroWidthIndex());
-        return offsetZeroWidthQuantifierIndices() + q.getZeroWidthIndex();
-    }
-
-    private int offsetZeroWidthQuantifierCG(Quantifier q) {
-        return offsetZeroWidthQuantifierCG(q.getZeroWidthIndex());
+    private int offsetZeroWidthQuantifierIndex(int quantifierZeroWidthIndex) {
+        CompilerAsserts.partialEvaluationConstant(quantifierZeroWidthIndex);
+        return offsetZeroWidthQuantifierIndices() + quantifierZeroWidthIndex;
     }
 
     private int offsetZeroWidthQuantifierCG(int zeroWidthIndex) {
@@ -264,19 +302,22 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
         if (recursiveBackReferences) {
             clearRecursiveCaptureGroups();
         }
+        if (matchBoundaryAssertions) {
+            clearMatchEndAssertionTraversed();
+        }
         // no need to reset zero-width quantifier indices, they will always be overwritten before
         // being checked
     }
 
-    protected void clearCaptureGroups() {
+    private void clearCaptureGroups() {
         Arrays.fill(stack(), offsetCaptureGroups(), offsetCaptureGroups() + result.length, -1);
     }
 
-    protected void clearRecursiveCaptureGroups() {
+    private void clearRecursiveCaptureGroups() {
         Arrays.fill(stack(), offsetRecursiveBackReferences(), offsetRecursiveBackReferences() + result.length, -1);
     }
 
-    protected void clearQuantifierCounts() {
+    private void clearQuantifierCounts() {
         Arrays.fill(stack(), offsetQuantifierCounts(), offsetQuantifierCounts() + nQuantifierCounts, 0);
     }
 
@@ -384,6 +425,33 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
         return stack()[offsetIP()] = pc;
     }
 
+    public void setMatchEndAssertionTraversed() {
+        assert matchBoundaryAssertions;
+        setFlag(FLAG_MATCH_END_ASSERTION);
+    }
+
+    public void clearMatchEndAssertionTraversed() {
+        assert matchBoundaryAssertions;
+        clearFlag(FLAG_MATCH_END_ASSERTION);
+    }
+
+    public boolean isMatchEndAssertionTraversed() {
+        assert matchBoundaryAssertions;
+        return isFlagSet(FLAG_MATCH_END_ASSERTION);
+    }
+
+    private void setFlag(int flag) {
+        stack()[offsetFlags()] |= flag;
+    }
+
+    private void clearFlag(int flag) {
+        stack()[offsetFlags()] &= ~flag;
+    }
+
+    private boolean isFlagSet(int flag) {
+        return (stack()[offsetFlags()] & flag) != 0;
+    }
+
     public int getCaptureGroupBoundary(int boundary) {
         return stack()[offsetCaptureGroups() + boundary];
     }
@@ -424,45 +492,45 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
         }
     }
 
-    public int getQuantifierCount(Quantifier q) {
-        return stack()[offsetQuantifierCount(q)];
+    public int getQuantifierCount(int quantifierIndex) {
+        return stack()[offsetQuantifierCount(quantifierIndex)];
     }
 
-    public void setQuantifierCount(Quantifier q, int count) {
-        stack()[offsetQuantifierCount(q)] = count;
+    public void setQuantifierCount(int quantifierIndex, int count) {
+        stack()[offsetQuantifierCount(quantifierIndex)] = count;
     }
 
-    public void resetQuantifierCount(Quantifier q) {
-        stack()[offsetQuantifierCount(q)] = 0;
+    public void resetQuantifierCount(int quantifierIndex) {
+        stack()[offsetQuantifierCount(quantifierIndex)] = 0;
     }
 
-    public void incQuantifierCount(Quantifier q) {
-        stack()[offsetQuantifierCount(q)]++;
+    public void incQuantifierCount(int quantifierIndex) {
+        stack()[offsetQuantifierCount(quantifierIndex)]++;
     }
 
-    public int getZeroWidthQuantifierGuardIndex(Quantifier q) {
-        return stack()[offsetZeroWidthQuantifierIndex(q)];
+    public int getZeroWidthQuantifierGuardIndex(int quantifierZeroWidthIndex) {
+        return stack()[offsetZeroWidthQuantifierIndex(quantifierZeroWidthIndex)];
     }
 
-    public void setZeroWidthQuantifierGuardIndex(Quantifier q) {
-        stack()[offsetZeroWidthQuantifierIndex(q)] = getIndex();
+    public void setZeroWidthQuantifierGuardIndex(int quantifierZeroWidthIndex) {
+        stack()[offsetZeroWidthQuantifierIndex(quantifierZeroWidthIndex)] = getIndex();
     }
 
-    public boolean isResultUnmodifiedByZeroWidthQuantifier(Quantifier q) {
-        int start = offsetCaptureGroups() + 2 * zeroWidthTermEnclosedCGLow[q.getZeroWidthIndex()];
-        int length = zeroWidthQuantifierCGOffsets[q.getZeroWidthIndex() + 1] - zeroWidthQuantifierCGOffsets[q.getZeroWidthIndex()];
+    public boolean isResultUnmodifiedByZeroWidthQuantifier(int quantifierZeroWidthIndex) {
+        int start = offsetCaptureGroups() + 2 * zeroWidthTermEnclosedCGLow[quantifierZeroWidthIndex];
+        int length = zeroWidthQuantifierCGOffsets[quantifierZeroWidthIndex + 1] - zeroWidthQuantifierCGOffsets[quantifierZeroWidthIndex];
         for (int i = 0; i < length; i++) {
-            if (stack()[offsetZeroWidthQuantifierCG(q) + i] != stack()[start + i]) {
+            if (stack()[offsetZeroWidthQuantifierCG(quantifierZeroWidthIndex) + i] != stack()[start + i]) {
                 return false;
             }
         }
         return true;
     }
 
-    public void setZeroWidthQuantifierResults(Quantifier q) {
-        int start = offsetCaptureGroups() + 2 * zeroWidthTermEnclosedCGLow[q.getZeroWidthIndex()];
-        int length = zeroWidthQuantifierCGOffsets[q.getZeroWidthIndex() + 1] - zeroWidthQuantifierCGOffsets[q.getZeroWidthIndex()];
-        System.arraycopy(stack(), start, stack(), offsetZeroWidthQuantifierCG(q), length);
+    public void setZeroWidthQuantifierResults(int quantifierZeroWidthIndex) {
+        int start = offsetCaptureGroups() + 2 * zeroWidthTermEnclosedCGLow[quantifierZeroWidthIndex];
+        int length = zeroWidthQuantifierCGOffsets[quantifierZeroWidthIndex + 1] - zeroWidthQuantifierCGOffsets[quantifierZeroWidthIndex];
+        System.arraycopy(stack(), start, stack(), offsetZeroWidthQuantifierCG(quantifierZeroWidthIndex), length);
     }
 
     public long[] getTransitionBitSet() {
@@ -489,28 +557,36 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
         return stackFrameBuffer;
     }
 
+    public IntRingBuffer getBackrefMultiCharExpansionBufferA() {
+        return backrefMultiCharExpansionBufferA;
+    }
+
+    public IntRingBuffer getBackrefMultiCharExpansionBufferB() {
+        return backrefMultiCharExpansionBufferB;
+    }
+
     @TruffleBoundary
     public void printStack(int curPc) {
         System.out.println("STACK SNAPSHOT");
         System.out.println("==============");
         for (int i = sp; i >= 0; i -= stackFrameSize) {
-            System.out.print(String.format("pc: %d, i: %d,\n  cg: [", (i == sp ? curPc : stack()[i + 1]), stack()[i]));
+            System.out.printf("pc: %d, i: %d,\n  cg: [", (i == sp ? curPc : stack()[i + 1]), stack()[i]);
             for (int j = offsetCaptureGroups(); j < offsetQuantifierCounts(); j++) {
-                System.out.print(String.format("%d, ", stack()[i + j - sp]));
+                System.out.printf("%d, ", stack()[i + j - sp]);
             }
-            System.out.print(String.format("],\n  quant: ["));
+            System.out.print("],\n  quant: [");
             for (int j = offsetQuantifierCounts(); j < offsetZeroWidthQuantifierIndices(); j++) {
-                System.out.print(String.format("%d, ", stack()[i + j - sp]));
+                System.out.printf("%d, ", stack()[i + j - sp]);
             }
-            System.out.print(String.format("],\n  zwq-indices: ["));
+            System.out.print("],\n  zwq-indices: [");
             for (int j = offsetZeroWidthQuantifierIndices(); j < offsetZeroWidthQuantifierCG(); j++) {
-                System.out.print(String.format("%d, ", stack()[i + j - sp]));
+                System.out.printf("%d, ", stack()[i + j - sp]);
             }
-            System.out.print(String.format("],\n  zwq-cg: {\n"));
+            System.out.print("],\n  zwq-cg: {\n");
             for (int zwq = 0; zwq < nZeroWidthQuantifiers; zwq++) {
-                System.out.print(String.format("    %d: [", zwq));
+                System.out.printf("    %d: [", zwq);
                 for (int j = offsetZeroWidthQuantifierCG(zwq); j < offsetZeroWidthQuantifierCG(zwq + 1); j++) {
-                    System.out.print(String.format("%d, ", stack()[i + j - sp]));
+                    System.out.printf("%d, ", stack()[i + j - sp]);
                 }
                 System.out.print("],\n");
             }

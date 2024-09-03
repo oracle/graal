@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021, 2022, Oracle and/or its affiliates.
+# Copyright (c) 2021, 2024, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -171,6 +171,9 @@ function(add_sulong_test TEST)
     # if the test folder includes a TestOptions.cmake file, run it
     set(TEST_OPTIONS_PATH "${SULONG_TEST_SOURCE_DIR}/${TEST_DIR}/TestOptions.cmake")
     include("${TEST_OPTIONS_PATH}" OPTIONAL)
+    # if test suite contains a TestOptions.cmake file at the top level, run it
+    set(GLOBAL_TEST_OPTIONS_PATH "TestOptions.cmake")
+    include("${GLOBAL_TEST_OPTIONS_PATH}" OPTIONAL)
 
     if(DEFINED SKIP_TEST)
       set(SKIP_FILE "${OUTPUT_DIR}/test.skip")

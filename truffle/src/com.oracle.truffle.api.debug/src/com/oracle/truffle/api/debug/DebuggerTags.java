@@ -65,7 +65,8 @@ public final class DebuggerTags {
      * statement (program locations where execution should always halt) should make sure that
      * appropriate {@link Node}s are tagged with the {@link AlwaysHalt} tag.
      *
-     * {@link com.oracle.truffle.api.debug.DebuggerTagsSnippets#debuggerNode}
+     * {@snippet file="com/oracle/truffle/api/debug/DebuggerTags.java"
+     * region="com.oracle.truffle.api.debug.DebuggerTagsSnippets#debuggerNode"}
      *
      * All created {@link DebuggerSession debugger sessions} will suspend on these locations
      * unconditionally.
@@ -84,17 +85,17 @@ class DebuggerTagsSnippets {
 
     @SuppressWarnings("unused")
     public static Node debuggerNode() {
-        // @formatter:off
+        // @formatter:off // @replace regex='.*' replacement=''
         abstract
-        // BEGIN: com.oracle.truffle.api.debug.DebuggerTagsSnippets#debuggerNode
+        // @start region="com.oracle.truffle.api.debug.DebuggerTagsSnippets#debuggerNode"
         class DebuggerNode extends Node implements InstrumentableNode {
 
             public boolean hasTag(Class<? extends Tag> tag) {
                 return tag == DebuggerTags.AlwaysHalt.class;
             }
         }
-        // END: com.oracle.truffle.api.debug.DebuggerTagsSnippets#debuggerNode
-        // @formatter:on
+        // @end region="com.oracle.truffle.api.debug.DebuggerTagsSnippets#debuggerNode"
+        // @formatter:on // @replace regex='.*' replacement=''
         return null;
     }
 }

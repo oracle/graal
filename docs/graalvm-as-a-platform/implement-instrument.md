@@ -36,7 +36,7 @@ With that in mind, we can define some high-level requirements from our tool:
 The main starting point for tools is subclassing the [TruffleInstrument](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.html) class.
 Unsurprisingly, the simple tool code base does exactly this, creating the [SimpleCoverageInstrument](https://github.com/graalvm/simpletool/blob/master/src/main/java/com/oracle/truffle/st/SimpleCoverageInstrument.java#L84) class.
 
-The [Registration](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.Registration.html) annotation on the class ensures that the newly created instrument is registered with the Instrument API, i.e., that it will be automatically discovered by the framework.
+The [Registration](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.Registration.html) annotation on the class ensures that the newly created instrument is registered with the Instrument API, in other words, that it will be automatically discovered by the framework.
 It also provides some metadata about the instrument: ID, name, version, which services the instrument provides, and whether the instrument is internal or not.
 In order for this annotation to be effective the DSL processor needs to process this class.
 This is, in the case of Simple Tool, done automatically by having the DSL processor as a dependency in the [Maven configuration](https://github.com/graalvm/simpletool/blob/master/pom.xml#L83).
@@ -84,7 +84,7 @@ The instrument keeps a mapping from each `Source` to a [Coverage](https://github
 Guest languages are implemented as Abstract Syntax Tree (AST) interpreters.
 The language implementers annotate certain nodes with tags, which allows us to select which nodes we are interested in, by using the aforementioned `SourceSectionFilter`, in a language-agnostic manner.
 
-The main power of the Instrument API lies in its ability to insert specialised nodes in the AST which "wrap" the nodes of interest.
+The main power of the Instrument API lies in its ability to insert specialized nodes in the AST which "wrap" the nodes of interest.
 These nodes are built using the same infrastructure that the language developers use, and are, from the perspective of the runtime, indistinguishable from the language nodes.
 This means that all of the techniques used to optimize guest languages into such high performing language implementations are available to the tool developers as well.
 
@@ -94,11 +94,11 @@ Suffice it to say that for Simple Tool to meet its second requirement, we need t
 For this task we use the [CoverageNode](https://github.com/graalvm/simpletool/blob/master/src/main/java/com/oracle/truffle/st/CoverageNode.java).
 It is a subclass of [ExecutionEventNode](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/ExecutionEventNode.html) which, as the name implies, is used to instrument events during execution.
 The `ExecutionEventNode` offers many methods to override, but we are only interested in [onReturnValue](https://github.com/graalvm/simpletool/blob/master/src/main/java/com/oracle/truffle/st/CoverageNode.java#L106).
-This method is invoked when the "wrapped" node returns a value, i.e., is successfully executed.
+This method is invoked when the "wrapped" node returns a value, that is, it is successfully executed.
 The implementation is rather simple. We just notify the instrument that the node with this particular `SourceSection` has been executed, and the instrument updates the `Coverage` object in its coverage map.
 
 The instrument is notified only once per node, as the logic is guarded by the [flag](https://github.com/graalvm/simpletool/blob/master/src/main/java/com/oracle/truffle/st/CoverageNode.java#L60).
-The fact that this flag is annotated with [CompilationFinal](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/CompilerDirectives.CompilationFinal.html) and that the call to the instrument is preceded by a call to [transferToInterpreterAndInvalidate()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/CompilerDirectives.html#transferToInterpreterAndInvalidate--) is a standard technique in Truffle, which ensures that once this instrumentation is no longer needed (i.e., a node has been executed), the instrumentation is removed from further compilations, along with any performance overhead.
+The fact that this flag is annotated with [CompilationFinal](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/CompilerDirectives.CompilationFinal.html) and that the call to the instrument is preceded by a call to [transferToInterpreterAndInvalidate()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/CompilerDirectives.html#transferToInterpreterAndInvalidate--) is a standard technique in Truffle, which ensures that once this instrumentation is no longer needed (a node has been executed), the instrumentation is removed from further compilations, along with any performance overhead.
 
 In order for the framework to know how to instantiate the `CoverageNode` when it is needed, we need to provide a factory for it.
 The factory is the [CoverageEventFactory](https://github.com/graalvm/simpletool/blob/master/src/main/java/com/oracle/truffle/st/CoverageEventFactory.java), a subclass of [ExecutionEventNodeFactory](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/ExecutionEventNodeFactory.html).
@@ -129,7 +129,7 @@ Setting `JAVA_HOME` to a GraalVM installation and running `mvn package` produces
 This is the Simple Tool distribution form.
 
 The [Truffle framework](../../truffle/docs/README.md) offers a clear separation between the language/tooling code and the application code.
-For this reason, putting the JAR on the class path will not result in the framework realizing a new tool is needed.
+For this reason, putting the JAR file on the class path will not result in the framework realizing a new tool is needed.
 To achieve this we use `--vm.Dtruffle.class.path.append=/path/to/simpletool-<version>.jar` as is illustrated in a [launcher script for our simple tool](https://github.com/graalvm/simpletool/blob/master/simpletool).
 This script also shows we can [set the CLI options](https://github.com/graalvm/simpletool/blob/master/simpletool#L19) we specified for Simple Tool.
 This means that if we execute `./simpletool js example.js`, we will launch the `js` launcher of GraalVM, add the tool to the framework class path, and run the included [example.js](https://github.com/graalvm/simpletool/blob/master/example.js) file with Simple Tool enabled, resulting in the following output:
@@ -313,7 +313,7 @@ public ExecutionEventNode create(final EventContext ec) {
 
 Execution event nodes can implement certain callback methods to intercept runtime execution events. Examples include:
 
-1. `onEnter`: executed before an AST node corresponding to a filtered source code element (e.g., a language statement or an expression) is evaluated.
+1. `onEnter`: executed before an AST node corresponding to a filtered source code element (for example, a language statement or an expression) is evaluated.
 2. `onReturnValue`: executed after a source code element returns a value.
 3. `onReturnExceptional`: executed in case the filtered source code element throws an exception.
 
@@ -352,7 +352,7 @@ Each instrumentation node is bound to a specific code location.
 Such locations can be accessed by the agent using the provided [`EventContext`](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/EventContext.html) object. The context object gives instrumentation nodes access to a variety of information about the current AST nodes being executed.
 Examples of query APIs available to instrumentation agents through `EventContext` include:
 
-1. `hasTag`: to query an instrumented node for a certain node `Tag` (e.g., to check if a statement node is also a conditional node).
+1. `hasTag`: to query an instrumented node for a certain node `Tag` (for example, to check if a statement node is also a conditional node).
 2. `getInstrumentedSourceSection`: to access the [`SourceSection`](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/SourceSection.html) associated with the current node.
 3. `getInstrumentedNode`: to access the [`Node`](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/Node.html) corresponding to the current instrumentation event.
 
@@ -377,7 +377,7 @@ instrumenter.attachExecutionEventFactory(sourceSectionFilter, inputGeneratingLoc
 The first source section filter (`sourceSectionFilter`, in the example) is a normal filter equivalent to other filters described before, and is used to identify the source code locations to be monitored.
 The second section filter, `inputGeneratingLocations`, is used by the agent to specify the _intermediate values_ that should be monitored for a certain source section.
 Intermediate values correspond to _all_ observable values that are involved in the execution of a monitored code element, and are reported to the instrumentation agent by means of the `onInputValue` callback.
-As an example, let us assume an agent needs to profile all _operand_ values provided to sum operations (i.e., `+`) in JavaScript:
+As an example, let us assume an agent needs to profile all _operand_ values provided to sum operations (`+`) in JavaScript:
 
 ```javascript
 var a = 3;
@@ -431,7 +431,7 @@ Moreover, languages may provide additional metadata associated with language-spe
 The instrumentation capabilities that we have presented so far enable users to _observe_ certain aspects of a running application.
 In addition to passive monitoring of an application's behavior, the Instrument API features support for actively _altering_ the behavior of an application at runtime.
 Such capabilities can be used to write complex instrumentation agents that affect the behavior of a running application to achieve specific runtime semantics.
-For example, one could alter the semantics of a running application to ensure that certain methods or functions are never executed (e.g., by throwing an exception when they are called).
+For example, one could alter the semantics of a running application to ensure that certain methods or functions are never executed (for example, by throwing an exception when they are called).
 
 Instrumentation agents with such capabilities can be implemented by leveraging the `onUnwind` callback in execution event listeners and factories.
 As an example, let's consider the following JavaScript code:

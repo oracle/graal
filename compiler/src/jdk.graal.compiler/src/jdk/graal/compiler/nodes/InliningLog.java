@@ -117,7 +117,7 @@ public class InliningLog {
          * The callsite whose inlined body contains this callsite. The value is {@code null} for the
          * root callsite.
          */
-        private final Callsite parent;
+        private Callsite parent;
 
         /**
          * The invoke associated with the callsite. The value is {@code null} for the root callsite.
@@ -514,17 +514,26 @@ public class InliningLog {
     }
 
     public void checkInvariants(StructuredGraph graph) {
+        if (!Assertions.assertionsEnabled()) {
+            return;
+        }
         for (Invoke invoke : graph.getInvokes()) {
             assert leaves.containsKey(invoke) : "Invoke " + invoke + " not contained in the leaves.";
         }
-        assert root.parent == null;
-        checkTreeInvariants(root);
+        checkParentPointers();
     }
 
-    private static void checkTreeInvariants(Callsite site) {
+    private void checkParentPointers() {
+        assert root.parent == null : "Non-null parent of root: " + root.parent;
+        if (Assertions.assertionsEnabled()) {
+            checkParentPointers(root);
+        }
+    }
+
+    private static void checkParentPointers(Callsite site) {
         for (Callsite child : site.children) {
-            assert site == child.parent : "Callsite " + site + " with child " + child + " has an invalid parent pointer " + site;
-            checkTreeInvariants(child);
+            assert site == child.parent : "Callsite " + site + " with child " + child + " has an invalid parent pointer " + child.parent;
+            checkParentPointers(child);
         }
     }
 
@@ -894,10 +903,14 @@ public class InliningLog {
         caller.addDecision(new Decision(true, reason, phase, invoke.getTargetMethod()));
         caller.target = callTargetNode.targetMethod;
         caller.indirect = callTargetNode.invokeKind.isIndirect();
-        caller.children.addAll(calleeLog.getRootCallsite().children);
+        for (Callsite child : calleeLog.getRootCallsite().children) {
+            caller.children.add(child);
+            child.parent = caller;
+        }
         leaves.removeKey(invoke);
         leaves.putAll(calleeLog.leaves);
         calleeLog.root.children.clear();
         calleeLog.leaves.clear();
+        checkParentPointers();
     }
 }

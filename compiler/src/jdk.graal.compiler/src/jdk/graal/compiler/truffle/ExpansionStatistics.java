@@ -926,7 +926,7 @@ final class ExpansionStatistics {
                  */
                 return 1.0;
             }
-            if (frequency == UNSET_FREQUENCY && parent != null) {
+            if (frequency == UNSET_FREQUENCY) {
                 return parent.getFrequency();
             } else {
                 return frequency;

@@ -26,34 +26,39 @@ package com.oracle.svm.hosted.code.amd64;
 
 import java.util.function.Consumer;
 
-import jdk.graal.compiler.asm.Assembler;
-import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.AddressDisplacementAnnotation;
-import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandDataAnnotation;
-import jdk.graal.compiler.code.CompilationResult;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.objectfile.ObjectFile;
+import com.oracle.objectfile.ObjectFile.RelocationKind;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
 import com.oracle.svm.core.graal.code.PatchConsumerFactory;
+import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
+import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
+import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.HostedImageHeapConstantPatch;
 import com.oracle.svm.hosted.code.HostedPatcher;
 import com.oracle.svm.hosted.image.RelocatableBuffer;
+import com.oracle.svm.hosted.meta.HostedMethod;
 
+import jdk.graal.compiler.asm.Assembler;
+import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.AddressDisplacementAnnotation;
+import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandDataAnnotation;
+import jdk.graal.compiler.code.CompilationResult;
 import jdk.vm.ci.code.site.ConstantReference;
 import jdk.vm.ci.code.site.DataSectionReference;
 import jdk.vm.ci.code.site.Reference;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.VMConstant;
 
 @AutomaticallyRegisteredFeature
 @Platforms({Platform.AMD64.class})
-class AMD64HostedPatcherFeature implements InternalFeature {
+class AMD64HostedPatcherFeature implements InternalFeature, FeatureSingleton, UnsavedSingleton {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(PatchConsumerFactory.HostedPatchConsumerFactory.class, new PatchConsumerFactory.HostedPatchConsumerFactory() {
@@ -118,10 +123,24 @@ class AMD64HostedPatcher extends CompilationResult.CodeAnnotation implements Hos
              * the relocation site, we want to subtract n bytes from our addend.
              */
             long addend = (annotation.nextInstructionPosition - annotation.operandPosition);
-            relocs.addRelocationWithAddend((int) siteOffset, ObjectFile.RelocationKind.getPCRelative(annotation.operandSize), addend, ref);
-        } else if (ref instanceof ConstantReference constantRef) {
-            VMError.guarantee(!(constantRef.getConstant() instanceof SubstrateMethodPointerConstant), "SubstrateMethodPointerConstants should not be relocated %s", constantRef);
-            relocs.addRelocationWithoutAddend((int) siteOffset, ObjectFile.RelocationKind.getDirect(annotation.operandSize), ref);
+            assert addend == annotation.operandSize;
+            relocs.addRelocationWithAddend((int) siteOffset, RelocationKind.getPCRelative(annotation.operandSize), addend, ref);
+        } else if (ref instanceof ConstantReference constantReference) {
+            VMConstant constant = constantReference.getConstant();
+            if (constant instanceof SubstrateMethodPointerConstant methodPointerConstant) {
+                MethodPointer pointer = methodPointerConstant.pointer();
+                HostedMethod hMethod = (HostedMethod) pointer.getMethod();
+                VMError.guarantee(!hMethod.isCompiledInPriorLayer(), "Method %s was compiled in a prior layer", hMethod);
+                VMError.guarantee(hMethod.isCompiled(), "Method %s is not compiled although there is a method pointer constant created for it.", hMethod);
+
+                RelocationKind kindPCRelative = RelocationKind.getPCRelative(annotation.operandSize);
+                // lea instruction using rip relative addressing, account for additional offset
+                long addend = -RelocationKind.getRelocationSize(kindPCRelative);
+                relocs.addRelocationWithAddend((int) siteOffset, kindPCRelative, addend, pointer);
+            } else {
+                RelocationKind kindDirect = RelocationKind.getDirect(annotation.operandSize);
+                relocs.addRelocationWithoutAddend((int) siteOffset, kindDirect, constantReference);
+            }
         } else {
             throw VMError.shouldNotReachHere("Unknown type of reference in code");
         }

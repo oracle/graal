@@ -30,8 +30,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
-import org.graalvm.collections.EconomicMap;
-
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.builder.TypeFlowGraphBuilder;
@@ -173,7 +171,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
                 }
                 bb.numParsedGraphs.incrementAndGet();
 
-                boolean computeIndex = !method.getReturnsAllInstantiatedTypes() && bb.getHostVM().getMultiMethodAnalysisPolicy().canComputeReturnedParameterIndex(method.getMultiMethodKey());
+                boolean computeIndex = !method.hasOpaqueReturn() && bb.getHostVM().getMultiMethodAnalysisPolicy().canComputeReturnedParameterIndex(method.getMultiMethodKey());
                 returnedParameterIndex = computeIndex ? computeReturnedParameterIndex(builder.graph) : -1;
 
                 /* Set the flows graph after fully built. */
@@ -182,7 +180,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
 
                 initFlowsGraph(bb, builder.postInitFlows);
             } catch (Throwable t) {
-                /* Wrap all other errors as parsing errors. */
+                /* Wrap all errors as parsing errors. */
                 throw AnalysisError.parsingError(method, t);
             }
         }
@@ -228,13 +226,17 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
         return flowsGraph == null ? Collections.emptyList() : List.of(flowsGraph);
     }
 
-    public EconomicMap<Object, InvokeTypeFlow> getInvokes() {
+    public List<InvokeTypeFlow> getInvokes() {
         ensureFlowsGraphSealed();
-        return flowsGraph == null ? EconomicMap.emptyMap() : flowsGraph.getInvokes();
+        return flowsGraph == null ? List.of() : flowsGraph.getInvokes();
     }
 
     public TypeFlow<?> getParameter(int idx) {
         return flowsGraph == null ? null : flowsGraph.getParameter(idx);
+    }
+
+    public TypeFlow<?> getReturn() {
+        return flowsGraph == null ? null : flowsGraph.getReturnFlow();
     }
 
     /** Check if the type flow is saturated, i.e., any of its clones is saturated. */
@@ -340,7 +342,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
                 }
             }
         } catch (Throwable t) {
-            /* Wrap all other errors as parsing errors. */
+            /* Wrap all errors as parsing errors. */
             throw AnalysisError.parsingError(method, t);
         }
         return true;

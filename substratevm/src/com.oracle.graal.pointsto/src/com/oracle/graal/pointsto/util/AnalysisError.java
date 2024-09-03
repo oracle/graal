@@ -76,6 +76,18 @@ public class AnalysisError extends Error {
     }
 
     /**
+     * Thrown when trying to snapshot new values after the shadow heap was sealed.
+     */
+    public static class SealedHeapError extends AnalysisError {
+
+        private static final long serialVersionUID = 7057678828508165215L;
+
+        SealedHeapError(String message) {
+            super(message);
+        }
+    }
+
+    /**
      * Thrown when the analysis parsing encounters an error.
      */
     public static class ParsingError extends AnalysisError {
@@ -143,6 +155,10 @@ public class AnalysisError extends Error {
 
     public static TypeNotFoundError typeNotFound(ResolvedJavaType type) {
         throw new TypeNotFoundError(type);
+    }
+
+    public static SealedHeapError sealedHeapError(String message) {
+        throw new SealedHeapError(message);
     }
 
     public static ParsingError parsingError(AnalysisMethod method, Throwable original) {

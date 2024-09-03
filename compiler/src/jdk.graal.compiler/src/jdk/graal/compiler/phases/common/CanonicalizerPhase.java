@@ -47,7 +47,8 @@ import jdk.graal.compiler.graph.Graph.Mark;
 import jdk.graal.compiler.graph.Graph.NodeEventListener;
 import jdk.graal.compiler.graph.Graph.NodeEventScope;
 import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.graph.Node.IndirectCanonicalization;
+import jdk.graal.compiler.graph.Node.IndirectInputChangedCanonicalization;
+import jdk.graal.compiler.graph.Node.InputsChangedCanonicalization;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.NodeFlood;
 import jdk.graal.compiler.graph.NodeWorkList;
@@ -64,7 +65,6 @@ import jdk.graal.compiler.nodes.GuardNode;
 import jdk.graal.compiler.nodes.LoopBeginNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.PhiNode;
-import jdk.graal.compiler.nodes.ProxyNode;
 import jdk.graal.compiler.nodes.StartNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -236,7 +236,9 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
 
     @Override
     public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
-        return NotApplicable.unlessRunBefore(this, StageFlag.FINAL_CANONICALIZATION, graphState);
+        return NotApplicable.ifAny(
+                        NotApplicable.unlessRunBefore(this, StageFlag.FINAL_CANONICALIZATION, graphState),
+                        NotApplicable.unlessRunBefore(this, StageFlag.REMOVE_OPAQUE_VALUES, graphState));
     }
 
     @Override
@@ -318,12 +320,16 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
             @Override
             public void inputChanged(Node node) {
                 tool.workList.add(node);
-                if (node instanceof IndirectCanonicalization) {
+                if (node instanceof IndirectInputChangedCanonicalization) {
                     for (Node usage : node.usages()) {
                         tool.workList.add(usage);
                     }
                 }
-
+                if (node instanceof InputsChangedCanonicalization) {
+                    for (Node input : node.inputs()) {
+                        tool.workList.add(input);
+                    }
+                }
                 if (node instanceof AbstractBeginNode) {
                     AbstractBeginNode abstractBeginNode = (AbstractBeginNode) node;
                     if (abstractBeginNode.predecessor() != null) {
@@ -437,7 +443,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
      * visited in between has other usages except one (so no outside usages) and no fixed node
      * usages we can conclude we found a dead phi cycle that can be removed.
      */
-    private static boolean isDeadLoopPhiCycle(PhiNode thisPhi, NodeFlood nf) {
+    public static boolean isDeadLoopPhiCycle(PhiNode thisPhi, NodeFlood nf) {
         GraalError.guarantee(thisPhi.isLoopPhi(), "Must only process loop phis");
         nf.add(thisPhi);
         int steps = 0;
@@ -461,7 +467,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                     // Fixed node usage: can never have a dead cycle
                     return false;
                 }
-                if (usage instanceof VirtualState || usage instanceof ProxyNode) {
+                if (usage instanceof VirtualState) {
                     // usages that still require the (potential) dead cycle to be alive
                     return false;
                 }
@@ -678,10 +684,19 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                         node.replaceAtUsages(null);
                         GraphUtil.unlinkAndKillExceptionEdge(withException);
                         GraphUtil.killWithUnusedFloatingInputs(withException);
-                    } else if (canonical instanceof FloatingNode) {
+                    } else if (canonical instanceof FloatingNode floating) {
                         // case 4
-                        withException.killExceptionEdge();
-                        graph.replaceSplitWithFloating(withException, (FloatingNode) canonical, withException.next());
+                        /*
+                         * In corner cases it is possible for the killing of the exception edge to
+                         * trigger the killing of the replacement node. We therefore wait to kill
+                         * the exception edge until after replacing the WithException node.
+                         */
+                        var exceptionEdge = withException.exceptionEdge();
+                        withException.setExceptionEdge(null);
+                        graph.replaceSplitWithFloating(withException, floating, withException.next());
+                        if (exceptionEdge != null) {
+                            GraphUtil.killCFG(exceptionEdge);
+                        }
                     } else {
                         assert canonical instanceof FixedNode : Assertions.errorMessage(canonical);
                         if (canonical.predecessor() == null) {

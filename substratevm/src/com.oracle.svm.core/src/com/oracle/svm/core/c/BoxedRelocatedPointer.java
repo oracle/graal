@@ -26,12 +26,16 @@ package com.oracle.svm.core.c;
 
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 
+import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
+import com.oracle.svm.core.heap.UnknownPrimitiveField;
+
 /**
  * A variant of {@link BoxedPointer} that is immutable, but has a non-final field, intended to work
  * around limitations on folding {@link RelocatedPointer} into a constant in call stub code.
  */
 public final class BoxedRelocatedPointer {
 
+    @UnknownPrimitiveField(availability = AfterCompilation.class)//
     private RelocatedPointer pointer;
 
     public BoxedRelocatedPointer(RelocatedPointer pointer) {

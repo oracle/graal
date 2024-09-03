@@ -75,23 +75,22 @@ public interface CodeInfo extends UntetheredCodeInfo {
     int STATE_READY_FOR_INVALIDATION = STATE_NON_ENTRANT + 1;
 
     /**
-     * Indicates that this {@link CodeInfo} object was invalidated and parts of its data (including
-     * the code memory) were freed. The remaining data will be freed by the GC once the tether
-     * object becomes unreachable. Until then, the GC must continue visiting all heap references
-     * (except for the code constants as the code is no longer installed).
+     * Indicates that this {@link CodeInfo} object was invalidated. The data will be freed by the GC
+     * once the tether object becomes unreachable. Until then, the GC must continue visiting all
+     * heap references, including code constants that are directly embedded into the machine code.
      */
     @DuplicatedInNativeCode //
-    int STATE_PARTIALLY_FREED = STATE_READY_FOR_INVALIDATION + 1;
+    int STATE_INVALIDATED = STATE_READY_FOR_INVALIDATION + 1;
 
     /**
      * This state is only a temporary state when the VM is at a safepoint. It indicates that a
-     * previously already partially freed {@link CodeInfo} object is no longer reachable from the GC
-     * point of view. The GC will free the {@link CodeInfo} object during the current safepoint. It
-     * is crucial that the GC still visits all heap references that may be accessed while freeing
-     * the {@link CodeInfo} object (i.e., all object fields).
+     * previously invalidated {@link CodeInfo} object is no longer reachable from the GC point of
+     * view. The GC will free the {@link CodeInfo} object during the current safepoint. It is
+     * crucial that the GC still visits all heap references that may be accessed while freeing the
+     * {@link CodeInfo} object (i.e., all object fields).
      */
     @DuplicatedInNativeCode //
-    int STATE_UNREACHABLE = STATE_PARTIALLY_FREED + 1;
+    int STATE_UNREACHABLE = STATE_INVALIDATED + 1;
 
     /**
      * Indicates that the {@link CodeInfo} object was already freed. This state should never be

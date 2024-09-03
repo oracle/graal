@@ -241,7 +241,7 @@ class WasmBenchmarkSuite(JMHDistBenchmarkSuite):
 
     def rules(self, out, benchmarks, bmSuiteArgs):
         return [
-            WasmJMHJsonRule(mx_benchmark.JMHBenchmarkSuiteBase.jmh_result_file, self.benchSuiteName(bmSuiteArgs)),
+            WasmJMHJsonRule(self.get_jmh_result_file(bmSuiteArgs), self.benchSuiteName(bmSuiteArgs)),
             mx_benchmark.StdOutRule(
                 r"Iteration (?P<iteration>[0-9]+), result = -?[0-9]+, sec = ([0-9]+\.[0-9]+), ops / sec = (?P<value>([0-9]+\.[0-9]+))", # pylint: disable=line-too-long
                 {

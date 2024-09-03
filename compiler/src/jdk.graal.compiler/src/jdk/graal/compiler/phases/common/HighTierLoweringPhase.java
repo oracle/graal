@@ -29,20 +29,20 @@ import java.util.Optional;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.spi.Lowerable;
-import jdk.graal.compiler.nodes.spi.LoweringTool;
+import jdk.graal.compiler.nodes.spi.LoweringTool.StandardLoweringStage;
 
 /**
  * A {@link LoweringPhase} used to lower {@link Lowerable} nodes when the graph is in
- * {@link LoweringTool.StandardLoweringStage#HIGH_TIER} stage.
+ * {@link StandardLoweringStage#HIGH_TIER} stage.
  */
 public class HighTierLoweringPhase extends LoweringPhase {
 
     public HighTierLoweringPhase(CanonicalizerPhase canonicalizer, boolean lowerOptimizableMacroNodes) {
-        super(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER, lowerOptimizableMacroNodes, StageFlag.HIGH_TIER_LOWERING);
+        super(canonicalizer, StandardLoweringStage.HIGH_TIER, lowerOptimizableMacroNodes, StageFlag.HIGH_TIER_LOWERING);
     }
 
     public HighTierLoweringPhase(CanonicalizerPhase canonicalizer) {
-        super(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER, StageFlag.HIGH_TIER_LOWERING);
+        super(canonicalizer, StandardLoweringStage.HIGH_TIER, StageFlag.HIGH_TIER_LOWERING);
     }
 
     @Override

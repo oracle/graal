@@ -42,7 +42,7 @@ import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.replacements.PEGraphDecoder;
 
 import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
-import com.oracle.svm.graal.GraalSupport;
+import com.oracle.svm.graal.TruffleRuntimeCompilationSupport;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -74,7 +74,7 @@ public class SubstratePEGraphDecoder extends PEGraphDecoder {
     }
 
     private EncodedGraph createGraph(ResolvedJavaMethod method, boolean trackNodeSourcePosition) {
-        EncodedGraph result = GraalSupport.encodedGraph((SharedRuntimeMethod) method, trackNodeSourcePosition);
+        EncodedGraph result = TruffleRuntimeCompilationSupport.encodedGraph((SharedRuntimeMethod) method, trackNodeSourcePosition);
         if (result == null) {
             throw shouldNotReachHere("Graph not available for runtime compilation: " + method.format("%H.%n(%p)"));
         }

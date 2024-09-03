@@ -27,10 +27,6 @@ package com.oracle.svm.core.graal.meta;
 import java.util.Collection;
 import java.util.EnumMap;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-import jdk.graal.compiler.debug.DebugHandlersFactory;
-import jdk.graal.compiler.phases.util.Providers;
-import jdk.graal.compiler.word.WordTypes;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -38,27 +34,26 @@ import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig.ConfigKind;
 import com.oracle.svm.core.meta.SharedMethod;
 
+import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * Configuration used by Graal at runtime to compile and install code in the same runtime.
+ * Configuration used by Graal at runtime to compile and install code in the same runtime. A
+ * {@code RuntimeConfiguration} is also used at build-time to carry the configuration of the AOT
+ * compiler.
  */
 public final class RuntimeConfiguration {
 
     private final Providers providers;
-    private final SnippetReflectionProvider snippetReflection;
     private final EnumMap<ConfigKind, SubstrateBackend> backends;
     private final Iterable<DebugHandlersFactory> debugHandlersFactories;
-    private final WordTypes wordTypes;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public RuntimeConfiguration(Providers providers, SnippetReflectionProvider snippetReflection, EnumMap<ConfigKind, SubstrateBackend> backends, WordTypes wordTypes,
-                    Iterable<DebugHandlersFactory> debugHandlersFactories) {
+    public RuntimeConfiguration(Providers providers, EnumMap<ConfigKind, SubstrateBackend> backends, Iterable<DebugHandlersFactory> debugHandlersFactories) {
         this.providers = providers;
-        this.snippetReflection = snippetReflection;
         this.backends = backends;
         this.debugHandlersFactories = debugHandlersFactories;
-        this.wordTypes = wordTypes;
 
         for (SubstrateBackend backend : backends.values()) {
             backend.setRuntimeConfiguration(this);
@@ -87,13 +82,5 @@ public final class RuntimeConfiguration {
 
     public SubstrateBackend getBackendForNormalMethod() {
         return backends.get(ConfigKind.NORMAL);
-    }
-
-    public SnippetReflectionProvider getSnippetReflection() {
-        return snippetReflection;
-    }
-
-    public WordTypes getWordTypes() {
-        return wordTypes;
     }
 }

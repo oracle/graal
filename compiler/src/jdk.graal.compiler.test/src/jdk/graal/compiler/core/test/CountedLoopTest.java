@@ -40,13 +40,15 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import jdk.graal.compiler.nodes.loop.InductionVariable;
-import jdk.graal.compiler.nodes.loop.LoopEx;
+import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.loop.LoopsData;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
+
+import org.junit.Ignore;
 import org.junit.Test;
 
 import jdk.vm.ci.code.InstalledCode;
@@ -549,11 +551,13 @@ public class CountedLoopTest extends GraalCompilerTest {
     }
 
     @Test
+    @Ignore("GR-54120: Loops requiring overflow to terminate must not be counted in graal, CountedLoopInfo API does not support that")
     public void decrementUnsigned7() {
         testCounted("decrementUnsignedSnippet", Integer.MAX_VALUE + 10, 0, 1);
     }
 
     @Test
+    @Ignore("GR-54120: Loops requiring overflow to terminate must not be counted in graal, CountedLoopInfo API does not support that")
     public void decrementUnsigned8() {
         testCounted("decrementUnsignedSnippet", Integer.MAX_VALUE + 11, 0, 2);
     }
@@ -668,7 +672,7 @@ public class CountedLoopTest extends GraalCompilerTest {
     protected void checkHighTierGraph(StructuredGraph graph) {
         LoopsData loops = getDefaultMidTierContext().getLoopsDataProvider().getLoopsData(graph);
         loops.detectCountedLoops();
-        for (LoopEx lex : loops.countedLoops()) {
+        for (Loop lex : loops.countedLoops()) {
             lex.counted().createOverFlowGuard();
         }
         for (IVPropertyNode node : graph.getNodes().filter(IVPropertyNode.class)) {
@@ -716,12 +720,16 @@ public class CountedLoopTest extends GraalCompilerTest {
     public void testCounted(boolean removable, String snippetName, Object start, Object limit, Object step) {
         this.loopCanBeRemoved = removable;
         Object[] args = {start, limit, step};
+        resetSpeculationLog();
         test(snippetName, args);
         this.argsToBind = args;
+        resetSpeculationLog();
         test(snippetName, args);
         this.argsToBind = new Object[]{NO_BIND, NO_BIND, step};
+        resetSpeculationLog();
         test(snippetName, args);
         this.argsToBind = new Object[]{start, NO_BIND, step};
+        resetSpeculationLog();
         test(snippetName, args);
         this.argsToBind = null;
         this.loopCanBeRemoved = false;

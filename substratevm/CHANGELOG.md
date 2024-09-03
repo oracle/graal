@@ -2,6 +2,41 @@
 
 This changelog summarizes major changes to GraalVM Native Image.
 
+## GraalVM for JDK 24 (Internal Version 24.2.0)
+* (GR-54476): Issue a deprecation warning on first use of a legacy `graal.` prefix (see GR-49960 in [Compiler changelog](../compiler/CHANGELOG.md)).
+  The warning is planned to be replaced by an error in GraalVM for JDK 25.
+* (GR-48384) Added a GDB Python script (`gdb-debughelpers.py`) to improve the Native Image debugging experience.
+* (GR-49517) Add support for emitting Windows x64 unwind info. This enables stack walking in native tooling such as debuggers and profilers.
+* (GR-57384) Preserve the origin of a resource included in a native image. The information is included in the report produced by -H:+GenerateEmbeddedResourcesFile.
+
+## GraalVM for JDK 23 (Internal Version 24.1.0)
+* (GR-51520) The old class initialization strategy, which was deprecated in GraalVM for JDK 22, is removed. The option `StrictImageHeap` no longer has any effect.
+* (GR-51106) Fields that are accessed via a `VarHandle` or `MethodHandle` are no longer marked as "unsafe accessed" when the `VarHandle`/`MethodHandle` can be fully intrinsified.
+* (GR-49996) Ensure explicitly set image name (e.g., via `-o imagename`) is not accidentally overwritten by `-jar jarfile` option.
+* (GR-48683) Together with Red Hat, we added partial support for the JFR event `OldObjectSample`.
+* (GR-51851) Together with Red Hat, we added initial support for native memory tracking (`--enable-monitoring=nmt`).
+* (GR-47109) Together with Red Hat, we added support for JFR event throttling and the event `ObjectAllocationSample`.
+* (GR-52030) Add a stable name for `Proxy` types in Native Image. The name `$Proxy[id]` is replaced by `$Proxy.s[hashCode]` where `hashCode` is computed using the names of the `Proxy` interfaces, the name of the class loader and the name of the module if it is not a dynamic module.
+* (GR-47712) Using the `--static` option without the `--libc=musl` option causes the build process to fail (and reports the appropriate error). Static linking is currently only supported with musl.
+* (GR-50434) Introduce a `"type"` field in reflection and JNI configuration files to support more than simple named types.
+* (GR-51053) Use [`vswhere`](https://github.com/microsoft/vswhere) to find Visual Studio installations more reliably and in non-standard installation locations.
+* (GR-47832) Experimental support for upcalls from foreign code and other improvements to our implementation of the [Foreign Function & Memory API](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/ForeignInterface.md) (part of "Project Panama", [JEP 454](https://openjdk.org/jeps/454)) on AMD64. Must be enabled with `-H:+ForeignAPISupport` (requiring `-H:+UnlockExperimentalVMOptions`).
+* (GR-52314) `-XX:MissingRegistrationReportingMode` can now be used on program invocation instead of as a build option, to avoid a rebuild when debugging missing registration errors.
+* (GR-51086) Introduce a new `--static-nolibc` API option as a replacement for the experimental `-H:±StaticExecutableWithDynamicLibC` option.
+* (GR-52732) Introduce a new `ReduceImplicitExceptionStackTraceInformation` hosted option that reduces image size by reducing the runtime metadata for implicit exceptions, at the cost of stack trace precision. The option is diabled by default, but enabled with optimization level 3 and profile guided optimizations.
+* (GR-52534) Change the digest (used e.g. for symbol names) from SHA-1 encoded as a hex string (40 bytes) to 128-bit Murmur3 as a Base-62 string (22 bytes).
+* (GR-52578) Print information about embedded resources into `embedded-resources.json` using the `-H:+GenerateEmbeddedResourcesFile` option.
+* (GR-51172) Add support to catch OutOfMemoryError exceptions on native image if there is no memory left.
+* (GR-53803) In the strict reflection configuration mode (when `ThrowMissingRegistrationErrors` is enabled), only allow `Unsafe.allocateInstance` for types registered explicitly in the configuration.
+* (GR-43837) `--report-unsupported-elements-at-runtime` is now enabled by default and the option is deprecated.
+* (GR-53359) Provide the `.debug_gdb_scripts` section that triggers auto-loading of `svmhelpers.py` in GDB. Remove single and double quotes from `ClassLoader.nameAndId` in the debuginfo.
+* (GR-47365) Include dynamic proxy metadata in the reflection metadata with the syntax `"type": { "proxy": [<interface list>] }`. This allows members of proxy classes to be accessed reflectively. `proxy-config.json` is now deprecated but will still be honored.
+* (GR-18214) In-place compacting garbage collection for the Serial GC old generation with `-H:+CompactingOldGen`.
+* (GR-52844) Add `-Os`, a new optimization mode to configure the optimizer in a way to get the smallest code size.
+* (GR-49770) Add support for glob patterns in resource-config files in addition to regexp. The Tracing Agent now prints entries in the glob format.
+* (GR-46386) Throw missing registration errors for JNI queries when the query was not included in the reachability metadata.
+* (GR-51479) Implement cgroup support in native code. See the [README](src/com.oracle.svm.native.libcontainer/README.md) and the [PR description](https://github.com/oracle/graal/pull/8989).
+
 ## GraalVM for JDK 22 (Internal Version 24.0.0)
 * (GR-48304) Red Hat added support for the JFR event ThreadAllocationStatistics.
 * (GR-48343) Red Hat added support for the JFR events AllocationRequiringGC and SystemGC.
@@ -10,6 +45,16 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-49221) Support for thread dumps can now be enabled with `--enable-monitoring=threaddump`. The option `-H:±DumpThreadStacksOnSignal` is deprecated and marked for removal.
 * (GR-48579) Options ParseOnce, ParseOnceJIT, and InlineBeforeAnalysis are deprecated and no longer have any effect.
 * (GR-39407) Add support for the `NATIVE_IMAGE_OPTIONS` environment variable, which allows users and tools to pass additional arguments via the environment. Similar to `JAVA_TOOL_OPTIONS`, the value of the environment variable is prepended to the options supplied to `native-image`.
+* (GR-20827): Introduce a dedicated caller-saved branch target register for software CFI implementations.
+* (GR-47937) Make the lambda-class name format in Native-Image consistent with the JDK name format.
+* (GR-45651) Methods, fields and constructors of `Object`, primitive classes and array classes are now registered by default for reflection.
+* (GR-45651) The Native Image agent now tracks calls to `ClassLoader.findSystemClass`, `ObjectInputStream.resolveClass` and `Bundles.of`, and registers resource bundles as bundle name-locale pairs.
+* (GR-49807) Before this change the function `System#setSecurityManager` was always halting program execution with a VM error. This was inconvenient as the VM error prints an uncomprehensible error message and prevents further continuation of the program. For cases where the program is expected to throw an exception when  `System#setSecurityManager` is called, execution on Native Image was not possible. Now, `System#setSecurityManager` throws an `java.lang.UnsupportedOperationException` by default. If the property `java.security.manager` is set to anything but `disallow` at program startup this function will throw a `java.lang.SecurityException` according to the Java spec.
+* (GR-30433) Disallow the deprecated environment variable USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM=false.
+* (GR-49655) Experimental support for parts of the [Foreign Function & Memory API](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/ForeignInterface.md) (part of "Project Panama", [JEP 454](https://openjdk.org/jeps/454)) on AMD64. Must be enabled with `-H:+ForeignAPISupport` (requiring `-H:+UnlockExperimentalVMOptions`).
+* (GR-46407) Correctly rethrow build-time linkage errors at run-time for registered reflection queries.
+* (GR-51002) Improve intrinsification of method handles. This especially improves the performance of `equals` and `hashCode` methods for records, which use method handles that are now intrinsified.
+* (GR-50529) Native Image now throws a specific error when trying to access unregistered resource bundles instead of failing on a subsequent reflection or resource query.
 
 ## GraalVM for JDK 21 (Internal Version 23.1.0)
 * (GR-35746) Lower the default aligned chunk size from 1 MB to 512 KB for the serial and epsilon GCs, reducing memory usage and image size in many cases.
