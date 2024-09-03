@@ -881,6 +881,14 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                          */
                         setCachedThreadInfo(PolyglotThreadInfo.NULL);
                     }
+                    if (needsInitialization) {
+                        /*
+                         * A thread is added to the threads map only by the thread itself, so when
+                         * the thread is in the map, and it is not alive, then it surely won't be
+                         * used ever again.
+                         */
+                        threads.entrySet().removeIf(threadInfoEntry -> !threadInfoEntry.getKey().isAlive());
+                    }
                     boolean transitionToMultiThreading = isSingleThreaded() && hasActiveOtherThread(true, false);
 
                     if (transitionToMultiThreading) {
