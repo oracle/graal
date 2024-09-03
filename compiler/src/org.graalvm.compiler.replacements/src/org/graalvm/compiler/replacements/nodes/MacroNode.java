@@ -37,15 +37,14 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import org.graalvm.compiler.nodes.java.ResolvedMethodHandleCallTargetNodeMarker;
 import org.graalvm.word.LocationIdentity;
 
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -194,11 +193,6 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
     }
 
     @Override
-    public FrameState stateAfter() {
-        return null;
-    }
-
-    @Override
     protected void afterClone(Node other) {
         updateInliningLogAfterClone(other);
     }
@@ -225,17 +219,12 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
     protected InvokeNode createInvoke() {
         MethodCallTargetNode callTarget = createCallTarget();
         InvokeNode invoke = graph().add(new InvokeNode(callTarget, bci, getLocationIdentity()));
-        if (stateAfter() != null) {
-            invoke.setStateAfter(stateAfter().duplicate());
-            if (getStackKind() != JavaKind.Void) {
-                invoke.stateAfter().replaceFirstInput(this, invoke);
-            }
-        }
         return invoke;
     }
 
     @Override
-    public void addMethodHandleInfo(ResolvedMethodHandleCallTargetNode methodHandle) {
+    public void addMethodHandleInfo(ResolvedMethodHandleCallTargetNodeMarker methodHandleMarker) {
+        ResolvedMethodHandleCallTargetNode methodHandle = (ResolvedMethodHandleCallTargetNode) methodHandleMarker;
         assert originalArguments.size() == 0 && originalReturnStamp == null & originalTargetMethod == null : this;
         originalReturnStamp = methodHandle.originalReturnStamp;
         originalTargetMethod = methodHandle.originalTargetMethod;

@@ -44,6 +44,7 @@ import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import org.graalvm.compiler.nodes.java.ResolvedMethodHandleCallTargetNodeMarker;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
 import org.graalvm.word.LocationIdentity;
@@ -210,7 +211,8 @@ public abstract class MacroStateSplitWithExceptionNode extends WithExceptionNode
     }
 
     @Override
-    public void addMethodHandleInfo(ResolvedMethodHandleCallTargetNode methodHandle) {
+    public void addMethodHandleInfo(ResolvedMethodHandleCallTargetNodeMarker methodHandleMarker) {
+        ResolvedMethodHandleCallTargetNode methodHandle = (ResolvedMethodHandleCallTargetNode) methodHandleMarker;
         assert originalArguments.size() == 0 && originalReturnStamp == null & originalTargetMethod == null : this;
         originalReturnStamp = methodHandle.originalReturnStamp;
         originalTargetMethod = methodHandle.originalTargetMethod;

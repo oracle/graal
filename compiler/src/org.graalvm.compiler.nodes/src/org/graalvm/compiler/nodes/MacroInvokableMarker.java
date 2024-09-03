@@ -24,8 +24,17 @@
  */
 package org.graalvm.compiler.nodes;
 
+import org.graalvm.compiler.nodes.java.ResolvedMethodHandleCallTargetNodeMarker;
+
 /**
  * Marker interface for MacroInvokable.
  */
 public interface MacroInvokableMarker extends Invokable {
+
+
+    /**
+     * Captures the method handle information so that it can be properly lowered back to an
+     * {@link Invoke} later.
+     */
+    void addMethodHandleInfo(ResolvedMethodHandleCallTargetNodeMarker methodHandle);
 }

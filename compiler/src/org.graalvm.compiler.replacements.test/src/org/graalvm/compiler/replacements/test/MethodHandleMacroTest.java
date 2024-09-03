@@ -39,6 +39,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.replacements.InlineDuringParsingPlugin;
 import org.graalvm.compiler.replacements.nodes.MacroNode;
+import org.graalvm.compiler.replacements.nodes.MacroStateSplitNode;
 import org.junit.Test;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -51,7 +52,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class MethodHandleMacroTest extends GraalCompilerTest {
 
     @NodeInfo
-    static class TestMacroNode extends MacroNode {
+    static class TestMacroNode extends MacroStateSplitNode {
         public static final NodeClass<TestMacroNode> TYPE = NodeClass.create(TestMacroNode.class);
 
         protected TestMacroNode(MacroParams p) {
@@ -78,7 +79,7 @@ public class MethodHandleMacroTest extends GraalCompilerTest {
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
         super.registerInvocationPlugins(invocationPlugins);
         InvocationPlugins.Registration r = new InvocationPlugins.Registration(invocationPlugins, TestClass.class);
-        r.register(new InvocationPlugin("empty", InvocationPlugin.Receiver.class) {
+        r.register1("empty", InvocationPlugin.Receiver.class, new InvocationPlugin() {
             @Override
             public boolean inlineOnly() {
                 return true;

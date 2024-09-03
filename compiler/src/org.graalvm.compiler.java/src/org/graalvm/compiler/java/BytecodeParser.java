@@ -1659,12 +1659,19 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                 return;
             }
 
+            ValueNode[] classInit = {null};
             if (classInitializationPlugin != null) {
-                classInitializationPlugin.apply(this, resolvedTarget.getDeclaringClass(), this::createCurrentFrameState);
+                classInitializationPlugin.apply(this, resolvedTarget.getDeclaringClass(), this::createCurrentFrameState, classInit);
             }
 
             ValueNode[] args = frameState.popArguments(resolvedTarget.getSignature().getParameterCount(false));
-            appendInvoke(InvokeKind.Static, resolvedTarget, args);
+            Invokable invokable = appendInvoke(InvokeKind.Static, resolvedTarget, args, null);
+            if (invokable instanceof Invoke) {
+                Invoke invoke = (Invoke) invokable;
+                if (invoke != null && classInit[0] != null) {
+                    invoke.setClassInit(classInit[0]);
+                }
+            }
         } else {
             handleUnresolvedInvoke(target, InvokeKind.Static);
         }
@@ -1686,7 +1693,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     protected void genInvokeInterface(JavaType referencedType, JavaMethod target) {
         if (callTargetIsResolved(target) && (referencedType == null || referencedType instanceof ResolvedJavaType)) {
             ValueNode[] args = frameState.popArguments(target.getSignature().getParameterCount(true));
-            appendInvoke(InvokeKind.Interface, (ResolvedJavaMethod) target, args);
+            appendInvoke(InvokeKind.Interface, (ResolvedJavaMethod) target, args, (ResolvedJavaType) referencedType);
         } else {
             handleUnresolvedInvoke(target, InvokeKind.Interface);
         }
@@ -1726,7 +1733,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         }
 
         ValueNode[] args = frameState.popArguments(resolvedTarget.getSignature().getParameterCount(true));
-        appendInvoke(InvokeKind.Virtual, resolvedTarget, args);
+        appendInvoke(InvokeKind.Virtual, resolvedTarget, args, null);
     }
 
     private boolean genDynamicInvokeHelper(ResolvedJavaMethod target, int cpi, int opcode) {
@@ -1771,9 +1778,9 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         boolean hasReceiver = (opcode == INVOKEDYNAMIC) ? false : !target.isStatic();
         ValueNode[] args = frameState.popArguments(target.getSignature().getParameterCount(hasReceiver));
         if (hasReceiver) {
-            appendInvoke(InvokeKind.Virtual, target, args);
+            appendInvoke(InvokeKind.Virtual, target, args, null);
         } else {
-            appendInvoke(InvokeKind.Static, target, args);
+            appendInvoke(InvokeKind.Static, target, args, null);
         }
 
         return true;
@@ -1789,7 +1796,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             assert target != null;
             assert target.getSignature() != null;
             ValueNode[] args = frameState.popArguments(target.getSignature().getParameterCount(true));
-            appendInvoke(InvokeKind.Special, (ResolvedJavaMethod) target, args);
+            appendInvoke(InvokeKind.Special, (ResolvedJavaMethod) target, args, null);
         } else {
             handleUnresolvedInvoke(target, InvokeKind.Special);
         }
@@ -1838,7 +1845,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         forceInliningEverything = previous || inlineEverything;
         try {
             setBciCanBeDuplicated(true);
-            return appendInvoke(invokeKind, targetMethod, args);
+            return appendInvoke(invokeKind, targetMethod, args, null);
         } finally {
             setBciCanBeDuplicated(false);
             forceInliningEverything = previous;
@@ -1852,7 +1859,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         createNonInlinedInvoke(exceptionEdgeAction, bci(), callTarget, resultType);
     }
 
-    protected Invokable appendInvoke(InvokeKind initialInvokeKind, ResolvedJavaMethod initialTargetMethod, ValueNode[] args) {
+    protected Invokable appendInvoke(InvokeKind initialInvokeKind, ResolvedJavaMethod initialTargetMethod, ValueNode[] args, ResolvedJavaType referencedType) {
         ResolvedJavaMethod targetMethod = initialTargetMethod;
         InvokeKind invokeKind = initialInvokeKind;
         if (initialInvokeKind.isIndirect()) {
@@ -1963,6 +1970,10 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             // normal invoke handling.
             invoke.setInlineControl(Invoke.InlineControl.BytecodesOnly);
         }
+        if (referencedType != null) {
+            invoke.callTarget().setReferencedType(referencedType);
+        }
+
         return invoke;
     }
 
@@ -4652,7 +4663,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         }
 
         if (classInitializationPlugin != null) {
-            classInitializationPlugin.apply(this, resolvedType, this::createCurrentFrameState);
+            classInitializationPlugin.apply(this, resolvedType, this::createCurrentFrameState, null);
         }
 
         for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
@@ -4728,7 +4739,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
         ClassInitializationPlugin classInitializationPlugin = this.graphBuilderConfig.getPlugins().getClassInitializationPlugin();
         if (classInitializationPlugin != null) {
-            classInitializationPlugin.apply(this, resolvedType.getArrayClass(), this::createCurrentFrameState);
+            classInitializationPlugin.apply(this, resolvedType.getArrayClass(), this::createCurrentFrameState, null);
         }
 
         ValueNode length = frameState.pop(JavaKind.Int);
@@ -4760,7 +4771,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
         ClassInitializationPlugin classInitializationPlugin = this.graphBuilderConfig.getPlugins().getClassInitializationPlugin();
         if (classInitializationPlugin != null) {
-            classInitializationPlugin.apply(this, resolvedType, this::createCurrentFrameState);
+            classInitializationPlugin.apply(this, resolvedType, this::createCurrentFrameState, null);
         }
 
         for (int i = rank - 1; i >= 0; i--) {
@@ -4936,7 +4947,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         ResolvedJavaType holder = resolvedField.getDeclaringClass();
         ClassInitializationPlugin classInitializationPlugin = this.graphBuilderConfig.getPlugins().getClassInitializationPlugin();
         if (classInitializationPlugin != null) {
-            classInitializationPlugin.apply(this, holder, this::createCurrentFrameState);
+            classInitializationPlugin.apply(this, holder, this::createCurrentFrameState, null);
         }
 
         for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
@@ -5020,7 +5031,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                 assert stackSizeBefore == fs.stackSize();
                 return fs;
             };
-            classInitializationPlugin.apply(this, holder, stateBefore);
+            classInitializationPlugin.apply(this, holder, stateBefore, null);
         }
 
         for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {

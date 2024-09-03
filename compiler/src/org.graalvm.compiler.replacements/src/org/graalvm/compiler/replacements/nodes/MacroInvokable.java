@@ -40,6 +40,7 @@ import org.graalvm.compiler.nodes.MacroInvokableMarker;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import org.graalvm.compiler.nodes.java.ResolvedMethodHandleCallTargetNodeMarker;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
@@ -214,5 +215,5 @@ public interface MacroInvokable extends Invokable, Lowerable, FixedNodeInterface
      * Captures the method handle information so that it can be properly lowered back to an
      * {@link Invoke} later.
      */
-    void addMethodHandleInfo(ResolvedMethodHandleCallTargetNode methodHandle);
+    void addMethodHandleInfo(ResolvedMethodHandleCallTargetNodeMarker methodHandle);
 }

@@ -484,11 +484,11 @@ public class InliningUtil extends ValueMergeUtil {
             unwindNode = (UnwindNode) duplicates.get(unwindNode);
         }
 
-        if (firstCFGNode instanceof MacroInvokableMarker && invoke.callTarget() instanceof ResolvedMethodHandleCallTargetNodeMarker && invoke.callTarget() instanceof MethodCallTargetNode) {
+        if (firstCFGNode instanceof MacroInvokableMarker && firstCFGNode instanceof StateSplit && invoke.callTarget() instanceof ResolvedMethodHandleCallTargetNodeMarker && invoke.callTarget() instanceof MethodCallTargetNode) {
             // Replacing a method handle invoke with a MacroNode
             MacroInvokableMarker macroInvokable = (MacroInvokableMarker) firstCFGNode;
-            MethodCallTargetNode methodHandle = (MethodCallTargetNode) invoke.callTarget();
-            if (methodHandle.targetMethod().equals(macroInvokable.getTargetMethod()) && getDepth(invoke.stateAfter()) == getDepth(macroInvokable.stateAfter())) {
+            ResolvedMethodHandleCallTargetNodeMarker methodHandle = (ResolvedMethodHandleCallTargetNodeMarker) invoke.callTarget();
+            if (methodHandle.targetMethod().equals(macroInvokable.getTargetMethod()) && getDepth(invoke.stateAfter()) == getDepth(((StateSplit) macroInvokable).stateAfter())) {
                 macroInvokable.addMethodHandleInfo(methodHandle);
             }
         }

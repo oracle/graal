@@ -106,12 +106,14 @@ public class MethodHandlePlugin implements NodePlugin {
 
                 Invokable newInvokable = b.handleReplacedInvoke(invoke.getInvokeKind(), targetMethod, argumentsList.toArray(new ValueNode[argumentsList.size()]), inlineEverything);
                 if (newInvokable != null) {
-                    if (newInvokable instanceof Invoke newInvoke && !newInvoke.callTarget().equals(callTarget) && newInvoke.asFixedNode().isAlive()) {
+                    if (newInvokable instanceof Invoke && !((Invoke) newInvokable).callTarget().equals(callTarget) && ((Invoke) newInvokable).asFixedNode().isAlive()) {
+                        Invoke newInvoke = (Invoke) newInvokable;
                         // In the case where the invoke is not inlined, replace its call target with
                         // the special ResolvedMethodHandleCallTargetNode.
                         newInvoke.callTarget().replaceAndDelete(b.append(callTarget));
                         return true;
-                    } else if (newInvokable instanceof MacroInvokable macroInvokable) {
+                    } else if (newInvokable instanceof MacroInvokable) {
+                        MacroInvokable macroInvokable = (MacroInvokable) newInvokable;
                         macroInvokable.addMethodHandleInfo(callTarget);
                     } else {
                         throw GraalError.shouldNotReachHere("unexpected Invokable: " + newInvokable);

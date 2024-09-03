@@ -24,8 +24,22 @@
  */
 package org.graalvm.compiler.nodes.java;
 
+import org.graalvm.compiler.core.common.type.StampPair;
+import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.ValueNode;
+import jdk.vm.ci.meta.JavaTypeProfile;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+
 /**
- * Marker interface for ResolvedMethodHandleCallTargetNode.
+ * Marker class for ResolvedMethodHandleCallTargetNode.
  */
-public interface ResolvedMethodHandleCallTargetNodeMarker {
+@NodeInfo
+public abstract class ResolvedMethodHandleCallTargetNodeMarker extends MethodCallTargetNode {
+    public static final NodeClass<ResolvedMethodHandleCallTargetNodeMarker> TYPE = NodeClass.create(ResolvedMethodHandleCallTargetNodeMarker.class);
+
+    protected ResolvedMethodHandleCallTargetNodeMarker(NodeClass<? extends ResolvedMethodHandleCallTargetNodeMarker> c, InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, StampPair returnStamp,
+                    JavaTypeProfile typeProfile) {
+        super(c, invokeKind, targetMethod, arguments, returnStamp, typeProfile);
+    }
 }
