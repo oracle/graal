@@ -30,7 +30,6 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_0;
 
 import java.util.List;
 
-import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.NodeInputList;
@@ -121,19 +120,21 @@ public class PublishWritesNode extends FixedWithNextNode implements LIRLowerable
         if (!tool.allUsagesAvailable() || hasUsages()) {
             return;
         }
-
+        if (writes == null) {
+            return;
+        }
         if (nonWriteUsages(allocation).isNotEmpty()) {
             return;
         }
 
-        getDebug().dump(DebugContext.VERBOSE_LEVEL, graph(), "Before killing %s", this);
         GraphUtil.removeFixedWithUnusedInputs(this);
         for (ValueNode valueNode : writes) {
             tool.addToWorkList(valueNode.inputs());
             GraphUtil.removeFixedWithUnusedInputs((FixedWithNextNode) valueNode);
         }
-        getDebug().dump(DebugContext.VERBOSE_LEVEL, graph(), "After killing %s", this);
-        tool.addToWorkList(allocation);
+        if (allocation.isAlive()) {
+            tool.addToWorkList(allocation);
+        }
     }
 
     @NodeIntrinsic
