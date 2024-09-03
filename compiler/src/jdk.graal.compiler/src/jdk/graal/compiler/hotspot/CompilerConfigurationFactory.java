@@ -286,6 +286,13 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
     private static String nativeImageLocationQualifier;
 
     /**
+     * Gets the qualifier for the libgraal library (e.g., "PGO optimized").
+     */
+    public static String getNativeImageLocationQualifier() {
+        return nativeImageLocationQualifier;
+    }
+
+    /**
      * Records a qualifier for the libgraal library (e.g., "PGO optimized").
      */
     public static void setNativeImageLocationQualifier(String s) {

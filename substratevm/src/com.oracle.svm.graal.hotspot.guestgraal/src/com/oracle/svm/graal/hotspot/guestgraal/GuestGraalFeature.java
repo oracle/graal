@@ -48,6 +48,7 @@ import com.oracle.graal.pointsto.meta.ObjectReachableCallback;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.hotspot.GetCompilerConfig;
 import com.oracle.svm.graal.hotspot.GetJNIConfig;
+import jdk.graal.compiler.hotspot.CompilerConfigurationFactory;
 import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.serviceprovider.LibGraalService;
@@ -396,6 +397,9 @@ public final class GuestGraalFeature implements Feature {
             List<Class<?>> serviceClasses = impl.getImageClassLoader().findAnnotatedClasses(LibGraalService.class, false);
             serviceClasses.stream().map(c -> loader.loadClassOrFail(c.getName())).forEach(guestServiceClasses::add);
 
+            // Transfer libgraal qualifier (e.g. "PGO optimized") from host to guest.
+            String nativeImageLocationQualifier = CompilerConfigurationFactory.getNativeImageLocationQualifier();
+
             MethodHandle configureGraalForLibGraal = mhl.findStatic(buildTimeClass,
                             "configureGraalForLibGraal",
                             methodType(void.class,
@@ -403,6 +407,7 @@ public final class GuestGraalFeature implements Feature {
                                             List.class, // guestServiceClasses
                                             Consumer.class, // registerAsInHeap
                                             Consumer.class, // hostedGraalSetFoldNodePluginClasses
+                                            String.class, // nativeImageLocationQualifier
                                             String.class // encodedGuestObjects
                             ));
             GetCompilerConfig.Result configResult = GetCompilerConfig.from(Options.GuestJavaHome.getValue(), bb.getOptions());
@@ -416,6 +421,7 @@ public final class GuestGraalFeature implements Feature {
                             guestServiceClasses,
                             registerAsInHeap,
                             hostedGraalSetFoldNodePluginClasses,
+                            nativeImageLocationQualifier,
                             configResult.encodedConfig());
 
             initGraalRuntimeHandles(mhl.findStatic(buildTimeClass, "getRuntimeHandles", methodType(Map.class)));
