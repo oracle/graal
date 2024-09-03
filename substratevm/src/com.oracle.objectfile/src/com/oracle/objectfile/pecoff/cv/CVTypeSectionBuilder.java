@@ -151,7 +151,8 @@ class CVTypeSectionBuilder {
      * @return type record for this function (may return existing matching record)
      */
     CVTypeRecord buildFunction(CompiledMethodEntry entry) {
-        return buildMemberFunction(entry.getClassEntry(), entry.getPrimary().getMethodEntry());
+        CVTypeRecord.CVTypeMFunctionRecord mFunctionRecord = buildMemberFunction(entry.getClassEntry(), entry.getPrimary().getMethodEntry());
+        return buildFuncIdRecord(mFunctionRecord, entry.getPrimary().getMethodName());
     }
 
     static class FieldListBuilder {
@@ -429,6 +430,14 @@ class CVTypeSectionBuilder {
         argListType = addTypeRecord(argListType);
         mFunctionRecord.setArgList(argListType);
         return addTypeRecord(mFunctionRecord);
+    }
+
+    CVTypeRecord buildFuncIdRecord(CVTypeRecord.CVTypeMFunctionRecord mFunctionRecord, String functionName) {
+        if (mFunctionRecord.getClassType() != 0) {
+            return addTypeRecord(new CVTypeRecord.CVTypeMFuncIdRecord(mFunctionRecord.getClassType(), mFunctionRecord.getSequenceNumber(), functionName));
+        } else {
+            return addTypeRecord(new CVTypeRecord.CVTypeFuncIdRecord(0, mFunctionRecord.getSequenceNumber(), functionName));
+        }
     }
 
     private <T extends CVTypeRecord> T addTypeRecord(T record) {
