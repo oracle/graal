@@ -29,6 +29,7 @@ package com.oracle.objectfile.pecoff.cv;
 import com.oracle.objectfile.debugentry.TypeEntry;
 import com.oracle.objectfile.io.Utf8;
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Register;
 
 import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_AL;
 import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_AX;
@@ -96,6 +97,18 @@ import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_SP;
 import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_SPL;
 import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM0L;
 import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM0_0;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM10L;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM10_0;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM11L;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM11_0;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM12L;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM12_0;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM13L;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM13_0;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM14L;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM14_0;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM15L;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM15_0;
 import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM1L;
 import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM1_0;
 import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM2L;
@@ -110,6 +123,10 @@ import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM6L;
 import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM6_0;
 import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM7L;
 import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM7_0;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM8L;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM8_0;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM9L;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM9_0;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_CHAR;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_LONG;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_QUADWORD;
@@ -269,64 +286,107 @@ abstract class CVUtil {
         return pos;
     }
 
-    /* First index is AMD64.(register).number, second is 1,2,4,8 bytes. */
-    private static final short[][] javaToCvRegisters = {
-                    /* 8, 16, 32, 64 bits */
-                    {CV_AMD64_AL, CV_AMD64_AX, CV_AMD64_EAX, CV_AMD64_RAX}, /* rax=0 */
-                    {CV_AMD64_CL, CV_AMD64_CX, CV_AMD64_ECX, CV_AMD64_RCX}, /* rcx */
-                    {CV_AMD64_DL, CV_AMD64_DX, CV_AMD64_EDX, CV_AMD64_RDX}, /* rdx */
-                    {CV_AMD64_BL, CV_AMD64_BX, CV_AMD64_EBX, CV_AMD64_RBX}, /* rbx */
-                    {CV_AMD64_SPL, CV_AMD64_SP, CV_AMD64_ESP, CV_AMD64_RSP}, /* rsp */
-                    {CV_AMD64_BPL, CV_AMD64_BP, CV_AMD64_EBP, CV_AMD64_RBP}, /* rbp */
-                    {CV_AMD64_SIL, CV_AMD64_SI, CV_AMD64_ESI, CV_AMD64_RSI}, /* rsi */
-                    {CV_AMD64_DIL, CV_AMD64_DI, CV_AMD64_EDI, CV_AMD64_RDI}, /* rdi */
-                    {CV_AMD64_R8B, CV_AMD64_R8W, CV_AMD64_R8D, CV_AMD64_R8}, /* r8 */
-                    {CV_AMD64_R9B, CV_AMD64_R9W, CV_AMD64_R9D, CV_AMD64_R9}, /* r9 */
-                    {CV_AMD64_R10B, CV_AMD64_R10W, CV_AMD64_R10D, CV_AMD64_R10}, /* r10 */
-                    {CV_AMD64_R11B, CV_AMD64_R11W, CV_AMD64_R11D, CV_AMD64_R11}, /* r11 */
-                    {CV_AMD64_R12B, CV_AMD64_R12W, CV_AMD64_R12D, CV_AMD64_R12}, /* r12 */
-                    {CV_AMD64_R13B, CV_AMD64_R13W, CV_AMD64_R13D, CV_AMD64_R13}, /* r13 */
-                    {CV_AMD64_R14B, CV_AMD64_R14W, CV_AMD64_R14D, CV_AMD64_R14}, /* r14 */
-                    {CV_AMD64_R15B, CV_AMD64_R15W, CV_AMD64_R15D, CV_AMD64_R15}, /* r15 */
+    static class CvRegDef {
+        final Register register;
+        final short cv1;
+        final short cv2;
+        final short cv4;
+        final short cv8;
+        CvRegDef(Register r, short cv1, short cv2, short cv4, short cv8) {
+            this.register = r;
+            this.cv1 = cv1;
+            this.cv2 = cv2;
+            this.cv4 = cv4;
+            this.cv8 = cv8;
+        }
+        CvRegDef(Register r, short cv4, short cv8) {
+            this.register = r;
+            this.cv1 = -1;
+            this.cv2 = -2;
+            this.cv4 = cv4;
+            this.cv8 = cv8;
+        }
+    }
 
-                    {-1, -1, CV_AMD64_XMM0_0, CV_AMD64_XMM0L}, /* xmm0=16 */
-                    {-1, -1, CV_AMD64_XMM1_0, CV_AMD64_XMM1L}, /* xmm1 */
-                    {-1, -1, CV_AMD64_XMM2_0, CV_AMD64_XMM2L}, /* xmm2 */
-                    {-1, -1, CV_AMD64_XMM3_0, CV_AMD64_XMM3L}, /* xmm3 */
-                    {-1, -1, CV_AMD64_XMM4_0, CV_AMD64_XMM4L}, /* xmm4 */
-                    {-1, -1, CV_AMD64_XMM5_0, CV_AMD64_XMM5L}, /* xmm5 */
-                    {-1, -1, CV_AMD64_XMM6_0, CV_AMD64_XMM6L}, /* xmm6 */
-                    {-1, -1, CV_AMD64_XMM7_0, CV_AMD64_XMM7L}, /* xmm7=23 */
+    /* First index is AMD64.(register).number, second is 1,2,4,8 bytes. */
+    private static final CvRegDef[] compactRegDefs = {
+        /* 8, 16, 32, 64 bits */
+        new CvRegDef(AMD64.rax, CV_AMD64_AL, CV_AMD64_AX, CV_AMD64_EAX, CV_AMD64_RAX), /* rax=0 */
+        new CvRegDef(AMD64.rcx, CV_AMD64_CL, CV_AMD64_CX, CV_AMD64_ECX, CV_AMD64_RCX), /* rcx */
+        new CvRegDef(AMD64.rdx, CV_AMD64_DL, CV_AMD64_DX, CV_AMD64_EDX, CV_AMD64_RDX), /* rdx */
+        new CvRegDef(AMD64.rbx, CV_AMD64_BL, CV_AMD64_BX, CV_AMD64_EBX, CV_AMD64_RBX), /* rbx */
+        new CvRegDef(AMD64.rsp, CV_AMD64_SPL, CV_AMD64_SP, CV_AMD64_ESP, CV_AMD64_RSP), /* rsp */
+        new CvRegDef(AMD64.rbp, CV_AMD64_BPL, CV_AMD64_BP, CV_AMD64_EBP, CV_AMD64_RBP), /* rbp */
+        new CvRegDef(AMD64.rsi, CV_AMD64_SIL, CV_AMD64_SI, CV_AMD64_ESI, CV_AMD64_RSI), /* rsi */
+        new CvRegDef(AMD64.rdi, CV_AMD64_DIL, CV_AMD64_DI, CV_AMD64_EDI, CV_AMD64_RDI), /* rdi */
+        new CvRegDef(AMD64.r8, CV_AMD64_R8B, CV_AMD64_R8W, CV_AMD64_R8D, CV_AMD64_R8), /* r8 */
+        new CvRegDef(AMD64.r9, CV_AMD64_R9B, CV_AMD64_R9W, CV_AMD64_R9D, CV_AMD64_R9), /* r9 */
+        new CvRegDef(AMD64.r10, CV_AMD64_R10B, CV_AMD64_R10W, CV_AMD64_R10D, CV_AMD64_R10), /* r10 */
+        new CvRegDef(AMD64.r11, CV_AMD64_R11B, CV_AMD64_R11W, CV_AMD64_R11D, CV_AMD64_R11), /* r11 */
+        new CvRegDef(AMD64.r12, CV_AMD64_R12B, CV_AMD64_R12W, CV_AMD64_R12D, CV_AMD64_R12), /* r12 */
+        new CvRegDef(AMD64.r13, CV_AMD64_R13B, CV_AMD64_R13W, CV_AMD64_R13D, CV_AMD64_R13), /* r13 */
+        new CvRegDef(AMD64.r14, CV_AMD64_R14B, CV_AMD64_R14W, CV_AMD64_R14D, CV_AMD64_R14), /* r14 */
+        new CvRegDef(AMD64.r15, CV_AMD64_R15B, CV_AMD64_R15W, CV_AMD64_R15D, CV_AMD64_R15), /* r15 */
+
+        new CvRegDef(AMD64.xmm0, CV_AMD64_XMM0_0, CV_AMD64_XMM0L), /* xmm0=16 */
+        new CvRegDef(AMD64.xmm1, CV_AMD64_XMM1_0, CV_AMD64_XMM1L), /* xmm1 */
+        new CvRegDef(AMD64.xmm2, CV_AMD64_XMM2_0, CV_AMD64_XMM2L), /* xmm2 */
+        new CvRegDef(AMD64.xmm3, CV_AMD64_XMM3_0, CV_AMD64_XMM3L), /* xmm3 */
+        new CvRegDef(AMD64.xmm4, CV_AMD64_XMM4_0, CV_AMD64_XMM4L), /* xmm4 */
+        new CvRegDef(AMD64.xmm5, CV_AMD64_XMM5_0, CV_AMD64_XMM5L), /* xmm5 */
+        new CvRegDef(AMD64.xmm6, CV_AMD64_XMM6_0, CV_AMD64_XMM6L), /* xmm6 */
+        new CvRegDef(AMD64.xmm7, CV_AMD64_XMM7_0, CV_AMD64_XMM7L), /* xmm7=23 */
+
+        new CvRegDef(AMD64.xmm8, CV_AMD64_XMM8_0, CV_AMD64_XMM8L), /* xmm8=24 */
+        new CvRegDef(AMD64.xmm9, CV_AMD64_XMM9_0, CV_AMD64_XMM9L), /* xmm9 */
+        new CvRegDef(AMD64.xmm10, CV_AMD64_XMM10_0, CV_AMD64_XMM10L), /* xmm10 */
+        new CvRegDef(AMD64.xmm11, CV_AMD64_XMM11_0, CV_AMD64_XMM11L), /* xmm11 */
+        new CvRegDef(AMD64.xmm12, CV_AMD64_XMM12_0, CV_AMD64_XMM12L), /* xmm12 */
+        new CvRegDef(AMD64.xmm13, CV_AMD64_XMM13_0, CV_AMD64_XMM13L), /* xmm13 */
+        new CvRegDef(AMD64.xmm14, CV_AMD64_XMM14_0, CV_AMD64_XMM14L), /* xmm14 */
+        new CvRegDef(AMD64.xmm15, CV_AMD64_XMM15_0, CV_AMD64_XMM15L), /* xmm15 */
     };
 
+    private static final CvRegDef[] javaToCvRegisters = new CvRegDef[AMD64.xmm15.number + 1];
+
+    static {
+        for (CvRegDef def : compactRegDefs) {
+            assert 0 <= def.register.number && def.register.number <= AMD64.xmm15.number;
+            javaToCvRegisters[def.register.number] = def;
+        }
+    }
+
+    /* convert a Java register number to a CodeView register code */
+    /* thos Codeview code depends upon the register type and size */
     static short getCVRegister(int javaReg, TypeEntry typeEntry) {
-        assert 0 <= javaReg && javaReg <= AMD64.xmm7.number;
-        final int bytes;
+        assert 0 <= javaReg && javaReg <= AMD64.xmm15.number;
+        CvRegDef cvReg = javaToCvRegisters[javaReg];
+        assert cvReg != null;
+
+        final short cvCode;
         if (typeEntry.isPrimitive()) {
             switch (typeEntry.getSize()) {
                 case 1:
-                    bytes = 0;
+                    cvCode = cvReg.cv1;
                     break;
                 case 2:
-                    bytes = 1;
+                    cvCode = cvReg.cv2;
                     break;
                 case 4:
-                    bytes = 2;
+                    cvCode = cvReg.cv4;
                     break;
                 case 8:
-                    bytes = 3;
+                    cvCode = cvReg.cv8;
                     break;
                 default:
-                    bytes = -1;
+                    cvCode = -1;
                     break;
             }
         } else {
-            /* Objects are represented by pointers. */
-            bytes = 3;
+            /* Objects are represented by 8 byte pointers. */
+            cvCode = cvReg.cv8;
         }
-        assert bytes >= 0 && bytes < javaToCvRegisters[javaReg].length;
-        short cvreg = javaToCvRegisters[javaReg][bytes];
-        assert cvreg != -1;
-        return cvreg;
+        assert cvCode != -1;
+        return cvCode;
     }
 }
