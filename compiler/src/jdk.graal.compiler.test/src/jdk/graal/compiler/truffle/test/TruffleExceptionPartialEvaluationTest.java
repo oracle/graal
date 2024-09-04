@@ -37,7 +37,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -114,22 +114,22 @@ public class TruffleExceptionPartialEvaluationTest extends PartialEvaluationTest
 
         @ExportMessage
         @SuppressWarnings({"unused", "static-method"})
-        Object getMembers(boolean includeInternal) throws UnsupportedMessageException {
+        Object getMemberObjects() throws UnsupportedMessageException {
             throw UnsupportedMessageException.create();
         }
 
         @ExportMessage
         @SuppressWarnings("static-method")
-        boolean isMemberReadable(String member) {
+        boolean isMemberReadable(Object member) {
             return member.equals("property");
         }
 
         @ExportMessage
-        Object readMember(String member) throws UnknownIdentifierException {
+        Object readMember(Object member) throws UnknownMemberException {
             if (member.equals("property")) {
                 return property;
             }
-            throw UnknownIdentifierException.create(member);
+            throw UnknownMemberException.create(member);
         }
     }
 
@@ -149,10 +149,10 @@ public class TruffleExceptionPartialEvaluationTest extends PartialEvaluationTest
                 return child.execute(frame);
             } catch (AbstractTruffleException e) {
                 try {
-                    if ((boolean) exceptions.readMember(e, "property")) {
+                    if ((boolean) exceptions.readMember(e, (Object) "property")) {
                         return 42;
                     }
-                } catch (UnsupportedMessageException | UnknownIdentifierException interopException) {
+                } catch (UnsupportedMessageException | UnknownMemberException interopException) {
                     throw CompilerDirectives.shouldNotReachHere(interopException);
                 }
                 throw e;

@@ -42,7 +42,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -126,8 +126,8 @@ public class TRegexTStringVirtualizationTest extends PartialEvaluationTest {
                         @Cached TruffleString.FromByteArrayNode fromByteArrayNode) {
             try {
                 TruffleString input = fromByteArrayNode.execute(array, 0, inputLen, encoding, false);
-                return (boolean) tregexEngine.invokeMember(compiledRegex, "execBoolean", input, from);
-            } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException | UnknownIdentifierException e) {
+                return (boolean) tregexEngine.invokeMember(compiledRegex, (Object) "execBoolean", input, from);
+            } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException | UnknownMemberException e) {
                 throw CompilerDirectives.shouldNotReachHere(e);
             }
         }
@@ -143,8 +143,8 @@ public class TRegexTStringVirtualizationTest extends PartialEvaluationTest {
                         @Cached TruffleString.FromNativePointerNode fromNativePointerNode) {
             try {
                 TruffleString input = fromNativePointerNode.execute(new PointerObject(buffer), 0, inputLen, encoding, false);
-                return (boolean) tregexEngine.invokeMember(compiledRegex, "execBoolean", input, from);
-            } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException | UnknownIdentifierException e) {
+                return (boolean) tregexEngine.invokeMember(compiledRegex, (Object) "execBoolean", input, from);
+            } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException | UnknownMemberException e) {
                 throw CompilerDirectives.shouldNotReachHere(e);
             }
         }
