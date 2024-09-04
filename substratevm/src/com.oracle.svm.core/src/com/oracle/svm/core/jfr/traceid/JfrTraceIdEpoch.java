@@ -42,7 +42,6 @@ public class JfrTraceIdEpoch {
     private static final long EPOCH_0_BIT = 0b01;
     private static final long EPOCH_1_BIT = 0b10;
 
-    private boolean epoch;
     private int epochGeneration;
 
     @Fold
@@ -53,27 +52,29 @@ public class JfrTraceIdEpoch {
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrTraceIdEpoch() {
     }
-
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private boolean getEpoch() {
+        return (epochGeneration & 1) == 0;
+    }
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void changeEpoch() {
         assert VMOperation.isInProgressAtSafepoint();
-        epoch = !epoch;
         epochGeneration++;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     long thisEpochBit() {
-        return epoch ? EPOCH_1_BIT : EPOCH_0_BIT;
+        return getEpoch() ? EPOCH_1_BIT : EPOCH_0_BIT;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     long previousEpochBit() {
-        return epoch ? EPOCH_0_BIT : EPOCH_1_BIT;
+        return getEpoch() ? EPOCH_0_BIT : EPOCH_1_BIT;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean currentEpoch() {
-        return epoch;
+        return getEpoch();
     }
 
     @Uninterruptible(reason = "Avoid epoch changing while checking generation.", callerMustBe = true)
@@ -83,6 +84,6 @@ public class JfrTraceIdEpoch {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean previousEpoch() {
-        return !epoch;
+        return !getEpoch();
     }
 }
