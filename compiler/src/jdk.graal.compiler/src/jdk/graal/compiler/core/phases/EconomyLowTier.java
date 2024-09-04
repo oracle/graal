@@ -30,6 +30,7 @@ import jdk.graal.compiler.phases.common.AddressLoweringPhase;
 import jdk.graal.compiler.phases.common.BarrierSetVerificationPhase;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.ExpandLogicPhase;
+import jdk.graal.compiler.phases.common.InitMemoryVerificationPhase;
 import jdk.graal.compiler.phases.common.LowTierLoweringPhase;
 import jdk.graal.compiler.phases.common.RemoveOpaqueValuePhase;
 import jdk.graal.compiler.phases.common.TransplantGraphsPhase;
@@ -40,6 +41,9 @@ public class EconomyLowTier extends BaseTier<LowTierContext> {
 
     @SuppressWarnings("this-escape")
     public EconomyLowTier() {
+        if (Assertions.assertionsEnabled()) {
+            appendPhase(new InitMemoryVerificationPhase());
+        }
         CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
         appendPhase(new LowTierLoweringPhase(canonicalizer));
         appendPhase(new ExpandLogicPhase(canonicalizer));

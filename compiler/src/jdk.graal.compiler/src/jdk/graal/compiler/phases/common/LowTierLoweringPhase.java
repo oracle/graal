@@ -28,8 +28,6 @@ import java.util.Optional;
 
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.Lowerable;
 import jdk.graal.compiler.nodes.spi.LoweringTool.StandardLoweringStage;
 
@@ -48,11 +46,5 @@ public class LowTierLoweringPhase extends LoweringPhase {
         return NotApplicable.ifAny(
                         super.notApplicableTo(graphState),
                         NotApplicable.ifApplied(this, StageFlag.LOW_TIER_LOWERING, graphState));
-    }
-
-    @Override
-    protected void run(StructuredGraph graph, CoreProviders context) {
-        new InitMemoryVerificationPhase().apply(graph, context);
-        super.run(graph, context);
     }
 }
