@@ -168,8 +168,7 @@ public class HotSpotGraalOptionValues {
     }
 
     /**
-     * Substituted by
-     * {@code com.oracle.svm.graal.hotspot.libgraal.Target_jdk_graal_compiler_hotspot_HotSpotGraalOptionValues}.
+     * Substituted by {@code Target_jdk_graal_compiler_hotspot_HotSpotGraalOptionValues}.
      *
      * @param settings unparsed libgraal option values
      */
@@ -195,8 +194,7 @@ public class HotSpotGraalOptionValues {
     }
 
     /**
-     * Substituted by
-     * {@code com.oracle.svm.graal.hotspot.libgraal.Target_jdk_graal_compiler_hotspot_HotSpotGraalOptionValues}.
+     * Substituted by {@code Target_jdk_graal_compiler_hotspot_HotSpotGraalOptionValues}.
      *
      * @param out where help is to be printed
      * @param prefix system property prefix for libgraal VM options
