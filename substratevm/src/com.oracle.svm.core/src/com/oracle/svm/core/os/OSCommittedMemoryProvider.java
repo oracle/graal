@@ -42,7 +42,7 @@ import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 
-public class OSCommittedMemoryProvider extends AbstractCommittedMemoryProvider {
+public class OSCommittedMemoryProvider extends ChunkBasedCommittedMemoryProvider {
     @Platforms(Platform.HOSTED_ONLY.class)
     public OSCommittedMemoryProvider() {
     }

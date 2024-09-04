@@ -123,8 +123,6 @@ final class Timers {
     final Timer rootScan = new Timer("rootScan");
     final Timer scanGreyObjects = new Timer("scanGreyObjects");
     final Timer releaseSpaces = new Timer("releaseSpaces");
-    final Timer verifyAfter = new Timer("verifyAfter");
-    final Timer verifyBefore = new Timer("verifyBefore");
     final Timer walkThreadLocals = new Timer("walkThreadLocals");
     final Timer walkRuntimeCodeCache = new Timer("walkRuntimeCodeCache");
     final Timer cleanRuntimeCodeCache = new Timer("cleanRuntimeCodeCache");
@@ -134,9 +132,6 @@ final class Timers {
     }
 
     void resetAllExceptMutator() {
-        Log trace = Log.noopLog();
-        trace.string("[Timers.resetAllExceptMutator:");
-        verifyBefore.reset();
         collection.reset();
         rootScan.reset();
         cheneyScanFromRoots.reset();
@@ -152,9 +147,7 @@ final class Timers {
         cleanCodeCache.reset();
         referenceObjects.reset();
         releaseSpaces.reset();
-        verifyAfter.reset();
         /* The mutator timer is *not* reset here. */
-        trace.string("]").newline();
     }
 
     void logAfterCollection(Log log) {
@@ -162,7 +155,6 @@ final class Timers {
             log.newline();
             log.string("  [GC nanoseconds:");
             logOneTimer(log, "    ", collection);
-            logOneTimer(log, "      ", verifyBefore);
             logOneTimer(log, "      ", rootScan);
             logOneTimer(log, "        ", cheneyScanFromRoots);
             logOneTimer(log, "        ", cheneyScanFromDirtyRoots);
@@ -177,7 +169,6 @@ final class Timers {
             logOneTimer(log, "      ", cleanCodeCache);
             logOneTimer(log, "      ", referenceObjects);
             logOneTimer(log, "      ", releaseSpaces);
-            logOneTimer(log, "      ", verifyAfter);
             logGCLoad(log, "    ", "GCLoad", collection, mutator);
             log.string("]");
         }

@@ -37,6 +37,7 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.genscavenge.HeapChunk;
 import com.oracle.svm.core.genscavenge.HeapImpl;
+import com.oracle.svm.core.genscavenge.SerialGCOptions;
 import com.oracle.svm.core.genscavenge.graal.BarrierSnippets;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
@@ -142,28 +143,42 @@ final class CardTable {
         return CardTable.memoryOffsetToIndex(roundedMemory);
     }
 
-    public static boolean verify(Pointer cardTableStart, Pointer objectsStart, Pointer objectsLimit) {
+    public static boolean verify(Pointer cardTableStart, Pointer cardTableEnd, Pointer objectsStart, Pointer objectsLimit) {
         boolean success = true;
-        Pointer curPtr = objectsStart;
-        while (curPtr.belowThan(objectsLimit)) {
-            // As we only use imprecise card marking at the moment, only the card at the address of
-            // the object may be dirty.
-            Object obj = curPtr.toObject();
-            UnsignedWord cardTableIndex = memoryOffsetToIndex(curPtr.subtract(objectsStart));
-            if (isClean(cardTableStart, cardTableIndex)) {
-                CARD_TABLE_VERIFICATION_VISITOR.initialize(obj, cardTableStart, objectsStart);
-                InteriorObjRefWalker.walkObject(obj, CARD_TABLE_VERIFICATION_VISITOR);
-                success &= CARD_TABLE_VERIFICATION_VISITOR.success;
+        if (SerialGCOptions.VerifyRememberedSet.getValue()) {
+            Pointer curPtr = objectsStart;
+            while (curPtr.belowThan(objectsLimit)) {
+                // As we only use imprecise card marking at the moment, only the card at the address
+                // of the object may be dirty.
+                Object obj = curPtr.toObject();
+                UnsignedWord cardTableIndex = memoryOffsetToIndex(curPtr.subtract(objectsStart));
+                if (isClean(cardTableStart, cardTableIndex)) {
+                    CARD_TABLE_VERIFICATION_VISITOR.initialize(obj, cardTableStart, objectsStart);
+                    InteriorObjRefWalker.walkObject(obj, CARD_TABLE_VERIFICATION_VISITOR);
+                    success &= CARD_TABLE_VERIFICATION_VISITOR.success;
+                    CARD_TABLE_VERIFICATION_VISITOR.reset();
 
-                DynamicHub hub = KnownIntrinsics.readHub(obj);
-                if (hub.isReferenceInstanceClass()) {
-                    // The referent field of java.lang.Reference is excluded from the reference map,
-                    // so we need to verify it separately.
-                    Reference<?> ref = (Reference<?>) obj;
-                    success &= verifyReferent(ref, cardTableStart, objectsStart);
+                    DynamicHub hub = KnownIntrinsics.readHub(obj);
+                    if (hub.isReferenceInstanceClass()) {
+                        // The referent field of java.lang.Reference is excluded from the reference
+                        // map, so we need to verify it separately.
+                        Reference<?> ref = (Reference<?>) obj;
+                        success &= verifyReferent(ref, cardTableStart, objectsStart);
+                    }
                 }
+                curPtr = LayoutEncoding.getObjectEndInGC(obj);
             }
-            curPtr = LayoutEncoding.getObjectEndInGC(obj);
+        } else {
+            /* Do a basic sanity check of the card table data. */
+            Pointer pos = cardTableStart;
+            while (pos.belowThan(cardTableEnd)) {
+                byte v = pos.readByte(0);
+                if (v != DIRTY_ENTRY && v != CLEAN_ENTRY) {
+                    Log.log().string("Card at ").zhex(pos).string(" is neither dirty nor clean: ").zhex(v).newline();
+                    return false;
+                }
+                pos = pos.add(1);
+            }
         }
         return success;
     }
@@ -202,10 +217,18 @@ final class CardTable {
 
         @SuppressWarnings("hiding")
         public void initialize(Object parentObject, Pointer cardTableStart, Pointer objectsStart) {
+            assert this.parentObject == null && this.cardTableStart.isNull() && this.objectsStart.isNull() && !this.success;
             this.parentObject = parentObject;
             this.cardTableStart = cardTableStart;
             this.objectsStart = objectsStart;
             this.success = true;
+        }
+
+        public void reset() {
+            this.parentObject = null;
+            this.cardTableStart = WordFactory.nullPointer();
+            this.objectsStart = WordFactory.nullPointer();
+            this.success = false;
         }
 
         @Override

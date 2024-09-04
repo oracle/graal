@@ -173,19 +173,13 @@ public final class ImageHeapInfo {
     }
 
     /**
-     * This method only returns the correct result for pointers that point to the the start of an
+     * This method only returns the correct result for pointers that point to the start of an
      * object. This is sufficient for all our current use cases. This code must be as fast as
      * possible as the GC uses it for every visited reference.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isInImageHeap(Pointer objectPointer) {
-        boolean result;
-        if (objectPointer.isNull()) {
-            result = false;
-        } else {
-            result = objectPointer.aboveOrEqual(Word.objectToUntrackedPointer(firstObject)) && objectPointer.belowOrEqual(Word.objectToUntrackedPointer(lastObject));
-        }
-        return result;
+        return objectPointer.aboveOrEqual(Word.objectToUntrackedPointer(firstObject)) && objectPointer.belowOrEqual(Word.objectToUntrackedPointer(lastObject));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
