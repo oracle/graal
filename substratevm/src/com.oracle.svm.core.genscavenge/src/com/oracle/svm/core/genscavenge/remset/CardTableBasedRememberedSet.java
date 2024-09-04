@@ -97,8 +97,8 @@ public class CardTableBasedRememberedSet implements RememberedSet {
 
     @Override
     @AlwaysInline("GC performance")
-    public void enableRememberedSetForObject(AlignedHeader chunk, Object obj) {
-        AlignedChunkRememberedSet.enableRememberedSetForObject(chunk, obj);
+    public void enableRememberedSetForObject(AlignedHeader chunk, Object obj, UnsignedWord objSize) {
+        AlignedChunkRememberedSet.enableRememberedSetForObject(chunk, obj, objSize);
     }
 
     @Override
