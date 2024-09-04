@@ -122,6 +122,7 @@ import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.nodes.extended.JavaReadNode;
 import jdk.graal.compiler.nodes.extended.JavaWriteNode;
 import jdk.graal.compiler.nodes.extended.LoadHubNode;
+import jdk.graal.compiler.nodes.extended.MembarNode;
 import jdk.graal.compiler.nodes.extended.ObjectIsArrayNode;
 import jdk.graal.compiler.nodes.extended.PublishWritesNode;
 import jdk.graal.compiler.nodes.gc.BarrierSet;
@@ -610,6 +611,7 @@ public class HotSpotGraphBuilderPlugins {
                     // reads don't bypass the ArrayCopyCallNode above.
                     b.pop(JavaKind.Object);
                     b.addPush(JavaKind.Object, new PublishWritesNode(newArray));
+                    b.add(new MembarNode(MembarNode.FenceKind.ALLOCATION_INIT, LocationIdentity.init()));
                 }
                 return true;
             }
