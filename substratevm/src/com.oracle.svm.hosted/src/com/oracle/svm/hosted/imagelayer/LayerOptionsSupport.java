@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
+import java.nio.file.Path;
 import java.util.Arrays;
 
 import com.oracle.svm.core.SubstrateUtil;
@@ -31,7 +32,7 @@ import com.oracle.svm.core.util.VMError;
 
 public class LayerOptionsSupport {
 
-    public record LayerOption(String fileName, ExtendedOption[] extendedOptions) {
+    public record LayerOption(Path fileName, ExtendedOption[] extendedOptions) {
         /** Split a layer option into its components. */
         public static LayerOption parse(String layerOptionValue) {
             VMError.guarantee(!layerOptionValue.isEmpty());
@@ -46,7 +47,7 @@ public class LayerOptionsSupport {
                 skip = 1;
             }
             ExtendedOption[] extendedOptions = Arrays.stream(options).skip(skip).map(ExtendedOption::parse).toArray(ExtendedOption[]::new);
-            return new LayerOption(fileName, extendedOptions);
+            return new LayerOption(Path.of(fileName), extendedOptions);
         }
     }
 

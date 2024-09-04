@@ -52,6 +52,7 @@ import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.APIOptionGroup;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.BundleMember;
+import com.oracle.svm.core.option.BundleMember.Role;
 import com.oracle.svm.core.option.GCOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
@@ -134,7 +135,8 @@ public class SubstrateOptions {
 
     // @APIOption(name = "layer-use")//
     @Option(help = "Experimental: Build an image based on a Native Image layer.")//
-    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> LayerUse = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
+    @BundleMember(role = Role.Input) //
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Paths> LayerUse = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Paths.build());
 
     @APIOption(name = "libc")//
     @Option(help = "Selects the libc implementation to use. Available implementations: glibc, musl, bionic")//

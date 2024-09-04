@@ -28,8 +28,8 @@ import static com.oracle.svm.core.SubstrateOptions.IncludeAllFromModule;
 import static com.oracle.svm.core.SubstrateOptions.IncludeAllFromPath;
 import static com.oracle.svm.core.SubstrateOptions.LayerCreate;
 import static com.oracle.svm.core.SubstrateOptions.LayerUse;
-import static com.oracle.svm.core.SubstrateOptions.imageLayerEnabledHandler;
 import static com.oracle.svm.core.SubstrateOptions.imageLayerCreateEnabledHandler;
+import static com.oracle.svm.core.SubstrateOptions.imageLayerEnabledHandler;
 import static com.oracle.svm.hosted.imagelayer.LayerArchiveSupport.MODULE_OPTION;
 import static com.oracle.svm.hosted.imagelayer.LayerArchiveSupport.PACKAGE_OPTION;
 
@@ -142,15 +142,10 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         }
         if (LayerUse.hasBeenSet(hostedOptions)) {
             /* The last value wins, GR-55565 will warn about the overwritten values. */
-            String layerUseValue = LayerUse.getValue(hostedOptions).lastValue().orElseThrow();
-            if (layerUseValue.isEmpty()) {
+            Path layerUseValue = LayerUse.getValue(hostedOptions).lastValue().orElseThrow();
+            if (layerUseValue.toString().isEmpty()) {
                 /* Nothing to do, an empty --layer-use= disables the layer application. */
             } else {
-                LayerOption layerOption = LayerOption.parse(LayerUse.getValue(hostedOptions).lastValue().orElseThrow());
-                if (layerOption.fileName() == null) {
-                    String optionName = SubstrateOptionsParser.commandArgument(LayerUse, "");
-                    throw UserError.abort("Option %s requires a layer file argument, e.g., %s=layer-file.nil.", optionName, optionName);
-                }
                 SubstrateOptions.ClosedTypeWorld.update(values, false);
                 SubstrateOptions.ParseRuntimeOptions.update(values, false);
                 if (imageLayerEnabledHandler != null) {
@@ -160,10 +155,10 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         }
     }
 
-    private static boolean isEnabled(HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> option, HostedOptionValues values) {
+    private static boolean isLayerOptionEnabled(HostedOptionKey<? extends AccumulatingLocatableMultiOptionValue<?>> option, HostedOptionValues values) {
         if (option.hasBeenSet(values)) {
-            String lastOptionValue = option.getValue(values).lastValue().orElseThrow();
-            return !lastOptionValue.isEmpty();
+            Object lastOptionValue = option.getValue(values).lastValue().orElseThrow();
+            return !lastOptionValue.toString().isEmpty();
         }
         return false;
     }
@@ -172,16 +167,16 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         WriteLayerArchiveSupport writeLayerArchiveSupport = null;
         SVMImageLayerWriter writer = null;
         ArchiveSupport archiveSupport = new ArchiveSupport(false);
-        if (isEnabled(LayerCreate, values)) {
+        if (isLayerOptionEnabled(LayerCreate, values)) {
             LayerOption layerOption = LayerOption.parse(LayerCreate.getValue(values).lastValue().orElseThrow());
             writeLayerArchiveSupport = new WriteLayerArchiveSupport(archiveSupport, layerOption.fileName());
             writer = new SVMImageLayerWriter(SubstrateOptions.UseSharedLayerGraphs.getValue(values));
         }
         SVMImageLayerLoader loader = null;
         LoadLayerArchiveSupport loadLayerArchiveSupport = null;
-        if (isEnabled(LayerUse, values)) {
-            LayerOption layerOption = LayerOption.parse(LayerUse.getValue(values).lastValue().orElseThrow());
-            loadLayerArchiveSupport = new LoadLayerArchiveSupport(layerOption.fileName(), archiveSupport);
+        if (isLayerOptionEnabled(LayerUse, values)) {
+            Path layerFileName = LayerUse.getValue(values).lastValue().orElseThrow();
+            loadLayerArchiveSupport = new LoadLayerArchiveSupport(layerFileName, archiveSupport);
             loader = new SVMImageLayerLoader(List.of(loadLayerArchiveSupport.getSnapshotPath()));
         }
 
