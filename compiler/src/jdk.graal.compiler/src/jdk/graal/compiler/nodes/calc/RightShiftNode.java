@@ -98,7 +98,11 @@ public final class RightShiftNode extends ShiftNode<Shr> {
             }
         }
 
-        if (forY.isConstant()) {
+        if (forY.isConstant() && op.isNeutral(forY.asConstant())) {
+            return forX;
+        }
+
+        if (forY.isJavaConstant()) {
             int amount = forY.asJavaConstant().asInt();
             int originalAmout = amount;
             int mask = op.getShiftAmountMask(stamp);
