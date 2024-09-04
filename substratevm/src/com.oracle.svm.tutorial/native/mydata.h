@@ -25,17 +25,6 @@
 
 #define DATA_ARRAY_LENGTH 4
 
-typedef struct my_data_struct {
-  int f_primitive;
-  int f_array[DATA_ARRAY_LENGTH];
-  char* f_cstr;
-
-  void* f_java_object_handle;
-
-  void (*f_print_function)(void *thread, char* cstr);
-
-} my_data;
-
 typedef enum {
     MONDAY = 0,
     TUESDAY,
@@ -45,6 +34,34 @@ typedef enum {
     SATURDAY,
     SUNDAY,
 } day_of_the_week_t;
+
+typedef struct my_data_sub_struct {
+ int f_sub_primitive;
+} my_sub_t;
+
+typedef struct my_data_struct {
+  int f_primitive;
+  int f_array[DATA_ARRAY_LENGTH];
+  char* f_cstr;
+
+  void* f_java_object_handle;
+
+  void (*f_print_function)(void *thread, char* cstr);
+
+  // Added fields to flesh out missing examples
+  // enum field
+  day_of_the_week_t f_day;
+
+  // ptr to struct field
+  my_sub_t* f_sub_struct;
+
+  // array of strings
+  char* f_str_array[DATA_ARRAY_LENGTH];
+
+  // array of structs
+  my_sub_t f_sub_struct_array[DATA_ARRAY_LENGTH];
+
+} my_data;
 
 typedef struct header_struct {
 	unsigned char type;
