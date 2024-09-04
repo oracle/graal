@@ -62,6 +62,7 @@ import com.oracle.graal.pointsto.standalone.heap.StandaloneHeapSnapshotVerifier;
 import com.oracle.graal.pointsto.standalone.heap.StandaloneImageHeapScanner;
 import com.oracle.graal.pointsto.standalone.meta.StandaloneConstantFieldProvider;
 import com.oracle.graal.pointsto.standalone.meta.StandaloneConstantReflectionProvider;
+import com.oracle.graal.pointsto.standalone.plugins.StandaloneReplacementsImpl;
 import com.oracle.graal.pointsto.standalone.util.Timer;
 import com.oracle.graal.pointsto.typestate.DefaultAnalysisPolicy;
 import com.oracle.graal.pointsto.util.AnalysisError;
@@ -76,6 +77,7 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.Indent;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.graal.compiler.nodes.spi.Replacements;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
@@ -144,9 +146,11 @@ public final class PointsToAnalyzer {
         StandaloneConstantFieldProvider aConstantFieldProvider = new StandaloneConstantFieldProvider(aMetaAccess);
         AnalysisMetaAccessExtensionProvider aMetaAccessExtensionProvider = new AnalysisMetaAccessExtensionProvider(aUniverse);
         HostedProviders aProviders = new HostedProviders(aMetaAccess, null, aConstantReflection, aConstantFieldProvider,
-                        originalProviders.getForeignCalls(), originalProviders.getLowerer(), originalProviders.getReplacements(),
+                        originalProviders.getForeignCalls(), originalProviders.getLowerer(), null,
                         originalProviders.getStampProvider(), snippetReflection, new WordTypes(aMetaAccess, wordKind),
                         originalProviders.getPlatformConfigurationProvider(), aMetaAccessExtensionProvider, originalProviders.getLoopsDataProvider(), originalProviders.getIdentityHashCodeProvider());
+        Replacements replacements = new StandaloneReplacementsImpl(aProviders, new ResolvedJavaMethodBytecodeProvider(), originalProviders.getCodeCache().getTarget());
+        aProviders = aProviders.copyWith(replacements);
         standaloneHost.initializeProviders(aProviders);
         analysisName = getAnalysisName(mainEntryClass);
         ClassInclusionPolicy classInclusionPolicy = new ClassInclusionPolicy.DefaultAllInclusionPolicy("Included in the base image");
