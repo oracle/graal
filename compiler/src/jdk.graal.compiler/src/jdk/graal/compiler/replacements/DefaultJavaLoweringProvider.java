@@ -908,21 +908,6 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         memoryWrite.setGuard(write.getGuard());
     }
 
-    public static class WriteCollector {
-        private final List<ValueNode> writes = new ArrayList<>();
-
-        public void recordWrite(ValueNode kill) {
-            writes.add(kill.asNode());
-        }
-
-        public PublishWritesNode publish(StructuredGraph graph, FixedNode lastNode, ValueNode newObject) {
-            PublishWritesNode published = graph.add(new PublishWritesNode(newObject, writes));
-            graph.addBeforeFixed(lastNode, published);
-            writes.clear();
-            return published;
-        }
-    }
-
     @SuppressWarnings("try")
     protected void lowerCommitAllocationNode(CommitAllocationNode commit, LoweringTool tool) {
         StructuredGraph graph = commit.graph();
@@ -949,7 +934,6 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
         List<AbstractNewObjectNode> recursiveLowerings = new ArrayList<>();
         ValueNode[] allocations = new ValueNode[virtualObjects.size()];
-        WriteCollector[] collectors = new WriteCollector[virtualObjects.size()];
         BitSet omittedValues = new BitSet();
         for (int objIndex : emissionOrder) {
             VirtualObjectNode virtual = virtualObjects.get(objIndex);
@@ -960,7 +944,6 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 recursiveLowerings.add(newObject);
                 graph.addBeforeFixed(commit, newObject);
                 allocations[objIndex] = newObject;
-                collectors[objIndex] = new WriteCollector();
                 int valuePos = valuePositions[objIndex];
                 for (int i = 0; i < entryCount; i++) {
                     ValueNode value = commit.getValues().get(valuePos);
@@ -999,7 +982,6 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                                             new WriteNode(address, LocationIdentity.init(), arrayImplicitStoreConvert(graph, storageKind, value, commit, virtual, valuePos), barrierType,
                                                             MemoryOrderMode.PLAIN));
                             graph.addAfterFixed(newObject, write);
-                            collectors[objIndex].recordWrite(write);
                         }
                     }
                     valuePos++;
@@ -1007,20 +989,12 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             }
         }
 
-        writeOmittedValues(commit, graph, allocations, omittedValues, collectors);
-        publishWrites(commit, graph, allocations, collectors);
-
+        writeOmittedValues(commit, graph, allocations, omittedValues);
         finishAllocatedObjects(tool, commit, commit, allocations);
         graph.removeFixed(commit);
 
         for (AbstractNewObjectNode recursiveLowering : recursiveLowerings) {
             recursiveLowering.lower(tool);
-        }
-    }
-
-    public void publishWrites(CommitAllocationNode commit, StructuredGraph graph, ValueNode[] allocations, WriteCollector[] collectors) {
-        for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
-            allocations[objIndex] = collectors[objIndex].publish(graph, commit, allocations[objIndex]);
         }
     }
 
@@ -1046,7 +1020,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     }
 
     @SuppressWarnings("try")
-    public void writeOmittedValues(CommitAllocationNode commit, StructuredGraph graph, ValueNode[] allocations, BitSet omittedValues, WriteCollector[] collectors) {
+    public void writeOmittedValues(CommitAllocationNode commit, StructuredGraph graph, ValueNode[] allocations, BitSet omittedValues) {
         int valuePos = 0;
         for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
             VirtualObjectNode virtual = commit.getVirtualObjects().get(objIndex);
@@ -1082,7 +1056,6 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                             WriteNode write = graph.add(
                                             new WriteNode(address, LocationIdentity.init(), implicitStoreConvert(graph, JavaKind.Object, allocValue), barrierType, MemoryOrderMode.PLAIN));
                             graph.addBeforeFixed(commit, write);
-                            collectors[objIndex].recordWrite(write);
                         }
                     }
                 }
@@ -1140,6 +1113,12 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     public void finishAllocatedObjects(LoweringTool tool, FixedWithNextNode insertAfter, CommitAllocationNode commit, ValueNode[] allocations) {
         FixedWithNextNode insertionPoint = insertAfter;
         StructuredGraph graph = commit.graph();
+        for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
+            PublishWritesNode publish = graph.add(new PublishWritesNode(allocations[objIndex]));
+            allocations[objIndex] = publish;
+            graph.addAfterFixed(insertionPoint, publish);
+            insertionPoint = publish;
+        }
         /*
          * Note that the FrameState that is assigned to these MonitorEnterNodes isn't the correct
          * state. It will be the state from before the allocation occurred instead of a valid state
