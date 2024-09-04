@@ -976,10 +976,10 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
                         // Truffle requires some leniency in terms of what can be put where:
                         assert valueKind.getStackKind() == storageKind.getStackKind() ||
-                                (valueKind == JavaKind.Long || valueKind == JavaKind.Double || (valueKind == JavaKind.Int && virtual instanceof VirtualArrayNode) ||
-                                        (valueKind == JavaKind.Float && virtual instanceof VirtualArrayNode)) : Assertions.errorMessageContext("valueKind", valueKind,
-                                "virtual",
-                                virtual);
+                                        (valueKind == JavaKind.Long || valueKind == JavaKind.Double || (valueKind == JavaKind.Int && virtual instanceof VirtualArrayNode) ||
+                                                        (valueKind == JavaKind.Float && virtual instanceof VirtualArrayNode)) : Assertions.errorMessageContext("valueKind", valueKind,
+                                                                        "virtual",
+                                                                        virtual);
                         AddressNode address = null;
                         BarrierType barrierType = null;
                         if (virtual instanceof VirtualInstanceNode) {
@@ -996,8 +996,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                         }
                         if (address != null) {
                             WriteNode write = graph.add(
-                                    new WriteNode(address, LocationIdentity.init(), arrayImplicitStoreConvert(graph, storageKind, value, commit, virtual, valuePos), barrierType,
-                                            MemoryOrderMode.PLAIN));
+                                            new WriteNode(address, LocationIdentity.init(), arrayImplicitStoreConvert(graph, storageKind, value, commit, virtual, valuePos), barrierType,
+                                                            MemoryOrderMode.PLAIN));
                             graph.addAfterFixed(newObject, write);
                             collectors[objIndex].recordWrite(write);
                         }
@@ -1080,7 +1080,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                         if (address != null) {
                             barrierType = barrierSet.postAllocationInitBarrier(barrierType);
                             WriteNode write = graph.add(
-                                    new WriteNode(address, LocationIdentity.init(), implicitStoreConvert(graph, JavaKind.Object, allocValue), barrierType, MemoryOrderMode.PLAIN));
+                                            new WriteNode(address, LocationIdentity.init(), implicitStoreConvert(graph, JavaKind.Object, allocValue), barrierType, MemoryOrderMode.PLAIN));
                             graph.addBeforeFixed(commit, write);
                             collectors[objIndex].recordWrite(write);
                         }

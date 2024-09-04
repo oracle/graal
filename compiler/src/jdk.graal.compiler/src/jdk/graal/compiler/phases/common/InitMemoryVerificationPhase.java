@@ -47,17 +47,42 @@ import jdk.graal.compiler.nodes.extended.PublishWritesNode;
 import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;
 import jdk.graal.compiler.nodes.memory.AddressableMemoryAccess;
 import jdk.graal.compiler.nodes.memory.MemoryAccess;
+import jdk.graal.compiler.nodes.memory.MemoryAnchorNode;
 import jdk.graal.compiler.nodes.memory.MemoryKill;
 import jdk.graal.compiler.nodes.memory.MultiMemoryKill;
 import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.BasePhase;
+import jdk.graal.compiler.phases.RecursivePhase;
 import jdk.graal.compiler.phases.graph.ReentrantNodeIterator;
+import jdk.vm.ci.code.MemoryBarriers;
 
-public class InitMemoryVerificationPhase extends BasePhase<CoreProviders> {
+/**
+ * To maintain object safety while not interacting with the memory graph, operations on
+ * {@link LocationIdentity#INIT_LOCATION INIT} memory must follow some rules, namely:
+ * <ul>
+ * <li>All newly allocated objects are published by a {@link PublishWritesNode} <b>after</b> all
+ * initializing writes have been performed.</li>
+ * <li>A {@link MemoryBarriers#STORE_STORE STORE_STORE} barrier is emitted after all initializing
+ * writes have been performed.</li>
+ * <li>Later reads and writes of the allocated objects have a data dependence on the
+ * {@link PublishWritesNode} instead of the raw allocation node.</li>
+ * </ul>
+ * This phase verifies the first two properties. The third property is instead verified by
+ * {@link PublishWritesNode#verify()}.
+ * <p>
+ * See {@link PublishWritesNode} for a description of init memory semantics in the Graal IR.
+ */
+public class InitMemoryVerificationPhase extends BasePhase<CoreProviders> implements RecursivePhase {
     @Override
     public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
-        return NotApplicable.ifApplied(this, GraphState.StageFlag.LOW_TIER_LOWERING, graphState);
+        /*
+         * CommitAllocationNodes are lowered to raw allocations in mid tier, so it doesn't make
+         * sense to verify this property beforehand.
+         */
+        return NotApplicable.ifAny(
+                        NotApplicable.unlessRunAfter(this, GraphState.StageFlag.MID_TIER_LOWERING, graphState),
+                        NotApplicable.unlessRunBefore(this, GraphState.StageFlag.LOW_TIER_LOWERING, graphState));
     }
 
     private static final class AllocData {
@@ -121,6 +146,10 @@ public class InitMemoryVerificationPhase extends BasePhase<CoreProviders> {
         }
 
         private static void processMemoryKill(MultiMemoryKill checkpoint, AllocData state) {
+            if (checkpoint instanceof MemoryAnchorNode) {
+                // Can ignore as it doesn't actually write
+                return;
+            }
             for (LocationIdentity identity : checkpoint.getKilledLocationIdentities()) {
                 processMemoryKill(identity, state);
             }
@@ -135,20 +164,16 @@ public class InitMemoryVerificationPhase extends BasePhase<CoreProviders> {
         }
 
         private static void processNonKillAccess(MemoryAccess access, AllocData state) {
-            if (!access.getLocationIdentity().isInit()) {
-                // We're only concerned with init memory
-                return;
-            }
-            assert state.hasNoLiveKills() : "reading from init memory when there are live writes";
+            assert state.hasNoLiveKills() : access + " reading from memory when there are live init writes";
         }
 
-        private static void markPublished(ValueNode node, AllocData currentState) {
+        private static void markPublished(ValueNode node, AllocData state) {
             if (node instanceof ValuePhiNode phi) {
                 for (ValueNode value : phi.values()) {
-                    markPublished(value, currentState);
+                    markPublished(value, state);
                 }
             } else if (node instanceof AbstractNewObjectNode newObject) {
-                currentState.publish(newObject);
+                state.publish(newObject);
             }
         }
 
@@ -157,10 +182,9 @@ public class InitMemoryVerificationPhase extends BasePhase<CoreProviders> {
         }
 
         private static void processBarrier(MembarNode membar, AllocData currentState) {
-            if (!membar.getKilledLocationIdentity().isInit()) {
-                return;
-            }
-            if (!membar.getFenceKind().equals(MembarNode.FenceKind.ALLOCATION_INIT)) {
+            if (!(membar.getKilledLocationIdentity().isInit() &&
+                            (membar.getFenceKind().equals(MembarNode.FenceKind.ALLOCATION_INIT) || membar.getFenceKind().equals(MembarNode.FenceKind.CONSTRUCTOR_FREEZE)))) {
+                assert currentState.hasNoLiveKills() : "Non-init membar while there are live init writes: " + membar;
                 return;
             }
             currentState.membar();
@@ -170,6 +194,8 @@ public class InitMemoryVerificationPhase extends BasePhase<CoreProviders> {
         protected AllocData processNode(FixedNode node, AllocData currentState) {
             if (node instanceof AbstractNewObjectNode newObjectNode) {
                 processAlloc(newObjectNode, currentState);
+            } else if (node instanceof MembarNode membar) {
+                processBarrier(membar, currentState);
             } else if (MemoryKill.isSingleMemoryKill(node)) {
                 processMemoryKill(MemoryKill.asSingleMemoryKill(node), currentState);
             } else if (MemoryKill.isMultiMemoryKill(node)) {
@@ -178,8 +204,6 @@ public class InitMemoryVerificationPhase extends BasePhase<CoreProviders> {
                 processNonKillAccess(access, currentState);
             } else if (node instanceof PublishWritesNode anchorNode) {
                 processPublish(anchorNode, currentState);
-            } else if (node instanceof MembarNode membar) {
-                processBarrier(membar, currentState);
             } else if (node instanceof ReturnNode) {
                 assert currentState.checkNoUnpublishedAllocs();
             }

@@ -50,15 +50,35 @@ import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.graal.compiler.nodes.spi.ValueProxy;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 
+/**
+ * Wraps a newly allocated object, acting as a barrier for any initializing writes by preventing
+ * reads to the newly allocated object from floating above the initialization.
+ * <p>
+ * Operations on {@linkplain org.graalvm.word.LocationIdentity#INIT_LOCATION init} memory, such as
+ * initializing an allocated object's header and fields, are not considered side effecting, because
+ * the work of an allocation should never interact with the memory graph. However, this lack of
+ * explicit memory ordering could cause {@linkplain jdk.graal.compiler.nodes.memory.FloatingReadNode
+ * floating reads} on a newly allocated object be scheduled before its initializing writes.
+ * <p>
+ * In order to maintain object safety while still allowing reads to float, we require
+ * non-initializing uses of the newly allocated object to have a data dependence on a fixed
+ * {@link PublishWritesNode} instead of on the original raw allocation. The
+ * {@link PublishWritesNode} must be placed after all initializing writes to the object it wraps.
+ * <p>
+ * This data dependence will ensure correct ordering of reads and writes during
+ * {@linkplain jdk.graal.compiler.phases.schedule.SchedulePhase scheduling}. Additionally, to
+ * prevent uninitialized memory from being visible to other threads, a
+ * {@link jdk.vm.ci.code.MemoryBarriers#STORE_STORE STORE_STORE} barrier must be issued after the
+ * object is initialized. This is accomplished with a {@link MembarNode} placed after (one or more)
+ * {@link PublishWritesNode}.
+ */
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0, allowedUsageTypes = {InputType.Anchor, InputType.Value})
 public class PublishWritesNode extends FixedWithNextNode implements LIRLowerable, ValueProxy, Simplifiable, GuardingNode, AnchoringNode {
     public static final NodeClass<PublishWritesNode> TYPE = NodeClass.create(PublishWritesNode.class);
 
-    @Input
-    ValueNode allocation;
+    @Input ValueNode allocation;
 
-    @OptionalInput(Memory)
-    NodeInputList<ValueNode> writes;
+    @OptionalInput(Memory) NodeInputList<ValueNode> writes;
 
     public ValueNode allocation() {
         return allocation;
@@ -85,11 +105,12 @@ public class PublishWritesNode extends FixedWithNextNode implements LIRLowerable
 
     @Override
     public boolean verifyNode() {
-        // Check that the published allocation node is not used by reads directly
+        // Check that the published allocation node is not used by reads directly.
         for (AddressNode address : allocation.usages().filter(AddressNode.class)) {
             assertTrue(address.usages().filter(n ->
-                    // n is a non-writing access (a.k.a. a read)
-                    n instanceof MemoryAccess && !MemoryKill.isMemoryKill(n)).isEmpty(), "%s has unpublished reads", allocation);
+            // n is a non-writing access (a.k.a. a read)
+            n instanceof MemoryAccess && !MemoryKill.isMemoryKill(n)).isEmpty(),
+                            "%s has unpublished reads", allocation);
         }
         return true;
     }
