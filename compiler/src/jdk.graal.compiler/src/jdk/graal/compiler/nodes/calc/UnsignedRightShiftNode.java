@@ -80,7 +80,11 @@ public final class UnsignedRightShiftNode extends ShiftNode<UShr> {
 
     @SuppressWarnings("unused")
     private static ValueNode canonical(UnsignedRightShiftNode node, ArithmeticOpTable.ShiftOp<UShr> op, Stamp stamp, ValueNode forX, ValueNode forY, NodeView view) {
-        if (forY.isConstant()) {
+        if (forY.isConstant() && op.isNeutral(forY.asConstant())) {
+            return forX;
+        }
+
+        if (forY.isJavaConstant()) {
             int amount = forY.asJavaConstant().asInt();
             int originalAmout = amount;
             int mask = op.getShiftAmountMask(stamp);
