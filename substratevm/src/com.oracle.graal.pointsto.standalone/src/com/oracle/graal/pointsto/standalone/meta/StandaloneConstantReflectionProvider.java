@@ -29,9 +29,7 @@ package com.oracle.graal.pointsto.standalone.meta;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.graal.pointsto.standalone.StandaloneHost;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -43,12 +41,10 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class StandaloneConstantReflectionProvider implements ConstantReflectionProvider {
     private final AnalysisUniverse universe;
     private final ConstantReflectionProvider original;
-    private final SnippetReflectionProvider snippetReflection;
 
-    public StandaloneConstantReflectionProvider(AnalysisUniverse universe, ConstantReflectionProvider original, SnippetReflectionProvider snippetReflection) {
+    public StandaloneConstantReflectionProvider(AnalysisUniverse universe, ConstantReflectionProvider original) {
         this.universe = universe;
         this.original = original;
-        this.snippetReflection = snippetReflection;
     }
 
     @Override
@@ -120,12 +116,6 @@ public class StandaloneConstantReflectionProvider implements ConstantReflectionP
 
     @Override
     public ResolvedJavaType asJavaType(Constant constant) {
-        if (constant instanceof JavaConstant) {
-            Class<?> clazz = snippetReflection.asObject(Class.class, (JavaConstant) constant);
-            if (clazz != null) {
-                return getHostVM().lookupType(clazz);
-            }
-        }
         ResolvedJavaType originalJavaType = original.asJavaType(constant);
         if (originalJavaType != null) {
             return universe.lookup(originalJavaType);
@@ -141,9 +131,5 @@ public class StandaloneConstantReflectionProvider implements ConstantReflectionP
     @Override
     public MemoryAccessProvider getMemoryAccessProvider() {
         return original.getMemoryAccessProvider();
-    }
-
-    private StandaloneHost getHostVM() {
-        return (StandaloneHost) universe.hostVM();
     }
 }
