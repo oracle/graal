@@ -393,9 +393,7 @@ abstract class TrieNode<K, V, E extends Map.Entry<K, V>> {
             if (index < 0) {
                 return null;
             } else {
-                E entry = (E) entries[index];
-                assert entry != null && key(entry).equals(key) : Arrays.asList(entry, key);
-                return entry;
+                return (E) entries[index];
             }
         }
 
@@ -408,7 +406,6 @@ abstract class TrieNode<K, V, E extends Map.Entry<K, V>> {
                     return new HashCollisionNode<>(hash, copyAndAppend(entries, entry));
                 } else {
                     E e = (E) entries[index];
-                    assert e != null && key(e).equals(key) : Arrays.asList(e, key);
                     if (e.equals(entry)) {
                         return this;
                     } else {
@@ -427,7 +424,6 @@ abstract class TrieNode<K, V, E extends Map.Entry<K, V>> {
             if (index < 0) {
                 return this;
             } else {
-                assert entries[index] != null && key((E) entries[index]).equals(key) : Arrays.asList(entries[index], key);
                 assert entries.length >= 2;
                 if (entries.length == 2) {
                     return new BitmapNode<>(bit(this.hashcode, shift), copyAndRemove(entries, index));
