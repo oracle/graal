@@ -52,10 +52,12 @@ public class JfrTraceIdEpoch {
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrTraceIdEpoch() {
     }
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private boolean getEpoch() {
         return (epochGeneration & 1) == 0;
     }
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void changeEpoch() {
         assert VMOperation.isInProgressAtSafepoint();
