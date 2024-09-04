@@ -116,7 +116,7 @@ public final class ProxyConfiguration extends ConfigurationBase<ProxyConfigurati
         for (ConditionalElement<List<String>> list : lists) {
             writer.append(prefix).newline();
             writer.append('{').indent().newline();
-            ConfigurationConditionPrintable.printConditionAttribute(list.condition(), writer);
+            ConfigurationConditionPrintable.printConditionAttribute(list.condition(), writer, false);
             writer.quote("interfaces").append(":").append('[');
             String typePrefix = "";
             for (String type : list.element()) {
