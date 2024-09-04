@@ -66,8 +66,10 @@ import jdk.graal.compiler.nodes.util.GraphUtil;
  * {@link PublishWritesNode} must be placed after all initializing writes to the object it wraps.
  * <p>
  * This data dependence will ensure correct ordering of reads and writes during
- * {@linkplain jdk.graal.compiler.phases.schedule.SchedulePhase scheduling}. Additionally, to
- * prevent uninitialized memory from being visible to other threads, a
+ * {@linkplain jdk.graal.compiler.phases.schedule.SchedulePhase scheduling}. For allocation
+ * snippets, this can be achieved by returning {@link PublishWritesNode#publishWrites(Object)}.
+ * <p>
+ * Additionally, to prevent uninitialized memory from being visible to other threads, a
  * {@link jdk.vm.ci.code.MemoryBarriers#STORE_STORE STORE_STORE} barrier must be issued after the
  * object is initialized. This is accomplished with a {@link MembarNode} placed after (one or more)
  * {@link PublishWritesNode}.

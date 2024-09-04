@@ -34,19 +34,17 @@ import org.graalvm.word.LocationIdentity;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.AbstractMergeNode;
+import jdk.graal.compiler.nodes.ControlSinkNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.LoopBeginNode;
 import jdk.graal.compiler.nodes.LoopExitNode;
-import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.extended.MembarNode;
 import jdk.graal.compiler.nodes.extended.PublishWritesNode;
 import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;
-import jdk.graal.compiler.nodes.memory.AddressableMemoryAccess;
-import jdk.graal.compiler.nodes.memory.MemoryAccess;
 import jdk.graal.compiler.nodes.memory.MemoryAnchorNode;
 import jdk.graal.compiler.nodes.memory.MemoryKill;
 import jdk.graal.compiler.nodes.memory.MultiMemoryKill;
@@ -85,155 +83,137 @@ public class InitMemoryVerificationPhase extends BasePhase<CoreProviders> implem
                         NotApplicable.unlessRunBefore(this, GraphState.StageFlag.LOW_TIER_LOWERING, graphState));
     }
 
-    private static final class AllocData {
-        private final EconomicSet<AbstractNewObjectNode> unpublished;
-        private int liveWrites;
-
-        AllocData() {
-            this.unpublished = EconomicSet.create();
-            this.liveWrites = 0;
+    /**
+     * Verifies that all init writes are guarded by a {@link MemoryBarriers#STORE_STORE STORE_STORE}
+     * barrier. Since we can't determine in a generic way which allocation is a given
+     * {@link MemoryKill} writing to, we simply count the number of memory kills that are "live"
+     * (not protected by a barrier) at any point in the control flow graph..
+     */
+    private static class InitBarrierVerificationClosure extends ReentrantNodeIterator.NodeIteratorClosure<Integer> {
+        private static boolean killsInitMemory(SingleMemoryKill kill) {
+            return kill.getKilledLocationIdentity().isInit();
         }
 
-        AllocData(AllocData copy) {
-            this.unpublished = EconomicSet.create(copy.unpublished);
-            this.liveWrites = copy.liveWrites;
+        private static boolean killsInitMemory(MultiMemoryKill kill) {
+            if (kill instanceof MemoryAnchorNode) {
+                // Can ignore as it doesn't actually write
+                return false;
+            }
+            for (LocationIdentity identity : kill.getKilledLocationIdentities()) {
+                if (identity.isInit()) {
+                    return true;
+                }
+            }
+            return false;
         }
 
-        private void register(AbstractNewObjectNode newObjectNode) {
-            unpublished.add(newObjectNode);
+        private static boolean isInitBarrier(MembarNode membar) {
+            if (!membar.getKilledLocationIdentity().isInit()) {
+                return false;
+            }
+            return membar.getFenceKind().equals(MembarNode.FenceKind.ALLOCATION_INIT) || membar.getFenceKind().equals(MembarNode.FenceKind.CONSTRUCTOR_FREEZE);
         }
 
-        private void merge(AllocData other) {
-            this.unpublished.addAll(other.unpublished);
-            this.liveWrites += other.liveWrites;
+        @Override
+        protected Integer processNode(FixedNode node, Integer kills) {
+            int liveKills = kills;
+            if (node instanceof MembarNode memBar) {
+                if (isInitBarrier(memBar)) {
+                    liveKills = 0;
+                } else {
+                    assert liveKills == 0 : "Non-init memBar while there are live init writes: " + memBar;
+                }
+            } else if (MemoryKill.isSingleMemoryKill(node) && killsInitMemory(MemoryKill.asSingleMemoryKill(node))) {
+                liveKills++;
+            } else if (MemoryKill.isMultiMemoryKill(node) && killsInitMemory(MemoryKill.asMultiMemoryKill(node))) {
+                liveKills++;
+            } else if (node instanceof ControlSinkNode) {
+                assert liveKills == 0 : String.format("%d unpublished writes at %s", liveKills, node);
+            }
+            return liveKills;
         }
 
-        private boolean hasNoLiveKills() {
-            return liveWrites == 0;
+        @Override
+        protected Integer merge(AbstractMergeNode merge, List<Integer> states) {
+            int sum = 0;
+            for (int kills : states) {
+                sum += kills;
+            }
+            return sum;
         }
 
-        private boolean checkNoUnpublishedAllocs() {
-            assert unpublished.isEmpty() : Assertions.errorMessageContext("unpublished allocs", unpublished);
-            return true;
+        @Override
+        protected Integer afterSplit(AbstractBeginNode node, Integer kills) {
+            return kills;
         }
 
-        private void markWrite() {
-            liveWrites++;
-        }
-
-        private void publish(AbstractNewObjectNode node) {
-            assert unpublished.contains(node) : "trying to publish non registered alloc: " + node;
-            unpublished.remove(node);
-            liveWrites = 0;
-        }
-
-        private void membar() {
-            liveWrites = 0;
+        @Override
+        protected EconomicMap<LoopExitNode, Integer> processLoop(LoopBeginNode loop, Integer kills) {
+            ReentrantNodeIterator.LoopInfo<Integer> loopInfo = ReentrantNodeIterator.processLoop(this, loop, kills);
+            return loopInfo.exitStates;
         }
     }
 
-    private static class InitWriteTestDataClosure extends ReentrantNodeIterator.NodeIteratorClosure<AllocData> {
-        private static void processAlloc(AbstractNewObjectNode allocation, AllocData state) {
+    /**
+     * Verifies that all {@link AbstractNewObjectNode AbstractNewObjectNodes} are published by a
+     * {@link PublishWritesNode}.
+     */
+    private static class AllocPublishVerificationClosure extends ReentrantNodeIterator.NodeIteratorClosure<EconomicSet<AbstractNewObjectNode>> {
+        private static void processAlloc(AbstractNewObjectNode allocation, EconomicSet<AbstractNewObjectNode> unpublished) {
             if (allocation.emitMemoryBarrier() && allocation.fillContents()) {
-                // Will emit memory barrier upon lowering, can ignore for now
+                // Allocation was not lowered from a CommitAllocationNode, can ignore
                 return;
             }
-            state.register(allocation);
+            unpublished.add(allocation);
         }
 
-        private static void processMemoryKill(SingleMemoryKill checkpoint, AllocData state) {
-            processMemoryKill(checkpoint.getKilledLocationIdentity(), state);
-        }
-
-        private static void processMemoryKill(MultiMemoryKill checkpoint, AllocData state) {
-            if (checkpoint instanceof MemoryAnchorNode) {
-                // Can ignore as it doesn't actually write
-                return;
-            }
-            for (LocationIdentity identity : checkpoint.getKilledLocationIdentities()) {
-                processMemoryKill(identity, state);
-            }
-        }
-
-        private static void processMemoryKill(LocationIdentity identity, AllocData state) {
-            if (!identity.isInit()) {
-                // We're only concerned with init memory
-                return;
-            }
-            state.markWrite();
-        }
-
-        private static void processNonKillAccess(MemoryAccess access, AllocData state) {
-            assert state.hasNoLiveKills() : access + " reading from memory when there are live init writes";
-        }
-
-        private static void markPublished(ValueNode node, AllocData state) {
+        private static void markPublished(ValueNode node, EconomicSet<AbstractNewObjectNode> unpublished) {
             if (node instanceof ValuePhiNode phi) {
                 for (ValueNode value : phi.values()) {
-                    markPublished(value, state);
+                    markPublished(value, unpublished);
                 }
             } else if (node instanceof AbstractNewObjectNode newObject) {
-                state.publish(newObject);
+                assert unpublished.contains(newObject) : String.format("%s publishes %s before it was registered", newObject, unpublished);
+                unpublished.remove(newObject);
             }
-        }
-
-        private static void processPublish(PublishWritesNode publish, AllocData currentState) {
-            markPublished(publish.allocation(), currentState);
-        }
-
-        private static void processBarrier(MembarNode membar, AllocData currentState) {
-            if (!(membar.getKilledLocationIdentity().isInit() &&
-                            (membar.getFenceKind().equals(MembarNode.FenceKind.ALLOCATION_INIT) || membar.getFenceKind().equals(MembarNode.FenceKind.CONSTRUCTOR_FREEZE)))) {
-                assert currentState.hasNoLiveKills() : "Non-init membar while there are live init writes: " + membar;
-                return;
-            }
-            currentState.membar();
         }
 
         @Override
-        protected AllocData processNode(FixedNode node, AllocData currentState) {
-            if (node instanceof AbstractNewObjectNode newObjectNode) {
-                processAlloc(newObjectNode, currentState);
-            } else if (node instanceof MembarNode membar) {
-                processBarrier(membar, currentState);
-            } else if (MemoryKill.isSingleMemoryKill(node)) {
-                processMemoryKill(MemoryKill.asSingleMemoryKill(node), currentState);
-            } else if (MemoryKill.isMultiMemoryKill(node)) {
-                processMemoryKill(MemoryKill.asMultiMemoryKill(node), currentState);
-            } else if (node instanceof AddressableMemoryAccess access) {
-                processNonKillAccess(access, currentState);
-            } else if (node instanceof PublishWritesNode anchorNode) {
-                processPublish(anchorNode, currentState);
-            } else if (node instanceof ReturnNode) {
-                assert currentState.checkNoUnpublishedAllocs();
+        protected EconomicSet<AbstractNewObjectNode> processNode(FixedNode node, EconomicSet<AbstractNewObjectNode> unpublished) {
+            if (node instanceof AbstractNewObjectNode allocation) {
+                processAlloc(allocation, unpublished);
+            } else if (node instanceof PublishWritesNode publish) {
+                markPublished(publish.allocation(), unpublished);
+            } else if (node instanceof ControlSinkNode) {
+                assert unpublished.isEmpty() : Assertions.errorMessageContext("unpublished allocations", unpublished);
             }
-            return currentState;
+            return unpublished;
         }
 
         @Override
-        protected AllocData merge(AbstractMergeNode merge, List<AllocData> states) {
-            AllocData merged = new AllocData();
-            for (AllocData state : states) {
-                merged.merge(state);
+        protected EconomicSet<AbstractNewObjectNode> merge(AbstractMergeNode merge, List<EconomicSet<AbstractNewObjectNode>> states) {
+            EconomicSet<AbstractNewObjectNode> merged = EconomicSet.create();
+            for (EconomicSet<AbstractNewObjectNode> state : states) {
+                merged.addAll(state);
             }
             return merged;
         }
 
         @Override
-        protected AllocData afterSplit(AbstractBeginNode node, AllocData oldState) {
-            return new AllocData(oldState);
+        protected EconomicSet<AbstractNewObjectNode> afterSplit(AbstractBeginNode node, EconomicSet<AbstractNewObjectNode> oldState) {
+            return EconomicSet.create(oldState);
         }
 
         @Override
-        protected EconomicMap<LoopExitNode, AllocData> processLoop(LoopBeginNode loop, AllocData initialState) {
-            ReentrantNodeIterator.LoopInfo<AllocData> loopInfo = ReentrantNodeIterator.processLoop(this, loop, initialState);
+        protected EconomicMap<LoopExitNode, EconomicSet<AbstractNewObjectNode>> processLoop(LoopBeginNode loop, EconomicSet<AbstractNewObjectNode> initialState) {
+            ReentrantNodeIterator.LoopInfo<EconomicSet<AbstractNewObjectNode>> loopInfo = ReentrantNodeIterator.processLoop(this, loop, initialState);
             return loopInfo.exitStates;
         }
     }
 
     @Override
     protected void run(StructuredGraph graph, CoreProviders context) {
-        ReentrantNodeIterator.apply(new InitWriteTestDataClosure(), graph.start(), new AllocData());
+        ReentrantNodeIterator.apply(new InitBarrierVerificationClosure(), graph.start(), 0);
+        ReentrantNodeIterator.apply(new AllocPublishVerificationClosure(), graph.start(), EconomicSet.create());
     }
-
 }
