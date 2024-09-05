@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +27,6 @@ package com.oracle.svm.core.jfr;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.Serial;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
@@ -37,19 +37,20 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.oracle.svm.core.dcmd.DcmdParseException;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.jfr.JfrArgumentParser.JfrArgument;
+import com.oracle.svm.core.jfr.JfrArgumentParser.JfrStartArgument;
+import com.oracle.svm.core.jfr.JfrArgumentParser.FlightRecorderOptionsArgument;
 import com.oracle.svm.core.jfr.events.EndChunkNativePeriodicEvents;
 import com.oracle.svm.core.jfr.events.EveryChunkNativePeriodicEvents;
-import com.oracle.svm.core.option.RuntimeOptionKey;
-import com.oracle.svm.core.util.UserError.UserException;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.jfr.FlightRecorder;
 import jdk.jfr.Recording;
@@ -63,11 +64,18 @@ import jdk.jfr.internal.Repository;
 import jdk.jfr.internal.SecuritySupport;
 import jdk.jfr.internal.jfc.JFC;
 
+import static com.oracle.svm.core.jfr.JfrArgumentParser.JfrArgumentParsingFailed;
+import static com.oracle.svm.core.jfr.JfrArgumentParser.parseBoolean;
+import static com.oracle.svm.core.jfr.JfrArgumentParser.parseDuration;
+import static com.oracle.svm.core.jfr.JfrArgumentParser.parseInteger;
+import static com.oracle.svm.core.jfr.JfrArgumentParser.parseMaxSize;
+import static com.oracle.svm.core.jfr.JfrArgumentParser.parseSettings;
+import static com.oracle.svm.core.jfr.JfrArgumentParser.parseJfrOptions;
+
 /**
  * Called during VM startup and teardown. Also triggers the JFR argument parsing.
  */
 public class JfrManager {
-    private static final String DEFAULT_JFC_NAME = "default";
 
     @Platforms(Platform.HOSTED_ONLY.class) //
     final boolean hostedEnabled;
@@ -86,7 +94,11 @@ public class JfrManager {
         /* Parse arguments early on so that we can tear down the isolate more easily if it fails. */
         return isFirstIsolate -> {
             parseFlightRecorderLogging();
-            parseFlightRecorderOptions();
+            try {
+                parseFlightRecorderOptions();
+            } catch (JfrArgumentParsingFailed e) {
+                throw new RuntimeException(e);
+            }
         };
     }
 
@@ -101,7 +113,7 @@ public class JfrManager {
         };
     }
 
-    private static void parseFlightRecorderOptions() {
+    private static void parseFlightRecorderOptions() throws JfrArgumentParsingFailed {
         Map<JfrArgument, String> optionsArgs = parseJfrOptions(SubstrateOptions.FlightRecorderOptions, FlightRecorderOptionsArgument.values());
         Long globalBufferSize = parseMaxSize(optionsArgs, FlightRecorderOptionsArgument.GlobalBufferSize);
         Long maxChunkSize = parseMaxSize(optionsArgs, FlightRecorderOptionsArgument.MaxChunkSize);
@@ -128,7 +140,7 @@ public class JfrManager {
             if (oldObjectQueueSize >= 0) {
                 SubstrateJVM.getOldObjectProfiler().configure(oldObjectQueueSize);
             } else {
-                throw argumentParsingFailed(FlightRecorderOptionsArgument.OldObjectQueueSize.getCmdLineKey() + " must be greater or equal 0.");
+                throw new JfrArgumentParsingFailed(FlightRecorderOptionsArgument.OldObjectQueueSize.getCmdLineKey() + " must be greater or equal 0.");
             }
         }
 
@@ -137,7 +149,7 @@ public class JfrManager {
                 SecuritySupport.SafePath repositorySafePath = new SecuritySupport.SafePath(repositoryPath);
                 Repository.getRepository().setBasePath(repositorySafePath);
             } catch (Throwable e) {
-                throw argumentParsingFailed("Could not use " + repositoryPath + " as repository. " + e.getMessage(), e);
+                throw new JfrArgumentParsingFailed("Could not use " + repositoryPath + " as repository. " + e.getMessage(), e);
             }
         }
 
@@ -178,7 +190,25 @@ public class JfrManager {
     }
 
     private static void initRecording() {
-        Map<JfrArgument, String> startArgs = parseJfrOptions(SubstrateOptions.StartFlightRecording, JfrStartArgument.values());
+        try {
+            Map<JfrArgumentParser.JfrArgument, String> startArgs = JfrArgumentParser.parseJfrOptions(SubstrateOptions.StartFlightRecording, JfrStartArgument.values());
+            initRecording(startArgs);
+        } catch (JfrArgumentParsingFailed e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static String initRecording(String[] options) throws DcmdParseException {
+        try {
+            Map<JfrArgumentParser.JfrArgument, String> startArgs = JfrArgumentParser.parseJfrOptions(options, JfrStartArgument.values());
+
+            return initRecording(startArgs);
+        } catch (JfrArgumentParsingFailed e) {
+            throw new DcmdParseException(e.getMessage());
+        }
+    }
+
+    private static String initRecording(Map<JfrArgumentParser.JfrArgument, String> startArgs) throws JfrArgumentParsingFailed {
         String name = startArgs.get(JfrStartArgument.Name);
         String[] settings = parseSettings(startArgs);
         Long delay = parseDuration(startArgs, JfrStartArgument.Delay);
@@ -205,26 +235,26 @@ public class JfrManager {
         if (name != null) {
             try {
                 Integer.parseInt(name);
-                throw argumentParsingFailed("Name of recording can't be numeric");
+                throw new JfrArgumentParsingFailed("Name of recording can't be numeric");
             } catch (NumberFormatException nfe) {
                 // ok, can't be mixed up with name
             }
         }
 
         if (duration == null && Boolean.FALSE.equals(dumpOnExit) && path != null) {
-            throw argumentParsingFailed("Filename can only be set for a time bound recording or if dumponexit=true. Set duration/dumponexit or omit filename.");
+            throw new JfrArgumentParsingFailed("Filename can only be set for a time bound recording or if dumponexit=true. Set duration/dumponexit or omit filename.");
         }
         if (settings.length == 1 && settings[0].length() == 0) {
-            throw argumentParsingFailed("No settings specified. Use settings=none to start without any settings");
+            throw new JfrArgumentParsingFailed("No settings specified. Use settings=none to start without any settings");
         }
         Map<String, String> s = new HashMap<>();
         for (String configName : settings) {
             try {
                 s.putAll(JFC.createKnown(configName).getSettings());
             } catch (FileNotFoundException e) {
-                throw argumentParsingFailed("Could not find settings file'" + configName + "'", e);
+                throw new JfrArgumentParsingFailed("Could not find settings file'" + configName + "'", e);
             } catch (IOException | ParseException e) {
-                throw argumentParsingFailed("Could not parse settings file '" + settings[0] + "'", e);
+                throw new JfrArgumentParsingFailed("Could not parse settings file '" + settings[0] + "'", e);
             }
         }
 
@@ -233,14 +263,14 @@ public class JfrManager {
         if (duration != null) {
             if (duration < 1000L * 1000L * 1000L) {
                 // to avoid typo, duration below 1s makes no sense
-                throw argumentParsingFailed("Could not start recording, duration must be at least 1 second.");
+                throw new JfrArgumentParsingFailed("Could not start recording, duration must be at least 1 second.");
             }
         }
 
         if (delay != null) {
             if (delay < 1000L * 1000L * 1000) {
                 // to avoid typo, delay shorter than 1s makes no sense.
-                throw argumentParsingFailed("Could not start recording, delay must be at least 1 second.");
+                throw new JfrArgumentParsingFailed("Could not start recording, delay must be at least 1 second.");
             }
         }
 
@@ -323,9 +353,10 @@ public class JfrManager {
             msg.append(System.getProperty("line.separator"));
         }
         Logger.log(LogTag.JFR_SYSTEM, LogLevel.INFO, msg.toString());
+        return recording.getName();
     }
 
-    private static SecuritySupport.SafePath resolvePath(Recording recording, String filename) throws InvalidPathException {
+    public static SecuritySupport.SafePath resolvePath(Recording recording, String filename) throws InvalidPathException {
         if (filename == null) {
             return makeGenerated(recording, Paths.get("."));
         }
@@ -357,217 +388,6 @@ public class JfrManager {
         } catch (SecurityException e) {
             // fall back on filename
             return path.toString();
-        }
-    }
-
-    private static Map<JfrArgument, String> parseJfrOptions(RuntimeOptionKey<String> runtimeOptionKey, JfrArgument[] possibleArguments) {
-        Map<JfrArgument, String> optionsMap = new HashMap<>();
-        String userInput = runtimeOptionKey.getValue();
-        if (!userInput.isEmpty()) {
-            String[] options = userInput.split(",");
-            for (String option : options) {
-                String[] keyVal = option.split("=");
-                JfrArgument arg = findArgument(possibleArguments, keyVal[0]);
-                if (arg == null) {
-                    throw argumentParsingFailed("Unknown argument '" + keyVal[0] + "' in " + runtimeOptionKey.getName());
-                }
-                optionsMap.put(arg, keyVal[1]);
-            }
-        }
-        return optionsMap;
-    }
-
-    private static String[] parseSettings(Map<JfrArgument, String> args) throws UserException {
-        String settings = args.get(JfrStartArgument.Settings);
-        if (settings == null) {
-            return new String[]{DEFAULT_JFC_NAME};
-        } else if (settings.equals("none")) {
-            return new String[0];
-        } else {
-            return settings.split(",");
-        }
-    }
-
-    @SuppressFBWarnings(value = "NP_BOOLEAN_RETURN_NULL", justification = "null allowed as return value")
-    private static Boolean parseBoolean(Map<JfrArgument, String> args, JfrArgument key) throws IllegalArgumentException {
-        String value = args.get(key);
-        if (value == null) {
-            return null;
-        } else if ("true".equalsIgnoreCase(value)) {
-            return true;
-        } else if ("false".equalsIgnoreCase(value)) {
-            return false;
-        } else {
-            throw argumentParsingFailed("Could not parse JFR argument '" + key.getCmdLineKey() + "=" + value + "'. Expected a boolean value.");
-        }
-    }
-
-    private static Long parseDuration(Map<JfrArgument, String> args, JfrStartArgument key) {
-        String value = args.get(key);
-        if (value != null) {
-            try {
-                int idx = indexOfFirstNonDigitCharacter(value);
-                long time;
-                try {
-                    time = Long.parseLong(value.substring(0, idx));
-                } catch (NumberFormatException e) {
-                    throw new IllegalArgumentException("Expected a number.");
-                }
-
-                if (idx == value.length()) {
-                    // only accept missing unit if the value is 0
-                    if (time != 0) {
-                        throw new IllegalArgumentException("Unit is required.");
-                    }
-                    return 0L;
-                }
-
-                String unit = value.substring(idx);
-                return switch (unit) {
-                    case "ns" -> Duration.ofNanos(time).toNanos();
-                    case "us" -> Duration.ofNanos(time * 1000).toNanos();
-                    case "ms" -> Duration.ofMillis(time).toNanos();
-                    case "s" -> Duration.ofSeconds(time).toNanos();
-                    case "m" -> Duration.ofMinutes(time).toNanos();
-                    case "h" -> Duration.ofHours(time).toNanos();
-                    case "d" -> Duration.ofDays(time).toNanos();
-                    default -> throw new IllegalArgumentException("Unit is invalid.");
-                };
-            } catch (IllegalArgumentException e) {
-                throw argumentParsingFailed("Could not parse JFR argument '" + key.cmdLineKey + "=" + value + "'. " + e.getMessage());
-            }
-        }
-        return null;
-    }
-
-    private static Integer parseInteger(Map<JfrArgument, String> args, JfrArgument key) {
-        String value = args.get(key);
-        if (value != null) {
-            try {
-                return Integer.valueOf(value);
-            } catch (Throwable e) {
-                throw argumentParsingFailed("Could not parse JFR argument '" + key.getCmdLineKey() + "=" + value + "'. " + e.getMessage());
-            }
-        }
-        return null;
-    }
-
-    private static Long parseMaxSize(Map<JfrArgument, String> args, JfrArgument key) {
-        String value = args.get(key);
-        if (value == null) {
-            return null;
-        }
-
-        try {
-            int idx = indexOfFirstNonDigitCharacter(value);
-            long number;
-            try {
-                number = Long.parseLong(value.substring(0, idx));
-            } catch (NumberFormatException e) {
-                throw new IllegalArgumentException("Expected a positive number.");
-            }
-
-            // Missing unit, number is plain bytes
-            if (idx == value.length()) {
-                return number;
-            }
-
-            final char unit = value.substring(idx).charAt(0);
-            return switch (unit) {
-                case 'k', 'K' -> number * 1024;
-                case 'm', 'M' -> number * 1024 * 1024;
-                case 'g', 'G' -> number * 1024 * 1024 * 1024;
-                default -> number; // Unknown unit, number is treated as plain bytes
-            };
-        } catch (IllegalArgumentException e) {
-            throw argumentParsingFailed("Could not parse JFR argument '" + key.getCmdLineKey() + "=" + value + "'. " + e.getMessage());
-        }
-    }
-
-    private static int indexOfFirstNonDigitCharacter(String durationText) {
-        int idx = 0;
-        while (idx < durationText.length() && Character.isDigit(durationText.charAt(idx))) {
-            idx++;
-        }
-        return idx;
-    }
-
-    private static JfrArgument findArgument(JfrArgument[] possibleArguments, String value) {
-        for (JfrArgument arg : possibleArguments) {
-            if (arg.getCmdLineKey().equals(value)) {
-                return arg;
-            }
-        }
-        return null;
-    }
-
-    private static RuntimeException argumentParsingFailed(String message) {
-        throw new JfrArgumentParsingFailed(message);
-    }
-
-    private static RuntimeException argumentParsingFailed(String message, Throwable cause) {
-        throw new JfrArgumentParsingFailed(message, cause);
-    }
-
-    private interface JfrArgument {
-        String getCmdLineKey();
-    }
-
-    private enum JfrStartArgument implements JfrArgument {
-        Name("name"),
-        Settings("settings"),
-        Delay("delay"),
-        Duration("duration"),
-        Filename("filename"),
-        Disk("disk"),
-        MaxAge("maxage"),
-        MaxSize("maxsize"),
-        DumpOnExit("dumponexit"),
-        PathToGCRoots("path-to-gc-roots");
-
-        private final String cmdLineKey;
-
-        JfrStartArgument(String key) {
-            this.cmdLineKey = key;
-        }
-
-        @Override
-        public String getCmdLineKey() {
-            return cmdLineKey;
-        }
-    }
-
-    private enum FlightRecorderOptionsArgument implements JfrArgument {
-        GlobalBufferSize("globalbuffersize"),
-        MaxChunkSize("maxchunksize"),
-        MemorySize("memorysize"),
-        OldObjectQueueSize("old-object-queue-size"),
-        RepositoryPath("repository"),
-        StackDepth("stackdepth"),
-        ThreadBufferSize("threadbuffersize"),
-        PreserveRepository("preserve-repository");
-
-        private final String cmdLineKey;
-
-        FlightRecorderOptionsArgument(String key) {
-            this.cmdLineKey = key;
-        }
-
-        @Override
-        public String getCmdLineKey() {
-            return cmdLineKey;
-        }
-    }
-
-    private static class JfrArgumentParsingFailed extends RuntimeException {
-        @Serial private static final long serialVersionUID = -1050173145647068124L;
-
-        JfrArgumentParsingFailed(String message, Throwable cause) {
-            super(message, cause);
-        }
-
-        JfrArgumentParsingFailed(String message) {
-            super(message);
         }
     }
 }

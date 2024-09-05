@@ -60,11 +60,13 @@ public final class VMInspectionOptions {
     private static final String MONITORING_JMXSERVER_NAME = "jmxserver";
     private static final String MONITORING_THREADDUMP_NAME = "threaddump";
     private static final String MONITORING_NMT_NAME = "nmt";
+    private static final String MONITORING_ATTACH_NAME = "attach";
 
     private static final List<String> MONITORING_ALL_VALUES = List.of(MONITORING_HEAPDUMP_NAME, MONITORING_JFR_NAME, MONITORING_JVMSTAT_NAME, MONITORING_JMXCLIENT_NAME, MONITORING_JMXSERVER_NAME,
-                    MONITORING_THREADDUMP_NAME, MONITORING_NMT_NAME, MONITORING_ALL_NAME, MONITORING_DEFAULT_NAME);
+                    MONITORING_THREADDUMP_NAME, MONITORING_NMT_NAME, MONITORING_ATTACH_NAME, MONITORING_ALL_NAME, MONITORING_DEFAULT_NAME);
     private static final String MONITORING_ALLOWED_VALUES_TEXT = "'" + MONITORING_HEAPDUMP_NAME + "', '" + MONITORING_JFR_NAME + "', '" + MONITORING_JVMSTAT_NAME + "', '" + MONITORING_JMXSERVER_NAME +
-                    "' (experimental), '" + MONITORING_JMXCLIENT_NAME + "' (experimental), '" + MONITORING_THREADDUMP_NAME + "', '" + MONITORING_NMT_NAME + "' (experimental), or '" +
+                    "' (experimental), '" + MONITORING_JMXCLIENT_NAME + "' (experimental), '" + MONITORING_THREADDUMP_NAME + "', '" + MONITORING_NMT_NAME + "', '" + MONITORING_ATTACH_NAME +
+                    "' (experimental), or '" +
                     MONITORING_ALL_NAME + "' (deprecated behavior: defaults to '" + MONITORING_ALL_NAME + "' if no argument is provided)";
 
     static {
@@ -176,6 +178,11 @@ public final class VMInspectionOptions {
     @Fold
     public static boolean hasNativeMemoryTrackingSupport() {
         return hasAllOrKeywordMonitoringSupport(MONITORING_NMT_NAME);
+    }
+
+    @Fold
+    public static boolean hasAttachSupport() {
+        return hasAllOrKeywordMonitoringSupport(MONITORING_ATTACH_NAME) && !Platform.includedIn(WINDOWS.class);
     }
 
     static class DeprecatedOptions {

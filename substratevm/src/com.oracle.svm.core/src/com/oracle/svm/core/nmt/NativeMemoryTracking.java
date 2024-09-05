@@ -38,10 +38,10 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.memory.NativeMemory;
 import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.core.VMInspectionOptions;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
@@ -201,24 +201,30 @@ public class NativeMemoryTracking {
         return isFirstIsolate -> NativeMemoryTracking.singleton().printStatistics();
     }
 
-    private void printStatistics() {
+    public void printStatistics() {
         if (VMInspectionOptions.PrintNMTStatistics.getValue()) {
-            System.out.println();
-            System.out.println("Native memory tracking");
-            System.out.println("  Peak total used memory: " + getPeakTotalUsedMemory() + " bytes");
-            System.out.println("  Total alive allocations at peak usage: " + getCountAtTotalPeakUsage());
-            System.out.println("  Total used memory: " + getTotalUsedMemory() + " bytes");
-            System.out.println("  Total alive allocations: " + getTotalCount());
-
-            for (int i = 0; i < NmtCategory.values().length; i++) {
-                String name = NmtCategory.values()[i].getName();
-                NmtMallocMemoryInfo info = getInfo(i);
-
-                System.out.println("  " + name + " peak used memory: " + info.getPeakUsed() + " bytes");
-                System.out.println("  " + name + " alive allocations at peak: " + info.getCountAtPeakUsage());
-                System.out.println("  " + name + " currently used memory: " + info.getUsed() + " bytes");
-                System.out.println("  " + name + " currently alive allocations: " + info.getCount());
-            }
+            System.out.println(generateReportString());
         }
+    }
+
+    public String generateReportString() {
+        StringBuilder stringBuilder = new StringBuilder(2500);
+        stringBuilder.append("\n");
+        stringBuilder.append("Native memory tracking\n");
+        stringBuilder.append("  Peak total used memory: " + getPeakTotalUsedMemory() + " bytes\n");
+        stringBuilder.append("  Total alive allocations at peak usage: " + getCountAtTotalPeakUsage() + "\n");
+        stringBuilder.append("  Total used memory: " + getTotalUsedMemory() + " bytes\n");
+        stringBuilder.append("  Total alive allocations: " + getTotalCount() + "\n");
+
+        for (int i = 0; i < NmtCategory.values().length; i++) {
+            String name = NmtCategory.values()[i].getName();
+            NmtMallocMemoryInfo info = getInfo(i);
+
+            stringBuilder.append("  " + name + " peak used memory: " + info.getPeakUsed() + " bytes\n");
+            stringBuilder.append("  " + name + " alive allocations at peak: " + info.getCountAtPeakUsage() + "\n");
+            stringBuilder.append("  " + name + " currently used memory: " + info.getUsed() + " bytes\n");
+            stringBuilder.append("  " + name + " currently alive allocations: " + info.getCount() + "\n");
+        }
+        return stringBuilder.toString();
     }
 }

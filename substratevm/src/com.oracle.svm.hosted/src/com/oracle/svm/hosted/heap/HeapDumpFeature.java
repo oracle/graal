@@ -36,10 +36,12 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.HeapDumpSupport;
 
+import com.oracle.svm.core.dcmd.DcmdSupport;
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.dump.HProfType;
+import com.oracle.svm.core.heap.dump.HeapDumpDcmd;
 import com.oracle.svm.core.heap.dump.HeapDumpMetadata;
 import com.oracle.svm.core.heap.dump.HeapDumpShutdownHook;
 import com.oracle.svm.core.heap.dump.HeapDumpStartupHook;
@@ -92,6 +94,9 @@ public class HeapDumpFeature implements InternalFeature {
         if (VMInspectionOptions.hasHeapDumpSupport()) {
             RuntimeSupport.getRuntimeSupport().addStartupHook(new HeapDumpStartupHook());
             RuntimeSupport.getRuntimeSupport().addShutdownHook(new HeapDumpShutdownHook());
+            if (VMInspectionOptions.hasAttachSupport()) {
+                ImageSingletons.lookup(DcmdSupport.class).registerDcmd(new HeapDumpDcmd());
+            }
         }
     }
 

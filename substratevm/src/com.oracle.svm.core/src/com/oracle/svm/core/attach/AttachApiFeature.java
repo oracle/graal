@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2024, 2024, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -23,54 +23,55 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platform.WINDOWS;
+package com.oracle.svm.core.attach;
+
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.dcmd.DcmdSupport;
-import com.oracle.svm.core.thread.ThreadDumpStacksDcmd;
+import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.RuntimeSupport;
-
 import jdk.internal.misc.Signal;
 
 @AutomaticallyRegisteredFeature
-public class DumpThreadStacksOnSignalFeature implements InternalFeature {
-
+public class AttachApiFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return VMInspectionOptions.hasThreadDumpSupport();
+        return VMInspectionOptions.hasAttachSupport();
     }
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (Platform.includedIn(WINDOWS.class) || !VMInspectionOptions.hasAttachSupport()) {
-            RuntimeSupport.getRuntimeSupport().addStartupHook(new DumpThreadStacksOnSignalStartupHook());
-        } else {
-            ImageSingletons.lookup(DcmdSupport.class).registerDcmd(new ThreadDumpStacksDcmd());
-        }
+        RuntimeSupport.getRuntimeSupport().addStartupHook(new AttachApiStartupHook());
+        RuntimeSupport.getRuntimeSupport().addShutdownHook(new AttachApiShutdownHook());
+        ImageSingletons.add(AttachApiSupport.class, new AttachApiSupport());
     }
 }
 
-final class DumpThreadStacksOnSignalStartupHook implements RuntimeSupport.Hook {
+final class AttachApiStartupHook implements RuntimeSupport.Hook {
     @Override
     public void execute(boolean isFirstIsolate) {
         if (isFirstIsolate) {
-            DumpAllStacks.install();
+            SigquitHandler.install();
         }
     }
 }
 
-class DumpAllStacks implements Signal.Handler {
+final class AttachApiShutdownHook implements RuntimeSupport.Hook {
+    @Override
+    public void execute(boolean isFirstIsolate) {
+        AttachApiSupport.singleton().teardown();
+    }
+}
+
+class SigquitHandler implements Signal.Handler {
     static void install() {
-        Signal.handle(Platform.includedIn(WINDOWS.class) ? new Signal("BREAK") : new Signal("QUIT"), new DumpAllStacks());
+        Signal.handle(new Signal("QUIT"), new SigquitHandler());
     }
 
     @Override
     public void handle(Signal arg0) {
-        DumpThreadStacksSupport.dump();
+        AttachApiSupport.singleton().maybeInitialize();
     }
 }

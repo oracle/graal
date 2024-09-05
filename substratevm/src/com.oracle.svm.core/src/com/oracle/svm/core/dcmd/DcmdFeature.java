@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2024, 2024, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -23,54 +23,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platform.WINDOWS;
+package com.oracle.svm.core.dcmd;
+
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.dcmd.DcmdSupport;
-import com.oracle.svm.core.thread.ThreadDumpStacksDcmd;
+import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.jdk.RuntimeSupport;
-
-import jdk.internal.misc.Signal;
+import com.oracle.svm.core.thread.ThreadDumpToFileDcmd;
 
 @AutomaticallyRegisteredFeature
-public class DumpThreadStacksOnSignalFeature implements InternalFeature {
+public class DcmdFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return VMInspectionOptions.hasThreadDumpSupport();
+        return VMInspectionOptions.hasAttachSupport();
     }
 
     @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (Platform.includedIn(WINDOWS.class) || !VMInspectionOptions.hasAttachSupport()) {
-            RuntimeSupport.getRuntimeSupport().addStartupHook(new DumpThreadStacksOnSignalStartupHook());
-        } else {
-            ImageSingletons.lookup(DcmdSupport.class).registerDcmd(new ThreadDumpStacksDcmd());
-        }
-    }
-}
-
-final class DumpThreadStacksOnSignalStartupHook implements RuntimeSupport.Hook {
-    @Override
-    public void execute(boolean isFirstIsolate) {
-        if (isFirstIsolate) {
-            DumpAllStacks.install();
-        }
-    }
-}
-
-class DumpAllStacks implements Signal.Handler {
-    static void install() {
-        Signal.handle(Platform.includedIn(WINDOWS.class) ? new Signal("BREAK") : new Signal("QUIT"), new DumpAllStacks());
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(DcmdSupport.class, new DcmdSupport());
+        ImageSingletons.lookup(DcmdSupport.class).registerDcmd(new HelpDcmd());
+        ImageSingletons.lookup(DcmdSupport.class).registerDcmd(new ThreadDumpToFileDcmd());
     }
 
-    @Override
-    public void handle(Signal arg0) {
-        DumpThreadStacksSupport.dump();
-    }
 }
