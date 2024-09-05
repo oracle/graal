@@ -7815,6 +7815,24 @@ public class FlatNodeGenFactory {
             return false;
         }
 
+        @SuppressWarnings("unused")
+        static boolean isRelevantForQuickening(BitSet bitSet, Collection<SpecializationData> usedSpecializations) {
+            if (bitSet.getStates().contains(StateQuery.create(SpecializationActive.class, usedSpecializations))) {
+                return true;
+            }
+            for (ImplicitCastState state : bitSet.getStates().queryStates(ImplicitCastState.class)) {
+                TypeGuard guard = state.key;
+                int signatureIndex = guard.getSignatureIndex();
+                for (SpecializationData specialization : usedSpecializations) {
+                    TypeMirror specializationType = specialization.getSignatureParameters().get(signatureIndex).getType();
+                    if (!state.node.getTypeSystem().lookupByTargetType(specializationType).isEmpty()) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
     }
 
     public static final class FrameState {
@@ -8217,9 +8235,9 @@ public class FlatNodeGenFactory {
 
     }
 
-    public CodeTree createOnlyActive(FrameState frameState, List<SpecializationData> filteredSpecializations) {
+    public CodeTree createOnlyActive(FrameState frameState, List<SpecializationData> filteredSpecializations, Collection<SpecializationData> allSpecializations) {
         return multiState.createContainsOnly(frameState, 0, -1, StateQuery.create(SpecializationActive.class, filteredSpecializations),
-                        StateQuery.create(SpecializationActive.class, node.getReachableSpecializations()));
+                        StateQuery.create(SpecializationActive.class, allSpecializations));
     }
 
     public CodeTree createIsImplicitTypeStateCheck(FrameState frameState, TypeMirror targetType, TypeMirror specializationType, int signatureIndex) {
@@ -8244,13 +8262,12 @@ public class FlatNodeGenFactory {
         return b.build();
     }
 
-    public void addSpecializationStateParametersTo(CodeExecutableElement method, FrameState frameState) {
-        StateQuery query = StateQuery.create(SpecializationActive.class, node.getReachableSpecializations());
+    public void addQuickeningStateParametersTo(CodeExecutableElement method, FrameState frameState, Collection<SpecializationData> specializations) {
         for (BitSet set : multiState.getSets()) {
-            if (!set.contains(query)) {
-                // does not contain any specialization active bit
+            if (!MultiStateBitSet.isRelevantForQuickening(set, specializations)) {
                 continue;
             }
+
             LocalVariable local = frameState.get(set.getName());
             if (local != null) {
                 method.addParameter(local.createParameter());

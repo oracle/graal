@@ -265,10 +265,9 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
     }
 
     private CodeExecutableElement createQuickenMethod(FlatNodeGenFactory factory, FrameState frameState) {
-        CodeExecutableElement method = new CodeExecutableElement(Set.of(Modifier.PRIVATE, Modifier.STATIC),
-                        context.getType(void.class), "quicken");
+        CodeExecutableElement method = new CodeExecutableElement(Set.of(Modifier.PRIVATE, Modifier.STATIC), context.getType(void.class), "quicken");
 
-        factory.addSpecializationStateParametersTo(method, frameState);
+        factory.addQuickeningStateParametersTo(method, frameState, instruction.nodeData.getReachableSpecializations());
         if (model.specializationDebugListener) {
             method.addParameter(new CodeVariableElement(rootNode.getAbstractBytecodeNode().asType(), "$bytecode"));
         }
@@ -333,8 +332,8 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
                 continue;
             }
             elseIf = b.startIf(elseIf);
-            CodeTree activeCheck = factory.createOnlyActive(frameState, quickening.filteredSpecializations);
-            b.tree(factory.createOnlyActive(frameState, quickening.filteredSpecializations));
+            CodeTree activeCheck = factory.createOnlyActive(frameState, quickening.filteredSpecializations, instruction.nodeData.getReachableSpecializations());
+            b.tree(activeCheck);
             String sep = activeCheck.isEmpty() ? "" : " && ";
 
             SpecializationSignature specializationSignature = quickening.operation.getSpecializationSignature(quickening.filteredSpecializations);
