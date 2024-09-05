@@ -34,11 +34,11 @@ import org.graalvm.word.LocationIdentity;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.AbstractMergeNode;
-import jdk.graal.compiler.nodes.ControlSinkNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.LoopBeginNode;
 import jdk.graal.compiler.nodes.LoopExitNode;
+import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.ValuePhiNode;
@@ -127,7 +127,7 @@ public class InitMemoryVerificationPhase extends BasePhase<CoreProviders> implem
                 liveKills++;
             } else if (MemoryKill.isMultiMemoryKill(node) && killsInitMemory(MemoryKill.asMultiMemoryKill(node))) {
                 liveKills++;
-            } else if (node instanceof ControlSinkNode) {
+            } else if (node instanceof ReturnNode) {
                 assert liveKills == 0 : String.format("%d unpublished writes at %s", liveKills, node);
             }
             return liveKills;
@@ -167,13 +167,13 @@ public class InitMemoryVerificationPhase extends BasePhase<CoreProviders> implem
             unpublished.add(allocation);
         }
 
-        private static void markPublished(ValueNode node, EconomicSet<AbstractNewObjectNode> unpublished) {
+        private static void markPublished(PublishWritesNode publish, ValueNode node, EconomicSet<AbstractNewObjectNode> unpublished) {
             if (node instanceof ValuePhiNode phi) {
                 for (ValueNode value : phi.values()) {
-                    markPublished(value, unpublished);
+                    markPublished(publish, value, unpublished);
                 }
             } else if (node instanceof AbstractNewObjectNode newObject) {
-                assert unpublished.contains(newObject) : String.format("%s publishes %s before it was registered", newObject, unpublished);
+                assert unpublished.contains(newObject) : String.format("%s publishes %s before it was registered", publish, newObject);
                 unpublished.remove(newObject);
             }
         }
@@ -183,9 +183,9 @@ public class InitMemoryVerificationPhase extends BasePhase<CoreProviders> implem
             if (node instanceof AbstractNewObjectNode allocation) {
                 processAlloc(allocation, unpublished);
             } else if (node instanceof PublishWritesNode publish) {
-                markPublished(publish.allocation(), unpublished);
-            } else if (node instanceof ControlSinkNode) {
-                assert unpublished.isEmpty() : Assertions.errorMessageContext("unpublished allocations", unpublished);
+                markPublished(publish, publish.allocation(), unpublished);
+            } else if (node instanceof ReturnNode) {
+                assert unpublished.isEmpty() : Assertions.errorMessageContext("unpublished allocations", unpublished, "at node", node);
             }
             return unpublished;
         }
