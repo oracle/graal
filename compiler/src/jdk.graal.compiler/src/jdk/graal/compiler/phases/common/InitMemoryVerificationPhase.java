@@ -167,13 +167,12 @@ public class InitMemoryVerificationPhase extends BasePhase<CoreProviders> implem
             unpublished.add(allocation);
         }
 
-        private static void markPublished(PublishWritesNode publish, ValueNode node, EconomicSet<AbstractNewObjectNode> unpublished) {
+        private static void markPublished(ValueNode node, EconomicSet<AbstractNewObjectNode> unpublished) {
             if (node instanceof ValuePhiNode phi) {
                 for (ValueNode value : phi.values()) {
-                    markPublished(publish, value, unpublished);
+                    markPublished(value, unpublished);
                 }
             } else if (node instanceof AbstractNewObjectNode newObject) {
-                assert unpublished.contains(newObject) : String.format("%s publishes %s before it was registered", publish, newObject);
                 unpublished.remove(newObject);
             }
         }
@@ -183,7 +182,7 @@ public class InitMemoryVerificationPhase extends BasePhase<CoreProviders> implem
             if (node instanceof AbstractNewObjectNode allocation) {
                 processAlloc(allocation, unpublished);
             } else if (node instanceof PublishWritesNode publish) {
-                markPublished(publish, publish.allocation(), unpublished);
+                markPublished(publish.allocation(), unpublished);
             } else if (node instanceof ReturnNode) {
                 assert unpublished.isEmpty() : Assertions.errorMessageContext("unpublished allocations", unpublished, "at node", node);
             }
