@@ -51,6 +51,8 @@ import java.util.Map;
 import java.util.function.Supplier;
 
 import org.graalvm.polyglot.Context;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -357,6 +359,27 @@ public class BuiltinTutorial {
         return new JavaBuiltin("parseInt", 1, ParseIntBuiltinNodeGen.getUncached(), ParseIntBuiltinNodeGen::create);
     }
 
+    private Context context;
+
+    /**
+     * In order to use <code>LanguageWithBuiltins.get()</code> in a unit-test we need to enter a
+     * polyglot context. In a real language you would always be entered as the parse request was
+     * triggered through a {@link TruffleLanguage#parse parse request}.
+     */
+    @Before
+    public void enterContext() {
+        context = Context.create("language-with-builtins");
+        context.enter();
+    }
+
+    @After
+    public void closeContext() {
+        if (context != null) {
+            context.close();
+            context = null;
+        }
+    }
+
     /**
      * Let's verify that calling a builtin works as expected. Note that this test recreates the
      * ParseInt builtin for every call, which is not ideal. We will fix this later with
@@ -601,12 +624,7 @@ public class BuiltinTutorial {
          * This allows languages to lookup the language as thread local.
          */
         static LanguageWithBuiltins get() {
-            try {
-                return REFERENCE.get(null);
-            } catch (AssertionError err) {
-                // We may not have entered a polyglot context.
-                return null;
-            }
+            return REFERENCE.get(null);
         }
     }
 
@@ -644,13 +662,11 @@ public class BuiltinTutorial {
      */
     @Test
     public void testLanguageWithBuiltins() {
-        try (Context c = Context.create("language-with-builtins")) {
-            assertEquals(42, c.eval("language-with-builtins", "parseInt").execute(42).asInt());
-            assertEquals(42, c.eval("language-with-builtins", "parseInt").execute("42").asInt());
+        assertEquals(42, context.eval("language-with-builtins", "parseInt").execute(42).asInt());
+        assertEquals(42, context.eval("language-with-builtins", "parseInt").execute("42").asInt());
 
-            assertEquals(42, c.eval("language-with-builtins", "builderBuiltin").execute().asInt());
-            assertEquals(42, c.eval("language-with-builtins", "serializedSample").execute().asInt());
-        }
+        assertEquals(42, context.eval("language-with-builtins", "builderBuiltin").execute().asInt());
+        assertEquals(42, context.eval("language-with-builtins", "serializedSample").execute().asInt());
     }
 
 }
