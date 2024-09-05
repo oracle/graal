@@ -215,5 +215,6 @@ public interface MacroInvokable extends Invokable, Lowerable, FixedNodeInterface
      * Captures the method handle information so that it can be properly lowered back to an
      * {@link Invoke} later.
      */
+    @Override
     void addMethodHandleInfo(ResolvedMethodHandleCallTargetNodeMarker methodHandle);
 }

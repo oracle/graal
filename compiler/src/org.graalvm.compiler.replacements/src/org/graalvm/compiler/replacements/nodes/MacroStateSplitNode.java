@@ -71,6 +71,7 @@ public abstract class MacroStateSplitNode extends MacroNode implements StateSpli
         return true;
     }
 
+    @Override
     protected InvokeNode createInvoke() {
         InvokeNode invoke = super.createInvoke();
         if (stateAfter() != null) {
