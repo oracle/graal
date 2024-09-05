@@ -545,7 +545,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
         b.startReturn().startCall("continueAt");
         b.string("bytecode");
-        b.string("maxLocals << 16");
+        b.string("0"); // bci
+        b.string("maxLocals"); // sp
         b.string("frame");
         if (model.enableYield) {
             b.string("frame");
@@ -557,10 +558,38 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         return ex;
     }
 
+    private static final String RETURN_BCI = "0xFFFFFFFF";
+
+    private static String encodeState(String bci, String sp) {
+        String result = "";
+        if (sp != null) {
+            result += String.format("(((long) %s) << 32) | ", sp);
+        }
+        result += String.format("(%s & 0xFFFFFFFFL)", bci);
+        return result;
+    }
+
+    private static String encodeReturnState(String sp) {
+        return String.format("(((long) %s) << 32) | %sL", sp, RETURN_BCI);
+    }
+
+    private static String encodeNewBci(String bci, String state) {
+        return String.format("(%s & 0xFFFFFFFF00000000L) | (%s & 0xFFFFFFFFL)", state, bci);
+    }
+
+    private static String decodeBci(String state) {
+        return String.format("(int) (%s & 0xFFFFFFFFL)", state);
+    }
+
+    private static String decodeSp(String state) {
+        return String.format("(int) (%s >>> 32)", state);
+    }
+
     private CodeExecutableElement createContinueAt() {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(Object.class), "continueAt");
         ex.addParameter(new CodeVariableElement(abstractBytecodeNode.asType(), "bc"));
-        ex.addParameter(new CodeVariableElement(type(int.class), "startState"));
+        ex.addParameter(new CodeVariableElement(type(int.class), "bci"));
+        ex.addParameter(new CodeVariableElement(type(int.class), "sp"));
         ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
         if (model.enableYield) {
             /**
@@ -584,7 +613,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
         CodeTreeBuilder b = ex.createBuilder();
 
-        b.statement("int state = startState");
+        b.statement("long state = ", encodeState("bci", "sp"));
 
         b.startWhile().string("true").end().startBlock();
 
@@ -599,7 +628,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         b.end();
         b.end();
 
-        b.startIf().string("(state & 0xFFFF) == 0xFFFF").end().startBlock();
+        b.startIf().string(decodeBci("state"), " == ", RETURN_BCI).end().startBlock();
         b.statement("break");
         b.end().startElseBlock();
         b.lineComment("Bytecode or tier changed");
@@ -622,7 +651,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         b.end();
         b.end();
 
-        String returnValue = uncheckedGetFrameObject("(state >> 16) & 0xFFFF");
+        String returnValue = uncheckedGetFrameObject(decodeSp("state"));
         b.startReturn().string(returnValue).end();
 
         mergeSuppressWarnings(ex, "all");
@@ -3795,6 +3824,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.end();
             }
 
+            if (operation.requiresRootOperation()) {
+                b.startStatement().startCall("validateRootOperationBegin").end(2);
+            }
+
             if (operation.constantOperands != null && operation.constantOperands.hasConstantOperands()) {
                 int index = 0;
                 for (ConstantOperandModel operand : operation.constantOperands.before()) {
@@ -3827,9 +3860,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.statement("tagNodes.add(node)");
             }
 
-            if (operation.requiresRootOperation()) {
-                b.startStatement().startCall("validateRootOperationBegin").end(2);
-            }
             if (model.enableLocalScoping) {
                 switch (operation.kind) {
                     case ROOT:
@@ -5351,9 +5381,14 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.end();
             }
 
+            if (operation.requiresRootOperation()) {
+                b.startStatement().startCall("validateRootOperationBegin").end(2);
+            }
+
             if (operation.kind == OperationKind.LOAD_CONSTANT) {
                 buildOperandNonNullCheck(b, type(Object.class), operation.operationBeginArguments[0].name());
             }
+
             if (operation.constantOperands != null && operation.constantOperands.hasConstantOperands()) {
                 int index = 0;
                 for (ConstantOperandModel operand : operation.constantOperands.before()) {
@@ -5379,10 +5414,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 if (tagConstants != null) {
                     buildBegin(b, model.tagOperation, tagConstants.getSimpleName().toString());
                 }
-            }
-
-            if (operation.requiresRootOperation()) {
-                b.startStatement().startCall("validateRootOperationBegin").end(2);
             }
 
             b.startStatement().startCall("beforeChild").end(2);
@@ -9766,13 +9797,13 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             add(createFindBytecodeIndex2());
             add(createReadValidBytecode());
 
-            continueAt = add(new CodeExecutableElement(Set.of(ABSTRACT), type(int.class), "continueAt"));
+            continueAt = add(new CodeExecutableElement(Set.of(ABSTRACT), type(long.class), "continueAt"));
             continueAt.addParameter(new CodeVariableElement(BytecodeRootNodeElement.this.asType(), "$root"));
             continueAt.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
             if (model.enableYield) {
                 continueAt.addParameter(new CodeVariableElement(types.VirtualFrame, "localFrame"));
             }
-            continueAt.addParameter(new CodeVariableElement(type(int.class), "startState"));
+            continueAt.addParameter(new CodeVariableElement(type(long.class), "startState"));
 
             var getRoot = add(new CodeExecutableElement(Set.of(FINAL), BytecodeRootNodeElement.this.asType(), "getRoot"));
             CodeTreeBuilder b = getRoot.createBuilder();
@@ -10780,19 +10811,21 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "translateBytecodeIndex", new String[]{"newNode", "bytecodeIndex"});
             CodeTreeBuilder b = ex.createBuilder();
             if (model.isBytecodeUpdatable()) {
-                b.startReturn();
-                b.startCall("transitionState");
-                b.startGroup();
-                b.cast(this.asType());
-                b.string("newNode");
-                b.end();
-                b.string("bytecodeIndex & 0x0000_FFFF");
-                if (model.enableYield) {
-                    b.string("null");
-                }
-                b.end();
-                b.string(" & 0x0000_FFFF");
 
+                CodeTreeBuilder tb = CodeTreeBuilder.createBuilder();
+                tb.startCall("transitionState");
+                tb.startGroup();
+                tb.cast(this.asType());
+                tb.string("newNode");
+                tb.end();
+                tb.string(encodeState("bytecodeIndex", null));
+                if (model.enableYield) {
+                    tb.string("null");
+                }
+                tb.end();
+
+                b.startReturn();
+                b.string(decodeBci(tb.build().toString()));
                 b.end();
             } else {
                 b.statement("return bytecodeIndex");
@@ -10801,14 +10834,14 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createTransitionState() {
-            CodeExecutableElement invalidate = new CodeExecutableElement(Set.of(FINAL), type(int.class), "transitionState");
-            invalidate.addParameter(new CodeVariableElement(this.asType(), "newBytecode"));
-            invalidate.addParameter(new CodeVariableElement(type(int.class), "state"));
+            CodeExecutableElement transitionState = new CodeExecutableElement(Set.of(FINAL), type(long.class), "transitionState");
+            transitionState.addParameter(new CodeVariableElement(this.asType(), "newBytecode"));
+            transitionState.addParameter(new CodeVariableElement(type(long.class), "state"));
             if (model.enableYield) {
-                invalidate.addParameter(new CodeVariableElement(continuationRootNodeImpl.asType(), "continuationRootNode"));
+                transitionState.addParameter(new CodeVariableElement(continuationRootNodeImpl.asType(), "continuationRootNode"));
             }
 
-            CodeTreeBuilder b = invalidate.createBuilder();
+            CodeTreeBuilder b = transitionState.createBuilder();
 
             b.declaration(arrayOf(type(byte.class)), "oldBc", "this.oldBytecodes");
             b.declaration(arrayOf(type(byte.class)), "newBc", "newBytecode.bytecodes");
@@ -10848,7 +10881,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.startReturn().string("state").end();
             b.end();
 
-            b.declaration(type(int.class), "oldBci", "state & 0xFFFF");
+            b.declaration(type(int.class), "oldBci", decodeBci("state"));
 
             b.startDeclaration(type(int.class), "newBci");
             b.startCall("computeNewBci").string("oldBci").string("oldBc").string("newBc");
@@ -10868,9 +10901,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.end().end();
             }
 
-            b.startReturn().string("(state & 0xFFFF_0000) | (newBci & 0x0000_FFFF)").end();
+            b.startReturn().string(encodeNewBci("newBci", "state")).end();
 
-            return invalidate;
+            return transitionState;
         }
 
         private CodeExecutableElement createTransitionInstrumentationIndex() {
@@ -11489,10 +11522,12 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         private static final String METADATA_FIELD_NAME = "osrMetadata_";
         private final InterpreterTier tier;
         private final Map<InstructionModel, CodeExecutableElement> doInstructionMethods = new LinkedHashMap<>();
+        private final CodeTypeElement interpreterStateElement;
 
         BytecodeNodeElement(InterpreterTier tier) {
             super(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, tier.bytecodeClassName());
             this.tier = tier;
+            this.interpreterStateElement = addOptional((tier.isCached() && model.enableYield) ? new InterpreterStateElement() : null);
             this.setSuperClass(abstractBytecodeNode.asType());
             this.addAll(createContinueAt());
             this.getAnnotationMirrors().add(new CodeAnnotationMirror(types.DenyReplace));
@@ -11571,18 +11606,27 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
         private CodeExecutableElement createExecuteOSR() {
             CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeOSRNode, "executeOSR",
-                            new String[]{"frame", "target", model.enableYield ? "localFrame" : "unused"},
+                            new String[]{"frame", "target", model.enableYield ? "interpreterStateObject" : "sp"},
                             new TypeMirror[]{types.VirtualFrame, type(int.class), type(Object.class)});
             CodeTreeBuilder b = ex.getBuilder();
-            b.startReturn().startCall("continueAt");
-            b.string("getRoot()");
-            b.string("frame");
             if (model.enableYield) {
-                b.string("localFrame == null ? frame : (MaterializedFrame) localFrame");
-            }
-            b.string("target");
-            b.end(2);
+                b.startDeclaration(interpreterStateElement.asType(), "interpreterState");
+                b.cast(interpreterStateElement.asType()).string("interpreterStateObject");
+                b.end();
 
+                b.startReturn().startCall("continueAt");
+                b.string("getRoot()");
+                b.string("frame");
+                b.string("interpreterState.localFrame == null ? frame : (MaterializedFrame) interpreterState.localFrame");
+                b.string(encodeState("target", "interpreterState.sp"));
+                b.end(2);
+            } else {
+                b.startReturn().startCall("continueAt");
+                b.string("getRoot()");
+                b.string("frame");
+                b.string(encodeState("target", "(int) sp"));
+                b.end(2);
+            }
             return ex;
         }
 
@@ -11612,6 +11656,19 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             rb.startReturn().cast(types.Frame).string("arguments[arguments.length - 1]").end();
 
             return List.of(storeParentFrameInArguments, restoreParentFrameFromArguments);
+        }
+
+        final class InterpreterStateElement extends CodeTypeElement {
+            public InterpreterStateElement() {
+                super(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "InterpreterState");
+                if (!model.enableYield) {
+                    // Without continuations, this state class is unnecessary. Just pass the sp.
+                    throw new AssertionError("A InterpreterState class should only be generated when continuations are enabled.");
+                }
+                this.add(new CodeVariableElement(Set.of(FINAL), types.VirtualFrame, "localFrame"));
+                this.add(new CodeVariableElement(Set.of(FINAL), type(int.class), "sp"));
+                this.add(createConstructorUsingFields(Set.of(), this));
+            }
         }
 
         private boolean useOperationNodeForBytecodeIndex() {
@@ -12256,7 +12313,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             // loop.
             List<CodeExecutableElement> methods = new ArrayList<>();
 
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(FINAL), type(int.class), "continueAt");
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(FINAL), type(long.class), "continueAt");
             GeneratorUtils.addOverride(ex);
             ex.addAnnotationMirror(new CodeAnnotationMirror(types.HostCompilerDirectives_BytecodeInterpreterSwitch));
             ex.addParameter(new CodeVariableElement(BytecodeRootNodeElement.this.asType(), "$root"));
@@ -12264,7 +12321,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             if (model.enableYield) {
                 ex.addParameter(new CodeVariableElement(types.VirtualFrame, "localFrame"));
             }
-            ex.addParameter(new CodeVariableElement(type(int.class), "startState"));
+            ex.addParameter(new CodeVariableElement(type(long.class), "startState"));
 
             methods.add(ex);
 
@@ -12295,10 +12352,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 ex.addAnnotationMirror(createExplodeLoopAnnotation("MERGE_EXPLODE"));
             }
 
-            b.statement("int bci = startState & 0xFFFF");
-            b.statement("int sp = (startState >> 16) & 0xFFFF");
+            b.statement("int bci = ", decodeBci("startState"));
+            b.statement("int sp = ", decodeSp("startState"));
             b.statement("int op");
-            b.statement("int temp");
+            b.statement("long temp");
 
             if (tier.isCached()) {
                 b.declaration(loopCounter.asType(), "loopCounter", CodeTreeBuilder.createBuilder().startNew(loopCounter.asType()).end());
@@ -12426,12 +12483,12 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 }
                 if (model.enableTagInstrumentation) {
                     b.startCase().string("HANDLER_TAG_EXCEPTIONAL").end().startCaseBlock();
-                    b.statement("int result = doTagExceptional($root, frame, bc, bci, throwable, this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI], this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_SP])");
-                    b.statement("temp = result >> 16 & 0xFFFF");
-                    b.statement("bci = result & 0xFFFF");
-                    b.startIf().string("sp < temp + $root.maxLocals").end().startBlock();
+                    b.statement("long result = doTagExceptional($root, frame, bc, bci, throwable, this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI], this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_SP])");
+                    b.statement("temp = ", decodeSp("result"));
+                    b.statement("bci = ", decodeBci("result"));
+                    b.startIf().string("sp < (int) temp + $root.maxLocals").end().startBlock();
                     b.lineComment("The instrumentation pushed a value on the stack.");
-                    b.statement("assert sp == temp + $root.maxLocals - 1");
+                    b.statement("assert sp == (int) temp + $root.maxLocals - 1");
                     b.statement("sp++");
                     b.end();
                     b.statement("break");
@@ -12446,7 +12503,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.startAssert().string("throwable instanceof ").type(types.AbstractTruffleException).end();
             b.statement("bci = this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI]");
             b.statement("temp = this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_SP]");
-            b.statement(setFrameObject("temp - 1 + $root.maxLocals", "throwable"));
+            b.statement(setFrameObject("((int) temp) - 1 + $root.maxLocals", "throwable"));
 
             if (hasSpecialHandler) {
                 b.statement("break");
@@ -12470,7 +12527,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.startWhile().string("sp > temp").end().startBlock();
             b.statement(clearFrame("frame", "--sp"));
             b.end();
-            b.statement("sp = temp");
+            b.statement("sp = (int) temp");
             b.statement("continue loop");
 
             b.end(); // while
@@ -12561,7 +12618,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         b.startIf().string("--uncachedExecuteCount <= 0").end().startBlock();
                         b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
                         b.statement("$root.transitionToCached(frame, bci)");
-                        b.statement("return (sp << 16) | bci");
+                        b.statement("return ", encodeState("bci", "sp"));
                         b.end();
                     } else {
                         emitReportLoopCount(b, CodeTreeBuilder.createBuilder().string("++loopCounter.value >= ").staticReference(loopCounter.asType(), "REPORT_LOOP_STRIDE").build(), true);
@@ -13071,13 +13128,13 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             if (tier.isCached()) {
                 b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
             }
-            b.startReturn().string("(sp << 16) | bci").end();
+            b.startReturn().string(encodeState("bci", "sp")).end();
         }
 
         private CodeExecutableElement createResolveControlFlowException() {
             CodeExecutableElement method = new CodeExecutableElement(
                             Set.of(PRIVATE),
-                            type(int.class), "resolveControlFlowException",
+                            type(long.class), "resolveControlFlowException",
                             new CodeVariableElement(BytecodeRootNodeElement.this.asType(), "$root"),
                             new CodeVariableElement(types.VirtualFrame, "frame"),
                             new CodeVariableElement(type(int.class), "bci"),
@@ -13247,7 +13304,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         private CodeExecutableElement createDoTagExceptional() {
             CodeExecutableElement method = new CodeExecutableElement(
                             Set.of(PRIVATE),
-                            type(int.class), "doTagExceptional",
+                            type(long.class), "doTagExceptional",
                             new CodeVariableElement(BytecodeRootNodeElement.this.asType(), "$root"),
                             new CodeVariableElement(types.VirtualFrame, "frame"),
                             new CodeVariableElement(type(byte[].class), "bc"),
@@ -13289,7 +13346,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.end();
             b.startElseIf().string("result == ").staticReference(types.ProbeNode, "UNWIND_ACTION_REENTER").end().startBlock();
             b.lineComment("Reenter by jumping to the begin bci.");
-            b.statement("return (handlerSp << 16) | node.enterBci");
+            b.statement("return ", encodeState("node.enterBci", "handlerSp"));
             b.end().startElseBlock();
             b.lineComment("We jump to the return address which is at sp + 1.");
 
@@ -13361,7 +13418,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.end(); // switch
 
             b.startAssert().string("targetBci < bc.length : ").doubleQuote("returnBci must be reachable").end();
-            b.statement("return ((targetSp) << 16) | targetBci");
+            b.statement("return ", encodeState("targetBci", "targetSp"));
             b.end();
 
             return method;
@@ -13437,7 +13494,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             }
             method = new CodeExecutableElement(
                             Set.of(PRIVATE),
-                            type(int.class), instructionMethodName(instr));
+                            type(long.class), instructionMethodName(instr));
 
             method.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
             if (model.enableYield) {
@@ -13452,20 +13509,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.startIf().startStaticCall(types.CompilerDirectives, "inInterpreter").end(1).string(" && ") //
                             .startStaticCall(types.BytecodeOSRNode, "pollOSRBackEdge").string("this").end(2).startBlock();
 
-            if (model.enableYield) {
-                /**
-                 * If this invocation was resumed, the locals are no longer in the stack frame and
-                 * we need to pass the local frame to executeOSR.
-                 *
-                 * If this invocation was not resumed, the locals are still in the stack frame. We
-                 * pass null to signal that executeOSR should use the stack frame (which may be
-                 * virtualized by Bytecode OSR code).
-                 */
-                b.startDeclaration(type(Object.class), "interpreterState");
-                b.string("frame == ", localFrame(), " ? null : ", localFrame());
-                b.end();
-            }
-
             /**
              * When a while loop is compiled by OSR, its "false" branch profile may be zero, in
              * which case the compiler will stop at loop exits. To coerce the compiler to compile
@@ -13479,12 +13522,22 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.startAssign("Object osrResult");
             b.startStaticCall(types.BytecodeOSRNode, "tryOSR");
             b.string("this");
-            b.string("(sp << 16) | " + readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX))); // target
+            b.tree(readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX))); // target
 
             if (model.enableYield) {
-                b.string("interpreterState");
+                b.startNew(interpreterStateElement.asType());
+                /**
+                 * If this invocation was resumed, the locals are no longer in the stack frame and
+                 * we need to pass the local frame to executeOSR.
+                 *
+                 * If this invocation was not resumed, the locals are in the stack frame, which gets
+                 * passed to executeOSR. We pass null to tell executeOSR to use that frame.
+                 */
+                b.string("frame == ", localFrame(), " ? null : ", localFrame());
+                b.string("sp");
+                b.end();
             } else {
-                b.string("null"); // interpreterState
+                b.string("sp"); // interpreterState
             }
             b.string("null"); // beforeTransfer
             b.string("frame"); // parentFrame
@@ -13492,13 +13545,13 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             b.startIf().string("osrResult != null").end().startBlock();
             /**
-             * executeOSR invokes BytecodeNode#continueAt, which returns an int encoding the sp and
+             * executeOSR invokes BytecodeNode#continueAt, which returns a long encoding the sp and
              * bci when it returns/when the bytecode is rewritten. Returning this value is correct
              * in either case: If it's a return, we'll read the result out of the frame (the OSR
              * code copies the OSR frame contents back into our frame first); if it's a rewrite,
              * we'll transition and continue executing.
              */
-            b.startReturn().cast(type(int.class)).string("osrResult").end();
+            b.startReturn().cast(type(long.class)).string("osrResult").end();
             b.end();
 
             b.end();
@@ -15125,7 +15178,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private static void emitReturnTopOfStack(CodeTreeBuilder b) {
-            b.startReturn().string("((sp - 1) << 16) | 0xFFFF").end();
+            b.startReturn().string(encodeReturnState("(sp - 1)")).end();
         }
 
         private void emitBeforeReturnProfiling(CodeTreeBuilder b) {
@@ -15232,12 +15285,12 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.statement(setFrameObject(COROUTINE_FRAME_INDEX, "parentFrame"));
             b.statement(setFrameObject("root.maxLocals + sp - 1", "inputValue"));
             b.declaration(types.BytecodeLocation, "bytecodeLocation", "location");
-            b.statement("int startState = ((sp + root.maxLocals) << 16) | (bytecodeLocation.getBytecodeIndex() & 0xFFFF)");
 
             b.startReturn();
             b.startCall("root.continueAt");
             b.startGroup().cast(abstractBytecodeNode.asType()).string("bytecodeLocation.getBytecodeNode()").end();
-            b.string("startState");
+            b.string("bytecodeLocation.getBytecodeIndex()"); // bci
+            b.string("sp + root.maxLocals"); // sp
             b.string("frame");
             b.string("parentFrame");
             b.string("this");

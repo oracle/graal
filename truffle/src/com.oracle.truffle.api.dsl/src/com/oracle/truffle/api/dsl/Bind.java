@@ -99,7 +99,7 @@ public @interface Bind {
      * The extract expression.
      *
      * @see Bind
-     * @since 20.2
+     * @since 24.2
      */
     String value() default "";
 
@@ -112,7 +112,7 @@ public @interface Bind {
          * The default symbol to be used for a particular type.
          *
          * @see Bind
-         * @since 20.2
+         * @since 24.2
          */
         String value();
 
