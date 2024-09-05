@@ -33,6 +33,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.nmt.NmtCategory;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
@@ -44,11 +45,11 @@ public abstract class ChunkBasedCommittedMemoryProvider extends AbstractCommitte
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Pointer allocateAlignedChunk(UnsignedWord nbytes, UnsignedWord alignment) {
-        return allocate(nbytes, alignment, false);
+        return allocate(nbytes, alignment, false, NmtCategory.JavaHeap);
     }
 
     public Pointer allocateUnalignedChunk(UnsignedWord nbytes) {
-        return allocate(nbytes, getAlignmentForUnalignedChunks(), false);
+        return allocate(nbytes, getAlignmentForUnalignedChunks(), false, NmtCategory.JavaHeap);
     }
 
     /**
@@ -61,12 +62,12 @@ public abstract class ChunkBasedCommittedMemoryProvider extends AbstractCommitte
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void freeAlignedChunk(PointerBase start, UnsignedWord nbytes, @SuppressWarnings("unused") UnsignedWord alignment) {
-        free(start, nbytes);
+        free(start, nbytes, NmtCategory.JavaHeap);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void freeUnalignedChunk(PointerBase start, UnsignedWord nbytes) {
-        free(start, nbytes);
+        free(start, nbytes, NmtCategory.JavaHeap);
     }
 
     /**

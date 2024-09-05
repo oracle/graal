@@ -231,6 +231,10 @@ public abstract class Heap {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract UnsignedWord getUsedMemoryAfterLastGC();
 
+    public abstract UnsignedWord getImageHeapReservedBytes();
+
+    public abstract UnsignedWord getImageHeapCommittedBytes();
+
     /** Consider all references in the given object as needing remembered set entries. */
     @Uninterruptible(reason = "Ensure that no GC can occur between modification of the object and this call.", callerMustBe = true)
     public abstract void dirtyAllReferencesOf(Object obj);

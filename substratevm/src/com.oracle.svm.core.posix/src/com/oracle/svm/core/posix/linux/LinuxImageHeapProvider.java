@@ -147,12 +147,11 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected UnsignedWord getImageHeapAddressSpaceSize() {
+    public UnsignedWord getImageHeapAddressSpaceSize() {
         if (ImageLayerBuildingSupport.buildingImageLayer()) {
             return getLayeredImageHeapAddressSpaceSize();
-        } else {
-            return super.getImageHeapAddressSpaceSize();
         }
+        return super.getImageHeapAddressSpaceSize();
     }
 
     @Uninterruptible(reason = "Called during isolate initialization.")
