@@ -622,6 +622,10 @@ public class AnalysisUniverse implements Universe {
     }
 
     public JavaConstant replaceObjectWithConstant(Object source) {
+        return replaceObjectWithConstant(source, getHostedValuesProvider()::forObject);
+    }
+
+    public JavaConstant replaceObjectWithConstant(Object source, Function<Object, JavaConstant> converter) {
         assert !(source instanceof ImageHeapConstant) : source;
 
         var replacedObject = replaceObject0(source, true);
@@ -629,7 +633,7 @@ public class AnalysisUniverse implements Universe {
             return constant;
         }
 
-        return getHostedValuesProvider().forObject(replacedObject);
+        return converter.apply(replacedObject);
     }
 
     /**

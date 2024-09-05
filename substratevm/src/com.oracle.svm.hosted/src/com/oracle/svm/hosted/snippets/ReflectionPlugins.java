@@ -422,7 +422,22 @@ public final class ReflectionPlugins {
             return false;
         }
 
-        return pushConstant(b, targetMethod, clazz::getName, JavaKind.Object, clazz.getClassLoader(), true) != null;
+        // GR-57649 generalize code if needed in more places
+        ClassLoader loader = clazz.getClassLoader();
+        JavaConstant result;
+        if (loader == null) {
+            result = JavaConstant.NULL_POINTER;
+        } else {
+            result = getIntrinsicConstant(b, loader);
+        }
+
+        if (result != null) {
+            b.addPush(JavaKind.Object, ConstantNode.forConstant(result, b.getMetaAccess()));
+            traceConstant(b, targetMethod, clazz::getName, result);
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -667,6 +682,25 @@ public final class ReflectionPlugins {
             return null;
         }
         return (T) aUniverse.replaceObject(element);
+    }
+
+    /**
+     * Same as {@link #getIntrinsic}, but returns a {@link JavaConstant}.
+     */
+    private JavaConstant getIntrinsicConstant(GraphBuilderContext context, Object element) {
+        if (reason == ParsingReason.AutomaticUnsafeTransformation || reason == ParsingReason.EarlyClassInitializerAnalysis) {
+            /* We are analyzing the static initializers and should always intrinsify. */
+            return context.getSnippetReflection().forObject(element);
+        }
+        if (isDeleted(element, context.getMetaAccess())) {
+            /*
+             * Should not intrinsify. Will fail during the reflective lookup at runtime. @Delete-ed
+             * elements are ignored by the reflection plugins regardless of the value of
+             * ReportUnsupportedElementsAtRuntime.
+             */
+            return null;
+        }
+        return aUniverse.replaceObjectWithConstant(element, context.getSnippetReflection()::forObject);
     }
 
     private static <T> boolean isDeleted(T element, MetaAccessProvider metaAccess) {
