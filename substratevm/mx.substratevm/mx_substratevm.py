@@ -953,11 +953,11 @@ def _helloworld(native_image, javac_command, path, build_only, args, variant=lis
             raise Exception('Unexpected output: ' + str(actual_output) + "  !=  " + str(expected_output))
 
 def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
-    mx.log("path=%s"%path)
+    mx.log(f"path={path}")
     sourcepath = mx.project('com.oracle.svm.test').source_dirs()[0]
-    mx.log("sourcepath=%s"%sourcepath)
+    mx.log(f"sourcepath={sourcepath}")
     sourcecache = join(path, 'sources')
-    mx.log("sourcecache=%s"%sourcecache)
+    mx.log(f"sourcecache={sourcecache}")
     # the header file for foreign types resides at the root of the
     # com.oracle.svm.test source tree
     cincludepath = sourcepath
@@ -993,14 +993,13 @@ def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
         build_args = native_image_args + extra_args + [
             '-o', join(per_build_path, image_name)
         ]
-        mx.log('native_image {}'.format(build_args))
+        mx.log(f'native_image {build_args}')
         return native_image(build_args)
 
     # build with and without Isolates and check both work
     if '--libc=musl' in args:
-        os.environ.update({'debuginfotest_musl' : 'yes'})
+        os.environ.update({'debuginfotest_musl': 'yes'})
 
-    gdb_utils_py = join(suite.dir, 'mx.substratevm', 'gdb_utils.py')
     testhello_py = join(suite.dir, 'mx.substratevm', 'testhello.py')
     testhello_args = [
         # We do not want to step into class initializer, so initialize everything at build time.
@@ -1008,18 +1007,18 @@ def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
         'hello.Hello'
     ]
     if mx.get_os() == 'linux' and not build_only:
-        os.environ.update({'debuginfotest_arch' : mx.get_arch()})
+        os.environ.update({'debuginfotest_arch': mx.get_arch()})
 
     if not with_isolates_only:
         hello_binary = build_debug_test('isolates_off', 'hello_image', testhello_args + svm_experimental_options(['-H:-SpawnIsolates']))
         if mx.get_os() == 'linux' and not build_only:
-            os.environ.update({'debuginfotest_isolates' : 'no'})
-            mx.run([os.environ.get('GDB_BIN', 'gdb'), '-ex', 'python "ISOLATES=False"', '-x', gdb_utils_py, '-x', testhello_py, hello_binary])
+            os.environ.update({'debuginfotest_isolates': 'no'})
+            mx.run([os.environ.get('GDB_BIN', 'gdb'), '--nx', '-q', '-iex', 'set pagination off', '-ex', 'python "ISOLATES=False"', '-x', testhello_py, hello_binary])
 
     hello_binary = build_debug_test('isolates_on', 'hello_image', testhello_args + svm_experimental_options(['-H:+SpawnIsolates']))
     if mx.get_os() == 'linux' and not build_only:
-        os.environ.update({'debuginfotest_isolates' : 'yes'})
-        mx.run([os.environ.get('GDB_BIN', 'gdb'), '-ex', 'python "ISOLATES=True"', '-x', gdb_utils_py, '-x', testhello_py, hello_binary])
+        os.environ.update({'debuginfotest_isolates': 'yes'})
+        mx.run([os.environ.get('GDB_BIN', 'gdb'), '--nx', '-q', '-iex', 'set pagination off', '-ex', 'python "ISOLATES=True"', '-x', testhello_py, hello_binary])
 
 
 def _gdbdebughelperstest(native_image, path, with_isolates_only, args):
