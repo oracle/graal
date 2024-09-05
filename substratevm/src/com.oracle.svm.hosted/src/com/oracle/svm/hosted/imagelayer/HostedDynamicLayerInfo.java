@@ -67,7 +67,7 @@ public class HostedDynamicLayerInfo extends DynamicImageLayerInfo implements Lay
     private final Map<Integer, Integer> methodIdToOffsetMap;
     private final ConcurrentHashMap<Integer, MethodNameInfo> methodIdToNameInfoMap;
     private final CGlobalData<PointerBase> cGlobalData;
-    private final Set<HostedMethod> priorLayerHostedMethods = new HashSet<>();
+    private final Set<String> priorLayerMethodSymbols = new HashSet<>();
     private boolean persisted = false;
 
     HostedDynamicLayerInfo() {
@@ -131,14 +131,14 @@ public class HostedDynamicLayerInfo extends DynamicImageLayerInfo implements Lay
         AnalysisMethod aMethod = hMethod.getWrapped();
         if (compiledInPriorLayer(aMethod)) {
             assert aMethod.isInBaseLayer() : hMethod;
-            priorLayerHostedMethods.add(hMethod);
+            priorLayerMethodSymbols.add(localSymbolNameForMethod(hMethod));
             hMethod.setCompiledInPriorLayer();
         }
     }
 
     public void defineSymbolsForPriorLayerMethods(ObjectFile objectFile) {
         assert BuildPhaseProvider.isHeapLayoutFinished();
-        priorLayerHostedMethods.forEach(m -> objectFile.createUndefinedSymbol(localSymbolNameForMethod(m), 0, true));
+        priorLayerMethodSymbols.forEach(symbol -> objectFile.createUndefinedSymbol(symbol, 0, true));
     }
 
     @Override

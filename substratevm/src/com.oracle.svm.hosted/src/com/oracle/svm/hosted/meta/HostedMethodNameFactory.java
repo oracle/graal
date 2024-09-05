@@ -54,22 +54,31 @@ public class HostedMethodNameFactory implements InternalFeature {
 
     MethodNameInfo createNames(Function<Integer, MethodNameInfo> nameGenerator, AnalysisMethod aMethod) {
         MethodNameInfo result = buildingExtensionLayer ? HostedDynamicLayerInfo.singleton().loadMethodNameInfo(aMethod) : null;
-        if (result == null) {
-            MethodNameInfo initialName = nameGenerator.apply(0);
-            result = initialName;
-
-            do {
-                int collisionCount = methodNameCount.merge(initialName.uniqueShortName(), 0, (oldValue, value) -> oldValue + 1);
-                if (collisionCount != 0) {
-                    result = nameGenerator.apply(collisionCount);
-                }
-                /*
-                 * Redo if the short name is reserved.
-                 */
-            } while (buildingExtensionLayer && reservedUniqueShortNames.contains(result.uniqueShortName()));
-        } else {
+        if (result != null) {
             assert reservedUniqueShortNames.contains(result.uniqueShortName()) : result;
+
+            boolean added = uniqueShortNames.add(result.uniqueShortName());
+            if (added) {
+                /*
+                 * Currently it is possible for the same method id to be assigned to multiple
+                 * AnalysisMethods. However, only one is assigned this name.
+                 */
+                return result;
+            }
         }
+
+        MethodNameInfo initialName = nameGenerator.apply(0);
+        result = initialName;
+
+        do {
+            int collisionCount = methodNameCount.merge(initialName.uniqueShortName(), 0, (oldValue, value) -> oldValue + 1);
+            if (collisionCount != 0) {
+                result = nameGenerator.apply(collisionCount);
+            }
+            /*
+             * Redo if the short name is reserved.
+             */
+        } while (buildingExtensionLayer && reservedUniqueShortNames.contains(result.uniqueShortName()));
 
         boolean added = uniqueShortNames.add(result.uniqueShortName());
         VMError.guarantee(added, "failed to generate uniqueShortName for HostedMethod: %s", result.uniqueShortName());
