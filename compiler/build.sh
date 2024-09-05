@@ -1,3 +1,3 @@
 #!bin/bash
 
-mx build --only jdk.internal.vm.compiler
+mx build --only jdk.graal.compiler
