@@ -256,7 +256,7 @@ public final class Target_java_lang_ClassLoader {
      */
     @Substitute
     @TargetElement(onlyWith = JDKLatest.class)
-    private static long findNativeInternal(@SuppressWarnings("unused") ClassLoader loader, String entryName) {
+    private static long findNative(@SuppressWarnings("unused") ClassLoader loader, @SuppressWarnings("unused") Class<?> clazz, String entryName, @SuppressWarnings("unused") String javaName) {
         return NativeLibrarySupport.singleton().findSymbol(entryName).rawValue();
     }
 
