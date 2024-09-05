@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,7 +37,7 @@ import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -48,7 +48,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 @GenerateUncached
 public abstract class LLVMInteropInvokeNode extends LLVMNode {
     public abstract Object execute(LLVMPointer receiver, LLVMInteropType type, String member, Object[] arguments)
-                    throws ArityException, UnknownIdentifierException, UnsupportedTypeException, UnsupportedMessageException;
+                    throws ArityException, UnknownMemberException, UnsupportedTypeException, UnsupportedMessageException;
 
     public static LLVMInteropInvokeNode create() {
         return LLVMInteropInvokeNodeGen.create();
@@ -60,7 +60,7 @@ public abstract class LLVMInteropInvokeNode extends LLVMNode {
                     @Cached LLVMInteropMethodInvokeNode invoke,
                     @Cached LLVMSelfArgumentPackNode selfPackNode,
                     @CachedLibrary(limit = "5") InteropLibrary interop)
-                    throws ArityException, UnknownIdentifierException, UnsupportedTypeException, UnsupportedMessageException {
+                    throws ArityException, UnknownMemberException, UnsupportedTypeException, UnsupportedMessageException {
         Object[] selfArgs = selfPackNode.execute(receiver, arguments);
         Method methodObject = type.findMethodByArgumentsWithSelf(method, selfArgs);
         if (methodObject == null) {
@@ -77,8 +77,8 @@ public abstract class LLVMInteropInvokeNode extends LLVMNode {
     @GenerateAOT.Exclude
     Object doStruct(LLVMPointer receiver, LLVMInteropType.Struct type, String member, Object[] arguments,
                     @CachedLibrary(limit = "5") InteropLibrary interop)
-                    throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException, ArityException {
-        Object readMember = interop.readMember(receiver, member);
+                    throws UnsupportedMessageException, UnknownMemberException, UnsupportedTypeException, ArityException {
+        Object readMember = interop.readMember(receiver, (Object) member);
         return interop.execute(readMember, arguments);
     }
 

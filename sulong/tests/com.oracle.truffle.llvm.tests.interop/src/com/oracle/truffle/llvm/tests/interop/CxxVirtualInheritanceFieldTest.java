@@ -637,7 +637,7 @@ public class CxxVirtualInheritanceFieldTest extends InteropTestBase {
         Object doRead(Object a,
                         @CachedLibrary("a") InteropLibrary interop) {
             try {
-                return interop.readMember(a, CxxVirtualInheritanceFieldTest.fieldNameToAccess);
+                return interop.readMember(a, (Object) CxxVirtualInheritanceFieldTest.fieldNameToAccess);
             } catch (InteropException ex) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw new IllegalStateException(ex);
@@ -660,7 +660,7 @@ public class CxxVirtualInheritanceFieldTest extends InteropTestBase {
 
     @Test
     public void testInternal(@Inject(TestCallNode.class) CallTarget call) throws InteropException {
-        Object a = InteropLibrary.getUncached().invokeMember(cppLibraryInternal, "getA39");
+        Object a = InteropLibrary.getUncached().invokeMember(cppLibraryInternal, (Object) "getA39");
         for (int i = 0; i < 40; i++) {
             CxxVirtualInheritanceFieldTest.fieldNameToAccess = "a" + i + "_data";
             Object ret = call.call(a);
@@ -671,7 +671,7 @@ public class CxxVirtualInheritanceFieldTest extends InteropTestBase {
 
     @Test
     public void testInternalA3(@Inject(TestCallNode.class) CallTarget call) throws InteropException {
-        Object a = InteropLibrary.getUncached().invokeMember(cppLibraryInternal, "getA3");
+        Object a = InteropLibrary.getUncached().invokeMember(cppLibraryInternal, (Object) "getA3");
         for (int i = 0; i < 4; i++) {
             CxxVirtualInheritanceFieldTest.fieldNameToAccess = "a" + i + "_data";
             Object ret = call.call(a);

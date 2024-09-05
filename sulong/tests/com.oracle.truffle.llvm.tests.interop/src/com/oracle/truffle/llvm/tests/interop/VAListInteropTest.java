@@ -34,7 +34,7 @@ import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -95,7 +95,7 @@ public class VAListInteropTest extends InteropTestBase {
             }
         }
 
-        private void testInterop(Object... arguments) throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException, ArityException, InvalidArrayIndexException {
+        private void testInterop(Object... arguments) throws UnsupportedMessageException, UnknownMemberException, UnsupportedTypeException, ArityException, InvalidArrayIndexException {
             Object vaList = arguments[0];
             Object libHandle = arguments[1];
 
@@ -109,22 +109,22 @@ public class VAListInteropTest extends InteropTestBase {
             Object saManaged = INTEROP.readArrayElement(vaList, 4);
             assertTrue(saManaged instanceof TruffleObject);
 
-            Object inttTypeId = INTEROP.execute(INTEROP.readMember(libHandle, "get_int_t_typeid"));
-            Object doubletTypeId = INTEROP.execute(INTEROP.readMember(libHandle, "get_double_t_typeid"));
-            Object structATypeId = INTEROP.execute(INTEROP.readMember(libHandle, "get_StructA_typeid"));
+            Object inttTypeId = INTEROP.execute(INTEROP.readMember(libHandle, (Object) "get_int_t_typeid"));
+            Object doubletTypeId = INTEROP.execute(INTEROP.readMember(libHandle, (Object) "get_double_t_typeid"));
+            Object structATypeId = INTEROP.execute(INTEROP.readMember(libHandle, (Object) "get_StructA_typeid"));
 
             Object[] types = {inttTypeId, inttTypeId, doubletTypeId, structATypeId, structATypeId};
 
             Object[] values = new Object[types.length];
             for (int i = types.length - 1; i >= 0; i--) {
-                values[i] = INTEROP.invokeMember(vaList, "get", i, types[i]);
+                values[i] = INTEROP.invokeMember(vaList, (Object) "get", i, types[i]);
             }
 
             checkValues(saNative, structATypeId, values);
 
             if (useNextMessage) {
                 for (int i = 0; i < types.length; i++) {
-                    values[i] = INTEROP.invokeMember(vaList, "next", types[i]);
+                    values[i] = INTEROP.invokeMember(vaList, (Object) "next", types[i]);
                 }
                 checkValues(saNative, structATypeId, values);
             }

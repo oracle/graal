@@ -73,6 +73,7 @@ import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
 @ExportLibrary(value = LLVMVaListLibrary.class, useForAOT = true, useForAOTPriority = 2)
 @ExportLibrary(value = NativeTypeLibrary.class, useForAOT = true, useForAOTPriority = 1)
 @ExportLibrary(InteropLibrary.class)
+@SuppressWarnings("truffle-abstract-export") // GR-57971
 public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
     // va_list is an alias for char*
     public static final PointerType VA_LIST_TYPE = PointerType.I8;

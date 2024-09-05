@@ -66,7 +66,7 @@ public class CxxVTableTest2 extends InteropTestBase {
         preparePolyglotA = testCppLibrary.getMember("preparePolyglotA");
         preparePolyglotBasA = testCppLibrary.getMember("preparePolyglotBasA");
         try {
-            preparePolyglotBasAInternal = InteropLibrary.getUncached().readMember(testCppLibraryInternal, "preparePolyglotBasA");
+            preparePolyglotBasAInternal = InteropLibrary.getUncached().readMember(testCppLibraryInternal, (Object) "preparePolyglotBasA");
         } catch (InteropException e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new IllegalStateException(e);
@@ -80,7 +80,7 @@ public class CxxVTableTest2 extends InteropTestBase {
         Object doFoo1(Object a,
                         @CachedLibrary("a") InteropLibrary interop) {
             try {
-                return interop.invokeMember(a, "foo1");
+                return interop.invokeMember(a, (Object) "foo1");
             } catch (InteropException ex) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw new IllegalStateException(ex);
@@ -123,7 +123,7 @@ public class CxxVTableTest2 extends InteropTestBase {
         Value a = preparePolyglotBasA.execute();
 
         UnsupportedOperationException exception = Assert.assertThrows(UnsupportedOperationException.class, () -> a.invokeMember("foo3").asInt());
-        MatcherAssert.assertThat(exception.getMessage(), StringContains.containsString("Non readable or non-existent member key 'foo3'"));
+        MatcherAssert.assertThat(exception.getMessage(), StringContains.containsString("Non readable or non-existent member 'foo3'"));
     }
 
     @Test

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -72,7 +72,7 @@ public abstract class LLVMDLSym extends LLVMIntrinsic {
                     @Cached WrappedFunctionNode wrapper) {
         try {
             String symbolName = readStr.executeWithTarget(symbol);
-            Object function = interop.readMember(getLibrary(libraryHandle), symbolName);
+            Object function = interop.readMember(getLibrary(libraryHandle), (Object) symbolName);
             return wrapper.execute(function);
         } catch (InteropException e) {
             getContext().setDLError(2);

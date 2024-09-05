@@ -152,7 +152,7 @@ public class InteropTestBase {
         protected SulongTestNode(Object testLibrary, String fnName) {
             super(null);
             try {
-                function = InteropLibrary.getFactory().getUncached().readMember(testLibrary, fnName);
+                function = InteropLibrary.getFactory().getUncached().readMember(testLibrary, (Object) fnName);
             } catch (InteropException ex) {
                 throw new AssertionError(ex);
             }

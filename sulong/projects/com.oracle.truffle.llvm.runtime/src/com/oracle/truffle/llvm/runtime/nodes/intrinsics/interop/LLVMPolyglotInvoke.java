@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,7 +36,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -80,9 +80,9 @@ public abstract class LLVMPolyglotInvoke extends LLVMIntrinsic {
             evaluatedArgs[i] = prepareValuesForEscape[i].executeWithTarget(args[i].executeGeneric(frame));
         }
         try {
-            Object rawValue = foreignInvoke.invokeMember(value, id, evaluatedArgs);
+            Object rawValue = foreignInvoke.invokeMember(value, (Object) id, evaluatedArgs);
             return toLLVM.executeWithTarget(rawValue);
-        } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
+        } catch (UnknownMemberException | UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
             exception.enter();
             throw new LLVMPolyglotException(this, e.getMessage());
         }

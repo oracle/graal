@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,7 +33,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.NodeLibrary;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
@@ -58,8 +58,8 @@ public abstract class DebugExprTypeofNode extends LLVMExpressionNode {
         InteropLibrary interopLibrary = InteropLibrary.getUncached();
         try {
             LLVMDebuggerValue entries = (LLVMDebuggerValue) nodeLibrary.getScope(location, frame, false);
-            if (interopLibrary.isMemberReadable(entries, name)) {
-                Object member = interopLibrary.readMember(entries, name);
+            if (interopLibrary.isMemberReadable(entries, (Object) name)) {
+                Object member = interopLibrary.readMember(entries, (Object) name);
                 LLVMDebuggerValue ldv = (LLVMDebuggerValue) member;
                 Object metaObj = ldv.resolveMetaObject();
                 return (LLVMSourceType) metaObj;
@@ -71,8 +71,8 @@ public abstract class DebugExprTypeofNode extends LLVMExpressionNode {
         } catch (UnsupportedMessageException e) {
             // should only happen if hasMembers == false
             throw DebugExprException.symbolNotFound(this, name, null);
-        } catch (UnknownIdentifierException e) {
-            throw DebugExprException.symbolNotFound(this, e.getUnknownIdentifier(), null);
+        } catch (UnknownMemberException e) {
+            throw DebugExprException.symbolNotFound(this, name, null);
         }
         return LLVMSourceType.UNKNOWN;
     }

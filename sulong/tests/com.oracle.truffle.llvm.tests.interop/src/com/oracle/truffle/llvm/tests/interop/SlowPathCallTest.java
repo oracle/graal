@@ -65,11 +65,11 @@ public class SlowPathCallTest extends InteropTestBase {
             InteropLibrary interop = InteropLibrary.getFactory().getUncached(testLibrary);
             try {
                 function = new Object[]{
-                                interop.readMember(testLibrary, "get_a"),
-                                interop.readMember(testLibrary, "get_b"),
-                                interop.readMember(testLibrary, "get_c"),
-                                interop.readMember(testLibrary, "get_d"),
-                                interop.readMember(testLibrary, "get_e")
+                                interop.readMember(testLibrary, (Object) "get_a"),
+                                interop.readMember(testLibrary, (Object) "get_b"),
+                                interop.readMember(testLibrary, (Object) "get_c"),
+                                interop.readMember(testLibrary, (Object) "get_d"),
+                                interop.readMember(testLibrary, (Object) "get_e")
                 };
             } catch (InteropException ex) {
                 throw new AssertionError(ex);
