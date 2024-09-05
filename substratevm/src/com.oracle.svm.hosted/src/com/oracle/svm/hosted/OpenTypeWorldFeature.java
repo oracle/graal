@@ -449,7 +449,7 @@ public class OpenTypeWorldFeature implements InternalFeature {
                     } else {
                         if (priorIdx != vTableIndex) {
                             if (generateErrorMessage()) {
-                                String message = String.format("VTable Index Mismatch %s. prior: %s new: %s", method.format("%H.%n"), priorIdx, vTableIndex);
+                                String message = String.format("VTable Index Mismatch %s. prior: %s new: %s", method.format("%H.%n(%p)"), priorIdx, vTableIndex);
                                 if (logErrorMessages()) {
                                     System.out.println(message);
                                 }
