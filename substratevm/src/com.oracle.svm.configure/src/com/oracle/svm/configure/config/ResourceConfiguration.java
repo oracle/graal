@@ -342,19 +342,19 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
     @Override
     public void printJson(JsonWriter writer) throws IOException {
         printGlobsJson(writer, true);
-        writer.appendSeparator().newline();
+        writer.appendSeparator();
         printBundlesJson(writer, true);
     }
 
     @Override
     public void printLegacyJson(JsonWriter writer) throws IOException {
-        writer.appendObjectStart().indent().newline();
+        writer.appendObjectStart();
         printResourcesJson(writer);
-        writer.appendSeparator().newline();
+        writer.appendSeparator();
         printBundlesJson(writer, false);
-        writer.appendSeparator().newline();
+        writer.appendSeparator();
         printGlobsJson(writer, false);
-        writer.unindent().newline().appendObjectEnd();
+        writer.appendObjectEnd();
     }
 
     void printResourcesJson(JsonWriter writer) throws IOException {
