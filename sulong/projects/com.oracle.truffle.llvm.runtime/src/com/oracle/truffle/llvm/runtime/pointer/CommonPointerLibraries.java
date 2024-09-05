@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -48,6 +48,7 @@ import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -91,7 +92,7 @@ import com.oracle.truffle.llvm.runtime.nodes.op.LLVMAddressEqualsNode;
 @ExportLibrary(value = InteropLibrary.class, receiverType = LLVMPointerImpl.class)
 @ExportLibrary(value = LLVMManagedWriteLibrary.class, receiverType = LLVMPointerImpl.class, useForAOT = true, useForAOTPriority = 1)
 @ExportLibrary(value = LLVMManagedReadLibrary.class, receiverType = LLVMPointerImpl.class, useForAOT = true, useForAOTPriority = 2)
-@SuppressWarnings({"static-method"})
+@SuppressWarnings({"static-method", "truffle-abstract-export", "deprecation"}) // GR-57971
 abstract class CommonPointerLibraries {
     @ExportMessage
     static boolean isReadable(@SuppressWarnings("unused") LLVMPointerImpl receiver) {
@@ -231,7 +232,7 @@ abstract class CommonPointerLibraries {
     /**
      * @param receiver
      * @param includeInternal
-     * @see InteropLibrary#getMembers(Object, boolean)
+     * @see InteropLibrary#getMemberObjects(Object)
      */
     @ExportMessage
     static Object getMembers(LLVMPointerImpl receiver, boolean includeInternal,
@@ -272,7 +273,12 @@ abstract class CommonPointerLibraries {
                     @Shared("getDirectClass") @Cached LLVMResolveForeignClassChainNode resolveClassChain,
                     @Shared("getMember") @Cached LLVMForeignGetMemberPointerNode getElementPointer,
                     @Exclusive @Cached LLVMForeignReadNode read) throws UnsupportedMessageException, UnknownIdentifierException {
-        LLVMPointer correctClassPtr = resolveClassChain.execute(receiver, ident, receiver.getExportType());
+        LLVMPointer correctClassPtr;
+        try {
+            correctClassPtr = resolveClassChain.execute(receiver, ident, receiver.getExportType());
+        } catch (UnknownMemberException ex) {
+            throw UnknownIdentifierException.create(ident);
+        }
         LLVMPointer ptr = getElementPointer.execute(correctClassPtr.getExportType(), correctClassPtr, ident);
         return read.execute(ptr, ptr.getExportType());
     }
@@ -301,7 +307,7 @@ abstract class CommonPointerLibraries {
     /**
      * @param receiver
      * @param ident
-     * @see InteropLibrary#isMemberInsertable(Object, String)
+     * @see InteropLibrary#isMemberInsertable(Object, Object)
      */
     @ExportMessage
     static boolean isMemberInvocable(LLVMPointerImpl receiver, String ident, @CachedLibrary(limit = "5") InteropLibrary interop) {
@@ -334,7 +340,11 @@ abstract class CommonPointerLibraries {
                     @Cached LLVMInteropInvokeNode invoke)
                     throws UnsupportedMessageException, ArityException, UnknownIdentifierException,
                     UnsupportedTypeException {
-        return invoke.execute(receiver, receiver.getExportType(), member, arguments);
+        try {
+            return invoke.execute(receiver, receiver.getExportType(), member, arguments);
+        } catch (UnknownMemberException ex) {
+            throw UnknownIdentifierException.create(member);
+        }
     }
 
     /**
@@ -352,7 +362,12 @@ abstract class CommonPointerLibraries {
                     @Shared("getMember") @Cached LLVMForeignGetMemberPointerNode getElementPointer,
                     @Exclusive @Cached LLVMForeignWriteNode write)
                     throws UnsupportedMessageException, UnknownIdentifierException {
-        LLVMPointer correctClassPtr = resolveClassChain.execute(receiver, ident, receiver.getExportType());
+        LLVMPointer correctClassPtr;
+        try {
+            correctClassPtr = resolveClassChain.execute(receiver, ident, receiver.getExportType());
+        } catch (UnknownMemberException ex) {
+            throw UnknownIdentifierException.create(ident);
+        }
         LLVMPointer ptr = getElementPointer.execute(correctClassPtr.getExportType(), correctClassPtr, ident);
         write.execute(ptr, ptr.getExportType(), value);
     }

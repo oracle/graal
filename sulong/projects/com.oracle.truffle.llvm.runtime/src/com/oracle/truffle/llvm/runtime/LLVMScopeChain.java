@@ -47,7 +47,7 @@ import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @ExportLibrary(InteropLibrary.class)
-@SuppressWarnings("static-method")
+@SuppressWarnings({"static-method", "truffle-abstract-export", "deprecation"}) // GR-57971
 public class LLVMScopeChain implements TruffleObject {
 
     private LLVMScopeChain next;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,7 +36,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
@@ -65,9 +65,9 @@ public abstract class DebugExprFunctionCallNode extends LLVMExpressionNode {
     @TruffleBoundary
     public DebugExprType getType() {
         InteropLibrary library = InteropLibrary.getFactory().getUncached();
-        if (library.isMemberReadable(scope, functionName)) {
+        if (library.isMemberReadable(scope, (Object) functionName)) {
             try {
-                Object member = library.readMember(scope, functionName);
+                Object member = library.readMember(scope, (Object) functionName);
                 if (LLVMManagedPointer.isInstance(member)) {
                     LLVMManagedPointer pointer = LLVMManagedPointer.cast(member);
                     if (pointer.getOffset() == 0) {
@@ -84,7 +84,7 @@ public abstract class DebugExprFunctionCallNode extends LLVMExpressionNode {
                 }
             } catch (UnsupportedMessageException e) {
                 throw DebugExprException.create(this, "error while accessing function %s", functionName);
-            } catch (UnknownIdentifierException e) {
+            } catch (UnknownMemberException e) {
                 // fallthrough
             }
         }
@@ -94,9 +94,9 @@ public abstract class DebugExprFunctionCallNode extends LLVMExpressionNode {
     @Specialization
     Object doCall(VirtualFrame frame) {
         InteropLibrary library = InteropLibrary.getFactory().getUncached();
-        if (library.isMemberExisting(scope, functionName)) {
+        if (library.isMemberExisting(scope, (Object) functionName)) {
             try {
-                Object member = library.readMember(scope, functionName);
+                Object member = library.readMember(scope, (Object) functionName);
                 if (library.isExecutable(member)) {
                     try {
                         Object[] argumentArr = new Object[arguments.length];
@@ -114,8 +114,8 @@ public abstract class DebugExprFunctionCallNode extends LLVMExpressionNode {
                 }
             } catch (UnsupportedMessageException e1) {
                 throw DebugExprException.create(this, "Error while accessing function %s", functionName);
-            } catch (UnknownIdentifierException e1) {
-                throw DebugExprException.symbolNotFound(this, e1.getUnknownIdentifier(), functionName);
+            } catch (UnknownMemberException e1) {
+                throw DebugExprException.symbolNotFound(this, functionName, scope);
             }
         }
         throw DebugExprException.symbolNotFound(this, functionName, null);

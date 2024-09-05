@@ -115,8 +115,8 @@ public class MultiContextBuiltinsTest {
         }
 
         Object testLib = runWithPolyglot.getTruffleTestEnv().parsePublic(source).call();
-        createHandle = INTEROP.invokeMember(testLib, "getCreateHandleFn");
-        resolveHandle = INTEROP.invokeMember(testLib, "getResolveHandleFn");
+        createHandle = INTEROP.invokeMember(testLib, (Object) "getCreateHandleFn");
+        resolveHandle = INTEROP.invokeMember(testLib, (Object) "getResolveHandleFn");
     }
 
     public class InteropExecute extends RootNode {

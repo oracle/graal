@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -54,7 +54,7 @@ public abstract class LLVMPolyglotHasMember extends LLVMIntrinsic {
                     @CachedLibrary(limit = "3") InteropLibrary interop) {
         Object foreign = asForeign.execute(object);
         String id = readString.executeWithTarget(name);
-        return interop.isMemberExisting(foreign, id);
+        return interop.isMemberExisting(foreign, (Object) id);
     }
 
     /**

@@ -74,7 +74,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 @ExportLibrary(InteropLibrary.class)
 @ExportLibrary(value = LLVMNativeLibrary.class, useForAOT = false)
 @ExportLibrary(value = LLVMAsForeignLibrary.class, useForAOT = true, useForAOTPriority = 2)
-@SuppressWarnings("static-method")
+@SuppressWarnings({"static-method", "truffle-abstract-export", "deprecation"}) // GR-57971
 public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject implements Comparable<LLVMFunctionDescriptor> {
     private static final long SULONG_FUNCTION_POINTER_TAG = 0xBADE_FACE_0000_0000L;
 

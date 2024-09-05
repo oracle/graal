@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -38,7 +38,7 @@ import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -321,9 +321,9 @@ public abstract class LLVMInteropType implements TruffleObject {
 
         /**
          *
-         * @throws UnknownIdentifierException
+         * @throws UnknownMemberException
          */
-        protected Pair<LinkedList<Long>, Struct> getMemberAccessList(String ident) throws UnknownIdentifierException {
+        protected Pair<LinkedList<Long>, Struct> getMemberAccessList(String ident) throws UnknownMemberException {
             for (StructMember member : members) {
                 if (member.name.equals(ident)) {
                     return Pair.create(new LinkedList<>(), this);
@@ -493,11 +493,11 @@ public abstract class LLVMInteropType implements TruffleObject {
          * @param ident name (String) of the StructMember
          * @return an array of long values containing offset and a boolean flag, and the type of the
          *         struct/class that contains the member named as 'ident'
-         * @throws UnknownIdentifierException if neither self class nor parent classes contain a
+         * @throws UnknownMemberException if neither self class nor parent classes contain a
          *             StructMember with name 'ident'
          */
         @TruffleBoundary
-        public Pair<long[], Struct> getSuperOffsetInformation(String ident) throws UnknownIdentifierException {
+        public Pair<long[], Struct> getSuperOffsetInformation(String ident) throws UnknownMemberException {
             for (StructMember member : members) {
                 if (member.name.equals(ident)) {
                     return Pair.create(new long[0], this);
@@ -505,7 +505,7 @@ public abstract class LLVMInteropType implements TruffleObject {
             }
             Pair<LinkedList<Long>, Struct> pair = getMemberAccessList(ident);
             if (pair == null) {
-                throw UnknownIdentifierException.create(ident);
+                throw UnknownMemberException.create(ident);
             }
             long[] arr = pair.getLeft().stream().mapToLong(l -> l).toArray();
             return Pair.create(arr, pair.getRight());
@@ -513,7 +513,7 @@ public abstract class LLVMInteropType implements TruffleObject {
 
         @Override
         @TruffleBoundary
-        protected Pair<LinkedList<Long>, Struct> getMemberAccessList(String ident) throws UnknownIdentifierException {
+        protected Pair<LinkedList<Long>, Struct> getMemberAccessList(String ident) throws UnknownMemberException {
             for (StructMember member : members) {
                 if (member.name.equals(ident)) {
                     return Pair.create(new LinkedList<>(), this);
@@ -725,11 +725,11 @@ public abstract class LLVMInteropType implements TruffleObject {
             } else {
                 final String methodName = m.getName();
                 try {
-                    Object readMember = foreignInterop.readMember(foreign, methodName);
+                    Object readMember = foreignInterop.readMember(foreign, (Object) methodName);
                     return new RemoveSelfArgument(readMember);
-                } catch (UnknownIdentifierException e) {
+                } catch (UnknownMemberException e) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    final String msg = String.format("External method %s (identifier \"%s\") not found in type %s", methodName, e.getUnknownIdentifier(), foreign.getClass().getSimpleName());
+                    final String msg = String.format("External method %s (identifier \"%s\") not found in type %s", methodName, methodName, foreign.getClass().getSimpleName());
                     throw new IllegalStateException(msg);
                     // TODO pichristoph: change to UnknownIdentifierException
                 }

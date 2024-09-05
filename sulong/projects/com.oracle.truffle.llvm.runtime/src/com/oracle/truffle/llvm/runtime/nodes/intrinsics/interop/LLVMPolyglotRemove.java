@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,7 +37,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -63,9 +63,9 @@ public final class LLVMPolyglotRemove {
                         @Cached BranchProfile exception) {
             Object foreign = asForeign.execute(value);
             try {
-                interop.removeMember(foreign, readStr.executeWithTarget(id));
+                interop.removeMember(foreign, (Object) readStr.executeWithTarget(id));
                 return true;
-            } catch (UnknownIdentifierException ex) {
+            } catch (UnknownMemberException ex) {
                 notFound.enter();
                 return false;
             } catch (UnsupportedMessageException ex) {

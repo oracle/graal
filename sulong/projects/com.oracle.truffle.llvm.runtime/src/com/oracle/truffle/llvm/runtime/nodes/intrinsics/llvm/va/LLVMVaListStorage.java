@@ -107,6 +107,7 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 
 @ExportLibrary(InteropLibrary.class)
+@SuppressWarnings({"truffle-abstract-export", "deprecation"}) // GR-57971
 public class LLVMVaListStorage implements TruffleObject {
 
     public enum VarArgArea {

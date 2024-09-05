@@ -302,6 +302,7 @@ abstract class LLVMDebugValue {
         }
 
         @Override
+        @SuppressWarnings("deprecation") // GR-57971
         void check(DebugValue actualValue) {
             checkType(actualValue);
 

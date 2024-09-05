@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,7 +37,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -71,14 +71,14 @@ public abstract class LLVMPolyglotRead extends LLVMIntrinsic {
             Object foreign = asForeign.execute(value);
             String name = readStr.executeWithTarget(id);
             try {
-                Object rawValue = foreignRead.readMember(foreign, name);
+                Object rawValue = foreignRead.readMember(foreign, (Object) name);
                 return toLLVM.executeWithTarget(rawValue);
             } catch (UnsupportedMessageException e) {
                 exception.enter();
                 throw new LLVMPolyglotException(foreignRead, "Cannot read member '%s' of polyglot value.", name);
-            } catch (UnknownIdentifierException e) {
+            } catch (UnknownMemberException e) {
                 exception.enter();
-                throw new LLVMPolyglotException(foreignRead, "Member '%s' does not exist.", e.getUnknownIdentifier());
+                throw new LLVMPolyglotException(foreignRead, "Member '%s' does not exist.", name);
             }
         }
 

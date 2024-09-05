@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -38,7 +38,7 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -87,11 +87,11 @@ public abstract class LLVMInteropWriteNode extends LLVMNode {
                         @Cached BranchProfile exception) {
             assert identifier == location.identifier;
             try {
-                interop.writeMember(location.base, identifier, convertOutgoing.execute(value, location.type, writeType));
+                interop.writeMember(location.base, (Object) identifier, convertOutgoing.execute(value, location.type, writeType));
             } catch (UnsupportedMessageException ex) {
                 exception.enter();
                 throw new LLVMPolyglotException(this, "Cannot write member '%s'.", identifier);
-            } catch (UnknownIdentifierException ex) {
+            } catch (UnknownMemberException ex) {
                 exception.enter();
                 throw new LLVMPolyglotException(this, "Member '%s' not found.", identifier);
             } catch (UnsupportedTypeException ex) {

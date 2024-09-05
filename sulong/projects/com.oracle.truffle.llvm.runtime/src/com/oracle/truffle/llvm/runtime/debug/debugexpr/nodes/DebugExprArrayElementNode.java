@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
@@ -36,7 +37,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -73,13 +74,12 @@ public abstract class DebugExprArrayElementNode extends LLVMExpressionNode {
         if (library.hasMembers(baseMember)) {
             Object getmembers;
             try {
-                getmembers = library.getMembers(baseMember);
+                getmembers = library.getMemberObjects(baseMember);
                 if (library.isArrayElementReadable(getmembers, idx)) {
-                    Object arrayElement = library.readArrayElement(getmembers, idx);
-                    String identifier = library.asString(arrayElement);
-                    if (library.isMemberReadable(baseMember, identifier)) {
-                        Object member = library.readMember(baseMember, identifier);
-                        return type.parse(member);
+                    Object member = library.readArrayElement(getmembers, idx);
+                    if (library.isMemberReadable(baseMember, member)) {
+                        Object memberValue = library.readMember(baseMember, member);
+                        return type.parse(memberValue);
                     }
                 }
             } catch (UnsupportedMessageException e) {
@@ -88,9 +88,15 @@ public abstract class DebugExprArrayElementNode extends LLVMExpressionNode {
             } catch (InvalidArrayIndexException e) {
                 exception.enter();
                 throw DebugExprException.create(this, "Invalid array index: %d", e.getInvalidIndex());
-            } catch (UnknownIdentifierException e) {
+            } catch (UnknownMemberException e) {
                 exception.enter();
-                throw DebugExprException.symbolNotFound(this, e.getUnknownIdentifier(), baseMember);
+                String symbol;
+                try {
+                    symbol = library.asString(library.getMemberSimpleName(e.getUnknownMember()));
+                } catch (UnsupportedMessageException ex) {
+                    throw CompilerDirectives.shouldNotReachHere(ex);
+                }
+                throw DebugExprException.symbolNotFound(this, symbol, baseMember);
             }
         }
         exception.enter();

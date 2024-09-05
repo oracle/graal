@@ -56,6 +56,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
  * source-level state of an executed LLVM IR file.
  */
 @ExportLibrary(InteropLibrary.class)
+@SuppressWarnings("truffle-abstract-export") // GR-57971
 public abstract class LLVMDebugObject extends LLVMDebuggerValue {
 
     private static final InteropLibrary UNCACHED_INTEROP = InteropLibrary.getFactory().getUncached();

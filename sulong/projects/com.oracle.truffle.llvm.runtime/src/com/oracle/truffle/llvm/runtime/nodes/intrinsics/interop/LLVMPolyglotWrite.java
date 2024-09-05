@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,7 +37,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -87,13 +87,13 @@ public final class LLVMPolyglotWrite {
             String name = readStr.executeWithTarget(id);
             Object escapedValue = prepareValueForEscape.executeWithTarget(value);
             try {
-                foreignWrite.writeMember(foreign, name, escapedValue);
+                foreignWrite.writeMember(foreign, (Object) name, escapedValue);
             } catch (UnsupportedMessageException e) {
                 exception.enter();
                 throw new LLVMPolyglotException(foreignWrite, "Cannot write member '%s' to polyglot value.", name);
-            } catch (UnknownIdentifierException e) {
+            } catch (UnknownMemberException e) {
                 exception.enter();
-                throw new LLVMPolyglotException(foreignWrite, "Member '%s' does not exist.", e.getUnknownIdentifier());
+                throw new LLVMPolyglotException(foreignWrite, "Member '%s' does not exist.", name);
             } catch (UnsupportedTypeException e) {
                 exception.enter();
                 throw new LLVMPolyglotException(foreignWrite, "Unsupported type writing member '%s'.", name);
