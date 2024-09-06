@@ -46,9 +46,10 @@ import jdk.graal.compiler.nodes.spi.ValueProxy;
  * <p>
  * Operations on {@linkplain org.graalvm.word.LocationIdentity#INIT_LOCATION init} memory, such as
  * initializing an allocated object's header and fields, are not considered side effecting, because
- * the work of an allocation should never interact with the memory graph. However, this lack of
- * explicit memory ordering could cause {@linkplain jdk.graal.compiler.nodes.memory.FloatingReadNode
- * floating reads} on a newly allocated object be scheduled before its initializing writes.
+ * the work of an allocation should never interact with the memory graph before the object is
+ * initialized and visible to other code. However, this lack of explicit memory ordering could cause
+ * {@linkplain jdk.graal.compiler.nodes.memory.FloatingReadNode floating reads} on a newly allocated
+ * object be scheduled before its initializing writes.
  * <p>
  * In order to maintain object safety while still allowing reads to float, we require
  * non-initializing uses of the newly allocated object to have a data dependence on a fixed
@@ -81,21 +82,18 @@ public class PublishWritesNode extends FixedWithNextNode implements LIRLowerable
 
     @Override
     public boolean inferStamp() {
-        if (allocation != null) {
-            return updateStamp(stamp.join(allocation.stamp(NodeView.DEFAULT)));
-        } else {
-            return false;
-        }
+        return updateStamp(stamp.join(allocation.stamp(NodeView.DEFAULT)));
     }
 
     @Override
     public boolean verifyNode() {
         // Check that the published allocation node is not used by reads directly.
         for (AddressNode address : allocation.usages().filter(AddressNode.class)) {
-            assertTrue(address.usages().filter(n ->
-            // n is a non-writing access (a.k.a. a read)
-            n instanceof MemoryAccess && !MemoryKill.isMemoryKill(n)).isEmpty(),
-                            "%s has unpublished reads", allocation);
+            var readUsages = address.usages().filter(n -> {
+                // n is a non-writing access (a.k.a. a read)
+                return n instanceof MemoryAccess && !MemoryKill.isMemoryKill(n);
+            });
+            assertTrue(readUsages.isEmpty(), "%s has unpublished reads", allocation);
         }
         return true;
     }
