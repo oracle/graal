@@ -116,6 +116,9 @@ public class RunTime {
 
         HotSpotJVMCIRuntime runtime = HotSpotJVMCIRuntime.runtime();
         HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) runtime.getCompiler();
+        if (methodHandle == 0L) {
+            return 0L;
+        }
 
         int entryBCI = JVMCICompiler.INVOCATION_ENTRY_BCI;
         HotSpotResolvedJavaMethod method = runtime.unhand(HotSpotResolvedJavaMethod.class, methodHandle);

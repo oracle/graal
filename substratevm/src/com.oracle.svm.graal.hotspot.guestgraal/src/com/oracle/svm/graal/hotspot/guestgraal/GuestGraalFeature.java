@@ -48,7 +48,7 @@ import com.oracle.graal.pointsto.meta.ObjectReachableCallback;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.hotspot.GetCompilerConfig;
 import com.oracle.svm.graal.hotspot.GetJNIConfig;
-import com.oracle.svm.hosted.FeatureImpl;
+import jdk.graal.compiler.hotspot.CompilerConfigurationFactory;
 import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.serviceprovider.LibGraalService;
@@ -397,6 +397,9 @@ public final class GuestGraalFeature implements Feature {
             List<Class<?>> serviceClasses = impl.getImageClassLoader().findAnnotatedClasses(LibGraalService.class, false);
             serviceClasses.stream().map(c -> loader.loadClassOrFail(c.getName())).forEach(guestServiceClasses::add);
 
+            // Transfer libgraal qualifier (e.g. "PGO optimized") from host to guest.
+            String nativeImageLocationQualifier = CompilerConfigurationFactory.getNativeImageLocationQualifier();
+
             MethodHandle configureGraalForLibGraal = mhl.findStatic(buildTimeClass,
                             "configureGraalForLibGraal",
                             methodType(void.class,
@@ -404,6 +407,7 @@ public final class GuestGraalFeature implements Feature {
                                             List.class, // guestServiceClasses
                                             Consumer.class, // registerAsInHeap
                                             Consumer.class, // hostedGraalSetFoldNodePluginClasses
+                                            String.class, // nativeImageLocationQualifier
                                             String.class // encodedGuestObjects
                             ));
             GetCompilerConfig.Result configResult = GetCompilerConfig.from(Options.GuestJavaHome.getValue(), bb.getOptions());
@@ -417,6 +421,7 @@ public final class GuestGraalFeature implements Feature {
                             guestServiceClasses,
                             registerAsInHeap,
                             hostedGraalSetFoldNodePluginClasses,
+                            nativeImageLocationQualifier,
                             configResult.encodedConfig());
 
             initGraalRuntimeHandles(mhl.findStatic(buildTimeClass, "getRuntimeHandles", methodType(Map.class)));
@@ -461,7 +466,7 @@ public final class GuestGraalFeature implements Feature {
                         classesPattern("jdk.graal.compiler.options",
                                         "ModifiableOptionValues", "Option.*"),
                         classesPattern("jdk.graal.compiler.util.json",
-                                        "JsonWriter"),
+                                        "JsonWriter", "JsonBuilder.*"),
                         classesPattern("org.graalvm.collections",
                                         "EconomicMap.*", "EmptyMap.*", "Equivalence.*", "Pair"),
                         classesPattern("jdk.vm.ci.amd64",
@@ -502,24 +507,10 @@ public final class GuestGraalFeature implements Feature {
             }
         }
         if (!forbiddenReachableTypes.isEmpty()) {
+            CallTreePrinter.print(bigBang, "reports", "report");
             VMError.shouldNotReachHere("GuestGraal build found forbidden hosted types as reachable: %s", String.join(", ", forbiddenReachableTypes));
         }
         optionCollector.afterAnalysis(access);
-    }
-
-    @Override
-    public void beforeImageWrite(BeforeImageWriteAccess access) {
-        if (!Platform.includedIn(Platform.WINDOWS.class)) {
-            ((FeatureImpl.BeforeImageWriteAccessImpl) access).registerLinkerInvocationTransformer(linkerInvocation -> {
-                Path imageFilePath = linkerInvocation.getOutputFile();
-                String imageName = imageFilePath.getFileName().toString();
-                String posixLibraryPrefix = "lib";
-                assert !imageName.startsWith(posixLibraryPrefix);
-                String posixImageName = posixLibraryPrefix + imageName;
-                linkerInvocation.setOutputFile(imageFilePath.getParent().resolve(posixImageName));
-                return linkerInvocation;
-            });
-        }
     }
 
     private static Pattern classesPattern(String packageName, String... regexes) {

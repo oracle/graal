@@ -40,6 +40,7 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import jdk.graal.compiler.core.ArchitectureSpecific;
+import jdk.graal.compiler.hotspot.CompilerConfigurationFactory;
 import org.graalvm.collections.EconomicMap;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
@@ -146,6 +147,7 @@ public class BuildTime {
                     List<Class<?>> guestServiceClasses,
                     Consumer<Class<?>> registerAsInHeap,
                     Consumer<List<Class<?>>> hostedGraalSetFoldNodePluginClasses,
+                    String nativeImageLocationQualifier,
                     String encodedGuestObjects) {
         GraalError.guarantee(VALID_LOADER_NAME.equals(LOADER.getName()),
                         "Only call this method from classloader " + VALID_LOADER_NAME);
@@ -153,6 +155,8 @@ public class BuildTime {
         Map<Class<?>, List<?>> services = new HashMap<>();
         guestServiceClasses.forEach(c -> addProviders(services, arch, c));
         GraalServices.setLibgraalServices(services);
+
+        CompilerConfigurationFactory.setNativeImageLocationQualifier(nativeImageLocationQualifier);
 
         try {
             Field cachedHotSpotJVMCIBackendFactoriesField = ObjectCopier.getField(HotSpotJVMCIRuntime.class, "cachedHotSpotJVMCIBackendFactories");
