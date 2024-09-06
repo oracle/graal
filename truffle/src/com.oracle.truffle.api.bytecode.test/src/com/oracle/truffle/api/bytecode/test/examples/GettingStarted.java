@@ -85,7 +85,7 @@ public class GettingStarted {
      * {@link BytecodeRootNode}.
      */
     @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
-    /**
+    /*
      * Defines a new {@code ScOr} operation. It uses {@code OR} semantics, converts values to
      * boolean using {@link ToBool}, and produces the converted boolean values.
      */
@@ -592,10 +592,10 @@ public class GettingStarted {
         assertEquals(55, sumToN.getCallTarget().call(10));
     }
 
-    /**
+    /*
      * In addition to the condition and looping contructs, Bytecode DSL has other control flow
-     * mechanisms for exception handling ({@code TryCatch}, {@code FinallyTry}, and
-     * {@code FinallyTryCatch}) and continuations ({@code Yield}). We will not cover those here.
+     * mechanisms for exception handling ({@code TryCatch}, {@code FinallyTry}, and {@code
+     * FinallyTryCatch}) and continuations ({@code Yield}). We will not cover those here.
      */
 
     /**

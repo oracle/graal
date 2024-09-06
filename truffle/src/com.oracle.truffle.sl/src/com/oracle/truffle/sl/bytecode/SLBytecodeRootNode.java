@@ -103,7 +103,7 @@ import com.oracle.truffle.sl.runtime.SLNull;
                 languageClass = SLLanguage.class, //
                 boxingEliminationTypes = {long.class, boolean.class}, //
                 enableUncachedInterpreter = true,
-                /**
+                /*
                  * Simple language needs to run code before the root body tag to set local
                  * variables, so we disable implicit root-body tagging and do this manually in
                  * {@link SLBytecodeParser#visitFunction}.

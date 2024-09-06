@@ -96,6 +96,7 @@ import com.oracle.truffle.api.nodes.Node;
  */
 @Retention(RetentionPolicy.SOURCE)
 @Target({ElementType.TYPE})
+@SuppressWarnings("dangling-doc-comments")
 public @interface GenerateBytecode {
     /**
      * The {@link TruffleLanguage} class associated with this node.
