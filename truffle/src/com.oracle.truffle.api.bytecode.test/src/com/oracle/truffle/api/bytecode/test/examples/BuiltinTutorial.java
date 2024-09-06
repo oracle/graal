@@ -183,16 +183,16 @@ public class BuiltinTutorial {
             @SuppressWarnings("unused")
             public static Object doDefault(JavaBuiltin builtin,
 
-                            /**
+                            /*
                              * The variadic annotation allows us to pass any number of arguments to
-                             * the builtin. The concrete number of arguments is contained in
-                             * {@link AbstractBuiltin#args}. We do not statically know them for the
+                             * the builtin. The concrete number of arguments is contained in {@link
+                             * AbstractBuiltin#args}. We do not statically know them for the
                              * builtin. In order to avoid the Object[] allocation one could create
                              * individual operations for a specific number of arguments.
                              */
                             @Variadic Object[] args,
 
-                            /**
+                            /*
                              * This instructs the DSL to create a new node for any cached usage of
                              * the builtin. For the uncached initializer builtin.getUncached() is
                              * used. An uncached version of a node is useful to avoid repeated
@@ -201,7 +201,7 @@ public class BuiltinTutorial {
                             @Cached(value = "builtin.createNode()", uncached = "builtin.getUncached()", neverDefault = true)//
                             BuiltinNode node) {
 
-                /**
+                /*
                  * The specialization does not do anything special, it just executes the node. This
                  * can either be the cached or the uncached node here.
                  */

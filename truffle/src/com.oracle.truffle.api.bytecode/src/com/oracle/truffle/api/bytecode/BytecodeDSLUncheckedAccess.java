@@ -50,6 +50,7 @@ import sun.misc.Unsafe;
 /**
  * Implementation of BytecodeDSLAccess that uses Unsafe.
  */
+@SuppressWarnings("deprecation")
 final class BytecodeDSLUncheckedAccess extends BytecodeDSLAccess {
 
     static final Unsafe UNSAFE = initUnsafe();

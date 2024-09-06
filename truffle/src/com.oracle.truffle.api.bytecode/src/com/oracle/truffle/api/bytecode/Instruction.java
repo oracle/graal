@@ -623,6 +623,7 @@ public abstract class Instruction {
          *
          * @since 24.2
          */
+        @SuppressWarnings("dangling-doc-comments")
         public record BranchProfile(
                         /**
                          * The index of the profile for the branch profile table.

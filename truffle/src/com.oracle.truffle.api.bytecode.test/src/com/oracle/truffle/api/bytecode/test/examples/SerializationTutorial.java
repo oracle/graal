@@ -414,7 +414,7 @@ public class SerializationTutorial {
         doTest(rootNode);
     }
 
-    /**
+    /*
      * The above example should give you enough information to implement basic serialization in your
      * language. The rest of this tutorial covers some of the more advanced features of
      * serialization.

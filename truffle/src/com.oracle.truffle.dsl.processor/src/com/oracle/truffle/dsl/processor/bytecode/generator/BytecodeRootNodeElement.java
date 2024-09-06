@@ -6437,7 +6437,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             int stackEffect = switch (instr.kind) {
                 case BRANCH, BRANCH_BACKWARD, //
                                 TAG_ENTER, TAG_LEAVE, TAG_LEAVE_VOID, TAG_RESUME, TAG_YIELD, //
-                                LOAD_LOCAL_MATERIALIZED, CLEAR_LOCAL, YIELD -> 0;
+                                LOAD_LOCAL_MATERIALIZED, CLEAR_LOCAL, YIELD ->
+                    0;
                 case STORE_NULL, LOAD_VARIADIC, MERGE_VARIADIC -> {
                     /*
                      * NB: These instructions *do* have stack effects. However, they are only used
@@ -11660,7 +11661,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         final class InterpreterStateElement extends CodeTypeElement {
-            public InterpreterStateElement() {
+            InterpreterStateElement() {
                 super(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "InterpreterState");
                 if (!model.enableYield) {
                     // Without continuations, this state class is unnecessary. Just pass the sp.
