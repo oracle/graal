@@ -151,7 +151,7 @@ public final class SLBytecodeParser extends SLBaseParser {
                         node.getBytecodeNode().setUncachedThreshold(0);
                         break;
                     case UNCACHED:
-                        node.getBytecodeNode().setUncachedThreshold(Integer.MAX_VALUE);
+                        node.getBytecodeNode().setUncachedThreshold(Integer.MIN_VALUE);
                         break;
                     default:
                         throw CompilerDirectives.shouldNotReachHere("Unexpected tier: " + tier);

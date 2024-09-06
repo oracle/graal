@@ -71,12 +71,13 @@ import com.oracle.truffle.api.source.SourceSection;
  * {@link BytecodeNode} is created and automatically replaced.
  * <p>
  * The {@link #getTier() tier} of a bytecode node initially always starts out as
- * {@link BytecodeTier#UNCACHED}. This means that no cached nodes were created yet. It takes number
- * {@link #setUncachedThreshold(int) uncached threshold} calls and back-edges for the node to
- * transition to the cached tier. BY default the uncached threshold is 16 if the
- * {@link GenerateBytecode#enableUncachedInterpreter() uncached generation} is enabled, and 0 if
- * not. The intention of the uncached bytecode tier is to reduce footprint overhead for root nodes
- * that are only executed infrequently.
+ * {@link BytecodeTier#UNCACHED}. This means that no cached nodes were created yet. The
+ * {@link #setUncachedThreshold(int) uncached threshold} determines how many calls, back-edges, and
+ * yields are necessary for the node to transition to the cached tier. By default the uncached
+ * threshold is 16 if the {@link GenerateBytecode#enableUncachedInterpreter() uncached interpreter}
+ * is enabled, and 0 if not (i.e., it will transition to cached on the first execution). The
+ * intention of the uncached bytecode tier is to reduce the footprint of root nodes that are only
+ * executed infrequently.
  * <p>
  * Since the the number of bytecodes may change between bytecode nodes of a root node, a
  * bytecodeIndex returned by the the DSL is only valid for a single bytecode node, it is therefore
@@ -942,13 +943,17 @@ public abstract class BytecodeNode extends Node {
     public abstract List<LocalVariable> getLocals();
 
     /**
-     * Sets a threshold that must be reached before the uncached interpreter switches to a cached
-     * interpreter. The interpreter can switch to cached when the number of times it returns,
-     * yields, and branches backwards exceeds the threshold.
+     * Sets the number of times an uncached interpreter must return, branch backwards, or yield
+     * before transitioning to cached. The default threshold is {@code 16}. The {@code threshold}
+     * should be a positive value, {@code 0}, or {@code Integer.MIN_VALUE}. A threshold of {@code 0}
+     * forces the uncached interpreter to transition to cached on the next invocation. A threshold
+     * of {@code Integer.MIN_VALUE} forces the uncached interpreter to stay uncached (i.e., it will
+     * not transition to cached).
      * <p>
-     * This method has no effect if an uncached interpreter is not
-     * {@link GenerateBytecode#enableUncachedInterpreter enabled} or the root node has already
-     * switched to a specializing interpreter.
+     * This method should be called before executing the root node. It will not have any effect on
+     * an uncached interpreter that is currently executing, an interpreter that is already cached,
+     * or an interpreter that does not {@link GenerateBytecode#enableUncachedInterpreter enable
+     * uncached}.
      *
      * @since 24.2
      */

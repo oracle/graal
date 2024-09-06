@@ -100,9 +100,6 @@ public class SimpleBytecodeBenchmark extends TruffleBenchmark {
     private static final Source SOURCE_MANUAL_NODED_NO_BE = Source.create("bm", NAME_MANUAL_NODED_NO_BE);
     private static final Source SOURCE_AST = Source.create("bm", NAME_AST);
 
-    // Keep the uncached interpreter around so we can manually reset its invocation threshold.
-    private static BytecodeBenchmarkRootNode bytecodeUncachedRootNode;
-
     /**
      * The benchmark programs implement:
      *
@@ -317,7 +314,7 @@ public class SimpleBytecodeBenchmark extends TruffleBenchmark {
 
             BytecodeBenchmarkRootNode root = b.endRoot();
             if (forceUncached) {
-                root.getBytecodeNode().setUncachedThreshold(Integer.MAX_VALUE);
+                root.getBytecodeNode().setUncachedThreshold(Integer.MIN_VALUE);
             }
         };
     }
@@ -404,18 +401,6 @@ public class SimpleBytecodeBenchmark extends TruffleBenchmark {
     @Setup(Level.Iteration)
     public void enterContext() {
         context.enter();
-    }
-
-    @Setup(Level.Invocation)
-    public void resetThreshold() {
-        /**
-         * Ensure the invocation threshold does not get hit. The number of loop back-edges is
-         * several orders of magnitude less than this threshold, so it should never transition to
-         * the cached interpreter.
-         */
-        if (bytecodeUncachedRootNode != null) {
-            bytecodeUncachedRootNode.getBytecodeNode().setUncachedThreshold(Integer.MAX_VALUE);
-        }
     }
 
     @TearDown(Level.Iteration)

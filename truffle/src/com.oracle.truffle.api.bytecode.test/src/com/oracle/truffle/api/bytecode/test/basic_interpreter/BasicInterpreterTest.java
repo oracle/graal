@@ -68,6 +68,7 @@ import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.BytecodeTier;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.ExceptionHandler;
 import com.oracle.truffle.api.bytecode.Instruction;
@@ -2085,6 +2086,151 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             });
         });
 
+    }
+
+    @Test
+    public void testTransitionToCached() {
+        assumeTrue(run.hasUncachedInterpreter());
+        BasicInterpreter node = parseNode("transitionToCached", b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+            b.endRoot();
+        });
+
+        node.getBytecodeNode().setUncachedThreshold(50);
+        for (int i = 0; i < 50; i++) {
+            assertEquals(BytecodeTier.UNCACHED, node.getBytecodeNode().getTier());
+            assertEquals(42L, node.getCallTarget().call());
+        }
+        assertEquals(BytecodeTier.CACHED, node.getBytecodeNode().getTier());
+        assertEquals(42L, node.getCallTarget().call());
+    }
+
+    @Test
+    public void testTransitionToCachedImmediately() {
+        assumeTrue(run.hasUncachedInterpreter());
+        BasicInterpreter node = parseNode("transitionToCachedImmediately", b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+            b.endRoot();
+        });
+
+        node.getBytecodeNode().setUncachedThreshold(0);
+        // The bytecode node will transition to cached on the first call.
+        assertEquals(BytecodeTier.UNCACHED, node.getBytecodeNode().getTier());
+        assertEquals(42L, node.getCallTarget().call());
+        assertEquals(BytecodeTier.CACHED, node.getBytecodeNode().getTier());
+    }
+
+    @Test
+    public void testTransitionToCachedBadThreshold() {
+        assumeTrue(run.hasUncachedInterpreter());
+        BasicInterpreter node = parseNode("transitionToCachedBadThreshold", b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+            b.endRoot();
+        });
+
+        assertThrows(IllegalArgumentException.class, () -> node.getBytecodeNode().setUncachedThreshold(-1));
+    }
+
+    @Test
+    public void testTransitionToCachedLoop() {
+        assumeTrue(run.hasUncachedInterpreter());
+        BasicInterpreter node = parseNode("transitionToCachedLoop", b -> {
+            b.beginRoot();
+            BytecodeLocal i = b.createLocal();
+            b.beginStoreLocal(i);
+            b.emitLoadConstant(0L);
+            b.endStoreLocal();
+
+            b.beginWhile();
+            b.beginLess();
+            b.emitLoadLocal(i);
+            b.emitLoadArgument(0);
+            b.endLess();
+
+            b.beginStoreLocal(i);
+            b.beginAddConstantOperation(1L);
+            b.emitLoadLocal(i);
+            b.endAddConstantOperation();
+            b.endStoreLocal();
+            b.endWhile();
+
+            b.beginReturn();
+            b.emitLoadLocal(i);
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        node.getBytecodeNode().setUncachedThreshold(50);
+        assertEquals(BytecodeTier.UNCACHED, node.getBytecodeNode().getTier());
+        assertEquals(24L, node.getCallTarget().call(24L)); // 24 back edges + 1 return
+        assertEquals(BytecodeTier.UNCACHED, node.getBytecodeNode().getTier());
+        assertEquals(24L, node.getCallTarget().call(24L)); // 24 back edges + 1 return
+        assertEquals(BytecodeTier.CACHED, node.getBytecodeNode().getTier());
+        assertEquals(24L, node.getCallTarget().call(24L));
+    }
+
+    @Test
+    public void testDisableTransitionToCached() {
+        assumeTrue(run.hasUncachedInterpreter());
+        BasicInterpreter node = parseNode("disableTransitionToCached", b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+            b.endRoot();
+        });
+
+        node.getBytecodeNode().setUncachedThreshold(Integer.MIN_VALUE);
+        for (int i = 0; i < 50; i++) {
+            assertEquals(BytecodeTier.UNCACHED, node.getBytecodeNode().getTier());
+            assertEquals(42L, node.getCallTarget().call());
+        }
+    }
+
+    @Test
+    public void testDisableTransitionToCachedLoop() {
+        assumeTrue(run.hasUncachedInterpreter());
+        BasicInterpreter node = parseNode("disableTransitionToCachedLoop", b -> {
+            b.beginRoot();
+            BytecodeLocal i = b.createLocal();
+            b.beginStoreLocal(i);
+            b.emitLoadConstant(0L);
+            b.endStoreLocal();
+
+            b.beginWhile();
+            b.beginLess();
+            b.emitLoadLocal(i);
+            b.emitLoadArgument(0);
+            b.endLess();
+
+            b.beginStoreLocal(i);
+            b.beginAddConstantOperation(1L);
+            b.emitLoadLocal(i);
+            b.endAddConstantOperation();
+            b.endStoreLocal();
+            b.endWhile();
+
+            b.beginReturn();
+            b.emitLoadLocal(i);
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        node.getBytecodeNode().setUncachedThreshold(Integer.MIN_VALUE);
+        assertEquals(BytecodeTier.UNCACHED, node.getBytecodeNode().getTier());
+        assertEquals(50L, node.getCallTarget().call(50L));
+        assertEquals(BytecodeTier.UNCACHED, node.getBytecodeNode().getTier());
     }
 
     @Test
