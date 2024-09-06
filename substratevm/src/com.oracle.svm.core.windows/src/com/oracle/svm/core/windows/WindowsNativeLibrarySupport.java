@@ -85,6 +85,7 @@ class WindowsNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
         WindowsUtils.setHandle(FileDescriptor.err, FileAPI.GetStdHandle(FileAPI.STD_ERROR_HANDLE()));
     }
 
+    @SuppressWarnings("restricted")
     private static void loadNetLibrary() {
         if (Isolates.isCurrentFirst()) {
             WinSock.init();

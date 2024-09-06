@@ -40,9 +40,13 @@ import static jdk.graal.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVM
 import static jdk.graal.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_UNMOUNT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32C;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_CONTINUATION_ENTRY_PIN_COUNT;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_JAVA_THREAD_CONT_ENTRY;
 import static jdk.graal.compiler.java.BytecodeParserOptions.InlineDuringParsing;
 import static jdk.graal.compiler.nodes.ConstantNode.forBoolean;
+import static jdk.graal.compiler.nodes.ProfileData.BranchProbabilityData.injected;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
+import static jdk.vm.ci.meta.DeoptimizationReason.TypeCheckedInliningViolated;
 import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 
 import java.lang.annotation.Annotation;
@@ -98,8 +102,6 @@ import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.MergeNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.PiNode;
-import jdk.graal.compiler.nodes.ProfileData;
-import jdk.graal.compiler.nodes.ProfileData.BranchProbabilityData;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.ValuePhiNode;
@@ -245,6 +247,7 @@ public class HotSpotGraphBuilderPlugins {
                 registerSystemPlugins(invocationPlugins);
                 registerThreadPlugins(invocationPlugins, config, replacements);
                 registerVirtualThreadPlugins(invocationPlugins, config, replacements);
+                registerContinuationPlugins(invocationPlugins, config, replacements);
                 registerCallSitePlugins(invocationPlugins);
                 registerReflectionPlugins(invocationPlugins, replacements, config);
                 registerAESPlugins(invocationPlugins, config, replacements, target.arch);
@@ -732,8 +735,7 @@ public class HotSpotGraphBuilderPlugins {
             BeginNode trueSuccessor = graph.add(new BeginNode());
             BeginNode falseSuccessor = graph.add(new BeginNode());
 
-            ProfileData.BranchProbabilityData probability = ProfileData.BranchProbabilityData.injected(NOT_FREQUENT_PROBABILITY);
-            b.add(new IfNode(testNotifyJvmtiEnabled, trueSuccessor, falseSuccessor, probability));
+            b.add(new IfNode(testNotifyJvmtiEnabled, trueSuccessor, falseSuccessor, injected(NOT_FREQUENT_PROBABILITY)));
 
             // if notifyJvmti enabled then make a call to the given runtime function
             ForeignCallNode runtimeCall = graph.add(new ForeignCallNode(descriptor, virtualThread, hide, javaThread));
@@ -758,6 +760,62 @@ public class HotSpotGraphBuilderPlugins {
             MergeNode merge = b.add(new MergeNode());
             merge.addForwardEnd(trueSuccessorEnd);
             merge.addForwardEnd(falseSuccessorEnd);
+        }
+    }
+
+    // @formatter:off
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/20d8f58c92009a46dfb91b951e7d87b4cb8e8b41/src/hotspot/share/opto/library_call.cpp#L3741-L3824",
+              sha1 = "d65356dbc0235df26aa56b233bcd100462a5dab4")
+    // @formatter:on
+    private static class ContinuationPinningPlugin extends InvocationPlugin {
+
+        private final GraalHotSpotVMConfig config;
+        private final boolean pin;
+
+        ContinuationPinningPlugin(GraalHotSpotVMConfig config, boolean pin) {
+            super(pin ? "pin" : "unpin");
+            this.config = config;
+            this.pin = pin;
+        }
+
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+            try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
+                // @formatter:off
+                // if (currentThread::_cont_entry != null)
+                //   uint pin_count = currentThread::_cont_entry::_pin_count;
+                //   if (pin_count == (pin ? 0xFFFFFFFFUL : 0)) deoptimize;
+                //   else currentThread::_cont_entry::_pin_count = pin_count + (pin ? 1 : -1);
+                // @formatter:on
+                StructuredGraph graph = b.getGraph();
+                CurrentJavaThreadNode javaThread = graph.addOrUniqueWithInputs(new CurrentJavaThreadNode(helper.getWordKind()));
+
+                GraalError.guarantee(config.contEntry != -1, "JavaThread::_cont_entry is not exported");
+                OffsetAddressNode lastContinuationAddr = graph.addOrUniqueWithInputs(new OffsetAddressNode(javaThread, helper.asWord(config.contEntry)));
+                ValueNode lastContinuation = b.add(new JavaReadNode(JavaKind.Object, lastContinuationAddr, HOTSPOT_JAVA_THREAD_CONT_ENTRY, BarrierType.NONE, MemoryOrderMode.PLAIN, false));
+                ValueNode nonNullLastContinuation = helper.emitNullReturnGuard(lastContinuation, null, NOT_FREQUENT_PROBABILITY);
+
+                GraalError.guarantee(config.pinCount != -1, "ContinuationEntry::_pin_count is not exported");
+                OffsetAddressNode pinCountAddr = graph.addOrUniqueWithInputs(new OffsetAddressNode(nonNullLastContinuation, helper.asWord(config.pinCount)));
+                ValueNode pinCount = b.add(new JavaReadNode(JavaKind.Int, pinCountAddr, HOTSPOT_CONTINUATION_ENTRY_PIN_COUNT, BarrierType.NONE, MemoryOrderMode.PLAIN, false));
+
+                LogicNode overFlow = IntegerEqualsNode.create(pinCount, pin ? ConstantNode.forInt(-1) : ConstantNode.forInt(0), NodeView.DEFAULT);
+                // TypeCheckedInliningViolated (Reason_type_checked_inlining) is aliasing
+                // Reason_intrinsic
+                b.append(new FixedGuardNode(overFlow, TypeCheckedInliningViolated, DeoptimizationAction.None, true));
+                ValueNode newPinCount = b.add(AddNode.create(pinCount, pin ? ConstantNode.forInt(1) : ConstantNode.forInt(-1), NodeView.DEFAULT));
+                b.add(new JavaWriteNode(JavaKind.Int, pinCountAddr, HOTSPOT_CONTINUATION_ENTRY_PIN_COUNT, newPinCount, BarrierType.NONE, false));
+                helper.emitFinalReturn(JavaKind.Void, null);
+            }
+            return true;
+        }
+    }
+
+    private static void registerContinuationPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
+        Registration r = new Registration(plugins, "jdk.internal.vm.Continuation", replacements);
+        if (JavaVersionUtil.JAVA_SPEC >= 24) {
+            r.register(new ContinuationPinningPlugin(config, true));
+            r.register(new ContinuationPinningPlugin(config, false));
         }
     }
 
@@ -1374,7 +1432,7 @@ public class HotSpotGraphBuilderPlugins {
                     ValueNode layoutHelperLong = b.add(SignExtendNode.create(layoutHelper, JavaKind.Long.getBitCount(), NodeView.DEFAULT));
                     ValueNode instanceSizeLong = b.add(AndNode.create(layoutHelperLong, ConstantNode.forLong(-((long) JavaKind.Long.getByteCount())), NodeView.DEFAULT));
 
-                    b.add(new IfNode(isArray, arrayLengthNode, instanceBranch, BranchProbabilityData.injected(0.5D)));
+                    b.add(new IfNode(isArray, arrayLengthNode, instanceBranch, injected(0.5D)));
                     MergeNode merge = b.append(new MergeNode());
                     merge.addForwardEnd(arrayBranch);
                     merge.addForwardEnd(instanceBranch);

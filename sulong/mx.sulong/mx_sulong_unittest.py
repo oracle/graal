@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2023, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2024, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -93,6 +93,10 @@ class SulongUnittestConfigBase(mx_unittest.MxUnittestConfig):
         vmArgs += [f'-Dsulongtest.path.{d.name}={d.get_output()}' for d in _get_test_distributions(cfg.nativeTestDistFrom)]
         vmArgs += [f'-Dsulongtest.configRoot={cfg.configRoot}']
         vmArgs += [f'-Dsulongtest.config={cfg.name}']
+        if mx.get_jdk().javaCompliance > '21':
+            # Ignore illegal native access until is GR-57817 fixed.
+            vmArgs += ['--illegal-native-access=allow']
+
         if mx.get_opts().use_llvm_standalone is not None:
             vmArgs += [f'-Dsulongtest.testAOTImage={mx_sulong.get_lli_path()}']
         else:

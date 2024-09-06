@@ -659,7 +659,7 @@ final class Target_jdk_internal_loader_BootLoader {
         return ClassForNameSupport.forNameOrNull(name, null);
     }
 
-    @SuppressWarnings("unused")
+    @SuppressWarnings({"unused", "restricted"})
     @Substitute
     private static void loadLibrary(String name) {
         System.loadLibrary(name);

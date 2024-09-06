@@ -40,6 +40,7 @@ import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.KL
 
 import java.util.function.Function;
 
+import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
@@ -202,9 +203,9 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
         return readLocation(klassNonNull, HotSpotVMConfigField.KLASS_SUPER_KLASS_OFFSET);
     }
 
-    public PiNode emitNullReturnGuard(ValueNode klass, ValueNode returnValue, double probability) {
-        GuardingNode nonnullGuard = emitReturnIf(IsNullNode.create(klass), returnValue, probability);
-        return piCast(klass, nonnullGuard, KlassPointerStamp.klassNonNull());
+    public PiNode emitNullReturnGuard(ValueNode pointer, ValueNode returnValue, double probability) {
+        GuardingNode nonnullGuard = emitReturnIf(IsNullNode.create(pointer), returnValue, probability);
+        return piCast(pointer, nonnullGuard, ((AbstractPointerStamp) pointer.stamp(NodeView.DEFAULT)).asNonNull());
     }
 
     /**
