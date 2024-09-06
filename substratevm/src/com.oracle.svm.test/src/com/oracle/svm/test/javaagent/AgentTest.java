@@ -24,35 +24,44 @@
  * questions.
  */
 
-package com.oracle.svm.test.agent;
+package com.oracle.svm.test.javaagent;
 
-public class AgentPremainHelper {
-    public static void load(Class<?> agentClass) {
-        String firstAgent = System.getProperty("first.load.agent", null);
-        if (firstAgent != null) {
-            System.setProperty("second.load.agent", agentClass.getName());
-        } else {
-            System.setProperty("first.load.agent", agentClass.getName());
-        }
+import com.oracle.svm.test.javaagent.agent1.TestJavaAgent1;
+import com.oracle.svm.test.javaagent.agent2.TestJavaAgent2;
+import org.junit.Assert;
+
+public class AgentTest {
+
+    private static void testPremain() {
+        Assert.assertEquals("true", System.getProperty("instrument.enable"));
     }
 
-    public static String getFirst() {
-        return System.getProperty("first.load.agent");
+    private static void testAgentOptions() {
+        Assert.assertEquals("true", System.getProperty("test.agent1"));
+        Assert.assertEquals("true", System.getProperty("test.agent2"));
     }
 
-    public static String getSecond() {
-        return System.getProperty("second.load.agent");
-    }
+    private static void testPremainSequence() {
+        String first = AgentPremainHelper.getFirst();
+        String second = AgentPremainHelper.getSecond();
+        Assert.assertNotNull(first);
+        if (second != null) {
+            String agentName = TestJavaAgent1.class.getName();
+            String agent2Name = TestJavaAgent2.class.getName();
 
-    public static void parseOptions(String agentArgs) {
-        if (agentArgs != null && !agentArgs.isBlank()) {
-            String[] argPairs = agentArgs.split(",");
-            for (String argPair : argPairs) {
-                String[] pair = argPair.split("=");
-                if (pair.length == 2) {
-                    System.setProperty(pair[0], pair[1]);
-                }
+            if (first.equals(agentName)) {
+                Assert.assertEquals(agent2Name, second);
+            }
+            if (first.equals(agent2Name)) {
+                Assert.assertEquals(agentName, second);
             }
         }
+    }
+
+    public static void main(String[] args) {
+        testPremain();
+        testAgentOptions();
+        testPremainSequence();
+        System.out.println("Finished running Agent test.");
     }
 }

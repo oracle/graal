@@ -100,9 +100,9 @@ public class PreMainSupport {
     record PremainMethod(String className, Method method, Object[] args) {
     }
 
-    private Map<String, String> premainOptions = new HashMap<>();
+    private final Map<String, String> premainOptions = new HashMap<>();
     // Order matters
-    private List<PremainMethod> premainMethods = new ArrayList<>();
+    private final List<PremainMethod> premainMethods = new ArrayList<>();
 
     @Platforms({Platform.HOSTED_ONLY.class})
     public void registerPremainMethod(String className, Method executable, Object... args) {
@@ -120,8 +120,10 @@ public class PreMainSupport {
      * @return arguments for main class
      */
     public String[] retrievePremainArgs(String[] args) {
+        if (args == null) {
+            return null;
+        }
         List<String> mainArgs = new ArrayList<>();
-
         for (String arg : args) {
             if (arg.startsWith(PREMAIN_OPTION_PREFIX)) {
                 String premainOptionKeyValue = arg.substring(PREMAIN_OPTION_PREFIX.length());
@@ -147,10 +149,11 @@ public class PreMainSupport {
                 // premain method must be static
                 premainMethod.method.invoke(null, args);
             } catch (Throwable t) {
+                Throwable cause = t;
                 if (t instanceof InvocationTargetException) {
-                    t = t.getCause();
+                    cause = t.getCause();
                 }
-                VMError.shouldNotReachHere("Fail to execute " + premainMethod.className + ".premain", t);
+                VMError.shouldNotReachHere("Fail to execute " + premainMethod.className + ".premain", cause);
             }
         }
     }

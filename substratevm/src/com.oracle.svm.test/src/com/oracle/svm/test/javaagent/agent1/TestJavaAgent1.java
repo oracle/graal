@@ -23,8 +23,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.agent;
+package com.oracle.svm.test.javaagent.agent1;
 
+import com.oracle.svm.test.javaagent.AgentPremainHelper;
 import org.graalvm.nativeimage.ImageInfo;
 import org.junit.Assert;
 
@@ -34,16 +35,16 @@ import java.security.ProtectionDomain;
 import java.util.Collections;
 import java.util.Set;
 
-public class Agent {
+public class TestJavaAgent1 {
     public static void premain(
                     String agentArgs, Instrumentation inst) {
         AgentPremainHelper.parseOptions(agentArgs);
         System.setProperty("instrument.enable", "true");
         if (!ImageInfo.inImageRuntimeCode()) {
-            DemoTransformer dt = new DemoTransformer("com.oracle.svm.test.agent.AgentTest");
+            DemoTransformer dt = new DemoTransformer("com.oracle.svm.test.javaagent.TestJavaAgent1");
             inst.addTransformer(dt, true);
         } else {
-            AgentPremainHelper.load(Agent.class);
+            AgentPremainHelper.load(TestJavaAgent1.class);
             /**
              * Test {@code inst} is {@link NativeImageNoOpRuntimeInstrumentation} and behaves as
              * defined.
@@ -59,7 +60,7 @@ public class Agent {
             Assert.assertTrue(allClasses.length > 0);
             Class<?> currentAgentClassFromAllLoaded = null;
             for (Class<?> c : allClasses) {
-                if (c.equals(Agent.class)) {
+                if (c.equals(TestJavaAgent1.class)) {
                     currentAgentClassFromAllLoaded = c;
                 }
             }
@@ -118,7 +119,7 @@ public class Agent {
             Assert.assertEquals(-1, inst.getObjectSize(null));
             Assert.assertEquals(false, inst.isNativeMethodPrefixSupported());
 
-            Module currentModule = Agent.class.getModule();
+            Module currentModule = TestJavaAgent1.class.getModule();
             Assert.assertEquals(true, inst.isModifiableModule(currentModule));
 
             // redefineModule only does checks, no actual actions.

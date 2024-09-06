@@ -24,42 +24,19 @@
  * questions.
  */
 
-package com.oracle.svm.test.agent;
+package com.oracle.svm.test.javaagent.agent2;
 
-import org.junit.Assert;
+import com.oracle.svm.test.javaagent.AgentPremainHelper;
+import org.graalvm.nativeimage.ImageInfo;
 
-public class AgentTest {
-
-    private static void testPremain() {
-        Assert.assertEquals("true", System.getProperty("instrument.enable"));
-    }
-
-    private static void testAgentOptions() {
-        Assert.assertEquals("true", System.getProperty("test.agent"));
-        Assert.assertEquals("true", System.getProperty("test.agent2"));
-    }
-
-    private static void testPremainSequence() {
-        String first = AgentPremainHelper.getFirst();
-        String second = AgentPremainHelper.getSecond();
-        Assert.assertNotNull(first);
-        if (second != null) {
-            String agentName = Agent.class.getName();
-            String agent2Name = Agent2.class.getName();
-
-            if (first.equals(agentName)) {
-                Assert.assertEquals(agent2Name, second);
-            }
-            if (first.equals(agent2Name)) {
-                Assert.assertEquals(agentName, second);
-            }
+public class TestJavaAgent2 {
+    public static void premain(String agentArgs) {
+        AgentPremainHelper.parseOptions(agentArgs);
+        System.setProperty("instrument.enable", "true");
+        if (!ImageInfo.inImageRuntimeCode()) {
+            // do class transformation
+        } else {
+            AgentPremainHelper.load(TestJavaAgent2.class);
         }
-    }
-
-    public static void main(String[] args) {
-        testPremain();
-        testAgentOptions();
-        testPremainSequence();
-        System.out.println("Finished running Agent test.");
     }
 }

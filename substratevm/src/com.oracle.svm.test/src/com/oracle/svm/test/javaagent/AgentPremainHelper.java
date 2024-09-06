@@ -24,18 +24,35 @@
  * questions.
  */
 
-package com.oracle.svm.test.agent;
+package com.oracle.svm.test.javaagent;
 
-import org.graalvm.nativeimage.ImageInfo;
-
-public class Agent2 {
-    public static void premain(String agentArgs) {
-        AgentPremainHelper.parseOptions(agentArgs);
-        System.setProperty("instrument.enable", "true");
-        if (!ImageInfo.inImageRuntimeCode()) {
-            // do class transformation
+public class AgentPremainHelper {
+    public static void load(Class<?> agentClass) {
+        String firstAgent = System.getProperty("first.load.agent", null);
+        if (firstAgent != null) {
+            System.setProperty("second.load.agent", agentClass.getName());
         } else {
-            AgentPremainHelper.load(Agent2.class);
+            System.setProperty("first.load.agent", agentClass.getName());
+        }
+    }
+
+    public static String getFirst() {
+        return System.getProperty("first.load.agent");
+    }
+
+    public static String getSecond() {
+        return System.getProperty("second.load.agent");
+    }
+
+    public static void parseOptions(String agentArgs) {
+        if (agentArgs != null && !agentArgs.isBlank()) {
+            String[] argPairs = agentArgs.split(",");
+            for (String argPair : argPairs) {
+                String[] pair = argPair.split("=");
+                if (pair.length == 2) {
+                    System.setProperty(pair[0], pair[1]);
+                }
+            }
         }
     }
 }
