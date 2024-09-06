@@ -1314,7 +1314,7 @@ suite = {
             "jacoco" : "exclude",
         },
 
-        "com.oracle.svm.graal.hotspot.guestgraal" : {
+        "com.oracle.svm.graal.hotspot.libgraal" : {
             "subDir": "src",
             "sourceDirs" : [
                 "src",
@@ -1820,12 +1820,12 @@ suite = {
           "maven" : False,
         },
 
-        "GUESTGRAAL_LIBRARY": {
+        "LIBGRAAL_LIBRARY": {
             "subDir": "src",
-            "description" : "GuestGraal HotSpot Graal library support",
+            "description" : "LibGraal feature",
             "javaCompliance" : "21+",
             "dependencies": [
-                "com.oracle.svm.graal.hotspot.guestgraal",
+                "com.oracle.svm.graal.hotspot.libgraal",
             ],
             "distDependencies": [
                 "SVM",

@@ -156,7 +156,8 @@ public class LibGraalCompilationDriver {
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     /**
-     * Implemented by {@code com.oracle.svm.graal.hotspot.guestgraal.GuestGraal#compileMethod}.
+     * Implemented by
+     * {@code com.oracle.svm.graal.hotspot.libgraal.LibGraalEntryPoints#compileMethod}.
      */
     public static native long compileMethodInLibgraal(long isolateThread,
                     long methodHandle,

@@ -113,7 +113,7 @@ public class LibGraalObject {
      * @return {@code false} if {@code} is not a valid handle in the isolate
      */
     // Implementation:
-    // com.oracle.svm.graal.hotspot.guestgraal.GuestGraalTruffleToLibGraalEntryPoints.releaseHandle
+    // com.oracle.svm.graal.hotspot.libgraal.LibGraalTruffleToLibGraalEntryPoints.releaseHandle
     static native boolean releaseHandle(long isolateThreadId, long handle);
 
     @Override
