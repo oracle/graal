@@ -27,11 +27,9 @@ package com.oracle.svm.core.jdk;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
-import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 

@@ -773,7 +773,7 @@ public class HotSpotGraphBuilderPlugins {
         private final GraalHotSpotVMConfig config;
         private final boolean pin;
 
-        public ContinuationPinningPlugin(GraalHotSpotVMConfig config, boolean pin) {
+        ContinuationPinningPlugin(GraalHotSpotVMConfig config, boolean pin) {
             super(pin ? "pin" : "unpin");
             this.config = config;
             this.pin = pin;
