@@ -227,6 +227,8 @@ class NativeImageBenchmarkConfig:
             base_image_build_args += ['-Ob']
         if vm.use_string_inlining:
             base_image_build_args += ['-H:+UseStringInlining']
+        if vm.use_open_type_world:
+            base_image_build_args += ['-H:-ClosedTypeWorld']
         if vm.is_llvm:
             base_image_build_args += ['--features=org.graalvm.home.HomeFinderFeature'] + ['-H:CompilerBackend=llvm', '-H:DeadlockWatchdogInterval=0']
         if vm.gc:
@@ -527,6 +529,7 @@ class NativeImageVM(GraalVm):
         self.gc = None
         self.native_architecture = False
         self.use_upx = False
+        self.use_open_type_world = False
         self.graalvm_edition = None
         self.config: Optional[NativeImageBenchmarkConfig] = None
         self.stages_info: Optional[StagesInfo] = None
@@ -558,7 +561,7 @@ class NativeImageVM(GraalVm):
             return
 
         # This defines the allowed config names for NativeImageVM. The ones registered will be available via --jvm-config
-        rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-ctx-insens-|pgo-sampler-)?(?P<inliner>inline-)?' \
+        rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<otw>otw-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-ctx-insens-|pgo-sampler-)?(?P<inliner>inline-)?' \
                r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-|2obj1h-|3obj2h-|4obj3h-)?(?P<no_inlining_before_analysis>no-inline-)?(?P<jdk_profiles>jdk-profiles-collect-|adopted-jdk-pgo-)?' \
                r'(?P<profile_inference>profile-inference-feature-extraction-|profile-inference-pgo-|profile-inference-debug-)?(?P<sampler>safepoint-sampler-|async-sampler-)?(?P<optimization_level>O0-|O1-|O2-|O3-|Os-)?(?P<edition>ce-|ee-)?$'
 
@@ -583,6 +586,10 @@ class NativeImageVM(GraalVm):
         if matching.group("upx") is not None:
             mx.logv(f"'upx' is enabled for {config_name}")
             self.use_upx = True
+
+        if matching.group("otw") is not None:
+            mx.logv(f"'otw' is enabled for {config_name}")
+            self.use_open_type_world = True
 
         if matching.group("quickbuild") is not None:
             mx.logv(f"'quickbuild' is enabled for {config_name}")
