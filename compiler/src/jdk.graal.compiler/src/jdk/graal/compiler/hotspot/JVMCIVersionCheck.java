@@ -55,8 +55,8 @@ public final class JVMCIVersionCheck {
     private static final Map<String, Map<String, Version>> JVMCI_MIN_VERSIONS = Map.of(
                     "21", Map.of(DEFAULT_VENDOR_ENTRY, createLegacyVersion(23, 1, 33)),
                     "24", Map.of(
-                                    "Oracle Corporation", createOpenJDKVersion("24+11"),
-                                    DEFAULT_VENDOR_ENTRY, createOpenJDKVersion("24+11")));
+                                    "Oracle Corporation", createOpenJDKVersion("24+13"),
+                                    DEFAULT_VENDOR_ENTRY, createOpenJDKVersion("24+13")));
     private static final int NA = 0;
     /**
      * Minimum Java release supported by Graal.
