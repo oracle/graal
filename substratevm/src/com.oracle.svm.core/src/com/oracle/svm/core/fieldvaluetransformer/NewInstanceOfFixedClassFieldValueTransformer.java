@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,29 +24,22 @@
  */
 package com.oracle.svm.core.fieldvaluetransformer;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
-import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.spi.CoreProviders;
-import jdk.vm.ci.meta.JavaConstant;
+import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
+import com.oracle.svm.util.ReflectionUtil;
 
-@Platforms(Platform.HOSTED_ONLY.class)
-public interface FieldValueTransformerWithAvailability extends FieldValueTransformer {
+/**
+ * Implements the field value transformation semantics of {@link Kind#NewInstance} and
+ * {@link Kind#NewInstanceWhenNotNull}.
+ */
+public record NewInstanceOfFixedClassFieldValueTransformer(Class<?> clazz, boolean onlyIfOriginalNotNull) implements FieldValueTransformer {
 
-    /**
-     * Returns true when the value for this custom computation is available.
-     */
-    boolean isAvailable();
-
-    /**
-     * Optionally provide a Graal IR node to intrinsify the field access before the static analysis.
-     * This allows the compiler to optimize field values that are not available yet, as long as
-     * there is a dedicated high-level node available.
-     */
-    @SuppressWarnings("unused")
-    default ValueNode intrinsify(CoreProviders providers, JavaConstant receiver) {
-        return null;
+    @Override
+    public Object transform(Object receiver, Object originalValue) {
+        if (onlyIfOriginalNotNull && originalValue == null) {
+            return null;
+        }
+        return ReflectionUtil.newInstance(clazz);
     }
 }

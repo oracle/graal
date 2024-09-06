@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.fieldvaluetransformer;
+package com.oracle.svm.hosted.substitute;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.FieldValueTransformer;
+import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
+import com.oracle.svm.core.util.VMError;
 
-import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.spi.CoreProviders;
-import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
-@Platforms(Platform.HOSTED_ONLY.class)
-public interface FieldValueTransformerWithAvailability extends FieldValueTransformer {
+public record ValueNeverAvailableFieldValueTransformer(ResolvedJavaField field) implements FieldValueTransformerWithAvailability {
 
-    /**
-     * Returns true when the value for this custom computation is available.
-     */
-    boolean isAvailable();
+    @Override
+    public Object transform(Object receiver, Object originalValue) {
+        throw VMError.shouldNotReachHere("Value for this field is never available: " + field);
+    }
 
-    /**
-     * Optionally provide a Graal IR node to intrinsify the field access before the static analysis.
-     * This allows the compiler to optimize field values that are not available yet, as long as
-     * there is a dedicated high-level node available.
-     */
-    @SuppressWarnings("unused")
-    default ValueNode intrinsify(CoreProviders providers, JavaConstant receiver) {
-        return null;
+    @Override
+    public boolean isAvailable() {
+        return false;
     }
 }

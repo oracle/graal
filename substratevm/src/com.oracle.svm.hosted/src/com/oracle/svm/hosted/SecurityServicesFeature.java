@@ -87,6 +87,7 @@ import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.reports.ReportUtils;
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.TypeResult;
@@ -96,8 +97,8 @@ import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvaila
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
-import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -331,12 +332,12 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         }
 
         access.registerFieldValueTransformer(providerListField, new FieldValueTransformerWithAvailability() {
+            /*
+             * We must wait until all providers have been registered before filtering the list.
+             */
             @Override
-            public ValueAvailability valueAvailability() {
-                /*
-                 * We must wait until all providers have been registered before filtering the list.
-                 */
-                return ValueAvailability.AfterAnalysis;
+            public boolean isAvailable() {
+                return BuildPhaseProvider.isHostedUniverseBuilt();
             }
 
             @Override
@@ -361,12 +362,12 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         });
 
         access.registerFieldValueTransformer(verificationResultsField, new FieldValueTransformerWithAvailability() {
+            /*
+             * We must wait until all providers have been registered before filtering the list.
+             */
             @Override
-            public ValueAvailability valueAvailability() {
-                /*
-                 * We must wait until all providers have been registered before filtering the list.
-                 */
-                return ValueAvailability.AfterAnalysis;
+            public boolean isAvailable() {
+                return BuildPhaseProvider.isHostedUniverseBuilt();
             }
 
             @Override

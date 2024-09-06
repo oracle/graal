@@ -68,13 +68,11 @@ public class SVMHostedValueProvider extends HostedValuesProvider {
             return ValueSupplier.eagerValue(doReadValue(field, receiver));
         }
         /*
-         * Return a lazy value. First, this applies to fields annotated with
-         * RecomputeFieldValue.Kind.FieldOffset and RecomputeFieldValue.Kind.Custom whose value
-         * becomes available during hosted universe building and is installed by calling
-         * ComputedValueField.processSubstrate() or ComputedValueField.readValue(). Secondly, this
-         * applies to fields annotated with @UnknownObjectField whose value is set directly either
-         * during analysis or in a later phase. Attempts to materialize the value before it becomes
-         * available will result in an error.
+         * Return a lazy value. First, this applies to fields that have a
+         * FieldValueTransformerWithAvailability. Secondly, this applies to fields annotated
+         * with @UnknownObjectField whose value is set directly either during analysis or in a later
+         * phase. Attempts to materialize the value before it becomes available will result in an
+         * error.
          */
         return ValueSupplier.lazyValue(() -> doReadValue(field, receiver), () -> fieldValueInterceptionSupport.isValueAvailable(field));
     }
