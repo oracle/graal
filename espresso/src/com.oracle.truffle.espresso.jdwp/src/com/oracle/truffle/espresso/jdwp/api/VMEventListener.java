@@ -92,4 +92,6 @@ public interface VMEventListener extends VMListener {
     void holdEvents();
 
     void releaseEvents();
+
+    void onDetach();
 }
