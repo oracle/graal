@@ -1428,7 +1428,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
 libgraal_jar_distributions = [
     'sdk:NATIVEBRIDGE',
     'sdk:JNIUTILS',
-    'substratevm:GRAAL_HOTSPOT_LIBRARY']
+    'substratevm:GUESTGRAAL_LIBRARY']
 
 def allow_build_path_in_libgraal():
     """
@@ -1458,13 +1458,18 @@ def prevent_build_path_in_libgraal():
             return ['-H:NativeLinkerOption=-pdbaltpath:%_PDB%']
     return []
 
+libgraal_features = [
+    'com.oracle.svm.graal.hotspot.guestgraal.GuestGraalFeature'
+]
+
 libgraal_build_args = [
+    '--features=' + ','.join(libgraal_features),
+
     ## Pass via JVM args opening up of packages needed for image builder early on
     '-J--add-exports=jdk.graal.compiler/jdk.graal.compiler.hotspot=ALL-UNNAMED',
     '-J--add-exports=jdk.graal.compiler/jdk.graal.compiler.options=ALL-UNNAMED',
     '-J--add-exports=jdk.graal.compiler/jdk.graal.compiler.truffle=ALL-UNNAMED',
     '-J--add-exports=jdk.graal.compiler/jdk.graal.compiler.truffle.hotspot=ALL-UNNAMED',
-    '-J--add-exports=org.graalvm.jniutils/org.graalvm.jniutils=ALL-UNNAMED',
     '-J--add-exports=org.graalvm.truffle.compiler/com.oracle.truffle.compiler.hotspot.libgraal=ALL-UNNAMED',
     '-J--add-exports=org.graalvm.truffle.compiler/com.oracle.truffle.compiler.hotspot=ALL-UNNAMED',
     '-J--add-exports=org.graalvm.truffle.compiler/com.oracle.truffle.compiler=ALL-UNNAMED',
@@ -1537,7 +1542,7 @@ libgraal = mx_sdk_vm.GraalVmJreComponent(
             destination="<lib:jvmcicompiler>",
             jvm_library=True,
             jar_distributions=libgraal_jar_distributions,
-            build_args=libgraal_build_args + ['--features=com.oracle.svm.graal.hotspot.libgraal.LibGraalFeature,com.oracle.svm.graal.hotspot.libgraal.truffle.TruffleLibGraalFeature'],
+            build_args=libgraal_build_args,
             add_to_module='java.base',
             headers=False,
             home_finder=False,
