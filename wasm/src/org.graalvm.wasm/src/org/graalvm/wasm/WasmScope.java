@@ -146,7 +146,7 @@ public final class WasmScope implements TruffleObject {
 
         @ExportMessage
         Object readArrayElement(long index,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached InlinedBranchProfile error) throws InvalidArrayIndexException {
             if (!isArrayElementReadable(index)) {
                 error.enter(node);
