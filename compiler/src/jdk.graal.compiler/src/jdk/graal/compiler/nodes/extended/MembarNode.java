@@ -104,6 +104,14 @@ public final class MembarNode extends FixedWithNextNode implements LIRLowerable,
 
         private final int barriers;
 
+        /**
+         * @return true iff this fence should be used at the end of object initialization to make a
+         *         newly allocated object visible to a different thread.
+         */
+        public boolean isInit() {
+            return this == ALLOCATION_INIT || this == CONSTRUCTOR_FREEZE;
+        }
+
         FenceKind(int barriers) {
             this.barriers = barriers;
         }

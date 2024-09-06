@@ -27,7 +27,7 @@ package jdk.graal.compiler.core.phases;
 import static jdk.graal.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Required;
 
 import jdk.graal.compiler.core.common.GraalOptions;
-import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.graph.Graph;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
@@ -74,7 +74,7 @@ public class LowTier extends BaseTier<LowTierContext> {
             appendPhase(new ProfileCompiledMethodsPhase());
         }
 
-        if (Assertions.assertionsEnabled()) {
+        if (Graph.Options.VerifyGraalGraphs.getValue(options)) {
             appendPhase(new InitMemoryVerificationPhase());
         }
 

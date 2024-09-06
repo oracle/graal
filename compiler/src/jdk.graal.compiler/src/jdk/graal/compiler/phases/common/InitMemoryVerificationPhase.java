@@ -31,7 +31,6 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.word.LocationIdentity;
 
-import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.AbstractMergeNode;
 import jdk.graal.compiler.nodes.FixedNode;
@@ -50,28 +49,27 @@ import jdk.graal.compiler.nodes.memory.MemoryKill;
 import jdk.graal.compiler.nodes.memory.MultiMemoryKill;
 import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
-import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.RecursivePhase;
+import jdk.graal.compiler.phases.VerifyPhase;
 import jdk.graal.compiler.phases.graph.ReentrantNodeIterator;
 import jdk.vm.ci.code.MemoryBarriers;
 
 /**
- * To maintain object safety while not interacting with the memory graph, operations on
- * {@link LocationIdentity#INIT_LOCATION INIT} memory must follow some rules, namely:
+ * Verifies the following two invariants related to {@link LocationIdentity#INIT_LOCATION INIT}
+ * memory in the graph:
  * <ul>
- * <li>All newly allocated objects are published by a {@link PublishWritesNode} <b>after</b> all
- * initializing writes have been performed.</li>
+ * <li>Newly allocated objects are published by a {@link PublishWritesNode} <b>after</b> all
+ * initializing writes have been performed. By having later uses of the allocated object depend on
+ * the {@link PublishWritesNode}, we prevent these uses from floating above the initializing writes.
+ * </li>
  * <li>A {@link MemoryBarriers#STORE_STORE STORE_STORE} barrier is emitted after all initializing
- * writes have been performed.</li>
- * <li>Later reads and writes of the allocated objects have a data dependence on the
- * {@link PublishWritesNode} instead of the raw allocation node.</li>
+ * writes have been performed. This ensures all allocation initializations before this fence have
+ * completed before the object can become visible to a different thread.</li>
  * </ul>
- * This phase verifies the first two properties. The third property is instead verified by
- * {@link PublishWritesNode#verify()}.
  * <p>
  * See {@link PublishWritesNode} for a description of init memory semantics in the Graal IR.
  */
-public class InitMemoryVerificationPhase extends BasePhase<CoreProviders> implements RecursivePhase {
+public class InitMemoryVerificationPhase extends VerifyPhase<CoreProviders> implements RecursivePhase {
     @Override
     public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
         /*
@@ -107,28 +105,21 @@ public class InitMemoryVerificationPhase extends BasePhase<CoreProviders> implem
             return false;
         }
 
-        private static boolean isInitBarrier(MembarNode membar) {
-            if (!membar.getKilledLocationIdentity().isInit()) {
-                return false;
-            }
-            return membar.getFenceKind().equals(MembarNode.FenceKind.ALLOCATION_INIT) || membar.getFenceKind().equals(MembarNode.FenceKind.CONSTRUCTOR_FREEZE);
-        }
-
         @Override
         protected Integer processNode(FixedNode node, Integer kills) {
             int liveKills = kills;
             if (node instanceof MembarNode memBar) {
-                if (isInitBarrier(memBar)) {
+                if (memBar.getFenceKind().isInit()) {
                     liveKills = 0;
-                } else {
-                    assert liveKills == 0 : "Non-init memBar while there are live init writes: " + memBar;
+                } else if (liveKills > 0) {
+                    throw new VerificationError("%s is a non-init barrier, but there are %d live init writes", memBar, liveKills);
                 }
             } else if (MemoryKill.isSingleMemoryKill(node) && killsInitMemory(MemoryKill.asSingleMemoryKill(node))) {
                 liveKills++;
             } else if (MemoryKill.isMultiMemoryKill(node) && killsInitMemory(MemoryKill.asMultiMemoryKill(node))) {
                 liveKills++;
-            } else if (node instanceof ReturnNode) {
-                assert liveKills == 0 : String.format("%d unpublished writes at %s", liveKills, node);
+            } else if (node instanceof ReturnNode && liveKills > 0) {
+                throw new VerificationError("%d writes to init memory not guarded by an init barrier at node %s", liveKills, node);
             }
             return liveKills;
         }
@@ -183,8 +174,8 @@ public class InitMemoryVerificationPhase extends BasePhase<CoreProviders> implem
                 processAlloc(allocation, unpublished);
             } else if (node instanceof PublishWritesNode publish) {
                 markPublished(publish.allocation(), unpublished);
-            } else if (node instanceof ReturnNode) {
-                assert unpublished.isEmpty() : Assertions.errorMessageContext("unpublished allocations", unpublished, "at node", node);
+            } else if (node instanceof ReturnNode && !unpublished.isEmpty()) {
+                throw new VerificationError("unpublished allocations at node %s: %s", unpublished, node);
             }
             return unpublished;
         }
@@ -211,7 +202,7 @@ public class InitMemoryVerificationPhase extends BasePhase<CoreProviders> implem
     }
 
     @Override
-    protected void run(StructuredGraph graph, CoreProviders context) {
+    protected void verify(StructuredGraph graph, CoreProviders context) {
         ReentrantNodeIterator.apply(new InitBarrierVerificationClosure(), graph.start(), 0);
         ReentrantNodeIterator.apply(new AllocPublishVerificationClosure(), graph.start(), EconomicSet.create());
     }
