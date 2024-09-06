@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.posix.headers;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static org.graalvm.nativeimage.c.function.CFunction.Transition.NO_TRANSITION;
 
 import org.graalvm.nativeimage.Platform;
@@ -46,6 +47,8 @@ import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.RegisterDumper;
 import com.oracle.svm.core.SubstrateSegfaultHandler;
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.posix.PosixUtils;
 
 // Checkstyle: stop
@@ -234,8 +237,16 @@ public class Signal {
         SIGXCPU,
         SIGXFSZ;
 
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public int getCValue() {
+            if (SubstrateUtil.HOSTED) {
+                return CConstant.ValueAccess.get(this, "getCValue0");
+            }
+            return getCValue0();
+        }
+
         @CEnumValue
-        public native int getCValue();
+        private native int getCValue0();
     }
 
     @Platforms(Platform.LINUX.class)
@@ -245,8 +256,16 @@ public class Signal {
         SIGPOLL,
         SIGPWR;
 
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public int getCValue() {
+            if (SubstrateUtil.HOSTED) {
+                return CConstant.ValueAccess.get(this, "getCValue0");
+            }
+            return getCValue0();
+        }
+
         @CEnumValue
-        public native int getCValue();
+        private native int getCValue0();
     }
 
     @Platforms(Platform.DARWIN.class)
@@ -256,8 +275,16 @@ public class Signal {
         SIGINFO,
         SIGEMT;
 
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public int getCValue() {
+            if (SubstrateUtil.HOSTED) {
+                return CConstant.ValueAccess.get(this, "getCValue0");
+            }
+            return getCValue0();
+        }
+
         @CEnumValue
-        public native int getCValue();
+        private native int getCValue0();
     }
 
     /**

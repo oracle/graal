@@ -69,7 +69,7 @@ class SignalHandlerFeature implements InternalFeature {
     }
 
     @Override
-    public void duringSetup(DuringSetupAccess access) {
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
         if (ImageSingletons.contains(SignalHandlerSupport.class)) {
             SignalHandlerSupport support = SignalHandlerSupport.singleton();
             RuntimeSupport.getRuntimeSupport().addTearDownHook(new StopDispatcherThread());

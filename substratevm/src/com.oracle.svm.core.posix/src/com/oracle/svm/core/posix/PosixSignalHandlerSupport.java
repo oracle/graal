@@ -30,10 +30,10 @@ import static com.oracle.svm.core.jdk.Target_jdk_internal_misc_Signal.Constants.
 import static com.oracle.svm.core.jdk.Target_jdk_internal_misc_Signal.Constants.ERROR_HANDLER;
 import static com.oracle.svm.core.jdk.Target_jdk_internal_misc_Signal.Constants.IGNORE_HANDLER;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.MapCursor;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -70,7 +70,6 @@ import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.nodes.extended.MembarNode;
 
 /**
  * The signal handler mechanism exists only once per process. So, only a single isolate at a time
@@ -85,7 +84,7 @@ public final class PosixSignalHandlerSupport implements SignalHandlerSupport {
      * Note that aliases are allowed in this map, i.e., different signal names may have the same C
      * signal number.
      */
-    private EconomicMap<String, Integer> signalNameToSignalNum;
+    private Map<String, Integer> signalNameToSignalNum;
     private boolean[] supportedSignals;
     private DispatcherThread dispatcherThread;
     private boolean initialized;
@@ -99,6 +98,14 @@ public final class PosixSignalHandlerSupport implements SignalHandlerSupport {
         return ImageSingletons.lookup(PosixSignalHandlerSupport.class);
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
+    @SuppressWarnings("hiding")
+    public void setData(Map<String, Integer> signalNameToSignalNum, boolean[] supportedSignals) {
+        assert this.signalNameToSignalNum == null && this.supportedSignals == null;
+        this.signalNameToSignalNum = signalNameToSignalNum;
+        this.supportedSignals = supportedSignals;
+    }
+
     /** Returns whether the currently installed signal handler matched the passed dispatcher. */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static boolean isCurrentDispatcher(int sig, SignalDispatcher dispatcher) {
@@ -108,8 +115,6 @@ public final class PosixSignalHandlerSupport implements SignalHandlerSupport {
     }
 
     public int findSignal0(String signalName) {
-        initSupportedSignals();
-
         Integer result = signalNameToSignalNum.get(signalName);
         if (result != null) {
             return result;
@@ -162,8 +167,6 @@ public final class PosixSignalHandlerSupport implements SignalHandlerSupport {
             return;
         }
 
-        initSupportedSignals();
-
         int code = CSunMiscSignal.open();
         if (code == 0) {
             startDispatcherThread();
@@ -175,47 +178,6 @@ public final class PosixSignalHandlerSupport implements SignalHandlerSupport {
             Log.log().string("CSunMiscSignal.open() failed.").string("  errno: ").signed(errno).string("  ").string(Errno.strerror(errno)).newline();
             throw VMError.shouldNotReachHere("CSunMiscSignal.open() failed.");
         }
-    }
-
-    /** May be executed by multiple threads but each thread will compute the same data. */
-    private void initSupportedSignals() {
-        if (signalNameToSignalNum != null && supportedSignals != null) {
-            return;
-        }
-
-        int maxSigNum = 0;
-        EconomicMap<String, Integer> map = EconomicMap.create();
-        for (SignalEnum value : SignalEnum.values()) {
-            maxSigNum = Math.max(value.getCValue(), maxSigNum);
-            map.put(getJavaSignalName(value.name()), value.getCValue());
-        }
-
-        if (Platform.includedIn(Platform.LINUX.class)) {
-            for (Signal.LinuxSignalEnum value : Signal.LinuxSignalEnum.values()) {
-                maxSigNum = Math.max(value.getCValue(), maxSigNum);
-                map.put(getJavaSignalName(value.name()), value.getCValue());
-            }
-        } else if (Platform.includedIn(Platform.DARWIN.class)) {
-            for (Signal.DarwinSignalEnum value : Signal.DarwinSignalEnum.values()) {
-                maxSigNum = Math.max(value.getCValue(), maxSigNum);
-                map.put(getJavaSignalName(value.name()), value.getCValue());
-            }
-        }
-
-        boolean[] signals = new boolean[maxSigNum + 1];
-        MapCursor<String, Integer> cursor = map.getEntries();
-        while (cursor.advance()) {
-            signals[cursor.getValue()] = true;
-        }
-
-        MembarNode.memoryBarrier(MembarNode.FenceKind.STORE_STORE);
-        signalNameToSignalNum = map;
-        supportedSignals = signals;
-    }
-
-    private static String getJavaSignalName(String name) {
-        assert name.startsWith("SIG");
-        return name.substring(3);
     }
 
     private void startDispatcherThread() {
@@ -341,8 +303,51 @@ class PosixSignalHandlerFeature implements InternalFeature {
     }
 
     @Override
+    public void duringSetup(DuringSetupAccess access) {
+        setSignalData();
+    }
+
+    @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         RuntimeSupport.getRuntimeSupport().addStartupHook(new IgnoreSignalsStartupHook());
+    }
+
+    private static void setSignalData() {
+        int maxSigNum = 0;
+        Map<String, Integer> signalNameToSignalNum = new HashMap<>();
+        for (SignalEnum sig : SignalEnum.values()) {
+            int sigNum = sig.getCValue();
+            maxSigNum = Math.max(sigNum, maxSigNum);
+            signalNameToSignalNum.put(getJavaSignalName(sig.name()), sigNum);
+        }
+
+        if (Platform.includedIn(Platform.LINUX.class)) {
+            for (Signal.LinuxSignalEnum sig : Signal.LinuxSignalEnum.values()) {
+                int sigNum = sig.getCValue();
+                maxSigNum = Math.max(sigNum, maxSigNum);
+                signalNameToSignalNum.put(getJavaSignalName(sig.name()), sigNum);
+            }
+        } else if (Platform.includedIn(Platform.DARWIN.class)) {
+            for (Signal.DarwinSignalEnum sig : Signal.DarwinSignalEnum.values()) {
+                int sigNum = sig.getCValue();
+                maxSigNum = Math.max(sigNum, maxSigNum);
+                signalNameToSignalNum.put(getJavaSignalName(sig.name()), sigNum);
+            }
+        }
+
+        boolean[] supportedSignals = new boolean[maxSigNum + 1];
+        for (var entry : signalNameToSignalNum.entrySet()) {
+            supportedSignals[entry.getValue()] = true;
+        }
+
+        /* Copy the map data into an unmodifiable map (safer and more compact). */
+        Map<String, Integer> map = Map.copyOf(signalNameToSignalNum);
+        PosixSignalHandlerSupport.singleton().setData(map, supportedSignals);
+    }
+
+    private static String getJavaSignalName(String name) {
+        assert name.startsWith("SIG");
+        return name.substring(3);
     }
 }
 
