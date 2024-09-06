@@ -911,6 +911,10 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     }
 
     public Executable getJavaMethod() {
+        if (wrapped instanceof BaseLayerMethod) {
+            /* We don't know the corresponding Java method. */
+            return null;
+        }
         return OriginalMethodProvider.getJavaMethod(this);
     }
 

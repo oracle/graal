@@ -293,11 +293,13 @@ public abstract class NonSnippetLowerings {
         protected final RuntimeConfiguration runtimeConfig;
         protected final boolean verifyTypes;
         protected final KnownOffsets knownOffsets;
+        private final boolean isClosedTypeWorld;
 
         public InvokeLowering(RuntimeConfiguration runtimeConfig, boolean verifyTypes, KnownOffsets knownOffsets) {
             this.runtimeConfig = runtimeConfig;
             this.verifyTypes = verifyTypes;
             this.knownOffsets = knownOffsets;
+            isClosedTypeWorld = SubstrateOptions.useClosedTypeWorld();
         }
 
         @Override
@@ -366,7 +368,7 @@ public abstract class NonSnippetLowerings {
                 }
 
                 CallTargetNode loweredCallTarget;
-                if (invokeKind.isDirect() || implementations.length == 1) {
+                if (invokeKind.isDirect() || (implementations.length == 1 && (isClosedTypeWorld || method.canBeStaticallyBound()))) {
                     SharedMethod targetMethod = method;
                     if (!invokeKind.isDirect()) {
                         /*
@@ -374,6 +376,7 @@ public abstract class NonSnippetLowerings {
                          * emit a direct call to the unique implementation.
                          */
                         targetMethod = implementations[0];
+                        assert targetMethod != null : "Expecting a unique callee for target method " + method;
                     }
 
                     if (SubstrateUtil.HOSTED && targetMethod.forceIndirectCall()) {
@@ -421,7 +424,7 @@ public abstract class NonSnippetLowerings {
                                         address, parameters.toArray(new ValueNode[parameters.size()]), callTarget.returnStamp(), signature, targetMethod, callType, invokeKind));
                         graph.addBeforeFixed(node, codeStart);
                     }
-                } else if (implementations.length == 0) {
+                } else if (implementations.length == 0 && isClosedTypeWorld) {
                     /*
                      * We are calling an abstract method with no implementation, i.e., the
                      * closed-world analysis showed that there is no concrete receiver ever

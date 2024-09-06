@@ -39,7 +39,6 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.hosted.OpenTypeWorldFeature;
 
 import jdk.graal.compiler.debug.Assertions;
@@ -119,12 +118,12 @@ public final class VTableBuilder {
 
     private List<HostedMethod> generateDispatchTable(HostedType type, int startingIndex) {
         Predicate<HostedMethod> includeMethod;
-        if (ImageLayerBuildingSupport.buildingImageLayer()) {
-            // include all methods
-            includeMethod = m -> true;
-        } else {
+        if (hUniverse.hostVM().isClosedTypeWorld()) {
             // include only methods which will be indirect calls
             includeMethod = m -> m.implementations.length > 1 || m.wrapped.isVirtualRootMethod();
+        } else {
+            // include all methods
+            includeMethod = m -> true;
         }
         var table = type.getWrapped().getOpenTypeWorldDispatchTableMethods().stream().map(hUniverse::lookup).filter(includeMethod).sorted(HostedUniverse.METHOD_COMPARATOR).toList();
 

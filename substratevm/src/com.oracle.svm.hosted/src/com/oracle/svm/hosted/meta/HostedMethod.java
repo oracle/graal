@@ -111,6 +111,10 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     /**
      * All concrete methods that can actually be called when calling this method. This includes all
      * overridden methods in subclasses, as well as this method if it is non-abstract.
+     * <p>
+     * With an open type world analysis the list of implementations is incomplete, i.e., no
+     * aggressive optimizations should be performed based on the contents of this list as one must
+     * assume that additional implementations can be discovered later.
      */
     HostedMethod[] implementations;
 
@@ -340,7 +344,7 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
 
     @Override
     public int getVTableIndex() {
-        assert vtableIndex != -1;
+        assert vtableIndex != -1 : "Missing vtable index for method " + this.format("%H.%n(%p)");
         return vtableIndex;
     }
 
@@ -451,7 +455,14 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
 
     @Override
     public boolean canBeStaticallyBound() {
-        return implementations.length == 1 && implementations[0].equals(this);
+        if (holder.universe.hostVM().isClosedTypeWorld()) {
+            return implementations.length == 1 && implementations[0].equals(this);
+        }
+        /*
+         * In open type world analysis we cannot make assumptions based on discovered
+         * implementations.
+         */
+        return wrapped.canBeStaticallyBound();
     }
 
     @Override

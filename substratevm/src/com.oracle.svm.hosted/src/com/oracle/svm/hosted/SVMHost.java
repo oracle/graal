@@ -201,6 +201,7 @@ public class SVMHost extends HostVM {
     private Set<Field> excludedFields;
 
     private final Boolean optionAllowUnsafeAllocationOfAllInstantiatedTypes = SubstrateOptions.AllowUnsafeAllocationOfAllInstantiatedTypes.getValue();
+    private final boolean isClosedTypeWorld = SubstrateOptions.useClosedTypeWorld();
 
     @SuppressWarnings("this-escape")
     public SVMHost(OptionValues options, ImageClassLoader loader, ClassInitializationSupport classInitializationSupport, AnnotationSubstitutionProcessor annotationSubstitutions,
@@ -934,6 +935,11 @@ public class SVMHost extends HostVM {
             return !annotationSubstitutionProcessor.isDeleted(field) && !annotationSubstitutionProcessor.isAnnotationPresent(field, InjectAccessors.class);
         }
         return super.isFieldIncluded(bb, field);
+    }
+
+    @Override
+    public boolean isClosedTypeWorld() {
+        return isClosedTypeWorld;
     }
 
     private final List<BiPredicate<AnalysisMethod, AnalysisMethod>> neverInlineTrivialHandlers = new CopyOnWriteArrayList<>();
