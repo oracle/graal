@@ -164,7 +164,7 @@ final class PanamaSignature {
 
         @Specialization(guards = {"signature.signatureInfo == cachedSignatureInfo", "executable == cachedExecutable"}, assumptions = "getSingleContextAssumption()", limit = "3")
         static PanamaClosure doCachedExecutable(PanamaSignature signature, Object executable,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached("signature.signatureInfo") CachedSignatureInfo cachedSignatureInfo,
                         @Cached("executable") Object cachedExecutable,
                         @Cached("create(cachedSignatureInfo, cachedExecutable)") MonomorphicClosureInfo cachedClosureInfo) {
@@ -181,7 +181,7 @@ final class PanamaSignature {
 
         @Specialization(replaces = "doCachedExecutable", guards = "signature.signatureInfo == cachedSignatureInfo", limit = "3")
         static PanamaClosure doCachedSignature(PanamaSignature signature, Object executable,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached("signature.signatureInfo") CachedSignatureInfo cachedSignatureInfo,
                         @Cached("create(cachedSignatureInfo)") PolymorphicClosureInfo cachedClosureInfo) {
             assert signature.signatureInfo == cachedSignatureInfo;
@@ -194,7 +194,7 @@ final class PanamaSignature {
         @TruffleBoundary
         @Specialization(replaces = "doCachedSignature")
         static PanamaClosure createClosure(PanamaSignature signature, Object executable,
-                        @Bind("$node") Node node) {
+                        @Bind Node node) {
             PolymorphicClosureInfo cachedClosureInfo = PolymorphicClosureInfo.create(signature.signatureInfo);
             MethodHandle cachedHandle = cachedClosureInfo.handle.asType(signature.getUpcallMethodType());
             @SuppressWarnings("preview")
@@ -268,7 +268,7 @@ final class PanamaSignature {
 
             @Specialization(guards = {"builder.argsState == cachedState", "builder.retType == cachedRetType"}, limit = "3")
             static Object doCached(PanamaSignatureBuilder builder,
-                            @Bind("$node") Node node,
+                            @Bind Node node,
                             @Cached("builder.retType") @SuppressWarnings("unused") PanamaType cachedRetType,
                             @Cached("builder.argsState") @SuppressWarnings("unused") ArgsState cachedState,
                             @CachedLibrary("builder") NFIBackendSignatureBuilderLibrary self,
@@ -278,7 +278,7 @@ final class PanamaSignature {
 
             @Specialization(replaces = "doCached")
             static Object doGeneric(PanamaSignatureBuilder builder,
-                            @Bind("$node") Node node,
+                            @Bind Node node,
                             @CachedLibrary("builder") NFIBackendSignatureBuilderLibrary self) {
                 CachedSignatureInfo sigInfo = prepareSignatureInfo(builder.retType, builder.argsState, node);
 
