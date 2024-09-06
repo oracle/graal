@@ -512,7 +512,8 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         // @formatter:off
         public static final AMD64MROp MOVB   = new AMD64MROp("MOVB", 0x88, OpAssertion.ByteAssertion);
         public static final AMD64MROp MOV    = new AMD64MROp("MOV",  0x89, OpAssertion.WordOrLargerAssertion);
-       // @formatter:on
+        public static final AMD64MROp TEST   = new AMD64MROp("TEST", 0x85, OpAssertion.WordOrLargerAssertion);
+        // @formatter:on
 
         protected AMD64MROp(String opcode, int op, OpAssertion assertion) {
             this(opcode, 0, 0, op, assertion, null);

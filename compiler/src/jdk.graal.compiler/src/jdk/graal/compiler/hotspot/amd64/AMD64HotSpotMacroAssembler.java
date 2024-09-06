@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -170,5 +170,10 @@ public class AMD64HotSpotMacroAssembler extends AMD64MacroAssembler {
             offset = -128;
         }
         return offset;
+    }
+
+    @Override
+    public Register getZeroValueRegister() {
+        return providers.getRegisters().getZeroValueRegister(config);
     }
 }

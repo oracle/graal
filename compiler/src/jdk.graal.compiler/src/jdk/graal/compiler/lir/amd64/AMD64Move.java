@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -272,10 +272,10 @@ public class AMD64Move {
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             if (size == OperandSize.QWORD) {
-                masm.leaq(asRegister(result, AMD64Kind.QWORD), address.toAddress());
+                masm.leaq(asRegister(result, AMD64Kind.QWORD), address.toAddress(masm));
             } else {
                 assert size == OperandSize.DWORD : size;
-                masm.lead(asRegister(result, AMD64Kind.DWORD), address.toAddress());
+                masm.lead(asRegister(result, AMD64Kind.DWORD), address.toAddress(masm));
             }
         }
     }
@@ -348,7 +348,7 @@ public class AMD64Move {
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             crb.recordImplicitException(masm.position(), state);
-            masm.nullCheck(address.toAddress());
+            masm.nullCheck(address.toAddress(masm));
         }
 
         @Override
@@ -392,16 +392,16 @@ public class AMD64Move {
             }
             switch (accessKind) {
                 case BYTE:
-                    masm.cmpxchgb(asRegister(newValue), address.toAddress());
+                    masm.cmpxchgb(asRegister(newValue), address.toAddress(masm));
                     break;
                 case WORD:
-                    masm.cmpxchgw(asRegister(newValue), address.toAddress());
+                    masm.cmpxchgw(asRegister(newValue), address.toAddress(masm));
                     break;
                 case DWORD:
-                    masm.cmpxchgl(asRegister(newValue), address.toAddress());
+                    masm.cmpxchgl(asRegister(newValue), address.toAddress(masm));
                     break;
                 case QWORD:
-                    masm.cmpxchgq(asRegister(newValue), address.toAddress());
+                    masm.cmpxchgq(asRegister(newValue), address.toAddress(masm));
                     break;
                 default:
                     throw GraalError.shouldNotReachHereUnexpectedValue(accessKind); // ExcludeFromJacocoGeneratedReport
@@ -435,16 +435,16 @@ public class AMD64Move {
             }
             switch (accessKind) {
                 case BYTE:
-                    masm.xaddb(address.toAddress(), asRegister(result));
+                    masm.xaddb(address.toAddress(masm), asRegister(result));
                     break;
                 case WORD:
-                    masm.xaddw(address.toAddress(), asRegister(result));
+                    masm.xaddw(address.toAddress(masm), asRegister(result));
                     break;
                 case DWORD:
-                    masm.xaddl(address.toAddress(), asRegister(result));
+                    masm.xaddl(address.toAddress(masm), asRegister(result));
                     break;
                 case QWORD:
-                    masm.xaddq(address.toAddress(), asRegister(result));
+                    masm.xaddq(address.toAddress(masm), asRegister(result));
                     break;
                 default:
                     throw GraalError.shouldNotReachHereUnexpectedValue(accessKind); // ExcludeFromJacocoGeneratedReport
@@ -475,16 +475,16 @@ public class AMD64Move {
             move(accessKind, crb, masm, result, newValue);
             switch (accessKind) {
                 case BYTE:
-                    masm.xchgb(asRegister(result), address.toAddress());
+                    masm.xchgb(asRegister(result), address.toAddress(masm));
                     break;
                 case WORD:
-                    masm.xchgw(asRegister(result), address.toAddress());
+                    masm.xchgw(asRegister(result), address.toAddress(masm));
                     break;
                 case DWORD:
-                    masm.xchgl(asRegister(result), address.toAddress());
+                    masm.xchgl(asRegister(result), address.toAddress(masm));
                     break;
                 case QWORD:
-                    masm.xchgq(asRegister(result), address.toAddress());
+                    masm.xchgq(asRegister(result), address.toAddress(masm));
                     break;
                 default:
                     throw GraalError.shouldNotReachHereUnexpectedValue(accessKind); // ExcludeFromJacocoGeneratedReport
@@ -694,8 +694,7 @@ public class AMD64Move {
                 // Do not optimize with an XOR as this instruction may be between
                 // a CMP and a Jcc in which case the XOR will modify the condition
                 // flags and interfere with the Jcc.
-                masm.movl(result, input.asInt());
-
+                masm.moveInt(result, input.asInt());
                 break;
             case Long:
                 // Do not optimize with an XOR as this instruction may be between
@@ -703,7 +702,7 @@ public class AMD64Move {
                 // flags and interfere with the Jcc.
                 if (input.asLong() == (int) input.asLong()) {
                     // Sign extended to long
-                    masm.movslq(result, (int) input.asLong());
+                    masm.moveIntSignExtend(result, (int) input.asLong());
                 } else if ((input.asLong() & 0xFFFFFFFFL) == input.asLong()) {
                     // Zero extended to long
                     masm.movl(result, (int) input.asLong());
@@ -737,7 +736,7 @@ public class AMD64Move {
                         masm.movq(result, crb.uncompressedNullRegister);
                     } else {
                         // Upper bits will be zeroed so this also works for narrow oops
-                        masm.movslq(result, 0);
+                        masm.moveIntSignExtend(result, 0);
                     }
                 } else {
                     if (crb.target.inlineObjects) {
@@ -819,16 +818,16 @@ public class AMD64Move {
         switch ((AMD64Kind) result.getPlatformKind()) {
             case BYTE:
                 assert NumUtil.isByte(imm) : "Is not in byte range: " + imm;
-                AMD64MIOp.MOVB.emit(masm, OperandSize.BYTE, dest, (int) imm);
+                masm.emitAMD64MIOp(AMD64MIOp.MOVB, OperandSize.BYTE, dest, (int) imm, false);
                 break;
             case WORD:
                 assert NumUtil.isShort(imm) : "Is not in short range: " + imm;
-                AMD64MIOp.MOV.emit(masm, OperandSize.WORD, dest, (int) imm);
+                masm.emitAMD64MIOp(AMD64MIOp.MOV, OperandSize.WORD, dest, (int) imm, false);
                 break;
             case DWORD:
             case SINGLE:
                 assert NumUtil.isInt(imm) : "Is not in int range: " + imm;
-                masm.movl(dest, (int) imm);
+                masm.moveInt(dest, (int) imm);
                 break;
             case QWORD:
             case DOUBLE:
