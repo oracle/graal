@@ -70,7 +70,7 @@ public final class KnownOffsetsFeature implements InternalFeature, FeatureSingle
         DynamicHubLayout dynamicHubLayout = DynamicHubLayout.singleton();
         int vtableBaseOffset = dynamicHubLayout.vTableOffset();
         int vtableEntrySize = dynamicHubLayout.vTableSlotSize;
-        int typeIDSlotsOffset = SubstrateOptions.closedTypeWorld() ? dynamicHubLayout.getClosedTypeWorldTypeCheckSlotsOffset() : -1;
+        int typeIDSlotsOffset = SubstrateOptions.useClosedTypeWorldHubLayout() ? dynamicHubLayout.getClosedTypeWorldTypeCheckSlotsOffset() : -1;
 
         int componentHubOffset = findFieldOffset(access, DynamicHub.class, "componentType");
 
