@@ -45,7 +45,7 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.HotSpotGraalOptionValues;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.hotspot.guestgraal.CompilerConfig;
+import jdk.graal.compiler.hotspot.libgraal.CompilerConfig;
 
 /**
  * Gets the map created in a JVM subprocess by running {@link CompilerConfig}.

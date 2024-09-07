@@ -52,9 +52,13 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
         return ImageSingletons.lookup(ClassForNameSupport.class);
     }
 
-    /** The map used to collect registered classes. */
+    /**
+     * The map used to collect registered classes.
+     */
     private final EconomicMap<String, ConditionalRuntimeValue<Object>> knownClasses = ImageHeapMap.create();
-    /** The map used to collect unsafe allocated classes. */
+    /**
+     * The map used to collect unsafe allocated classes.
+     */
     private final EconomicMap<Class<?>, RuntimeConditionSet> unsafeInstantiatedClasses = ImageHeapMap.create();
 
     private static final Object NEGATIVE_QUERY = new Object();
@@ -77,11 +81,11 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
 
             /* TODO: Remove workaround once GR-53985 is implemented */
             if (currentValue instanceof Class<?> currentClazz && clazz.getClassLoader() != currentClazz.getClassLoader()) {
-                /* Ensure runtime lookup of GuestGraalClassLoader classes */
-                if (isGuestGraalClass(currentClazz)) {
+                /* Ensure runtime lookup of LibGraalClassLoader classes */
+                if (isLibGraalClass(currentClazz)) {
                     return;
                 }
-                if (isGuestGraalClass(clazz)) {
+                if (isLibGraalClass(clazz)) {
                     currentValue = null;
                 }
             }
@@ -111,12 +115,12 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
         }
     }
 
-    private static boolean isGuestGraalClass(Class<?> clazz) {
+    private static boolean isLibGraalClass(Class<?> clazz) {
         var loader = clazz.getClassLoader();
         if (loader == null) {
             return false;
         }
-        return "GuestGraalClassLoader".equals(loader.getName());
+        return "LibGraalClassLoader".equals(loader.getName());
     }
 
     public static ConditionalRuntimeValue<Object> updateConditionalValue(ConditionalRuntimeValue<Object> existingConditionalValue, Object newValue,

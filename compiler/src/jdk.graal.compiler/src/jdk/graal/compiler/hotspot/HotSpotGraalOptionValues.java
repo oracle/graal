@@ -112,7 +112,7 @@ public class HotSpotGraalOptionValues {
             Map<String, String> savedProps = GraalServices.getSavedProperties();
 
             EconomicMap<String, String> compilerOptionSettings = EconomicMap.create();
-            // Need to use Map as it's a shared type between guest and host in GuestGraal.
+            // Need to use Map as it's a shared type between guest and host in LibGraal.
             Map<String, String> vmOptionSettings = new HashMap<>();
 
             for (Map.Entry<String, String> e : savedProps.entrySet()) {
