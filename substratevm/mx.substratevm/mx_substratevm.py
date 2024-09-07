@@ -1428,7 +1428,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
 libgraal_jar_distributions = [
     'sdk:NATIVEBRIDGE',
     'sdk:JNIUTILS',
-    'substratevm:GUESTGRAAL_LIBRARY']
+    'substratevm:LIBGRAAL_LIBRARY']
 
 def allow_build_path_in_libgraal():
     """
@@ -1459,7 +1459,7 @@ def prevent_build_path_in_libgraal():
     return []
 
 libgraal_features = [
-    'com.oracle.svm.graal.hotspot.guestgraal.GuestGraalFeature'
+    'com.oracle.svm.graal.hotspot.libgraal.LibGraalFeature'
 ]
 
 libgraal_build_args = [
