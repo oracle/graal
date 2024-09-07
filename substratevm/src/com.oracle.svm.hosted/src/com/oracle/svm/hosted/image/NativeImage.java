@@ -757,6 +757,22 @@ public abstract class NativeImage extends AbstractImage {
         }
     }
 
+    private static String getUniqueShortName(ResolvedJavaMethod sm) {
+        String name;
+        if (sm instanceof HostedMethod hMethod) {
+            if (hMethod.isCompiledInPriorLayer()) {
+                // ensure we use a consistent symbol name across layers
+                name = HostedDynamicLayerInfo.singleton().loadMethodNameInfo(hMethod.getWrapped()).uniqueShortName();
+            } else {
+                name = hMethod.getUniqueShortName();
+            }
+        } else {
+            name = SubstrateUtil.uniqueShortName(sm);
+        }
+
+        return name;
+    }
+
     /**
      * Given a {@link ResolvedJavaMethod}, compute what symbol name of its start address (if any) in
      * the image. The symbol name returned is the one that would be used for local references (e.g.
@@ -768,7 +784,7 @@ public abstract class NativeImage extends AbstractImage {
      *         does)
      */
     public static String localSymbolNameForMethod(ResolvedJavaMethod sm) {
-        return SubstrateOptions.ImageSymbolsPrefix.getValue() + (sm instanceof HostedMethod ? ((HostedMethod) sm).getUniqueShortName() : SubstrateUtil.uniqueShortName(sm));
+        return SubstrateOptions.ImageSymbolsPrefix.getValue() + getUniqueShortName(sm);
     }
 
     /**
@@ -798,7 +814,7 @@ public abstract class NativeImage extends AbstractImage {
      *         does)
      */
     public static String globalSymbolNameForMethod(ResolvedJavaMethod sm) {
-        return mangleName((sm instanceof HostedMethod ? ((HostedMethod) sm).getUniqueShortName() : SubstrateUtil.uniqueShortName(sm)));
+        return mangleName(getUniqueShortName(sm));
     }
 
     @Override
