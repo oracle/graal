@@ -106,7 +106,7 @@ public final class SubstrateMethodAccessor extends SubstrateAccessor implements 
          * In case we have both a vtableOffset and a directTarget, the vtable lookup wins. For such
          * methods, the directTarget is only used when doing an invokeSpecial.
          */
-        if (SubstrateOptions.closedTypeWorld()) {
+        if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
             CFunctionPointer target;
             if (vtableOffset == OFFSET_NOT_YET_COMPUTED) {
                 throw VMError.shouldNotReachHere("Missed vtableOffset recomputation at image build time");

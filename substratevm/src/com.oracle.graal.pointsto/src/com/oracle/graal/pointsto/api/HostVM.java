@@ -332,6 +332,10 @@ public abstract class HostVM {
         return true;
     }
 
+    public boolean isClosedTypeWorld() {
+        return true;
+    }
+
     /**
      * Helpers to determine what analysis actions should be taken for a given Multi-Method version.
      */

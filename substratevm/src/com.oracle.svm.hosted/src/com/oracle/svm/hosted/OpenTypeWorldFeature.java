@@ -79,7 +79,7 @@ public class OpenTypeWorldFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(Feature.IsInConfigurationAccess access) {
-        return !SubstrateOptions.closedTypeWorld();
+        return !SubstrateOptions.useClosedTypeWorldHubLayout();
     }
 
     @Override

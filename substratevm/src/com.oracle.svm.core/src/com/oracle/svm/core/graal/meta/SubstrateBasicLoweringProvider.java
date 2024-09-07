@@ -162,7 +162,7 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
         SharedMethod method = (SharedMethod) loadMethodNode.getMethod();
         ValueNode hub = loadMethodNode.getHub();
 
-        if (SubstrateOptions.closedTypeWorld()) {
+        if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
 
             int vtableEntryOffset = knownOffsets.getVTableOffset(method.getVTableIndex(), true);
             assert vtableEntryOffset > 0;
