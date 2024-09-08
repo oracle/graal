@@ -226,9 +226,9 @@ public interface InsightAPI {
              */
             Object returnValue(Map<String, Object> frame);
 
-            /** Immediatelly exits the current handler and returns to the
+            /** Immediately exits the current handler and returns to the
              * caller. Calling this method aborts execution of the current
-             * handler. It bypasses language sematics and immediatelly
+             * handler. It bypasses language semantics and immediately
              * returns the provided value to the caller. If there are multiple
              * calls to {@code returnNow} (from different handlers) the
              * first call defines the return value.
@@ -264,7 +264,7 @@ public interface InsightAPI {
          * @param at location in the source code
          * @param frame access to local variables
          * @return {@code null} to continue iteration, non-{@code null} to
-         *   return immediatelly from the
+         *   return immediately from the
          *   {@link OnEventHandler.Context#iterateFrames} method.
          */
         T onFrame(SourceSectionInfo at, Map<String, Object> frame);
