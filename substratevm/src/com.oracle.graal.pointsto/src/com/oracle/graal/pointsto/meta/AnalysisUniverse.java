@@ -563,6 +563,29 @@ public class AnalysisUniverse implements Universe {
         return methods.get(resolvedJavaMethod);
     }
 
+    /**
+     * Returns the root {@link AnalysisMethod}s. Accessing the roots is useful when traversing the
+     * call graph.
+     *
+     * @param universe the universe from which the roots are derived from.
+     * @return the call tree roots.
+     */
+    public static List<AnalysisMethod> getCallTreeRoots(AnalysisUniverse universe) {
+        List<AnalysisMethod> roots = new ArrayList<>();
+        for (AnalysisMethod m : universe.getMethods()) {
+            if (m.isDirectRootMethod() && m.isSimplyImplementationInvoked()) {
+                roots.add(m);
+            }
+            if (m.isVirtualRootMethod()) {
+                for (AnalysisMethod impl : m.collectMethodImplementations(false)) {
+                    AnalysisError.guarantee(impl.isImplementationInvoked());
+                    roots.add(impl);
+                }
+            }
+        }
+        return roots;
+    }
+
     public Map<Constant, Object> getEmbeddedRoots() {
         return embeddedRoots;
     }
