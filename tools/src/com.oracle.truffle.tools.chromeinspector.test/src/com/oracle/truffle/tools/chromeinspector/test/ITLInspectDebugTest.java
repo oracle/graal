@@ -65,7 +65,7 @@ public class ITLInspectDebugTest {
         String initURI = InspectorTester.getStringURI(initSource.getURI());
         String sourceURI = InspectorTester.getStringURI(source.getURI());
 
-        // Suspend after the initilization (by default):
+        // Suspend after the initialization (by default):
         tester = InspectorTester.start(true, false, false);
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
         assertEquals("{\"result\":{},\"id\":1}", tester.getMessages(true).trim());
@@ -212,7 +212,7 @@ public class ITLInspectDebugTest {
                         "CALL_WITH(a, 42))\n", "code").build();
         String sourceURI = InspectorTester.getStringURI(source.getURI());
 
-        // Suspend after the initilization (by default):
+        // Suspend after the initialization (by default):
         tester = InspectorTester.start(true, false, false);
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
         assertEquals("{\"result\":{},\"id\":1}", tester.getMessages(true).trim());
