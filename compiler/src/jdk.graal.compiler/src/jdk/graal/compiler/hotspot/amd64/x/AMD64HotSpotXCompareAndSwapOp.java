@@ -77,7 +77,7 @@ public final class AMD64HotSpotXCompareAndSwapOp extends AMD64HotSpotXBarrieredO
         if (crb.target.isMP) {
             masm.lock();
         }
-        masm.cmpxchgq(newReg, loadAddress.toAddress());
+        masm.cmpxchgq(newReg, loadAddress.toAddress(masm));
         // if the cmpxchgq succeeds then we are done
         masm.jccb(AMD64Assembler.ConditionFlag.Zero, success);
         /*
@@ -91,7 +91,7 @@ public final class AMD64HotSpotXCompareAndSwapOp extends AMD64HotSpotXBarrieredO
         if (crb.target.isMP) {
             masm.lock();
         }
-        masm.cmpxchgq(newReg, loadAddress.toAddress());
+        masm.cmpxchgq(newReg, loadAddress.toAddress(masm));
         masm.bind(barrierOk);
         masm.cmpq(asRegister(temp), asRegister(result));
         masm.bind(success);

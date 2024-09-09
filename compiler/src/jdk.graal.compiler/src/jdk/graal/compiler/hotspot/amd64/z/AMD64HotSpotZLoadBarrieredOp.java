@@ -66,6 +66,6 @@ public abstract class AMD64HotSpotZLoadBarrieredOp extends AMD64LIRInstruction {
      * Emit a barrier testing the {@code result} register.
      */
     protected void emitLoadBarrier(CompilationResultBuilder crb, AMD64MacroAssembler masm, boolean isNotStrong) {
-        AMD64HotSpotZBarrierSetLIRGenerator.emitLoadBarrier(crb, masm, asRegister(result), callTarget, loadAddress.toAddress(), this, isNotStrong);
+        AMD64HotSpotZBarrierSetLIRGenerator.emitLoadBarrier(crb, masm, asRegister(result), callTarget, loadAddress.toAddress(masm), this, isNotStrong);
     }
 }

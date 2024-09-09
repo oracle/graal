@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,16 +46,16 @@ public final class AMD64PrefetchOp extends AMD64LIRInstruction {
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         switch (instr) {
             case 0:
-                masm.prefetchnta(address.toAddress());
+                masm.prefetchnta(address.toAddress(masm));
                 break;
             case 1:
-                masm.prefetcht0(address.toAddress());
+                masm.prefetcht0(address.toAddress(masm));
                 break;
             case 2:
-                masm.prefetcht2(address.toAddress());
+                masm.prefetcht2(address.toAddress(masm));
                 break;
             case 3:
-                masm.prefetchw(address.toAddress());
+                masm.prefetchw(address.toAddress(masm));
                 break;
             default:
                 throw GraalError.shouldNotReachHere("unspported prefetch op " + instr); // ExcludeFromJacocoGeneratedReport

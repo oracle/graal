@@ -74,9 +74,9 @@ public class AMD64HotSpotXVectorReadBarrierOp extends AMD64HotSpotXBarrieredOp {
             crb.recordImplicitException(masm.position(), state);
         }
         Register resultReg = asRegister(result);
-        op.emit(masm, size, resultReg, loadAddress.toAddress());
+        op.emit(masm, size, resultReg, loadAddress.toAddress(masm));
 
-        AMD64Address address = loadAddress.toAddress();
+        AMD64Address address = loadAddress.toAddress(masm);
 
         final Label entryPoint = new Label();
         final Label continuation = new Label();
@@ -119,7 +119,7 @@ public class AMD64HotSpotXVectorReadBarrierOp extends AMD64HotSpotXBarrieredOp {
             masm.movslq(cArg1, count);
             AMD64Call.directCall(crb, masm, callTarget, null, false, null);
             masm.movq(resultReg, cArg0);
-            op.emit(masm, size, resultReg, loadAddress.toAddress());
+            op.emit(masm, size, resultReg, loadAddress.toAddress(masm));
 
             // Return to inline code
             masm.jmp(continuation);
