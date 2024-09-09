@@ -130,9 +130,9 @@ public final class RemoteObjectsHandler {
             remotesByValue.clear();
             customPreviewBodies.clear();
             customPreviewConfigs.clear();
-            if (objectGroups.isEmpty()) { // no groupped objects
+            if (objectGroups.isEmpty()) { // no grouped objects
                 remotesByIDs.clear();
-            } else { // some groupped objects, remove all that do not belong to a group.
+            } else { // some grouped objects, remove all that do not belong to a group.
                 Set<String> grouppedIds;
                 if (objectGroups.size() == 1) {
                     grouppedIds = objectGroups.values().iterator().next();

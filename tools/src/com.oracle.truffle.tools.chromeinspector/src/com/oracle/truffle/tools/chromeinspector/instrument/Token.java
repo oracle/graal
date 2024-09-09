@@ -89,7 +89,7 @@ public final class Token {
     }
 
     /**
-     * If the other object is not a Token, it immediatelly returns false. If the other object is a
+     * If the other object is not a Token, it immediately returns false. If the other object is a
      * Token, it compares values encapsulated by the tokens in a way that prevents timing attacks.
      * That is, even if an attacker is able to measure the time of this operation, it gives them no
      * valuable information about the secret contents.

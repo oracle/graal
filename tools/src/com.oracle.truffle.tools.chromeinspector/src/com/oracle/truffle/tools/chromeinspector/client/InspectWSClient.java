@@ -189,7 +189,7 @@ public class InspectWSClient extends WebSocketClient implements InspectorWSConne
         executionContext.logMessage("SERVER closed ", reason);
         connectionWatcher.notifyClosing();
         if (!executionContext.canRun()) {
-            // The connection was not successfull, resume the execution
+            // The connection was not successful, resume the execution
             executionContext.doRunIfWaitingForDebugger();
         }
     }
