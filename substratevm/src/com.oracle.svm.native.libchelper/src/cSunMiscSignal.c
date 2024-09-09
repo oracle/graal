@@ -38,18 +38,14 @@
 #include <unistd.h>
 
 /**
- * Functions needed to handle signals for Java.
- *
- * The state for handling signals is global to a process and has no knowledge of isolates. That
- * imposes the restriction that only one isolate at a time may register to receive signals.
- *
- * The signal handler itself, cSunMiscSignal_signalHandler(int), runs on a borrowed thread stack and
- * will not have access to any VM thread-local information or the Java heap base register. Therefore
- * it is written in C code rather than in Java code.
+ * The Java signal handler mechanism may only be used by a single isolate at a time. The signal handler
+ * itself, cSunMiscSignal_signalHandler(int), runs on a borrowed thread stack and will not have access
+ * to any VM thread-local information or the Java heap base register. Therefore, it is written in C code
+ * rather than Java code.
  *
  * Any data that the signal handler references must not be in the Java heap, so it is allocated here. The
- * data consists of a table indexed by signal numbers of atomic counters, and a semaphore for
- * notifying of increments to the values of the counters.
+ * data consists of a table indexed by signal numbers of atomic counters, and a semaphore for notifying
+ * of increments to the values of the counters.
  */
 
 /*
@@ -82,16 +78,17 @@ static sem_t cSunMiscSignal_semaphore_value;
  */
 
 /*
- * Open the C signal handler mechanism. Multiple isolates may execute this method in parallel.
+ * Open the Java signal handler mechanism. Multiple isolates may execute this method in parallel
+ * but only a single isolate may claim ownership.
  *
- * Returns 0 on success, 1 if the signal handling mechanism was already claimed by another isolate,
+ * Returns 0 on success, 1 if the signal handler mechanism was already claimed by another isolate,
  * or some other value if an error occurred during initialization.
  */
 int cSunMiscSignal_open() {
-	/* Try to claim ownership over the signal handling mechanism. */
+	/* Try to claim ownership over the signal handler mechanism. */
 	int previousState = cSunMiscSignal_atomicCompareAndSwap_int(&cSunMiscSignal_state, cSunMiscSignal_CLOSED, cSunMiscSignal_OPEN);
 	if (previousState != cSunMiscSignal_CLOSED) {
-		/* Another isolate already owns the signal handling mechanism. */
+		/* Another isolate already owns the signal handler mechanism. */
 		return 1;
 	}
 
@@ -133,7 +130,7 @@ int cSunMiscSignal_open() {
 	return 0;
 }
 
-/* Close the C signal handler mechanism. Returns 0 on success, or some non-zero value if an error occurred. */
+/* Close the Java signal handler mechanism. Returns 0 on success, or some non-zero value if an error occurred. */
 int cSunMiscSignal_close() {
 #ifdef __linux__
 	int semCloseResult = sem_destroy(cSunMiscSignal_semaphore);

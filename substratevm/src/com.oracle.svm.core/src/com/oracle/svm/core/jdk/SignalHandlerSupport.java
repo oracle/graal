@@ -44,14 +44,14 @@ public interface SignalHandlerSupport extends IsolateListener {
         return ImageSingletons.lookup(SignalHandlerSupport.class);
     }
 
-    long installSignalHandler(int sig, long nativeH);
+    long installJavaSignalHandler(int sig, long nativeH);
 
     void stopDispatcherThread();
 }
 
 class NoSignalHandlerSupport implements SignalHandlerSupport {
     @Override
-    public long installSignalHandler(int sig, long nativeH) {
+    public long installJavaSignalHandler(int sig, long nativeH) {
         throw new IllegalStateException("Signal handling is not supported.");
     }
 

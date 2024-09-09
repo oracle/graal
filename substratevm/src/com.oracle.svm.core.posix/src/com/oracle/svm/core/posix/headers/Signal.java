@@ -49,7 +49,7 @@ import com.oracle.svm.core.RegisterDumper;
 import com.oracle.svm.core.SubstrateSegfaultHandler;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.posix.PosixUtils;
+import com.oracle.svm.core.posix.PosixSignalHandlerSupport;
 
 // Checkstyle: stop
 
@@ -73,15 +73,6 @@ public class Signal {
 
     @CConstant
     public static native int SIGEV_SIGNAL();
-
-    @CFunction
-    public static native int sigprocmask(int how, sigset_tPointer set, sigset_tPointer oldset);
-
-    @CFunction
-    public static native int sigemptyset(sigset_tPointer set);
-
-    @CFunction
-    public static native int sigaddset(sigset_tPointer set, int signum);
 
     @CPointerTo(nameOfCType = "sigset_t")
     public interface sigset_tPointer extends PointerBase {
@@ -199,7 +190,7 @@ public class Signal {
         void sigev_signo(int value);
     }
 
-    /** Don't call this function directly, use {@link PosixUtils#sigaction} instead. */
+    /** Don't call this function directly, use {@link PosixSignalHandlerSupport} instead. */
     @CFunction(transition = NO_TRANSITION)
     public static native int sigaction(int signum, sigaction act, sigaction oldact);
 
@@ -495,5 +486,15 @@ public class Signal {
     public static class NoTransitions {
         @CFunction(transition = NO_TRANSITION)
         public static native int kill(int pid, int sig);
+
+        @CFunction(transition = NO_TRANSITION)
+        public static native int sigprocmask(int how, sigset_tPointer set, sigset_tPointer oldset);
+
+        @CFunction(transition = NO_TRANSITION)
+        public static native int sigemptyset(sigset_tPointer set);
+
+        @CFunction(transition = NO_TRANSITION)
+        public static native int sigaddset(sigset_tPointer set, int signum);
+
     }
 }

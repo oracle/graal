@@ -92,7 +92,8 @@ public abstract class PosixSubstrateSigprofHandler extends SubstrateSigprofHandl
 
     @Override
     protected void installSignalHandler() {
-        PosixUtils.installSignalHandlerUnsafe(Signal.SignalEnum.SIGPROF, advancedSignalDispatcher.getFunctionPointer(), Signal.SA_RESTART(), SubstrateOptions.EnableSignalHandling.getValue());
+        PosixSignalHandlerSupport.installNativeSignalHandler(Signal.SignalEnum.SIGPROF, advancedSignalDispatcher.getFunctionPointer(), Signal.SA_RESTART(),
+                        SubstrateOptions.EnableSignalHandling.getValue());
     }
 
     static boolean isSignalHandlerBasedExecutionSamplerEnabled() {

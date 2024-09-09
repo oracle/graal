@@ -32,11 +32,21 @@ import org.graalvm.nativeimage.c.function.CLibrary;
 /** See cSunMiscSignal.c for the C implementation. */
 @CLibrary(value = "libchelper", requireStatic = true)
 public class CSunMiscSignal {
-    /** Open the C signal handler mechanism. */
+    /**
+     * Open the Java signal handler mechanism. Multiple isolates may execute this method in parallel
+     * but only a single isolate may claim ownership.
+     *
+     * @return 0 on success, 1 if the signal handler mechanism was already claimed by another
+     *         isolate, or some other value if an error occurred during initialization.
+     */
     @CFunction("cSunMiscSignal_open")
     public static native int open();
 
-    /** Close the C signal handler mechanism. */
+    /**
+     * Close the Java signal handler mechanism.
+     *
+     * @return 0 on success, or some non-zero value if an error occurred.
+     */
     @CFunction(value = "cSunMiscSignal_close", transition = NO_TRANSITION)
     public static native int close();
 

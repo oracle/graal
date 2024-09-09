@@ -56,7 +56,7 @@ public class WindowsSignalHandlerSupport implements SignalHandlerSupport {
     }
 
     @Override
-    public long installSignalHandler(int sig, long nativeH) {
+    public long installJavaSignalHandler(int sig, long nativeH) {
         assert MonitorSupport.singleton().isLockedByCurrentThread(Target_jdk_internal_misc_Signal.class);
         ensureInitialized();
 

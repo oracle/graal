@@ -48,7 +48,7 @@ public final class Target_jdk_internal_misc_Signal {
         if (!SubstrateOptions.EnableSignalHandling.getValue()) {
             throw new IllegalArgumentException("Signal handlers can't be installed if signal handling is disabled, see option '" + SubstrateOptions.EnableSignalHandling.getName() + "'.");
         }
-        return SignalHandlerSupport.singleton().installSignalHandler(sig, nativeH);
+        return SignalHandlerSupport.singleton().installJavaSignalHandler(sig, nativeH);
     }
 
     /** Called by the VM to execute Java signal handlers. */

@@ -33,7 +33,7 @@ import com.oracle.svm.core.posix.headers.Signal;
 final class Target_jdk_internal_misc_Signal {
     @Substitute
     private static int findSignal0(String signalName) {
-        return PosixSignalHandlerSupport.singleton().findSignal0(signalName);
+        return PosixSignalHandlerSupport.singleton().findSignal(signalName);
     }
 
     @Substitute

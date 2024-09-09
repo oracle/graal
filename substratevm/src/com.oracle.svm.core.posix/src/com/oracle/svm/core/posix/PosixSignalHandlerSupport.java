@@ -40,12 +40,18 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
+import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateSegfaultHandler;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.c.CGlobalData;
+import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
@@ -66,20 +72,31 @@ import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Signal.SignalDispatcher;
 import com.oracle.svm.core.posix.headers.Signal.SignalEnum;
 import com.oracle.svm.core.posix.headers.Signal.sigset_tPointer;
+import com.oracle.svm.core.thread.NativeSpinLockUtils;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.Word;
 
 /**
- * The signal handler mechanism exists only once per process. So, only a single isolate at a time
- * can do signal handling. The OS-level signal handler is written in C (see {@link CSunMiscSignal}
- * and the corresponding C implementation). Once it receives a signal, it increments a counter and
- * notifies the {@link DispatcherThread}. This Java thread (which is started on demand) then calls
- * the actual Java Signal handler code.
+ * The signal handler mechanism exists only once per process. We allow multiple isolates to install
+ * native signal handlers but only a single isolate at a time may use the Java signal handler
+ * mechanism.
+ *
+ * For the Java signal handler mechanism, we install a single native signal handler that is written
+ * in C (see {@link CSunMiscSignal} and the corresponding C implementation). Once it receives a
+ * signal, it increments a counter and notifies the {@link DispatcherThread}. This Java thread
+ * (which is started on demand) then calls into the JDK, which eventually executes the actual Java
+ * signal handler code in another thread.
+ *
+ * NOTE: when installing or querying native signal handlers, we use a process-wide lock to avoid
+ * races between isolates.
  */
 @AutomaticallyRegisteredImageSingleton({SignalHandlerSupport.class, PosixSignalHandlerSupport.class})
 public final class PosixSignalHandlerSupport implements SignalHandlerSupport {
+    static final CGlobalData<CIntPointer> LOCK = CGlobalDataFactory.createBytes(() -> SizeOf.get(CIntPointer.class));
+
     /**
      * Note that aliases are allowed in this map, i.e., different signal names may have the same C
      * signal number.
@@ -100,21 +117,13 @@ public final class PosixSignalHandlerSupport implements SignalHandlerSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     @SuppressWarnings("hiding")
-    public void setData(Map<String, Integer> signalNameToSignalNum, boolean[] supportedSignals) {
+    void setData(Map<String, Integer> signalNameToSignalNum, boolean[] supportedSignals) {
         assert this.signalNameToSignalNum == null && this.supportedSignals == null;
         this.signalNameToSignalNum = signalNameToSignalNum;
         this.supportedSignals = supportedSignals;
     }
 
-    /** Returns whether the currently installed signal handler matched the passed dispatcher. */
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    static boolean isCurrentDispatcher(int sig, SignalDispatcher dispatcher) {
-        Signal.sigaction handler = UnsafeStackValue.get(Signal.sigaction.class);
-        Signal.sigaction(sig, WordFactory.nullPointer(), handler);
-        return handler.sa_handler() == dispatcher;
-    }
-
-    public int findSignal0(String signalName) {
+    public int findSignal(String signalName) {
         Integer result = signalNameToSignalNum.get(signalName);
         if (result != null) {
             return result;
@@ -123,42 +132,58 @@ public final class PosixSignalHandlerSupport implements SignalHandlerSupport {
     }
 
     @Override
-    public long installSignalHandler(int sig, long nativeH) {
+    public long installJavaSignalHandler(int sig, long nativeH) {
         assert MonitorSupport.singleton().isLockedByCurrentThread(Target_jdk_internal_misc_Signal.class);
         ensureInitialized();
 
-        /* If the dispatcher is the C signal handler, then check if the signal is in range. */
-        SignalDispatcher newDispatcher = handlerToDispatcher(nativeH);
-        if (newDispatcher == CSunMiscSignal.signalHandlerFunctionPointer() && !CSunMiscSignal.signalRangeCheck(sig)) {
-            return ERROR_HANDLER;
-        }
+        return installJavaSignalHandler0(sig, nativeH, SubstrateOptions.EnableSignalHandling.getValue());
+    }
 
-        /*
-         * If the segfault handler is registered, then the user cannot override this handler within
-         * Java code.
-         */
-        if (SubstrateSegfaultHandler.isInstalled() && (sig == SignalEnum.SIGSEGV.getCValue() || sig == SignalEnum.SIGBUS.getCValue())) {
-            return ERROR_HANDLER;
-        }
-
-        /*
-         * If the following signals are ignored, then a handler should not be registered for them.
-         */
-        if (sig == SignalEnum.SIGHUP.getCValue() || sig == SignalEnum.SIGINT.getCValue() || sig == SignalEnum.SIGTERM.getCValue()) {
-            if (isCurrentDispatcher(sig, Signal.SIG_IGN())) {
-                return IGNORE_HANDLER;
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
+    private static long installJavaSignalHandler0(int sig, long nativeH, boolean isSignalHandlingAllowed) {
+        CIntPointer lock = LOCK.get();
+        NativeSpinLockUtils.lockNoTransition(lock);
+        try {
+            /* If the dispatcher is the C signal handler, then check if the signal is in range. */
+            SignalDispatcher newDispatcher = handlerToDispatcher(nativeH);
+            if (newDispatcher == CSunMiscSignal.signalHandlerFunctionPointer() && !CSunMiscSignal.signalRangeCheck(sig)) {
+                return ERROR_HANDLER;
             }
+
+            /*
+             * If the segfault handler is registered, then the user cannot override this handler
+             * within Java code.
+             */
+            if (sig == SignalEnum.SIGSEGV.getCValue() || sig == SignalEnum.SIGBUS.getCValue()) {
+                PointerBase currentDispatcher = getCurrentDispatcher(sig);
+                if (currentDispatcher.equal(PosixSubstrateSegfaultHandler.SIGNAL_HANDLER.getFunctionPointer())) {
+                    return ERROR_HANDLER;
+                }
+            }
+
+            /*
+             * If the following signals are ignored, then a handler should not be registered for
+             * them.
+             */
+            if (sig == SignalEnum.SIGHUP.getCValue() || sig == SignalEnum.SIGINT.getCValue() || sig == SignalEnum.SIGTERM.getCValue()) {
+                PointerBase currentDispatcher = getCurrentDispatcher(sig);
+                if (currentDispatcher == Signal.SIG_IGN()) {
+                    return IGNORE_HANDLER;
+                }
+            }
+
+            /* Install the signal handler and unblock the signal. */
+            SignalDispatcher oldDispatcher = installNativeSignalHandler0(sig, newDispatcher, Signal.SA_RESTART(), isSignalHandlingAllowed);
+
+            sigset_tPointer sigset = UnsafeStackValue.get(sigset_tPointer.class);
+            Signal.NoTransitions.sigemptyset(sigset);
+            Signal.NoTransitions.sigaddset(sigset, sig);
+            Signal.NoTransitions.sigprocmask(Signal.SIG_UNBLOCK(), sigset, WordFactory.nullPointer());
+
+            return dispatcherToHandler(oldDispatcher);
+        } finally {
+            NativeSpinLockUtils.unlock(lock);
         }
-
-        /* Install the signal handler and unblock the signal. */
-        SignalDispatcher oldDispatcher = PosixUtils.installSignalHandler(sig, newDispatcher, Signal.SA_RESTART());
-
-        sigset_tPointer sigset = UnsafeStackValue.get(sigset_tPointer.class);
-        Signal.sigemptyset(sigset);
-        Signal.sigaddset(sigset, sig);
-        Signal.sigprocmask(Signal.SIG_UNBLOCK(), sigset, WordFactory.nullPointer());
-
-        return dispatcherToHandler(oldDispatcher);
     }
 
     private void ensureInitialized() throws IllegalArgumentException {
@@ -172,7 +197,7 @@ public final class PosixSignalHandlerSupport implements SignalHandlerSupport {
             startDispatcherThread();
             initialized = true;
         } else if (code == 1) {
-            throw new IllegalArgumentException("C signal handling mechanism is in use.");
+            throw new IllegalArgumentException("Java signal handler mechanism is already used by another isolate.");
         } else {
             int errno = LibC.errno();
             Log.log().string("CSunMiscSignal.open() failed.").string("  errno: ").signed(errno).string("  ").string(Errno.strerror(errno)).newline();
@@ -218,20 +243,31 @@ public final class PosixSignalHandlerSupport implements SignalHandlerSupport {
          */
         for (int i = 0; i < supportedSignals.length; i++) {
             if (supportedSignals[i]) {
-                boolean hasJavaSignalHandler = isCurrentDispatcher(i, CSunMiscSignal.signalHandlerFunctionPointer());
-                if (hasJavaSignalHandler) {
-                    SignalDispatcher dispatcher = getDefaultDispatcher(i);
-                    SignalDispatcher signalResult = PosixUtils.installSignalHandlerUnsafe(i, dispatcher, Signal.SA_RESTART(), true);
-                    if (signalResult == Signal.SIG_ERR()) {
-                        throw VMError.shouldNotReachHere("Failed to unregister Java signal handlers during isolate teardown.");
-                    }
-                }
+                resetSignalHandler(i);
             }
         }
 
-        /* Shut down the signal handling mechanism so that another isolate can use it. */
+        /* Shut down the signal handler mechanism so that another isolate can use it. */
         int code = CSunMiscSignal.close();
         PosixUtils.checkStatusIs0(code, "CSunMiscSignal.close() failed.");
+    }
+
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
+    private static void resetSignalHandler(int sigNum) {
+        CIntPointer lock = LOCK.get();
+        NativeSpinLockUtils.lockNoTransition(lock);
+        try {
+            PointerBase currentDispatcher = getCurrentDispatcher(sigNum);
+            if (currentDispatcher == CSunMiscSignal.signalHandlerFunctionPointer()) {
+                SignalDispatcher newDispatcher = getDefaultDispatcher(sigNum);
+                SignalDispatcher signalResult = installNativeSignalHandler0(sigNum, newDispatcher, Signal.SA_RESTART(), true);
+                if (signalResult == Signal.SIG_ERR()) {
+                    throw VMError.shouldNotReachHere("Failed to reset Java signal handler during isolate teardown.");
+                }
+            }
+        } finally {
+            NativeSpinLockUtils.unlock(lock);
+        }
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -243,6 +279,7 @@ public final class PosixSignalHandlerSupport implements SignalHandlerSupport {
     }
 
     /** Map Java handler numbers to C function pointers. */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static SignalDispatcher handlerToDispatcher(long nativeH) {
         if (nativeH == DEFAULT_HANDLER) {
             return Signal.SIG_DFL();
@@ -258,6 +295,7 @@ public final class PosixSignalHandlerSupport implements SignalHandlerSupport {
     }
 
     /** Map C function pointers to the Java handler numbers. */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static long dispatcherToHandler(SignalDispatcher handler) {
         if (handler == Signal.SIG_DFL()) {
             return DEFAULT_HANDLER;
@@ -270,6 +308,94 @@ public final class PosixSignalHandlerSupport implements SignalHandlerSupport {
         } else {
             return handler.rawValue();
         }
+    }
+
+    /**
+     * Registers a native signal handler. This method ensures that no races can happen with the Java
+     * signal handling. However, there can still be races with native code that registers signals.
+     *
+     * Note that signal handlers must be written in a way that they do NOT destroy the libc
+     * {@code errno} value (i.e., typically, each signal needs to save and restore errno).
+     *
+     * WARNING: methods related to signal handling must not be called from an initialization hook
+     * because the runtime option {@code EnableSignalHandling} is not necessarily initialized yet
+     * when initialization hooks run. So, startup hooks are currently the earliest point where
+     * execution is possible.
+     */
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
+    public static Signal.SignalDispatcher installNativeSignalHandler(int signum, Signal.SignalDispatcher handler, int flags, boolean isSignalHandlingAllowed) {
+        CIntPointer lock = LOCK.get();
+        NativeSpinLockUtils.lockNoTransition(lock);
+        try {
+            return installNativeSignalHandler0(signum, handler, flags, isSignalHandlingAllowed);
+        } finally {
+            NativeSpinLockUtils.unlock(lock);
+        }
+    }
+
+    /** See {@link #installNativeSignalHandler(int, Signal.SignalDispatcher, int, boolean)}. */
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
+    public static void installNativeSignalHandler(Signal.SignalEnum signum, Signal.AdvancedSignalDispatcher handler, int flags, boolean isSignalHandlingAllowed) {
+        CIntPointer lock = LOCK.get();
+        NativeSpinLockUtils.lockNoTransition(lock);
+        try {
+            installNativeSignalHandler0(signum.getCValue(), handler, flags, isSignalHandlingAllowed);
+        } finally {
+            NativeSpinLockUtils.unlock(lock);
+        }
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static SignalDispatcher installNativeSignalHandler0(int signum, SignalDispatcher handler, int flags, boolean isSignalHandlingAllowed) {
+        assert NativeSpinLockUtils.isLocked(LOCK.get());
+
+        int structSigActionSize = SizeOf.get(Signal.sigaction.class);
+        Signal.sigaction act = UnsafeStackValue.get(structSigActionSize);
+        LibC.memset(act, WordFactory.signed(0), WordFactory.unsigned(structSigActionSize));
+        act.sa_flags(flags);
+        act.sa_handler(handler);
+
+        Signal.sigaction old = UnsafeStackValue.get(Signal.sigaction.class);
+
+        int result = sigaction(signum, act, old, isSignalHandlingAllowed);
+        if (result != 0) {
+            return Signal.SIG_ERR();
+        }
+        return old.sa_handler();
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static void installNativeSignalHandler0(int signum, Signal.AdvancedSignalDispatcher handler, int flags, boolean isSignalHandlingAllowed) {
+        assert NativeSpinLockUtils.isLocked(LOCK.get());
+
+        int structSigActionSize = SizeOf.get(Signal.sigaction.class);
+        Signal.sigaction act = UnsafeStackValue.get(structSigActionSize);
+        LibC.memset(act, WordFactory.signed(0), WordFactory.unsigned(structSigActionSize));
+        act.sa_flags(Signal.SA_SIGINFO() | flags);
+        act.sa_sigaction(handler);
+
+        int result = sigaction(signum, act, WordFactory.nullPointer(), isSignalHandlingAllowed);
+        PosixUtils.checkStatusIs0(result, "sigaction failed in installSignalHandler().");
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static PointerBase getCurrentDispatcher(int sig) {
+        assert NativeSpinLockUtils.isLocked(LOCK.get());
+
+        Signal.sigaction handler = UnsafeStackValue.get(Signal.sigaction.class);
+        Signal.sigaction(sig, WordFactory.nullPointer(), handler);
+        if ((handler.sa_flags() & Signal.SA_SIGINFO()) != Signal.SA_SIGINFO()) {
+            return handler.sa_sigaction();
+        }
+        return handler.sa_handler();
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static int sigaction(int signum, Signal.sigaction structSigAction, Signal.sigaction old, boolean isSignalHandlingAllowed) {
+        assert NativeSpinLockUtils.isLocked(LOCK.get());
+        VMError.guarantee(isSignalHandlingAllowed, "Trying to install a signal handler while signal handling is disabled.");
+
+        return Signal.sigaction(signum, structSigAction, old);
     }
 
     private static class DispatcherThread extends Thread {
@@ -357,6 +483,7 @@ class PosixSignalHandlerFeature implements InternalFeature {
  * {@link SubstrateOptions#EnableSignalHandling} after the isolate initialization already finished.
  */
 final class IgnoreSignalsStartupHook implements RuntimeSupport.Hook {
+    private static final CGlobalData<Pointer> NOOP_HANDLERS_INSTALLED = CGlobalDataFactory.createWord();
     static final CEntryPointLiteral<SignalDispatcher> NOOP_SIGNAL_HANDLER = CEntryPointLiteral.create(IgnoreSignalsStartupHook.class, "noopSignalHandler", int.class);
 
     @CEntryPoint(publishAs = Publish.NotPublished)
@@ -388,26 +515,35 @@ final class IgnoreSignalsStartupHook implements RuntimeSupport.Hook {
      */
     @Override
     public void execute(boolean isFirstIsolate) {
-        // TEMP (chaeubl): think about this - must be executed for each isolate
-        if (SubstrateOptions.EnableSignalHandling.getValue()) {
-            /* Synchronized to avoid races with Signal.handle0(...) */
-            synchronized (Target_jdk_internal_misc_Signal.class) {
-                installNoopHandler(SignalEnum.SIGPIPE);
-                installNoopHandler(SignalEnum.SIGXFSZ);
-            }
+        boolean isSignalHandlingAllowed = SubstrateOptions.EnableSignalHandling.getValue();
+        if (isSignalHandlingAllowed && isFirst()) {
+            installNoopHandler(SignalEnum.SIGPIPE, isSignalHandlingAllowed);
+            installNoopHandler(SignalEnum.SIGXFSZ, isSignalHandlingAllowed);
         }
     }
 
-    private static void installNoopHandler(SignalEnum signal) {
-        int signum = signal.getCValue();
-        if (PosixSignalHandlerSupport.isCurrentDispatcher(signum, Signal.SIG_DFL())) {
-            /* Replace with no-op signal handler if a custom one has not already been installed. */
-            SignalDispatcher dispatcher = PosixSignalHandlerSupport.getDefaultDispatcher(signum);
-            assert dispatcher == NOOP_SIGNAL_HANDLER.getFunctionPointer();
-            SignalDispatcher signalResult = PosixUtils.installSignalHandler(signum, dispatcher, Signal.SA_RESTART());
-            if (signalResult == Signal.SIG_ERR()) {
-                throw VMError.shouldNotReachHere("IgnoreSignalsStartupHook: Could not install signal: " + signal);
+    private static boolean isFirst() {
+        Word expected = WordFactory.zero();
+        Word actual = NOOP_HANDLERS_INSTALLED.get().compareAndSwapWord(0, expected, WordFactory.unsigned(1), LocationIdentity.ANY_LOCATION);
+        return expected == actual;
+    }
+
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
+    private static void installNoopHandler(SignalEnum signal, boolean isSignalHandlingAllowed) {
+        CIntPointer lock = PosixSignalHandlerSupport.LOCK.get();
+        NativeSpinLockUtils.lockNoTransition(lock);
+        try {
+            int signum = signal.getCValue();
+            PointerBase currentDispatcher = PosixSignalHandlerSupport.getCurrentDispatcher(signum);
+            if (currentDispatcher == Signal.SIG_DFL()) {
+                /* Replace with no-op signal handler if no custom one has already been installed. */
+                SignalDispatcher newDispatcher = PosixSignalHandlerSupport.getDefaultDispatcher(signum);
+                assert newDispatcher == NOOP_SIGNAL_HANDLER.getFunctionPointer();
+                SignalDispatcher signalResult = PosixSignalHandlerSupport.installNativeSignalHandler0(signum, newDispatcher, Signal.SA_RESTART(), isSignalHandlingAllowed);
+                VMError.guarantee(signalResult != Signal.SIG_ERR(), "IgnoreSignalsStartupHook: Could not install signal handler");
             }
+        } finally {
+            NativeSpinLockUtils.unlock(lock);
         }
     }
 }
