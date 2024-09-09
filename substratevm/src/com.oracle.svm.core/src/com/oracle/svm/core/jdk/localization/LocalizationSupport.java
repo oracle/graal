@@ -179,21 +179,6 @@ public class LocalizationSupport {
         return uniformBundleName.substring(0, classSep);
     }
 
-    public String getResultingPattern(String bundleName, Locale locale) {
-        String fixedBundleName = bundleName.replace("$", "\\$");
-        return getBundleName(fixedBundleName, locale);
-    }
-
-    private String getBundleName(String fixedBundleName, Locale locale) {
-        String[] bundleNameWithModule = SubstrateUtil.split(fixedBundleName, ":", 2);
-        if (bundleNameWithModule.length < 2) {
-            return toSlashSeparated(control.toBundleName(fixedBundleName, locale));
-        } else {
-            String patternWithLocale = toSlashSeparated(control.toBundleName(bundleNameWithModule[1], locale));
-            return bundleNameWithModule[0] + ':' + patternWithLocale;
-        }
-    }
-
     public void registerRequiredReflectionAndResourcesForBundle(String baseName, Collection<Locale> wantedLocales, boolean jdkBundle) {
         if (!jdkBundle) {
             int i = baseName.lastIndexOf('.');
