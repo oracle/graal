@@ -261,22 +261,6 @@ public class GraalHotSpotVMConfigAccess {
     }
 
     /**
-     * Verifies that if the constant described by {@code name} and {@code type} is defined by the
-     * VM, it has the value {@code expect}.
-     *
-     * @return {@code expect}
-     */
-    public <T> T verifyConstant(String name, Class<T> type, T expect) {
-        if (vmConstants.containsKey(name)) {
-            T value = access.getConstant(name, type, expect);
-            if (!Objects.equals(value, expect)) {
-                recordError(name, unexpected, String.valueOf(value));
-            }
-        }
-        return expect;
-    }
-
-    /**
      * @see HotSpotVMConfigAccess#getConstant(String, Class)
      */
     public <T> T getConstant(String name, Class<T> type) {

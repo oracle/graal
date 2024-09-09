@@ -439,9 +439,10 @@ public class HotSpotGraphBuilderPlugins {
                     ValueNode klass = helper.readKlassFromClass(receiver.get(true));
                     // Primitive Class case returns false
                     ValueNode nonNullKlass = helper.emitNullReturnGuard(klass, ConstantNode.forBoolean(false), GraalDirectives.UNLIKELY_PROBABILITY);
-                    // return (Klass::_access_flags & jvmAccIsHiddenClass) == 0 ? false : true
-                    ValueNode accessFlags = helper.readKlassAccessFlags(nonNullKlass);
-                    LogicNode test = IntegerTestNode.create(accessFlags, ConstantNode.forInt(config.jvmAccIsHiddenClass), NodeView.DEFAULT);
+                    // return (Klass::_misc_flags & jvmAccIsHiddenClass) != 0
+                    // or return (Klass::_access_flags & jvmAccIsHiddenClass) != 0 on JDK 21
+                    ValueNode flags = JavaVersionUtil.JAVA_SPEC >= 24 ? helper.readKlassMiscFlags(nonNullKlass) : helper.readKlassAccessFlags(nonNullKlass);
+                    LogicNode test = IntegerTestNode.create(flags, ConstantNode.forInt(config.jvmAccIsHiddenClass), NodeView.DEFAULT);
                     helper.emitFinalReturn(JavaKind.Boolean, ConditionalNode.create(test, ConstantNode.forBoolean(false), ConstantNode.forBoolean(true), NodeView.DEFAULT));
                 }
                 return true;
