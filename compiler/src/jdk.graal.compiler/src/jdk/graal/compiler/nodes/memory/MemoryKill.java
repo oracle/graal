@@ -24,11 +24,12 @@
  */
 package jdk.graal.compiler.nodes.memory;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.graph.MemoryKillMarker;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.ValueNodeInterface;
-import org.graalvm.word.LocationIdentity;
 
 /**
  * This interface marks nodes that kill a set of memory locations represented by
@@ -76,6 +77,11 @@ public interface MemoryKill extends ValueNodeInterface, MemoryKillMarker {
     static boolean isMultiMemoryKill(Node n) {
         return n instanceof MultiMemoryKill;
     }
+
+    /**
+     * @return true iff this node kills {@link LocationIdentity#INIT_LOCATION}.
+     */
+    boolean killsInit();
 
     static SingleMemoryKill asSingleMemoryKill(Node n) {
         assert isSingleMemoryKill(n);

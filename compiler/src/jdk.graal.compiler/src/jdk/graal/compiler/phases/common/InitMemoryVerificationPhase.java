@@ -46,8 +46,6 @@ import jdk.graal.compiler.nodes.extended.PublishWritesNode;
 import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;
 import jdk.graal.compiler.nodes.memory.MemoryAnchorNode;
 import jdk.graal.compiler.nodes.memory.MemoryKill;
-import jdk.graal.compiler.nodes.memory.MultiMemoryKill;
-import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.RecursivePhase;
 import jdk.graal.compiler.phases.VerifyPhase;
@@ -88,23 +86,6 @@ public class InitMemoryVerificationPhase extends VerifyPhase<CoreProviders> impl
      * (not protected by a barrier) at any point in the control flow graph..
      */
     private static class InitBarrierVerificationClosure extends ReentrantNodeIterator.NodeIteratorClosure<Integer> {
-        private static boolean killsInitMemory(SingleMemoryKill kill) {
-            return kill.getKilledLocationIdentity().isInit();
-        }
-
-        private static boolean killsInitMemory(MultiMemoryKill kill) {
-            if (kill instanceof MemoryAnchorNode) {
-                // Can ignore as it doesn't actually write
-                return false;
-            }
-            for (LocationIdentity identity : kill.getKilledLocationIdentities()) {
-                if (identity.isInit()) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
         @Override
         protected Integer processNode(FixedNode node, Integer kills) {
             int liveKills = kills;
@@ -114,10 +95,11 @@ public class InitMemoryVerificationPhase extends VerifyPhase<CoreProviders> impl
                 } else if (liveKills > 0) {
                     throw new VerificationError("%s is a non-init barrier, but there are %d live init writes", memBar, liveKills);
                 }
-            } else if (MemoryKill.isSingleMemoryKill(node) && killsInitMemory(MemoryKill.asSingleMemoryKill(node))) {
-                liveKills++;
-            } else if (MemoryKill.isMultiMemoryKill(node) && killsInitMemory(MemoryKill.asMultiMemoryKill(node))) {
-                liveKills++;
+            } else if (MemoryKill.isMemoryKill(node) && ((MemoryKill) node).killsInit()) {
+                // memory anchors don't actually perform any writes
+                if (!(node instanceof MemoryAnchorNode)) {
+                    liveKills++;
+                }
             } else if (node instanceof ReturnNode && liveKills > 0) {
                 throw new VerificationError("%d writes to init memory not guarded by an init barrier at node %s", liveKills, node);
             }

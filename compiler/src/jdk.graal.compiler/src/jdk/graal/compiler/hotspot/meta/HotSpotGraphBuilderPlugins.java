@@ -611,7 +611,7 @@ public class HotSpotGraphBuilderPlugins {
                     // reads don't bypass the ArrayCopyCallNode above.
                     b.pop(JavaKind.Object);
                     b.addPush(JavaKind.Object, new PublishWritesNode(newArray));
-                    b.add(new MembarNode(MembarNode.FenceKind.ALLOCATION_INIT, LocationIdentity.init()));
+                    b.add(MembarNode.forInitialization());
                 }
                 return true;
             }

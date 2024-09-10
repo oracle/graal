@@ -111,7 +111,6 @@ import jdk.graal.compiler.nodes.extended.LoadArrayComponentHubNode;
 import jdk.graal.compiler.nodes.extended.LoadHubNode;
 import jdk.graal.compiler.nodes.extended.LoadHubOrNullNode;
 import jdk.graal.compiler.nodes.extended.MembarNode;
-import jdk.graal.compiler.nodes.extended.MembarNode.FenceKind;
 import jdk.graal.compiler.nodes.extended.ObjectIsArrayNode;
 import jdk.graal.compiler.nodes.extended.PublishWritesNode;
 import jdk.graal.compiler.nodes.extended.RawLoadNode;
@@ -635,7 +634,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     /**
      * Creates a read node that read the array length and is guarded by a null-check.
-     *
+     * <p>
      * The created node is placed before {@code before} in the CFG.
      */
     private ReadNode createReadArrayLength(ValueNode array, FixedNode before, LoweringTool tool) {
@@ -1170,25 +1169,9 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             }
         }
         assert commit.hasNoUsages();
-        insertAllocationBarrier(insertAfter, commit, graph);
-    }
 
-    /**
-     * Insert the required {@link FenceKind#ALLOCATION_INIT} barrier for an allocation.
-     * Alternatively, issue a {@link FenceKind#CONSTRUCTOR_FREEZE} required for final fields if any
-     * final fields are being written.
-     */
-    private static void insertAllocationBarrier(FixedWithNextNode insertAfter, CommitAllocationNode commit, StructuredGraph graph) {
-        FenceKind fence = FenceKind.ALLOCATION_INIT;
-        outer: for (VirtualObjectNode vobj : commit.getVirtualObjects()) {
-            for (ResolvedJavaField field : vobj.type().getInstanceFields(true)) {
-                if (field.isFinal()) {
-                    fence = FenceKind.CONSTRUCTOR_FREEZE;
-                    break outer;
-                }
-            }
-        }
-        graph.addAfterFixed(insertAfter, graph.add(new MembarNode(fence, LocationIdentity.init())));
+        // Insert the required ALLOCATION_INIT barrier after all objects are initialized.
+        graph.addAfterFixed(insertAfter, graph.add(MembarNode.forInitialization()));
     }
 
     public abstract int fieldOffset(ResolvedJavaField field);

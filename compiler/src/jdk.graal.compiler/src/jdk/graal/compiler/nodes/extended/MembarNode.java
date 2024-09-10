@@ -33,6 +33,7 @@ import java.util.Map;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
@@ -109,7 +110,7 @@ public final class MembarNode extends FixedWithNextNode implements LIRLowerable,
          *         newly allocated object visible to a different thread.
          */
         public boolean isInit() {
-            return this == ALLOCATION_INIT || this == CONSTRUCTOR_FREEZE;
+            return this == ALLOCATION_INIT;
         }
 
         FenceKind(int barriers) {
@@ -127,8 +128,17 @@ public final class MembarNode extends FixedWithNextNode implements LIRLowerable,
 
     public MembarNode(FenceKind fence, LocationIdentity location) {
         super(TYPE, StampFactory.forVoid());
+        assert fence.isInit() == location.isInit() : Assertions.errorMessage(fence, location);
         this.fence = fence;
         this.location = location;
+    }
+
+    /**
+     * Creates a new {@link MembarNode} to be placed after the initialization of one or more newly
+     * allocated objects.
+     */
+    public static MembarNode forInitialization() {
+        return new MembarNode(FenceKind.ALLOCATION_INIT, LocationIdentity.init());
     }
 
     public FenceKind getFenceKind() {
