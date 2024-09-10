@@ -4061,7 +4061,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         int i = count;
         while (i >= 15) {
-            // For Intel don't generate consecutive addess nops (mix with regular nops)
+            // For Intel don't generate consecutive address nops (mix with regular nops)
             i -= 15;
             emitByte(0x66);   // size prefix
             emitByte(0x66);   // size prefix
