@@ -1,9 +1,7 @@
 package jdk.graal.compiler.hotspot.meta.joonhwan;
 
-/**
- * BuboCache thread buffer, this is called viva a Forgien call
- * see Custom Instrumentation Phase to see where its called.
- */
+import java.io.FileWriter;
+import java.io.IOException;
 
  public class BuboCache extends Thread {
         
@@ -12,6 +10,8 @@ package jdk.graal.compiler.hotspot.meta.joonhwan;
         public static int BufferPointer;
         public static long[][] BufferArray;
 
+        public static long sampleCounter;
+
         // public BuboCache() {
         //         BufferArray = new long[2][250_000];
         //         BufferPointer = 0;
@@ -19,12 +19,21 @@ package jdk.graal.compiler.hotspot.meta.joonhwan;
         //         Buffer = BufferArray[BufferPointer];
         // }
 
+        // static {
+        //         System.out.println("CACHE INITIALIZATION");
+        //         BufferArray = new long[5][250_000];
+        //         BufferPointer = 0;
+        //         pointer = 0;
+        //         Buffer = BufferArray[BufferPointer];
+        // }
+
         static {
                 System.out.println("CACHE INITIALIZATION");
-                BufferArray = new long[5][250_000];
+                // BufferArray = new long[5][250_000];
                 BufferPointer = 0;
                 pointer = 0;
-                Buffer = BufferArray[BufferPointer];
+                Buffer = new long[9_000_000];
+                sampleCounter = 0;
         }
 
         public static void rotateBuffer() {
@@ -59,12 +68,16 @@ package jdk.graal.compiler.hotspot.meta.joonhwan;
         }
 
         public static void print(){
-                // if (pointer == 0) {
-                //         System.out.println("Buffer is empty! :(");
-                // }
-                for (int i = 0; i < 2; i++) {
-                        System.out.println(Buffer[i] + "," + Buffer[i+1]);
-                        i++;
+                String fileName = "bubo_cache_output.csv";
+                try (FileWriter writer = new FileWriter(fileName)) {
+                writer.append("CompID,Start\n"); // CSV header
+                writer.append(String.format("pointer %d\n", pointer));
+                for (int i = 0; i < pointer; i += 2) {
+                        writer.append(String.format("%d,%d\n", Buffer[i], Buffer[i + 1]));
+                }
+                System.out.println("CSV file '" + fileName + "' has been created successfully.");
+                } catch (IOException e) {
+                System.err.println("An error occurred while writing to the CSV file: " + e.getMessage());
                 }
         }
 
