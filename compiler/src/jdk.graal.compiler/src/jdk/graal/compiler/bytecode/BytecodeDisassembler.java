@@ -110,7 +110,7 @@ public class BytecodeDisassembler {
         }
 
         /**
-         * Identitiy function.
+         * Identity function.
          */
         CPIFunction Identity = new CPIFunction() {
         };
