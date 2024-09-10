@@ -664,7 +664,7 @@ public final class CPUSampler implements Closeable {
         }
 
         /**
-         * @return Total number of times the element was found bellow the top of the stack
+         * @return Total number of times the element was found below the top of the stack
          * @since 0.30
          */
         public int getHitCount() {
