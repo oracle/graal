@@ -1022,6 +1022,22 @@ def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
 
 
 def _gdbdebughelperstest(native_image, path, with_isolates_only, args):
+
+    # ====== check gdb version ======
+    # gdb-debughelperstest and this tests are designed for gdb 14 and higher with the python API enabled
+    # if we encounter a version lower than 14, we skip this tests
+    # TODO: remove when gdb 14 is available
+    gdb_version = mx.run([
+        os.environ.get('GDB_BIN', 'gdb'), '--nx', '-q',
+        '-ex', 'py gdb.execute("quit " + gdb.VERSION.split(".")[0])',  # try to get gdb version via python
+        '-ex', 'quit 0'  # fallback gdb exit
+        ]
+        , nonZeroIsFatal=False)
+    if gdb_version < 14:
+        mx.warn(f"Skipping gdb-debughelpers tests (Requires gdb version 14, found gdb version {gdb_version}).")
+        return
+    # ===============================
+
     test_proj = mx.dependency('com.oracle.svm.test')
     test_source_path = test_proj.source_dirs()[0]
     tutorial_proj = mx.dependency('com.oracle.svm.tutorial')
