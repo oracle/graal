@@ -1031,7 +1031,7 @@ public final class VM extends NativeEnv {
                 // before attempting to find the class.
                 Symbol<Name> outerDescriptor = pool.classAt(entry.outerClassIndex).getName(pool);
 
-                // Check decriptors/names before resolving.
+                // Check descriptors/names before resolving.
                 if (outerDescriptor.equals(instanceKlass.getName())) {
                     Klass outerKlass = pool.resolvedKlassAt(instanceKlass, entry.outerClassIndex);
                     if (outerKlass == instanceKlass) {
@@ -1074,7 +1074,7 @@ public final class VM extends NativeEnv {
             if (entry.innerClassIndex != 0) {
                 Symbol<Name> innerDescriptor = pool.classAt(entry.innerClassIndex).getName(pool);
 
-                // Check decriptors/names before resolving.
+                // Check descriptors/names before resolving.
                 if (innerDescriptor.equals(klass.getName())) {
                     Klass innerKlass = pool.resolvedKlassAt(klass, entry.innerClassIndex);
                     found = (innerKlass == klass);
@@ -3431,7 +3431,7 @@ public final class VM extends NativeEnv {
         StaticObject guestName = meta.java_lang_Module_name.getObject(module);
         if (StaticObject.isNull(guestName)) {
             profiler.profile(4);
-            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "modue name cannot be null");
+            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "module name cannot be null");
         }
 
         String hostName = meta.toHostString(guestName);
