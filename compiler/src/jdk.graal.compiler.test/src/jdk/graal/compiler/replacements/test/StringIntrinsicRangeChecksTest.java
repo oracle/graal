@@ -192,7 +192,7 @@ public class StringIntrinsicRangeChecksTest extends GraalCompilerTest {
         for (int srcOff = 0; srcOff < SIZE; ++srcOff) {
             for (int dstOff = 0; dstOff < SIZE; ++dstOff) {
                 for (int len = 0; len < SIZE; ++len) {
-                    // Check for potential overlows in source or destination array
+                    // Check for potential overflows in source or destination array
                     boolean srcOverflow = (srcOff + len) > SIZE;
                     boolean srcOverflowB = (2 * srcOff + 2 * len) > SIZE;
                     boolean dstOverflow = (dstOff + len) > SIZE;
