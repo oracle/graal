@@ -89,11 +89,6 @@ public final class AccessAdvisor {
         // LogRecord.readObject looks up resource bundles
         internalCallerFilter.addOrGetChildren("java.util.logging.LogRecord", ConfigurationFilter.Inclusion.Include);
         internalCallerFilter.addOrGetChildren("java.util.random.*", ConfigurationFilter.Inclusion.Include); // RandomGeneratorFactory$$Lambda
-        /*
-         * ForkJoinTask.getThrowableException calls Class.getConstructors and
-         * Constructor.newInstance
-         */
-        internalCallerFilter.addOrGetChildren("java.util.concurrent.ForkJoinTask", ConfigurationFilter.Inclusion.Include);
         // LazyClassPathLookupIterator calls Class.forName
         internalCallerFilter.addOrGetChildren("java.util.ServiceLoader$LazyClassPathLookupIterator", ConfigurationFilter.Inclusion.Include);
         internalCallerFilter.addOrGetChildren("javax.crypto.**", ConfigurationFilter.Inclusion.Exclude);
