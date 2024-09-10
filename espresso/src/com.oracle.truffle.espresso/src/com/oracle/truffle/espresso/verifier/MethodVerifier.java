@@ -491,7 +491,7 @@ public final class MethodVerifier implements ContextAccess, StackMapFrameParser.
     // of this BCI is successful.
     private static final int DONE = 2;
     // Indicates that a particular BCI is the target of a jump, therefore requiring a stack map to
-    // be provided fo this BCI.
+    // be provided for this BCI.
     private static final int JUMP_TARGET = 4;
 
     // Exception handler target states
