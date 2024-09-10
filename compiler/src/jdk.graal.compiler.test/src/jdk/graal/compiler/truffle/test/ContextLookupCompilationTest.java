@@ -594,7 +594,7 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
             compileHelper("assertBailout", node, new Object[0]);
             throw new AssertionError("bailout expected");
         } catch (BailoutException e) {
-            // thats expected.
+            // that's expected.
         }
     }
 
