@@ -270,7 +270,7 @@ public class AArch64ASIMDMacroAssembler extends AArch64ASIMDAssembler {
     }
 
     /**
-     * Reverse the byte-order (endianess) of each element.
+     * Reverse the byte-order (endianness) of each element.
      *
      * @param size register size.
      * @param eSize element size.
