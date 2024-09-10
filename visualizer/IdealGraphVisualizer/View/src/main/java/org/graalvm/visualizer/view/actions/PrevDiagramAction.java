@@ -33,8 +33,12 @@ import org.openide.util.NbBundle;
 import javax.swing.AbstractAction;
 import java.awt.event.ActionEvent;
 
+@NbBundle.Messages({
+        "ACTION_PrevDiagramAction=Show previous graph",
+        "DESC_SelectPrevDiagram=Show previous graph of current group"
+})
 @ActionID(category = "Diagram", id = PrevDiagramAction.ID)
-@ActionRegistration(displayName = "CTL_PrevDiagramAction",
+@ActionRegistration(displayName = "#ACTION_PrevDiagramAction",
         iconBase = "org/graalvm/visualizer/view/images/prev_diagram.png",
         enabledOn = @ActionState(property = "positions", checkedValue = ActionState.NON_NULL_VALUE, useActionInstance = true)
 )
@@ -42,10 +46,6 @@ import java.awt.event.ActionEvent;
         @ActionReference(path = "Menu/View", position = 2000),
         @ActionReference(path = "NodeGraphViewer/Actions", position = 1000),
         @ActionReference(path = "NodeGraphViewer/ContextActions", position = 1000)
-})
-@NbBundle.Messages({
-        "ACTION_PrevDiagramAction=Show previous graph",
-        "DESC_SelectPrevDiagram=Show previous graph of current group"
 })
 public final class PrevDiagramAction extends AbstractAction {
     static final String ID = "org.graalvm.visualizer.view.actions.PrevDiagramAction"; // NOI18N

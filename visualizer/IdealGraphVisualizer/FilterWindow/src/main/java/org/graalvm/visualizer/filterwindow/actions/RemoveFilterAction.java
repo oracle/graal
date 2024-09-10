@@ -43,12 +43,15 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+@NbBundle.Messages({
+        "ACTION_RemoveFilterAction=Remove filter"
+})
 @ActionID(
         category = "Filters",
         id = RemoveFilterAction.ID
 )
 @ActionRegistration(
-        displayName = "CTL_MoveFilterUpAction",
+        displayName = "#ACTION_RemoveFilterAction",
         iconBase = "org/graalvm/visualizer/filterwindow/images/minus.png",
         lazy = true
 )

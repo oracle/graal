@@ -95,6 +95,9 @@ public class MoveFilterAction extends AbstractAction {
         this.filters = filters;
     }
 
+    @NbBundle.Messages({
+            "ACTION_MoveFilterDownAction=Move filter downwards"
+    })
     @ActionID(
             category = "Filters",
             id = "org.graalvm.visualizer.filterwindow.actions.MoveDown"
@@ -104,7 +107,7 @@ public class MoveFilterAction extends AbstractAction {
             @ActionReference(path = "IGV/ContextActions/Filter", position = 300)
     })
     @ActionRegistration(
-            displayName = "CTL_MoveFilterDownAction",
+            displayName = "#ACTION_MoveFilterDownAction",
             iconBase = "org/graalvm/visualizer/filterwindow/images/down.png",
             enabledOn = @ActionState(
                     type = Filter.class,
@@ -117,6 +120,9 @@ public class MoveFilterAction extends AbstractAction {
         }
     }
 
+    @NbBundle.Messages({
+            "ACTION_MoveFilterUpAction=Move filter upwards"
+    })
     @ActionID(
             category = "Filters",
             id = "org.graalvm.visualizer.filterwindow.actions.MoveUp"
@@ -126,7 +132,7 @@ public class MoveFilterAction extends AbstractAction {
             @ActionReference(path = "IGV/ContextActions/Filter", position = 400)
     })
     @ActionRegistration(
-            displayName = "CTL_MoveFilterUpAction",
+            displayName = "#ACTION_MoveFilterUpAction",
             iconBase = "org/graalvm/visualizer/filterwindow/images/up.png",
             lazy = true,
             enabledOn = @ActionState(

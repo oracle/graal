@@ -56,7 +56,7 @@ import java.io.IOException;
         @ActionReference(path = "IGV/ContextActions/Filter", position = 300),
 })
 @NbBundle.Messages({
-        "ACTION_RenameFilter=Rename...",
+        "ACTION_RenameFilter=Rename filter...",
         "LABEL_RenameFilter=Filter Name:",
         "TITLE_RenameFilter=Rename Filter",
         "# {0} - new filter name",

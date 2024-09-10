@@ -6,6 +6,11 @@
     <artifactId>IdealGraphVisualizer-parent</artifactId>
     <version>1.20-SNAPSHOT</version>
     <packaging>pom</packaging>
+    <scm>
+        <developerConnection>
+            scm:git:git@github.com:oracle/graal.git
+        </developerConnection>
+    </scm>
     <build>
         <pluginManagement>
             <plugins>
@@ -25,7 +30,7 @@
                     <version>${mvncompilerplugin.version}</version>
                     <configuration>
                         <source>11</source>
-                        <target>11</target>
+                        <release>17</release>
                     </configuration>
                 </plugin>
                 <plugin>
@@ -44,6 +49,16 @@
                         <argLine>--add-opens=java.base/java.net=ALL-UNNAMED
                             --add-exports=java.desktop/sun.awt=ALL-UNNAMED
                         </argLine>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-release-plugin</artifactId>
+                    <version>3.1.1</version>
+                    <configuration>
+                        <autoVersionSubmodules>true</autoVersionSubmodules>
+                        <pushChanges>false</pushChanges>
+                        <tagNameFormat>idealgraphvisualizer-@{project.version}</tagNameFormat>
                     </configuration>
                 </plugin>
                 <plugin>

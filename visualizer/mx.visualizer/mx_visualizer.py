@@ -22,8 +22,6 @@
 import mx
 import mx_util
 import os
-import tempfile
-import zipfile
 import shutil
 from os.path import join, exists
 from argparse import ArgumentParser
@@ -164,14 +162,23 @@ def run_maven(args, resolve=True, **kwargs):
 @mx.command(_suite.name, 'igv')
 def igv(args):
     """run the newly built Ideal Graph Visualizer"""
-    if not mx.get_opts().verbose:
-        args.append('-J-Dnetbeans.logger.console=false')
+    # force a build if it hasn't been built yet
+    if not os.path.exists(os.path.join(_suite.dir, 'IdealGraphVisualizer', 'application', 'target', 'idealgraphvisualizer')):
+        mx.build(['--dependencies', 'IGV'])
+
+    if mx.get_opts().verbose:
+        args.append('-J-Dnetbeans.logger.console=true')
     mx.run([join(igvDir, 'application', 'target', 'idealgraphvisualizer', 'bin', 'idealgraphvisualizer.exe' if mx.is_windows() else 'idealgraphvisualizer'), '--jdkhome', mx.get_jdk().home] + args)
 
 @mx.command(_suite.name, 'unittest')
 def test(args):
     """Run Ideal Graph Visualizer unit tests"""
     run_maven(['package'], nonZeroIsFatal=True, cwd=igvDir)
+
+@mx.command(_suite.name, 'release')
+def release(args):
+    """Build a released version using mvn release:prepare"""
+    run_maven(['-B', 'release:clean', 'release:prepare'], nonZeroIsFatal=True, cwd=igvDir)
 
 @mx.command(_suite.name, 'verify-graal-graphio')
 def verify_graal_graphio(args):
