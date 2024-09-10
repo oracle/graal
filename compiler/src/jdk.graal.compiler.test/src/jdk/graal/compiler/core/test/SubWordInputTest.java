@@ -92,7 +92,7 @@ public class SubWordInputTest extends CustomizedBytecodePatternTest {
         get.visitMaxs(1, 1);
         get.visitEnd();
 
-        // Genearates a method that compares the return value of the preceding method by passing the
+        // Generates a method that compares the return value of the preceding method by passing the
         // input value, and a manual masking of the input value.
         MethodVisitor snippet = cw.visitMethod(ACC_PUBLIC | ACC_STATIC, WRAPPER, "(I)Z", null, null);
         snippet.visitCode();

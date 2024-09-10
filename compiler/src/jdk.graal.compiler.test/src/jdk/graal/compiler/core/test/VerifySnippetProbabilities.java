@@ -141,7 +141,7 @@ public class VerifySnippetProbabilities extends VerifyPhase<CoreProviders> {
                                 }
                             } else {
                                 // abstract / interface methods called in a snippet, most likely due
-                                // to overriden snippet logic that folds later, ignore
+                                // to overridden snippet logic that folds later, ignore
                                 found = true;
                                 break;
                             }
