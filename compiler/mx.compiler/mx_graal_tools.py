@@ -60,7 +60,7 @@ def run_netbeans_app(app_name, jdkhome, args=None, dist=None):
         mx.abort(app_name + ' binary does not exist: ' + executable)
 
     if mx.get_os() != 'windows':
-        # Make sure that execution is allowed. The zip file does not always specfiy that correctly
+        # Make sure that execution is allowed. The zip file does not always specify that correctly
         os.chmod(executable, 0o777)
 
     launch = [executable]
