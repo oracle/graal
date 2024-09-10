@@ -125,8 +125,12 @@ final class ClassAssembler {
         fieldVisitor.visitEnd();
 
         methodVisitor = classWriter.visitMethod(0, "<init>",
-                        "(Lcom/oracle/truffle/espresso/runtime/staticobject/StaticObject;Lcom/oracle/truffle/espresso/runtime/staticobject/StaticObject;Ljava/lang/ref/ReferenceQueue;)V",
-                        "(Lcom/oracle/truffle/espresso/runtime/staticobject/StaticObject;Lcom/oracle/truffle/espresso/runtime/staticobject/StaticObject;Ljava/lang/ref/ReferenceQueue<Lcom/oracle/truffle/espresso/runtime/staticobject/StaticObject;>;)V",
+                        "(Lcom/oracle/truffle/espresso/runtime/staticobject/StaticObject;" +
+                                "Lcom/oracle/truffle/espresso/runtime/staticobject/StaticObject;" +
+                                "Ljava/lang/ref/ReferenceQueue;)V",
+                        "(Lcom/oracle/truffle/espresso/runtime/staticobject/StaticObject;" +
+                                "Lcom/oracle/truffle/espresso/runtime/staticobject/StaticObject;" +
+                                "Ljava/lang/ref/ReferenceQueue<Lcom/oracle/truffle/espresso/runtime/staticobject/StaticObject;>;)V",
                         null);
 
         annotationVisitor0 = methodVisitor.visitTypeAnnotation(369098752, null, "Lcom/oracle/truffle/espresso/substitutions/JavaType;", false);
