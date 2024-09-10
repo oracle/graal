@@ -1301,7 +1301,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     }
 
     /**
-     * @param compressible whether the covert should be compressible
+     * @param compressible whether the convert should be compressible
      */
     protected ValueNode implicitStoreConvert(JavaKind kind, ValueNode value, boolean compressible) {
         if (useCompressedOops(kind, compressible)) {
