@@ -631,7 +631,7 @@ public final class Interval {
 
     public void setSpillSlot(AllocatableValue slot) {
         assert LIRValueUtil.isStackSlotValue(slot);
-        assert splitParent().spillSlot == null || (LIRValueUtil.isVirtualStackSlot(splitParent().spillSlot) && isStackSlot(slot)) : "connot overwrite existing spill slot";
+        assert splitParent().spillSlot == null || (LIRValueUtil.isVirtualStackSlot(splitParent().spillSlot) && isStackSlot(slot)) : "cannot overwrite existing spill slot";
         splitParent().spillSlot = slot;
     }
 
@@ -810,7 +810,7 @@ public final class Interval {
         }
 
         if (locationHint != null) {
-            assert locationHint.isSplitParent() : "ony split parents are valid hint registers";
+            assert locationHint.isSplitParent() : "only split parents are valid hint registers";
 
             if (locationHint.location != null && isRegister(locationHint.location)) {
                 return locationHint;
