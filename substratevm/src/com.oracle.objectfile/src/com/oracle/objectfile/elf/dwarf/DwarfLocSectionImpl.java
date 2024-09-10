@@ -203,7 +203,7 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
         List<LocalValueExtent> extents = LocalValueExtent.coalesce(local, rangeList);
 
         // write start of primary range as base address - see comment above for reasons why
-        // we choose ot do this rather than use the relevant compile unit low_pc
+        // we choose to do this rather than use the relevant compile unit low_pc
         pos = writeAttrData8(-1L, buffer, pos);
         pos = writeAttrAddress(base, buffer, pos);
         // write ranges as offsets from base

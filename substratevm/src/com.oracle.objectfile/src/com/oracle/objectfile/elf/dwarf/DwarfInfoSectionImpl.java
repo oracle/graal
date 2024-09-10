@@ -408,7 +408,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             int codeRangesIndex = getCodeRangesIndex(classEntry);
             log(context, "  [0x%08x]     ranges  0x%x", pos, codeRangesIndex);
             pos = writeRangesSectionOffset(codeRangesIndex, buffer, pos);
-            // write low_pc as well as ranges so that lcoation lists can default the base address
+            // write low_pc as well as ranges so that location lists can default the base address
             int lo = classEntry.lowpc();
             log(context, "  [0x%08x]     low_pc  0x%x", pos, codeRangesIndex);
             pos = writeAttrAddress(lo, buffer, pos);
