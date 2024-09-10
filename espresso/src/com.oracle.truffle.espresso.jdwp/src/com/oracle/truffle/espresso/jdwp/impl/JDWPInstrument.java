@@ -137,7 +137,7 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
                     handleConnectException(ex, false);
                 }
             } else {
-                // don't suspend until debugger attaches, so fire up deamon thread
+                // don't suspend until debugger attaches, so fire up daemon thread
                 Thread handshakeThread = new Thread(this, "jdwp-handshake-thread");
                 handshakeThread.setDaemon(true);
                 handshakeThread.start();
