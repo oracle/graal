@@ -47,7 +47,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
@@ -88,13 +88,13 @@ final class PanamaLibrary implements TruffleObject {
 
     @ExportMessage
     @SuppressWarnings("static-method")
-    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+    Object getMemberObjects() {
         return KEYS;
     }
 
     @ExportMessage
     @SuppressWarnings("static-method")
-    boolean isMemberReadable(@SuppressWarnings("unused") String member) {
+    boolean isMemberReadable(@SuppressWarnings("unused") Object member) {
         return true;
     }
 
@@ -105,14 +105,14 @@ final class PanamaLibrary implements TruffleObject {
     }
 
     @ExportMessage
-    Object readMember(String symbol,
+    Object readMember(Object symbol,
                     @Bind("$node") Node node,
-                    @Cached InlinedBranchProfile exception) throws UnknownIdentifierException {
+                    @Cached InlinedBranchProfile exception) throws UnknownMemberException {
         @SuppressWarnings("preview")
-        Optional<MemorySegment> ret = doLookup(symbol);
-        if (ret.isEmpty()) {
+        Optional<MemorySegment> ret;
+        if (!(symbol instanceof String) || (ret = doLookup((String) symbol)).isEmpty()) {
             exception.enter(node);
-            throw UnknownIdentifierException.create(symbol);
+            throw UnknownMemberException.create(symbol);
         }
         return new PanamaSymbol(ret.get());
     }
