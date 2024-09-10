@@ -167,7 +167,7 @@ public class TestNewInstanceWithException extends SubprocessTest {
             System.gc();
             S = 42;
             if (LOG_OOME_HAPPENED) {
-                GraalDirectives.log("[1]Out of memory happend all good..\n");
+                GraalDirectives.log("[1]Out of memory happened all good..\n");
             }
             if (GraalDirectives.inCompiledCode()) {
                 /*
@@ -249,7 +249,7 @@ public class TestNewInstanceWithException extends SubprocessTest {
             head = null;
             System.gc();
             if (LOG_OOME_HAPPENED) {
-                GraalDirectives.log("[2]Out of memory happend all good..\n");
+                GraalDirectives.log("[2]Out of memory happened all good..\n");
             }
             if (GraalDirectives.inCompiledCode()) {
                 /*
@@ -312,7 +312,7 @@ public class TestNewInstanceWithException extends SubprocessTest {
             ihead = null;
             System.gc();
             if (LOG_OOME_HAPPENED) {
-                GraalDirectives.log("[3]Out of memory happend all good..\n");
+                GraalDirectives.log("[3]Out of memory happened all good..\n");
             }
             if (GraalDirectives.inCompiledCode()) {
                 /*
@@ -354,7 +354,7 @@ public class TestNewInstanceWithException extends SubprocessTest {
             ihead = null;
             System.gc();
             if (LOG_OOME_HAPPENED) {
-                GraalDirectives.log("[3]Out of memory happend all good..\n");
+                GraalDirectives.log("[3]Out of memory happened all good..\n");
             }
             if (GraalDirectives.inCompiledCode()) {
                 /*
@@ -410,7 +410,7 @@ public class TestNewInstanceWithException extends SubprocessTest {
             System.gc();
             S = 42;
             if (LOG_OOME_HAPPENED) {
-                GraalDirectives.log("[1]Out of memory happend all good..\n");
+                GraalDirectives.log("[1]Out of memory happened all good..\n");
             }
             if (GraalDirectives.inCompiledCode()) {
                 /*
@@ -451,7 +451,7 @@ public class TestNewInstanceWithException extends SubprocessTest {
             System.gc();
             S = 42;
             if (LOG_OOME_HAPPENED) {
-                GraalDirectives.log("[1]Out of memory happend all good..\n");
+                GraalDirectives.log("[1]Out of memory happened all good..\n");
             }
             if (GraalDirectives.inCompiledCode()) {
                 /*
@@ -505,7 +505,7 @@ public class TestNewInstanceWithException extends SubprocessTest {
             System.gc();
             S = 42;
             if (LOG_OOME_HAPPENED) {
-                GraalDirectives.log("[1]Out of memory happend all good..\n");
+                GraalDirectives.log("[1]Out of memory happened all good..\n");
             }
             if (GraalDirectives.inCompiledCode()) {
                 /*
