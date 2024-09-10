@@ -60,7 +60,7 @@ public interface FieldRefConstant extends MemberRefConstant {
         return Tag.FIELD_REF;
     }
 
-    @SuppressWarnings("uncheked")
+    @SuppressWarnings("unchecked")
     default Symbol<Type> getType(ConstantPool pool) {
         // TODO(peterssen): Validate type descriptor.
         return Types.fromDescriptor(getDescriptor(pool));
