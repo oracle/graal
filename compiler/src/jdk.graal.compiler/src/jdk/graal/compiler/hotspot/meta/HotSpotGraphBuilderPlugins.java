@@ -409,7 +409,7 @@ public class HotSpotGraphBuilderPlugins {
                     // Primitive Class case returns null
                     PiNode klassNonNull = helper.emitNullReturnGuard(klass, nullValue, GraalDirectives.UNLIKELY_PROBABILITY);
 
-                    // if ((Klass::_access_flags & Modifer.INTERCAE) != 0) return null
+                    // if ((Klass::_access_flags & Modifier.INTERCAE) != 0) return null
                     ValueNode accessFlags = helper.readKlassAccessFlags(klassNonNull);
                     LogicNode test = IntegerTestNode.create(accessFlags, ConstantNode.forInt(Modifier.INTERFACE), NodeView.DEFAULT);
                     helper.emitReturnIfNot(test, nullValue, GraalDirectives.UNLIKELY_PROBABILITY);
