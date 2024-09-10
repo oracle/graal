@@ -471,7 +471,7 @@ public abstract class Node implements Cloneable, Formattable {
      * Returns an {@link Iterable iterable} which can be used to traverse all successor edge
      * positions of {@code this}.
      *
-     * @return an {@link Iterable iterable} for all successor edge positoins.
+     * @return an {@link Iterable iterable} for all successor edge positions.
      */
     public Iterable<Position> successorPositions() {
         return nodeClass.getSuccessorEdges().getPositionsIterable(this);
