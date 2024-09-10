@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.phases;
 
 import java.util.function.Supplier;
 
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -59,10 +60,9 @@ public class SubstrateClassInitializationPlugin implements ClassInitializationPl
     }
 
     @Override
-    public boolean apply(GraphBuilderContext builder, ResolvedJavaType type, Supplier<FrameState> frameState) {
+    public boolean apply(GraphBuilderContext builder, ResolvedJavaType type, Supplier<FrameState> frameState, ValueNode[] classInit) {
         if (EnsureClassInitializedNode.needsRuntimeInitialization(builder.getMethod().getDeclaringClass(), type)) {
-            SnippetReflectionProvider snippetReflection = builder.getSnippetReflection();
-            emitEnsureClassInitialized(builder, snippetReflection.forObject(host.dynamicHub(type)), frameState.get());
+            emitEnsureClassInitialized(builder, SubstrateObjectConstant.forObject(host.dynamicHub(type)), frameState.get());
             /*
              * The classInit value is only registered with Invoke nodes. Since we do not need that,
              * we ensure it is null.

@@ -290,7 +290,7 @@ public final class ReflectionPlugins {
         }
 
         if (initialize) {
-            classInitializationPlugin.apply(b, b.getMetaAccess().lookupJavaType(clazz), () -> null);
+            classInitializationPlugin.apply(b, b.getMetaAccess().lookupJavaType(clazz), () -> null, null);
         }
         return true;
     }

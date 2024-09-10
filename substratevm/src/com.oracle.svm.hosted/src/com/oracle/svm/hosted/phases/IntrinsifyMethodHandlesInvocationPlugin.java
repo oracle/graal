@@ -967,7 +967,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
              * BytecodeParser are safe. We want to avoid putting additional rarely used methods into
              * GraphBuilderContext.
              */
-            classInitializationPlugin.apply(b, declaringClass, () -> ((BytecodeParser) b).getFrameStateBuilder().create(b.bci(), (BytecodeParser) b.getNonIntrinsicAncestor(), false, null, null));
+            classInitializationPlugin.apply(b, declaringClass, () -> ((BytecodeParser) b).getFrameStateBuilder().create(b.bci(), (BytecodeParser) b.getNonIntrinsicAncestor(), false, null, null), null);
         }
     }
 

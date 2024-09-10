@@ -199,7 +199,7 @@ final class EarlyClassInitializerAnalysis {
         }
 
         @Override
-        public boolean apply(GraphBuilderContext b, ResolvedJavaType type, Supplier<FrameState> frameState) {
+        public boolean apply(GraphBuilderContext b, ResolvedJavaType type, Supplier<FrameState> frameState, ValueNode[] classInit) {
             ResolvedJavaMethod clinitMethod = b.getGraph().method();
             if (!EnsureClassInitializedNode.needsRuntimeInitialization(clinitMethod.getDeclaringClass(), type)) {
                 return false;
