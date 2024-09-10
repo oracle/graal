@@ -265,7 +265,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
     then 'dacapo:*[h2,fop,jython,luindex,sunflow,xalan]'
     # exclude fop on native
     else if env == 'native-ce'
-      # additionally exclude luindex on native-ce: it gets stuck on the first interation
+      # additionally exclude luindex on native-ce: it gets stuck on the first iteration
       then 'dacapo:*[h2,jython,lusearch,pmd,sunflow,xalan]'
       else 'dacapo:*[h2,jython,luindex,lusearch,pmd,sunflow,xalan]',
 
