@@ -333,7 +333,7 @@ def maven_deploy_public_repo_dir():
 
 @mx.command(_suite.name, 'maven-deploy-public')
 def maven_deploy_public(args, licenses=None, deploy_snapshots=True):
-    """Helper to simplify deploying all public Maven dependendencies into the mxbuild directory"""
+    """Helper to simplify deploying all public Maven dependencies into the mxbuild directory"""
     if deploy_snapshots:
         artifact_version = f'{mx_sdk_vm_impl.graalvm_version("graalvm")}-SNAPSHOT'
     else:
