@@ -68,7 +68,7 @@ public abstract class NativeLibraries {
 
     /** Returns the directory containing the native image, or {@code null}. */
     @NeverInline("Reads the return address.")
-    private static String getImageDirectory() {
+    public static String getImageDirectory() {
         /*
          * While one might expect code for shared libraries to work for executables as well, this is
          * not necessarily the case. For example, `dladdr` on Linux returns `argv[0]` for
