@@ -73,7 +73,7 @@ public class SwitchHashTableTest extends JTTTest {
     @Test
     public void run1() throws Throwable {
         runTest("test1", 0); // zero
-        runTest("test1", 3080011); // bellow
+        runTest("test1", 3080011); // below
         runTest("test1", 3080012); // first
         runTest("test1", 3080065); // middle
         runTest("test1", 3080130); // last
@@ -121,7 +121,7 @@ public class SwitchHashTableTest extends JTTTest {
     @Test
     public void run2() throws Throwable {
         runTest("test2", 0); // zero
-        runTest("test2", 718707334); // bellow
+        runTest("test2", 718707334); // below
         runTest("test2", 718707335); // first
         runTest("test2", 718707386); // middle
         runTest("test2", 718707436); // last
@@ -169,7 +169,7 @@ public class SwitchHashTableTest extends JTTTest {
     @Test
     public void run3() throws Throwable {
         runTest("test3", 0); // zero
-        runTest("test3", 880488711); // bellow
+        runTest("test3", 880488711); // below
         runTest("test3", 880488712); // first
         runTest("test3", 880488777); // middle
         runTest("test3", 880488831); // last
@@ -217,7 +217,7 @@ public class SwitchHashTableTest extends JTTTest {
     @Test
     public void run4() throws Throwable {
         runTest("test4", 0); // zero
-        runTest("test4", 189404657); // bellow
+        runTest("test4", 189404657); // below
         runTest("test4", 189404658); // first
         runTest("test4", 189404711); // middle
         runTest("test4", 189404765); // last
@@ -265,7 +265,7 @@ public class SwitchHashTableTest extends JTTTest {
     @Test
     public void run5() throws Throwable {
         runTest("test5", 0); // zero
-        runTest("test5", 527674225); // bellow
+        runTest("test5", 527674225); // below
         runTest("test5", 527674226); // first
         runTest("test5", 527674263); // middle
         runTest("test5", 527674308); // last
@@ -313,7 +313,7 @@ public class SwitchHashTableTest extends JTTTest {
     @Test
     public void run6() throws Throwable {
         runTest("test6", 0); // zero
-        runTest("test6", 676979120); // bellow
+        runTest("test6", 676979120); // below
         runTest("test6", 676979121); // first
         runTest("test6", 676979169); // middle
         runTest("test6", 676979219); // last
@@ -361,7 +361,7 @@ public class SwitchHashTableTest extends JTTTest {
     @Test
     public void run7() throws Throwable {
         runTest("test7", 0); // zero
-        runTest("test7", 634218695); // bellow
+        runTest("test7", 634218695); // below
         runTest("test7", 634218696); // first
         runTest("test7", 634218749); // middle
         runTest("test7", 634218795); // last
@@ -409,7 +409,7 @@ public class SwitchHashTableTest extends JTTTest {
     @Test
     public void run8() throws Throwable {
         runTest("test8", 0); // zero
-        runTest("test8", 473982402); // bellow
+        runTest("test8", 473982402); // below
         runTest("test8", 473982403); // first
         runTest("test8", 473982468); // middle
         runTest("test8", 473982523); // last
@@ -457,7 +457,7 @@ public class SwitchHashTableTest extends JTTTest {
     @Test
     public void run9() throws Throwable {
         runTest("test9", 0); // zero
-        runTest("test9", 15745089); // bellow
+        runTest("test9", 15745089); // below
         runTest("test9", 15745090); // first
         runTest("test9", 15745146); // middle
         runTest("test9", 15745207); // last
@@ -505,7 +505,7 @@ public class SwitchHashTableTest extends JTTTest {
     @Test
     public void run10() throws Throwable {
         runTest("test10", 0); // zero
-        runTest("test10", 989358995); // bellow
+        runTest("test10", 989358995); // below
         runTest("test10", 989358996); // first
         runTest("test10", 989359059); // middle
         runTest("test10", 989359108); // last
