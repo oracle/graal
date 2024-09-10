@@ -896,7 +896,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
 
     /**
      * Returns <code>true</code> if a call tree should get inlined, otherwise <code>false</code>.
-     * This method does not yet make determine wheter the call site is in budget. See
+     * This method does not yet make determine whether the call site is in budget. See
      * {@link #isInBudget(CallTree, int, int)} for that.
      */
     private boolean shouldInline(InliningPhaseContext context, CallTree call) {
