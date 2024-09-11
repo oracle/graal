@@ -76,7 +76,6 @@ import com.oracle.svm.hosted.substitute.SubstitutionType;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.vm.ci.hotspot.HotSpotResolvedJavaType;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
@@ -97,7 +96,7 @@ import jdk.vm.ci.meta.Signature;
  *
  * There are 4 layers in use:
  * <ol>
- * <li>The "HotSpot universe": the original source of elements, as parsed from class files.</li>
+ * <li>The "host VM universe": the original source of elements, as parsed from class files.</li>
  * <li>The "substitution layer" to modify some of the elements coming from class files, without
  * modifying class files.</li>
  * <li>The "analysis universe": elements that the static analysis operates on.</li>
@@ -150,18 +149,18 @@ import jdk.vm.ci.meta.Signature;
  * {@link java.lang.Class}, due to the {@link Substitute} and {@link TargetClass} annotations on
  * {@link DynamicHub}.
  *
- * <h1>The HotSpot Universe</h1>
+ * <h1>The Host VM Universe</h1>
  *
  * Most elements in a native image originate from .class files. The native image generator does not
  * contain a class file parser, so the only way information from class files flows in is via JVMCI
- * from the Java HotSpot VM. Since JVMCI is VM independent, in theory any other Java VM that
- * implements JVMCI could be the source of information. In practice, the Java HotSpot VM is the only
- * known and supported VM for now. Still, it is frowned upon to reach into any JVMCI object of the
- * HotSpot universe. Many of the HotSpot implementation classes are not public anyway, but even the
- * public ones must not be used directly.
+ * from the host Java VM used at build time. Since JVMCI is VM independent, in theory any other Java
+ * VM that implements JVMCI could be the source of information. In practice, the Java HotSpot VM is
+ * the only known and supported VM for now. Still, it is frowned upon to reach into any JVMCI object
+ * of the HotSpot universe. Many of the HotSpot implementation classes are not public anyway, but
+ * even the public ones must not be used directly.
  *
- * Using the HotSpot universe keeps a lot of complexity out of the native image generator. Here are
- * some examples of code that does not exist in the native image generator:
+ * Using the host VM's universe keeps a lot of complexity out of the native image generator. Here
+ * are some examples of code that does not exist in the native image generator:
  * <ul>
  * <li>A parser for the binary format of .class files.</li>
  * <li>Code to resolve and interpret constant pool entries.</li>
@@ -193,8 +192,8 @@ import jdk.vm.ci.meta.Signature;
  * therefore acts as a unifying layer above the quite unstructured substitution layer. And there are
  * a few places where analysis elements do not delegate to the wrapped layer, for example to query
  * if a {@link AnalysisType#isInitialized() type is initialized}. The analysis layer also implements
- * caches for a few operations that are expensive in the HotSpot layer, to reduce the time spent in
- * the static analysis.
+ * caches for a few operations that are expensive in the host VM's JVMCI implementation, to reduce
+ * the time spent in the static analysis.
  *
  * <h1>The Hosted Universe</h1>
  *
@@ -236,11 +235,11 @@ import jdk.vm.ci.meta.Signature;
  *
  * <h1>The Substitution Layer</h1>
  *
- * The substitution layer is a not-so-well-defined set of elements that sit between the HotSpot
+ * The substitution layer is a not-so-well-defined set of elements that sit between the host VM
  * universe and the analysis universe. These elements do not form a complete universe. This means
  * that for the majority of elements that are not affected by any substitution, the analysis element
- * directly wraps the HotSpot element. For example, for most types
- * {@link AnalysisType#getWrapped()}} returns a {@link HotSpotResolvedJavaType}.
+ * directly wraps the host VM element. For example, for most types
+ * {@link AnalysisType#getWrapped()}} returns the host VM {@link ResolvedJavaType}.
  *
  * Substitutions are processed by a chain of {@link SubstitutionProcessor} that are typically
  * registered by a {@link Feature} via {@link DuringSetupAccessImpl#registerSubstitutionProcessor}
@@ -251,7 +250,7 @@ import jdk.vm.ci.meta.Signature;
  * are processed by one particular implementation of {@link SubstitutionProcessor}:
  * {@link AnnotationSubstitutionProcessor}. This a prominent and flexible substitution processor,
  * but by far not the only one. Since many substitution processors are chained, there can also be
- * chains of elements between a HotSpot element and an analysis element.
+ * chains of elements between a host element and an analysis element.
  *
  * Elements produced by a substitution processor usually do one of the following things:
  * <ul>
@@ -273,8 +272,8 @@ import jdk.vm.ci.meta.Signature;
  *
  * Substitution processors can modify many aspects of elements, but there are also hard limitations:
  * they cannot modify aspects that are not implemented by the native image generator itself, but
- * accessed via the HotSpot universe. For example, they cannot modify virtual method resolution and
- * subtype checks (see the list in the section about the HotSpot universe). In general it is safe to
+ * accessed via the host VM universe. For example, they cannot modify virtual method resolution and
+ * subtype checks (see the list in the section about the host VM universe). In general it is safe to
  * say that substituted elements can change any behavior of one particular element, but not how
  * multiple elements interact with each other (because substitutions are not a complete universe).
  *
