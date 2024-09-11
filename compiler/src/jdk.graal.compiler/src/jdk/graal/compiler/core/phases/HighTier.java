@@ -75,7 +75,7 @@ public class HighTier extends BaseTier<HighTierContext> {
         }
 
         appendPhase(new DisableOverflownCountedLoopsPhase());
-
+        
         if (GraalOptions.OptConvertDeoptsToGuards.getValue(options)) {
             appendPhase(new ConvertDeoptimizeToGuardPhase(canonicalizer));
         }
@@ -117,7 +117,10 @@ public class HighTier extends BaseTier<HighTierContext> {
         appendPhase(new BoxNodeOptimizationPhase(canonicalizer));
 
         // Joonhwan TODO wrap this with a GraalOption
-        appendPhase(new MethodInstrumentationPhase());
+        if (GraalOptions.EnableProfiler.getValue(options)){
+            appendPhase(new MethodInstrumentationPhase());    
+        }
+
         appendPhase(new HighTierLoweringPhase(canonicalizer, true));
     }
 
