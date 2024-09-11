@@ -75,9 +75,11 @@ public class WriteLayerArchiveSupport extends LayerArchiveSupport {
         layerProperties.write();
         try (JarOutputStream jarOutStream = new JarOutputStream(Files.newOutputStream(outputLayerLocation), archiveSupport.createManifest())) {
             Path imageBuilderOutputDir = NativeImageGenerator.getOutputDirectory();
-            // copy the layer snapshot file to the jar
+            // copy the layer snapshot file and its graphs file to the jar
             Path snapshotFile = BuildArtifacts.singleton().get(BuildArtifacts.ArtifactType.LAYER_SNAPSHOT).getFirst();
             archiveSupport.addFileToJar(imageBuilderOutputDir, snapshotFile, outputLayerLocation, jarOutStream);
+            Path snapshotGraphsFile = BuildArtifacts.singleton().get(BuildArtifacts.ArtifactType.LAYER_SNAPSHOT_GRAPHS).getFirst();
+            archiveSupport.addFileToJar(imageBuilderOutputDir, snapshotGraphsFile, outputLayerLocation, jarOutStream);
             // copy the shared object file to the jar
             Path sharedLibFile = BuildArtifacts.singleton().get(BuildArtifacts.ArtifactType.IMAGE_LAYER).getFirst();
             archiveSupport.addFileToJar(imageBuilderOutputDir, sharedLibFile, outputLayerLocation, jarOutStream);

@@ -105,6 +105,8 @@ import java.io.InputStreamReader;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
@@ -135,6 +137,7 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.EncodedGraph;
@@ -302,7 +305,7 @@ public class ImageLayerLoader {
     protected final Map<Integer, AnalysisMethod> methods = new ConcurrentHashMap<>();
     protected final Map<Integer, AnalysisField> fields = new ConcurrentHashMap<>();
     protected final Map<Integer, ImageHeapConstant> constants = new ConcurrentHashMap<>();
-    private final List<Path> loadPaths;
+    private final List<FilePaths> loadPaths;
     private final Map<Integer, BaseLayerType> baseLayerTypes = new ConcurrentHashMap<>();
     private final Map<Integer, Integer> typeToHubIdentityHashCode = new ConcurrentHashMap<>();
     private final Map<Integer, BaseLayerMethod> baseLayerMethods = new ConcurrentHashMap<>();
@@ -332,20 +335,20 @@ public class ImageLayerLoader {
     protected HostedValuesProvider hostedValuesProvider;
 
     protected EconomicMap<String, Object> jsonMap;
+    protected FileChannel graphsChannel;
 
     private long imageHeapSize;
+
+    public record FilePaths(Path snapshot, Path snapshotGraphs) {
+    }
 
     public ImageLayerLoader() {
         this(new ImageLayerSnapshotUtil(), List.of());
     }
 
-    public ImageLayerLoader(ImageLayerSnapshotUtil imageLayerSnapshotUtil, List<Path> loadPaths) {
+    public ImageLayerLoader(ImageLayerSnapshotUtil imageLayerSnapshotUtil, List<FilePaths> loadPaths) {
         this.imageLayerSnapshotUtil = imageLayerSnapshotUtil;
         this.loadPaths = loadPaths;
-    }
-
-    public List<Path> getLoadPaths() {
-        return loadPaths;
     }
 
     public AnalysisUniverse getUniverse() {
@@ -360,16 +363,18 @@ public class ImageLayerLoader {
         this.imageLayerLoaderHelper = imageLayerLoaderHelper;
     }
 
-    /**
-     * Note this code is not thread safe.
-     */
-    protected void loadJsonMap() {
+    /** This code is not thread safe. */
+    protected void openFilesAndLoadJsonMap() {
         assert loadPaths.size() == 1 : "Currently only one path is supported for image layer loading " + loadPaths;
         if (jsonMap == null) {
-            for (Path layerPath : loadPaths) {
-                try (InputStreamReader inputStreamReader = new InputStreamReader(new FileInputStream(layerPath.toFile()))) {
-                    Object json = new JsonParser(inputStreamReader).parse();
-                    jsonMap = cast(json);
+            for (FilePaths paths : loadPaths) {
+                try {
+                    graphsChannel = FileChannel.open(paths.snapshotGraphs);
+
+                    try (InputStreamReader inputStreamReader = new InputStreamReader(new FileInputStream(paths.snapshot.toFile()))) {
+                        Object json = new JsonParser(inputStreamReader).parse();
+                        jsonMap = cast(json);
+                    }
                 } catch (IOException e) {
                     throw AnalysisError.shouldNotReachHere("Error during image layer snapshot loading", e);
                 }
@@ -378,8 +383,18 @@ public class ImageLayerLoader {
     }
 
     public void loadLayerAnalysis() {
-        loadJsonMap();
+        openFilesAndLoadJsonMap();
         loadLayerAnalysis0();
+    }
+
+    public void cleanupAfterAnalysis() {
+        if (graphsChannel != null) {
+            try {
+                graphsChannel.close();
+            } catch (IOException e) {
+                throw AnalysisError.shouldNotReachHere(e);
+            }
+        }
     }
 
     /**
@@ -792,7 +807,7 @@ public class ImageLayerLoader {
 
     public AnalysisParsedGraph getAnalysisParsedGraph(AnalysisMethod analysisMethod) {
         EconomicMap<String, Object> methodData = getMethodData(analysisMethod);
-        String encodedAnalyzedGraph = get(methodData, ANALYSIS_PARSED_GRAPH_TAG);
+        String encodedAnalyzedGraph = readEncodedGraph(methodData, ANALYSIS_PARSED_GRAPH_TAG);
         Boolean intrinsic = get(methodData, INTRINSIC_TAG);
         /*
          * Methods without a persisted graph are folded and static methods.
@@ -802,11 +817,34 @@ public class ImageLayerLoader {
         if (encodedAnalyzedGraph != null) {
             EncodedGraph analyzedGraph = (EncodedGraph) ObjectCopier.decode(imageLayerSnapshotUtil.getGraphDecoder(this, analysisMethod, universe.getSnippetReflection()), encodedAnalyzedGraph);
             if (hasStrengthenedGraph(analysisMethod)) {
-                loadAllAnalysisElements(get(methodData, STRENGTHENED_GRAPH_TAG));
+                loadAllAnalysisElements(readEncodedGraph(methodData, STRENGTHENED_GRAPH_TAG));
             }
             return new AnalysisParsedGraph(analyzedGraph, intrinsic);
         }
         throw AnalysisError.shouldNotReachHere("The method " + analysisMethod + " does not have a graph from the base layer");
+    }
+
+    private String readEncodedGraph(EconomicMap<String, Object> methodData, String elementIdentifier) {
+        String location = get(methodData, elementIdentifier);
+        int closingBracketAt = location.length() - 1;
+        AnalysisError.guarantee(location.charAt(0) == '@' && location.charAt(closingBracketAt) == ']', "Location must start with '@' and end with ']': %s", location);
+        int openingBracketAt = location.indexOf('[', 1, closingBracketAt);
+        AnalysisError.guarantee(openingBracketAt < closingBracketAt, "Location does not contain '[' at expected location: %s", location);
+        long offset;
+        long nbytes;
+        try {
+            offset = Long.parseUnsignedLong(location.substring(1, openingBracketAt));
+            nbytes = Long.parseUnsignedLong(location.substring(openingBracketAt + 1, closingBracketAt));
+        } catch (NumberFormatException e) {
+            throw AnalysisError.shouldNotReachHere("Location contains invalid positive integer(s): " + location);
+        }
+        ByteBuffer bb = ByteBuffer.allocate(NumUtil.safeToInt(nbytes));
+        try {
+            graphsChannel.read(bb, offset);
+        } catch (IOException e) {
+            throw AnalysisError.shouldNotReachHere("Failed reading a graph from location: " + location, e);
+        }
+        return new String(bb.array(), ImageLayerWriter.GRAPHS_CHARSET);
     }
 
     public boolean hasStrengthenedGraph(AnalysisMethod analysisMethod) {
@@ -816,7 +854,7 @@ public class ImageLayerLoader {
 
     public void setStrengthenedGraph(AnalysisMethod analysisMethod) {
         EconomicMap<String, Object> methodData = getMethodData(analysisMethod);
-        String encodedAnalyzedGraph = get(methodData, STRENGTHENED_GRAPH_TAG);
+        String encodedAnalyzedGraph = readEncodedGraph(methodData, STRENGTHENED_GRAPH_TAG);
         EncodedGraph analyzedGraph = (EncodedGraph) ObjectCopier.decode(imageLayerSnapshotUtil.getGraphDecoder(this, analysisMethod, universe.getSnippetReflection()), encodedAnalyzedGraph);
         processGraph(analyzedGraph);
         analysisMethod.setAnalyzedGraph(analyzedGraph);

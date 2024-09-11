@@ -549,7 +549,7 @@ public class NativeImageGenerator {
         try (TemporaryBuildDirectoryProviderImpl tempDirectoryProvider = new TemporaryBuildDirectoryProviderImpl()) {
             ImageSingletons.add(TemporaryBuildDirectoryProvider.class, tempDirectoryProvider);
             if (ImageLayerBuildingSupport.buildingSharedLayer()) {
-                HostedImageLayerBuildingSupport.setupImageLayerArtifact(imageName);
+                HostedImageLayerBuildingSupport.setupImageLayerArtifacts(imageName);
             }
             doRun(entryPoints, javaMainSupport, imageName, k, harnessSubstitutions);
             if (ImageLayerBuildingSupport.buildingSharedLayer()) {

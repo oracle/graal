@@ -93,8 +93,13 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.VALUE_TAG;
 import static jdk.graal.compiler.java.LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
+import java.nio.channels.WritableByteChannel;
+import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -132,6 +137,8 @@ import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 public class ImageLayerWriter {
+    static final Charset GRAPHS_CHARSET = Charset.defaultCharset();
+
     protected final ImageLayerSnapshotUtil imageLayerSnapshotUtil;
     private ImageLayerWriterHelper imageLayerWriterHelper;
     private ImageHeap imageHeap;
@@ -145,12 +152,34 @@ public class ImageLayerWriter {
     protected final Map<String, EconomicMap<String, Object>> methodsMap;
     protected final Map<String, Map<String, Object>> fieldsMap;
     private final Map<String, EconomicMap<String, Object>> constantsMap;
+    private final Graphs graphs;
     FileInfo fileInfo;
+    FileInfo graphsFileInfo;
     private final boolean useSharedLayerGraphs;
 
     protected final Set<AnalysisFuture<Void>> elementsToPersist = ConcurrentHashMap.newKeySet();
 
     private record FileInfo(Path layerSnapshotPath, String fileName, String suffix) {
+    }
+
+    private static class Graphs {
+        final List<ByteBuffer> encodedGraphs = new ArrayList<>(4096);
+        long currentOffset = 0;
+
+        synchronized String add(String encodedGraph) {
+            ByteBuffer encoded = GRAPHS_CHARSET.encode(encodedGraph);
+            encodedGraphs.add(encoded);
+            int size = encoded.limit();
+            long offset = currentOffset;
+            currentOffset += size;
+            return new StringBuilder("@").append(offset).append("[").append(size).append("]").toString();
+        }
+
+        synchronized void dump(WritableByteChannel channel) throws IOException {
+            for (ByteBuffer bb : encodedGraphs) {
+                channel.write(bb);
+            }
+        }
     }
 
     public ImageLayerWriter() {
@@ -168,6 +197,7 @@ public class ImageLayerWriter {
         this.methodsMap = new ConcurrentHashMap<>();
         this.fieldsMap = new ConcurrentHashMap<>();
         this.constantsMap = new ConcurrentHashMap<>();
+        this.graphs = new Graphs();
     }
 
     public void setInternedStringsIdentityMap(IdentityHashMap<String, String> map) {
@@ -182,18 +212,29 @@ public class ImageLayerWriter {
         this.imageLayerWriterHelper = imageLayerWriterHelper;
     }
 
-    public void setFileInfo(Path layerSnapshotPath, String fileName, String suffix) {
+    public void setSnapshotFileInfo(Path layerSnapshotPath, String fileName, String suffix) {
         fileInfo = new FileInfo(layerSnapshotPath, fileName, suffix);
+    }
+
+    public void setSnapshotGraphsFileInfo(Path layerGraphsPath, String fileName, String suffix) {
+        graphsFileInfo = new FileInfo(layerGraphsPath, fileName, suffix);
     }
 
     public void setAnalysisUniverse(AnalysisUniverse aUniverse) {
         this.aUniverse = aUniverse;
     }
 
-    public void dumpFile() {
-        FileDumpingUtil.dumpFile(fileInfo.layerSnapshotPath, fileInfo.fileName, fileInfo.suffix, writer -> {
-            try (JsonWriter jw = new JsonWriter(writer)) {
+    public void dumpFiles() {
+        FileDumpingUtil.dumpFile(fileInfo.layerSnapshotPath, fileInfo.fileName, fileInfo.suffix, outputStream -> {
+            try (JsonWriter jw = new JsonWriter(new PrintWriter(outputStream))) {
                 jw.print(jsonMap);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
+        FileDumpingUtil.dumpFile(graphsFileInfo.layerSnapshotPath, graphsFileInfo.fileName, graphsFileInfo.suffix, stream -> {
+            try {
+                graphs.dump(Channels.newChannel(stream));
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -413,7 +454,8 @@ public class ImageLayerWriter {
         if (encodedGraph.contains(LAMBDA_CLASS_NAME_SUBSTRING)) {
             return false;
         }
-        methodMap.put(graphTag, encodedGraph);
+        String location = graphs.add(encodedGraph);
+        methodMap.put(graphTag, location);
         return true;
     }
 

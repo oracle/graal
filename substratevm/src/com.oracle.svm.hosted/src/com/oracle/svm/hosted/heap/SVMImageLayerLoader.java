@@ -46,7 +46,6 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.TYPES_TAG;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -105,8 +104,8 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     private HostedUniverse hostedUniverse;
     private ImageClassLoader imageClassLoader;
 
-    public SVMImageLayerLoader(List<Path> loaderPaths) {
-        super(new SVMImageLayerSnapshotUtil(), loaderPaths);
+    public SVMImageLayerLoader(List<FilePaths> loadPaths) {
+        super(new SVMImageLayerSnapshotUtil(), loadPaths);
         dynamicHubArrayHubField = ReflectionUtil.lookupField(DynamicHub.class, "arrayHub");
     }
 
@@ -345,7 +344,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     public Map<Object, Set<Class<?>>> loadImageSingletons(Object forbiddenObject) {
-        loadJsonMap();
+        openFilesAndLoadJsonMap();
         return loadImageSingletons0(forbiddenObject);
     }
 

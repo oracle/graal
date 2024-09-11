@@ -55,6 +55,10 @@ public class LoadLayerArchiveSupport extends LayerArchiveSupport {
         return expandedInputLayerDir.resolve(ImageLayerSnapshotUtil.snapshotFileName(layerProperties.layerName()));
     }
 
+    public Path getSnapshotGraphsPath() {
+        return expandedInputLayerDir.resolve(ImageLayerSnapshotUtil.snapshotGraphsFileName(layerProperties.layerName()));
+    }
+
     private static Path validateLayerFile(Path layerFile) {
         Path fileName = layerFile.getFileName();
         if (fileName == null || !fileName.toString().endsWith(LAYER_FILE_EXTENSION)) {

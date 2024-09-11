@@ -26,7 +26,7 @@ package com.oracle.svm.util;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.OutputStream;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -38,17 +38,15 @@ import jdk.graal.compiler.debug.GraalError;
 
 public class FileDumpingUtil {
     @SuppressFBWarnings(value = "", justification = "FB reports null pointer dereferencing although it is not possible in this case.")
-    public static void dumpFile(Path path, String name, String suffix, Consumer<PrintWriter> writerConsumer) {
+    public static void dumpFile(Path path, String name, String suffix, Consumer<OutputStream> streamConsumer) {
         long start = System.nanoTime();
         String filePrefix = String.format(name + "-%d", start);
         try {
             Path tempPath = Files.createTempFile(path.getParent(), filePrefix, suffix);
             try (FileOutputStream fileOutputStream = new FileOutputStream(tempPath.toFile())) {
-                try (PrintWriter writer = new PrintWriter(fileOutputStream)) {
-                    writerConsumer.accept(writer);
-                }
-                tryAtomicMove(tempPath, path);
+                streamConsumer.accept(fileOutputStream);
             }
+            tryAtomicMove(tempPath, path);
         } catch (Exception e) {
             throw GraalError.shouldNotReachHere(e, "Error during file dumping.");
         }
