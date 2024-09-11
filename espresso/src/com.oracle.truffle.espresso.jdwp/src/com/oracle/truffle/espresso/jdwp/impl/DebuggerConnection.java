@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -75,7 +75,6 @@ public final class DebuggerConnection implements Commands {
     public void close() {
         try {
             connection.close(controller);
-            controller.getEventListener().setConnection(null);
         } catch (IOException e) {
             throw new RuntimeException("Closing socket connection failed", e);
         }
@@ -150,6 +149,10 @@ public final class DebuggerConnection implements Commands {
         return thread == jdwpTransport || thread == commandProcessor;
     }
 
+    public boolean isOpen() {
+        return connection.isOpen();
+    }
+
     private class CommandProcessorThread implements Runnable {
 
         @Override
@@ -195,16 +198,20 @@ public final class DebuggerConnection implements Commands {
 
         @Override
         public void run() {
-            while (!Thread.currentThread().isInterrupted()) {
-                try {
-                    processPacket(Packet.fromByteArray(connection.readPacket()));
-                } catch (IOException e) {
-                    if (!Thread.currentThread().isInterrupted()) {
-                        controller.warning(() -> "Failed to process jdwp packet with message: " + e.getMessage());
+            try {
+                while (!Thread.currentThread().isInterrupted()) {
+                    try {
+                        processPacket(Packet.fromByteArray(connection.readPacket()));
+                    } catch (IOException e) {
+                        if (!Thread.currentThread().isInterrupted()) {
+                            controller.warning(() -> "Failed to process jdwp packet with message: " + e.getMessage());
+                        }
+                    } catch (ConnectionClosedException e) {
+                        // we closed the session, so let the thread run dry
                     }
-                } catch (ConnectionClosedException e) {
-                    // we closed the session, so let the thread run dry
                 }
+            } finally {
+                controller.getEventListener().onDetach();
             }
         }
 
