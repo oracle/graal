@@ -833,7 +833,7 @@ inlined compiled method code as well as mappings from code addresses
 to the corresponding source files and lines.
 `perf` and `valgrind` are able to use this information for some of
 their recording and reporting operations.
-For example, `perf report` is able to associate code adresses sampled
+For example, `perf report` is able to associate code addresses sampled
 during a `perf record` session with Java methods and print the
 DWARF-derived method name for the method in its output histogram.
 
