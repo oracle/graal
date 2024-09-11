@@ -384,7 +384,7 @@ public final class JNIConfig {
 
         /**
          * Registers a thread local factory whenever the default thread local handling should be
-         * overriden. This can be useful to install a terminating thread local using JVMCI services
+         * overridden. This can be useful to install a terminating thread local using JVMCI services
          * when needed.
          *
          * @see NativeObject
