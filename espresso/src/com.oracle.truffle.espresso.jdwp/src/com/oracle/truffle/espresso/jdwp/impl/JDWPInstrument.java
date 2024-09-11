@@ -87,6 +87,7 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
             for (Thread activeThread : activeThreads) {
                 if (activeThread.isAlive()) {
                     stillRunning = true;
+                    break;
                 }
             }
             try {
@@ -177,13 +178,12 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
         SocketConnection socketConnection;
 
         hsController = new HandshakeController();
-        socketConnection = hsController.createSocketConnection(server, controller.getHost(), controller.getListeningPort(), activeThreads);
+        socketConnection = hsController.createSocketConnection(server, controller, activeThreads);
         hsController.close();
         hsController = null;
 
         // connection established with handshake. Prepare to process commands from debugger
         connection = new DebuggerConnection(socketConnection, controller);
-        controller.getEventListener().setConnection(socketConnection);
         // The VM started event must be sent when we're ready to process commands
         // doProcessCommands method will control when events can be fired without
         // causing races, so pass on a Callable
@@ -223,6 +223,6 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
     }
 
     boolean hasConnection() {
-        return connection != null;
+        return connection != null && connection.isOpen();
     }
 }
