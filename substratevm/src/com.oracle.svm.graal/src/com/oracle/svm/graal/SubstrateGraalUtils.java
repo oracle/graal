@@ -31,7 +31,6 @@ import java.io.PrintStream;
 import java.util.EnumMap;
 import java.util.Map;
 
-import jdk.graal.compiler.phases.util.Providers;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -70,8 +69,8 @@ import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.tiers.Suites;
+import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -232,13 +231,14 @@ public class SubstrateGraalUtils {
     }
 
     /**
-     * Prepares a hosted {@link ImageHeapConstant} for runtime compilation: it unwraps the
-     * {@link HotSpotObjectConstant} and wraps the hosted object into a
-     * {@link SubstrateObjectConstant}. We reuse the identity hash code of the heap constant.
+     * Prepares a hosted {@link ImageHeapConstant} for runtime compilation: it unwraps the host
+     * {@link JavaConstant} and wraps the hosted object into a {@link SubstrateObjectConstant}. We
+     * reuse the identity hash code of the heap constant.
      */
     public static JavaConstant hostedToRuntime(ImageHeapConstant heapConstant, ConstantReflectionProvider constantReflection) {
         JavaConstant hostedConstant = heapConstant.getHostedObject();
-        VMError.guarantee(hostedConstant instanceof HotSpotObjectConstant, "Expected to find HotSpotObjectConstant, found %s", hostedConstant);
+        VMError.guarantee(hostedConstant.getJavaKind().isObject() && !hostedConstant.isDefaultForKind() && !(hostedConstant instanceof ImageHeapConstant),
+                        "Expected to find host object JavaConstant, found %s", hostedConstant);
         Object hostedObject = GraalAccess.getOriginalSnippetReflection().asObject(Object.class, hostedConstant);
         return SubstrateObjectConstant.forObject(hostedObject, ((IdentityHashCodeProvider) constantReflection).identityHashCode(heapConstant));
     }
@@ -246,8 +246,8 @@ public class SubstrateGraalUtils {
     /**
      * Transforms a {@link SubstrateObjectConstant} from an encoded graph into an
      * {@link ImageHeapConstant} for hosted processing: it unwraps the hosted object from the
-     * {@link SubstrateObjectConstant}, wraps it into an {@link HotSpotObjectConstant}, then
-     * redirects the lookup through the {@link ImageHeapScanner}.
+     * {@link SubstrateObjectConstant}, wraps it into a host {@link JavaConstant}, then redirects
+     * the lookup through the {@link ImageHeapScanner}.
      */
     public static JavaConstant runtimeToHosted(JavaConstant constant, ImageHeapScanner scanner) {
         if (constant instanceof SubstrateObjectConstant) {

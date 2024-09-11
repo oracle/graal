@@ -1798,8 +1798,8 @@ public class NativeImageGenerator {
         /*
          * We do not want any parts of the native image generator in the generated image. Therefore,
          * no element whose name contains "hosted" must be seen as reachable by the static analysis.
-         * The same holds for "hotspot" elements, which come from the hosting HotSpot VM, unless
-         * they are JDK internal types.
+         * The same holds for "host VM" elements, which come from the hosting VM, unless they are
+         * JDK internal types.
          */
         String message = checkName(name);
         if (message != null) {
