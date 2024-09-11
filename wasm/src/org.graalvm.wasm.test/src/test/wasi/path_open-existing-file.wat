@@ -55,7 +55,7 @@
                 (i32.const 8)  ;; path length
                 (i32.const 0)  ;; oflags
                 (i64.const 0)  ;; rights base
-                (i64.const 0)  ;; rights inherting
+                (i64.const 0)  ;; rights inheriting
                 (i32.const 0)  ;; fdflags
                 (i32.const 12) ;; fd address
             )

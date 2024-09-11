@@ -82,7 +82,7 @@
                 (global.get $file_path_length)  ;; path length
                 (i32.const 0)                   ;; oflags
                 (global.get $all_rights)        ;; rights base (all rights set)
-                (global.get $all_rights)        ;; rights inherting (all rights set)
+                (global.get $all_rights)        ;; rights inheriting (all rights set)
                 (i32.const 0)                   ;; fdflags
                 (global.get $file_fd_address)   ;; fd address
             )
