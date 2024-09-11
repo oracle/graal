@@ -305,7 +305,7 @@ public final class PolyglotAccess {
         /**
          * Allows evaluation of code by one language of another. This method only allows one-way
          * evaluation access. Every language always has implicitly access to itself. If a language
-         * has access to one ore more different languages then the guest application will have
+         * has access to one or more different languages then the guest application will have
          * access to polyglot evaluation builtins. If a language has no access granted to another
          * language then access to polyglot evaluation builtins is denied.
          *
