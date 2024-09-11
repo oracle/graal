@@ -61,7 +61,7 @@ public class BC_lshr02 extends JTTTest {
         runTest("test0", Long.MIN_VALUE);
     }
 
-    /* testcase for a postive stamp */
+    /* testcase for a positive stamp */
     public static int test1(long[] arg) {
         int a = arg.length >> 16;
         return a >> 16;
