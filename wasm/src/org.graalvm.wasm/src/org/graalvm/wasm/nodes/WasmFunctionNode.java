@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -187,8 +187,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         return memory(instance, 0).checkSize(module.memoryInitialSize(0));
     }
 
-    private WasmMemory memory(WasmInstance instance, int index) {
-        return module.memory(instance, index);
+    private static WasmMemory memory(WasmInstance instance, int index) {
+        return instance.memory(index);
     }
 
     // region OSR support

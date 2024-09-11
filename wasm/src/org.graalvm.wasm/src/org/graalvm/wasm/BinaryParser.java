@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -423,8 +423,7 @@ public class BinaryParser extends BinaryStreamParser {
                     final int memoryIndex = module.memoryCount();
                     final boolean is64Bit = booleanMultiResult[0];
                     final boolean isShared = booleanMultiResult[1];
-                    final boolean useUnsafeMemory = wasmContext.getContextOptions().useUnsafeMemory();
-                    module.symbolTable().importMemory(moduleName, memberName, memoryIndex, longMultiResult[0], longMultiResult[1], is64Bit, isShared, multiMemory, useUnsafeMemory);
+                    module.symbolTable().importMemory(moduleName, memberName, memoryIndex, longMultiResult[0], longMultiResult[1], is64Bit, isShared, multiMemory);
                     break;
                 }
                 case ImportIdentifier.GLOBAL: {
