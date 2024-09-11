@@ -500,7 +500,7 @@ public final class ResultView extends TopComponent {
     }
 
     /**
-     * Mark the currenly selected tab as reusable.
+     * Mark the currently selected tab as reusable.
      */
     public synchronized void markCurrentTabAsReusable() {
         setTabToReuse(getCurrentResultViewPanel());
