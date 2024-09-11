@@ -78,12 +78,12 @@ public final class Event {
         memory.store_i32_16(node, address + 8, value.toValue());
     }
 
-    /** Reads the type of event that occured. */
+    /** Reads the type of event that occurred. */
     public static Eventtype readType(Node node, WasmMemory memory, int address) {
         return Eventtype.fromValue((byte) memory.load_i32_8u(node, address + 10));
     }
 
-    /** Writes the type of event that occured. */
+    /** Writes the type of event that occurred. */
     public static void writeType(Node node, WasmMemory memory, int address, Eventtype value) {
         memory.store_i32_8(node, address + 10, value.toValue());
     }
