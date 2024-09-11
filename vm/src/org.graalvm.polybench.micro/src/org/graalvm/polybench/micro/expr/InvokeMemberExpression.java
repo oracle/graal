@@ -54,7 +54,7 @@ public abstract class InvokeMemberExpression extends Expression {
             params[i] = arguments[i].execute(frame);
         }
         try {
-            return interop.invokeMember(receiver, member, params);
+            return interop.invokeMember(receiver, (Object) member, params);
         } catch (InteropException e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new EvalError(this, "Error during execute.");

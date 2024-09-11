@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,6 +46,9 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.ThreadsListener;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
@@ -53,7 +56,7 @@ import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -118,11 +121,11 @@ public final class MemoryUsageInstrument extends TruffleInstrument {
                     InteropLibrary interop = InteropLibrary.getUncached(polyglotBindings);
                     for (Map.Entry<String, TruffleObject> function : functions.entrySet()) {
                         String key = function.getKey();
-                        if (!interop.isMemberExisting(polyglotBindings, key)) {
-                            interop.writeMember(polyglotBindings, key, function.getValue());
+                        if (!interop.isMemberExisting(polyglotBindings, (Object) key)) {
+                            interop.writeMember(polyglotBindings, (Object) key, function.getValue());
                         }
                     }
-                } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
+                } catch (UnsupportedMessageException | UnknownMemberException | UnsupportedTypeException e) {
                     throw CompilerDirectives.shouldNotReachHere("Exception during interop.");
                 }
             }
@@ -362,41 +365,94 @@ public final class MemoryUsageInstrument extends TruffleInstrument {
             return true;
         }
 
-        @SuppressWarnings("unused")
         @ExportMessage
         @TruffleBoundary
-        Object getMembers(boolean includeInternal) throws UnsupportedMessageException {
-            return new ReadonlyStringArray(map.keySet().toArray(new String[0]));
+        Object getMemberObjects() {
+            return new ReadonlyMemberArray(map.keySet().toArray(new String[0]));
         }
 
         @ExportMessage
+        static class ReadMember {
+
+            @TruffleBoundary
+            @Specialization
+            static Object read(ReadOnlyProperties properties, StringMember member) throws UnknownMemberException {
+                Object value = properties.doReadMember(member.name);
+                if (value == null) {
+                    throw UnknownMemberException.create(member);
+                } else {
+                    return value;
+                }
+            }
+
+            @TruffleBoundary
+            @Specialization(guards = "interop.isString(member)")
+            static Object read(ReadOnlyProperties properties, Object member,
+                            @Shared("interop") @CachedLibrary(limit = "2") InteropLibrary interop) throws UnknownMemberException, UnsupportedMessageException {
+                String name = interop.asString(member);
+                Object value = properties.doReadMember(name);
+                if (value == null) {
+                    throw UnknownMemberException.create(member);
+                } else {
+                    return value;
+                }
+            }
+
+            @Fallback
+            static Object read(@SuppressWarnings("unused") ReadOnlyProperties properties, Object unknown) throws UnknownMemberException {
+                throw UnknownMemberException.create(unknown);
+            }
+        }
+
         @TruffleBoundary
-        Object readMember(String member) throws UnknownIdentifierException {
+        Object doReadMember(String member) {
             if (!map.containsKey(member)) {
-                throw UnknownIdentifierException.create(member);
+                return null;
             }
             return map.get(member);
         }
 
         @ExportMessage
-        @TruffleBoundary
-        boolean isMemberReadable(String member) {
-            return map.containsKey(member);
-        }
+        static class IsMemberReadable {
 
+            @TruffleBoundary
+            @Specialization
+            static boolean isReadable(ReadOnlyProperties properties, StringMember member) {
+                return properties.map.containsKey(member.name);
+            }
+
+            @TruffleBoundary
+            @Specialization(guards = "interop.isString(member)")
+            static boolean isReadable(ReadOnlyProperties properties, Object member,
+                            @Shared("interop") @CachedLibrary(limit = "2") InteropLibrary interop) {
+                String name;
+                try {
+                    name = interop.asString(member);
+                } catch (UnsupportedMessageException e) {
+                    throw CompilerDirectives.shouldNotReachHere(e);
+                }
+                return properties.map.containsKey(name);
+            }
+
+            @Fallback
+            @SuppressWarnings("unused")
+            static boolean isReadable(ReadOnlyProperties properties, Object unknown) {
+                return false;
+            }
+        }
     }
 
     @ExportLibrary(InteropLibrary.class)
-    @SuppressWarnings("static-method")
-    static final class ReadonlyStringArray implements TruffleObject {
+    static final class ReadonlyMemberArray implements TruffleObject {
 
         private final String[] members;
 
-        ReadonlyStringArray(String[] members) {
+        ReadonlyMemberArray(String[] members) {
             this.members = members;
         }
 
         @ExportMessage
+        @SuppressWarnings("static-method")
         boolean hasArrayElements() {
             return true;
         }
@@ -406,7 +462,7 @@ public final class MemoryUsageInstrument extends TruffleInstrument {
             if (!isArrayElementReadable(index)) {
                 throw InvalidArrayIndexException.create(index);
             }
-            return members[(int) index];
+            return new StringMember(members[(int) index]);
         }
 
         @ExportMessage
@@ -419,6 +475,47 @@ public final class MemoryUsageInstrument extends TruffleInstrument {
             return index < members.length;
         }
 
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings("static-method")
+    static final class StringMember implements TruffleObject {
+
+        private final String name;
+
+        StringMember(String name) {
+            this.name = name;
+        }
+
+        @ExportMessage
+        boolean isMember() {
+            return true;
+        }
+
+        @ExportMessage
+        Object getMemberSimpleName() {
+            return name;
+        }
+
+        @ExportMessage
+        Object getMemberQualifiedName() {
+            return name;
+        }
+
+        @ExportMessage
+        boolean isMemberKindField() {
+            return true;
+        }
+
+        @ExportMessage
+        boolean isMemberKindMethod() {
+            return false;
+        }
+
+        @ExportMessage
+        boolean isMemberKindMetaObject() {
+            return false;
+        }
     }
 
     @ExportLibrary(InteropLibrary.class)
