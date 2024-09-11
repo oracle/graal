@@ -209,18 +209,17 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     @Override
-    protected void loadAllAnalysisElements(String encoding) {
-        for (String line : encoding.lines().toList()) {
-            if (line.contains(HostedInstanceClass.class.getName()) || line.contains(HostedPrimitiveType.class.getName()) || line.contains(HostedArrayClass.class.getName()) ||
-                            line.contains(HostedInterface.class.getName())) {
-                getAnalysisType(getId(line));
-            } else if (line.contains(HostedMethod.class.getName())) {
-                getAnalysisMethod(getId(line));
-            } else if (line.contains(HostedField.class.getName())) {
-                getAnalysisField(getId(line));
-            }
+    protected void loadEncodedGraphLineAnalysisElements(String line) {
+        if (line.contains(HostedInstanceClass.class.getName()) || line.contains(HostedPrimitiveType.class.getName()) || line.contains(HostedArrayClass.class.getName()) ||
+                        line.contains(HostedInterface.class.getName())) {
+            getAnalysisType(getId(line));
+        } else if (line.contains(HostedMethod.class.getName())) {
+            getAnalysisMethod(getId(line));
+        } else if (line.contains(HostedField.class.getName())) {
+            getAnalysisField(getId(line));
+        } else {
+            super.loadEncodedGraphLineAnalysisElements(line);
         }
-        super.loadAllAnalysisElements(encoding);
     }
 
     @Override

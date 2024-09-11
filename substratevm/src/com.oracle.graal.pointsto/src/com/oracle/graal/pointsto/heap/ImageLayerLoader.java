@@ -865,17 +865,19 @@ public class ImageLayerLoader {
 
     }
 
-    protected void loadAllAnalysisElements(String encoding) {
-        for (String line : encoding.lines().toList()) {
-            if (line.contains(PointsToAnalysisType.class.getName())) {
-                getAnalysisType(getId(line));
-            } else if (line.contains(PointsToAnalysisMethod.class.getName())) {
-                getAnalysisMethod(getId(line));
-            } else if (line.contains(PointsToAnalysisField.class.getName())) {
-                getAnalysisField(getId(line));
-            } else if (line.contains(ImageHeapInstance.class.getName()) || line.contains(ImageHeapObjectArray.class.getName()) || line.contains(ImageHeapPrimitiveArray.class.getName())) {
-                getOrCreateConstant(getId(line));
-            }
+    private void loadAllAnalysisElements(String encoding) {
+        encoding.lines().forEach(this::loadEncodedGraphLineAnalysisElements);
+    }
+
+    protected void loadEncodedGraphLineAnalysisElements(String line) {
+        if (line.contains(PointsToAnalysisType.class.getName())) {
+            getAnalysisType(getId(line));
+        } else if (line.contains(PointsToAnalysisMethod.class.getName())) {
+            getAnalysisMethod(getId(line));
+        } else if (line.contains(PointsToAnalysisField.class.getName())) {
+            getAnalysisField(getId(line));
+        } else if (line.contains(ImageHeapInstance.class.getName()) || line.contains(ImageHeapObjectArray.class.getName()) || line.contains(ImageHeapPrimitiveArray.class.getName())) {
+            getOrCreateConstant(getId(line));
         }
     }
 
