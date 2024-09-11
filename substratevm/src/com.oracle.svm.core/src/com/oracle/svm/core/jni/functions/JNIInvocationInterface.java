@@ -39,6 +39,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.c.CGlobalData;
@@ -68,6 +69,9 @@ import com.oracle.svm.core.jni.headers.JNIJavaVMInitArgs;
 import com.oracle.svm.core.jni.headers.JNIJavaVMOption;
 import com.oracle.svm.core.jni.headers.JNIJavaVMPointer;
 import com.oracle.svm.core.jni.headers.JNIVersion;
+import com.oracle.svm.core.jvmti.JvmtiEnvs;
+import com.oracle.svm.core.jvmti.headers.JvmtiExternalEnv;
+import com.oracle.svm.core.jvmti.headers.JvmtiVersion;
 import com.oracle.svm.core.log.FunctionPointerLogHandler;
 import com.oracle.svm.core.memory.UntrackedNullableNativeMemory;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
@@ -291,8 +295,17 @@ public final class JNIInvocationInterface {
     @CEntryPointOptions(prologue = JNIGetEnvPrologue.class)
     @SuppressWarnings("unused")
     static int GetEnv(JNIJavaVM vm, WordPointer env, int version) {
-        env.write(JNIThreadLocalEnvironment.getAddress());
-        return JNIErrors.JNI_OK();
+        if (SubstrateOptions.JVMTI.getValue() && JvmtiVersion.isSupported(version)) {
+            JvmtiExternalEnv jvmtiEnv = JvmtiEnvs.singleton().create();
+            env.write(jvmtiEnv);
+            return JNIErrors.JNI_OK();
+        } else if (JNIVersion.isSupported(version, false)) {
+            env.write(JNIThreadLocalEnvironment.getAddress());
+            return JNIErrors.JNI_OK();
+        } else {
+            env.write(WordFactory.nullPointer());
+            return JNIErrors.JNI_EVERSION();
+        }
     }
 
     // Checkstyle: resume
@@ -308,13 +321,9 @@ public final class JNIInvocationInterface {
 
         static class JNIGetEnvPrologue implements CEntryPointOptions.Prologue {
             @Uninterruptible(reason = "prologue")
-            static int enter(JNIJavaVM vm, WordPointer env, int version) {
+            static int enter(JNIJavaVM vm, WordPointer env) {
                 if (vm.isNull() || env.isNull()) {
                     return JNIErrors.JNI_ERR();
-                }
-                if (!JNIVersion.isSupported(version, false)) {
-                    env.write(WordFactory.nullPointer());
-                    return JNIErrors.JNI_EVERSION();
                 }
                 if (!CEntryPointActions.isCurrentThreadAttachedTo(vm.getFunctions().getIsolate())) {
                     env.write(WordFactory.nullPointer());

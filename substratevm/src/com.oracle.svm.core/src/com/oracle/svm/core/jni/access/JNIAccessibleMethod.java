@@ -157,6 +157,10 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember {
         return Modifier.isPublic(modifiers);
     }
 
+    public boolean isNative() {
+        return Modifier.isNative(modifiers);
+    }
+
     boolean isStatic() {
         return Modifier.isStatic(modifiers);
     }
