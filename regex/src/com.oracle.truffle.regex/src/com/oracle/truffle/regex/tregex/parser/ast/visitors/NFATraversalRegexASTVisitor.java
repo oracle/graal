@@ -720,7 +720,7 @@ public abstract class NFATraversalRegexASTVisitor {
         if (shouldRetreat) {
             return retreat();
         }
-        // interal == true means that this is being called during traversal, before reaching a
+        // internal == true means that this is being called during traversal, before reaching a
         // successor node (these calls are made in regular intervals, whenever a new Sequence is
         // entered).
         // This method is also called for every successor we have found (internal == false). In
