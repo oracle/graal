@@ -26,30 +26,19 @@ package com.oracle.svm.hosted.jdk;
 
 import java.nio.file.Path;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 
 @Platforms(InternalPlatform.PLATFORM_JNI.class)
-@AutomaticallyRegisteredFeature
-public final class JDKLibDirectoryFeature implements InternalFeature {
+@AutomaticallyRegisteredImageSingleton(JDKLibDirectoryProvider.class)
+public class HostJDKLibDirectoryProvider implements JDKLibDirectoryProvider {
     @Override
-    public void duringSetup(DuringSetupAccess access) {
-        if (!ImageSingletons.contains(JDKLibDirectoryProvider.class)) {
-            ImageSingletons.add(JDKLibDirectoryProvider.class, new HostJDKLibDirectoryProvider());
-        }
-    }
-
-    private static final class HostJDKLibDirectoryProvider implements JDKLibDirectoryProvider {
-        @Override
-        public Path getJDKLibDirectory() {
-            /* On Windows, JDK libraries are in `<java.home>\bin` directory. */
-            boolean isWindows = Platform.includedIn(Platform.WINDOWS.class);
-            return Path.of(System.getProperty("java.home"), isWindows ? "bin" : "lib");
-        }
+    public Path getJDKLibDirectory() {
+        /* On Windows, JDK libraries are in `<java.home>\bin` directory. */
+        boolean isWindows = Platform.includedIn(Platform.WINDOWS.class);
+        return Path.of(System.getProperty("java.home"), isWindows ? "bin" : "lib");
     }
 }
