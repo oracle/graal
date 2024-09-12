@@ -243,7 +243,7 @@ public class DynamicDispatchTest extends AbstractParametrizedLibraryTest {
         assertFalse(lib.accepts(new DynamicDispatch(FinalDispatch.class)));
 
         // change dispatch to valid dispatch
-        // this shoudl work
+        // this should work
         object.dispatch = DynamicDispatchTarget1.class;
         assertFalse(lib.accepts(object));
         lib = createLibrary(TestDispatchLibrary.class, object);
