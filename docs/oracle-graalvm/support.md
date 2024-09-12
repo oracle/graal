@@ -18,10 +18,10 @@ Oracle GraalVM for JDK 23 is certified on the following platforms:
 
 | Operating System 	| Version 	| Architecture 	| Installation Guide 	|
 |------------------------------------	|--------------	|--------------	|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------	|
-| Oracle Linux 	| 7, 8, 9 	| x64, AArch64| [Installation Guide for Oracle Linux](../getting-started/graalvm-enterprise/oci/installation-compute-instance-with-OL.md) 	|
-| Red Hat Enterprise Linux (RHEL) 	| 7, 8, 9 	| x64 	| [Installation Guide for Linux](../getting-started/graalvm-enterprise/linux.md) 	|
-| macOS 	| 11 (Big Sur), 12.4 (Monterey), 13.3 (Ventura), 14.3 (Sonoma)	| x64, AArch64	| [Installation Guide for macOS](../getting-started/graalvm-enterprise/macos.md) 	|
-| Microsoft Windows 	| Server 2016, 2019, 2022	| x64 	| [Installation Guide for Windows](../getting-started/graalvm-enterprise/windows.md) 	|
+| Oracle Linux 	| 7, 8, 9 	| x64, AArch64| [Installation Guide for Oracle Linux](../getting-started/oci/installation-compute-instance-with-OL.md) 	|
+| Red Hat Enterprise Linux (RHEL) 	| 7, 8, 9 	| x64 	| [Installation Guide for Linux](../getting-started/linux.md) 	|
+| macOS 	| 11 (Big Sur), 12.4 (Monterey), 13.3 (Ventura), 14.3 (Sonoma)	| x64, AArch64	| [Installation Guide for macOS](../getting-started/macos.md) 	|
+| Microsoft Windows 	| Server 2016, 2019, 2022	| x64 	| [Installation Guide for Windows](../getting-started/windows.md) 	|
 
 ## Experimental Components
 
@@ -31,6 +31,8 @@ Some components are considered experimental on specific platforms.
 The GraalVM team welcomes feedback on these components, but users should be aware that the components may not be included in a future release or may change significantly before being considered production-ready:
 * Java on Truffle (Espresso) is _supported_ on Linux x64 only and is experimental on other certified platforms. 
 * The GraalVM Python runtime (GraalPy) is _experimental_ on all certified platforms.
+
+See [Oracle GraalVM Support Roadmap](https://docs.oracle.com/en/graalvm/support-roadmap.html) to understand maintenance, support options, and related timelines.
 
 ## Related Technologies
 
