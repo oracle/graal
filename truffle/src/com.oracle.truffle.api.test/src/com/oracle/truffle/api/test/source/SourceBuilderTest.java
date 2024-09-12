@@ -193,12 +193,12 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         file.deleteOnExit();
         TruffleFile truffleFile = languageEnv.getPublicTruffleFile(file.getPath());
 
-        // mime-type not specified + invalid langauge -> characters
+        // mime-type not specified + invalid language -> characters
         source = Source.newBuilder("", truffleFile).build();
         assertFalse(source.hasBytes());
         assertTrue(source.hasCharacters());
 
-        // mime-type not specified + invalid langauge -> characters
+        // mime-type not specified + invalid language -> characters
         source = Source.newBuilder("", truffleFile).content(bytes).build();
         assertTrue(source.hasBytes());
         assertFalse(source.hasCharacters());
