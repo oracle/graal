@@ -213,7 +213,7 @@ public final class JavaHostLanguageProvider implements LanguageProvider {
                         "ProxyExecutable<...>",
                         export(context, new ValueSupplier<>(new ProxyExecutableImpl())),
                         TypeDescriptor.EXECUTABLE).build());
-        // No-args execuable
+        // No-args executable
         result.add(Snippet.newBuilder(
                         "ProxyExecutable<>",
                         export(context, new ValueSupplier<>(new ProxyExecutableImpl(ProxyExecutableImpl.EMPTY, 0))),
