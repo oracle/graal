@@ -26,7 +26,6 @@ package com.oracle.svm.hosted.phases;
 
 import java.util.function.Supplier;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.ValueNode;
