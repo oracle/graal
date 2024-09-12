@@ -1685,9 +1685,13 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         return overrideImplementRootNodeMethod(model, name, parameterNames, new TypeMirror[parameterNames.length]);
     }
 
-    private static CodeExecutableElement overrideImplementRootNodeMethod(BytecodeDSLModel model, String name, String[] parameterNames, TypeMirror[] parameterTypes) {
+    static CodeExecutableElement overrideImplementRootNodeMethod(BytecodeDSLModel model, String name, String[] parameterNames, TypeMirror[] parameterTypes) {
         TruffleTypes types = model.getContext().getTypes();
         CodeExecutableElement result = GeneratorUtils.override(types.RootNode, name, parameterNames, parameterTypes);
+
+        if (result == null) {
+            throw new IllegalArgumentException("Method with name " + name + " and types " + Arrays.toString(parameterTypes) + " not found.");
+        }
 
         // If the RootNode method is already public, nothing to do.
         if (ElementUtils.getVisibility(result.getModifiers()) == Modifier.PUBLIC) {
@@ -6437,8 +6441,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             int stackEffect = switch (instr.kind) {
                 case BRANCH, BRANCH_BACKWARD, //
                                 TAG_ENTER, TAG_LEAVE, TAG_LEAVE_VOID, TAG_RESUME, TAG_YIELD, //
-                                LOAD_LOCAL_MATERIALIZED, CLEAR_LOCAL, YIELD ->
-                    0;
+                                LOAD_LOCAL_MATERIALIZED, CLEAR_LOCAL, YIELD -> 0;
                 case STORE_NULL, LOAD_VARIADIC, MERGE_VARIADIC -> {
                     /*
                      * NB: These instructions *do* have stack effects. However, they are only used

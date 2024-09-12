@@ -105,7 +105,7 @@ final class BytecodeRootNodeErrorElement extends CodeTypeElement {
     }
 
     private CodeExecutableElement createExecute() {
-        CodeExecutableElement ex = BytecodeRootNodeElement.overrideImplementRootNodeMethod(model, "execute");
+        CodeExecutableElement ex = BytecodeRootNodeElement.overrideImplementRootNodeMethod(model, "execute", new String[]{"frame"}, new TypeMirror[]{types.VirtualFrame});
         CodeTreeBuilder b = ex.createBuilder();
         emitThrowNotImplemented(b);
         return ex;
