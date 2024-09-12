@@ -56,20 +56,30 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.polyglot.PolyglotByteSequenceFactory.CacheFactory.ByteAtNodeGen;
 import com.oracle.truffle.polyglot.PolyglotByteSequenceFactory.CacheFactory.LengthNodeGen;
+import com.oracle.truffle.polyglot.PolyglotByteSequenceFactory.CacheFactory.SubSequenceNodeGen;
 import com.oracle.truffle.polyglot.PolyglotByteSequenceFactory.CacheFactory.ToByteArrayNodeGen;
 
-class PolyglotByteSequence implements ByteSequence, PolyglotWrapper {
+final class PolyglotByteSequence implements ByteSequence, PolyglotWrapper {
 
+    static final int UNKNOWN_SEQUENCE_LENGTH = -1;
     static final int MAX_ARRAY_SIZE = Integer.MAX_VALUE - 8;
 
     final Object guestObject;
 
+    private final int start;
+    private final int length;
     final PolyglotLanguageContext languageContext;
 
     final Cache cache;
 
     PolyglotByteSequence(Object buffer, PolyglotLanguageContext languageContext) {
+        this(buffer, languageContext, 0, UNKNOWN_SEQUENCE_LENGTH);
+    }
+
+    PolyglotByteSequence(Object buffer, PolyglotLanguageContext languageContext, int start, int length) {
         this.guestObject = buffer;
+        this.start = start;
+        this.length = length;
         this.languageContext = languageContext;
         this.cache = Cache.lookup(languageContext, buffer.getClass());
     }
@@ -77,6 +87,11 @@ class PolyglotByteSequence implements ByteSequence, PolyglotWrapper {
     @CompilerDirectives.TruffleBoundary
     public static PolyglotByteSequence create(PolyglotLanguageContext languageContext, Object buffer) {
         return new PolyglotByteSequence(buffer, languageContext);
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    public static PolyglotByteSequence create(PolyglotLanguageContext languageContext, Object buffer, int st, int len) {
+        return new PolyglotByteSequence(buffer, languageContext, st, len);
     }
 
     @Override
@@ -100,17 +115,22 @@ class PolyglotByteSequence implements ByteSequence, PolyglotWrapper {
 
     @Override
     public int length() {
-        return (Integer) cache.length.call(null, languageContext, guestObject);
+        return (Integer) cache.length.call(null, languageContext, guestObject, start, length);
     }
 
     @Override
     public byte byteAt(int index) {
-        return (byte) cache.byteAt.call(null, languageContext, guestObject, index);
+        return (byte) cache.byteAt.call(null, languageContext, guestObject, start, length, index);
     }
 
     @Override
     public byte[] toByteArray() {
-        return (byte[]) cache.toByteArray.call(null, languageContext, guestObject);
+        return (byte[]) cache.toByteArray.call(null, languageContext, guestObject, start, length);
+    }
+
+    @Override
+    public ByteSequence subSequence(int startIndex, int endIndex) {
+        return (ByteSequence) cache.subSequence.call(null, languageContext, guestObject, start, length, startIndex, endIndex);
     }
 
     @Override
@@ -136,6 +156,7 @@ class PolyglotByteSequence implements ByteSequence, PolyglotWrapper {
 
         final CallTarget byteAt;
         final CallTarget toByteArray;
+        final CallTarget subSequence;
         final CallTarget length;
 
         Cache(PolyglotLanguageInstance languageInstance, Class<?> receiverClass) {
@@ -143,6 +164,7 @@ class PolyglotByteSequence implements ByteSequence, PolyglotWrapper {
             this.receiverClass = receiverClass;
             this.byteAt = ByteAtNodeGen.create(this).getCallTarget();
             this.toByteArray = ToByteArrayNodeGen.create(this).getCallTarget();
+            this.subSequence = SubSequenceNodeGen.create(this).getCallTarget();
             this.length = LengthNodeGen.create(this).getCallTarget();
         }
 
@@ -189,12 +211,25 @@ class PolyglotByteSequence implements ByteSequence, PolyglotWrapper {
 
             @Specialization(limit = "LIMIT")
             @SuppressWarnings("unused")
-            Object doCached(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
-                            @CachedLibrary("receiver") InteropLibrary interop) {
-                try {
-                    return (int) interop.getBufferSize(receiver);
-                } catch (UnsupportedMessageException e) {
-                    throw CompilerDirectives.shouldNotReachHere(e);
+            static Object doCached(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
+                            @Bind("this") Node node,
+                            @CachedLibrary("receiver") InteropLibrary interop,
+                            @Cached InlinedBranchProfile error) {
+                Object length = args[ARGUMENT_OFFSET + 1];
+                assert length instanceof Integer;
+                int intLength = (int) length;
+                if (intLength == UNKNOWN_SEQUENCE_LENGTH) {
+                    long size;
+                    try {
+                        size = interop.getBufferSize(receiver);
+                    } catch (UnsupportedMessageException e) {
+                        throw CompilerDirectives.shouldNotReachHere(e);
+                    }
+                    assert size >= 0;
+                    assert size <= Integer.MAX_VALUE;
+                    return (int) size;
+                } else {
+                    return intLength;
                 }
             }
 
@@ -217,14 +252,24 @@ class PolyglotByteSequence implements ByteSequence, PolyglotWrapper {
                             @Bind("this") Node node,
                             @CachedLibrary("receiver") InteropLibrary interop,
                             @Cached InlinedBranchProfile error) {
-                Object key = args[ARGUMENT_OFFSET];
+                Object start = args[ARGUMENT_OFFSET];
+                assert start instanceof Integer;
+                Object length = args[ARGUMENT_OFFSET + 1];
+                assert length instanceof Integer;
+                Object key = args[ARGUMENT_OFFSET + 2];
                 assert key instanceof Integer;
+                long startOffset = (int) start;
+                int intLength = (int) length;
                 int offset = (int) key;
+                if (intLength != UNKNOWN_SEQUENCE_LENGTH && offset + Byte.BYTES > intLength) {
+                    error.enter(node);
+                    throw PolyglotInteropErrors.invalidBufferOffset(languageContext, receiver, offset, Byte.BYTES);
+                }
                 try {
-                    return interop.readBufferByte(receiver, offset);
+                    return interop.readBufferByte(receiver, startOffset + offset);
                 } catch (InvalidBufferOffsetException e) {
                     error.enter(node);
-                    throw PolyglotInteropErrors.invalidBufferOffset(languageContext, receiver, offset);
+                    throw PolyglotInteropErrors.invalidBufferOffset(languageContext, receiver, e.getByteOffset() - startOffset, e.getLength());
                 } catch (UnsupportedMessageException e) {
                     error.enter(node);
                     throw PolyglotInteropErrors.bufferUnsupported(languageContext, receiver, "byteAt()");
@@ -250,25 +295,36 @@ class PolyglotByteSequence implements ByteSequence, PolyglotWrapper {
                             @Bind("this") Node node,
                             @CachedLibrary("receiver") InteropLibrary interop,
                             @Cached InlinedBranchProfile error) {
+                Object start = args[ARGUMENT_OFFSET];
+                assert start instanceof Integer;
+                Object length = args[ARGUMENT_OFFSET + 1];
+                assert length instanceof Integer;
+                long startOffset = (int) start;
+                int intLength = (int) length;
                 long size;
-                try {
-                    size = interop.getBufferSize(receiver);
-                } catch (UnsupportedMessageException e) {
-                    error.enter(node);
-                    throw PolyglotInteropErrors.bufferUnsupported(languageContext, receiver, "toByteArray()");
+                if (intLength == UNKNOWN_SEQUENCE_LENGTH) {
+                    try {
+                        size = interop.getBufferSize(receiver);
+                    } catch (UnsupportedMessageException e) {
+                        error.enter(node);
+                        throw PolyglotInteropErrors.bufferUnsupported(languageContext, receiver, "toByteArray()");
+                    }
+                } else {
+                    size = intLength;
                 }
                 if (size > MAX_ARRAY_SIZE) {
                     error.enter(node);
-                    throw PolyglotInteropErrors.bufferUnsupported(languageContext, receiver, "toByteArray()");
+                    throw PolyglotInteropErrors.bufferUnsupported(languageContext, receiver, "toByteArray()",
+                                    "The buffer size %d is greater than the maximum array size %d", size, MAX_ARRAY_SIZE);
                 }
                 int intSize = (int) size;
                 byte[] outArray = new byte[intSize];
                 try {
-                    interop.readBuffer(receiver, 0, outArray, 0, intSize);
+                    interop.readBuffer(receiver, startOffset, outArray, 0, intSize);
                     return outArray;
                 } catch (InvalidBufferOffsetException e) {
                     error.enter(node);
-                    throw PolyglotInteropErrors.invalidBufferOffset(languageContext, receiver, e.getByteOffset());
+                    throw PolyglotInteropErrors.invalidBufferOffset(languageContext, receiver, e.getByteOffset() - startOffset, e.getLength());
                 } catch (UnsupportedMessageException e) {
                     error.enter(node);
                     throw PolyglotInteropErrors.bufferUnsupported(languageContext, receiver, "toByteArray()");
@@ -277,7 +333,57 @@ class PolyglotByteSequence implements ByteSequence, PolyglotWrapper {
 
             @Override
             protected String getOperationName() {
-                return "byteAt";
+                return "toByteArray";
+            }
+
+        }
+
+        abstract static class SubSequenceNode extends PolyglotByteSequenceNode {
+
+            SubSequenceNode(Cache cache) {
+                super(cache);
+            }
+
+            @Specialization(limit = "LIMIT")
+            @SuppressWarnings({"unused"})
+            static Object doCached(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
+                            @Bind("this") Node node,
+                            @CachedLibrary("receiver") InteropLibrary interop,
+                            @Cached InlinedBranchProfile error) {
+                Object start = args[ARGUMENT_OFFSET];
+                assert start instanceof Integer;
+                Object length = args[ARGUMENT_OFFSET + 1];
+                assert length instanceof Integer;
+                Object startIndex = args[ARGUMENT_OFFSET + 2];
+                assert startIndex instanceof Integer;
+                Object endIndex = args[ARGUMENT_OFFSET + 3];
+                assert endIndex instanceof Integer;
+                int startOffset = (int) start;
+                int intLength = (int) length;
+                int intStartIndex = (int) startIndex;
+                int intEndIndex = (int) endIndex;
+                long size;
+                if (intLength == UNKNOWN_SEQUENCE_LENGTH) {
+                    try {
+                        size = interop.getBufferSize(receiver);
+                    } catch (UnsupportedMessageException e) {
+                        error.enter(node);
+                        throw PolyglotInteropErrors.bufferUnsupported(languageContext, receiver, "subSequence()");
+                    }
+                } else {
+                    size = intLength;
+                }
+                int resultLength = intEndIndex - intStartIndex;
+                if (intStartIndex < 0 || intEndIndex < intStartIndex || intEndIndex > size) {
+                    error.enter(node);
+                    throw PolyglotInteropErrors.invalidBufferOffset(languageContext, receiver, intStartIndex, resultLength);
+                }
+                return PolyglotByteSequence.create(languageContext, receiver, startOffset + intStartIndex, resultLength);
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "subSequence";
             }
 
         }
