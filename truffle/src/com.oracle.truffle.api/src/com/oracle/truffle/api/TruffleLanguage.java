@@ -2816,6 +2816,22 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
+         * Retrieves the host language used in this environment. The returned language can be used
+         * to obtain the host language top scope object using
+         * {@link #getScopeInternal(LanguageInfo)} method.
+         *
+         * @since 24.2
+         */
+        @TruffleBoundary
+        public LanguageInfo getHostLanguage() {
+            try {
+                return LanguageAccessor.engineAccess().getHostLanguage(polyglotLanguageContext);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
+        }
+
+        /**
          * Returns all languages that are installed and publicly accessible in the environment.
          * Using the language instance additional services can be
          * {@link #lookup(LanguageInfo, Class) looked up}. {@link #parsePublic(Source, String...)}
