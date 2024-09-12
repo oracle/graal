@@ -374,7 +374,7 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
      */
     static class Lazy {
         /*
-         * We use an Object instead of a String here to avoid accidently handing out the always
+         * We use an Object instead of a String here to avoid accidentally handing out the always
          * valid string object in getName().
          */
         static final Object ALWAYS_VALID_NAME = new Object() {
