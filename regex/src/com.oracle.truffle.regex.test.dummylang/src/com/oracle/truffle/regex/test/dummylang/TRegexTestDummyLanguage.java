@@ -61,6 +61,7 @@ import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexObject;
 
 @TruffleLanguage.Registration(name = TRegexTestDummyLanguage.NAME, id = TRegexTestDummyLanguage.ID, characterMimeTypes = TRegexTestDummyLanguage.MIME_TYPE, version = "0.1", dependentLanguages = RegexLanguage.ID)
+@SuppressWarnings({"deprecated", "deprecation"}) // GR-58123
 public class TRegexTestDummyLanguage extends TruffleLanguage<TRegexTestDummyLanguage.DummyLanguageContext> {
 
     public static final String NAME = "REGEXDUMMYLANG";

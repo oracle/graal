@@ -140,6 +140,7 @@ import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
  * <p>
  */
 @ExportLibrary(InteropLibrary.class)
+@SuppressWarnings({"truffle-abstract-export", "deprecation"}) // GR-58123
 public final class RegexObject extends AbstractConstantKeysObject {
 
     static final String PROP_EXEC = "exec";
