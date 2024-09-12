@@ -389,7 +389,7 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
          * first parameter type name symbol 16java.lang.Object binds $2_ to java.lang.Object.
          *
          * Indexed symbol references are encoded as "S_", "S0_", ... "S9_", "SA_", ... "SZ_", "S10_", ...
-         * i.e. after "$_" for index 0, successive encodings for index i embded the base 36 digits for
+         * i.e. after "$_" for index 0, successive encodings for index i embed the base 36 digits for
          * (i - 1) between "S" and "_".
          */
         return new BFDMangler(this).mangle(loaderName, declaringClass, memberName, methodSignature, isConstructor);
@@ -617,7 +617,7 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
             //
             // However, gdb will barf on the $_ and refuse to translate the symbol
             // So, in order to keep gdb happy we have to avoid translating this
-            // final name ane emit it as a simple name e.g. with the above example
+            // final name and emit it as a simple name e.g. with the above example
             // we would generate _ZN3foo3bar3fooE.
 
             mangleWriteSimpleName(name);

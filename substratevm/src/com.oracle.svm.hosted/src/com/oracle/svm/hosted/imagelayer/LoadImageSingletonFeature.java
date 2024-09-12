@@ -87,7 +87,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * Tracks metdata {@link MultiLayeredImageSingleton} and {@link ApplicationLayerOnlyImageSingleton}
+ * Tracks metadata {@link MultiLayeredImageSingleton} and {@link ApplicationLayerOnlyImageSingleton}
  * singletons so that they can be properly referenced as needed.
  */
 @AutomaticallyRegisteredFeature

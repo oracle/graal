@@ -146,7 +146,7 @@ public class SourceManager {
      *
      * @param fileName the base file name for the source file
      * @param packageName the name of the package for the associated Java class
-     * @return a protoype name for the source file
+     * @return a prototype name for the source file
      */
     private static Path computePrototypeName(String fileName, String packageName) {
         if (packageName.length() == 0) {
