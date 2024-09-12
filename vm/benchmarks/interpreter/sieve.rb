@@ -21,7 +21,7 @@
 # or visit www.oracle.com if you need additional information or have any
 # questions.
 
-# Note: `while` is used instead of `for`, as Ruby's `for` is syntatic sugar for
+# Note: `while` is used instead of `for`, as Ruby's `for` is syntactic sugar for
 # closures: `for i in 1..n; body; end` is the same as `(1..n).each { |i| body }`
 def run
   i = 2

@@ -24,7 +24,7 @@
 
 def run():
     """
-    this benchmark is intentionaly left emtpy as it's sole purpose is to be 
+    this benchmark is intentionally left empty as it's sole purpose is to be
     used to measure python initialization time 
     """
     pass
