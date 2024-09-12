@@ -96,35 +96,41 @@ import com.oracle.truffle.api.source.SourceSection;
                                 enableYield = true, //
                                 enableSerialization = true, //
                                 enableTagInstrumentation = true, //
-                                allowUnsafe = false)),
+                                enableSpecializationIntrospection = true, allowUnsafe = false)),
                 @Variant(suffix = "Unsafe", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                                 enableYield = true, //
                                 enableSerialization = true, //
-                                enableTagInstrumentation = true)),
+                                enableTagInstrumentation = true, //
+                                enableSpecializationIntrospection = true)),
                 @Variant(suffix = "WithUncached", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                                 enableYield = true, //
                                 enableSerialization = true, //
                                 enableTagInstrumentation = true, //
-                                enableUncachedInterpreter = true)),
+                                enableUncachedInterpreter = true,//
+                                enableSpecializationIntrospection = true)),
                 @Variant(suffix = "WithBE", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                                 enableYield = true, //
                                 enableSerialization = true, //
                                 enableTagInstrumentation = true, //
+                                enableSpecializationIntrospection = true, //
                                 boxingEliminationTypes = {boolean.class, long.class})),
                 @Variant(suffix = "WithOptimizations", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                                 enableYield = true, //
                                 enableSerialization = true, //
+                                enableSpecializationIntrospection = true, //
                                 enableTagInstrumentation = true)),
                 @Variant(suffix = "WithGlobalScopes", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                                 enableYield = true, //
                                 enableSerialization = true, //
                                 enableLocalScoping = false, //
-                                enableTagInstrumentation = true)),
+                                enableTagInstrumentation = true, //
+                                enableSpecializationIntrospection = true)),
                 @Variant(suffix = "WithStoreBytecodeIndexInFrame", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                                 enableYield = true, //
                                 enableSerialization = true, //
                                 enableLocalScoping = true, //
                                 enableUncachedInterpreter = true, //
+                                enableSpecializationIntrospection = true, //
                                 boxingEliminationTypes = {boolean.class, long.class}, //
                                 storeBytecodeIndexInFrame = true, //
                                 enableTagInstrumentation = true)),
@@ -135,6 +141,7 @@ import com.oracle.truffle.api.source.SourceSection;
                                 enableLocalScoping = true, //
                                 enableTagInstrumentation = true, //
                                 enableUncachedInterpreter = true, //
+                                enableSpecializationIntrospection = true, //
                                 boxingEliminationTypes = {boolean.class, long.class})),
                 @Variant(suffix = "ProductionGlobalScopes", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                                 enableYield = true, //
@@ -142,6 +149,7 @@ import com.oracle.truffle.api.source.SourceSection;
                                 enableLocalScoping = false, //
                                 enableTagInstrumentation = true, //
                                 enableUncachedInterpreter = true, //
+                                enableSpecializationIntrospection = true, //
                                 boxingEliminationTypes = {boolean.class, long.class}))
 })
 @ShortCircuitOperation(booleanConverter = BasicInterpreter.ToBoolean.class, name = "ScAnd", operator = Operator.AND_RETURN_VALUE)
