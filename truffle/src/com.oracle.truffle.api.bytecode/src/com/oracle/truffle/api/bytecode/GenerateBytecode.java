@@ -385,6 +385,6 @@ public @interface GenerateBytecode {
      *
      * @since 24.2
      */
-    boolean enableSpecializationIntrospection() default true;
+    boolean enableSpecializationIntrospection() default false;
 
 }
