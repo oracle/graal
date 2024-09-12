@@ -288,6 +288,10 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract byte byteSequenceByteAt(Object origin, int index);
 
+        public abstract Object byteSequenceSubSequence(Object origin, int index, int length);
+
+        public abstract byte[] byteSequenceToByteArray(Object origin);
+
         public abstract boolean isProxyArray(Object proxy);
 
         public abstract boolean isProxyDate(Object proxy);
