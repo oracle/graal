@@ -1,23 +1,32 @@
 One or several (comma-separated) paths to JSON files that specify lists of serialization configurations.
-The structure is an array of elements specifying the target serialization/deserialization class.
+
+The structure is described in the following schema:
+
+  https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/serialization-config-schema-v1.1.0.json
 
 Example:
 
     [
       {
-        "condition":{"typeReachable":"app.DataSerializer"},
-        "name":"java.util.ArrayList"
+        "condition" : {
+          "typeReachable" : "app.DataSerializer"
+        },
+        "name" : "java.util.ArrayList"
       }
     ]
 
 For deserializing lambda classes, the capturing class of the lambda needs to be specified in a separate section of the configuration file, for example:
 
     [
-      "types": [
-        {"name":"java.lang.Object"}
+      "types" : [
+        {
+          "name" : "java.lang.Object"
+        }
       ],
-      "lambdaCapturingTypes": [
-        {"name":"java.util.Comparator"}
+      "lambdaCapturingTypes" : [
+        {
+          "name" : "java.util.Comparator"
+        }
       ]
     ]
 
@@ -35,8 +44,10 @@ serialization-config.json:
 
     [
       {
-        "condition":{"typeReachable":"org.apache.spark.SparkContext"},
-        "name":"org.apache.spark.SparkContext$$anonfun$hadoopFile$1",
-        "customTargetConstructorClass":"java.lang.Object"
+        "condition" : {
+          "typeReachable" : "org.apache.spark.SparkContext"
+        },
+        "name" : "org.apache.spark.SparkContext$$anonfun$hadoopFile$1",
+        "customTargetConstructorClass" : "java.lang.Object"
       }
     ]

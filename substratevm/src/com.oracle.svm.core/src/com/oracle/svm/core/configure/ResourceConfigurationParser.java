@@ -24,76 +24,45 @@
  */
 package com.oracle.svm.core.configure;
 
-import java.net.URI;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
-import java.util.function.BiConsumer;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.MapCursor;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.util.json.JSONParserException;
 
+import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
 
-public class ResourceConfigurationParser extends ConfigurationParser {
-    private final ResourcesRegistry registry;
+public abstract class ResourceConfigurationParser extends ConfigurationParser {
+    protected final ResourcesRegistry registry;
 
-    public ResourceConfigurationParser(ResourcesRegistry registry, boolean strictConfiguration) {
+    protected final ConfigurationConditionResolver conditionResolver;
+
+    public static ResourceConfigurationParser create(boolean strictMetadata, ResourcesRegistry registry, boolean strictConfiguration) {
+        if (strictMetadata) {
+            return new ResourceMetadataParser(ConfigurationConditionResolver.identityResolver(), registry, strictConfiguration);
+        } else {
+            return new LegacyResourceConfigurationParser(ConfigurationConditionResolver.identityResolver(), registry, strictConfiguration);
+        }
+    }
+
+    protected ResourceConfigurationParser(ConfigurationConditionResolver conditionResolver, ResourcesRegistry registry, boolean strictConfiguration) {
         super(strictConfiguration);
         this.registry = registry;
+        this.conditionResolver = conditionResolver;
     }
 
-    @Override
-    public void parseAndRegister(Object json, URI origin) {
-        parseTopLevelObject(asMap(json, "first level of document must be an object"));
-    }
+    protected abstract ConfigurationCondition parseCondition(EconomicMap<String, Object> data);
 
-    @SuppressWarnings("unchecked")
-    private void parseTopLevelObject(EconomicMap<String, Object> obj) {
-        Object resourcesObject = null;
-        Object bundlesObject = null;
-        MapCursor<String, Object> cursor = obj.getEntries();
-        while (cursor.advance()) {
-            if ("resources".equals(cursor.getKey())) {
-                resourcesObject = cursor.getValue();
-            } else if ("bundles".equals(cursor.getKey())) {
-                bundlesObject = cursor.getValue();
-            }
-        }
-        if (resourcesObject != null) {
-            if (resourcesObject instanceof EconomicMap) { // New format
-                EconomicMap<String, Object> resourcesObjectMap = (EconomicMap<String, Object>) resourcesObject;
-                checkAttributes(resourcesObjectMap, "resource descriptor object", Collections.singleton("includes"), Collections.singleton("excludes"));
-                Object includesObject = resourcesObjectMap.get("includes");
-                Object excludesObject = resourcesObjectMap.get("excludes");
-
-                List<Object> includes = asList(includesObject, "Attribute 'includes' must be a list of resources");
-                for (Object object : includes) {
-                    parseStringEntry(object, "pattern", registry::addResources, "resource descriptor object", "'includes' list");
-                }
-
-                if (excludesObject != null) {
-                    List<Object> excludes = asList(excludesObject, "Attribute 'excludes' must be a list of resources");
-                    for (Object object : excludes) {
-                        parseStringEntry(object, "pattern", registry::ignoreResources, "resource descriptor object", "'excludes' list");
-                    }
-                }
-            } else { // Old format: may be deprecated in future versions
-                List<Object> resources = asList(resourcesObject, "Attribute 'resources' must be a list of resources");
-                for (Object object : resources) {
-                    parseStringEntry(object, "pattern", registry::addResources, "resource descriptor object", "'resources' list");
-                }
-            }
-        }
-        if (bundlesObject != null) {
-            List<Object> bundles = asList(bundlesObject, "Attribute 'bundles' must be a list of bundles");
-            for (Object bundle : bundles) {
-                parseBundle(bundle);
-            }
+    protected void parseBundlesObject(Object bundlesObject) {
+        List<Object> bundles = asList(bundlesObject, "Attribute 'bundles' must be a list of bundles");
+        for (Object bundle : bundles) {
+            parseBundle(bundle);
         }
     }
 
@@ -101,7 +70,10 @@ public class ResourceConfigurationParser extends ConfigurationParser {
         EconomicMap<String, Object> resource = asMap(bundle, "Elements of 'bundles' list must be a bundle descriptor object");
         checkAttributes(resource, "bundle descriptor object", Collections.singletonList("name"), Arrays.asList("locales", "classNames", "condition"));
         String basename = asString(resource.get("name"));
-        ConfigurationCondition condition = parseCondition(resource);
+        TypeResult<ConfigurationCondition> resolvedConfigurationCondition = conditionResolver.resolveCondition(parseCondition(resource));
+        if (!resolvedConfigurationCondition.isPresent()) {
+            return;
+        }
         Object locales = resource.get("locales");
         if (locales != null) {
             List<Locale> asList = asList(locales, "Attribute 'locales' must be a list of locales")
@@ -109,7 +81,7 @@ public class ResourceConfigurationParser extends ConfigurationParser {
                             .map(ResourceConfigurationParser::parseLocale)
                             .collect(Collectors.toList());
             if (!asList.isEmpty()) {
-                registry.addResourceBundles(condition, basename, asList);
+                registry.addResourceBundles(resolvedConfigurationCondition.get(), basename, asList);
             }
 
         }
@@ -118,12 +90,12 @@ public class ResourceConfigurationParser extends ConfigurationParser {
             List<Object> asList = asList(classNames, "Attribute 'classNames' must be a list of classes");
             for (Object o : asList) {
                 String className = asString(o);
-                registry.addClassBasedResourceBundle(condition, basename, className);
+                registry.addClassBasedResourceBundle(resolvedConfigurationCondition.get(), basename, className);
             }
         }
         if (locales == null && classNames == null) {
             /* If nothing more precise is specified, register in every included locale */
-            registry.addResourceBundles(condition, basename);
+            registry.addResourceBundles(resolvedConfigurationCondition.get(), basename);
         }
     }
 
@@ -136,12 +108,106 @@ public class ResourceConfigurationParser extends ConfigurationParser {
         return locale;
     }
 
-    private void parseStringEntry(Object data, String valueKey, BiConsumer<ConfigurationCondition, String> resourceRegistry, String expectedType, String parentType) {
-        EconomicMap<String, Object> resource = asMap(data, "Elements of " + parentType + " must be a " + expectedType);
-        checkAttributes(resource, "resource and resource bundle descriptor object", Collections.singletonList(valueKey), Collections.singletonList(CONDITIONAL_KEY));
-        ConfigurationCondition condition = parseCondition(resource);
-        Object valueObject = resource.get(valueKey);
-        String value = asString(valueObject, valueKey);
-        resourceRegistry.accept(condition, value);
+    public static String globToRegex(String module, String glob) {
+        return (module == null || module.isEmpty() ? "" : module + ":") + globToRegex(glob);
+    }
+
+    private static String globToRegex(String glob) {
+        /* this char will trigger last wildcard dump if the glob ends with the wildcard */
+        String tmpGlob = glob + '#';
+        StringBuilder sb = new StringBuilder();
+
+        int quoteStartIndex = 0;
+        Wildcard previousWildcard = Wildcard.START;
+        for (int i = 0; i < tmpGlob.length(); i++) {
+            char c = tmpGlob.charAt(i);
+            Wildcard currentWildcard = previousWildcard.next(c);
+
+            boolean wildcardStart = previousWildcard == Wildcard.START && currentWildcard != Wildcard.START;
+            if (wildcardStart && quoteStartIndex != i) {
+                /* start of the new wildcard => quote previous content */
+                sb.append(Pattern.quote(tmpGlob.substring(quoteStartIndex, i)));
+            }
+
+            boolean consecutiveWildcards = previousWildcard == Wildcard.DOUBLE_STAR_SLASH && currentWildcard != Wildcard.START;
+            boolean wildcardEnd = previousWildcard != Wildcard.START && currentWildcard == Wildcard.START;
+            if (wildcardEnd || consecutiveWildcards) {
+                /* end of the wildcard => append regex and move start of next quote after it */
+                sb.append(previousWildcard.regex);
+                quoteStartIndex = i;
+            }
+            previousWildcard = currentWildcard;
+        }
+        /* remove the last char we added artificially */
+        tmpGlob = tmpGlob.substring(0, tmpGlob.length() - 1);
+        if (quoteStartIndex < tmpGlob.length()) {
+            sb.append(Pattern.quote(tmpGlob.substring(quoteStartIndex)));
+        }
+        return sb.toString();
+    }
+
+    /**
+     * This enum acts like a state machine that helps to identify glob wildcards.
+     */
+    private enum Wildcard {
+        START("") {
+            @Override
+            public Wildcard next(char c) {
+                return c == '*' ? STAR : START;
+            }
+        },
+        STAR("[^/]*") {
+            @Override
+            public Wildcard next(char c) {
+                return c == '*' ? DOUBLE_STAR : START;
+            }
+        },
+        DOUBLE_STAR(".*") {
+            @Override
+            public Wildcard next(char c) {
+                return c == '/' ? DOUBLE_STAR_SLASH : START;
+            }
+        },
+        DOUBLE_STAR_SLASH("([^/]*(/|$))*") {
+            @Override
+            public Wildcard next(char c) {
+                return c == '*' ? STAR : START;
+            }
+        };
+
+        final String regex;
+
+        Wildcard(String val) {
+            regex = val;
+        }
+
+        public abstract Wildcard next(char c);
+    }
+
+    protected void parseGlobsObject(Object globsObject) {
+        List<Object> globs = asList(globsObject, "Attribute 'globs' must be a list of glob patterns");
+        for (Object object : globs) {
+            parseGlobEntry(object, (condition, module, resource) -> registry.addResources(condition, globToRegex(module, resource)));
+        }
+    }
+
+    private interface GlobPatternConsumer<T> {
+        void accept(T a, String b, String c);
+    }
+
+    private void parseGlobEntry(Object data, GlobPatternConsumer<ConfigurationCondition> resourceRegistry) {
+        EconomicMap<String, Object> globObject = asMap(data, "Elements of 'globs' list must be a glob descriptor objects");
+        checkAttributes(globObject, "glob resource descriptor object", Collections.singletonList(GLOB_KEY), List.of(CONDITIONAL_KEY, MODULE_KEY));
+        TypeResult<ConfigurationCondition> resolvedConfigurationCondition = conditionResolver.resolveCondition(parseCondition(globObject));
+        if (!resolvedConfigurationCondition.isPresent()) {
+            return;
+        }
+
+        Object moduleObject = globObject.get(MODULE_KEY);
+        String module = asNullableString(moduleObject, MODULE_KEY);
+
+        Object valueObject = globObject.get(GLOB_KEY);
+        String value = asString(valueObject, GLOB_KEY);
+        resourceRegistry.accept(resolvedConfigurationCondition.get(), module, value);
     }
 }

@@ -32,8 +32,9 @@ import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.svm.core.TypeResult;
-import com.oracle.svm.core.configure.ConditionalElement;
+import com.oracle.svm.core.configure.ConfigurationTypeDescriptor;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.hosted.reflect.ReflectionDataBuilder;
 
 public class ReflectionRegistryAdapter extends RegistryAdapter {
     private final RuntimeReflectionSupport reflectionSupport;
@@ -44,86 +45,86 @@ public class ReflectionRegistryAdapter extends RegistryAdapter {
     }
 
     @Override
-    public TypeResult<ConditionalElement<Class<?>>> resolveType(ConfigurationCondition condition, String typeName, boolean allowPrimitives) {
-        TypeResult<ConditionalElement<Class<?>>> result = super.resolveType(condition, typeName, allowPrimitives);
+    public TypeResult<Class<?>> resolveType(ConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives) {
+        TypeResult<Class<?>> result = super.resolveType(condition, typeDescriptor, allowPrimitives);
         if (!result.isPresent()) {
             Throwable classLookupException = result.getException();
             if (classLookupException instanceof LinkageError) {
-                reflectionSupport.registerClassLookupException(condition, typeName, classLookupException);
+                reflectionSupport.registerClassLookupException(condition, typeDescriptor.toString(), classLookupException);
             } else if (throwMissingRegistrationErrors() && classLookupException instanceof ClassNotFoundException) {
-                reflectionSupport.registerClassLookup(condition, typeName);
+                reflectionSupport.registerClassLookup(condition, typeDescriptor.toString());
             }
         }
         return result;
     }
 
     @Override
-    public void registerPublicClasses(ConditionalElement<Class<?>> type) {
-        reflectionSupport.registerAllClassesQuery(type.getCondition(), type.getElement());
+    public void registerPublicClasses(ConfigurationCondition condition, Class<?> type) {
+        reflectionSupport.registerAllClassesQuery(condition, type);
     }
 
     @Override
-    public void registerDeclaredClasses(ConditionalElement<Class<?>> type) {
-        reflectionSupport.registerAllDeclaredClassesQuery(type.getCondition(), type.getElement());
+    public void registerDeclaredClasses(ConfigurationCondition condition, Class<?> type) {
+        reflectionSupport.registerAllDeclaredClassesQuery(condition, type);
     }
 
     @Override
-    public void registerRecordComponents(ConditionalElement<Class<?>> type) {
-        reflectionSupport.registerAllRecordComponentsQuery(type.getCondition(), type.getElement());
+    public void registerRecordComponents(ConfigurationCondition condition, Class<?> type) {
+        reflectionSupport.registerAllRecordComponentsQuery(condition, type);
     }
 
     @Override
-    public void registerPermittedSubclasses(ConditionalElement<Class<?>> type) {
-        reflectionSupport.registerAllPermittedSubclassesQuery(type.getCondition(), type.getElement());
+    public void registerPermittedSubclasses(ConfigurationCondition condition, Class<?> type) {
+        reflectionSupport.registerAllPermittedSubclassesQuery(condition, type);
     }
 
     @Override
-    public void registerNestMembers(ConditionalElement<Class<?>> type) {
-        reflectionSupport.registerAllNestMembersQuery(type.getCondition(), type.getElement());
+    public void registerNestMembers(ConfigurationCondition condition, Class<?> type) {
+        reflectionSupport.registerAllNestMembersQuery(condition, type);
     }
 
     @Override
-    public void registerSigners(ConditionalElement<Class<?>> type) {
-        reflectionSupport.registerAllSignersQuery(type.getCondition(), type.getElement());
+    public void registerSigners(ConfigurationCondition condition, Class<?> type) {
+        reflectionSupport.registerAllSignersQuery(condition, type);
     }
 
     @Override
-    public void registerPublicFields(ConditionalElement<Class<?>> type) {
-        reflectionSupport.registerAllFieldsQuery(type.getCondition(), type.getElement());
+    public void registerPublicFields(ConfigurationCondition condition, boolean queriedOnly, Class<?> type) {
+        ((ReflectionDataBuilder) reflectionSupport).registerAllFieldsQuery(condition, queriedOnly, type);
     }
 
     @Override
-    public void registerDeclaredFields(ConditionalElement<Class<?>> type) {
-        reflectionSupport.registerAllDeclaredFieldsQuery(type.getCondition(), type.getElement());
+    public void registerDeclaredFields(ConfigurationCondition condition, boolean queriedOnly, Class<?> type) {
+        ((ReflectionDataBuilder) reflectionSupport).registerAllDeclaredFieldsQuery(condition, queriedOnly, type);
     }
 
     @Override
-    public void registerPublicMethods(boolean queriedOnly, ConditionalElement<Class<?>> type) {
-        reflectionSupport.registerAllMethodsQuery(type.getCondition(), queriedOnly, type.getElement());
+    public void registerPublicMethods(ConfigurationCondition condition, boolean queriedOnly, Class<?> type) {
+        reflectionSupport.registerAllMethodsQuery(condition, queriedOnly, type);
     }
 
     @Override
-    public void registerDeclaredMethods(boolean queriedOnly, ConditionalElement<Class<?>> type) {
-        reflectionSupport.registerAllDeclaredMethodsQuery(type.getCondition(), queriedOnly, type.getElement());
+    public void registerDeclaredMethods(ConfigurationCondition condition, boolean queriedOnly, Class<?> type) {
+        reflectionSupport.registerAllDeclaredMethodsQuery(condition, queriedOnly, type);
     }
 
     @Override
-    public void registerPublicConstructors(boolean queriedOnly, ConditionalElement<Class<?>> type) {
-        reflectionSupport.registerAllConstructorsQuery(type.getCondition(), queriedOnly, type.getElement());
+    public void registerPublicConstructors(ConfigurationCondition condition, boolean queriedOnly, Class<?> type) {
+        reflectionSupport.registerAllConstructorsQuery(condition, queriedOnly, type);
     }
 
     @Override
-    public void registerDeclaredConstructors(boolean queriedOnly, ConditionalElement<Class<?>> type) {
-        reflectionSupport.registerAllDeclaredConstructorsQuery(type.getCondition(), queriedOnly, type.getElement());
+    public void registerDeclaredConstructors(ConfigurationCondition condition, boolean queriedOnly, Class<?> type) {
+        reflectionSupport.registerAllDeclaredConstructorsQuery(condition, queriedOnly, type);
     }
 
     @Override
-    public void registerField(ConditionalElement<Class<?>> type, String fieldName, boolean allowWrite) throws NoSuchFieldException {
+    public void registerField(ConfigurationCondition condition, Class<?> type, String fieldName, boolean allowWrite) throws NoSuchFieldException {
         try {
-            super.registerField(type, fieldName, allowWrite);
+            super.registerField(condition, type, fieldName, allowWrite);
         } catch (NoSuchFieldException e) {
             if (throwMissingRegistrationErrors()) {
-                reflectionSupport.registerFieldLookup(type.getCondition(), type.getElement(), fieldName);
+                reflectionSupport.registerFieldLookup(condition, type, fieldName);
             } else {
                 throw e;
             }
@@ -131,12 +132,12 @@ public class ReflectionRegistryAdapter extends RegistryAdapter {
     }
 
     @Override
-    public void registerMethod(boolean queriedOnly, ConditionalElement<Class<?>> type, String methodName, List<ConditionalElement<Class<?>>> methodParameterTypes) throws NoSuchMethodException {
+    public void registerMethod(ConfigurationCondition condition, boolean queriedOnly, Class<?> type, String methodName, List<Class<?>> methodParameterTypes) throws NoSuchMethodException {
         try {
-            super.registerMethod(queriedOnly, type, methodName, methodParameterTypes);
+            super.registerMethod(condition, queriedOnly, type, methodName, methodParameterTypes);
         } catch (NoSuchMethodException e) {
             if (throwMissingRegistrationErrors()) {
-                reflectionSupport.registerMethodLookup(type.getCondition(), type.getElement(), methodName, getParameterTypes(methodParameterTypes));
+                reflectionSupport.registerMethodLookup(condition, type, methodName, getParameterTypes(methodParameterTypes));
             } else {
                 throw e;
             }
@@ -144,12 +145,12 @@ public class ReflectionRegistryAdapter extends RegistryAdapter {
     }
 
     @Override
-    public void registerConstructor(boolean queriedOnly, ConditionalElement<Class<?>> type, List<ConditionalElement<Class<?>>> methodParameterTypes) throws NoSuchMethodException {
+    public void registerConstructor(ConfigurationCondition condition, boolean queriedOnly, Class<?> type, List<Class<?>> methodParameterTypes) throws NoSuchMethodException {
         try {
-            super.registerConstructor(queriedOnly, type, methodParameterTypes);
+            super.registerConstructor(condition, queriedOnly, type, methodParameterTypes);
         } catch (NoSuchMethodException e) {
             if (throwMissingRegistrationErrors()) {
-                reflectionSupport.registerConstructorLookup(type.getCondition(), type.getElement(), getParameterTypes(methodParameterTypes));
+                reflectionSupport.registerConstructorLookup(condition, type, getParameterTypes(methodParameterTypes));
             } else {
                 throw e;
             }

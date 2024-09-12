@@ -1,10 +1,27 @@
 One or several (comma-separated) paths to JSON files that specify lists of interfaces that define Java proxy classes.
-The structure is an array of arrays of fully qualified interface names.
 
-Example:
+The JSON structure is described in the following schema:
+
+  https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/proxy-config-schema-v1.0.0.json
+
+An example file contents follows:
 
     [
-        ["java.lang.AutoCloseable", "java.util.Comparator"],
-        ["java.util.Comparator"],
-        ["java.util.List"]
+      {
+        "condition" : {
+          "typeReachable" : "org.example.CallingClass"
+        },
+        "interfaces" : [
+          "java.lang.AutoCloseable",
+          "java.util.Comparator"
+        ]
+      },
+      {
+        "condition" : {
+          "typeReachable" : "org.example.CallingClass"
+        },
+        "interfaces" : [
+          "java.util.Comparator"
+        ]
+      }
     ]

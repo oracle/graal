@@ -38,9 +38,9 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.svm.configure.config.ResourceConfiguration;
-import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.core.configure.ResourceConfigurationParser;
 import com.oracle.svm.core.configure.ResourcesRegistry;
+import com.oracle.svm.core.util.json.JsonWriter;
 
 public class ResourceConfigurationTest {
 
@@ -117,7 +117,7 @@ public class ResourceConfigurationTest {
                 }
             };
 
-            ResourceConfigurationParser rcp = new ResourceConfigurationParser(registry, true);
+            ResourceConfigurationParser rcp = ResourceConfigurationParser.create(false, registry, true);
             writerThread.start();
             rcp.parseAndRegister(pr);
 
