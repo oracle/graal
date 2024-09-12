@@ -408,7 +408,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
         InstructionModel returnTypeQuickening = findReturnTypeQuickening(instruction);
         if (returnTypeQuickening != null) {
             b.startIf();
-            b.startCall(BytecodeRootNodeElement.createIsQuickeningName(returnTypeQuickening.signature.returnType)).string("$bc[$bci]").end();
+            b.startCall(BytecodeRootNodeElement.createIsQuickeningName(returnTypeQuickening.signature.returnType)).tree(BytecodeRootNodeElement.readInstruction("$bc", "$bci")).end();
             b.end().startBlock();
             b.startStatement();
             b.string("newInstruction = ").tree(rootNode.createInstructionConstant(returnTypeQuickening));
