@@ -116,7 +116,7 @@ def test():
     rexp = fr"{digits_pattern}:{spaces_pattern}int com.oracle.svm.core.code.IsolateEnterStub::(JavaMainWrapper_run_{wildcard_pattern})\({wildcard_pattern}\);"
     checker = Checker('info func JavaMainWrapper_run_', rexp)
     matches = checker.check(exec_string)
-    # n.b can ony get here with one match
+    # n.b can only get here with one match
     match = matches[0]
     method_name = match.group(1)
     print(f"method_name = {method_name}")
@@ -127,7 +127,7 @@ def test():
     rexp = fr"{wildcard_pattern}0x({hex_digits_pattern}){wildcard_pattern}com.oracle.svm.core.code.IsolateEnterStub::JavaMainWrapper_run_{wildcard_pattern}"
     checker = Checker(f'x/i IsolateEnterStub::{method_name}', rexp)
     matches = checker.check(exec_string)
-    # n.b can ony get here with one match
+    # n.b can only get here with one match
     match = matches[0]
 
     bp_address = int(match.group(1), 16)
@@ -708,7 +708,7 @@ def test():
     rexp = fr"{spaces_pattern}0x({hex_digits_pattern}){wildcard_pattern}hello.Hello::noInlineManyArgs{wildcard_pattern}"
     checker = Checker('x/i hello.Hello::noInlineManyArgs', rexp)
     matches = checker.check(exec_string)
-    # n.b can ony get here with one match
+    # n.b can only get here with one match
     match = matches[0]
     bp_address = int(match.group(1), 16)
     print(f"bp = {match.group(1)} {bp_address:x}")
@@ -997,7 +997,7 @@ def test():
     rexp = fr"{spaces_pattern}0x({hex_digits_pattern}){wildcard_pattern}com.oracle.svm.test.debug.CStructTests::testMixedArguments{wildcard_pattern}"
     checker = Checker('x/i CStructTests::testMixedArguments', rexp)
     matches = checker.check(exec_string)
-    # n.b can ony get here with one match
+    # n.b can only get here with one match
     match = matches[0]
     bp_address = int(match.group(1), 16)
     print(f"bp = {match.group(1)} {bp_address:x}")
