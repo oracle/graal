@@ -165,7 +165,7 @@ final class Target_java_nio_file_spi_FileSystemProvider {
  * instance is reachable from many places, for example UnixPath. Disallowing Path instances is a
  * severe restriction because relative Path instances are often stored in static final fields.
  *
- * c) Allow UnixFileSystem in the image heap and recompute state at run time on first acccess. This
+ * c) Allow UnixFileSystem in the image heap and recompute state at run time on first access. This
  * approach is implemented here.
  */
 @TargetClass(className = "sun.nio.fs.UnixFileSystem")
