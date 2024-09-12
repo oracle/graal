@@ -46,10 +46,12 @@ import jdk.graal.compiler.debug.Assertions;
 public final class VTableBuilder {
     private final HostedUniverse hUniverse;
     private final HostedMetaAccess hMetaAccess;
+    private final boolean closedTypeWorldHubLayout;
 
     private VTableBuilder(HostedUniverse hUniverse, HostedMetaAccess hMetaAccess) {
         this.hUniverse = hUniverse;
         this.hMetaAccess = hMetaAccess;
+        closedTypeWorldHubLayout = SubstrateOptions.useClosedTypeWorldHubLayout();
     }
 
     public static void buildTables(HostedUniverse hUniverse, HostedMetaAccess hMetaAccess) {
@@ -118,7 +120,7 @@ public final class VTableBuilder {
 
     private List<HostedMethod> generateDispatchTable(HostedType type, int startingIndex) {
         Predicate<HostedMethod> includeMethod;
-        if (hUniverse.hostVM().isClosedTypeWorld()) {
+        if (closedTypeWorldHubLayout) {
             // include only methods which will be indirect calls
             includeMethod = m -> m.implementations.length > 1 || m.wrapped.isVirtualRootMethod();
         } else {
