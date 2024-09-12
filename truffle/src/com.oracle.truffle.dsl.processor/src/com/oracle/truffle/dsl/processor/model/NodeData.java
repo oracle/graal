@@ -644,7 +644,7 @@ public class NodeData extends Template implements Comparable<NodeData> {
 
     public Collection<SpecializationData> computeUncachedSpecializations(List<SpecializationData> s) {
         Set<SpecializationData> uncached = new LinkedHashSet<>(s);
-        // remove all replacable specializations
+        // remove all replaceable specializations
         for (SpecializationData specialization : s) {
             uncached.removeAll(specialization.getReplaces());
         }
