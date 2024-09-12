@@ -46,7 +46,7 @@ import java.util.prefs.Preferences;
 
 /**
  * Implementation of SourceRepository as sets of [java] source roots. Uses
- * Preferences as the storage. The strucutre of the preferences node is as
+ * Preferences as the storage. The structure of the preferences node is as
  * follows:
  * <ul>
  * <li>roots<ul>
