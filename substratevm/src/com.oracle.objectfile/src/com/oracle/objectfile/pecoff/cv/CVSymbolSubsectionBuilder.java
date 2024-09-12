@@ -194,7 +194,7 @@ final class CVSymbolSubsectionBuilder {
     /**
      * Add type records for a class and all its members.
      *
-     * @param entry compiled method containing entities whos type records must be added
+     * @param entry compiled method containing entities who's type records must be added
      * @return type index of function type
      */
     private int addTypeRecords(CompiledMethodEntry entry) {
