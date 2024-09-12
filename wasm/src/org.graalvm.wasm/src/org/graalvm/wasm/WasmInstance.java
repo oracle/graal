@@ -59,7 +59,7 @@ import com.oracle.truffle.api.library.ExportMessage;
  * Represents an instantiated WebAssembly module.
  */
 @ExportLibrary(InteropLibrary.class)
-@SuppressWarnings("static-method")
+@SuppressWarnings({"static-method", "truffle-abstract-export", "deprecation"})
 public final class WasmInstance extends RuntimeState implements TruffleObject {
 
     private List<LinkAction> linkActions;
