@@ -87,7 +87,7 @@ public class FieldTypeFlow extends TypeFlow<AnalysisField> {
                 /*
                  * The newly installed FieldFilterTypeFlow can be used by other threads before
                  * addUse() is called / done. This is not a problem. The filterFlow stores its own
-                 * state and after the use is actually linked the state, if any, is transfered to
+                 * state and after the use is actually linked the state, if any, is transferred to
                  * the use.
                  */
                 filterFlow.addUse(bb, this);

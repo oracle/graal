@@ -49,7 +49,7 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
 
     /*
      * The type of the receiver object of the offset store operation. Can be approximated by Object
-     * or Object[] when it cannot be infered from stamps.
+     * or Object[] when it cannot be inferred from stamps.
      */
     protected final AnalysisType objectType;
 
