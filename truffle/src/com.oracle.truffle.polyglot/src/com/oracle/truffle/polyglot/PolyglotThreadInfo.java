@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -88,6 +88,12 @@ final class PolyglotThreadInfo {
     private final BitSet initializedLanguageContexts;
     private boolean finalizationComplete;
 
+    /*
+     * Set only for dead embedder threads (Thread#isAlive() == false) to claim the finalization of
+     * the dead embedder threads by another embedder thread that is just entering the context.
+     */
+    boolean finalizingDeadThread;
+
     PolyglotThreadInfo(PolyglotContextImpl context, Thread thread, boolean polyglotThreadFirstEnter) {
         this.context = context;
         this.thread = new TruffleWeakReference<>(thread);
@@ -121,6 +127,16 @@ final class PolyglotThreadInfo {
 
     Thread getThread() {
         return thread.get();
+    }
+
+    boolean isFinalizingDeadThread() {
+        assert Thread.holdsLock(context);
+        return finalizingDeadThread;
+    }
+
+    void setFinalizingDeadThread() {
+        assert Thread.holdsLock(context);
+        this.finalizingDeadThread = true;
     }
 
     boolean isLanguageContextInitialized(PolyglotLanguage language) {
