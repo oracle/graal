@@ -17,7 +17,7 @@ The purpose of the runtime module support:
 - `com.oracle.svm.core.jdk.Target_java_lang_ModuleLayer`:
     - `boot()` - replaces the hosted boot module layer with our own
 
-Some data structures also need to be substituted/resetted as to not pull in hosted modules (see runtime module synthesizing):
+Some data structures also need to be substituted/reset as to not pull in hosted modules (see runtime module synthesizing):
 - `com.oracle.svm.core.jdk.Target_java_lang_Module_ReflectionData`
 
 
