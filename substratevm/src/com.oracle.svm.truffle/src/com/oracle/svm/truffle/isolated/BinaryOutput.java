@@ -35,7 +35,7 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.WordFactory;
 
 /**
- * Copy from native-bridge to avoid depenency from now. Keep in sync with native-bridge.
+ * Copy from native-bridge to avoid dependency from now. Keep in sync with native-bridge.
  */
 abstract class BinaryOutput {
 
