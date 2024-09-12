@@ -328,6 +328,9 @@ final class LanguageCache implements Comparable<LanguageCache> {
             emitWarning("Warning Truffle language ignored: Provider %s is missing @Registration annotation.", providerClass);
             return;
         }
+        if (reg.enableNativeAccess()) {
+            ModuleUtils.enableNativeAccess(providerModule);
+        }
         String className = providerAdapter.getLanguageClassName();
         String name = reg.name();
         String id = reg.id();

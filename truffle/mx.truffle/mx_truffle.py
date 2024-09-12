@@ -227,10 +227,8 @@ class TruffleUnittestConfig(mx_unittest.MxUnittestConfig):
 
         # Disable VirtualThread warning
         vmArgs = vmArgs + ['-Dpolyglot.engine.WarnVirtualThreadSupport=false']
-        if mx.get_jdk().javaCompliance > '23':
-            # Ignore illegal native access until is GR-57817 fixed.
-            vmArgs = vmArgs + ['--illegal-native-access=allow']
-
+        # Enable native access to Truffle, truffle delegates native access to languages
+        vmArgs = vmArgs + ['--enable-native-access=org.graalvm.truffle']
         return (vmArgs, mainClass, mainClassArgs)
 
 

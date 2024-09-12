@@ -2195,6 +2195,11 @@ final class EngineAccessor extends Accessor {
         public long getEngineId(Object polyglotEngine) {
             return ((PolyglotEngineImpl) polyglotEngine).engineId;
         }
+
+        @Override
+        public ModulesAccessor getModulesAccessor() {
+            return ModuleUtils.getModulesAccessor();
+        }
     }
 
     abstract static class AbstractClassLoaderSupplier implements Supplier<ClassLoader> {

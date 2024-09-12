@@ -788,6 +788,8 @@ public abstract class Accessor {
         public abstract Object getEngineData(Object polyglotEngine);
 
         public abstract long getEngineId(Object polyglotEngine);
+
+        public abstract ModulesAccessor getModulesAccessor();
     }
 
     public abstract static class LanguageSupport extends Support {
@@ -1345,6 +1347,47 @@ public abstract class Accessor {
         }
 
         public abstract <T> Iterable<T> lookupTruffleService(Class<T> type);
+
+    }
+
+    /*
+     * We want to avoid exporting {@code jdk.internal.module} and {@code jdk.internal.access} to all
+     * classes in the unnamed module. So instead we load it in an isolated class loader and own
+     * module layer.
+     */
+    public abstract static class ModulesAccessor {
+
+        /**
+         * See {@code jdk.internal.module.Modules#addExports(Module, String, Module)}.
+         */
+        public abstract void addExports(Module base, String p, Module target);
+
+        /**
+         * See {@code jdk.internal.module.Modules#addExportsToAllUnnamed(Module, String)}.
+         */
+        public abstract void addExportsToAllUnnamed(Module base, String p);
+
+        /**
+         * See {@code jdk.internal.module.Modules#addOpens(Module, String, Module)}.
+         */
+        public abstract void addOpens(Module base, String p, Module target);
+
+        /**
+         * See {@code jdk.internal.module.Modules#addOpensToAllUnnamed(Module, String)}.
+         */
+        public abstract void addOpensToAllUnnamed(Module base, String p);
+
+        /**
+         * See {@code jdk.internal.access.JavaLangAccess#enableNativeAccess(Module)}.
+         */
+        public abstract void addEnableNativeAccess(Module module);
+
+        /**
+         * See {@code jdk.internal.access.JavaLangAccess#addEnableNativeAccessToAllUnnamed()}.
+         */
+        public abstract void addEnableNativeAccessToAllUnnamed();
+
+        public abstract Module getTargetModule();
 
     }
 

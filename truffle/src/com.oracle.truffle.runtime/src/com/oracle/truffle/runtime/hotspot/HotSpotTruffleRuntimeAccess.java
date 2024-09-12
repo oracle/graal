@@ -142,6 +142,8 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
 
         // For SharedSecrets.getJavaLangAccess().currentCarrierThread()
         ModulesSupport.addExports(javaBase, "jdk.internal.access", runtimeModule);
+        // HotSpotVirtualThreadHooks has a native method to register JVMTI hook
+        ModulesSupport.enableNativeAccess(runtimeModule);
 
         TruffleCompilationSupport compilationSupport;
         if (LibGraal.isAvailable()) {
