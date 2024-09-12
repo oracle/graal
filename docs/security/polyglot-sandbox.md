@@ -114,7 +114,7 @@ Isolated versions of the languages can be downloaded from Maven using the follow
 </dependency>
 ```
 
-The [Embedding Languages guide](../reference-manual/embed-languages/#polyglot-isolates) contains more details on using polyglot isolate dependencies.
+The [Embedding Languages guide](../reference-manual/embedding/embed-languages.md#polyglot-isolates) contains more details on using polyglot isolate dependencies.
 
 ### Untrusted Policy
 
