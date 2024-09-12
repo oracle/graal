@@ -97,18 +97,20 @@ import java.io.PrintWriter;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
-import java.nio.channels.Channels;
-import java.nio.channels.WritableByteChannel;
+import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.IntStream;
 
 import org.graalvm.collections.EconomicMap;
@@ -152,32 +154,50 @@ public class ImageLayerWriter {
     protected final Map<String, EconomicMap<String, Object>> methodsMap;
     protected final Map<String, Map<String, Object>> fieldsMap;
     private final Map<String, EconomicMap<String, Object>> constantsMap;
-    private final Graphs graphs;
-    FileInfo fileInfo;
-    FileInfo graphsFileInfo;
+    private FileInfo fileInfo;
+    private GraphsOutput graphsOutput;
     private final boolean useSharedLayerGraphs;
 
     protected final Set<AnalysisFuture<Void>> elementsToPersist = ConcurrentHashMap.newKeySet();
 
-    private record FileInfo(Path layerSnapshotPath, String fileName, String suffix) {
+    private record FileInfo(Path layerFilePath, String fileName, String suffix) {
     }
 
-    private static class Graphs {
-        final List<ByteBuffer> encodedGraphs = new ArrayList<>(4096);
-        long currentOffset = 0;
+    private static class GraphsOutput {
+        private final Path path;
+        private final Path tempPath;
+        private final FileChannel tempChannel;
 
-        synchronized String add(String encodedGraph) {
+        private final AtomicLong currentOffset = new AtomicLong(0);
+
+        GraphsOutput(Path path, String fileName, String suffix) {
+            this.path = path;
+            this.tempPath = FileDumpingUtil.createTempFile(path.getParent(), fileName, suffix);
+            try {
+                this.tempChannel = FileChannel.open(this.tempPath, EnumSet.of(StandardOpenOption.WRITE));
+            } catch (IOException e) {
+                throw GraalError.shouldNotReachHere(e, "Error opening temporary graphs file.");
+            }
+        }
+
+        String add(String encodedGraph) {
             ByteBuffer encoded = GRAPHS_CHARSET.encode(encodedGraph);
-            encodedGraphs.add(encoded);
             int size = encoded.limit();
-            long offset = currentOffset;
-            currentOffset += size;
+            long offset = currentOffset.getAndAdd(size);
+            try {
+                tempChannel.write(encoded, offset);
+            } catch (Exception e) {
+                throw GraalError.shouldNotReachHere(e, "Error during graphs file dumping.");
+            }
             return new StringBuilder("@").append(offset).append("[").append(size).append("]").toString();
         }
 
-        synchronized void dump(WritableByteChannel channel) throws IOException {
-            for (ByteBuffer bb : encodedGraphs) {
-                channel.write(bb);
+        void finish() {
+            try {
+                tempChannel.close();
+                FileDumpingUtil.tryAtomicMove(tempPath, path);
+            } catch (Exception e) {
+                throw GraalError.shouldNotReachHere(e, "Error during graphs file dumping.");
             }
         }
     }
@@ -197,7 +217,6 @@ public class ImageLayerWriter {
         this.methodsMap = new ConcurrentHashMap<>();
         this.fieldsMap = new ConcurrentHashMap<>();
         this.constantsMap = new ConcurrentHashMap<>();
-        this.graphs = new Graphs();
     }
 
     public void setInternedStringsIdentityMap(IdentityHashMap<String, String> map) {
@@ -216,8 +235,9 @@ public class ImageLayerWriter {
         fileInfo = new FileInfo(layerSnapshotPath, fileName, suffix);
     }
 
-    public void setSnapshotGraphsFileInfo(Path layerGraphsPath, String fileName, String suffix) {
-        graphsFileInfo = new FileInfo(layerGraphsPath, fileName, suffix);
+    public void openGraphsOutput(Path layerGraphsPath, String fileName, String suffix) {
+        AnalysisError.guarantee(graphsOutput == null, "Graphs file has already been opened");
+        graphsOutput = new GraphsOutput(layerGraphsPath, fileName, suffix);
     }
 
     public void setAnalysisUniverse(AnalysisUniverse aUniverse) {
@@ -225,16 +245,11 @@ public class ImageLayerWriter {
     }
 
     public void dumpFiles() {
-        FileDumpingUtil.dumpFile(fileInfo.layerSnapshotPath, fileInfo.fileName, fileInfo.suffix, outputStream -> {
+        graphsOutput.finish();
+
+        FileDumpingUtil.dumpFile(fileInfo.layerFilePath, fileInfo.fileName, fileInfo.suffix, outputStream -> {
             try (JsonWriter jw = new JsonWriter(new PrintWriter(outputStream))) {
                 jw.print(jsonMap);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        });
-        FileDumpingUtil.dumpFile(graphsFileInfo.layerSnapshotPath, graphsFileInfo.fileName, graphsFileInfo.suffix, stream -> {
-            try {
-                graphs.dump(Channels.newChannel(stream));
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -454,7 +469,7 @@ public class ImageLayerWriter {
         if (encodedGraph.contains(LAMBDA_CLASS_NAME_SUBSTRING)) {
             return false;
         }
-        String location = graphs.add(encodedGraph);
+        String location = graphsOutput.add(encodedGraph);
         methodMap.put(graphTag, location);
         return true;
     }

@@ -37,12 +37,20 @@ import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.debug.GraalError;
 
 public class FileDumpingUtil {
+    public static Path createTempFile(Path directory, String name, String suffix) {
+        try {
+            long start = System.nanoTime();
+            String filePrefix = String.format(name + "-%d", start);
+            return Files.createTempFile(directory, filePrefix, suffix);
+        } catch (Exception e) {
+            throw GraalError.shouldNotReachHere(e, "Error during temporary file creation.");
+        }
+    }
+
     @SuppressFBWarnings(value = "", justification = "FB reports null pointer dereferencing although it is not possible in this case.")
     public static void dumpFile(Path path, String name, String suffix, Consumer<OutputStream> streamConsumer) {
-        long start = System.nanoTime();
-        String filePrefix = String.format(name + "-%d", start);
+        Path tempPath = createTempFile(path.getParent(), name, suffix);
         try {
-            Path tempPath = Files.createTempFile(path.getParent(), filePrefix, suffix);
             try (FileOutputStream fileOutputStream = new FileOutputStream(tempPath.toFile())) {
                 streamConsumer.accept(fileOutputStream);
             }
@@ -52,7 +60,7 @@ public class FileDumpingUtil {
         }
     }
 
-    private static void tryAtomicMove(Path source, Path target) throws IOException {
+    public static void tryAtomicMove(Path source, Path target) throws IOException {
         try {
             Files.move(source, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
         } catch (AtomicMoveNotSupportedException e) {

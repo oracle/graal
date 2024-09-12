@@ -211,7 +211,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
 
         Path graphsFile = NativeImageGenerator.getOutputDirectory().resolve(ImageLayerSnapshotUtil.snapshotGraphsFileName(imageName));
         Path graphsFileName = getFileName(graphsFile);
-        HostedImageLayerBuildingSupport.singleton().getWriter().setSnapshotGraphsFileInfo(graphsFile, graphsFileName.toString(), ImageLayerSnapshotUtil.FILE_EXTENSION);
+        HostedImageLayerBuildingSupport.singleton().getWriter().openGraphsOutput(graphsFile, graphsFileName.toString(), ImageLayerSnapshotUtil.FILE_EXTENSION);
         BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.LAYER_SNAPSHOT_GRAPHS, graphsFile);
     }
 
