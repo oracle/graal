@@ -175,7 +175,7 @@ public final class ProcessorContext {
         if (len == 0) {
             return;
         }
-        // cannonicalize the last element
+        // canonicalize the last element
         Location parent = null;
         for (int i = len - 1; i >= 0; i--) {
             Location l = currentStack.get(i);
