@@ -833,7 +833,7 @@ No active inner context is allowed after `TruffleLanguage.finalizeContext(Object
 
 * Added `TruffleLanguage.Env.isHostFunction`.
 * Added Java interop support for converting executable values to legacy functional interfaces without a `@FunctionalInterface` annotation.
-* Added `TruffleLogger.getLogger(String)` to obtain the root loger of a language or instrument.
+* Added `TruffleLogger.getLogger(String)` to obtain the root logger of a language or instrument.
 * Introduced per language [context policy](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.ContextPolicy.html). Languages are encouraged to configure the most permissive policy that they can support.
 * Added `TruffleLanguage.areOptionsCompatible` to allow customization of the context policy based on options.
 * Changed default context policy from SHARED to EXCLUSIVE, i.e. there is one exclusive language instance per polyglot or inner context by default. This can be configured by the language
