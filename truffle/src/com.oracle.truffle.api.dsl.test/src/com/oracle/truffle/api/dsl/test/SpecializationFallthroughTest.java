@@ -73,7 +73,7 @@ public class SpecializationFallthroughTest {
                                     return;
                                 }
                                 if (FallthroughTest0.fallthroughCount > 1) {
-                                    Assert.fail("The fallthrough case must never be triggered twice. Therfore count must be <= 1, but is not.");
+                                    Assert.fail("The fallthrough case must never be triggered twice. Therefore count must be <= 1, but is not.");
                                 }
                             }
                         });
@@ -117,13 +117,13 @@ public class SpecializationFallthroughTest {
                                     return;
                                 }
                                 if (FallthroughTest1.fallthroughCount > 1) {
-                                    Assert.fail("The fallthrough case must never be triggered twice. Therfore count must be <= 1, but is not.");
+                                    Assert.fail("The fallthrough case must never be triggered twice. Therefore count must be <= 1, but is not.");
                                 }
                             }
                         });
     }
 
-    /* TODO GR-38632 assert falltrough do1 before do2 */
+    /* TODO GR-38632 assert fallthrough do1 before do2 */
     @NodeChildren({@NodeChild("a")})
     static class FallthroughTest1 extends ValueNode {
 
