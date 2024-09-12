@@ -481,8 +481,13 @@ def test():
     checker = Checker("info args println", rexp)
     checker.check(exec_string)
 
+<<<<<<< HEAD
     exec_string = execute("ptype this")
     # the debugger shoudl still know the type of "this"
+=======
+    exec_string = execute("ptype this");
+    # the debugger should still know the type of "this"
+>>>>>>> 1735e2b8ca9 (Fix typos)
     rexp = [r"type = class java\.io\.PrintStream : public java\.io\.FilterOutputStream {"]
     checker = Checker("ptype this", rexp)
     checker.check(exec_string)
@@ -538,7 +543,7 @@ def test():
     rexp = [fr"103{spaces_pattern}inlineA\(\);"]
     checker = Checker('list inlineIs', rexp)
     checker.check(execute("list inlineIs"))
-    # List inlineA may actually return more locations dependening on inlining decisions, but noInlineTest
+    # List inlineA may actually return more locations depending on inlining decisions, but noInlineTest
     # always needs to be listed
     rexp = [fr"108{spaces_pattern}noInlineTest\(\);"]
     checker = Checker('list inlineA', rexp)
@@ -547,8 +552,13 @@ def test():
     execute("delete breakpoints")
     # Set breakpoint at inlined method and step through its nested inline methods
     exec_string = execute("break hello.Hello::inlineIs")
+<<<<<<< HEAD
     # Dependening on inlining decisions, there are either two or one locations
     rexp = fr"Breakpoint {digits_pattern} at {address_pattern}: (hello\.Hello::inlineIs\. \(2 locations\)|file hello/Hello\.java, line 103\.)"
+=======
+    # Depending on inlining decisions, there are either two or one locations
+    rexp = r"Breakpoint %s at %s: (hello\.Hello::inlineIs\. \(2 locations\)|file hello/Hello\.java, line 103\.)"%(digits_pattern, address_pattern)
+>>>>>>> 1735e2b8ca9 (Fix typos)
     checker = Checker('break inlineIs', rexp)
     checker.check(exec_string, skip_fails=False)
 
