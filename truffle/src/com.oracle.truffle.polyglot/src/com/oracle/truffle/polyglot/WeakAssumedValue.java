@@ -50,7 +50,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.utilities.TruffleWeakReference;
 
 /*
- * Note: this type may be a good candidate for being standarized in the Truffle utilities package in the future.
+ * Note: this type may be a good candidate for being standardized in the Truffle utilities package in the future.
  */
 @SuppressWarnings("rawtypes")
 final class WeakAssumedValue<T> {

@@ -785,7 +785,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             PolyglotThreadInfo current = getCurrentThreadInfo();
             LinkedList<Object[]> stack = current.explicitContextStack;
             if (stack.isEmpty() || current.getThread() == null) {
-                throw PolyglotEngineException.illegalState("The context is not entered explicity. A context can only be left if it was previously entered.");
+                throw PolyglotEngineException.illegalState("The context is not entered explicitly. A context can only be left if it was previously entered.");
             }
             engine.leave(stack.removeLast(), this);
         } catch (Throwable t) {
@@ -2602,12 +2602,12 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
 
         /*
          * Close operation initiated in the DEFAULT or INTERRUPTING state can fail in which case the
-         * context will go back to the corresponsing non-closing state e.g. DEFAULT ->
+         * context will go back to the corresponding non-closing state e.g. DEFAULT ->
          * CLOSING/CLOSING_FINALIZING -> DEFAULT. Please note that while the default/interrupting
          * close is in progress, i.e. the context is in the CLOSING/CLOSING_FINALIZING or the
-         * CLOSING_INTERRUPTING/CLOSING_INTERRUPTING_FINALIZING state, the state can be overriden by
+         * CLOSING_INTERRUPTING/CLOSING_INTERRUPTING_FINALIZING state, the state can be overridden by
          * the CLOSING_CANCELLING state. The CLOSING and CLOSING_INTERRUPTING states can also be
-         * overriden by the CLOSING_PENDING_EXIT and then the CLOSING_EXITING state. Even in these
+         * overridden by the CLOSING_PENDING_EXIT and then the CLOSING_EXITING state. Even in these
          * cases the default close can still fail and if that is the case the context state goes
          * back to the CANCELLING or the EXITING state. The close operation is then guaranteed to be
          * completed by the process that initiated cancel or exit.
@@ -2876,7 +2876,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                 /*
                  * We need to notify before we remove the context from engine's context list,
                  * otherwise we couldn't use context locals in the context closed notification. New
-                 * instrument introducting new context locals doesn't initialize them in a context
+                 * instrument introducing new context locals doesn't initialize them in a context
                  * if it's not in the engine's context list.
                  */
                 if (notifyInstruments) {
