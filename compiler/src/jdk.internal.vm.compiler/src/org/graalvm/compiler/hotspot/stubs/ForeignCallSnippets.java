@@ -111,16 +111,6 @@ public class ForeignCallSnippets implements Snippets {
         return object;
     }
 
-    @Fold
-    static long verifyOopMask(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.verifyOopMask;
-    }
-
-    @Fold
-    static long verifyOopBits(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.verifyOopBits;
-    }
-
     /**
      * Gets and clears the object result from a runtime call stored in a thread local.
      *

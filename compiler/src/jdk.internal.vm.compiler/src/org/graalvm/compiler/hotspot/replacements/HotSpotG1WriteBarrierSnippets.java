@@ -58,7 +58,6 @@ import org.graalvm.word.WordFactory;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class HotSpotG1WriteBarrierSnippets extends G1WriteBarrierSnippets {
     public static final HotSpotForeignCallDescriptor G1WBPRECALL = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, REEXECUTABLE, KILLED_PRE_WRITE_BARRIER_STUB_LOCATIONS, "write_barrier_pre",
@@ -174,16 +173,6 @@ public final class HotSpotG1WriteBarrierSnippets extends G1WriteBarrierSnippets 
     @Override
     protected ForeignCallDescriptor printfCallDescriptor() {
         return Log.LOG_PRINTF;
-    }
-
-    @Override
-    protected ResolvedJavaType referenceType() {
-        return HotSpotReplacementsUtil.referenceType(INJECTED_METAACCESS);
-    }
-
-    @Override
-    protected long referentOffset() {
-        return HotSpotReplacementsUtil.referentOffset(INJECTED_METAACCESS);
     }
 
     public static class Templates extends AbstractTemplates {

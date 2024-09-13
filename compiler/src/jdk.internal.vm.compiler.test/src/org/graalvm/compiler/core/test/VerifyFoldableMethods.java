@@ -25,10 +25,12 @@
 package org.graalvm.compiler.core.test;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.nodes.PluginReplacementNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
@@ -39,7 +41,9 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * Verifies that all {@link Fold} annotated methods have at least one caller.
+ * Verifies that all {@link Fold} annotated methods have at least one caller from non-generated
+ * code. Ideally, the class should verify that foldable methods are only called from snippets but
+ * that requires a more global analysis (i.e., to know whether a caller is used within a snippet).
  */
 public class VerifyFoldableMethods extends VerifyPhase<CoreProviders> {
 
@@ -48,23 +52,47 @@ public class VerifyFoldableMethods extends VerifyPhase<CoreProviders> {
         return false;
     }
 
-    private final Map<ResolvedJavaMethod, Boolean> foldables = new ConcurrentHashMap<>();
-    ResolvedJavaType generatedInvocationPluginType;
+    /**
+     * Map from a foldable method to one of its callers. The absence of a caller is represented a
+     * foldable method mapping to itself.
+     */
+    private final Map<ResolvedJavaMethod, ResolvedJavaMethod> foldableCallers = new ConcurrentHashMap<>();
+
+    /*
+     * Super types or interfaces for generated classes. Calls from methods in these classes are
+     * ignored.
+     */
+    Set<ResolvedJavaType> generatedClassSupertypes;
+
+    /**
+     * Determines if {@code method} is in a generated class.
+     */
+    private boolean isGenerated(ResolvedJavaMethod method, CoreProviders context) {
+        if (generatedClassSupertypes == null) {
+            generatedClassSupertypes = Set.of(
+                            context.getMetaAccess().lookupJavaType(GeneratedInvocationPlugin.class),
+                            context.getMetaAccess().lookupJavaType(PluginReplacementNode.ReplacementFunction.class));
+        }
+        ResolvedJavaType declaringClass = method.getDeclaringClass();
+        for (ResolvedJavaType t : generatedClassSupertypes) {
+            if (t.isAssignableFrom(declaringClass)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     @Override
     protected void verify(StructuredGraph graph, CoreProviders context) {
         ResolvedJavaMethod method = graph.method();
         if (method.getAnnotation(Fold.class) != null) {
-            foldables.putIfAbsent(method, false);
+            foldableCallers.putIfAbsent(method, method);
         } else {
-            if (generatedInvocationPluginType == null) {
-                generatedInvocationPluginType = context.getMetaAccess().lookupJavaType(GeneratedInvocationPlugin.class);
-            }
-            if (!generatedInvocationPluginType.isAssignableFrom(method.getDeclaringClass())) {
+            if (!isGenerated(method, context)) {
                 for (MethodCallTargetNode t : graph.getNodes(MethodCallTargetNode.TYPE)) {
                     ResolvedJavaMethod callee = t.targetMethod();
                     if (callee.getAnnotation(Fold.class) != null) {
-                        foldables.put(callee, true);
+                        foldableCallers.put(callee, method);
                     }
                 }
             }
@@ -72,8 +100,11 @@ public class VerifyFoldableMethods extends VerifyPhase<CoreProviders> {
     }
 
     public void finish() {
-        String uncalled = foldables.entrySet().stream().filter(e -> e.getValue() == false).map(e -> e.getKey().format("%H.%n(%p)")).collect(Collectors.joining(System.lineSeparator() + "  "));
-        if (uncalled.length() != 0) {
+        String uncalled = foldableCallers.entrySet().stream()//
+                        .filter(e -> e.getValue() == e.getKey())//
+                        .map(e -> e.getKey().format("%H.%n(%p)"))//
+                        .collect(Collectors.joining(System.lineSeparator() + "  "));
+        if (!uncalled.isEmpty()) {
             throw new VerificationError(String.format("Methods annotated with @" + Fold.class.getSimpleName() + " appear to have no usages:%n  %s", uncalled));
         }
     }
