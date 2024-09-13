@@ -122,6 +122,10 @@ public abstract class PlatformNativeLibrarySupport {
                     "java_lang_invoke_VarHandle_compareAndExchange",
                     "java_lang_invoke_VarHandle_getAcquire",
                     "java_lang_invoke_VarHandle_getAndSetAcquire",
+                    "java_nio_MappedMemoryUtils_load0",
+                    "java_nio_MappedMemoryUtils_unload0",
+                    "java_nio_MappedMemoryUtils_isLoaded0",
+                    "java_nio_MappedMemoryUtils_force0",
     };
 
     public static PlatformNativeLibrarySupport singleton() {

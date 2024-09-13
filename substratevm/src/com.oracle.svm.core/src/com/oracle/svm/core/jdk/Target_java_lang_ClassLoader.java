@@ -251,14 +251,22 @@ public final class Target_java_lang_ClassLoader {
         return NativeLibrarySupport.singleton().findSymbol(entryName).rawValue();
     }
 
-    /**
-     * Ignores {@code loader}, like {@link Target_java_lang_ClassLoader#loadLibrary} does.
-     */
     @Substitute
     @TargetElement(onlyWith = JDKLatest.class)
-    private static long findNativeInternal(@SuppressWarnings("unused") ClassLoader loader, String entryName) {
-        return NativeLibrarySupport.singleton().findSymbol(entryName).rawValue();
+    static long findNative(ClassLoader loader, Class<?> clazz, String entryName, String javaName) {
+        long addr = NativeLibrarySupport.singleton().findSymbol(entryName).rawValue();
+        if (addr != 0 && loader != null) {
+            Target_jdk_internal_reflect_Reflection.ensureNativeAccess(clazz, clazz, javaName, true);
+        }
+        return addr;
     }
+
+    /**
+     * All usages of {@link Target_jdk_internal_loader_NativeLibraries} are substituted currently.
+     */
+    @Delete
+    @TargetElement(onlyWith = JDKLatest.class)
+    static native Target_jdk_internal_loader_NativeLibraries nativeLibrariesFor(ClassLoader loader);
 
     @Substitute
     @SuppressWarnings({"unused", "static-method"})

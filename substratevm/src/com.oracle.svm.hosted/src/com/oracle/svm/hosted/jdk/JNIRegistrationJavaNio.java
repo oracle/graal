@@ -29,7 +29,6 @@ import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.function.Consumer;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -38,6 +37,8 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
+
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 
 /**
  * Registration of classes, methods, and fields accessed via JNI by C code of the JDK.
@@ -74,6 +75,8 @@ public class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Inter
         /* Ensure that the interrupt signal handler is initialized at runtime. */
         initializeAtRunTime(a, "sun.nio.ch.NativeThread");
         initializeAtRunTime(a, "sun.nio.ch.FileDispatcherImpl", "sun.nio.ch.FileChannelImpl$Unmapper");
+        /* Native methods registers in static initializer since JDK-8339285. */
+        initializeAtRunTime(a, "java.nio.MappedMemoryUtils");
 
         if (isPosix()) {
             initializeAtRunTime(a, "sun.nio.ch.InheritedChannel");
