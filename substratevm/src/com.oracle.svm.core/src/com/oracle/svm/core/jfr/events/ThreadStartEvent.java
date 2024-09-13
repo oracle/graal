@@ -47,7 +47,7 @@ public class ThreadStartEvent {
             JfrNativeEventWriter.putEventThread(data);
             JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.ThreadStart, 0));
             JfrNativeEventWriter.putThread(data, thread);
-            JfrNativeEventWriter.putLong(data, JavaThreads.getParentThreadId(thread));
+            JfrNativeEventWriter.putThread(data, JavaThreads.getParentThreadId(thread));
             JfrNativeEventWriter.endSmallEvent(data);
         }
     }

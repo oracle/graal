@@ -306,7 +306,6 @@ public class SubstrateJVM {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long getThreadId(Thread thread) {
         if (HasJfrSupport.get()) {
-            maybeRegisterVirtualThread(thread);
             return JavaThreads.getThreadId(thread);
         }
         return 0;
@@ -315,7 +314,6 @@ public class SubstrateJVM {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long getCurrentThreadId() {
         if (HasJfrSupport.get()) {
-            maybeRegisterVirtualThread(Thread.currentThread());
             return JavaThreads.getCurrentThreadId();
         }
         return 0;
@@ -326,7 +324,7 @@ public class SubstrateJVM {
      * eagerly when started and at chunk rotations.
      */
     @Uninterruptible(reason = "Epoch should not change while checking generation.")
-    private static void maybeRegisterVirtualThread(Thread thread) {
+    public static void maybeRegisterVirtualThread(Thread thread) {
         // Do quick preliminary checks to avoid global locking unless necessary.
         if (JavaThreads.isVirtual(thread)) {
             Target_java_lang_VirtualThread tjlv = SubstrateUtil.cast(thread, Target_java_lang_VirtualThread.class);
@@ -336,6 +334,15 @@ public class SubstrateJVM {
                 tjlv.jfrGeneration = currentEpochGen;
             }
         }
+    }
+
+    /**
+     * {@link SubstrateJVM#maybeRegisterVirtualThread(Thread)} Is preferred over this method since
+     * it can perform preliminary checks to avoid locking the Thread Repository unnecessarily.
+     */
+    @Uninterruptible(reason = "Epoch should not change while checking generation.")
+    public static void maybeRegisterVirtualThread(long tid) {
+        getThreadRepo().registerThread(tid);
     }
 
     /**

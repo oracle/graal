@@ -250,12 +250,14 @@ public final class JfrNativeEventWriter {
         if (thread == null) {
             putThread(data, 0L);
         } else {
+            SubstrateJVM.maybeRegisterVirtualThread(thread);
             putThread(data, SubstrateJVM.getThreadId(thread));
         }
     }
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     public static void putThread(JfrNativeEventWriterData data, long threadId) {
+        SubstrateJVM.maybeRegisterVirtualThread(threadId);
         putLong(data, threadId);
     }
 

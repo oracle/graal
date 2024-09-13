@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.jfr;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -96,6 +98,19 @@ public final class JfrThreadRepository implements JfrRepository {
         }
     }
 
+    /**
+     * If this method is called on platform threads, nothing will happen since they are already
+     * registered eagerly upon starting and at epoch changes.
+     */
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
+    public void registerThread(long threadId) {
+        if (!SubstrateJVM.get().isRecording()) {
+            return;
+        }
+
+        registerThread0(threadId, 0, true, null, null);
+    }
+
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     public void registerThread(Thread thread) {
         if (!SubstrateJVM.get().isRecording()) {
@@ -103,7 +118,13 @@ public final class JfrThreadRepository implements JfrRepository {
         }
 
         long threadId = JavaThreads.getThreadId(thread);
+        boolean isVirtual = JavaThreads.isVirtual(thread);
+        long osThreadId = isVirtual ? 0 : threadId;
+        registerThread0(threadId, osThreadId, isVirtual, thread, thread.getName());
+    }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private void registerThread0(long threadId, long osThreadId, boolean isVirtual, Thread thread, String name) {
         JfrVisited visitedThread = StackValue.get(JfrVisited.class);
         visitedThread.setId(threadId);
         visitedThread.setHash(UninterruptibleUtils.Long.hashCode(threadId));
@@ -124,14 +145,12 @@ public final class JfrThreadRepository implements JfrRepository {
             JfrNativeEventWriterDataAccess.initialize(data, epochData.threadBuffer);
 
             /* Similar to JfrThreadConstant::serialize in HotSpot. */
-            boolean isVirtual = JavaThreads.isVirtual(thread);
-            long osThreadId = isVirtual ? 0 : threadId;
             long threadGroupId = registerThreadGroup(thread, isVirtual);
 
             JfrNativeEventWriter.putLong(data, threadId);
-            JfrNativeEventWriter.putString(data, thread.getName()); // OS thread name
+            JfrNativeEventWriter.putString(data, name); // OS thread name
             JfrNativeEventWriter.putLong(data, osThreadId); // OS thread id
-            JfrNativeEventWriter.putString(data, thread.getName()); // Java thread name
+            JfrNativeEventWriter.putString(data, name); // Java thread name
             JfrNativeEventWriter.putLong(data, threadId); // Java thread id
             JfrNativeEventWriter.putLong(data, threadGroupId); // Java thread group
             JfrNativeEventWriter.putBoolean(data, isVirtual);
