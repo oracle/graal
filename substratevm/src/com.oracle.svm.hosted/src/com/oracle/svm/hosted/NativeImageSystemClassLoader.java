@@ -40,6 +40,7 @@ import java.util.jar.JarFile;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
+import org.graalvm.compiler.core.common.SuppressFBWarnings;
 
 /**
  * NativeImageCustomSystemClassLoader is a minimal {@link ClassLoader} that forwards loading of a
@@ -147,18 +148,18 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
         }
     }
 
+    @SuppressFBWarnings(value = "BC_IMPOSSIBLE_INSTANCEOF", justification = "Workaround this https://github.com/spotbugs/spotbugs/issues/2968, RuntimeException cannot be a ClassNotFoundException is a false positive")
     private static Class<?> loadClass(List<ClassLoader> activeClassLoaders, String name, boolean resolve) throws ClassNotFoundException {
         ClassNotFoundException classNotFoundException = null;
         for (ClassLoader loader : activeClassLoaders) {
             try {
                 /* invoke the "loadClass" method on the current class loader */
-                return ((Class<?>) loadClass.invoke(loader, name, resolve));
+                return ((Class<?>) ReflectionUtil.invokeMethod(loadClass, loader, name, resolve));
             } catch (Exception e) {
-                if (e.getCause() instanceof ClassNotFoundException) {
-                    classNotFoundException = ((ClassNotFoundException) e.getCause());
+                if (e instanceof ClassNotFoundException exception) {
+                    classNotFoundException = exception;
                 } else {
-                    String message = String.format("Can not load class: %s, with class loader: %s", name, loader);
-                    VMError.shouldNotReachHere(message, e);
+                    throw e;
                 }
             }
         }
@@ -168,39 +169,11 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
 
     private static URL findResource(List<ClassLoader> activeClassLoaders, String name) {
         for (ClassLoader loader : activeClassLoaders) {
-            try {
-                // invoke the "findResource" method on the current class loader
-                Object url = findResource.invoke(loader, name);
-                if (url != null) {
-                    return (URL) url;
-                }
-            } catch (ReflectiveOperationException | ClassCastException e) {
-                String message = String.format("Can not find resource: %s using class loader: %s", name, loader);
-                VMError.shouldNotReachHere(message, e);
+            // invoke the "findResource" method on the current class loader
+            Object url = ReflectionUtil.invokeMethod(findResource, loader, name);
+            if (url != null) {
+                return (URL) url;
             }
-        }
-        return null;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static Enumeration<URL> findResources(ClassLoader classLoader, String name) {
-        try {
-            // invoke the "findResources" method on the current class loader
-            return (Enumeration<URL>) findResources.invoke(classLoader, name);
-        } catch (ReflectiveOperationException e) {
-            String message = String.format("Can not find resources: %s using class loader: %s", name, classLoader);
-            VMError.shouldNotReachHere(message, e);
-        }
-
-        return null;
-    }
-
-    static Class<?> defineClass(ClassLoader classLoader, String name, byte[] b, int offset, int length) {
-        try {
-            return (Class<?>) defineClass.invoke(classLoader, name, b, offset, length);
-        } catch (ReflectiveOperationException e) {
-            String message = String.format("Cannot define class %s from byte[%d..%d] using class loader: %s", name, offset, offset + length, classLoader);
-            VMError.shouldNotReachHere(message, e);
         }
         return null;
     }
@@ -222,9 +195,9 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
         ClassLoader activeClassLoader = activeClassLoaders.get(0);
         ClassLoader activeClassLoaderParent = activeClassLoaders.size() > 1 ? activeClassLoaders.get(1) : null;
         if (activeClassLoaderParent != null) {
-            return newCompoundEnumeration(findResources(activeClassLoaderParent, name), findResources(activeClassLoader, name));
+            return newCompoundEnumeration(ReflectionUtil.invokeMethod(findResources, activeClassLoaderParent, name), ReflectionUtil.invokeMethod(findResources, activeClassLoader, name));
         }
-        return findResources(activeClassLoader, name);
+        return ReflectionUtil.invokeMethod(findResources, activeClassLoader, name);
     }
 
     @SuppressWarnings("unchecked")
@@ -249,7 +222,7 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
         if (forNameOrNull(name, false) != null) {
             throw VMError.shouldNotReachHere("The class loader hierarchy already provides a class with the same name as the class submitted for predefinition: " + name);
         }
-        return defineClass(getActiveClassLoaders().get(0), name, array, offset, length);
+        return ReflectionUtil.invokeMethod(defineClass, getActiveClassLoaders().get(0), name, array, offset, length);
     }
 
     @Override
@@ -283,12 +256,7 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
      */
     @SuppressWarnings("unused") // no direct use from Java
     private void appendToClassPathForInstrumentation(String classPathEntry) {
-        try {
-            Method method = ReflectionUtil.lookupMethod(getParent().getClass(), "appendToClassPathForInstrumentation", String.class);
-            method.invoke(getParent(), classPathEntry);
-        } catch (ReflectiveOperationException e) {
-            String message = String.format("Can not add jar: %s to class path. Due to %s", classPathEntry, e);
-            VMError.shouldNotReachHere(message, e);
-        }
+        Method method = ReflectionUtil.lookupMethod(getParent().getClass(), "appendToClassPathForInstrumentation", String.class);
+        ReflectionUtil.invokeMethod(method, getParent(), classPathEntry);
     }
 }
