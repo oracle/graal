@@ -27,13 +27,13 @@ package com.oracle.svm.core.reflect.target;
 import java.lang.reflect.AccessibleObject;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.configure.RuntimeConditionSet;
-import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 
 @TargetClass(value = AccessibleObject.class)
 public final class Target_java_lang_reflect_AccessibleObject {
@@ -62,16 +62,10 @@ public final class Target_java_lang_reflect_AccessibleObject {
         }
     }
 
-    static class SatisfiedConditionComputer implements FieldValueTransformerWithAvailability {
+    static class SatisfiedConditionComputer implements FieldValueTransformer {
         @Override
         public Object transform(Object receiver, Object originalValue) {
             return RuntimeConditionSet.unmodifiableEmptySet();
         }
-
-        @Override
-        public final ValueAvailability valueAvailability() {
-            return ValueAvailability.BeforeAnalysis;
-        }
-
     }
 }

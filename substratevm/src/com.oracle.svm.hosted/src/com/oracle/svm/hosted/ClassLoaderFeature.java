@@ -27,6 +27,7 @@ package com.oracle.svm.hosted;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
@@ -127,8 +128,8 @@ public class ClassLoaderFeature implements InternalFeature {
         access.registerFieldValueTransformer(packagesField, new FieldValueTransformerWithAvailability() {
 
             @Override
-            public ValueAvailability valueAvailability() {
-                return ValueAvailability.AfterAnalysis;
+            public boolean isAvailable() {
+                return BuildPhaseProvider.isHostedUniverseBuilt();
             }
 
             @Override

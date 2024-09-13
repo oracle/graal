@@ -195,8 +195,8 @@ public final class LibGraalFieldsOffsetsFeature implements InternalFeature {
         }
 
         @Override
-        public ValueAvailability valueAvailability() {
-            return ValueAvailability.AfterAnalysis;
+        public boolean isAvailable() {
+            return BuildPhaseProvider.isHostedUniverseBuilt();
         }
 
         @Override

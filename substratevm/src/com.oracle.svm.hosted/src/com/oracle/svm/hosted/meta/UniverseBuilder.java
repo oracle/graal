@@ -100,7 +100,6 @@ import com.oracle.svm.hosted.heap.PodSupport;
 import com.oracle.svm.hosted.imagelayer.HostedDynamicLayerInfo;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
-import com.oracle.svm.hosted.substitute.ComputedValueField;
 import com.oracle.svm.hosted.substitute.DeletedMethod;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -139,11 +138,6 @@ public class UniverseBuilder {
      */
     @SuppressWarnings("try")
     public void build(DebugContext debug) {
-        for (AnalysisField aField : aUniverse.getFields()) {
-            if (aField.wrapped instanceof ComputedValueField) {
-                ((ComputedValueField) aField.wrapped).processAnalysis(aMetaAccess);
-            }
-        }
         aUniverse.seal();
 
         try (Indent indent = debug.logAndIndent("build universe")) {
@@ -1005,9 +999,6 @@ public class UniverseBuilder {
         var fieldValueInterceptionSupport = FieldValueInterceptionSupport.singleton();
         for (HostedField hField : hUniverse.fields.values()) {
             AnalysisField aField = hField.wrapped;
-            if (aField.wrapped instanceof ComputedValueField) {
-                ((ComputedValueField) aField.wrapped).processSubstrate(hMetaAccess);
-            }
 
             if (hField.isReachable() && !hField.hasLocation() && Modifier.isStatic(hField.getModifiers()) && !aField.isWritten() && fieldValueInterceptionSupport.isValueAvailable(aField)) {
                 hField.setUnmaterializedStaticConstant();

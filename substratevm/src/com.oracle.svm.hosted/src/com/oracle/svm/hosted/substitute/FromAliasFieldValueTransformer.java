@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,27 +22,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.fieldvaluetransformer;
+package com.oracle.svm.hosted.substitute;
 
-import com.oracle.svm.core.util.VMError;
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
-import jdk.vm.ci.meta.JavaKind;
+import com.oracle.graal.pointsto.util.GraalAccess;
+import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 
-abstract class BoxingTransformer {
-    final JavaKind returnKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
-    BoxingTransformer(JavaKind returnKind) {
-        this.returnKind = returnKind;
-    }
+/**
+ * Implements the field value transformation semantics of {@link Kind#FromAlias}.
+ */
+public record FromAliasFieldValueTransformer(ResolvedJavaField aliasField) implements FieldValueTransformer {
 
-    Object box(int value) {
-        switch (returnKind) {
-            case Int:
-                return Integer.valueOf(value);
-            case Long:
-                return Long.valueOf(value);
-            default:
-                throw VMError.shouldNotReachHere("Unexpected kind: " + returnKind);
+    @Override
+    public Object transform(Object receiver, Object originalValue) {
+        aliasField.getDeclaringClass().initialize();
+        var constant = GraalAccess.getOriginalProviders().getConstantReflection().readFieldValue(aliasField, null);
+        if (constant.getJavaKind().isPrimitive()) {
+            return constant.asBoxedPrimitive();
+        } else {
+            return GraalAccess.getOriginalSnippetReflection().asObject(Object.class, constant);
         }
     }
 }

@@ -26,6 +26,8 @@ package com.oracle.svm.core.fieldvaluetransformer;
 
 import java.lang.reflect.Field;
 
+import com.oracle.svm.core.BuildPhaseProvider;
+import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.graal.nodes.FieldOffsetNode;
 import com.oracle.svm.core.reflect.target.ReflectionSubstitutionSupport;
 import com.oracle.svm.core.util.VMError;
@@ -35,17 +37,14 @@ import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
-public final class FieldOffsetFieldValueTransformer extends BoxingTransformer implements FieldValueTransformerWithAvailability {
-    private final Field targetField;
-
-    public FieldOffsetFieldValueTransformer(Field targetField, JavaKind returnKind) {
-        super(returnKind);
-        this.targetField = targetField;
-    }
+/**
+ * Implements the field value transformation semantics of {@link Kind#FieldOffset}.
+ */
+public record FieldOffsetFieldValueTransformer(Field targetField, JavaKind returnKind) implements FieldValueTransformerWithAvailability {
 
     @Override
-    public ValueAvailability valueAvailability() {
-        return ValueAvailability.AfterAnalysis;
+    public boolean isAvailable() {
+        return BuildPhaseProvider.isHostedUniverseBuilt();
     }
 
     @Override
@@ -54,7 +53,18 @@ public final class FieldOffsetFieldValueTransformer extends BoxingTransformer im
         if (offset <= 0) {
             throw VMError.shouldNotReachHere("Field is not marked as unsafe accessed: " + targetField);
         }
-        return box(offset);
+        return box(returnKind, offset);
+    }
+
+    static Object box(JavaKind returnKind, int value) {
+        switch (returnKind) {
+            case Int:
+                return Integer.valueOf(value);
+            case Long:
+                return Long.valueOf(value);
+            default:
+                throw VMError.shouldNotReachHere("Unexpected kind: " + returnKind);
+        }
     }
 
     @Override

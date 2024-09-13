@@ -201,6 +201,7 @@ import com.oracle.svm.hosted.FeatureImpl.OnAnalysisExitAccessImpl;
 import com.oracle.svm.hosted.ProgressReporter.ReporterClosable;
 import com.oracle.svm.hosted.ameta.AnalysisConstantFieldProvider;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
+import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.ameta.SVMHostedValueProvider;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.analysis.NativeImagePointsToAnalysis;
@@ -1124,7 +1125,9 @@ public class NativeImageGenerator {
     public static AnnotationSubstitutionProcessor createAnnotationSubstitutionProcessor(MetaAccessProvider originalMetaAccess, ImageClassLoader loader,
                     ClassInitializationSupport classInitializationSupport) {
         AnnotationSubstitutionProcessor annotationSubstitutions = new AnnotationSubstitutionProcessor(loader, originalMetaAccess, classInitializationSupport);
-        annotationSubstitutions.init();
+        var fieldValueInterceptionSupport = new FieldValueInterceptionSupport(annotationSubstitutions);
+        ImageSingletons.add(FieldValueInterceptionSupport.class, fieldValueInterceptionSupport);
+        annotationSubstitutions.init(fieldValueInterceptionSupport);
         return annotationSubstitutions;
     }
 
@@ -1149,7 +1152,7 @@ public class NativeImageGenerator {
         /*
          * Eagerly register all target fields of recomputed value fields as unsafe accessed.
          */
-        bb.getAnnotationSubstitutionProcessor().processComputedValueFields(bb);
+        bb.getAnnotationSubstitutionProcessor().registerUnsafeAccessedFields(bb);
 
         /*
          * Install feature supported substitutions.

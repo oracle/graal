@@ -24,11 +24,12 @@
  */
 package com.oracle.svm.core.foreign;
 
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
+
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.foreign.Utils;
@@ -41,12 +42,7 @@ final class Target_jdk_internal_foreign_Utils_BaseAndScale {
     int base;
 }
 
-final class BaseFieldRecomputer implements FieldValueTransformerWithAvailability {
-
-    @Override
-    public ValueAvailability valueAvailability() {
-        return ValueAvailability.BeforeAnalysis;
-    }
+final class BaseFieldRecomputer implements FieldValueTransformer {
 
     @Override
     public Object transform(Object receiver, Object originalValue) {
