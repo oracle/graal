@@ -36,7 +36,6 @@ import org.graalvm.nativeimage.IsolateThread;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jfr.JfrTicks;
-import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.events.JavaMonitorEnterEvent;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.util.BasedOnJDKClass;
@@ -61,20 +60,20 @@ import jdk.internal.misc.Unsafe;
 @BasedOnJDKClass(ReentrantLock.class)
 @BasedOnJDKClass(value = ReentrantLock.class, innerClass = "Sync")
 public class JavaMonitor extends JavaMonitorQueuedSynchronizer {
-    protected long latestJfrTid;
+    protected Thread latest;
 
     public JavaMonitor() {
-        latestJfrTid = 0;
+        latest = null;
     }
 
     public void monitorEnter(Object obj) {
         if (!tryLock()) {
             long startTicks = JfrTicks.elapsedTicks();
             acquire(1);
-            JavaMonitorEnterEvent.emit(obj, latestJfrTid, startTicks);
+            JavaMonitorEnterEvent.emit(obj, latest, startTicks);
         }
 
-        latestJfrTid = SubstrateJVM.getCurrentThreadId();
+        latest = Thread.currentThread();
     }
 
     public void monitorExit() {

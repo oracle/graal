@@ -47,8 +47,6 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import com.oracle.svm.core.jdk.JDKLatest;
-import com.oracle.svm.core.jfr.HasJfrSupport;
-import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.util.VMError;
@@ -112,6 +110,10 @@ public final class Target_java_lang_VirtualThread {
     @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = NondefaultSchedulerSupplier.class) //
     private Executor nondefaultScheduler;
     // Checkstyle: resume
+
+    @Inject //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    public volatile int jfrGeneration = -1;
 
     @Alias
     private static native ForkJoinPool createDefaultScheduler();
@@ -330,9 +332,6 @@ public final class Target_java_lang_VirtualThread {
         }
 
         carrier.setCurrentThread(asThread(this));
-        if (HasJfrSupport.get()) {
-            SubstrateJVM.getThreadRepo().registerThread(asThread(this));
-        }
     }
 
     @Substitute // not needed on newer JDKs that use safe disableSuspendAndPreempt()
