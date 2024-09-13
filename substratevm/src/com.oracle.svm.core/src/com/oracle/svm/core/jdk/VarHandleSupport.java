@@ -26,6 +26,7 @@ package com.oracle.svm.core.jdk;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -63,8 +64,8 @@ abstract class VarHandleFieldOffsetComputer implements FieldValueTransformerWith
     }
 
     @Override
-    public ValueAvailability valueAvailability() {
-        return ValueAvailability.AfterAnalysis;
+    public boolean isAvailable() {
+        return BuildPhaseProvider.isHostedUniverseBuilt();
     }
 
     @Override
@@ -110,8 +111,8 @@ class VarHandleFieldOffsetAsLongComputer extends VarHandleFieldOffsetComputer {
 
 class VarHandleStaticBaseComputer implements FieldValueTransformerWithAvailability {
     @Override
-    public ValueAvailability valueAvailability() {
-        return ValueAvailability.AfterAnalysis;
+    public boolean isAvailable() {
+        return BuildPhaseProvider.isHostedUniverseBuilt();
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,40 +24,29 @@
  */
 package com.oracle.svm.hosted.substitute;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.Modifier;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
-import com.oracle.svm.hosted.annotation.AnnotationValue;
 import com.oracle.svm.hosted.annotation.AnnotationWrapper;
-import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class AnnotatedField implements ResolvedJavaField, OriginalFieldProvider, AnnotationWrapper {
+public final class AliasField implements ResolvedJavaField, OriginalFieldProvider, AnnotationWrapper {
 
-    private final ResolvedJavaField original;
-    private final AnnotationValue[] injectedAnnotations;
+    final ResolvedJavaField original;
+    final ResolvedJavaField annotated;
 
-    public AnnotatedField(ResolvedJavaField original, Annotation injectedAnnotation) {
+    final boolean isFinal;
+
+    AliasField(ResolvedJavaField original, ResolvedJavaField annotated, boolean isFinal) {
         this.original = original;
-        this.injectedAnnotations = SubstrateAnnotationExtractor.prepareInjectedAnnotations(injectedAnnotation);
+        this.annotated = annotated;
+        this.isFinal = isFinal;
     }
-
-    @Override
-    public AnnotatedElement getAnnotationRoot() {
-        return original;
-    }
-
-    @Override
-    public AnnotationValue[] getInjectedAnnotations() {
-        return injectedAnnotations;
-    }
-
-    /* The remaining methods just forward to the original field. */
 
     @Override
     public String getName() {
@@ -71,7 +60,13 @@ public class AnnotatedField implements ResolvedJavaField, OriginalFieldProvider,
 
     @Override
     public int getModifiers() {
-        return original.getModifiers();
+        int result = original.getModifiers();
+        if (isFinal) {
+            result = result | Modifier.FINAL;
+        } else {
+            result = result & ~Modifier.FINAL;
+        }
+        return result;
     }
 
     @Override
@@ -95,8 +90,13 @@ public class AnnotatedField implements ResolvedJavaField, OriginalFieldProvider,
     }
 
     @Override
+    public AnnotatedElement getAnnotationRoot() {
+        return original;
+    }
+
+    @Override
     public String toString() {
-        return "AnnotatedField<original " + original.toString() + ", annotation: " + injectedAnnotations[0].getType() + ">";
+        return "AliasField<original " + original.toString() + ">";
     }
 
     @Override

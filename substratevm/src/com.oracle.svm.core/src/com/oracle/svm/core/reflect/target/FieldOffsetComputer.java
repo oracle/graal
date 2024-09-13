@@ -26,13 +26,14 @@ package com.oracle.svm.core.reflect.target;
 
 import java.lang.reflect.Field;
 
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 
 public class FieldOffsetComputer implements FieldValueTransformerWithAvailability {
 
     @Override
-    public ValueAvailability valueAvailability() {
-        return ValueAvailability.AfterAnalysis;
+    public boolean isAvailable() {
+        return BuildPhaseProvider.isHostedUniverseBuilt();
     }
 
     @Override

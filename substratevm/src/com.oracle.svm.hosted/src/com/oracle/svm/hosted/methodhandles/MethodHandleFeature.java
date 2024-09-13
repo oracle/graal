@@ -42,6 +42,7 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
@@ -196,8 +197,8 @@ public class MethodHandleFeature implements InternalFeature {
                              * structure. GR-46027 will implement a safe solution.
                              */
                             @Override
-                            public FieldValueTransformerWithAvailability.ValueAvailability valueAvailability() {
-                                return FieldValueTransformerWithAvailability.ValueAvailability.AfterAnalysis;
+                            public boolean isAvailable() {
+                                return BuildPhaseProvider.isHostedUniverseBuilt();
                             }
 
                             @Override
@@ -238,8 +239,8 @@ public class MethodHandleFeature implements InternalFeature {
                         ReflectionUtil.lookupField(ReflectionUtil.lookupClass(false, "java.lang.invoke.ClassSpecializer$SpeciesData"), "transformHelpers"),
                         new FieldValueTransformerWithAvailability() {
                             @Override
-                            public FieldValueTransformerWithAvailability.ValueAvailability valueAvailability() {
-                                return FieldValueTransformerWithAvailability.ValueAvailability.AfterAnalysis;
+                            public boolean isAvailable() {
+                                return BuildPhaseProvider.isHostedUniverseBuilt();
                             }
 
                             @Override

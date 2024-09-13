@@ -105,7 +105,6 @@ import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.analysis.NativeImagePointsToAnalysis;
 import com.oracle.svm.hosted.analysis.SVMParsingSupport;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
@@ -193,7 +192,6 @@ public class SVMHost extends HostVM {
     private final SVMParsingSupport parsingSupport;
     private final InlineBeforeAnalysisPolicy inlineBeforeAnalysisPolicy;
 
-    private final FieldValueInterceptionSupport fieldValueInterceptionSupport;
     private final MissingRegistrationSupport missingRegistrationSupport;
 
     private final int layerId;
@@ -229,8 +227,6 @@ public class SVMHost extends HostVM {
         } else {
             parsingSupport = null;
         }
-        fieldValueInterceptionSupport = new FieldValueInterceptionSupport(annotationSubstitutions, classInitializationSupport);
-        ImageSingletons.add(FieldValueInterceptionSupport.class, fieldValueInterceptionSupport);
         layerId = ImageLayerBuildingSupport.buildingImageLayer() ? DynamicImageLayerInfo.singleton().layerNumber : 0;
         useBaseLayer = ImageLayerBuildingSupport.buildingExtensionLayer();
         if (SubstrateOptions.includeAll()) {

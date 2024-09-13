@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,17 +27,35 @@ package com.oracle.svm.core.fieldvaluetransformer;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
-import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.util.VMError;
 
-import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
- * Implements the field value transformation semantics of {@link Kind#ArrayIndexShift}.
+ * Sets the field to the provided constant value.
+ *
+ * When that value is the {@link #defaultValueForField default value for the field}, this
+ * transformer implements the field value transformation semantics of {@link Kind#Reset}.
  */
-public record ArrayIndexShiftFieldValueTransformer(Class<?> targetClass, JavaKind returnKind) implements FieldValueTransformer {
+public record ConstantValueFieldValueTransformer(Object value) implements FieldValueTransformer {
+
+    public static FieldValueTransformer defaultValueForField(ResolvedJavaField field) {
+        return new ConstantValueFieldValueTransformer(switch (field.getType().getJavaKind()) {
+            case Byte -> Byte.valueOf((byte) 0);
+            case Boolean -> Boolean.valueOf(false);
+            case Short -> Short.valueOf((short) 0);
+            case Char -> Character.valueOf((char) 0);
+            case Int -> Integer.valueOf(0);
+            case Long -> Long.valueOf(0);
+            case Float -> Float.valueOf(0);
+            case Double -> Double.valueOf(0);
+            case Object -> null;
+            default -> throw VMError.shouldNotReachHere(String.valueOf(field));
+        });
+    }
 
     @Override
     public Object transform(Object receiver, Object originalValue) {
-        return FieldOffsetFieldValueTransformer.box(returnKind, ConfigurationValues.getObjectLayout().getArrayIndexShift(JavaKind.fromJavaClass(targetClass.getComponentType())));
+        return value;
     }
 }

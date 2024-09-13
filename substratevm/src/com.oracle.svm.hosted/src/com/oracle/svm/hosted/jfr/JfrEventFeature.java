@@ -36,6 +36,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
@@ -102,8 +103,8 @@ public class JfrEventFeature implements InternalFeature {
         var configField = ReflectionUtil.lookupField(DynamicHubCompanion.class, "jfrEventConfiguration");
         FieldValueInterceptionSupport.singleton().registerFieldValueTransformer(configField, new FieldValueTransformerWithAvailability() {
             @Override
-            public ValueAvailability valueAvailability() {
-                return ValueAvailability.AfterAnalysis;
+            public boolean isAvailable() {
+                return BuildPhaseProvider.isHostedUniverseBuilt();
             }
 
             @Override
