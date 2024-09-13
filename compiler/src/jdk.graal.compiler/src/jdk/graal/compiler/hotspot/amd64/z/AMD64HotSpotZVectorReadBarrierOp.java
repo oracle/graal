@@ -94,23 +94,16 @@ public class AMD64HotSpotZVectorReadBarrierOp extends AMD64HotSpotZLoadBarriered
         Register tempReg = asRegister(temp);
         EnumSet<AMD64.CPUFeature> features = masm.getFeatures();
         GraalError.guarantee(features.contains(AMD64.CPUFeature.AVX), "Unexpected vector LIR without AVX");
-        /*
-         * Depending on the target, we may need to use a broadcast larger than the read's size. This
-         * is benign as we will only use the part matching the read's size.
-         */
-        AVXSize broadcastSize;
         VexRMOp broadcastOp;
         if (masm.supportsFullAVX512()) {
-            broadcastSize = size;
             broadcastOp = VexRMOp.EVPBROADCASTQ;
         } else if (features.contains(AMD64.CPUFeature.AVX2)) {
-            broadcastSize = size;
             broadcastOp = VexRMOp.VPBROADCASTQ;
         } else {
-            broadcastSize = AVXSize.YMM;
-            broadcastOp = VexRMOp.VBROADCASTSD;
+            GraalError.guarantee(size == AVXSize.XMM, "requires AVX2");
+            broadcastOp = VexRMOp.VMOVDDUP;
         }
-        broadcastOp.emit(masm, broadcastSize, tempReg, new AMD64Address(r15, config.threadAddressBadMaskOffset));
+        broadcastOp.emit(masm, size, tempReg, new AMD64Address(r15, config.threadAddressBadMaskOffset));
         masm.vptest(resultReg, tempReg, size);
         masm.jcc(AMD64Assembler.ConditionFlag.NotZero, entryPoint);
         crb.getLIR().addSlowPath(this, () -> {
