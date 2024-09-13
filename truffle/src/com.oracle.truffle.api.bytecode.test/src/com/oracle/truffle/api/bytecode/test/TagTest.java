@@ -76,6 +76,7 @@ import com.oracle.truffle.api.bytecode.EpilogExceptional;
 import com.oracle.truffle.api.bytecode.EpilogReturn;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Instruction;
+import com.oracle.truffle.api.bytecode.Instrumentation;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.OperationProxy;
 import com.oracle.truffle.api.bytecode.Prolog;
@@ -3059,6 +3060,390 @@ public class TagTest extends AbstractInstructionTest {
         public static int doInt(int a, int b) {
             return a + b;
         }
+    }
+
+    static class TestTag1 extends Tag {
+    }
+
+    static class TestTag2 extends Tag {
+    }
+
+    static class TestTag3 extends Tag {
+    }
+
+    static class TestTag4 extends Tag {
+    }
+
+    static class TestTag5 extends Tag {
+    }
+
+    static class TestTag6 extends Tag {
+    }
+
+    static class TestTag7 extends Tag {
+    }
+
+    static class TestTag8 extends Tag {
+    }
+
+    static class TestTag9 extends Tag {
+    }
+
+    static class TestTag10 extends Tag {
+    }
+
+    static class TestTag11 extends Tag {
+    }
+
+    static class TestTag12 extends Tag {
+    }
+
+    static class TestTag13 extends Tag {
+    }
+
+    static class TestTag14 extends Tag {
+    }
+
+    static class TestTag15 extends Tag {
+    }
+
+    static class TestTag16 extends Tag {
+    }
+
+    static class TestTag17 extends Tag {
+    }
+
+    static class TestTag18 extends Tag {
+    }
+
+    static class TestTag19 extends Tag {
+    }
+
+    static class TestTag20 extends Tag {
+    }
+
+    static class TestTag21 extends Tag {
+    }
+
+    static class TestTag22 extends Tag {
+    }
+
+    static class TestTag23 extends Tag {
+    }
+
+    static class TestTag24 extends Tag {
+    }
+
+    static class TestTag25 extends Tag {
+    }
+
+    static class TestTag26 extends Tag {
+    }
+
+    static class TestTag27 extends Tag {
+    }
+
+    static class TestTag28 extends Tag {
+    }
+
+    static class TestTag29 extends Tag {
+    }
+
+    static class TestTag30 extends Tag {
+    }
+
+    static class TestTag31 extends Tag {
+    }
+
+    static class TestTag32 extends Tag {
+    }
+
+    static class TestTag33 extends Tag {
+    }
+
+    @TruffleLanguage.Registration(id = NoRootTagTestLanguage.ID)
+    @ProvidedTags({TestTag1.class,
+                    TestTag2.class,
+                    TestTag3.class,
+                    TestTag4.class,
+                    TestTag5.class,
+                    TestTag6.class,
+                    TestTag7.class,
+                    TestTag8.class,
+                    TestTag9.class,
+                    TestTag10.class,
+                    TestTag11.class,
+                    TestTag12.class,
+                    TestTag13.class,
+                    TestTag14.class,
+                    TestTag15.class,
+                    TestTag16.class,
+                    TestTag17.class,
+                    TestTag18.class,
+                    TestTag19.class,
+                    TestTag20.class,
+                    TestTag21.class,
+                    TestTag22.class,
+                    TestTag23.class,
+                    TestTag24.class,
+                    TestTag25.class,
+                    TestTag26.class,
+                    TestTag27.class,
+                    TestTag28.class,
+                    TestTag29.class,
+                    TestTag30.class,
+                    TestTag31.class,
+                    TestTag32.class,
+    })
+    public static class ManyRootTagTestLanguage extends TruffleLanguage<Object> {
+
+        public static final String ID = "bytecode_NoRootTagTestLanguage";
+
+        @Override
+        protected Object createContext(Env env) {
+            return new Object();
+        }
+
+    }
+
+    @GenerateBytecode(languageClass = ManyRootTagTestLanguage.class, //
+                    enableTagInstrumentation = true, enableRootBodyTagging = false, enableRootTagging = false)
+    public abstract static class ManyTagsRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
+
+        protected ManyTagsRootNode(ManyRootTagTestLanguage language, FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
+        }
+
+        @Operation
+        static final class Is {
+
+            @Specialization
+            public static boolean doInt(int operand, int value) {
+                return operand == value;
+            }
+        }
+
+    }
+
+    @TruffleLanguage.Registration(id = NoRootTagTestLanguage.ID)
+    @ProvidedTags({TestTag1.class,
+                    TestTag2.class,
+                    TestTag3.class,
+                    TestTag4.class,
+                    TestTag5.class,
+                    TestTag6.class,
+                    TestTag7.class,
+                    TestTag8.class,
+                    TestTag9.class,
+                    TestTag10.class,
+                    TestTag11.class,
+                    TestTag12.class,
+                    TestTag13.class,
+                    TestTag14.class,
+                    TestTag15.class,
+                    TestTag16.class,
+                    TestTag17.class,
+                    TestTag18.class,
+                    TestTag19.class,
+                    TestTag20.class,
+                    TestTag21.class,
+                    TestTag22.class,
+                    TestTag23.class,
+                    TestTag24.class,
+                    TestTag25.class,
+                    TestTag26.class,
+                    TestTag27.class,
+                    TestTag28.class,
+                    TestTag29.class,
+                    TestTag30.class,
+                    TestTag31.class,
+                    TestTag32.class,
+                    TestTag33.class,
+    })
+    public static class TooManyTagTestLanguage extends TruffleLanguage<Object> {
+
+        public static final String ID = "bytecode_NoRootTagTestLanguage";
+
+        @Override
+        protected Object createContext(Env env) {
+            return new Object();
+        }
+
+    }
+
+    @ExpectError("Tag instrumentation is currently limited to a maximum of 32 tags.%")
+    @GenerateBytecode(languageClass = TooManyTagTestLanguage.class, //
+                    enableTagInstrumentation = true, //
+                    enableRootBodyTagging = false, enableRootTagging = false)
+    public abstract static class TooManyTagsRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
+
+        protected TooManyTagsRootNode(TooManyTagTestLanguage language, FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
+        }
+
+        @Operation
+        static final class Is {
+
+            @Specialization
+            public static boolean doInt(int operand, int value) {
+                return operand == value;
+            }
+        }
+
+    }
+
+    @ExpectError("Too many @Instrumentation and provided tags specified. %")
+    @GenerateBytecode(languageClass = ManyRootTagTestLanguage.class, //
+                    enableTagInstrumentation = true, //
+                    enableRootBodyTagging = false, enableRootTagging = false)
+    public abstract static class TooManyTagsAndInstrumentsRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
+
+        protected TooManyTagsAndInstrumentsRootNode(ManyRootTagTestLanguage language, FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
+        }
+
+        @Operation
+        static final class Is {
+
+            @Specialization
+            public static boolean doInt(int operand, int value) {
+                return operand == value;
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation1 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation2 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation3 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation4 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation5 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation6 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation7 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation8 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation9 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation10 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation11 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation12 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation13 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation14 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation15 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation16 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation17 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation18 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation19 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
     }
 
 }

@@ -101,6 +101,11 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
     public static final String SYMBOL_BYTECODE_NODE = "$bytecodeNode";
     public static final String SYMBOL_BYTECODE_INDEX = "$bytecodeIndex";
 
+    private static final int MAX_TAGS = 32;
+    private static final int MAX_INSTRUMENTATIONS = 31;
+    // we reserve 14 bits for future features
+    private static final int MAX_TAGS_AND_INSTRUMENTATIONS = 50;
+
     private static final EnumSet<TypeKind> BOXABLE_TYPE_KINDS = EnumSet.of(TypeKind.BOOLEAN, TypeKind.BYTE, TypeKind.INT, TypeKind.FLOAT, TypeKind.LONG, TypeKind.DOUBLE);
 
     @SuppressWarnings("unchecked")
@@ -310,6 +315,16 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                                 getSimpleName(types.GenerateBytecode));
                 model.enableRootBodyTagging = false;
             }
+
+            if (model.getProvidedTags().size() > MAX_TAGS) {
+                model.addError(generateBytecodeMirror, taginstrumentationValue,
+                                "Tag instrumentation is currently limited to a maximum of 32 tags. " + //
+                                                "The languages '%s' provides more than %s tags. " +
+                                                "Reduce the number of tags to resolve this.",
+                                getQualifiedName(model.languageClass),
+                                model.getProvidedTags().size());
+            }
+
             parseTagTreeNodeLibrary(model, generateBytecodeMirror);
 
         } else {
@@ -427,6 +442,21 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
             }
             customOperationDeclared = true;
             CustomOperationParser.forCodeGeneration(model, types.Operation).parseCustomOperation(te, mir);
+        }
+
+        if (model.getInstrumentations().size() > MAX_INSTRUMENTATIONS) {
+            model.addError("Too many @Instrumentation annotated operations specified. The number of instrumentations is " + model.getInstrumentations().size() +
+                            ". The maximum number of instrumentations is " + MAX_INSTRUMENTATIONS + ".");
+        }
+
+        if (model.hasErrors()) {
+            return;
+        }
+
+        if (model.getInstrumentations().size() + model.getProvidedTags().size() > MAX_TAGS_AND_INSTRUMENTATIONS) {
+            model.addError("Too many @Instrumentation and provided tags specified. The number of instrumentrations is " + model.getInstrumentations().size() + " and provided tags is " +
+                            model.getProvidedTags().size() +
+                            ". The maximum number of instrumentations and provided tags is " + MAX_TAGS_AND_INSTRUMENTATIONS + ".");
         }
 
         for (AnnotationMirror mir : ElementUtils.getRepeatedAnnotation(typeElement.getAnnotationMirrors(), types.OperationProxy)) {
