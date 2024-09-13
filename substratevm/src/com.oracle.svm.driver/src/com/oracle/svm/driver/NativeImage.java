@@ -84,6 +84,7 @@ import com.oracle.svm.core.VM;
 import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.OptionUtils;
+import com.oracle.svm.core.util.ArchiveSupport;
 import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.core.util.VMError;
@@ -95,7 +96,6 @@ import com.oracle.svm.driver.metainf.NativeImageMetaInfResourceProcessor;
 import com.oracle.svm.driver.metainf.NativeImageMetaInfWalker;
 import com.oracle.svm.hosted.NativeImageGeneratorRunner;
 import com.oracle.svm.hosted.NativeImageSystemClassLoader;
-import com.oracle.svm.core.util.ArchiveSupport;
 import com.oracle.svm.hosted.util.JDKArgsUtils;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
@@ -303,7 +303,7 @@ public class NativeImage {
     private final List<ExcludeConfig> excludedConfigs = new ArrayList<>();
     private final LinkedHashSet<String> addModules = new LinkedHashSet<>();
     private final LinkedHashSet<String> limitModules = new LinkedHashSet<>();
-    private final LinkedHashSet<String> enableNativeAccessModules = new LinkedHashSet<>(ModuleSupport.SYSTEM_MODULES);
+    private final LinkedHashSet<String> enableNativeAccessModules = new LinkedHashSet<>();
 
     private long imageBuilderPid = -1;
 
@@ -1324,6 +1324,7 @@ public class NativeImage {
         if (config.modulePathBuild && !finalImageClasspath.isEmpty()) {
             imageBuilderJavaArgs.add(DefaultOptionHandler.addModulesOption + "=ALL-DEFAULT");
         }
+        enableNativeAccessModules.addAll(getModulesFromPath(imageBuilderModulePath).keySet());
         assert !enableNativeAccessModules.isEmpty();
         imageBuilderJavaArgs.add("--enable-native-access=" + String.join(",", enableNativeAccessModules));
 
