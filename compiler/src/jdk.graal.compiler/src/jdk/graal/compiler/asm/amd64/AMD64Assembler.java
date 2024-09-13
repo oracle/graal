@@ -1427,6 +1427,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRMOp VCVTTPS2DQ      = new VexRMOp("VCVTTPS2DQ",      VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x5B, VEXOpAssertion.AVX1_AVX512F_VL,           EVEXTuple.FVM,       VEXPrefixConfig.W0);
         public static final VexRMOp VCVTTPD2DQ      = new VexRMOp("VCVTTPD2DQ",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xE6, VEXOpAssertion.AVX1_AVX512F_VL,           EVEXTuple.FVM,       VEXPrefixConfig.W1);
         public static final VexRMOp VCVTDQ2PD       = new VexRMOp("VCVTDQ2PD",       VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xE6, VEXOpAssertion.AVX1_AVX512F_VL,           EVEXTuple.HVM,       VEXPrefixConfig.W0);
+        public static final VexRMOp VMOVDDUP        = new VexRMOp("VMOVDDUP",        VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x12, VEXOpAssertion.AVX1_AVX512F_VL,           EVEXTuple.DUP,       VEXPrefixConfig.W1);
         public static final VexRMOp VBROADCASTSS    = new VexRMOp("VBROADCASTSS",    VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x18, VEXOpAssertion.AVX1_AVX512F_VL,           EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
         public static final VexRMOp VBROADCASTSD    = new VexRMOp("VBROADCASTSD",    VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x19, VEXOpAssertion.AVX1_256ONLY_AVX512F_VL,   EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
         public static final VexRMOp VBROADCASTF128  = new VexRMOp("VBROADCASTF128",  VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x1A, VEXOpAssertion.AVX1_256ONLY);
@@ -1474,6 +1475,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRMOp EVCVTTPD2DQ     = new VexRMOp("EVCVTTPD2DQ",     VCVTTPD2DQ);
         public static final VexRMOp EVCVTTPD2QQ     = new VexRMOp("EVCVTTPD2QQ",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.W1,  0x7A, VEXOpAssertion.AVX512DQ_VL,               EVEXTuple.FVM,       VEXPrefixConfig.W1, true);
         public static final VexRMOp EVCVTDQ2PD      = new VexRMOp("EVCVTDQ2PD",      VCVTDQ2PD);
+        public static final VexRMOp EVMOVDDUP       = new VexRMOp("EVMOVDDUP",       VMOVDDUP);
         public static final VexRMOp EVBROADCASTSS   = new VexRMOp("EVBROADCASTSS",   VBROADCASTSS);
         public static final VexRMOp EVBROADCASTSD   = new VexRMOp("EVBROADCASTSD",   VBROADCASTSD);
         public static final VexRMOp EVPBROADCASTB   = new VexRMOp("EVPBROADCASTB",   VPBROADCASTB);
