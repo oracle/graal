@@ -207,6 +207,8 @@ public final class Arguments {
                         builder.option("engine.CompileImmediately", "true");
                     } else if (optionString.startsWith("-Xint") || optionString.equals("-XX:TieredStopAtLevel=0")) {
                         builder.option("engine.Compilation", "false");
+                    } else if (optionString.startsWith("-Xshare:auto") || optionString.equals("-Xshare:off")) {
+                        // ignore
                     } else if (optionString.startsWith("-XX:")) {
                         handler.handleXXArg(optionString);
                     } else if (optionString.startsWith("--help:")) {
