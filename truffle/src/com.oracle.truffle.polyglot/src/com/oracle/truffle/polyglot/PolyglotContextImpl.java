@@ -504,7 +504,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
     final PolyglotThreadLocalActions threadLocalActions;
     private Collection<Closeable> closeables;
 
-    private final Set<PauseThreadLocalAction> pauseThreadLocalActions = new LinkedHashSet<>();
+    private final Set<ContextPauseHandle> pauseHandles = new LinkedHashSet<>();
 
     @CompilationFinal private Object hostContextImpl;
 
@@ -794,8 +794,10 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
     synchronized Future<Void> pause() {
         PauseThreadLocalAction pauseAction = new PauseThreadLocalAction(this);
         Future<Void> future = threadLocalActions.submit(null, PolyglotEngineImpl.ENGINE_ID, pauseAction, new HandshakeConfig(true, true, false, false));
-        pauseThreadLocalActions.add(pauseAction);
-        return new ContextPauseHandle(pauseAction, future);
+        pauseAction.setPauseActionFuture(future);
+        ContextPauseHandle pauseHandle = new ContextPauseHandle(pauseAction, future);
+        pauseHandles.add(pauseHandle);
+        return pauseHandle;
     }
 
     void resume(Future<Void> pauseFuture) {
@@ -945,14 +947,15 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                         initializeNewThread(enteredThread, mustSucceed);
                     }
 
-                    if (enteredThread.getEnteredCount() == 1 && !pauseThreadLocalActions.isEmpty()) {
-                        for (Iterator<PauseThreadLocalAction> threadLocalActionIterator = pauseThreadLocalActions.iterator(); threadLocalActionIterator.hasNext();) {
-                            PauseThreadLocalAction threadLocalAction = threadLocalActionIterator.next();
-                            if (!threadLocalAction.isPause()) {
-                                threadLocalActionIterator.remove();
+                    if (enteredThread.getEnteredCount() == 1 && !pauseHandles.isEmpty()) {
+                        for (Iterator<ContextPauseHandle> pauseHandleIterator = pauseHandles.iterator(); pauseHandleIterator.hasNext();) {
+                            ContextPauseHandle pauseHandle = pauseHandleIterator.next();
+                            if (!pauseHandle.pauseThreadLocalAction.isPause() || pauseHandle.isCancelled()) {
+                                pauseHandleIterator.remove();
                             } else {
-                                if (activatedActions == null || !activatedActions.contains(threadLocalAction)) {
-                                    threadLocalActions.submit(new Thread[]{Thread.currentThread()}, PolyglotEngineImpl.ENGINE_ID, threadLocalAction, new HandshakeConfig(true, true, false, false));
+                                if (activatedActions == null || !activatedActions.contains(pauseHandle.pauseThreadLocalAction)) {
+                                    threadLocalActions.submit(new Thread[]{Thread.currentThread()}, PolyglotEngineImpl.ENGINE_ID, pauseHandle.pauseThreadLocalAction,
+                                                    new HandshakeConfig(true, true, false, false));
                                 }
                             }
                         }
@@ -1171,11 +1174,11 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             }
 
             boolean somePauseThreadLocalActionIsActive = false;
-            if (threadInfo.getEnteredCount() == 0 && !pauseThreadLocalActions.isEmpty()) {
-                for (Iterator<PauseThreadLocalAction> threadLocalActionIterator = pauseThreadLocalActions.iterator(); threadLocalActionIterator.hasNext();) {
-                    PauseThreadLocalAction threadLocalAction = threadLocalActionIterator.next();
-                    if (!threadLocalAction.isPause()) {
-                        threadLocalActionIterator.remove();
+            if (threadInfo.getEnteredCount() == 0 && !pauseHandles.isEmpty()) {
+                for (Iterator<ContextPauseHandle> pauseHandleIterator = pauseHandles.iterator(); pauseHandleIterator.hasNext();) {
+                    ContextPauseHandle pauseHandle = pauseHandleIterator.next();
+                    if (!pauseHandle.pauseThreadLocalAction.isPause() || pauseHandle.isCancelled()) {
+                        pauseHandleIterator.remove();
                     } else {
                         somePauseThreadLocalActionIsActive = true;
                     }
