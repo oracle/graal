@@ -88,6 +88,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 import javax.lang.model.element.Element;
@@ -1869,7 +1870,11 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
     }
 
     private static Collection<List<InstructionModel>> groupInstructionsByLength(Collection<InstructionModel> models) {
-        return models.stream().sorted(Comparator.comparingInt((i) -> i.getInstructionLength())).collect(Collectors.groupingBy((m) -> m.getInstructionLength())).values();
+        return models.stream().sorted(Comparator.comparingInt((i) -> i.getInstructionLength())).collect(deterministicGroupingBy((m) -> m.getInstructionLength())).values();
+    }
+
+    public static <T, K> Collector<T, ?, Map<K, List<T>>> deterministicGroupingBy(Function<? super T, ? extends K> classifier) {
+        return Collectors.groupingBy(classifier, LinkedHashMap::new, Collectors.toList());
     }
 
     /**
@@ -5655,7 +5660,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.statement("int childIndex = operationStack[operationSp - 1].childCount");
             b.startSwitch().string("operationStack[operationSp - 1].operation").end().startBlock();
 
-            Map<BeforeChildKind, List<OperationModel>> groupedOperations = model.getOperations().stream().filter(OperationModel::hasChildren).collect(Collectors.groupingBy(op -> {
+            Map<BeforeChildKind, List<OperationModel>> groupedOperations = model.getOperations().stream().filter(OperationModel::hasChildren).collect(deterministicGroupingBy(op -> {
                 if (op.isTransparent && (op.isVariadic || op.numDynamicOperands() > 1)) {
                     return BeforeChildKind.TRANSPARENT;
                 } else if (op.kind == OperationKind.CUSTOM_SHORT_CIRCUIT) {
@@ -5773,7 +5778,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private Collection<List<OperationModel>> groupByDataClass(List<OperationModel> models) {
-            return models.stream().collect(Collectors.groupingBy((m) -> getDataClassName(m))).values();
+            return models.stream().collect(deterministicGroupingBy((m) -> getDataClassName(m))).values();
         }
 
         private void buildEmitBooleanConverterInstruction(CodeTreeBuilder b, InstructionModel shortCircuitInstruction) {
@@ -9177,11 +9182,11 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private Map<Boolean, List<InstructionModel>> groupInstructionsByInstrumentation(Collection<InstructionModel> models) {
-            return models.stream().collect(Collectors.groupingBy(InstructionModel::isInstrumentation));
+            return models.stream().collect(deterministicGroupingBy(InstructionModel::isInstrumentation));
         }
 
         private Collection<List<InstructionModel>> groupInstructionsByImmediates(Collection<InstructionModel> models) {
-            return models.stream().collect(Collectors.groupingBy((m) -> m.getImmediates())).values().stream().sorted(Comparator.comparingInt((i) -> i.get(0).getId())).toList();
+            return models.stream().collect(deterministicGroupingBy((m) -> m.getImmediates())).values().stream().sorted(Comparator.comparingInt((i) -> i.get(0).getId())).toList();
         }
 
         private CodeExecutableElement createGetOperationCode() {
@@ -10428,7 +10433,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.startSwitch().tree(readInstruction("bc", "bci")).end().startBlock();
 
             Map<InstructionValidationGroup, List<InstructionModel>> groups = model.getInstructions().stream().collect(
-                            Collectors.groupingBy((i) -> new InstructionValidationGroup(model, i), LinkedHashMap::new, Collectors.toList()));
+                            deterministicGroupingBy((i) -> new InstructionValidationGroup(model, i)));
 
             for (var entry : groups.entrySet()) {
                 InstructionValidationGroup group = entry.getKey();
@@ -11205,7 +11210,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
         private <T extends Comparable<T>> List<Entry<T, List<InstructionModel>>> groupInstructionsSortedBy(Function<InstructionModel, T> constructor) {
             return model.getInstructions().stream()//
-                            .collect(Collectors.groupingBy(constructor)).entrySet() //
+                            .collect(deterministicGroupingBy(constructor)).entrySet() //
                             .stream().sorted(Comparator.comparing(e -> e.getKey())).toList();
         }
 
@@ -11860,12 +11865,12 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                             .sorted((e1, e2) -> e1.name.compareTo(e2.name)).collect(Collectors.partitioningBy(InstructionModel::isQuickening));
 
             List<Entry<Integer, List<InstructionModel>>> regularGroupedByLength = partitionedByIsQuickening.get(false).stream() //
-                            .collect(Collectors.groupingBy(InstructionModel::getInstructionLength)).entrySet() //
+                            .collect(deterministicGroupingBy(InstructionModel::getInstructionLength)).entrySet() //
                             .stream().sorted(Comparator.comparing(entry -> entry.getKey())) //
                             .toList();
 
             List<Entry<InstructionModel, List<InstructionModel>>> quickenedGroupedByQuickeningRoot = partitionedByIsQuickening.get(true).stream() //
-                            .collect(Collectors.groupingBy(InstructionModel::getQuickeningRoot, LinkedHashMap::new, Collectors.toList())).entrySet() //
+                            .collect(deterministicGroupingBy(InstructionModel::getQuickeningRoot)).entrySet() //
                             .stream().sorted(Comparator.comparing((Entry<InstructionModel, List<InstructionModel>> entry) -> entry.getKey().isCustomInstruction()) //
                                             .thenComparing(entry -> entry.getKey().getInstructionLength())) //
                             .toList();
@@ -12107,12 +12112,13 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.startSwitch().tree(readInstruction("bc", "bci")).end().startBlock();
 
             Map<Boolean, List<InstructionModel>> instructionsGroupedByHasNode = model.getInstructions().stream().collect(Collectors.partitioningBy(InstructionModel::hasNodeImmediate));
-            Map<Integer, List<InstructionModel>> nodelessGroupedByLength = instructionsGroupedByHasNode.get(false).stream().collect(Collectors.groupingBy(InstructionModel::getInstructionLength));
+            Map<Integer, List<InstructionModel>> nodelessGroupedByLength = instructionsGroupedByHasNode.get(false).stream().collect(
+                            deterministicGroupingBy(InstructionModel::getInstructionLength));
 
             record LengthAndNodeIndex(int length, int nodeIndex) {
             }
             Map<LengthAndNodeIndex, List<InstructionModel>> nodedGroupedByLengthAndNodeIndex = instructionsGroupedByHasNode.get(true).stream() //
-                            .collect(Collectors.groupingBy(insn -> new LengthAndNodeIndex(insn.getInstructionLength(), insn.getImmediate(ImmediateKind.NODE_PROFILE).offset())));
+                            .collect(deterministicGroupingBy(insn -> new LengthAndNodeIndex(insn.getInstructionLength(), insn.getImmediate(ImmediateKind.NODE_PROFILE).offset())));
 
             // Skip the nodeless instructions. We group them by size to simplify the generated code.
             for (Map.Entry<Integer, List<InstructionModel>> entry : nodelessGroupedByLength.entrySet()) {
@@ -12238,7 +12244,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             Map<CachedInitializationKey, List<InstructionModel>> grouped = model.getInstructions().stream()//
                             .filter((i -> !i.isQuickening())) //
-                            .collect(Collectors.groupingBy(CachedInitializationKey::new));
+                            .collect(deterministicGroupingBy(CachedInitializationKey::new));
             List<CachedInitializationKey> sortedKeys = grouped.keySet().stream().sorted().toList();
 
             for (CachedInitializationKey key : sortedKeys) {
@@ -13093,7 +13099,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             int estimatedSize = ESTIMATED_BYTECODE_FOOTPRINT + (instructionCount * ESTIMATED_CUSTOM_INSTRUCTION_SIZE);
             if (estimatedSize > JAVA_JIT_BYTECODE_LIMIT) {
                 Map<Boolean, List<InstructionModel>> instructionsByCustom = originalInstructions.stream() //
-                                .collect(Collectors.groupingBy(instr -> instr.kind == InstructionKind.CUSTOM));
+                                .collect(deterministicGroupingBy(instr -> instr.kind == InstructionKind.CUSTOM));
                 int instructionsPerPartion = JAVA_JIT_BYTECODE_LIMIT / ESTIMATED_CUSTOM_INSTRUCTION_SIZE;
 
                 List<InstructionModel> builtinInstructions = new ArrayList<>(instructionsByCustom.get(false));
@@ -13113,7 +13119,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 List<InstructionModel> instructionsToPartition = customInstructions.subList(customInstructionsInFirstPartition, customInstructions.size());
 
                 Map<InstructionPartition, List<InstructionModel>> partitioned = instructionsToPartition.stream()//
-                                .collect(Collectors.groupingBy(InstructionPartition::new, LinkedHashMap::new, Collectors.toList()));
+                                .collect(deterministicGroupingBy(InstructionPartition::new));
 
                 Map<InstructionPartition, List<List<InstructionModel>>> finalPartitioned = new LinkedHashMap<>();
                 for (var entry : partitioned.entrySet()) {
@@ -13279,7 +13285,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     }
                 }
                 return false;
-            }).collect(Collectors.groupingBy((i -> {
+            }).collect(deterministicGroupingBy((i -> {
                 return i.getImmediates();
             }))).values();
         }
@@ -13367,7 +13373,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.declaration(type(int.class), "targetBci");
 
             b.startSwitch().string("readValidBytecode(bc, node.returnBci)").end().startBlock();
-            for (var entry : model.getInstructions().stream().filter((i) -> i.kind == InstructionKind.TAG_LEAVE).collect(Collectors.groupingBy((i) -> {
+            for (var entry : model.getInstructions().stream().filter((i) -> i.kind == InstructionKind.TAG_LEAVE).collect(deterministicGroupingBy((i) -> {
                 if (i.isReturnTypeQuickening()) {
                     return i.signature.returnType;
                 } else {
