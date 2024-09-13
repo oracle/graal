@@ -54,13 +54,13 @@ public class FileDumpingUtil {
             try (FileOutputStream fileOutputStream = new FileOutputStream(tempPath.toFile())) {
                 streamConsumer.accept(fileOutputStream);
             }
-            tryAtomicMove(tempPath, path);
+            moveTryAtomically(tempPath, path);
         } catch (Exception e) {
             throw GraalError.shouldNotReachHere(e, "Error during file dumping.");
         }
     }
 
-    public static void tryAtomicMove(Path source, Path target) throws IOException {
+    public static void moveTryAtomically(Path source, Path target) throws IOException {
         try {
             Files.move(source, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
         } catch (AtomicMoveNotSupportedException e) {

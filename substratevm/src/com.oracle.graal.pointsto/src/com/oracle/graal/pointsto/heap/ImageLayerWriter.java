@@ -195,7 +195,7 @@ public class ImageLayerWriter {
         void finish() {
             try {
                 tempChannel.close();
-                FileDumpingUtil.tryAtomicMove(tempPath, path);
+                FileDumpingUtil.moveTryAtomically(tempPath, path);
             } catch (Exception e) {
                 throw GraalError.shouldNotReachHere(e, "Error during graphs file dumping.");
             }
