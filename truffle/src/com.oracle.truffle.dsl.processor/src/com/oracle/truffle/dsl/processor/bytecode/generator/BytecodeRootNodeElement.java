@@ -401,7 +401,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             this.add(classToTagMethod);
 
             CodeExecutableElement initializeTagIndexToClass = this.add(createInitializeTagIndexToClass());
-            CodeVariableElement tagToClass = new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), generic(context.getDeclaredType(ClassValue.class), type(Short.class)),
+            CodeVariableElement tagToClass = new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), generic(context.getDeclaredType(ClassValue.class), type(Integer.class)),
                             "CLASS_TO_TAG_MASK");
             tagToClass.createInitBuilder().startStaticCall(initializeTagIndexToClass).end();
             this.add(tagToClass);
@@ -1060,7 +1060,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
     private CodeExecutableElement createInitializeTagIndexToClass() {
         DeclaredType classValue = context.getDeclaredType(ClassValue.class);
-        TypeMirror classValueType = generic(classValue, type(Short.class));
+        TypeMirror classValueType = generic(classValue, type(Integer.class));
 
         CodeExecutableElement method = new CodeExecutableElement(Set.of(PRIVATE, STATIC), classValueType,
                         "initializeTagMaskToClass");
@@ -1068,7 +1068,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
         b.startStatement();
         b.string("return new ClassValue<>()").startBlock();
-        b.string("protected Short computeValue(Class<?> type) ").startBlock();
+        b.string("protected Integer computeValue(Class<?> type) ").startBlock();
 
         boolean elseIf = false;
         int index = 0;

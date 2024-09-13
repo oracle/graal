@@ -547,4 +547,486 @@ public class InstrumentationTest extends AbstractInstructionTest {
 
     }
 
+    @GenerateBytecode(languageClass = BytecodeInstrumentationTestLanguage.class, //
+                    enableTagInstrumentation = true, //
+                    enableRootBodyTagging = false, enableRootTagging = false)
+    public abstract static class ManyInstrumentationsRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
+
+        protected ManyInstrumentationsRootNode(BytecodeInstrumentationTestLanguage language, FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
+        }
+
+        @Operation
+        static final class Is {
+
+            @Specialization
+            public static boolean doInt(int operand, int value) {
+                return operand == value;
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation1 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation2 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation3 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation4 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation5 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation6 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation7 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation8 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation9 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation10 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation11 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation12 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation13 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation14 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation15 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation16 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation17 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation18 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation19 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation20 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation21 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation22 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation23 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation24 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation25 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation26 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation27 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation28 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation29 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation30 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation31 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+    }
+
+    @ExpectError("Too many @Instrumentation annotated operations specified. %")
+    @GenerateBytecode(languageClass = BytecodeInstrumentationTestLanguage.class, //
+                    enableTagInstrumentation = true, //
+                    enableRootBodyTagging = false, enableRootTagging = false)
+    public abstract static class TooManyInstrumentationsRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
+
+        protected TooManyInstrumentationsRootNode(BytecodeInstrumentationTestLanguage language, FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
+        }
+
+        @Operation
+        static final class Is {
+
+            @Specialization
+            public static boolean doInt(int operand, int value) {
+                return operand == value;
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation1 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation2 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation3 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation4 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation5 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation6 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation7 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation8 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation9 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation10 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation11 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation12 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation13 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation14 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation15 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation16 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation17 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation18 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation19 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation20 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation21 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation22 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation23 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation24 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation25 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation26 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation27 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation28 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation29 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation30 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation31 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+        @Instrumentation
+        static final class Instrumentation32 {
+            @Specialization
+            public static void doDefault() {
+            }
+        }
+
+    }
+
 }
