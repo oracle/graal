@@ -101,7 +101,16 @@ public class JfrFeature implements InternalFeature {
      * code sets the FlightRecorder option as a side effect. Therefore, we must ensure that we check
      * the value of the option before it can be affected by image building.
      */
-    private static final boolean HOSTED_ENABLED = Boolean.parseBoolean(getDiagnosticBean().getVMOption("FlightRecorder").getValue());
+    private static final boolean HOSTED_ENABLED;
+    static {
+        boolean hostEnabled;
+        try {
+            hostEnabled = Boolean.parseBoolean(getDiagnosticBean().getVMOption("FlightRecorder").getValue());
+        } catch (IllegalArgumentException e) {
+            hostEnabled = false;
+        }
+        HOSTED_ENABLED = hostEnabled;
+    }
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
