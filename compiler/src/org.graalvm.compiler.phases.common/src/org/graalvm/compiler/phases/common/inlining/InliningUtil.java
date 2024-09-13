@@ -484,7 +484,8 @@ public class InliningUtil extends ValueMergeUtil {
             unwindNode = (UnwindNode) duplicates.get(unwindNode);
         }
 
-        if (firstCFGNode instanceof MacroInvokableMarker && firstCFGNode instanceof StateSplit && invoke.callTarget() instanceof ResolvedMethodHandleCallTargetNodeMarker && invoke.callTarget() instanceof MethodCallTargetNode) {
+        if (firstCFGNode instanceof MacroInvokableMarker && firstCFGNode instanceof StateSplit && invoke.callTarget() instanceof ResolvedMethodHandleCallTargetNodeMarker &&
+                        invoke.callTarget() instanceof MethodCallTargetNode) {
             // Replacing a method handle invoke with a MacroNode
             MacroInvokableMarker macroInvokable = (MacroInvokableMarker) firstCFGNode;
             ResolvedMethodHandleCallTargetNodeMarker methodHandle = (ResolvedMethodHandleCallTargetNodeMarker) invoke.callTarget();

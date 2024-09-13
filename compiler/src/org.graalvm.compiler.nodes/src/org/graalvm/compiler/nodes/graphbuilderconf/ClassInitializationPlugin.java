@@ -48,7 +48,7 @@ public interface ClassInitializationPlugin extends GraphBuilderPlugin {
      * Emits a class initialization barrier for {@code type}.
      *
      * @param frameState supplier to create a frame state representing the state just prior to
-     *                   execution of the class initialization barrier
+     *            execution of the class initialization barrier
      * @param classInit
      * @return {@code true} if this method emitted a barrier,{@code false} if not
      */

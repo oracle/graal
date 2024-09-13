@@ -38,7 +38,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public abstract class ResolvedMethodHandleCallTargetNodeMarker extends MethodCallTargetNode {
     public static final NodeClass<ResolvedMethodHandleCallTargetNodeMarker> TYPE = NodeClass.create(ResolvedMethodHandleCallTargetNodeMarker.class);
 
-    protected ResolvedMethodHandleCallTargetNodeMarker(NodeClass<? extends ResolvedMethodHandleCallTargetNodeMarker> c, InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, StampPair returnStamp,
+    protected ResolvedMethodHandleCallTargetNodeMarker(NodeClass<? extends ResolvedMethodHandleCallTargetNodeMarker> c, InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments,
+                    StampPair returnStamp,
                     JavaTypeProfile typeProfile) {
         super(c, invokeKind, targetMethod, arguments, returnStamp, typeProfile);
     }
