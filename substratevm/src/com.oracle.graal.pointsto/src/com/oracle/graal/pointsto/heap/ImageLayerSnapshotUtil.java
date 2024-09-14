@@ -58,6 +58,7 @@ import jdk.vm.ci.meta.JavaKind;
 
 public class ImageLayerSnapshotUtil {
     public static final String FILE_NAME_PREFIX = "layer-snapshot-";
+    public static final String GRAPHS_FILE_NAME_PREFIX = "layer-snapshot-graphs-";
     public static final String FILE_EXTENSION = ".json";
 
     public static final String CONSTRUCTOR_NAME = "<init>";
@@ -194,6 +195,10 @@ public class ImageLayerSnapshotUtil {
 
     public static String snapshotFileName(String imageName) {
         return FILE_NAME_PREFIX + imageName + FILE_EXTENSION;
+    }
+
+    public static String snapshotGraphsFileName(String imageName) {
+        return GRAPHS_FILE_NAME_PREFIX + imageName + FILE_EXTENSION;
     }
 
     public String getTypeIdentifier(AnalysisType type) {
