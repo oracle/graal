@@ -146,7 +146,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
             if (layerUseValue.toString().isEmpty()) {
                 /* Nothing to do, an empty --layer-use= disables the layer application. */
             } else {
-                SubstrateOptions.ClosedTypeWorld.update(values, false);
+                SubstrateOptions.ClosedTypeWorldHubLayout.update(values, false);
                 SubstrateOptions.ParseRuntimeOptions.update(values, false);
                 if (imageLayerEnabledHandler != null) {
                     imageLayerEnabledHandler.onOptionEnabled(values);
