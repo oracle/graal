@@ -516,8 +516,7 @@ public class ObjectCopier {
             deferred = new ArrayList<>();
             lineNum = 0;
 
-            List<String> lines = encoded.lines().toList();
-            Iterator<String> iter = lines.iterator();
+            Iterator<String> iter = encoded.lines().iterator();
             try {
                 while (iter.hasNext()) {
                     String line = iter.next();
@@ -707,7 +706,8 @@ public class ObjectCopier {
                     d.runnable().run();
                 }
             } catch (Throwable e) {
-                throw new GraalError(e, "Error on line %d: %s", lineNum, lines.get(lineNum - 1));
+                String line = encoded.lines().skip(lineNum - 1).findFirst().get();
+                throw new GraalError(e, "Error on line %d: %s", lineNum, line);
             } finally {
                 deferred = null;
                 lineNum = -1;
