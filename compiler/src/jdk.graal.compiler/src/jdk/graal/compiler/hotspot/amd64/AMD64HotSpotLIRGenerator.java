@@ -96,7 +96,6 @@ import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
@@ -104,7 +103,6 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.Value;
-import jdk.vm.ci.meta.ValueKind;
 
 /**
  * LIR generator specialized for AMD64 HotSpot.
@@ -656,16 +654,5 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     @Override
     public Register getHeapBaseRegister() {
         return getProviders().getRegisters().getHeapBaseRegister();
-    }
-
-    @Override
-    public AllocatableValue emitLoadConstant(ValueKind<?> kind, Constant constant) {
-        if (((AMD64Kind) kind.getPlatformKind()).isInteger() && constant instanceof JavaConstant && constant.isDefaultForKind()) {
-            Register zeroValueRegister = getProviders().getRegisters().getZeroValueRegister(config);
-            if (!Register.None.equals(zeroValueRegister)) {
-                return zeroValueRegister.asValue(kind);
-            }
-        }
-        return super.emitLoadConstant(kind, constant);
     }
 }
