@@ -83,6 +83,7 @@ public final class EspressoScope {
     // variable names through the Interop API. Clients which are bytecode based, e.g. JDWP that use
     // slot numbers as identifiers must operate directly by using read/write member methods.
     @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings({"truffle-abstract-export", "deprecation"}) // GR-58181
     static final class VariablesMapObject implements TruffleObject {
 
         final Map<String, FrameSlotInfo> slots;

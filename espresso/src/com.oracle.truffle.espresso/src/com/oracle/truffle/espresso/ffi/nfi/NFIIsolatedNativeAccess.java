@@ -119,6 +119,7 @@ public final class NFIIsolatedNativeAccess extends NFINativeAccess {
     }
 
     @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings({"truffle-abstract-export", "deprecation"}) // GR-58181
     static class DefaultLibrary implements TruffleObject {
 
         final @Pointer TruffleObject dlsym;

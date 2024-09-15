@@ -83,6 +83,7 @@ public abstract class AbstractGetFieldNode extends EspressoNode {
         // @formatter:on
     }
 
+    @SuppressWarnings("deprecation") // GR-58181
     protected Object getForeignField(StaticObject receiver, InteropLibrary interopLibrary, EspressoLanguage language, Meta meta, BranchProfile error) {
         assert getField().getDeclaringKlass().isAssignableFrom(receiver.getKlass());
         assert !getField().isStatic();

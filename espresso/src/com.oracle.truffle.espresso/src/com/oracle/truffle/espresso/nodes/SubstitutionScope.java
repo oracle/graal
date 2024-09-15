@@ -38,6 +38,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Method;
 
 @ExportLibrary(InteropLibrary.class)
+@SuppressWarnings({"truffle-abstract-export", "deprecation"}) // GR-58181
 final class SubstitutionScope implements TruffleObject {
     @CompilationFinal(dimensions = 1) private final Object[] args;
     private final Method method;

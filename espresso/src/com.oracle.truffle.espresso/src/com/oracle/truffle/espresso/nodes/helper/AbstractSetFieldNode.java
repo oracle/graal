@@ -73,6 +73,7 @@ public abstract class AbstractSetFieldNode extends EspressoNode {
         // @formatter:on
     }
 
+    @SuppressWarnings("deprecation") // GR-58181
     protected void setForeignField(StaticObject receiver, Object fieldValue, InteropLibrary interopLibrary, EspressoLanguage language, EspressoContext context, BranchProfile error) {
         assert field.getDeclaringKlass().isAssignableFrom(receiver.getKlass());
         assert receiver.isForeignObject();

@@ -50,9 +50,9 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
  *
  * <p>
  * Classes cannot be enumerated; and in this implementation, not even the ones already loaded. e.g.
- * {@link InteropLibrary#getMembers(Object) Peeking all memebers} will return an empty interop
+ * {@link InteropLibrary#getMemberObjects(Object) Peeking all memebers} will return an empty interop
  * collection. <br>
- * {@link InteropLibrary#readMember(Object, String) Reading a member} will trigger class loading; it
+ * {@link InteropLibrary#readMember(Object, Object) Reading a member} will trigger class loading; it
  * is equivalent to calling {@link Class#forName(String, boolean, ClassLoader)} with the provided
  * guest class loader. <br>
  * {@link ClassNotFoundException} is translated into interop's {@link UnknownIdentifierException
@@ -64,6 +64,7 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
  * {@link InteropLibrary#isString(Object) interop string} as argument, the path to add.
  */
 @ExportLibrary(InteropLibrary.class)
+@SuppressWarnings({"truffle-abstract-export", "deprecation"}) // GR-58181
 public final class EspressoBindings implements TruffleObject {
     public static final String JAVA_VM = "<JavaVM>";
     public static final String ADD_PATH = "addPath";
