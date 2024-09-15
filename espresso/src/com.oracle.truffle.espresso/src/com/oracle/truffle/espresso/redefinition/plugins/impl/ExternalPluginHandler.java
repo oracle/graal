@@ -45,6 +45,7 @@ final class ExternalPluginHandler {
         this.interopLibrary = library;
     }
 
+    @SuppressWarnings("deprecation") // GR-58181
     public static ExternalPluginHandler create(StaticObject guestHandler) throws IllegalArgumentException {
         InteropLibrary library = InteropLibrary.getUncached(guestHandler);
 
@@ -57,6 +58,7 @@ final class ExternalPluginHandler {
         return new ExternalPluginHandler(guestHandler, library);
     }
 
+    @SuppressWarnings("deprecation") // GR-58181
     public boolean shouldRerunClassInitializer(Klass klass, boolean changed, DebuggerController controller) {
         try {
             return (boolean) interopLibrary.invokeMember(guestHandler, RERUN_CLINIT, klass.mirror(), changed);
@@ -66,6 +68,7 @@ final class ExternalPluginHandler {
         return false;
     }
 
+    @SuppressWarnings("deprecation") // GR-58181
     public void postHotSwap(Klass[] changedKlasses, DebuggerController controller) {
         try {
             StaticObject[] guestClasses = new StaticObject[changedKlasses.length];

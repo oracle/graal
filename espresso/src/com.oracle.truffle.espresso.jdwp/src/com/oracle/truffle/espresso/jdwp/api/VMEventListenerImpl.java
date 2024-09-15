@@ -187,6 +187,7 @@ public final class VMEventListenerImpl implements VMEventListener {
 
     @Override
     @TruffleBoundary
+    @SuppressWarnings("deprecation") // GR-58181
     public boolean onMethodEntry(MethodRef method, Object scope) {
         boolean active = false;
         // collect variable information from scope

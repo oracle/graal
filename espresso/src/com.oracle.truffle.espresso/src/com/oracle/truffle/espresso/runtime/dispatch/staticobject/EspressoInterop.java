@@ -90,6 +90,7 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 @GenerateInteropNodes
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
 @Shareable
+@SuppressWarnings({"truffle-abstract-export", "deprecation"}) // GR-58181
 public class EspressoInterop extends BaseInterop {
     // region ### is/as checks/conversions
 

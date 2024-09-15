@@ -76,6 +76,7 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
  * @see InteropMessageFactories
  */
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
+@SuppressWarnings({"truffle-abstract-export", "deprecation"}) // GR-58181
 public class SharedInterop {
     @GenerateUncached
     abstract static class CallSharedInteropMessage extends EspressoNode {
