@@ -3161,7 +3161,7 @@ public class TagTest extends AbstractInstructionTest {
     static class TestTag33 extends Tag {
     }
 
-    @TruffleLanguage.Registration(id = NoRootTagTestLanguage.ID)
+    @TruffleLanguage.Registration(id = ManyRootTagTestLanguage.ID)
     @ProvidedTags({TestTag1.class,
                     TestTag2.class,
                     TestTag3.class,
@@ -3197,7 +3197,7 @@ public class TagTest extends AbstractInstructionTest {
     })
     public static class ManyRootTagTestLanguage extends TruffleLanguage<Object> {
 
-        public static final String ID = "bytecode_NoRootTagTestLanguage";
+        public static final String ID = "bytecode_ManyRootTagTestLanguage";
 
         @Override
         protected Object createContext(Env env) {
@@ -3225,7 +3225,7 @@ public class TagTest extends AbstractInstructionTest {
 
     }
 
-    @TruffleLanguage.Registration(id = NoRootTagTestLanguage.ID)
+    @TruffleLanguage.Registration(id = TooManyTagTestLanguage.ID)
     @ProvidedTags({TestTag1.class,
                     TestTag2.class,
                     TestTag3.class,
@@ -3262,7 +3262,7 @@ public class TagTest extends AbstractInstructionTest {
     })
     public static class TooManyTagTestLanguage extends TruffleLanguage<Object> {
 
-        public static final String ID = "bytecode_NoRootTagTestLanguage";
+        public static final String ID = "bytecode_TooManyTagTestLanguage";
 
         @Override
         protected Object createContext(Env env) {

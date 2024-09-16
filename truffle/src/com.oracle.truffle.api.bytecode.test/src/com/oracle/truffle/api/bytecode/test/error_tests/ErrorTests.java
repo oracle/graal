@@ -58,7 +58,6 @@ import com.oracle.truffle.api.bytecode.ShortCircuitOperation;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation.Operator;
 import com.oracle.truffle.api.bytecode.Variadic;
 import com.oracle.truffle.api.bytecode.test.error_tests.subpackage.NestedNodeOperationProxy;
-import com.oracle.truffle.api.bytecode.test.error_tests.subpackage.NonPublicGuardExpressionOperationProxy;
 import com.oracle.truffle.api.bytecode.test.error_tests.subpackage.NonPublicSpecializationOperationProxy;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateAOT;
@@ -345,24 +344,6 @@ public class ErrorTests {
     }
 
     @GenerateBytecode(languageClass = ErrorLanguage.class)
-    @ExpectError({
-                    "Encountered errors using com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.NonFinalOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
-                    "Encountered errors using com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.NonStaticInnerOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
-                    "Encountered errors using com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.PrivateOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
-                    "Encountered errors using com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.CloneableOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
-                    "Encountered errors using com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.NonStaticMemberOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
-                    "Encountered errors using com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.BadVariadicOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
-                    "Encountered errors using com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.Underscored_Operation_Proxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
-                    "Could not use com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.UnproxyableOperationProxy as an operation proxy: the class must be annotated with @OperationProxy.Proxyable.",
-    })
-    @OperationProxy(NonFinalOperationProxy.class)
-    @OperationProxy(NonStaticInnerOperationProxy.class)
-    @OperationProxy(PrivateOperationProxy.class)
-    @OperationProxy(CloneableOperationProxy.class)
-    @OperationProxy(NonStaticMemberOperationProxy.class)
-    @OperationProxy(BadVariadicOperationProxy.class)
-    @OperationProxy(Underscored_Operation_Proxy.class)
-    @OperationProxy(UnproxyableOperationProxy.class)
     public abstract static class OperationErrorTests extends RootNode implements BytecodeRootNode {
         protected OperationErrorTests(ErrorLanguage language, FrameDescriptor builder) {
             super(language, builder);
@@ -482,16 +463,33 @@ public class ErrorTests {
 
     @GenerateBytecode(languageClass = ErrorLanguage.class)
     @ExpectError({
-                    "Operation NonPublicSpecializationOperationProxy's specialization \"add\" must be visible from this node.",
-                    "Operation NonPublicSpecializationOperationProxy's specialization \"fallback\" must be visible from this node.",
+                    "Encountered errors using com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.NonFinalOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
+                    "Encountered errors using com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.NonStaticInnerOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
+                    "Encountered errors using com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.PrivateOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
+                    "Encountered errors using com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.CloneableOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
+                    "Encountered errors using com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.NonStaticMemberOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
+                    "Encountered errors using com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.BadVariadicOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
+                    "Encountered errors using com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.Underscored_Operation_Proxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
+                    "Could not use com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.UnproxyableOperationProxy as an operation proxy: the class must be annotated with @OperationProxy.Proxyable.",
     })
-    @OperationProxy(PackagePrivateSpecializationOperationProxy.class)
-    @OperationProxy(NonPublicSpecializationOperationProxy.class)
-    @OperationProxy(NonPublicGuardExpressionOperationProxy.class)
-    @OperationProxy(NestedNodeOperationProxy.class)
-    public abstract static class BadSpecializationOrDSLTests extends RootNode implements BytecodeRootNode {
+    @OperationProxy(NonFinalOperationProxy.class)
+    @OperationProxy(NonStaticInnerOperationProxy.class)
+    @OperationProxy(PrivateOperationProxy.class)
+    @OperationProxy(CloneableOperationProxy.class)
+    @OperationProxy(NonStaticMemberOperationProxy.class)
+    @OperationProxy(BadVariadicOperationProxy.class)
+    @OperationProxy(Underscored_Operation_Proxy.class)
+    @OperationProxy(UnproxyableOperationProxy.class)
+    public abstract static class OperationProxyErrorTests extends RootNode implements BytecodeRootNode {
+        protected OperationProxyErrorTests(ErrorLanguage language, FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
+        }
+    }
 
-        protected BadSpecializationOrDSLTests(ErrorLanguage language, FrameDescriptor frameDescriptor) {
+    @GenerateBytecode(languageClass = ErrorLanguage.class)
+    public abstract static class BadSpecializationTests extends RootNode implements BytecodeRootNode {
+
+        protected BadSpecializationTests(ErrorLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
 
@@ -508,12 +506,10 @@ public class ErrorTests {
             }
         }
 
-        // These should not cause an issue because they are in the same package as the generated
-        // root node would be. The generated node can see them. There are similar versions of
-        // these
-        // nodes defined in a separate package (e.g., {@link
-        // NonPublicSpecializationOperationProxy})
-        // which are not visible and should cause issues.
+        /**
+         * These should not cause an issue because they are in the same package as the generated
+         * root node would be. The generated node can see them.
+         */
         @Operation
         public static final class PackagePrivateSpecializationOperation {
             @Specialization
@@ -534,9 +530,29 @@ public class ErrorTests {
                 return x + y;
             }
 
-            protected static boolean guardCondition() {
+            static boolean guardCondition() {
                 return true;
             }
+        }
+    }
+
+    @GenerateBytecode(languageClass = ErrorLanguage.class)
+    @ExpectError({
+                    "Operation NonPublicSpecializationOperationProxy's specialization \"add\" must be visible from this node.",
+                    "Operation NonPublicSpecializationOperationProxy's specialization \"fallback\" must be visible from this node."})
+    @OperationProxy(PackagePrivateSpecializationOperationProxy.class)
+    @OperationProxy(NonPublicSpecializationOperationProxy.class)
+    /*
+     * NB: We also detect visibility issues with DSL expressions (e.g., guards), but we do not test
+     * them because of test infra limitations. A proxied node is processed by both the NodeParser
+     * and the CustomOperationParser, but the latter produces a visibility error. If we try to
+     * suppress the error with @ExpectError, the first parser will fail because no error is found.
+     */
+    @OperationProxy(NestedNodeOperationProxy.class)
+    public abstract static class BadProxySpecializationTests extends RootNode implements BytecodeRootNode {
+
+        protected BadProxySpecializationTests(ErrorLanguage language, FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
         }
     }
 
