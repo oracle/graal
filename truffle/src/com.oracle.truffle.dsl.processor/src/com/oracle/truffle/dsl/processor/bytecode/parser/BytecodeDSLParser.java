@@ -319,7 +319,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
             if (model.getProvidedTags().size() > MAX_TAGS) {
                 model.addError(generateBytecodeMirror, taginstrumentationValue,
                                 "Tag instrumentation is currently limited to a maximum of 32 tags. " + //
-                                                "The languages '%s' provides more than %s tags. " +
+                                                "The language '%s' provides %s tags. " +
                                                 "Reduce the number of tags to resolve this.",
                                 getQualifiedName(model.languageClass),
                                 model.getProvidedTags().size());

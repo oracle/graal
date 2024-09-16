@@ -48,6 +48,7 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.model.MessageContainer;
 import com.oracle.truffle.dsl.processor.model.Template;
 
 /**
@@ -72,6 +73,14 @@ public class CustomOperationModel extends Template {
 
     public List<TypeMirror> getImplicitTags() {
         return implicitTags;
+    }
+
+    @Override
+    protected List<MessageContainer> findChildContainers() {
+        if (operation.instruction != null && operation.instruction.nodeData != null) {
+            return List.of(operation.instruction.nodeData);
+        }
+        return List.of();
     }
 
 }

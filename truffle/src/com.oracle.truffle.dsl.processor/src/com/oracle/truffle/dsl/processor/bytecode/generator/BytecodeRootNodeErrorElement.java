@@ -113,7 +113,7 @@ final class BytecodeRootNodeErrorElement extends CodeTypeElement {
 
     private CodeExecutableElement createConstructor() {
         CodeExecutableElement ctor = new CodeExecutableElement(Set.of(PRIVATE), null, this.getSimpleName().toString());
-        ctor.addParameter(new CodeVariableElement(types.TruffleLanguage, "language"));
+        ctor.addParameter(new CodeVariableElement(model.languageClass, "language"));
         ctor.addParameter(new CodeVariableElement(types.FrameDescriptor_Builder, "builder"));
         CodeTreeBuilder b = ctor.getBuilder();
         b.startStatement().startCall("super");
@@ -198,6 +198,8 @@ final class BytecodeRootNodeErrorElement extends CodeTypeElement {
                 this.add(createEnd(operation));
                 this.add(createEmit(operation));
             }
+
+            this.add(createConstructor());
         }
 
         private CodeExecutableElement createMethodStub(String name, TypeMirror returnType) {
@@ -219,6 +221,13 @@ final class BytecodeRootNodeErrorElement extends CodeTypeElement {
 
         private CodeExecutableElement createEmit(OperationModel operation) {
             return createMethodStub("emit" + operation.name, type(void.class));
+        }
+
+        private CodeExecutableElement createConstructor() {
+            CodeExecutableElement ctor = new CodeExecutableElement(Set.of(PRIVATE), null, this.getSimpleName().toString());
+            CodeTreeBuilder b = ctor.getBuilder();
+            b.startStatement().startCall("super").string("null").end(2);
+            return ctor;
         }
     }
 }
