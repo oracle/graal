@@ -28,6 +28,12 @@ import static java.lang.Double.doubleToRawLongBits;
 import static java.lang.Float.floatToRawIntBits;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.Equal;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.NotEqual;
+import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.COMPOSITE;
+import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.HINT;
+import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
+import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.STACK;
+import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.UNINITIALIZED;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
@@ -83,8 +89,8 @@ public class AMD64Move {
     public static final class MoveToRegOp extends AbstractMoveOp {
         public static final LIRInstructionClass<MoveToRegOp> TYPE = LIRInstructionClass.create(MoveToRegOp.class);
 
-        @Def({OperandFlag.REG, OperandFlag.STACK, OperandFlag.HINT}) protected AllocatableValue result;
-        @Use({OperandFlag.REG, OperandFlag.STACK}) protected AllocatableValue input;
+        @Def({REG, STACK, HINT}) protected AllocatableValue result;
+        @Use({REG, STACK}) protected AllocatableValue input;
 
         public MoveToRegOp(AMD64Kind moveKind, AllocatableValue result, AllocatableValue input) {
             super(TYPE, moveKind);
@@ -107,8 +113,8 @@ public class AMD64Move {
     public static final class MoveFromRegOp extends AbstractMoveOp {
         public static final LIRInstructionClass<MoveFromRegOp> TYPE = LIRInstructionClass.create(MoveFromRegOp.class);
 
-        @Def({OperandFlag.REG, OperandFlag.STACK}) protected AllocatableValue result;
-        @Use({OperandFlag.REG, OperandFlag.HINT}) protected AllocatableValue input;
+        @Def({REG, STACK}) protected AllocatableValue result;
+        @Use({REG, HINT}) protected AllocatableValue input;
 
         public MoveFromRegOp(AMD64Kind moveKind, AllocatableValue result, AllocatableValue input) {
             super(TYPE, moveKind);
@@ -131,7 +137,7 @@ public class AMD64Move {
     public static class MoveFromConstOp extends AMD64LIRInstruction implements StandardOp.LoadConstantOp {
         public static final LIRInstructionClass<MoveFromConstOp> TYPE = LIRInstructionClass.create(MoveFromConstOp.class);
 
-        @Def({OperandFlag.REG, OperandFlag.STACK}) protected AllocatableValue result;
+        @Def({REG, STACK}) protected AllocatableValue result;
         private final JavaConstant input;
 
         public MoveFromConstOp(AllocatableValue result, JavaConstant input) {
@@ -165,9 +171,9 @@ public class AMD64Move {
     public static final class AMD64StackMove extends AMD64LIRInstruction implements StandardOp.ValueMoveOp {
         public static final LIRInstructionClass<AMD64StackMove> TYPE = LIRInstructionClass.create(AMD64StackMove.class);
 
-        @Def({OperandFlag.STACK}) protected AllocatableValue result;
-        @Use({OperandFlag.STACK, OperandFlag.HINT}) protected AllocatableValue input;
-        @Alive({OperandFlag.STACK, OperandFlag.UNINITIALIZED}) private AllocatableValue backupSlot;
+        @Def({STACK}) protected AllocatableValue result;
+        @Use({STACK, HINT}) protected AllocatableValue input;
+        @Alive({STACK, UNINITIALIZED}) private AllocatableValue backupSlot;
 
         private Register scratch;
 
@@ -219,16 +225,18 @@ public class AMD64Move {
     public static final class AMD64MultiStackMove extends AMD64LIRInstruction {
         public static final LIRInstructionClass<AMD64MultiStackMove> TYPE = LIRInstructionClass.create(AMD64MultiStackMove.class);
 
-        @Def({OperandFlag.STACK}) protected AllocatableValue[] results;
-        @Use({OperandFlag.STACK}) protected Value[] inputs;
-        @Alive({OperandFlag.STACK, OperandFlag.UNINITIALIZED}) private AllocatableValue backupSlot;
+        @Def({STACK}) protected AllocatableValue[] results;
+        @Use({STACK, ILLEGAL}) protected Value[] inputs;
+        @Temp({STACK, ILLEGAL}) protected Value[] tmps;
+        @Alive({STACK, UNINITIALIZED}) private AllocatableValue backupSlot;
 
         private Register scratch;
 
-        public AMD64MultiStackMove(AllocatableValue[] results, Value[] inputs, Register scratch, AllocatableValue backupSlot) {
+        public AMD64MultiStackMove(AllocatableValue[] results, Value[] inputs, Value[] tmps, Register scratch, AllocatableValue backupSlot) {
             super(TYPE);
             this.results = results;
             this.inputs = inputs;
+            this.tmps = tmps;
             this.backupSlot = backupSlot;
             this.scratch = scratch;
         }
@@ -245,6 +253,12 @@ public class AMD64Move {
             move(backupKind, crb, masm, backupSlot, scratch.asValue(backupSlot.getValueKind()));
             for (int i = 0; i < results.length; i++) {
                 Value input = inputs[i];
+                if (Value.ILLEGAL.equals(input)) {
+                    input = tmps[i];
+                    GraalError.guarantee(!Value.ILLEGAL.equals(input), "Unstructured multi stack move: %s", this);
+                } else {
+                    GraalError.guarantee(Value.ILLEGAL.equals(tmps[i]), "Unstructured multi stack move: %s", this);
+                }
                 AllocatableValue result = results[i];
                 // move stack slot
                 move((AMD64Kind) input.getPlatformKind(), crb, masm, scratch.asValue(input.getValueKind()), input);
@@ -258,8 +272,8 @@ public class AMD64Move {
     public static final class LeaOp extends AMD64LIRInstruction {
         public static final LIRInstructionClass<LeaOp> TYPE = LIRInstructionClass.create(LeaOp.class);
 
-        @Def({OperandFlag.REG}) protected AllocatableValue result;
-        @Use({OperandFlag.COMPOSITE, OperandFlag.UNINITIALIZED}) protected AMD64AddressValue address;
+        @Def({REG}) protected AllocatableValue result;
+        @Use({COMPOSITE, UNINITIALIZED}) protected AMD64AddressValue address;
         private final OperandSize size;
 
         public LeaOp(AllocatableValue result, AMD64AddressValue address, OperandSize size) {
@@ -283,7 +297,7 @@ public class AMD64Move {
     public static final class LeaDataOp extends AMD64LIRInstruction {
         public static final LIRInstructionClass<LeaDataOp> TYPE = LIRInstructionClass.create(LeaDataOp.class);
 
-        @Def({OperandFlag.REG}) protected AllocatableValue result;
+        @Def({REG}) protected AllocatableValue result;
         private final DataPointerConstant data;
 
         public LeaDataOp(AllocatableValue result, DataPointerConstant data) {
@@ -301,8 +315,8 @@ public class AMD64Move {
     public static final class StackLeaOp extends AMD64LIRInstruction {
         public static final LIRInstructionClass<StackLeaOp> TYPE = LIRInstructionClass.create(StackLeaOp.class);
 
-        @Def({OperandFlag.REG}) protected AllocatableValue result;
-        @Use({OperandFlag.STACK, OperandFlag.UNINITIALIZED}) protected AllocatableValue slot;
+        @Def({REG}) protected AllocatableValue result;
+        @Use({STACK, UNINITIALIZED}) protected AllocatableValue slot;
 
         public StackLeaOp(AllocatableValue result, AllocatableValue slot) {
             super(TYPE);
@@ -336,7 +350,7 @@ public class AMD64Move {
     public static final class NullCheckOp extends AMD64LIRInstruction implements StandardOp.NullCheck {
         public static final LIRInstructionClass<NullCheckOp> TYPE = LIRInstructionClass.create(NullCheckOp.class);
 
-        @Use({OperandFlag.COMPOSITE}) protected AMD64AddressValue address;
+        @Use({COMPOSITE}) protected AMD64AddressValue address;
         @State protected LIRFrameState state;
 
         public NullCheckOp(AMD64AddressValue address, LIRFrameState state) {
@@ -369,7 +383,7 @@ public class AMD64Move {
         private final AMD64Kind accessKind;
 
         @Def protected AllocatableValue result;
-        @Use({OperandFlag.COMPOSITE}) protected AMD64AddressValue address;
+        @Use({COMPOSITE}) protected AMD64AddressValue address;
         @Use protected AllocatableValue cmpValue;
         @Use protected AllocatableValue newValue;
 
@@ -416,7 +430,7 @@ public class AMD64Move {
         private final AMD64Kind accessKind;
 
         @Def protected AllocatableValue result;
-        @Alive({OperandFlag.COMPOSITE}) protected AMD64AddressValue address;
+        @Alive({COMPOSITE}) protected AMD64AddressValue address;
         @Use protected AllocatableValue delta;
 
         public AtomicReadAndAddOp(AMD64Kind accessKind, AllocatableValue result, AMD64AddressValue address, AllocatableValue delta) {
@@ -459,7 +473,7 @@ public class AMD64Move {
         private final AMD64Kind accessKind;
 
         @Def protected AllocatableValue result;
-        @Alive({OperandFlag.COMPOSITE}) protected AMD64AddressValue address;
+        @Alive({COMPOSITE}) protected AMD64AddressValue address;
         @Use protected AllocatableValue newValue;
 
         public AtomicReadAndWriteOp(AMD64Kind accessKind, AllocatableValue result, AMD64AddressValue address, AllocatableValue newValue) {
@@ -843,9 +857,9 @@ public class AMD64Move {
         protected final CompressEncoding encoding;
         protected final boolean nonNull;
 
-        @Def({OperandFlag.REG, OperandFlag.HINT}) private AllocatableValue result;
-        @Use({OperandFlag.REG, OperandFlag.CONST}) private Value input;
-        @Alive({OperandFlag.REG, OperandFlag.ILLEGAL, OperandFlag.UNINITIALIZED}) private AllocatableValue baseRegister;
+        @Def({REG, HINT}) private AllocatableValue result;
+        @Use({REG, OperandFlag.CONST}) private Value input;
+        @Alive({REG, ILLEGAL, UNINITIALIZED}) private AllocatableValue baseRegister;
 
         protected PointerCompressionOp(LIRInstructionClass<? extends PointerCompressionOp> type,
                         AllocatableValue result,
@@ -1017,8 +1031,8 @@ public class AMD64Move {
     }
 
     private abstract static class ZeroNullConversionOp extends AMD64LIRInstruction {
-        @Def({OperandFlag.REG, OperandFlag.HINT}) protected AllocatableValue result;
-        @Use({OperandFlag.REG}) protected AllocatableValue input;
+        @Def({REG, HINT}) protected AllocatableValue result;
+        @Use({REG}) protected AllocatableValue input;
 
         protected ZeroNullConversionOp(LIRInstructionClass<? extends ZeroNullConversionOp> type, AllocatableValue result, AllocatableValue input) {
             super(type);
