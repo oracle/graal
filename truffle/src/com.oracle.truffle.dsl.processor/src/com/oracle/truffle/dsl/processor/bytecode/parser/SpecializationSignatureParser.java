@@ -221,20 +221,6 @@ public class SpecializationSignatureParser {
         return false;
     }
 
-    private boolean checkNotDSLParameter(VariableElement param, TypeMirror paramType, MessageContainer errorTarget) {
-        if (isDSLParameter(param)) {
-            if (errorTarget != null) {
-                errorTarget.addError(param, "%s parameters must not be annotated with @%s, @%s, or @%s.",
-                                getSimpleName(paramType),
-                                getSimpleName(types.Cached),
-                                getSimpleName(types.CachedLibrary),
-                                getSimpleName(types.Bind));
-            }
-            return false;
-        }
-        return true;
-    }
-
     private boolean checkConstantOperandParam(VariableElement constantOperandParam, ConstantOperandModel constantOperand, MessageContainer errorTarget) {
         if (isVariadic(constantOperandParam)) {
             errorTarget.addError(constantOperandParam, "Constant operand parameter cannot be variadic.");

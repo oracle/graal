@@ -586,10 +586,10 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
             // if arg0 < 0, throw
             b.beginIfThen();
 
-            b.beginLessThanOperation();
+            b.beginLess();
             b.emitLoadArgument(0);
             b.emitLoadConstant(0L);
-            b.endLessThanOperation();
+            b.endLess();
 
             b.beginThrowOperation();
             b.emitLoadConstant(0L);
@@ -600,10 +600,10 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
             // if 0 < arg0, return
             b.beginIfThen();
 
-            b.beginLessThanOperation();
+            b.beginLess();
             b.emitLoadConstant(0L);
             b.emitLoadArgument(0);
-            b.endLessThanOperation();
+            b.endLess();
 
             b.beginReturn();
             b.emitLoadConstant(0L);
@@ -807,10 +807,10 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
             // if arg0 < 0, throw
             b.beginIfThen();
 
-            b.beginLessThanOperation();
+            b.beginLess();
             b.emitLoadArgument(0);
             b.emitLoadConstant(0L);
-            b.endLessThanOperation();
+            b.endLess();
 
             b.beginThrowOperation();
             b.emitLoadConstant(0L);
@@ -821,10 +821,10 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
             // if 0 < arg0, return
             b.beginIfThen();
 
-            b.beginLessThanOperation();
+            b.beginLess();
             b.emitLoadConstant(0L);
             b.emitLoadArgument(0);
-            b.endLessThanOperation();
+            b.endLess();
 
             b.beginReturn();
             b.emitLoadConstant(0L);

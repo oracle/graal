@@ -134,10 +134,6 @@ public abstract class BasicInterpreterBuilder extends BytecodeBuilder {
 
     public abstract void endAddConstantOperationAtEnd(long constantRhsValue);
 
-    public abstract void beginLessThanOperation();
-
-    public abstract void endLessThanOperation();
-
     public abstract void beginVeryComplexOperation();
 
     public abstract void endVeryComplexOperation();

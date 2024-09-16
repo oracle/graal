@@ -276,14 +276,6 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
     }
 
     @Operation
-    static final class LessThanOperation {
-        @Specialization
-        public static boolean lessThan(long lhs, long rhs) {
-            return lhs < rhs;
-        }
-    }
-
-    @Operation
     static final class VeryComplexOperation {
         @Specialization
         public static long bla(long a1, @Variadic Object[] a2) {
