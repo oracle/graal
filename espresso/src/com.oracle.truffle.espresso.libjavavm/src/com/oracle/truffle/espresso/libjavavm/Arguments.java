@@ -163,9 +163,9 @@ public final class Arguments {
                                 break;
                         }
                         builder.option(JAVA_PROPS + key, value);
-                    } else if (optionString.equals("-ea") || optionString.equals("-enableassertions")) {
+                    } else if ("-ea".equals(optionString) || "-enableassertions".equals(optionString)) {
                         builder.option("java.EnableAssertions", "true");
-                    } else if (optionString.equals("-esa") || optionString.equals("-enablesystemassertions")) {
+                    } else if ("-esa".equals(optionString) || "-enablesystemassertions".equals(optionString)) {
                         builder.option("java.EnableSystemAssertions", "true");
                     } else if (optionString.startsWith("--add-reads=")) {
                         handler.addReads(optionString.substring("--add-reads=".length()));
@@ -183,20 +183,20 @@ public final class Arguments {
                         builder.option(JAVA_PROPS + "jdk.module.upgrade.path", optionString.substring("--upgrade-module-path=".length()));
                     } else if (optionString.startsWith("--limit-modules=")) {
                         builder.option(JAVA_PROPS + "jdk.module.limitmods", optionString.substring("--limit-modules=".length()));
-                    } else if (optionString.equals("--enable-preview")) {
+                    } else if ("--enable-preview".equals(optionString)) {
                         builder.option("java.EnablePreview", "true");
                     } else if (isXOption(optionString)) {
                         xOptions.add(optionString);
-                    } else if (optionString.equals("-XX:+IgnoreUnrecognizedVMOptions")) {
+                    } else if ("-XX:+IgnoreUnrecognizedVMOptions".equals(optionString)) {
                         ignoreUnrecognized = true;
-                    } else if (optionString.equals("-XX:-IgnoreUnrecognizedVMOptions")) {
+                    } else if ("-XX:-IgnoreUnrecognizedVMOptions".equals(optionString)) {
                         ignoreUnrecognized = false;
-                    } else if (optionString.equals("-XX:+UnlockExperimentalVMOptions") ||
-                                    optionString.equals("-XX:+UnlockDiagnosticVMOptions")) {
+                    } else if ("-XX:+UnlockExperimentalVMOptions".equals(optionString) ||
+                                    "-XX:+UnlockDiagnosticVMOptions".equals(optionString)) {
                         // approximate UnlockDiagnosticVMOptions as UnlockExperimentalVMOptions
                         handler.setExperimental(true);
-                    } else if (optionString.equals("-XX:-UnlockExperimentalVMOptions") ||
-                                    optionString.equals("-XX:-UnlockDiagnosticVMOptions")) {
+                    } else if ("-XX:-UnlockExperimentalVMOptions".equals(optionString) ||
+                                    "-XX:-UnlockDiagnosticVMOptions".equals(optionString)) {
                         handler.setExperimental(false);
                     } else if (optionString.startsWith("--vm.")) {
                         handler.handleVMOption(optionString);
@@ -205,9 +205,9 @@ public final class Arguments {
                     } else if (optionString.startsWith("-Xbatch")) {
                         builder.option("engine.BackgroundCompilation", "false");
                         builder.option("engine.CompileImmediately", "true");
-                    } else if (optionString.startsWith("-Xint") || optionString.equals("-XX:TieredStopAtLevel=0")) {
+                    } else if (optionString.startsWith("-Xint") || "-XX:TieredStopAtLevel=0".equals(optionString)) {
                         builder.option("engine.Compilation", "false");
-                    } else if (optionString.startsWith("-Xshare:auto") || optionString.equals("-Xshare:off")) {
+                    } else if (optionString.startsWith("-Xshare:auto") || "-Xshare:off".equals(optionString)) {
                         // ignore
                     } else if (optionString.startsWith("-XX:")) {
                         handler.handleXXArg(optionString);
@@ -215,11 +215,11 @@ public final class Arguments {
                         handler.help(optionString);
                     } else if (isExperimentalFlag(optionString)) {
                         // skip: previously handled
-                    } else if (optionString.equals("--polyglot")) {
+                    } else if ("--polyglot".equals(optionString)) {
                         // skip: handled by mokapot
-                    } else if (optionString.equals("--native")) {
+                    } else if ("--native".equals(optionString)) {
                         // skip: silently succeed.
-                    } else if (optionString.equals("--jvm")) {
+                    } else if ("--jvm".equals(optionString)) {
                         throw abort("Unsupported flag: '--jvm' mode is not supported with this launcher.");
                     } else {
                         handler.parsePolyglotOption(optionString);
@@ -268,11 +268,11 @@ public final class Arguments {
 
     private static boolean isExperimentalFlag(String optionString) {
         // return false for "--experimental-options=[garbage]
-        return optionString.equals("--experimental-options") ||
-                        optionString.equals("--experimental-options=true") ||
-                        optionString.equals("--experimental-options=false") ||
-                        optionString.equals("-XX:+UnlockDiagnosticVMOptions") ||
-                        optionString.equals("-XX:-UnlockDiagnosticVMOptions");
+        return "--experimental-options".equals(optionString) ||
+                        "--experimental-options=true".equals(optionString) ||
+                        "--experimental-options=false".equals(optionString) ||
+                        "-XX:+UnlockDiagnosticVMOptions".equals(optionString) ||
+                        "-XX:-UnlockDiagnosticVMOptions".equals(optionString);
     }
 
     private static boolean isXOption(String optionString) {
