@@ -30,6 +30,7 @@ import java.io.Serial;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -48,6 +49,7 @@ import com.oracle.truffle.espresso.libjavavm.jniapi.JNIJavaVMOption;
 
 public final class Arguments {
     private static final PrintStream STDERR = System.err;
+    private static final PrintStream STDOUT = System.out;
 
     public static final String JAVA_PROPS = "java.Properties.";
 
@@ -90,6 +92,7 @@ public final class Arguments {
         List<String> jvmArgs = new ArrayList<>();
 
         boolean ignoreUnrecognized = args.getIgnoreUnrecognized();
+        boolean printFlagsFinal = false;
         List<String> xOptions = new ArrayList<>();
 
         for (int i = 0; i < count; i++) {
@@ -198,6 +201,10 @@ public final class Arguments {
                     } else if ("-XX:-UnlockExperimentalVMOptions".equals(optionString) ||
                                     "-XX:-UnlockDiagnosticVMOptions".equals(optionString)) {
                         handler.setExperimental(false);
+                    } else if ("-XX:+PrintFlagsFinal".equals(optionString)) {
+                        printFlagsFinal = true;
+                    } else if ("-XX:-PrintFlagsFinal".equals(optionString)) {
+                        printFlagsFinal = false;
                     } else if (optionString.startsWith("--vm.")) {
                         handler.handleVMOption(optionString);
                     } else if (optionString.startsWith("-Xcomp")) {
@@ -238,6 +245,15 @@ public final class Arguments {
             RuntimeOptions.set(xOption.substring(2 /* drop the -X */), null);
         }
 
+        if (printFlagsFinal) {
+            STDOUT.println("[Global flags]");
+            List<RuntimeOptions.Descriptor> descriptors = RuntimeOptions.listDescriptors();
+            descriptors.sort(Comparator.comparing((RuntimeOptions.Descriptor d) -> d.name()));
+            for (RuntimeOptions.Descriptor descriptor : descriptors) {
+                printOption(descriptor);
+            }
+        }
+
         if (bootClasspathPrepend != null) {
             builder.option("java.BootClasspathPrepend", bootClasspathPrepend);
         }
@@ -255,6 +271,26 @@ public final class Arguments {
 
         handler.argumentProcessingDone();
         return JNIErrors.JNI_OK();
+    }
+
+    private static void printOption(RuntimeOptions.Descriptor descriptor) {
+        // see JVMFlag::print_on
+        Class<?> valueType = descriptor.valueType();
+        String typeName;
+        if (valueType == Boolean.class) {
+            typeName = "bool";
+        } else if (valueType == Integer.class) {
+            typeName = "int";
+        } else if (valueType == Long.class) {
+            typeName = "intx";
+        } else if (valueType == Double.class) {
+            typeName = "double";
+        } else if (valueType == String.class) {
+            typeName = "ccstr";
+        } else {
+            typeName = valueType.getSimpleName();
+        }
+        STDOUT.printf("%21s %-39s = %s%n", typeName, descriptor.name(), RuntimeOptions.get(descriptor.name()));
     }
 
     private static void buildJvmArg(List<String> jvmArgs, String optionString) {
