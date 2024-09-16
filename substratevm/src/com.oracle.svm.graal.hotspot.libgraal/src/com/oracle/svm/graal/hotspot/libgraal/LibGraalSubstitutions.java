@@ -208,7 +208,7 @@ public class LibGraalSubstitutions {
     }
 
     @TargetClass(className = "jdk.graal.compiler.serviceprovider.VMSupport", classLoader = LibGraalClassLoaderSupplier.class, onlyWith = LibGraalFeature.IsEnabled.class)
-    final class Target_jdk_graal_compiler_serviceprovider_VMSupport {
+    static final class Target_jdk_graal_compiler_serviceprovider_VMSupport {
 
         @Substitute
         public static long getIsolateAddress() {
@@ -413,7 +413,7 @@ public class LibGraalSubstitutions {
     }
 
     @TargetClass(className = "jdk.graal.compiler.hotspot.HotSpotGraalOptionValues", classLoader = LibGraalClassLoaderSupplier.class, onlyWith = LibGraalFeature.IsEnabled.class)
-    final class Target_jdk_graal_compiler_hotspot_HotSpotGraalOptionValues {
+    static final class Target_jdk_graal_compiler_hotspot_HotSpotGraalOptionValues {
 
         @Substitute
         private static void notifyLibgraalOptions(Map<String, String> vmOptionSettings) {
@@ -427,7 +427,7 @@ public class LibGraalSubstitutions {
     }
 
     @TargetClass(className = "jdk.graal.compiler.core.GraalServiceThread", classLoader = LibGraalClassLoaderSupplier.class, onlyWith = LibGraalFeature.IsEnabled.class)
-    final class Target_jdk_graal_compiler_core_GraalServiceThread {
+    static final class Target_jdk_graal_compiler_core_GraalServiceThread {
         @Substitute()
         void beforeRun() {
             Thread thread = SubstrateUtil.cast(this, Thread.class);
