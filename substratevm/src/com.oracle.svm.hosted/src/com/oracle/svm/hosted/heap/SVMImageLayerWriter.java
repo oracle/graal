@@ -216,8 +216,8 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     }
 
     @Override
-    public void persistMethod(AnalysisMethod method) {
-        super.persistMethod(method);
+    public void persistMethod(AnalysisMethod method, EconomicMap<String, Object> methodMap) {
+        super.persistMethod(method, methodMap);
 
         // register this method as persisted for name resolution
         HostedDynamicLayerInfo.singleton().recordPersistedMethod(hUniverse.lookup(method));

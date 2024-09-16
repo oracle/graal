@@ -64,10 +64,8 @@ public class SVMImageLayerWriterHelper extends ImageLayerWriterHelper {
         if (method.wrapped instanceof FactoryMethod factoryMethod) {
             methodMap.put(WRAPPED_METHOD_TAG, FACTORY_TAG);
             AnalysisMethod targetConstructor = method.getUniverse().lookup(factoryMethod.getTargetConstructor());
-            if (!method.isReachable() && !imageLayerWriter.isMethodPersisted(targetConstructor)) {
-                imageLayerWriter.persistAnalysisParsedGraph(targetConstructor);
-                imageLayerWriter.persistMethod(targetConstructor);
-            }
+            imageLayerWriter.persistAnalysisParsedGraph(targetConstructor);
+            imageLayerWriter.persistMethod(targetConstructor);
             methodMap.put(TARGET_CONSTRUCTOR_TAG, targetConstructor.getId());
             methodMap.put(THROW_ALLOCATED_OBJECT_TAG, factoryMethod.throwAllocatedObject());
         }
