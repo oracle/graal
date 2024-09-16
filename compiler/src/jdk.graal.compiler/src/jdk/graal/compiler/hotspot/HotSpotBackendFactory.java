@@ -75,6 +75,7 @@ import jdk.vm.ci.common.InitTimer;
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -100,8 +101,8 @@ public abstract class HotSpotBackendFactory implements ArchitectureSpecific {
         return new HotSpotPlatformConfigurationProvider(config, barrierSet);
     }
 
-    protected HotSpotMetaAccessExtensionProvider createMetaAccessExtensionProvider() {
-        return new HotSpotMetaAccessExtensionProvider();
+    protected HotSpotMetaAccessExtensionProvider createMetaAccessExtensionProvider(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
+        return new HotSpotMetaAccessExtensionProvider(metaAccess, constantReflection);
     }
 
     protected HotSpotReplacementsImpl createReplacements(TargetDescription target, HotSpotProviders p, BytecodeProvider bytecodeProvider) {
@@ -168,7 +169,7 @@ public abstract class HotSpotBackendFactory implements ArchitectureSpecific {
             }
             HotSpotMetaAccessExtensionProvider metaAccessExtensionProvider;
             try (InitTimer rt = timer("create MetaAccessExtensionProvider")) {
-                metaAccessExtensionProvider = createMetaAccessExtensionProvider();
+                metaAccessExtensionProvider = createMetaAccessExtensionProvider(metaAccess, constantReflection);
             }
             HotSpotStampProvider stampProvider;
             try (InitTimer rt = timer("create stamp provider")) {
