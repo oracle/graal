@@ -42,7 +42,7 @@ import jdk.graal.compiler.nodes.spi.ValueProxy;
 
 /**
  * Wraps a newly allocated object, acting as a barrier for any initializing writes by preventing
- * reads to the newly allocated object from floating above the initialization.
+ * reads from the newly allocated object from floating above the initialization.
  * <p>
  * Operations on {@linkplain org.graalvm.word.LocationIdentity#INIT_LOCATION init} memory, such as
  * initializing an allocated object's header and fields, are not considered side effecting, because
