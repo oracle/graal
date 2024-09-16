@@ -89,19 +89,18 @@ public class SpecializationSignatureParser {
         boolean isValid = true;
         boolean isFallback = ElementUtils.findAnnotationMirror(specialization, types.Fallback) != null;
 
-        // Each specialization should have parameters in the following order:
-        // frame, value*, variadic, localSetter*, localSetterRange*
-        // All parameters are optional, and the ones with * can be repeated multiple times.
-
         Queue<? extends VariableElement> params = new ArrayDeque<>(specialization.getParameters());
 
-        // First: an optional Frame parameter.
+        // First: an optional VirtualFrame parameter.
         if (!params.isEmpty() && isAssignable(peekType(params), types.Frame)) {
-            params.poll();
+            if (!isAssignable(params.poll().asType(), types.VirtualFrame)) {
+                errorTarget.addError(specialization, "Frame parameter must have type VirtualFrame.");
+                isValid = false;
+            }
         }
         skipDSLParameters(params);
 
-        // Second: operands.
+        // Second: all operands (constant and dynamic).
         List<VariableElement> operands = new ArrayList<>();
         boolean hasVariadic = false;
         while (!params.isEmpty()) {
@@ -118,7 +117,7 @@ public class SpecializationSignatureParser {
                             getSimpleName(types.ConstantOperand));
             isValid = false;
         } else {
-            // Argument layout: [consts_before..., dynamic_params..., consts_after...]
+            // Operand layout: [consts_before..., dynamic_params..., consts_after...]
             int numDynamicOperands = operands.size() - numConstantOperands;
 
             // Process constant operands (before).
@@ -178,33 +177,6 @@ public class SpecializationSignatureParser {
                 isValid = checkConstantOperandParam(operand, constantOperand, errorTarget) && isValid;
                 operandNames.add(constantOperand.getNameOrDefault(operand.getSimpleName().toString()));
             }
-        }
-
-        // If any parameters remain, the signature is invalid.
-        while (!params.isEmpty()) {
-            isValid = false;
-            VariableElement param = params.poll();
-
-            if (isAssignable(param.asType(), types.LocalSetterRange)) {
-                checkNotDSLParameter(param, types.LocalSetterRange, errorTarget);
-            } else if (isAssignable(param.asType(), types.LocalSetter)) {
-                checkNotDSLParameter(param, types.LocalSetter, errorTarget);
-            } else if (ElementUtils.findAnnotationMirror(param, types.Variadic) != null) {
-                checkNotDSLParameter(param, types.Variadic, errorTarget);
-                if (hasVariadic) {
-                    if (errorTarget != null) {
-                        errorTarget.addError(param, "Multiple variadic operands not allowed to an operation. Split up the operation if such behaviour is required.");
-                    }
-                }
-                hasVariadic = true;
-            } else {
-                if (hasVariadic) {
-                    if (errorTarget != null) {
-                        errorTarget.addError(param, "Non-variadic operands must precede variadic operands.");
-                    }
-                }
-            }
-            skipDSLParameters(params);
         }
 
         if (!isValid) {

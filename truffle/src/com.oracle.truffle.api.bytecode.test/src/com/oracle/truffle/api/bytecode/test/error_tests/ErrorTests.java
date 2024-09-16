@@ -392,6 +392,14 @@ public class ErrorTests {
         }
 
         @Operation
+        public static final class BadFrameOperation {
+            @ExpectError("Frame parameter must have type VirtualFrame.")
+            @Specialization
+            public static void perform(Frame f) {
+            }
+        }
+
+        @Operation
         public static final class BadVariadicOperation {
             @Specialization
             public static void valueAfterVariadic(VirtualFrame f, @Variadic Object[] a, @ExpectError("Non-variadic operands must precede variadic operands.") Object b) {

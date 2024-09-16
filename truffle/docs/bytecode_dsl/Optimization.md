@@ -15,7 +15,7 @@ Boxing elimination can also improve compiled performance, because Graal is not a
 
 To enable boxing elimination, specify a set of `boxingEliminationTypes` on the [`@GenerateBytecode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode./src/com/oracle/truffle/api/bytecode/GenerateBytecode.java) annotation. For example, the following configuration
 
-```
+```java
 @GenerateBytecode(
     ...
     boxingEliminationTypes = {int.class, long.class}

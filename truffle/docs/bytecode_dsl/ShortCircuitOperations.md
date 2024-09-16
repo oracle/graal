@@ -9,7 +9,7 @@ Since operands will not necessarily be `boolean`s (an operation may have its own
 
 For example, suppose there exists a `CoerceToBoolean` operation to compute whether a value is "truthy" or "falsy" (e.g., `42` and `3.14f` are truthy, but `""` and `0` are falsy).
 We can define an `AND` operation using `CoerceToBoolean` by annotating the root class with `@ShortCircuitOperation`:
-```
+```java
 @GenerateBytecode(...)
 @ShortCircuitOperation(
     name = "BoolAnd",
@@ -45,7 +45,7 @@ This can be used, for example, where a `boolean` value is expected, like `a && b
 Short circuit operations can also produce the original operand value that caused the operation to terminate (`RETURN_VALUE`).
 For example, to emulate Python's `or` operator, where `a or b or c` evaluates to the first non-falsy operand, we can define a short-circuit operation as follows:
 
-```
+```java
 @GenerateBytecode(...)
 @ShortCircuitOperation(
     name = "FalsyCoalesce",

@@ -44,7 +44,7 @@ This specification takes the form of a class definition annotated with [`@Genera
 Operations are the semantic building blocks for Bytecode DSL programs (they are discussed in more detail [later](#operations)). Common behaviour is implemented by built-in operations, and language-specific behaviour is implemented by user-defined custom operations.
 
 Below is a very simple example of an interpreter specification with a single custom `Add` operation:
-```
+```java
 @GenerateBytecode(...)
 public abstract static class SampleInterpreter extends RootNode implements BytecodeRootNode {
     @Operation
@@ -62,7 +62,7 @@ This class defines an instruction set (including instructions for each custom op
 You may find it useful to read through the generated code (it is intended to be human-readable).
 
 ### Phase 2: Generating bytecode (parsing)
-Now that we have an interpreter, we need to generate some concrete bytecode for it it to execute.
+Now that we have an interpreter, we need to generate some concrete bytecode for it to execute.
 This process is called _parsing_.
 Each method/function in your guest language is parsed to its own bytecode.
 
@@ -70,7 +70,7 @@ Parsers specify a tree of operations by calling a sequence of methods defined on
 The `Builder` class is responsible for validating the well-formedness of these operations and converting them to low-level bytecodes that implement their behaviour.
 
 Below is a simple example that generates a bytecode program to add two integer arguments together and return the result:
-```
+```java
 BytecodeParser<SampleInterpreterGen.Builder> parser = (SampleInterpreterGen.Builder b) -> {
     b.beginRoot();
         b.beginReturn();
@@ -90,7 +90,7 @@ You can typically implement a parser using an AST visitor. See the [Parsing tuto
 The result of parsing is a [`BytecodeRootNodes`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeRootNodes.java) object containing one or more parsed root nodes.
 Each root node has bytecode that can be executed by calling the root node:
 
-```
+```java
 SampleInterpreter rootNode = rootNodes.getNode(0);
 rootNode.getCallTarget().call(40, 2); // produces 42
 ```
@@ -119,14 +119,13 @@ Usually, child operations execute before their parent, and their results are pas
 We specify the semantics for a Bytecode DSL program by building a tree of operations.
 Consider the following pseudocode:
 
-```
-if x == 42:
+```python
   print("success")
 ```
 
 This code could be represented with the following operation tree:
 
-```
+```lisp
 (IfThen
   (Equals
     (LoadLocal x)
@@ -197,7 +196,7 @@ Custom operations are defined using Java classes in one of two ways:
 2. To support migration from an AST interpreter, custom operations can also be *proxies* of existing existing Truffle node classes. To define an operation proxy, the root class should have an [`@OperationProxy`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/OperationProxy.java) annotation referencing the node class, and the node class itself should be marked `@OperationProxy.Proxyable`. Proxied nodes have additional restrictions compared to regular Truffle AST nodes, so making a node proxyable can require some (minimal) refactoring.
 
 The example below defines two custom operations, `OperationA` and `OperationB`:
-```
+```java
 @GenerateBytecode(...)
 @OperationProxy(OperationB.class)
 public abstract class MyBytecodeRootNode extends RootNode implements BytecodeRootNode {
@@ -228,7 +227,7 @@ public abstract OperationB extends Node {
 Operation classes define their semantics using `@Specialization`s just like Truffle DSL nodes.
 These specializations can use the same expressive conveniences (caches, bind expressions, etc.).
 
-Specializations can declare an optional frame parameter as the first parameter, and they may declare Truffle DSL parameters (`@Cached`, `@Bind`, etc.).
+Specializations can declare an optional `VirtualFrame` parameter as the first parameter, and they may declare Truffle DSL parameters (`@Cached`, `@Bind`, etc.).
 The rest of the parameters are called _dynamic operands_.
 
 All specializations must have the same number of dynamic operands and must all be `void` or non-`void`; these attributes make up the _signature_ for an operation.
@@ -340,7 +339,7 @@ Their behaviour is as you would expect.
 `Conditional` produces a value; the rest do not.
 
 For example, the code below declares an `IfThenElse` operation that executes different code depending on the value of the first argument:
-```
+```java
 b.beginIfThenElse();
   b.emitLoadArgument(0); // first child: condition
   b.beginBlock(); // second child: positive branch
@@ -450,7 +449,7 @@ They incur no overhead until they are enabled at a later time (see [Reparsing me
 Bytecode DSL supports two forms of instrumentation:
 
 1. [`@Instrumentation`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/Instrumentation.java) operations, which are emitted and behave just like custom [`@Operation`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/Operation.java)s. These operations can perform special actions like logging or modifying the value produced by another operation. `@Instrumentation` operations must have no stack effects, so they can either have no children and produce no value, or have one child and produce a value.
-2. Tag-based instrumentation associates operations with particular instrumentation [`Tag`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.instrumentation/src/com/oracle/truffle/api/instrumentation/Tag.java)s using `Tag` operations. If these instrumentations are enabled and [`ExecutionEventNode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.instrumentation/src/com/oracle/truffle/api/instrumentation/ExecutionEventNoe.java)s are attached, the bytecode interpreter will invoke the various event callbacks (e.g., `onEnter`, `onReturnValue`) when executing the enclosed operation. Tag-based instrumentation can be enabled using the `enableTagInstrumentation` flag in [`@GenerateBytecode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/GenerateBytecode.java).
+2. Tag-based instrumentation associates operations with particular instrumentation [`Tag`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.instrumentation/src/com/oracle/truffle/api/instrumentation/Tag.java)s using `Tag` operations. If these instrumentations are enabled and [`ExecutionEventNode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.instrumentation/src/com/oracle/truffle/api/instrumentation/ExecutionEventNode.java)s are attached, the bytecode interpreter will invoke the various event callbacks (e.g., `onEnter`, `onReturnValue`) when executing the enclosed operation. Tag-based instrumentation can be enabled using the `enableTagInstrumentation` flag in [`@GenerateBytecode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/GenerateBytecode.java).
 
 Note: once instrumentations are enabled, they cannot be disabled.
 

@@ -16,7 +16,7 @@ Bytecode interpreters enjoy the same peak performance as ASTs, but they can be e
 ## Sample interpreter
 
 Below is the complete Bytecode DSL specification for a small interpreter with a custom `Add` operation.
-```
+```java
 @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
 public abstract static class SampleInterpreter extends RootNode implements BytecodeRootNode {
 
@@ -43,7 +43,7 @@ From this specification, Bytecode DSL generates a bytecode interpreter in `Sampl
 
 The generated code contains a builder class that automatically generates bytecode from a series of builder calls. We can build a bytecode program that adds two arguments as follows.
 
-```
+```java
 var rootNodes = SampleInterpreterGen.create(getLanguage(), BytecodeConfig.DEFAULT, b -> {
     b.beginRoot();
         b.beginReturn();
@@ -75,7 +75,7 @@ UninitializedBytecodeNode(name=null)[
 
 To execute this bytecode, we simply invoke the call target:
 
-```
+```java
 RootCallTarget callTarget = rootNode.getCallTarget();
 assertEquals(42, callTarget.call(40, 2));
 assertEquals("Hello, world!", callTarget.call("Hello, ", "world!"));
@@ -95,7 +95,7 @@ Bytecode DSL supports a variety of features, including:
 
 - **Serialization**: Bytecode DSL interpreters support serialization/deserialization, which enables a language to persist the bytecode for a guest program and reconstruct it without reprocessing the source program (see the [Serialization tutorial][serialization]).
 
-- **Instrumentation**: Bytecode DSL intepreters support special instrumentation operations and tag-based instrumentation.
+- **Instrumentation**: Bytecode DSL interpreters support special instrumentation operations and tag-based instrumentation.
 
 - **Lazy source and instrumentation metadata**: Source and instrumentation metadata increase the footprint of your interpreter. By default, Bytecode DSL interpreters elide this metadata when building bytecode, so they have no performance overhead when they are not used. The metadata is recomputed on demand by replaying the builder calls.
 
