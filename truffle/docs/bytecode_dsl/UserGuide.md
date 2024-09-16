@@ -120,6 +120,7 @@ We specify the semantics for a Bytecode DSL program by building a tree of operat
 Consider the following pseudocode:
 
 ```python
+if x == 42:
   print("success")
 ```
 
@@ -376,7 +377,7 @@ There are some restrictions on the kinds of branches allowed:
 1. Any branch must be (directly or indirectly) nested in the label's creating operation (a `Root` or `Block`). That is, you cannot branch into an operation, only across or out of it.
 2. Only forward branches are supported. For backward branches, use `While` operations.
 
-Unstructured control flow is useful for implementing loop breaks, continues, and other more advanced control flow.
+Unstructured control flow is useful for implementing loop breaks, continues, and other more advanced control flow (like `switch`).
 
 ## Exception handling
 
