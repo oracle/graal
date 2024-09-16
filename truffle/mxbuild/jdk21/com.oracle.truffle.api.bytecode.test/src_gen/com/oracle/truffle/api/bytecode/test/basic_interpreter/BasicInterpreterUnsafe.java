@@ -606,7 +606,7 @@ public final class BasicInterpreterUnsafe extends BasicInterpreter {
     private static final int HANDLER_CUSTOM = 0;
     private static final int HANDLER_TAG_EXCEPTIONAL = 1;
     private static final ConcurrentHashMap<Integer, Class<? extends Tag>[]> TAG_MASK_TO_TAGS = new ConcurrentHashMap<>();
-    private static final ClassValue<Short> CLASS_TO_TAG_MASK = BasicInterpreterUnsafe.initializeTagMaskToClass();
+    private static final ClassValue<Integer> CLASS_TO_TAG_MASK = BasicInterpreterUnsafe.initializeTagMaskToClass();
 
     @Child private volatile AbstractBytecodeNode bytecode;
     private final BytecodeRootNodesImpl nodes;
@@ -908,9 +908,9 @@ public final class BasicInterpreterUnsafe extends BasicInterpreter {
         return tags.toArray(new Class[tags.size()]);
     }
 
-    private static ClassValue<Short> initializeTagMaskToClass() {
+    private static ClassValue<Integer> initializeTagMaskToClass() {
         return new ClassValue<>(){
-            protected Short computeValue(Class<?> type) {
+            protected Integer computeValue(Class<?> type) {
                 if (type == RootTag.class) {
                     return 1;
                 } else if (type == RootBodyTag.class) {
@@ -3015,84 +3015,40 @@ public final class BasicInterpreterUnsafe extends BasicInterpreter {
                     case Instructions.INVALIDATE4 :
                         bci += 10;
                         break;
-                    case Instructions.ENABLE_INCREMENT_VALUE_INSTRUMENTATION_ :
-                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new EnableIncrementValueInstrumentation_Node());
-                        bci += 6;
-                        break;
-                    case Instructions.READ_EXCEPTION_OPERATION_ :
-                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new ReadExceptionOperation_Node());
-                        bci += 6;
-                        break;
-                    case Instructions.VERY_COMPLEX_OPERATION_ :
-                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new VeryComplexOperation_Node());
-                        bci += 6;
-                        break;
-                    case Instructions.APPENDER_OPERATION_ :
-                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new AppenderOperation_Node());
-                        bci += 6;
-                        break;
-                    case Instructions.ADD_ :
-                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new Add_Node());
-                        bci += 6;
-                        break;
-                    case Instructions.INVOKE_ :
-                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new Invoke_Node());
-                        bci += 6;
-                        break;
-                    case Instructions.ALWAYS_BOX_OPERATION_ :
-                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new AlwaysBoxOperation_Node());
-                        bci += 6;
-                        break;
-                    case Instructions.EXPLICIT_BINDINGS_TEST_ :
-                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new ExplicitBindingsTest_Node());
-                        bci += 6;
-                        break;
-                    case Instructions.IMPLICIT_BINDINGS_TEST_ :
-                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new ImplicitBindingsTest_Node());
-                        bci += 6;
-                        break;
-                    case Instructions.ENABLE_DOUBLE_VALUE_INSTRUMENTATION_ :
-                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new EnableDoubleValueInstrumentation_Node());
+                    case Instructions.EARLY_RETURN_ :
+                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new EarlyReturn_Node());
                         bci += 6;
                         break;
                     case Instructions.ADD_OPERATION_ :
                         result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new AddOperation_Node());
                         bci += 6;
                         break;
-                    case Instructions.LESS_ :
-                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new Less_Node());
+                    case Instructions.LESS_THAN_OPERATION_ :
+                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new LessThanOperation_Node());
+                        bci += 6;
+                        break;
+                    case Instructions.VERY_COMPLEX_OPERATION_ :
+                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new VeryComplexOperation_Node());
                         bci += 6;
                         break;
                     case Instructions.THROW_OPERATION_ :
                         result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new ThrowOperation_Node());
                         bci += 6;
                         break;
-                    case Instructions.INCREMENT_VALUE_ :
-                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new IncrementValue_Node());
+                    case Instructions.READ_EXCEPTION_OPERATION_ :
+                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new ReadExceptionOperation_Node());
                         bci += 6;
                         break;
-                    case Instructions.CONTINUE_ :
-                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new Continue_Node());
+                    case Instructions.ALWAYS_BOX_OPERATION_ :
+                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new AlwaysBoxOperation_Node());
                         bci += 6;
                         break;
-                    case Instructions.LESS_THAN_OPERATION_ :
-                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new LessThanOperation_Node());
+                    case Instructions.APPENDER_OPERATION_ :
+                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new AppenderOperation_Node());
                         bci += 6;
                         break;
-                    case Instructions.EARLY_RETURN_ :
-                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new EarlyReturn_Node());
-                        bci += 6;
-                        break;
-                    case Instructions.GET_SOURCE_POSITION_ :
-                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new GetSourcePosition_Node());
-                        bci += 6;
-                        break;
-                    case Instructions.GET_BYTECODE_LOCATION_ :
-                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new GetBytecodeLocation_Node());
-                        bci += 6;
-                        break;
-                    case Instructions.COLLECT_SOURCE_LOCATIONS_ :
-                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new CollectSourceLocations_Node());
+                    case Instructions.INVOKE_ :
+                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new Invoke_Node());
                         bci += 6;
                         break;
                     case Instructions.MATERIALIZE_FRAME_ :
@@ -3107,49 +3063,85 @@ public final class BasicInterpreterUnsafe extends BasicInterpreter {
                         result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new VoidOperation_Node());
                         bci += 6;
                         break;
-                    case Instructions.DOUBLE_VALUE_ :
-                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new DoubleValue_Node());
-                        bci += 6;
-                        break;
-                    case Instructions.COPY_LOCALS_TO_FRAME_ :
-                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new CopyLocalsToFrame_Node());
-                        bci += 6;
-                        break;
-                    case Instructions.COLLECT_ALL_SOURCE_LOCATIONS_ :
-                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new CollectAllSourceLocations_Node());
-                        bci += 6;
-                        break;
                     case Instructions.TO_BOOLEAN_ :
                         result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new ToBoolean_Node());
                         bci += 6;
                         break;
-                    case Instructions.CURRENT_LOCATION_ :
-                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new CurrentLocation_Node());
+                    case Instructions.GET_SOURCE_POSITION_ :
+                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new GetSourcePosition_Node());
                         bci += 6;
                         break;
                     case Instructions.GET_SOURCE_POSITIONS_ :
                         result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new GetSourcePositions_Node());
                         bci += 6;
                         break;
+                    case Instructions.COPY_LOCALS_TO_FRAME_ :
+                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new CopyLocalsToFrame_Node());
+                        bci += 6;
+                        break;
+                    case Instructions.GET_BYTECODE_LOCATION_ :
+                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new GetBytecodeLocation_Node());
+                        bci += 6;
+                        break;
                     case Instructions.COLLECT_BYTECODE_LOCATIONS_ :
                         result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new CollectBytecodeLocations_Node());
                         bci += 6;
                         break;
-                    case Instructions.MOD_ :
-                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new Mod_Node());
+                    case Instructions.COLLECT_SOURCE_LOCATIONS_ :
+                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new CollectSourceLocations_Node());
+                        bci += 6;
+                        break;
+                    case Instructions.COLLECT_ALL_SOURCE_LOCATIONS_ :
+                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new CollectAllSourceLocations_Node());
+                        bci += 6;
+                        break;
+                    case Instructions.CONTINUE_ :
+                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new Continue_Node());
+                        bci += 6;
+                        break;
+                    case Instructions.CURRENT_LOCATION_ :
+                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new CurrentLocation_Node());
                         bci += 6;
                         break;
                     case Instructions.PRINT_HERE_ :
                         result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new PrintHere_Node());
                         bci += 6;
                         break;
-                    case Instructions.TEE_LOCAL_ :
-                        result[BYTES.getIntUnaligned(bc, bci + 6 /* imm node */)] = insert(new TeeLocal_Node());
-                        bci += 10;
+                    case Instructions.INCREMENT_VALUE_ :
+                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new IncrementValue_Node());
+                        bci += 6;
                         break;
-                    case Instructions.ADD_CONSTANT_OPERATION_AT_END_ :
-                        result[BYTES.getIntUnaligned(bc, bci + 6 /* imm node */)] = insert(new AddConstantOperationAtEnd_Node());
-                        bci += 10;
+                    case Instructions.DOUBLE_VALUE_ :
+                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new DoubleValue_Node());
+                        bci += 6;
+                        break;
+                    case Instructions.ENABLE_INCREMENT_VALUE_INSTRUMENTATION_ :
+                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new EnableIncrementValueInstrumentation_Node());
+                        bci += 6;
+                        break;
+                    case Instructions.ADD_ :
+                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new Add_Node());
+                        bci += 6;
+                        break;
+                    case Instructions.MOD_ :
+                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new Mod_Node());
+                        bci += 6;
+                        break;
+                    case Instructions.LESS_ :
+                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new Less_Node());
+                        bci += 6;
+                        break;
+                    case Instructions.ENABLE_DOUBLE_VALUE_INSTRUMENTATION_ :
+                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new EnableDoubleValueInstrumentation_Node());
+                        bci += 6;
+                        break;
+                    case Instructions.EXPLICIT_BINDINGS_TEST_ :
+                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new ExplicitBindingsTest_Node());
+                        bci += 6;
+                        break;
+                    case Instructions.IMPLICIT_BINDINGS_TEST_ :
+                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new ImplicitBindingsTest_Node());
+                        bci += 6;
                         break;
                     case Instructions.CALL_ :
                         result[BYTES.getIntUnaligned(bc, bci + 6 /* imm node */)] = insert(new Call_Node());
@@ -3157,6 +3149,14 @@ public final class BasicInterpreterUnsafe extends BasicInterpreter {
                         break;
                     case Instructions.ADD_CONSTANT_OPERATION_ :
                         result[BYTES.getIntUnaligned(bc, bci + 6 /* imm node */)] = insert(new AddConstantOperation_Node());
+                        bci += 10;
+                        break;
+                    case Instructions.ADD_CONSTANT_OPERATION_AT_END_ :
+                        result[BYTES.getIntUnaligned(bc, bci + 6 /* imm node */)] = insert(new AddConstantOperationAtEnd_Node());
+                        bci += 10;
+                        break;
+                    case Instructions.TEE_LOCAL_ :
+                        result[BYTES.getIntUnaligned(bc, bci + 6 /* imm node */)] = insert(new TeeLocal_Node());
                         bci += 10;
                         break;
                     case Instructions.TEE_LOCAL_RANGE_ :
@@ -4136,7 +4136,7 @@ public final class BasicInterpreterUnsafe extends BasicInterpreter {
         }
 
         @Override
-        public void setUncachedThreshold(int invocationCount) {
+        public void setUncachedThreshold(int threshold) {
         }
 
         @Override
@@ -4341,18 +4341,6 @@ public final class BasicInterpreterUnsafe extends BasicInterpreter {
                         bci += 2;
                         continue loop;
                     }
-                    case Instructions.STORE_LOCAL :
-                    case Instructions.LOAD_ARGUMENT :
-                    case Instructions.LOAD_EXCEPTION :
-                    case Instructions.LOAD_LOCAL :
-                    case Instructions.LOAD_LOCAL_MAT :
-                    case Instructions.STORE_LOCAL_MAT :
-                    case Instructions.CLEAR_LOCAL :
-                    case Instructions.INVALIDATE1 :
-                    {
-                        bci += 4;
-                        continue loop;
-                    }
                     case Instructions.BRANCH :
                     case Instructions.LOAD_CONSTANT :
                     case Instructions.YIELD :
@@ -4366,11 +4354,6 @@ public final class BasicInterpreterUnsafe extends BasicInterpreter {
                         bci += 6;
                         continue loop;
                     }
-                    case Instructions.INVALIDATE3 :
-                    {
-                        bci += 8;
-                        continue loop;
-                    }
                     case Instructions.BRANCH_BACKWARD :
                     case Instructions.BRANCH_FALSE :
                     case Instructions.SC_AND_ :
@@ -4380,15 +4363,22 @@ public final class BasicInterpreterUnsafe extends BasicInterpreter {
                         bci += 10;
                         continue loop;
                     }
-                    case Instructions.CALL_ :
-                    case Instructions.ADD_CONSTANT_OPERATION_ :
-                    case Instructions.ADD_CONSTANT_OPERATION_AT_END_ :
-                    case Instructions.TEE_LOCAL_ :
-                    case Instructions.TEE_LOCAL_RANGE_ :
+                    case Instructions.STORE_LOCAL :
+                    case Instructions.LOAD_ARGUMENT :
+                    case Instructions.LOAD_EXCEPTION :
+                    case Instructions.LOAD_LOCAL :
+                    case Instructions.LOAD_LOCAL_MAT :
+                    case Instructions.STORE_LOCAL_MAT :
+                    case Instructions.CLEAR_LOCAL :
+                    case Instructions.INVALIDATE1 :
                     {
-                        nodeIndex = BYTES.getIntUnaligned(bc, bci + 6 /* imm node */);
-                        bci += 10;
-                        break;
+                        bci += 4;
+                        continue loop;
+                    }
+                    case Instructions.INVALIDATE3 :
+                    {
+                        bci += 8;
+                        continue loop;
                     }
                     case Instructions.EARLY_RETURN_ :
                     case Instructions.ADD_OPERATION_ :
@@ -4425,6 +4415,16 @@ public final class BasicInterpreterUnsafe extends BasicInterpreter {
                     {
                         nodeIndex = BYTES.getIntUnaligned(bc, bci + 2 /* imm node */);
                         bci += 6;
+                        break;
+                    }
+                    case Instructions.CALL_ :
+                    case Instructions.ADD_CONSTANT_OPERATION_ :
+                    case Instructions.ADD_CONSTANT_OPERATION_AT_END_ :
+                    case Instructions.TEE_LOCAL_ :
+                    case Instructions.TEE_LOCAL_RANGE_ :
+                    {
+                        nodeIndex = BYTES.getIntUnaligned(bc, bci + 6 /* imm node */);
+                        bci += 10;
                         break;
                     }
                     default :
@@ -4654,7 +4654,7 @@ public final class BasicInterpreterUnsafe extends BasicInterpreter {
         }
 
         @Override
-        public void setUncachedThreshold(int invocationCount) {
+        public void setUncachedThreshold(int threshold) {
         }
 
         @Override
@@ -8468,16 +8468,6 @@ public final class BasicInterpreterUnsafe extends BasicInterpreter {
             }
             int childIndex = operationStack[operationSp - 1].childCount;
             switch (operationStack[operationSp - 1].operation) {
-                case Operations.SOURCESECTION :
-                {
-                    if (!(operationStack[operationSp - 1].data instanceof SourceSectionData operationData)) {
-                        throw assertionFailed("Data class SourceSectionData expected, but was " + operationStack[operationSp - 1].data);
-                    }
-                    if (operationData.producedValue) {
-                        doEmitInstruction(Instructions.POP, -1);
-                    }
-                    break;
-                }
                 case Operations.BLOCK :
                 {
                     if (!(operationStack[operationSp - 1].data instanceof BlockData operationData)) {
@@ -8502,6 +8492,16 @@ public final class BasicInterpreterUnsafe extends BasicInterpreter {
                 {
                     if (!(operationStack[operationSp - 1].data instanceof SourceData operationData)) {
                         throw assertionFailed("Data class SourceData expected, but was " + operationStack[operationSp - 1].data);
+                    }
+                    if (operationData.producedValue) {
+                        doEmitInstruction(Instructions.POP, -1);
+                    }
+                    break;
+                }
+                case Operations.SOURCESECTION :
+                {
+                    if (!(operationStack[operationSp - 1].data instanceof SourceSectionData operationData)) {
+                        throw assertionFailed("Data class SourceSectionData expected, but was " + operationStack[operationSp - 1].data);
                     }
                     if (operationData.producedValue) {
                         doEmitInstruction(Instructions.POP, -1);
@@ -8617,24 +8617,6 @@ public final class BasicInterpreterUnsafe extends BasicInterpreter {
             }
             int childIndex = operationStack[operationSp - 1].childCount;
             switch (operationStack[operationSp - 1].operation) {
-                case Operations.SOURCESECTION :
-                {
-                    if (!(operationStack[operationSp - 1].data instanceof SourceSectionData operationData)) {
-                        throw assertionFailed("Data class SourceSectionData expected, but was " + operationStack[operationSp - 1].data);
-                    }
-                    operationData.producedValue = producedValue;
-                    operationData.childBci = childBci;
-                    break;
-                }
-                case Operations.TAG :
-                {
-                    if (!(operationStack[operationSp - 1].data instanceof TagOperationData operationData)) {
-                        throw assertionFailed("Data class TagOperationData expected, but was " + operationStack[operationSp - 1].data);
-                    }
-                    operationData.producedValue = producedValue;
-                    operationData.childBci = childBci;
-                    break;
-                }
                 case Operations.BLOCK :
                 {
                     if (!(operationStack[operationSp - 1].data instanceof BlockData operationData)) {
@@ -8657,6 +8639,24 @@ public final class BasicInterpreterUnsafe extends BasicInterpreter {
                 {
                     if (!(operationStack[operationSp - 1].data instanceof SourceData operationData)) {
                         throw assertionFailed("Data class SourceData expected, but was " + operationStack[operationSp - 1].data);
+                    }
+                    operationData.producedValue = producedValue;
+                    operationData.childBci = childBci;
+                    break;
+                }
+                case Operations.SOURCESECTION :
+                {
+                    if (!(operationStack[operationSp - 1].data instanceof SourceSectionData operationData)) {
+                        throw assertionFailed("Data class SourceSectionData expected, but was " + operationStack[operationSp - 1].data);
+                    }
+                    operationData.producedValue = producedValue;
+                    operationData.childBci = childBci;
+                    break;
+                }
+                case Operations.TAG :
+                {
+                    if (!(operationStack[operationSp - 1].data instanceof TagOperationData operationData)) {
+                        throw assertionFailed("Data class TagOperationData expected, but was " + operationStack[operationSp - 1].data);
                     }
                     operationData.producedValue = producedValue;
                     operationData.childBci = childBci;

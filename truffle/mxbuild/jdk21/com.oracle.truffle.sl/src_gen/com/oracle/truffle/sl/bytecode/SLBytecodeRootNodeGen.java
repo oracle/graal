@@ -38,14 +38,12 @@ import com.oracle.truffle.api.bytecode.serialization.BytecodeDeserializer.Deseri
 import com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer.SerializerContext;
 import com.oracle.truffle.api.debug.DebuggerTags.AlwaysHalt;
 import com.oracle.truffle.api.dsl.GeneratedBy;
-import com.oracle.truffle.api.dsl.Introspection;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.dsl.DSLSupport.SpecializationDataNode;
 import com.oracle.truffle.api.dsl.InlineSupport.InlineTarget;
 import com.oracle.truffle.api.dsl.InlineSupport.ReferenceField;
 import com.oracle.truffle.api.dsl.InlineSupport.StateField;
 import com.oracle.truffle.api.dsl.InlineSupport.UnsafeAccessedField;
-import com.oracle.truffle.api.dsl.Introspection.Provider;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -816,7 +814,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
     private static final int HANDLER_CUSTOM = 0;
     private static final int HANDLER_TAG_EXCEPTIONAL = 1;
     private static final ConcurrentHashMap<Integer, Class<? extends Tag>[]> TAG_MASK_TO_TAGS = new ConcurrentHashMap<>();
-    private static final ClassValue<Short> CLASS_TO_TAG_MASK = SLBytecodeRootNodeGen.initializeTagMaskToClass();
+    private static final ClassValue<Integer> CLASS_TO_TAG_MASK = SLBytecodeRootNodeGen.initializeTagMaskToClass();
     private static final LibraryFactory<InteropLibrary> INTEROP_LIBRARY_ = LibraryFactory.resolve(InteropLibrary.class);
     private static final LibraryFactory<DynamicObjectLibrary> DYNAMIC_OBJECT_LIBRARY_ = LibraryFactory.resolve(DynamicObjectLibrary.class);
 
@@ -1153,9 +1151,9 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         return tags.toArray(new Class[tags.size()]);
     }
 
-    private static ClassValue<Short> initializeTagMaskToClass() {
+    private static ClassValue<Integer> initializeTagMaskToClass() {
         return new ClassValue<>(){
-            protected Short computeValue(Class<?> type) {
+            protected Integer computeValue(Class<?> type) {
                 if (type == CallTag.class) {
                     return 1;
                 } else if (type == StatementTag.class) {
@@ -4414,24 +4412,24 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                     case Instructions.INVALIDATE6 :
                         bci += 14;
                         break;
-                    case Instructions.SL_WRITE_PROPERTY_ :
-                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new SLWriteProperty_Node());
-                        bci += 6;
-                        break;
-                    case Instructions.SL_FUNCTION_LITERAL_ :
-                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new SLFunctionLiteral_Node());
-                        bci += 6;
-                        break;
                     case Instructions.SL_ALWAYS_HALT_ :
                         result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new SLAlwaysHalt_Node());
+                        bci += 6;
+                        break;
+                    case Instructions.SL_INVOKE_ :
+                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new SLInvoke_Node());
                         bci += 6;
                         break;
                     case Instructions.SL_READ_PROPERTY_ :
                         result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new SLReadProperty_Node());
                         bci += 6;
                         break;
-                    case Instructions.SL_INVOKE_ :
-                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new SLInvoke_Node());
+                    case Instructions.SL_WRITE_PROPERTY_ :
+                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new SLWriteProperty_Node());
+                        bci += 6;
+                        break;
+                    case Instructions.SL_FUNCTION_LITERAL_ :
+                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new SLFunctionLiteral_Node());
                         bci += 6;
                         break;
                     case Instructions.SL_LOAD_ARGUMENT_ :
@@ -4461,30 +4459,20 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                         result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new SLToBoolean_Node());
                         bci += 10;
                         break;
-                    case Instructions.SL_SUB_ :
-                    case Instructions.SL_SUB$LONG_ :
-                    case Instructions.SL_SUB$LONG$UNBOXED_ :
-                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new SLSub_Node());
+                    case Instructions.BUILTIN_ :
+                        result[BYTES.getIntUnaligned(bc, bci + 10 /* imm node */)] = insert(new Builtin_Node());
+                        bci += 14;
+                        break;
+                    case Instructions.SL_ADD_ :
+                    case Instructions.SL_ADD$LONG_ :
+                    case Instructions.SL_ADD$LONG$UNBOXED_ :
+                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new SLAdd_Node());
                         bci += 14;
                         break;
                     case Instructions.SL_DIV_ :
                     case Instructions.SL_DIV$LONG_ :
                     case Instructions.SL_DIV$LONG$UNBOXED_ :
                         result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new SLDiv_Node());
-                        bci += 14;
-                        break;
-                    case Instructions.SL_LESS_OR_EQUAL_ :
-                    case Instructions.SL_LESS_OR_EQUAL$LONG_ :
-                    case Instructions.SL_LESS_OR_EQUAL$LONG$UNBOXED_ :
-                    case Instructions.SL_LESS_OR_EQUAL$SL_BIG_INTEGER$INTEROP_BIG_INTEGER0$INTEROP_BIG_INTEGER1_ :
-                    case Instructions.SL_LESS_OR_EQUAL$SL_BIG_INTEGER$INTEROP_BIG_INTEGER0$INTEROP_BIG_INTEGER1$UNBOXED_ :
-                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new SLLessOrEqual_Node());
-                        bci += 14;
-                        break;
-                    case Instructions.SL_MUL_ :
-                    case Instructions.SL_MUL$LONG_ :
-                    case Instructions.SL_MUL$LONG$UNBOXED_ :
-                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new SLMul_Node());
                         bci += 14;
                         break;
                     case Instructions.SL_EQUAL_ :
@@ -4496,14 +4484,12 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                         result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new SLEqual_Node());
                         bci += 14;
                         break;
-                    case Instructions.SL_ADD_ :
-                    case Instructions.SL_ADD$LONG_ :
-                    case Instructions.SL_ADD$LONG$UNBOXED_ :
-                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new SLAdd_Node());
-                        bci += 14;
-                        break;
-                    case Instructions.BUILTIN_ :
-                        result[BYTES.getIntUnaligned(bc, bci + 10 /* imm node */)] = insert(new Builtin_Node());
+                    case Instructions.SL_LESS_OR_EQUAL_ :
+                    case Instructions.SL_LESS_OR_EQUAL$LONG_ :
+                    case Instructions.SL_LESS_OR_EQUAL$LONG$UNBOXED_ :
+                    case Instructions.SL_LESS_OR_EQUAL$SL_BIG_INTEGER$INTEROP_BIG_INTEGER0$INTEROP_BIG_INTEGER1_ :
+                    case Instructions.SL_LESS_OR_EQUAL$SL_BIG_INTEGER$INTEROP_BIG_INTEGER0$INTEROP_BIG_INTEGER1$UNBOXED_ :
+                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new SLLessOrEqual_Node());
                         bci += 14;
                         break;
                     case Instructions.SL_LESS_THAN_ :
@@ -4511,6 +4497,18 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                     case Instructions.SL_LESS_THAN$LONG$UNBOXED_ :
                     case Instructions.SL_LESS_THAN$UNBOXED_ :
                         result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new SLLessThan_Node());
+                        bci += 14;
+                        break;
+                    case Instructions.SL_MUL_ :
+                    case Instructions.SL_MUL$LONG_ :
+                    case Instructions.SL_MUL$LONG$UNBOXED_ :
+                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new SLMul_Node());
+                        bci += 14;
+                        break;
+                    case Instructions.SL_SUB_ :
+                    case Instructions.SL_SUB$LONG_ :
+                    case Instructions.SL_SUB$LONG$UNBOXED_ :
+                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new SLSub_Node());
                         bci += 14;
                         break;
                     case Instructions.SL_AND_ :
@@ -6578,7 +6576,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         @Override
-        public void setUncachedThreshold(int invocationCount) {
+        public void setUncachedThreshold(int threshold) {
         }
 
         @Override
@@ -6624,15 +6622,15 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             int nextBci;
             int nextSp;
             switch (readValidBytecode(bc, bci)) {
-                case Instructions.TAG_LEAVE_VOID :
-                    wasOnReturnExecuted = BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */) == nodeId;
-                    break;
                 case Instructions.TAG_LEAVE :
                 case Instructions.TAG_LEAVE$LONG :
                 case Instructions.TAG_LEAVE$LONG$UNBOXED :
                 case Instructions.TAG_LEAVE$BOOLEAN :
                 case Instructions.TAG_LEAVE$BOOLEAN$UNBOXED :
                 case Instructions.TAG_LEAVE$GENERIC :
+                    wasOnReturnExecuted = BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */) == nodeId;
+                    break;
+                case Instructions.TAG_LEAVE_VOID :
                     wasOnReturnExecuted = BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */) == nodeId;
                     break;
                 default :
@@ -6651,6 +6649,14 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 int targetSp;
                 int targetBci;
                 switch (readValidBytecode(bc, node.returnBci)) {
+                    case Instructions.TAG_LEAVE :
+                    case Instructions.TAG_LEAVE$LONG :
+                    case Instructions.TAG_LEAVE$BOOLEAN :
+                    case Instructions.TAG_LEAVE$GENERIC :
+                        targetBci = node.returnBci + 10;
+                        targetSp = handlerSp + 1 ;
+                        FRAMES.setObject(frame, targetSp - 1 + $root.maxLocals, result);
+                        break;
                     case Instructions.TAG_LEAVE$LONG$UNBOXED :
                         targetBci = node.returnBci + 10;
                         targetSp = handlerSp + 1 ;
@@ -6659,14 +6665,6 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                         } catch (UnexpectedResultException e) {
                             FRAMES.setObject(frame, targetSp - 1 + $root.maxLocals, e.getResult());
                         }
-                        break;
-                    case Instructions.TAG_LEAVE :
-                    case Instructions.TAG_LEAVE$LONG :
-                    case Instructions.TAG_LEAVE$BOOLEAN :
-                    case Instructions.TAG_LEAVE$GENERIC :
-                        targetBci = node.returnBci + 10;
-                        targetSp = handlerSp + 1 ;
-                        FRAMES.setObject(frame, targetSp - 1 + $root.maxLocals, result);
                         break;
                     case Instructions.TAG_LEAVE$BOOLEAN$UNBOXED :
                         targetBci = node.returnBci + 10;
@@ -6788,36 +6786,6 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 int currentBci = bci;
                 int nodeIndex;
                 switch (BYTES.getShort(bc, bci)) {
-                    case Instructions.DUP :
-                    case Instructions.RETURN :
-                    case Instructions.THROW :
-                    case Instructions.LOAD_NULL :
-                    case Instructions.LOAD_VARIADIC_0 :
-                    case Instructions.LOAD_VARIADIC_1 :
-                    case Instructions.LOAD_VARIADIC_2 :
-                    case Instructions.LOAD_VARIADIC_3 :
-                    case Instructions.LOAD_VARIADIC_4 :
-                    case Instructions.LOAD_VARIADIC_5 :
-                    case Instructions.LOAD_VARIADIC_6 :
-                    case Instructions.LOAD_VARIADIC_7 :
-                    case Instructions.LOAD_VARIADIC_8 :
-                    case Instructions.MERGE_VARIADIC :
-                    case Instructions.CONSTANT_NULL :
-                    case Instructions.INVALIDATE0 :
-                    {
-                        bci += 2;
-                        continue loop;
-                    }
-                    case Instructions.LOAD_ARGUMENT :
-                    case Instructions.LOAD_ARGUMENT$LONG :
-                    case Instructions.LOAD_ARGUMENT$BOOLEAN :
-                    case Instructions.LOAD_EXCEPTION :
-                    case Instructions.CLEAR_LOCAL :
-                    case Instructions.INVALIDATE1 :
-                    {
-                        bci += 4;
-                        continue loop;
-                    }
                     case Instructions.POP :
                     case Instructions.POP$LONG :
                     case Instructions.POP$BOOLEAN :
@@ -6839,15 +6807,24 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                         bci += 6;
                         continue loop;
                     }
-                    case Instructions.LOAD_LOCAL_MAT :
-                    case Instructions.LOAD_LOCAL_MAT$LONG :
-                    case Instructions.LOAD_LOCAL_MAT$LONG$UNBOXED :
-                    case Instructions.LOAD_LOCAL_MAT$BOOLEAN :
-                    case Instructions.LOAD_LOCAL_MAT$BOOLEAN$UNBOXED :
-                    case Instructions.LOAD_LOCAL_MAT$GENERIC :
-                    case Instructions.INVALIDATE3 :
+                    case Instructions.DUP :
+                    case Instructions.RETURN :
+                    case Instructions.THROW :
+                    case Instructions.LOAD_NULL :
+                    case Instructions.LOAD_VARIADIC_0 :
+                    case Instructions.LOAD_VARIADIC_1 :
+                    case Instructions.LOAD_VARIADIC_2 :
+                    case Instructions.LOAD_VARIADIC_3 :
+                    case Instructions.LOAD_VARIADIC_4 :
+                    case Instructions.LOAD_VARIADIC_5 :
+                    case Instructions.LOAD_VARIADIC_6 :
+                    case Instructions.LOAD_VARIADIC_7 :
+                    case Instructions.LOAD_VARIADIC_8 :
+                    case Instructions.MERGE_VARIADIC :
+                    case Instructions.CONSTANT_NULL :
+                    case Instructions.INVALIDATE0 :
                     {
-                        bci += 8;
+                        bci += 2;
                         continue loop;
                     }
                     case Instructions.BRANCH_BACKWARD :
@@ -6876,6 +6853,35 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                         bci += 10;
                         continue loop;
                     }
+                    case Instructions.BRANCH_FALSE :
+                    case Instructions.BRANCH_FALSE$GENERIC :
+                    case Instructions.BRANCH_FALSE$BOOLEAN :
+                    case Instructions.INVALIDATE6 :
+                    {
+                        bci += 14;
+                        continue loop;
+                    }
+                    case Instructions.LOAD_ARGUMENT :
+                    case Instructions.LOAD_ARGUMENT$LONG :
+                    case Instructions.LOAD_ARGUMENT$BOOLEAN :
+                    case Instructions.LOAD_EXCEPTION :
+                    case Instructions.CLEAR_LOCAL :
+                    case Instructions.INVALIDATE1 :
+                    {
+                        bci += 4;
+                        continue loop;
+                    }
+                    case Instructions.LOAD_LOCAL_MAT :
+                    case Instructions.LOAD_LOCAL_MAT$LONG :
+                    case Instructions.LOAD_LOCAL_MAT$LONG$UNBOXED :
+                    case Instructions.LOAD_LOCAL_MAT$BOOLEAN :
+                    case Instructions.LOAD_LOCAL_MAT$BOOLEAN$UNBOXED :
+                    case Instructions.LOAD_LOCAL_MAT$GENERIC :
+                    case Instructions.INVALIDATE3 :
+                    {
+                        bci += 8;
+                        continue loop;
+                    }
                     case Instructions.STORE_LOCAL_MAT :
                     case Instructions.STORE_LOCAL_MAT$LONG :
                     case Instructions.STORE_LOCAL_MAT$LONG$LONG :
@@ -6887,13 +6893,28 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                         bci += 12;
                         continue loop;
                     }
-                    case Instructions.BRANCH_FALSE :
-                    case Instructions.BRANCH_FALSE$GENERIC :
-                    case Instructions.BRANCH_FALSE$BOOLEAN :
-                    case Instructions.INVALIDATE6 :
+                    case Instructions.SL_ALWAYS_HALT_ :
+                    case Instructions.SL_INVOKE_ :
+                    case Instructions.SL_READ_PROPERTY_ :
+                    case Instructions.SL_WRITE_PROPERTY_ :
+                    case Instructions.SL_FUNCTION_LITERAL_ :
                     {
+                        nodeIndex = BYTES.getIntUnaligned(bc, bci + 2 /* imm node */);
+                        bci += 6;
+                        break;
+                    }
+                    case Instructions.SL_LOAD_ARGUMENT_ :
+                    case Instructions.SL_LOAD_ARGUMENT$LOAD_IN_BOUNDS_ :
+                    {
+                        nodeIndex = BYTES.getIntUnaligned(bc, bci + 6 /* imm node */);
+                        bci += 10;
+                        break;
+                    }
+                    case Instructions.BUILTIN_ :
+                    {
+                        nodeIndex = BYTES.getIntUnaligned(bc, bci + 10 /* imm node */);
                         bci += 14;
-                        continue loop;
+                        break;
                     }
                     case Instructions.SL_ADD_ :
                     case Instructions.SL_ADD$LONG_ :
@@ -6943,29 +6964,6 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                     {
                         nodeIndex = BYTES.getIntUnaligned(bc, bci + 2 /* imm node */);
                         bci += 10;
-                        break;
-                    }
-                    case Instructions.BUILTIN_ :
-                    {
-                        nodeIndex = BYTES.getIntUnaligned(bc, bci + 10 /* imm node */);
-                        bci += 14;
-                        break;
-                    }
-                    case Instructions.SL_LOAD_ARGUMENT_ :
-                    case Instructions.SL_LOAD_ARGUMENT$LOAD_IN_BOUNDS_ :
-                    {
-                        nodeIndex = BYTES.getIntUnaligned(bc, bci + 6 /* imm node */);
-                        bci += 10;
-                        break;
-                    }
-                    case Instructions.SL_ALWAYS_HALT_ :
-                    case Instructions.SL_INVOKE_ :
-                    case Instructions.SL_READ_PROPERTY_ :
-                    case Instructions.SL_WRITE_PROPERTY_ :
-                    case Instructions.SL_FUNCTION_LITERAL_ :
-                    {
-                        nodeIndex = BYTES.getIntUnaligned(bc, bci + 2 /* imm node */);
-                        bci += 6;
                         break;
                     }
                     default :
@@ -7516,7 +7514,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             Node prev = encapsulatingNode.set(this);
             try {
                 int uncachedExecuteCount = this.uncachedExecuteCount_;
-                if (uncachedExecuteCount <= 0) {
+                if (uncachedExecuteCount <= 0 && uncachedExecuteCount != Integer.MIN_VALUE) {
                     $root.transitionToCached(frame, 0);
                     return startState;
                 }
@@ -7549,11 +7547,13 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                             case Instructions.RETURN :
                             {
                                 FRAMES.setInt(frame, BCI_INDEX, bci);
-                                uncachedExecuteCount--;
-                                if (uncachedExecuteCount <= 0) {
-                                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                                    this.getRoot().transitionToCached(frame, bci);
+                                if (uncachedExecuteCount <= 1) {
+                                    if (uncachedExecuteCount != Integer.MIN_VALUE) {
+                                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                                        $root.transitionToCached(frame, bci);
+                                    }
                                 } else {
+                                    uncachedExecuteCount--;
                                     this.uncachedExecuteCount_ = uncachedExecuteCount;
                                 }
                                 return (((long) (sp - 1)) << 32) | 0xFFFFFFFFL;
@@ -7566,10 +7566,14 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                             case Instructions.BRANCH_BACKWARD :
                             {
                                 bci = BYTES.getIntUnaligned(bc, bci + 2 /* imm branch_target */);
-                                if (--uncachedExecuteCount <= 0) {
-                                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                                    $root.transitionToCached(frame, bci);
-                                    return (((long) sp) << 32) | (bci & 0xFFFFFFFFL);
+                                if (uncachedExecuteCount <= 1) {
+                                    if (uncachedExecuteCount != Integer.MIN_VALUE) {
+                                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                                        $root.transitionToCached(frame, bci);
+                                        return (((long) sp) << 32) | (bci & 0xFFFFFFFFL);
+                                    }
+                                } else {
+                                    uncachedExecuteCount--;
                                 }
                                 break;
                             }
@@ -8026,11 +8030,13 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                             sp = (int) temp;
                             continue loop;
                         }
-                        uncachedExecuteCount--;
-                        if (uncachedExecuteCount <= 0) {
-                            CompilerDirectives.transferToInterpreterAndInvalidate();
-                            this.getRoot().transitionToCached(frame, bci);
+                        if (uncachedExecuteCount <= 1) {
+                            if (uncachedExecuteCount != Integer.MIN_VALUE) {
+                                CompilerDirectives.transferToInterpreterAndInvalidate();
+                                $root.transitionToCached(frame, bci);
+                            }
                         } else {
+                            uncachedExecuteCount--;
                             this.uncachedExecuteCount_ = uncachedExecuteCount;
                         }
                         throw sneakyThrow(throwable);
@@ -8198,8 +8204,12 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         @Override
-        public void setUncachedThreshold(int invocationCount) {
-            uncachedExecuteCount_ = invocationCount;
+        public void setUncachedThreshold(int threshold) {
+            CompilerAsserts.neverPartOfCompilation();
+            if (threshold < 0 && threshold != Integer.MIN_VALUE) {
+                throw new IllegalArgumentException("threshold cannot be a negative value other than Integer.MIN_VALUE");
+            }
+            uncachedExecuteCount_ = threshold;
         }
 
         @Override
@@ -8226,15 +8236,15 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             int nextBci;
             int nextSp;
             switch (readValidBytecode(bc, bci)) {
-                case Instructions.TAG_LEAVE_VOID :
-                    wasOnReturnExecuted = BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */) == nodeId;
-                    break;
                 case Instructions.TAG_LEAVE :
                 case Instructions.TAG_LEAVE$LONG :
                 case Instructions.TAG_LEAVE$LONG$UNBOXED :
                 case Instructions.TAG_LEAVE$BOOLEAN :
                 case Instructions.TAG_LEAVE$BOOLEAN$UNBOXED :
                 case Instructions.TAG_LEAVE$GENERIC :
+                    wasOnReturnExecuted = BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */) == nodeId;
+                    break;
+                case Instructions.TAG_LEAVE_VOID :
                     wasOnReturnExecuted = BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */) == nodeId;
                     break;
                 default :
@@ -8253,6 +8263,14 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 int targetSp;
                 int targetBci;
                 switch (readValidBytecode(bc, node.returnBci)) {
+                    case Instructions.TAG_LEAVE :
+                    case Instructions.TAG_LEAVE$LONG :
+                    case Instructions.TAG_LEAVE$BOOLEAN :
+                    case Instructions.TAG_LEAVE$GENERIC :
+                        targetBci = node.returnBci + 10;
+                        targetSp = handlerSp + 1 ;
+                        FRAMES.setObject(frame, targetSp - 1 + $root.maxLocals, result);
+                        break;
                     case Instructions.TAG_LEAVE$LONG$UNBOXED :
                         targetBci = node.returnBci + 10;
                         targetSp = handlerSp + 1 ;
@@ -8261,14 +8279,6 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                         } catch (UnexpectedResultException e) {
                             FRAMES.setObject(frame, targetSp - 1 + $root.maxLocals, e.getResult());
                         }
-                        break;
-                    case Instructions.TAG_LEAVE :
-                    case Instructions.TAG_LEAVE$LONG :
-                    case Instructions.TAG_LEAVE$BOOLEAN :
-                    case Instructions.TAG_LEAVE$GENERIC :
-                        targetBci = node.returnBci + 10;
-                        targetSp = handlerSp + 1 ;
-                        FRAMES.setObject(frame, targetSp - 1 + $root.maxLocals, result);
                         break;
                     case Instructions.TAG_LEAVE$BOOLEAN$UNBOXED :
                         targetBci = node.returnBci + 10;
@@ -11259,16 +11269,6 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             }
             int childIndex = operationStack[operationSp - 1].childCount;
             switch (operationStack[operationSp - 1].operation) {
-                case Operations.SOURCESECTION :
-                {
-                    if (!(operationStack[operationSp - 1].data instanceof SourceSectionData operationData)) {
-                        throw assertionFailed("Data class SourceSectionData expected, but was " + operationStack[operationSp - 1].data);
-                    }
-                    if (operationData.producedValue) {
-                        doEmitInstructionI(Instructions.POP, -1, operationData.childBci);
-                    }
-                    break;
-                }
                 case Operations.BLOCK :
                 {
                     if (!(operationStack[operationSp - 1].data instanceof BlockData operationData)) {
@@ -11293,6 +11293,16 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 {
                     if (!(operationStack[operationSp - 1].data instanceof SourceData operationData)) {
                         throw assertionFailed("Data class SourceData expected, but was " + operationStack[operationSp - 1].data);
+                    }
+                    if (operationData.producedValue) {
+                        doEmitInstructionI(Instructions.POP, -1, operationData.childBci);
+                    }
+                    break;
+                }
+                case Operations.SOURCESECTION :
+                {
+                    if (!(operationStack[operationSp - 1].data instanceof SourceSectionData operationData)) {
+                        throw assertionFailed("Data class SourceSectionData expected, but was " + operationStack[operationSp - 1].data);
                     }
                     if (operationData.producedValue) {
                         doEmitInstructionI(Instructions.POP, -1, operationData.childBci);
@@ -11400,24 +11410,6 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             }
             int childIndex = operationStack[operationSp - 1].childCount;
             switch (operationStack[operationSp - 1].operation) {
-                case Operations.SOURCESECTION :
-                {
-                    if (!(operationStack[operationSp - 1].data instanceof SourceSectionData operationData)) {
-                        throw assertionFailed("Data class SourceSectionData expected, but was " + operationStack[operationSp - 1].data);
-                    }
-                    operationData.producedValue = producedValue;
-                    operationData.childBci = childBci;
-                    break;
-                }
-                case Operations.TAG :
-                {
-                    if (!(operationStack[operationSp - 1].data instanceof TagOperationData operationData)) {
-                        throw assertionFailed("Data class TagOperationData expected, but was " + operationStack[operationSp - 1].data);
-                    }
-                    operationData.producedValue = producedValue;
-                    operationData.childBci = childBci;
-                    break;
-                }
                 case Operations.BLOCK :
                 {
                     if (!(operationStack[operationSp - 1].data instanceof BlockData operationData)) {
@@ -11440,6 +11432,24 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 {
                     if (!(operationStack[operationSp - 1].data instanceof SourceData operationData)) {
                         throw assertionFailed("Data class SourceData expected, but was " + operationStack[operationSp - 1].data);
+                    }
+                    operationData.producedValue = producedValue;
+                    operationData.childBci = childBci;
+                    break;
+                }
+                case Operations.SOURCESECTION :
+                {
+                    if (!(operationStack[operationSp - 1].data instanceof SourceSectionData operationData)) {
+                        throw assertionFailed("Data class SourceSectionData expected, but was " + operationStack[operationSp - 1].data);
+                    }
+                    operationData.producedValue = producedValue;
+                    operationData.childBci = childBci;
+                    break;
+                }
+                case Operations.TAG :
+                {
+                    if (!(operationStack[operationSp - 1].data instanceof TagOperationData operationData)) {
+                        throw assertionFailed("Data class TagOperationData expected, but was " + operationStack[operationSp - 1].data);
                     }
                     operationData.producedValue = producedValue;
                     operationData.childBci = childBci;
@@ -15576,25 +15586,13 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
      *     With/without class size: 16/0 bytes
      * </pre> */
     @SuppressWarnings("javadoc")
-    private static final class SLAlwaysHalt_Node extends Node implements Introspection.Provider {
+    private static final class SLAlwaysHalt_Node extends Node {
 
         private static final Uncached UNCACHED = new Uncached();
 
         private void execute(VirtualFrame frameValue, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
             SLAlwaysHalt.doDefault();
             return;
-        }
-
-        @Override
-        public Introspection getIntrospectionData() {
-            Object[] data = new Object[2];
-            Object[] s;
-            data[0] = 0;
-            s = new Object[3];
-            s[0] = "doDefault";
-            s[1] = (byte)0b01 /* active */;
-            data[1] = s;
-            return Provider.create(data);
         }
 
         @GeneratedBy(SLBytecodeRootNode.class)
@@ -15619,7 +15617,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
      *     With/without class size: 8/0 bytes
      * </pre> */
     @SuppressWarnings("javadoc")
-    private static final class SLLoadArgument_Node extends Node implements Introspection.Provider {
+    private static final class SLLoadArgument_Node extends Node {
 
         private static final Uncached UNCACHED = new Uncached();
 
@@ -15692,36 +15690,6 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             return SLLoadArgument.doLoadOutOfBounds(indexValue);
         }
 
-        @Override
-        public Introspection getIntrospectionData() {
-            Object[] data = new Object[3];
-            Object[] s;
-            data[0] = 0;
-            int state_0 = this.state_0_;
-            s = new Object[3];
-            s[0] = "doLoadInBounds";
-            if ((state_0 & 0b1) != 0 /* is SpecializationActive[SLBytecodeRootNode.SLLoadArgument.doLoadInBounds(VirtualFrame, int, Object[])] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                cached.add(Arrays.<Object>asList());
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[1] = s;
-            s = new Object[3];
-            s[0] = "doLoadOutOfBounds";
-            if ((state_0 & 0b10) != 0 /* is SpecializationActive[SLBytecodeRootNode.SLLoadArgument.doLoadOutOfBounds(int)] */) {
-                s[1] = (byte)0b01 /* active */;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[2] = s;
-            return Provider.create(data);
-        }
-
         private static void quicken(int state_0, byte[] $bc, int $bci) {
             short newInstruction;
             if ((state_0 & 0b10) == 0 /* only-active SpecializationActive[SLBytecodeRootNode.SLLoadArgument.doLoadInBounds(VirtualFrame, int, Object[])] */) {
@@ -15756,7 +15724,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
      *     With/without class size: 8/0 bytes
      * </pre> */
     @SuppressWarnings("javadoc")
-    private static final class Builtin_Node extends Node implements Introspection.Provider {
+    private static final class Builtin_Node extends Node {
 
         private static final Uncached UNCACHED = new Uncached();
 
@@ -15826,39 +15794,6 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             }
         }
 
-        @Override
-        public Introspection getIntrospectionData() {
-            Object[] data = new Object[3];
-            Object[] s;
-            data[0] = 0;
-            int state_0 = this.state_0_;
-            s = new Object[3];
-            s[0] = "doInBounds";
-            if ((state_0 & 0b1) != 0 /* is SpecializationActive[SLBytecodeRootNode.Builtin.doInBounds(VirtualFrame, SLBuiltinNode, int, Node, Object[])] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                cached.add(Arrays.<Object>asList());
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[1] = s;
-            s = new Object[3];
-            s[0] = "doOutOfBounds";
-            if ((state_0 & 0b10) != 0 /* is SpecializationActive[SLBytecodeRootNode.Builtin.doOutOfBounds(VirtualFrame, SLBuiltinNode, int, Node)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                cached.add(Arrays.<Object>asList());
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[2] = s;
-            return Provider.create(data);
-        }
-
         @GeneratedBy(SLBytecodeRootNode.class)
         @DenyReplace
         private static final class Uncached extends Node implements UnadoptableNode {
@@ -15886,7 +15821,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
      *     With/without class size: 7/4 bytes
      * </pre> */
     @SuppressWarnings("javadoc")
-    private static final class SLInvoke_Node extends Node implements Introspection.Provider {
+    private static final class SLInvoke_Node extends Node {
 
         static final ReferenceField<DirectData> DIRECT_CACHE_UPDATER = ReferenceField.create(MethodHandles.lookup(), "direct_cache", DirectData.class);
         private static final Uncached UNCACHED = new Uncached();
@@ -16043,69 +15978,6 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             }
         }
 
-        @Override
-        public Introspection getIntrospectionData() {
-            Object[] data = new Object[4];
-            Object[] s;
-            data[0] = 0;
-            int state_0 = this.state_0_;
-            s = new Object[3];
-            s[0] = "doDirect";
-            if ((state_0 & 0b1) != 0 /* is SpecializationActive[SLBytecodeRootNode.SLInvoke.doDirect(SLFunction, Object[], Assumption, RootCallTarget, DirectCallNode)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                DirectData s0_ = this.direct_cache;
-                while (s0_ != null) {
-                    cached.add(Arrays.<Object>asList(s0_.callTargetStable_, s0_.cachedTarget_, s0_.callNode_));
-                    s0_ = s0_.next_;
-                }
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                if ((state_0 & 0b10) != 0 /* is SpecializationActive[SLBytecodeRootNode.SLInvoke.doIndirect(SLFunction, Object[], IndirectCallNode)] */) {
-                    s[1] = (byte)0b10 /* excluded */;
-                } else {
-                    s[1] = (byte)0b00 /* inactive */;
-                }
-            }
-            data[1] = s;
-            s = new Object[3];
-            s[0] = "doIndirect";
-            if ((state_0 & 0b10) != 0 /* is SpecializationActive[SLBytecodeRootNode.SLInvoke.doIndirect(SLFunction, Object[], IndirectCallNode)] */) {
-                {
-                    IndirectCallNode callNode__ = this.indirect_callNode_;
-                    if (callNode__ != null) {
-                        s[1] = (byte)0b01 /* active */;
-                        ArrayList<Object> cached = new ArrayList<>();
-                        cached.add(Arrays.<Object>asList(this.indirect_callNode_));
-                        s[2] = cached;
-                    }
-                }
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[2] = s;
-            s = new Object[3];
-            s[0] = "doInterop";
-            if ((state_0 & 0b100) != 0 /* is SpecializationActive[SLBytecodeRootNode.SLInvoke.doInterop(Object, Object[], InteropLibrary, Node)] */) {
-                {
-                    InteropLibrary library__ = this.interop_library_;
-                    if (library__ != null) {
-                        s[1] = (byte)0b01 /* active */;
-                        ArrayList<Object> cached = new ArrayList<>();
-                        cached.add(Arrays.<Object>asList(this.interop_library_));
-                        s[2] = cached;
-                    }
-                }
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[3] = s;
-            return Provider.create(data);
-        }
-
         @GeneratedBy(SLBytecodeRootNode.class)
         @DenyReplace
         private static final class DirectData extends Node implements SpecializationDataNode {
@@ -16185,7 +16057,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
      *     With/without class size: 4/0 bytes
      * </pre> */
     @SuppressWarnings("javadoc")
-    private static final class SLAdd_Node extends Node implements Introspection.Provider {
+    private static final class SLAdd_Node extends Node {
 
         private static final StateField STRING_SL_ADD_NODE_STRING_STATE_0_UPDATER = StateField.create(StringData.lookup_(), "string_state_0_");
         static final ReferenceField<InteropBigInteger0Data> INTEROP_BIG_INTEGER0_CACHE_UPDATER = ReferenceField.create(MethodHandles.lookup(), "interopBigInteger0_cache", InteropBigInteger0Data.class);
@@ -16531,100 +16403,6 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             }
         }
 
-        @Override
-        public Introspection getIntrospectionData() {
-            Object[] data = new Object[7];
-            Object[] s;
-            data[0] = 0;
-            int state_0 = this.state_0_;
-            s = new Object[3];
-            s[0] = "doLong";
-            if ((state_0 & 0b1) != 0 /* is SpecializationActive[SLAddNode.doLong(long, long)] */) {
-                s[1] = (byte)0b01 /* active */;
-            }
-            if (s[1] == null) {
-                if ((state_0 & 0b11100) != 0 /* is SpecializationActive[SLAddNode.doSLBigInteger(SLBigInteger, SLBigInteger)] || SpecializationActive[SLAddNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] || SpecializationActive[SLAddNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] */ && ((state_0 & 0b10)) == 0 /* is-not SpecializationExcluded  */) {
-                    s[1] = (byte)0b10 /* excluded */;
-                } else {
-                    s[1] = (byte)0b00 /* inactive */;
-                }
-            }
-            data[1] = s;
-            s = new Object[3];
-            s[0] = "doSLBigInteger";
-            if ((state_0 & 0b100) != 0 /* is SpecializationActive[SLAddNode.doSLBigInteger(SLBigInteger, SLBigInteger)] */) {
-                s[1] = (byte)0b01 /* active */;
-            }
-            if (s[1] == null) {
-                if ((state_0 & 0b11000) != 0 /* is SpecializationActive[SLAddNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] || SpecializationActive[SLAddNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] */) {
-                    s[1] = (byte)0b10 /* excluded */;
-                } else {
-                    s[1] = (byte)0b00 /* inactive */;
-                }
-            }
-            data[2] = s;
-            s = new Object[3];
-            s[0] = "doInteropBigInteger";
-            if ((state_0 & 0b1000) != 0 /* is SpecializationActive[SLAddNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                InteropBigInteger0Data s2_ = this.interopBigInteger0_cache;
-                while (s2_ != null) {
-                    cached.add(Arrays.<Object>asList(s2_.leftLibrary_, s2_.rightLibrary_));
-                    s2_ = s2_.next_;
-                }
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                if ((state_0 & 0b10000) != 0 /* is SpecializationActive[SLAddNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] */) {
-                    s[1] = (byte)0b10 /* excluded */;
-                } else {
-                    s[1] = (byte)0b00 /* inactive */;
-                }
-            }
-            data[3] = s;
-            s = new Object[3];
-            s[0] = "doInteropBigInteger";
-            if ((state_0 & 0b10000) != 0 /* is SpecializationActive[SLAddNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                cached.add(Arrays.<Object>asList());
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[4] = s;
-            s = new Object[3];
-            s[0] = "doString";
-            if ((state_0 & 0b100000) != 0 /* is SpecializationActive[SLAddNode.doString(Object, Object, Node, SLToTruffleStringNode, SLToTruffleStringNode, ConcatNode)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                StringData s4_ = this.string_cache;
-                if (s4_ != null) {
-                    cached.add(Arrays.<Object>asList(INLINED_STRING_TO_TRUFFLE_STRING_NODE_LEFT_, INLINED_STRING_TO_TRUFFLE_STRING_NODE_RIGHT_, s4_.concatNode_));
-                }
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[5] = s;
-            s = new Object[3];
-            s[0] = "typeError";
-            if ((state_0 & 0b1000000) != 0 /* is SpecializationActive[SLAddNode.typeError(Object, Object, Node)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                cached.add(Arrays.<Object>asList());
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[6] = s;
-            return Provider.create(data);
-        }
-
         @SuppressWarnings("static-method")
         @TruffleBoundary
         private Object interopBigInteger1Boundary1(int state_0, Object child0Value_, Object child1Value_, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
@@ -16787,7 +16565,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
      *     With/without class size: 4/0 bytes
      * </pre> */
     @SuppressWarnings("javadoc")
-    private static final class SLDiv_Node extends Node implements Introspection.Provider {
+    private static final class SLDiv_Node extends Node {
 
         static final ReferenceField<InteropBigInteger0Data> INTEROP_BIG_INTEGER0_CACHE_UPDATER = ReferenceField.create(MethodHandles.lookup(), "interopBigInteger0_cache", InteropBigInteger0Data.class);
         private static final Uncached UNCACHED = new Uncached();
@@ -17090,85 +16868,6 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             }
         }
 
-        @Override
-        public Introspection getIntrospectionData() {
-            Object[] data = new Object[6];
-            Object[] s;
-            data[0] = 0;
-            int state_0 = this.state_0_;
-            s = new Object[3];
-            s[0] = "doLong";
-            if ((state_0 & 0b1) != 0 /* is SpecializationActive[SLDivNode.doLong(long, long)] */) {
-                s[1] = (byte)0b01 /* active */;
-            }
-            if (s[1] == null) {
-                if ((state_0 & 0b11100) != 0 /* is SpecializationActive[SLDivNode.doSLBigInteger(SLBigInteger, SLBigInteger)] || SpecializationActive[SLDivNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] || SpecializationActive[SLDivNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] */ && ((state_0 & 0b10)) == 0 /* is-not SpecializationExcluded  */) {
-                    s[1] = (byte)0b10 /* excluded */;
-                } else {
-                    s[1] = (byte)0b00 /* inactive */;
-                }
-            }
-            data[1] = s;
-            s = new Object[3];
-            s[0] = "doSLBigInteger";
-            if ((state_0 & 0b100) != 0 /* is SpecializationActive[SLDivNode.doSLBigInteger(SLBigInteger, SLBigInteger)] */) {
-                s[1] = (byte)0b01 /* active */;
-            }
-            if (s[1] == null) {
-                if ((state_0 & 0b11000) != 0 /* is SpecializationActive[SLDivNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] || SpecializationActive[SLDivNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] */) {
-                    s[1] = (byte)0b10 /* excluded */;
-                } else {
-                    s[1] = (byte)0b00 /* inactive */;
-                }
-            }
-            data[2] = s;
-            s = new Object[3];
-            s[0] = "doInteropBigInteger";
-            if ((state_0 & 0b1000) != 0 /* is SpecializationActive[SLDivNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                InteropBigInteger0Data s2_ = this.interopBigInteger0_cache;
-                while (s2_ != null) {
-                    cached.add(Arrays.<Object>asList(s2_.leftLibrary_, s2_.rightLibrary_));
-                    s2_ = s2_.next_;
-                }
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                if ((state_0 & 0b10000) != 0 /* is SpecializationActive[SLDivNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] */) {
-                    s[1] = (byte)0b10 /* excluded */;
-                } else {
-                    s[1] = (byte)0b00 /* inactive */;
-                }
-            }
-            data[3] = s;
-            s = new Object[3];
-            s[0] = "doInteropBigInteger";
-            if ((state_0 & 0b10000) != 0 /* is SpecializationActive[SLDivNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                cached.add(Arrays.<Object>asList());
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[4] = s;
-            s = new Object[3];
-            s[0] = "typeError";
-            if ((state_0 & 0b100000) != 0 /* is SpecializationActive[SLDivNode.typeError(Object, Object, Node)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                cached.add(Arrays.<Object>asList());
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[5] = s;
-            return Provider.create(data);
-        }
-
         @SuppressWarnings("static-method")
         @TruffleBoundary
         private Object interopBigInteger1Boundary1(int state_0, Object child0Value_, Object child1Value_, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
@@ -17269,7 +16968,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
      *     With/without class size: 4/0 bytes
      * </pre> */
     @SuppressWarnings("javadoc")
-    private static final class SLEqual_Node extends Node implements Introspection.Provider {
+    private static final class SLEqual_Node extends Node {
 
         static final ReferenceField<Generic0Data> GENERIC0_CACHE_UPDATER = ReferenceField.create(MethodHandles.lookup(), "generic0_cache", Generic0Data.class);
         private static final Uncached UNCACHED = new Uncached();
@@ -17724,118 +17423,6 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             }
         }
 
-        @Override
-        public Introspection getIntrospectionData() {
-            Object[] data = new Object[10];
-            Object[] s;
-            data[0] = 0;
-            int state_0 = this.state_0_;
-            s = new Object[3];
-            s[0] = "doLong";
-            if ((state_0 & 0b1) != 0 /* is SpecializationActive[SLEqualNode.doLong(long, long)] */) {
-                s[1] = (byte)0b01 /* active */;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[1] = s;
-            s = new Object[3];
-            s[0] = "doBigNumber";
-            if ((state_0 & 0b10) != 0 /* is SpecializationActive[SLEqualNode.doBigNumber(SLBigInteger, SLBigInteger)] */) {
-                s[1] = (byte)0b01 /* active */;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[2] = s;
-            s = new Object[3];
-            s[0] = "doBoolean";
-            if ((state_0 & 0b100) != 0 /* is SpecializationActive[SLEqualNode.doBoolean(boolean, boolean)] */) {
-                s[1] = (byte)0b01 /* active */;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[3] = s;
-            s = new Object[3];
-            s[0] = "doString";
-            if ((state_0 & 0b1000) != 0 /* is SpecializationActive[SLEqualNode.doString(String, String)] */) {
-                s[1] = (byte)0b01 /* active */;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[4] = s;
-            s = new Object[3];
-            s[0] = "doTruffleString";
-            if ((state_0 & 0b10000) != 0 /* is SpecializationActive[SLEqualNode.doTruffleString(TruffleString, TruffleString, EqualNode)] */) {
-                {
-                    EqualNode equalNode__ = this.truffleString_equalNode_;
-                    if (equalNode__ != null) {
-                        s[1] = (byte)0b01 /* active */;
-                        ArrayList<Object> cached = new ArrayList<>();
-                        cached.add(Arrays.<Object>asList(this.truffleString_equalNode_));
-                        s[2] = cached;
-                    }
-                }
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[5] = s;
-            s = new Object[3];
-            s[0] = "doNull";
-            if ((state_0 & 0b100000) != 0 /* is SpecializationActive[SLEqualNode.doNull(SLNull, SLNull)] */) {
-                s[1] = (byte)0b01 /* active */;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[6] = s;
-            s = new Object[3];
-            s[0] = "doFunction";
-            if ((state_0 & 0b1000000) != 0 /* is SpecializationActive[SLEqualNode.doFunction(SLFunction, Object)] */) {
-                s[1] = (byte)0b01 /* active */;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[7] = s;
-            s = new Object[3];
-            s[0] = "doGeneric";
-            if ((state_0 & 0b10000000) != 0 /* is SpecializationActive[SLEqualNode.doGeneric(Object, Object, InteropLibrary, InteropLibrary)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                Generic0Data s7_ = this.generic0_cache;
-                while (s7_ != null) {
-                    cached.add(Arrays.<Object>asList(s7_.leftInterop_, s7_.rightInterop_));
-                    s7_ = s7_.next_;
-                }
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                if ((state_0 & 0b100000000) != 0 /* is SpecializationActive[SLEqualNode.doGeneric(Object, Object, InteropLibrary, InteropLibrary)] */) {
-                    s[1] = (byte)0b10 /* excluded */;
-                } else {
-                    s[1] = (byte)0b00 /* inactive */;
-                }
-            }
-            data[8] = s;
-            s = new Object[3];
-            s[0] = "doGeneric";
-            if ((state_0 & 0b100000000) != 0 /* is SpecializationActive[SLEqualNode.doGeneric(Object, Object, InteropLibrary, InteropLibrary)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                cached.add(Arrays.<Object>asList());
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[9] = s;
-            return Provider.create(data);
-        }
-
         @SuppressWarnings("static-method")
         @TruffleBoundary
         private boolean generic1Boundary1(int state_0, Object child0Value_, Object child1Value_, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
@@ -17895,7 +17482,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             } else {
                 newOperand0 = undoQuickening(oldOperand0);
                 newOperand1 = undoQuickening(oldOperand1);
-                if (isQuickeningBoolean($bc[$bci])) {
+                if (isQuickeningBoolean(BYTES.getShort($bc, $bci))) {
                     newInstruction = Instructions.SL_EQUAL$UNBOXED_;
                 } else {
                     newInstruction = Instructions.SL_EQUAL_;
@@ -18001,7 +17588,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
      *     With/without class size: 4/0 bytes
      * </pre> */
     @SuppressWarnings("javadoc")
-    private static final class SLLessOrEqual_Node extends Node implements Introspection.Provider {
+    private static final class SLLessOrEqual_Node extends Node {
 
         static final ReferenceField<InteropBigInteger0Data> INTEROP_BIG_INTEGER0_CACHE_UPDATER = ReferenceField.create(MethodHandles.lookup(), "interopBigInteger0_cache", InteropBigInteger0Data.class);
         private static final Uncached UNCACHED = new Uncached();
@@ -18387,81 +17974,6 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             }
         }
 
-        @Override
-        public Introspection getIntrospectionData() {
-            Object[] data = new Object[6];
-            Object[] s;
-            data[0] = 0;
-            int state_0 = this.state_0_;
-            s = new Object[3];
-            s[0] = "doLong";
-            if ((state_0 & 0b1) != 0 /* is SpecializationActive[SLLessOrEqualNode.doLong(long, long)] */) {
-                s[1] = (byte)0b01 /* active */;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[1] = s;
-            s = new Object[3];
-            s[0] = "doSLBigInteger";
-            if ((state_0 & 0b10) != 0 /* is SpecializationActive[SLLessOrEqualNode.doSLBigInteger(SLBigInteger, SLBigInteger)] */) {
-                s[1] = (byte)0b01 /* active */;
-            }
-            if (s[1] == null) {
-                if ((state_0 & 0b1100) != 0 /* is SpecializationActive[SLLessOrEqualNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] || SpecializationActive[SLLessOrEqualNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] */) {
-                    s[1] = (byte)0b10 /* excluded */;
-                } else {
-                    s[1] = (byte)0b00 /* inactive */;
-                }
-            }
-            data[2] = s;
-            s = new Object[3];
-            s[0] = "doInteropBigInteger";
-            if ((state_0 & 0b100) != 0 /* is SpecializationActive[SLLessOrEqualNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                InteropBigInteger0Data s2_ = this.interopBigInteger0_cache;
-                while (s2_ != null) {
-                    cached.add(Arrays.<Object>asList(s2_.leftLibrary_, s2_.rightLibrary_));
-                    s2_ = s2_.next_;
-                }
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                if ((state_0 & 0b1000) != 0 /* is SpecializationActive[SLLessOrEqualNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] */) {
-                    s[1] = (byte)0b10 /* excluded */;
-                } else {
-                    s[1] = (byte)0b00 /* inactive */;
-                }
-            }
-            data[3] = s;
-            s = new Object[3];
-            s[0] = "doInteropBigInteger";
-            if ((state_0 & 0b1000) != 0 /* is SpecializationActive[SLLessOrEqualNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                cached.add(Arrays.<Object>asList());
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[4] = s;
-            s = new Object[3];
-            s[0] = "typeError";
-            if ((state_0 & 0b10000) != 0 /* is SpecializationActive[SLLessOrEqualNode.typeError(Object, Object, Node)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                cached.add(Arrays.<Object>asList());
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[5] = s;
-            return Provider.create(data);
-        }
-
         @SuppressWarnings("static-method")
         @TruffleBoundary
         private Object interopBigInteger1Boundary1(int state_0, Object child0Value_, Object child1Value_, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
@@ -18587,7 +18099,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
      *     With/without class size: 4/0 bytes
      * </pre> */
     @SuppressWarnings("javadoc")
-    private static final class SLLessThan_Node extends Node implements Introspection.Provider {
+    private static final class SLLessThan_Node extends Node {
 
         static final ReferenceField<InteropBigInteger0Data> INTEROP_BIG_INTEGER0_CACHE_UPDATER = ReferenceField.create(MethodHandles.lookup(), "interopBigInteger0_cache", InteropBigInteger0Data.class);
         private static final Uncached UNCACHED = new Uncached();
@@ -18929,81 +18441,6 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             }
         }
 
-        @Override
-        public Introspection getIntrospectionData() {
-            Object[] data = new Object[6];
-            Object[] s;
-            data[0] = 0;
-            int state_0 = this.state_0_;
-            s = new Object[3];
-            s[0] = "doLong";
-            if ((state_0 & 0b1) != 0 /* is SpecializationActive[SLLessThanNode.doLong(long, long)] */) {
-                s[1] = (byte)0b01 /* active */;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[1] = s;
-            s = new Object[3];
-            s[0] = "doSLBigInteger";
-            if ((state_0 & 0b10) != 0 /* is SpecializationActive[SLLessThanNode.doSLBigInteger(SLBigInteger, SLBigInteger)] */) {
-                s[1] = (byte)0b01 /* active */;
-            }
-            if (s[1] == null) {
-                if ((state_0 & 0b1100) != 0 /* is SpecializationActive[SLLessThanNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] || SpecializationActive[SLLessThanNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] */) {
-                    s[1] = (byte)0b10 /* excluded */;
-                } else {
-                    s[1] = (byte)0b00 /* inactive */;
-                }
-            }
-            data[2] = s;
-            s = new Object[3];
-            s[0] = "doInteropBigInteger";
-            if ((state_0 & 0b100) != 0 /* is SpecializationActive[SLLessThanNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                InteropBigInteger0Data s2_ = this.interopBigInteger0_cache;
-                while (s2_ != null) {
-                    cached.add(Arrays.<Object>asList(s2_.leftLibrary_, s2_.rightLibrary_));
-                    s2_ = s2_.next_;
-                }
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                if ((state_0 & 0b1000) != 0 /* is SpecializationActive[SLLessThanNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] */) {
-                    s[1] = (byte)0b10 /* excluded */;
-                } else {
-                    s[1] = (byte)0b00 /* inactive */;
-                }
-            }
-            data[3] = s;
-            s = new Object[3];
-            s[0] = "doInteropBigInteger";
-            if ((state_0 & 0b1000) != 0 /* is SpecializationActive[SLLessThanNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                cached.add(Arrays.<Object>asList());
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[4] = s;
-            s = new Object[3];
-            s[0] = "typeError";
-            if ((state_0 & 0b10000) != 0 /* is SpecializationActive[SLLessThanNode.typeError(Object, Object, Node)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                cached.add(Arrays.<Object>asList());
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[5] = s;
-            return Provider.create(data);
-        }
-
         @SuppressWarnings("static-method")
         @TruffleBoundary
         private boolean interopBigInteger1Boundary1(int state_0, Object child0Value_, Object child1Value_, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
@@ -19043,7 +18480,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             } else {
                 newOperand0 = undoQuickening(oldOperand0);
                 newOperand1 = undoQuickening(oldOperand1);
-                if (isQuickeningBoolean($bc[$bci])) {
+                if (isQuickeningBoolean(BYTES.getShort($bc, $bci))) {
                     newInstruction = Instructions.SL_LESS_THAN$UNBOXED_;
                 } else {
                     newInstruction = Instructions.SL_LESS_THAN_;
@@ -19104,7 +18541,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
      *     With/without class size: 8/0 bytes
      * </pre> */
     @SuppressWarnings("javadoc")
-    private static final class SLLogicalNot_Node extends Node implements Introspection.Provider {
+    private static final class SLLogicalNot_Node extends Node {
 
         private static final Uncached UNCACHED = new Uncached();
 
@@ -19218,36 +18655,6 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             }
         }
 
-        @Override
-        public Introspection getIntrospectionData() {
-            Object[] data = new Object[3];
-            Object[] s;
-            data[0] = 0;
-            int state_0 = this.state_0_;
-            s = new Object[3];
-            s[0] = "doBoolean";
-            if ((state_0 & 0b1) != 0 /* is SpecializationActive[SLLogicalNotNode.doBoolean(boolean)] */) {
-                s[1] = (byte)0b01 /* active */;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[1] = s;
-            s = new Object[3];
-            s[0] = "typeError";
-            if ((state_0 & 0b10) != 0 /* is SpecializationActive[SLLogicalNotNode.typeError(Object, Node)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                cached.add(Arrays.<Object>asList());
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[2] = s;
-            return Provider.create(data);
-        }
-
         private static void quicken(int state_0, byte[] $bc, int $bci) {
             short newInstruction;
             int oldOperandIndex0 = BYTES.getIntUnaligned($bc, $bci + 6 /* imm child0 */);
@@ -19262,7 +18669,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 }
             } else {
                 newOperand0 = undoQuickening(oldOperand0);
-                if (isQuickeningBoolean($bc[$bci])) {
+                if (isQuickeningBoolean(BYTES.getShort($bc, $bci))) {
                     newInstruction = Instructions.SL_LOGICAL_NOT$UNBOXED_;
                 } else {
                     newInstruction = Instructions.SL_LOGICAL_NOT_;
@@ -19305,7 +18712,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
      *     With/without class size: 4/0 bytes
      * </pre> */
     @SuppressWarnings("javadoc")
-    private static final class SLMul_Node extends Node implements Introspection.Provider {
+    private static final class SLMul_Node extends Node {
 
         static final ReferenceField<InteropBigInteger0Data> INTEROP_BIG_INTEGER0_CACHE_UPDATER = ReferenceField.create(MethodHandles.lookup(), "interopBigInteger0_cache", InteropBigInteger0Data.class);
         private static final Uncached UNCACHED = new Uncached();
@@ -19608,85 +19015,6 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             }
         }
 
-        @Override
-        public Introspection getIntrospectionData() {
-            Object[] data = new Object[6];
-            Object[] s;
-            data[0] = 0;
-            int state_0 = this.state_0_;
-            s = new Object[3];
-            s[0] = "doLong";
-            if ((state_0 & 0b1) != 0 /* is SpecializationActive[SLMulNode.doLong(long, long)] */) {
-                s[1] = (byte)0b01 /* active */;
-            }
-            if (s[1] == null) {
-                if ((state_0 & 0b11100) != 0 /* is SpecializationActive[SLMulNode.doSLBigInteger(SLBigInteger, SLBigInteger)] || SpecializationActive[SLMulNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] || SpecializationActive[SLMulNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] */ && ((state_0 & 0b10)) == 0 /* is-not SpecializationExcluded  */) {
-                    s[1] = (byte)0b10 /* excluded */;
-                } else {
-                    s[1] = (byte)0b00 /* inactive */;
-                }
-            }
-            data[1] = s;
-            s = new Object[3];
-            s[0] = "doSLBigInteger";
-            if ((state_0 & 0b100) != 0 /* is SpecializationActive[SLMulNode.doSLBigInteger(SLBigInteger, SLBigInteger)] */) {
-                s[1] = (byte)0b01 /* active */;
-            }
-            if (s[1] == null) {
-                if ((state_0 & 0b11000) != 0 /* is SpecializationActive[SLMulNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] || SpecializationActive[SLMulNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] */) {
-                    s[1] = (byte)0b10 /* excluded */;
-                } else {
-                    s[1] = (byte)0b00 /* inactive */;
-                }
-            }
-            data[2] = s;
-            s = new Object[3];
-            s[0] = "doInteropBigInteger";
-            if ((state_0 & 0b1000) != 0 /* is SpecializationActive[SLMulNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                InteropBigInteger0Data s2_ = this.interopBigInteger0_cache;
-                while (s2_ != null) {
-                    cached.add(Arrays.<Object>asList(s2_.leftLibrary_, s2_.rightLibrary_));
-                    s2_ = s2_.next_;
-                }
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                if ((state_0 & 0b10000) != 0 /* is SpecializationActive[SLMulNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] */) {
-                    s[1] = (byte)0b10 /* excluded */;
-                } else {
-                    s[1] = (byte)0b00 /* inactive */;
-                }
-            }
-            data[3] = s;
-            s = new Object[3];
-            s[0] = "doInteropBigInteger";
-            if ((state_0 & 0b10000) != 0 /* is SpecializationActive[SLMulNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                cached.add(Arrays.<Object>asList());
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[4] = s;
-            s = new Object[3];
-            s[0] = "typeError";
-            if ((state_0 & 0b100000) != 0 /* is SpecializationActive[SLMulNode.typeError(Object, Object, Node)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                cached.add(Arrays.<Object>asList());
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[5] = s;
-            return Provider.create(data);
-        }
-
         @SuppressWarnings("static-method")
         @TruffleBoundary
         private Object interopBigInteger1Boundary1(int state_0, Object child0Value_, Object child1Value_, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
@@ -19778,7 +19106,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
      *     With/without class size: 5/10 bytes
      * </pre> */
     @SuppressWarnings("javadoc")
-    private static final class SLReadProperty_Node extends Node implements Introspection.Provider {
+    private static final class SLReadProperty_Node extends Node {
 
         private static final StateField READ_SL_OBJECT0_SL_READ_PROPERTY_NODE_READ_SL_OBJECT0_STATE_0_UPDATER = StateField.create(ReadSLObject0Data.lookup_(), "readSLObject0_state_0_");
         private static final StateField READ_SL_OBJECT1_SL_READ_PROPERTY_NODE_READ_SL_OBJECT1_STATE_0_UPDATER = StateField.create(ReadSLObject1Data.lookup_(), "readSLObject1_state_0_");
@@ -20169,117 +19497,6 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             throw new UnsupportedSpecializationException(this, null, child0Value, child1Value);
         }
 
-        @Override
-        public Introspection getIntrospectionData() {
-            Object[] data = new Object[7];
-            Object[] s;
-            data[0] = 0;
-            int state_0 = this.state_0_;
-            s = new Object[3];
-            s[0] = "readArray";
-            if ((state_0 & 0b1) != 0 /* is SpecializationActive[SLReadPropertyNode.readArray(Object, Object, Node, InteropLibrary, InteropLibrary)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                ReadArray0Data s0_ = this.readArray0_cache;
-                while (s0_ != null) {
-                    cached.add(Arrays.<Object>asList(s0_.arrays_, s0_.numbers_));
-                    s0_ = s0_.next_;
-                }
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                if ((state_0 & 0b10) != 0 /* is SpecializationActive[SLReadPropertyNode.readArray(Object, Object, Node, InteropLibrary, InteropLibrary)] */) {
-                    s[1] = (byte)0b10 /* excluded */;
-                } else {
-                    s[1] = (byte)0b00 /* inactive */;
-                }
-            }
-            data[1] = s;
-            s = new Object[3];
-            s[0] = "readArray";
-            if ((state_0 & 0b10) != 0 /* is SpecializationActive[SLReadPropertyNode.readArray(Object, Object, Node, InteropLibrary, InteropLibrary)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                cached.add(Arrays.<Object>asList());
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[2] = s;
-            s = new Object[3];
-            s[0] = "readSLObject";
-            if ((state_0 & 0b100) != 0 /* is SpecializationActive[SLReadPropertyNode.readSLObject(SLObject, Object, Node, DynamicObjectLibrary, SLToTruffleStringNode)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                ReadSLObject0Data s2_ = this.readSLObject0_cache;
-                while (s2_ != null) {
-                    cached.add(Arrays.<Object>asList(s2_.objectLibrary_, INLINED_READ_SL_OBJECT0_TO_TRUFFLE_STRING_NODE_));
-                    s2_ = s2_.next_;
-                }
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                if ((state_0 & 0b1000) != 0 /* is SpecializationActive[SLReadPropertyNode.readSLObject(SLObject, Object, Node, DynamicObjectLibrary, SLToTruffleStringNode)] */) {
-                    s[1] = (byte)0b10 /* excluded */;
-                } else {
-                    s[1] = (byte)0b00 /* inactive */;
-                }
-            }
-            data[3] = s;
-            s = new Object[3];
-            s[0] = "readSLObject";
-            if ((state_0 & 0b1000) != 0 /* is SpecializationActive[SLReadPropertyNode.readSLObject(SLObject, Object, Node, DynamicObjectLibrary, SLToTruffleStringNode)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                ReadSLObject1Data s3_ = this.readSLObject1_cache;
-                if (s3_ != null) {
-                    cached.add(Arrays.<Object>asList(INLINED_READ_SL_OBJECT1_TO_TRUFFLE_STRING_NODE_));
-                }
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[4] = s;
-            s = new Object[3];
-            s[0] = "readObject";
-            if ((state_0 & 0b10000) != 0 /* is SpecializationActive[SLReadPropertyNode.readObject(Object, Object, Node, InteropLibrary, SLToMemberNode)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                ReadObject0Data s4_ = this.readObject0_cache;
-                while (s4_ != null) {
-                    cached.add(Arrays.<Object>asList(s4_.objects_, INLINED_READ_OBJECT0_AS_MEMBER_));
-                    s4_ = s4_.next_;
-                }
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                if ((state_0 & 0b100000) != 0 /* is SpecializationActive[SLReadPropertyNode.readObject(Object, Object, Node, InteropLibrary, SLToMemberNode)] */) {
-                    s[1] = (byte)0b10 /* excluded */;
-                } else {
-                    s[1] = (byte)0b00 /* inactive */;
-                }
-            }
-            data[5] = s;
-            s = new Object[3];
-            s[0] = "readObject";
-            if ((state_0 & 0b100000) != 0 /* is SpecializationActive[SLReadPropertyNode.readObject(Object, Object, Node, InteropLibrary, SLToMemberNode)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                ReadObject1Data s5_ = this.readObject1_cache;
-                if (s5_ != null) {
-                    cached.add(Arrays.<Object>asList(INLINED_READ_OBJECT1_AS_MEMBER_));
-                }
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[6] = s;
-            return Provider.create(data);
-        }
-
         @SuppressWarnings("static-method")
         @TruffleBoundary
         private Object readArray1Boundary3(int state_0, Object child0Value_, Object child1Value_, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
@@ -20539,7 +19756,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
      *     With/without class size: 4/0 bytes
      * </pre> */
     @SuppressWarnings("javadoc")
-    private static final class SLSub_Node extends Node implements Introspection.Provider {
+    private static final class SLSub_Node extends Node {
 
         static final ReferenceField<InteropBigInteger0Data> INTEROP_BIG_INTEGER0_CACHE_UPDATER = ReferenceField.create(MethodHandles.lookup(), "interopBigInteger0_cache", InteropBigInteger0Data.class);
         private static final Uncached UNCACHED = new Uncached();
@@ -20842,85 +20059,6 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             }
         }
 
-        @Override
-        public Introspection getIntrospectionData() {
-            Object[] data = new Object[6];
-            Object[] s;
-            data[0] = 0;
-            int state_0 = this.state_0_;
-            s = new Object[3];
-            s[0] = "doLong";
-            if ((state_0 & 0b1) != 0 /* is SpecializationActive[SLSubNode.doLong(long, long)] */) {
-                s[1] = (byte)0b01 /* active */;
-            }
-            if (s[1] == null) {
-                if ((state_0 & 0b11100) != 0 /* is SpecializationActive[SLSubNode.doSLBigInteger(SLBigInteger, SLBigInteger)] || SpecializationActive[SLSubNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] || SpecializationActive[SLSubNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] */ && ((state_0 & 0b10)) == 0 /* is-not SpecializationExcluded  */) {
-                    s[1] = (byte)0b10 /* excluded */;
-                } else {
-                    s[1] = (byte)0b00 /* inactive */;
-                }
-            }
-            data[1] = s;
-            s = new Object[3];
-            s[0] = "doSLBigInteger";
-            if ((state_0 & 0b100) != 0 /* is SpecializationActive[SLSubNode.doSLBigInteger(SLBigInteger, SLBigInteger)] */) {
-                s[1] = (byte)0b01 /* active */;
-            }
-            if (s[1] == null) {
-                if ((state_0 & 0b11000) != 0 /* is SpecializationActive[SLSubNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] || SpecializationActive[SLSubNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] */) {
-                    s[1] = (byte)0b10 /* excluded */;
-                } else {
-                    s[1] = (byte)0b00 /* inactive */;
-                }
-            }
-            data[2] = s;
-            s = new Object[3];
-            s[0] = "doInteropBigInteger";
-            if ((state_0 & 0b1000) != 0 /* is SpecializationActive[SLSubNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                InteropBigInteger0Data s2_ = this.interopBigInteger0_cache;
-                while (s2_ != null) {
-                    cached.add(Arrays.<Object>asList(s2_.leftLibrary_, s2_.rightLibrary_));
-                    s2_ = s2_.next_;
-                }
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                if ((state_0 & 0b10000) != 0 /* is SpecializationActive[SLSubNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] */) {
-                    s[1] = (byte)0b10 /* excluded */;
-                } else {
-                    s[1] = (byte)0b00 /* inactive */;
-                }
-            }
-            data[3] = s;
-            s = new Object[3];
-            s[0] = "doInteropBigInteger";
-            if ((state_0 & 0b10000) != 0 /* is SpecializationActive[SLSubNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                cached.add(Arrays.<Object>asList());
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[4] = s;
-            s = new Object[3];
-            s[0] = "typeError";
-            if ((state_0 & 0b100000) != 0 /* is SpecializationActive[SLSubNode.typeError(Object, Object, Node)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                cached.add(Arrays.<Object>asList());
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[5] = s;
-            return Provider.create(data);
-        }
-
         @SuppressWarnings("static-method")
         @TruffleBoundary
         private Object interopBigInteger1Boundary1(int state_0, Object child0Value_, Object child1Value_, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
@@ -21012,7 +20150,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
      *     With/without class size: 5/10 bytes
      * </pre> */
     @SuppressWarnings("javadoc")
-    private static final class SLWriteProperty_Node extends Node implements Introspection.Provider {
+    private static final class SLWriteProperty_Node extends Node {
 
         private static final StateField WRITE_SL_OBJECT0_SL_WRITE_PROPERTY_NODE_WRITE_SL_OBJECT0_STATE_0_UPDATER = StateField.create(WriteSLObject0Data.lookup_(), "writeSLObject0_state_0_");
         private static final StateField WRITE_SL_OBJECT1_SL_WRITE_PROPERTY_NODE_WRITE_SL_OBJECT1_STATE_0_UPDATER = StateField.create(WriteSLObject1Data.lookup_(), "writeSLObject1_state_0_");
@@ -21403,117 +20541,6 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             throw new UnsupportedSpecializationException(this, null, child0Value, child1Value, child2Value);
         }
 
-        @Override
-        public Introspection getIntrospectionData() {
-            Object[] data = new Object[7];
-            Object[] s;
-            data[0] = 0;
-            int state_0 = this.state_0_;
-            s = new Object[3];
-            s[0] = "writeArray";
-            if ((state_0 & 0b1) != 0 /* is SpecializationActive[SLWritePropertyNode.writeArray(Object, Object, Object, Node, InteropLibrary, InteropLibrary)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                WriteArray0Data s0_ = this.writeArray0_cache;
-                while (s0_ != null) {
-                    cached.add(Arrays.<Object>asList(s0_.arrays_, s0_.numbers_));
-                    s0_ = s0_.next_;
-                }
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                if ((state_0 & 0b10) != 0 /* is SpecializationActive[SLWritePropertyNode.writeArray(Object, Object, Object, Node, InteropLibrary, InteropLibrary)] */) {
-                    s[1] = (byte)0b10 /* excluded */;
-                } else {
-                    s[1] = (byte)0b00 /* inactive */;
-                }
-            }
-            data[1] = s;
-            s = new Object[3];
-            s[0] = "writeArray";
-            if ((state_0 & 0b10) != 0 /* is SpecializationActive[SLWritePropertyNode.writeArray(Object, Object, Object, Node, InteropLibrary, InteropLibrary)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                cached.add(Arrays.<Object>asList());
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[2] = s;
-            s = new Object[3];
-            s[0] = "writeSLObject";
-            if ((state_0 & 0b100) != 0 /* is SpecializationActive[SLWritePropertyNode.writeSLObject(SLObject, Object, Object, Node, DynamicObjectLibrary, SLToTruffleStringNode)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                WriteSLObject0Data s2_ = this.writeSLObject0_cache;
-                while (s2_ != null) {
-                    cached.add(Arrays.<Object>asList(s2_.objectLibrary_, INLINED_WRITE_SL_OBJECT0_TO_TRUFFLE_STRING_NODE_));
-                    s2_ = s2_.next_;
-                }
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                if ((state_0 & 0b1000) != 0 /* is SpecializationActive[SLWritePropertyNode.writeSLObject(SLObject, Object, Object, Node, DynamicObjectLibrary, SLToTruffleStringNode)] */) {
-                    s[1] = (byte)0b10 /* excluded */;
-                } else {
-                    s[1] = (byte)0b00 /* inactive */;
-                }
-            }
-            data[3] = s;
-            s = new Object[3];
-            s[0] = "writeSLObject";
-            if ((state_0 & 0b1000) != 0 /* is SpecializationActive[SLWritePropertyNode.writeSLObject(SLObject, Object, Object, Node, DynamicObjectLibrary, SLToTruffleStringNode)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                WriteSLObject1Data s3_ = this.writeSLObject1_cache;
-                if (s3_ != null) {
-                    cached.add(Arrays.<Object>asList(INLINED_WRITE_SL_OBJECT1_TO_TRUFFLE_STRING_NODE_));
-                }
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[4] = s;
-            s = new Object[3];
-            s[0] = "writeObject";
-            if ((state_0 & 0b10000) != 0 /* is SpecializationActive[SLWritePropertyNode.writeObject(Object, Object, Object, Node, InteropLibrary, SLToMemberNode)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                WriteObject0Data s4_ = this.writeObject0_cache;
-                while (s4_ != null) {
-                    cached.add(Arrays.<Object>asList(s4_.objectLibrary_, INLINED_WRITE_OBJECT0_AS_MEMBER_));
-                    s4_ = s4_.next_;
-                }
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                if ((state_0 & 0b100000) != 0 /* is SpecializationActive[SLWritePropertyNode.writeObject(Object, Object, Object, Node, InteropLibrary, SLToMemberNode)] */) {
-                    s[1] = (byte)0b10 /* excluded */;
-                } else {
-                    s[1] = (byte)0b00 /* inactive */;
-                }
-            }
-            data[5] = s;
-            s = new Object[3];
-            s[0] = "writeObject";
-            if ((state_0 & 0b100000) != 0 /* is SpecializationActive[SLWritePropertyNode.writeObject(Object, Object, Object, Node, InteropLibrary, SLToMemberNode)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                WriteObject1Data s5_ = this.writeObject1_cache;
-                if (s5_ != null) {
-                    cached.add(Arrays.<Object>asList(INLINED_WRITE_OBJECT1_AS_MEMBER_));
-                }
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[6] = s;
-            return Provider.create(data);
-        }
-
         @SuppressWarnings("static-method")
         @TruffleBoundary
         private Object writeArray1Boundary3(int state_0, Object child0Value_, Object child1Value_, Object child2Value_, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
@@ -21791,7 +20818,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
      *     With/without class size: 4/0 bytes
      * </pre> */
     @SuppressWarnings("javadoc")
-    private static final class SLUnbox_Node extends Node implements Introspection.Provider {
+    private static final class SLUnbox_Node extends Node {
 
         static final ReferenceField<FromForeign0Data> FROM_FOREIGN0_CACHE_UPDATER = ReferenceField.create(MethodHandles.lookup(), "fromForeign0_cache", FromForeign0Data.class);
         private static final Uncached UNCACHED = new Uncached();
@@ -22066,118 +21093,6 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             }
         }
 
-        @Override
-        public Introspection getIntrospectionData() {
-            Object[] data = new Object[10];
-            Object[] s;
-            data[0] = 0;
-            int state_0 = this.state_0_;
-            s = new Object[3];
-            s[0] = "fromString";
-            if ((state_0 & 0b1) != 0 /* is SpecializationActive[SLUnboxNode.fromString(String, FromJavaStringNode)] */) {
-                {
-                    FromJavaStringNode fromJavaStringNode__ = this.fromString_fromJavaStringNode_;
-                    if (fromJavaStringNode__ != null) {
-                        s[1] = (byte)0b01 /* active */;
-                        ArrayList<Object> cached = new ArrayList<>();
-                        cached.add(Arrays.<Object>asList(this.fromString_fromJavaStringNode_));
-                        s[2] = cached;
-                    }
-                }
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[1] = s;
-            s = new Object[3];
-            s[0] = "fromTruffleString";
-            if ((state_0 & 0b10) != 0 /* is SpecializationActive[SLUnboxNode.fromTruffleString(TruffleString)] */) {
-                s[1] = (byte)0b01 /* active */;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[2] = s;
-            s = new Object[3];
-            s[0] = "fromBoolean";
-            if ((state_0 & 0b100) != 0 /* is SpecializationActive[SLUnboxNode.fromBoolean(boolean)] */) {
-                s[1] = (byte)0b01 /* active */;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[3] = s;
-            s = new Object[3];
-            s[0] = "fromLong";
-            if ((state_0 & 0b1000) != 0 /* is SpecializationActive[SLUnboxNode.fromLong(long)] */) {
-                s[1] = (byte)0b01 /* active */;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[4] = s;
-            s = new Object[3];
-            s[0] = "fromBigNumber";
-            if ((state_0 & 0b10000) != 0 /* is SpecializationActive[SLUnboxNode.fromBigNumber(SLBigInteger)] */) {
-                s[1] = (byte)0b01 /* active */;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[5] = s;
-            s = new Object[3];
-            s[0] = "fromFunction";
-            if ((state_0 & 0b100000) != 0 /* is SpecializationActive[SLUnboxNode.fromFunction(SLFunction)] */) {
-                s[1] = (byte)0b01 /* active */;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[6] = s;
-            s = new Object[3];
-            s[0] = "fromFunction";
-            if ((state_0 & 0b1000000) != 0 /* is SpecializationActive[SLUnboxNode.fromFunction(SLNull)] */) {
-                s[1] = (byte)0b01 /* active */;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[7] = s;
-            s = new Object[3];
-            s[0] = "fromForeign";
-            if ((state_0 & 0b10000000) != 0 /* is SpecializationActive[SLUnboxNode.fromForeign(Object, InteropLibrary)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                FromForeign0Data s7_ = this.fromForeign0_cache;
-                while (s7_ != null) {
-                    cached.add(Arrays.<Object>asList(s7_.interop_));
-                    s7_ = s7_.next_;
-                }
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                if ((state_0 & 0b100000000) != 0 /* is SpecializationActive[SLUnboxNode.fromForeign(Object, InteropLibrary)] */) {
-                    s[1] = (byte)0b10 /* excluded */;
-                } else {
-                    s[1] = (byte)0b00 /* inactive */;
-                }
-            }
-            data[8] = s;
-            s = new Object[3];
-            s[0] = "fromForeign";
-            if ((state_0 & 0b100000000) != 0 /* is SpecializationActive[SLUnboxNode.fromForeign(Object, InteropLibrary)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                cached.add(Arrays.<Object>asList());
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[9] = s;
-            return Provider.create(data);
-        }
-
         @SuppressWarnings("static-method")
         @TruffleBoundary
         private Object fromForeign1Boundary1(int state_0, Object child0Value_, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
@@ -22280,7 +21195,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
      *     With/without class size: 20/4 bytes
      * </pre> */
     @SuppressWarnings("javadoc")
-    private static final class SLFunctionLiteral_Node extends Node implements Introspection.Provider {
+    private static final class SLFunctionLiteral_Node extends Node {
 
         private static final Uncached UNCACHED = new Uncached();
 
@@ -22325,30 +21240,6 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 }
             }
             throw new UnsupportedSpecializationException(this, null, child0Value);
-        }
-
-        @Override
-        public Introspection getIntrospectionData() {
-            Object[] data = new Object[2];
-            Object[] s;
-            data[0] = 0;
-            int state_0 = this.state_0_;
-            s = new Object[3];
-            s[0] = "perform";
-            if (state_0 != 0 /* is SpecializationActive[SLFunctionLiteralNode.perform(TruffleString, Node, SLFunction)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                PerformData s0_ = this.perform_cache;
-                if (s0_ != null) {
-                    cached.add(Arrays.<Object>asList(s0_.result_));
-                }
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[1] = s;
-            return Provider.create(data);
         }
 
         @TruffleBoundary
@@ -22399,7 +21290,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
      *     With/without class size: 5/0 bytes
      * </pre> */
     @SuppressWarnings("javadoc")
-    private static final class SLToBoolean_Node extends Node implements Introspection.Provider {
+    private static final class SLToBoolean_Node extends Node {
 
         static final ReferenceField<Interop0Data> INTEROP0_CACHE_UPDATER = ReferenceField.create(MethodHandles.lookup(), "interop0_cache", Interop0Data.class);
         private static final Uncached UNCACHED = new Uncached();
@@ -22659,68 +21550,6 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             }
         }
 
-        @Override
-        public Introspection getIntrospectionData() {
-            Object[] data = new Object[5];
-            Object[] s;
-            data[0] = 0;
-            int state_0 = this.state_0_;
-            s = new Object[3];
-            s[0] = "doBoolean";
-            if ((state_0 & 0b1) != 0 /* is SpecializationActive[SLToBooleanNode.doBoolean(boolean)] */) {
-                s[1] = (byte)0b01 /* active */;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[1] = s;
-            s = new Object[3];
-            s[0] = "doInterop";
-            if ((state_0 & 0b10) != 0 /* is SpecializationActive[SLToBooleanNode.doInterop(Object, Node, InteropLibrary)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                Interop0Data s1_ = this.interop0_cache;
-                while (s1_ != null) {
-                    cached.add(Arrays.<Object>asList(s1_.lib_));
-                    s1_ = s1_.next_;
-                }
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                if ((state_0 & 0b100) != 0 /* is SpecializationActive[SLToBooleanNode.doInterop(Object, Node, InteropLibrary)] */) {
-                    s[1] = (byte)0b10 /* excluded */;
-                } else {
-                    s[1] = (byte)0b00 /* inactive */;
-                }
-            }
-            data[2] = s;
-            s = new Object[3];
-            s[0] = "doInterop";
-            if ((state_0 & 0b100) != 0 /* is SpecializationActive[SLToBooleanNode.doInterop(Object, Node, InteropLibrary)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                cached.add(Arrays.<Object>asList());
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[3] = s;
-            s = new Object[3];
-            s[0] = "doFallback";
-            if ((state_0 & 0b1000) != 0 /* is SpecializationActive[SLToBooleanNode.doFallback(Object, Node)] */) {
-                s[1] = (byte)0b01 /* active */;
-                ArrayList<Object> cached = new ArrayList<>();
-                cached.add(Arrays.<Object>asList());
-                s[2] = cached;
-            }
-            if (s[1] == null) {
-                s[1] = (byte)0b00 /* inactive */;
-            }
-            data[4] = s;
-            return Provider.create(data);
-        }
-
         @SuppressWarnings("static-method")
         @TruffleBoundary
         private boolean interop1Boundary1(int state_0, Object child0Value_, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
@@ -22760,7 +21589,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 }
             } else {
                 newOperand0 = undoQuickening(oldOperand0);
-                if (isQuickeningBoolean($bc[$bci])) {
+                if (isQuickeningBoolean(BYTES.getShort($bc, $bci))) {
                     newInstruction = Instructions.SL_TO_BOOLEAN$UNBOXED_;
                 } else {
                     newInstruction = Instructions.SL_TO_BOOLEAN_;
