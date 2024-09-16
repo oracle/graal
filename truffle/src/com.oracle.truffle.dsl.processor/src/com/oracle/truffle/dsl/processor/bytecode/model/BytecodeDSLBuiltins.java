@@ -211,6 +211,7 @@ public class BytecodeDSLBuiltins {
                         .setInstruction(m.loadNullInstruction);
         m.operation(OperationKind.LOAD_ARGUMENT, "LoadArgument", """
                         LoadArgument reads the argument at {@code index} from the frame.
+                        Throws {@link IndexOutOfBoundsException} if the index is out of bounds.
                         """) //
                         .setOperationBeginArguments(new OperationArgument(context.getType(int.class), Encoding.INTEGER, "index", "the index of the argument to load (must fit into a short)")) //
                         .setInstruction(m.instruction(InstructionKind.LOAD_ARGUMENT, "load.argument", m.signature(Object.class))//

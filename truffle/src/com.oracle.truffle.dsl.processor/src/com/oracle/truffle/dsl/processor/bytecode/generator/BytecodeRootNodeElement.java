@@ -3638,7 +3638,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     case CUSTOM:
                     case CUSTOM_INSTRUMENTATION:
                         CustomOperationModel customOp = operation.parent.getCustomOperationForOperation(operation);
-                        sb.append("{@link #");
+                        sb.append("{@link ");
                         sb.append(customOp.getTemplateType().getQualifiedName());
                         sb.append(" ");
                         sb.append(operation.name);

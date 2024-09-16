@@ -9838,6 +9838,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
          * Signature: LoadArgument() -> Object
          * <p>
          * LoadArgument reads the argument at {@code index} from the frame.
+         * Throws {@link IndexOutOfBoundsException} if the index is out of bounds.
          *
          * @param index the index of the argument to load (must fit into a short).
          */
@@ -10534,7 +10535,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Begins a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.EarlyReturn EarlyReturn} operation.
+         * Begins a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.EarlyReturn EarlyReturn} operation.
          * <p>
          * Signature: EarlyReturn(result) -> void
          * <p>
@@ -10557,7 +10558,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Ends a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.EarlyReturn EarlyReturn} operation.
+         * Ends a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.EarlyReturn EarlyReturn} operation.
          * <p>
          * Signature: EarlyReturn(result) -> void
          *
@@ -10585,7 +10586,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Begins a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.AddOperation AddOperation} operation.
+         * Begins a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.AddOperation AddOperation} operation.
          * <p>
          * Signature: AddOperation(lhs, rhs) -> Object
          * <p>
@@ -10610,7 +10611,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Ends a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.AddOperation AddOperation} operation.
+         * Ends a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.AddOperation AddOperation} operation.
          * <p>
          * Signature: AddOperation(lhs, rhs) -> Object
          *
@@ -10640,7 +10641,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Begins a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.Call Call} operation.
+         * Begins a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.Call Call} operation.
          * <p>
          * Signature: Call(arguments...) -> Object
          * <p>
@@ -10671,7 +10672,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Ends a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.Call Call} operation.
+         * Ends a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.Call Call} operation.
          * <p>
          * Signature: Call(arguments...) -> Object
          *
@@ -10697,7 +10698,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Begins a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.AddConstantOperation AddConstantOperation} operation.
+         * Begins a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.AddConstantOperation AddConstantOperation} operation.
          * <p>
          * Signature: AddConstantOperation(rhs) -> Object
          * <p>
@@ -10725,7 +10726,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Ends a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.AddConstantOperation AddConstantOperation} operation.
+         * Ends a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.AddConstantOperation AddConstantOperation} operation.
          * <p>
          * Signature: AddConstantOperation(rhs) -> Object
          *
@@ -10754,7 +10755,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Begins a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.AddConstantOperationAtEnd AddConstantOperationAtEnd} operation.
+         * Begins a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.AddConstantOperationAtEnd AddConstantOperationAtEnd} operation.
          * <p>
          * Signature: AddConstantOperationAtEnd(lhs) -> Object
          * <p>
@@ -10777,7 +10778,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Ends a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.AddConstantOperationAtEnd AddConstantOperationAtEnd} operation.
+         * Ends a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.AddConstantOperationAtEnd AddConstantOperationAtEnd} operation.
          * <p>
          * Signature: AddConstantOperationAtEnd(lhs) -> Object
          *
@@ -10810,7 +10811,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Begins a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.LessThanOperation LessThanOperation} operation.
+         * Begins a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.LessThanOperation LessThanOperation} operation.
          * <p>
          * Signature: LessThanOperation(lhs, rhs) -> boolean
          * <p>
@@ -10833,7 +10834,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Ends a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.LessThanOperation LessThanOperation} operation.
+         * Ends a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.LessThanOperation LessThanOperation} operation.
          * <p>
          * Signature: LessThanOperation(lhs, rhs) -> boolean
          *
@@ -10863,7 +10864,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Begins a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.VeryComplexOperation VeryComplexOperation} operation.
+         * Begins a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.VeryComplexOperation VeryComplexOperation} operation.
          * <p>
          * Signature: VeryComplexOperation(a1, a2...) -> long
          * <p>
@@ -10886,7 +10887,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Ends a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.VeryComplexOperation VeryComplexOperation} operation.
+         * Ends a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.VeryComplexOperation VeryComplexOperation} operation.
          * <p>
          * Signature: VeryComplexOperation(a1, a2...) -> long
          *
@@ -10916,7 +10917,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Begins a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.ThrowOperation ThrowOperation} operation.
+         * Begins a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.ThrowOperation ThrowOperation} operation.
          * <p>
          * Signature: ThrowOperation(value) -> Object
          * <p>
@@ -10939,7 +10940,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Ends a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.ThrowOperation ThrowOperation} operation.
+         * Ends a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.ThrowOperation ThrowOperation} operation.
          * <p>
          * Signature: ThrowOperation(value) -> Object
          *
@@ -10968,7 +10969,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Begins a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.ReadExceptionOperation ReadExceptionOperation} operation.
+         * Begins a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.ReadExceptionOperation ReadExceptionOperation} operation.
          * <p>
          * Signature: ReadExceptionOperation(ex) -> long
          * <p>
@@ -10991,7 +10992,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Ends a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.ReadExceptionOperation ReadExceptionOperation} operation.
+         * Ends a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.ReadExceptionOperation ReadExceptionOperation} operation.
          * <p>
          * Signature: ReadExceptionOperation(ex) -> long
          *
@@ -11019,7 +11020,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Begins a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.AlwaysBoxOperation AlwaysBoxOperation} operation.
+         * Begins a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.AlwaysBoxOperation AlwaysBoxOperation} operation.
          * <p>
          * Signature: AlwaysBoxOperation(value) -> Object
          * <p>
@@ -11042,7 +11043,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Ends a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.AlwaysBoxOperation AlwaysBoxOperation} operation.
+         * Ends a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.AlwaysBoxOperation AlwaysBoxOperation} operation.
          * <p>
          * Signature: AlwaysBoxOperation(value) -> Object
          *
@@ -11070,7 +11071,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Begins a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.AppenderOperation AppenderOperation} operation.
+         * Begins a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.AppenderOperation AppenderOperation} operation.
          * <p>
          * Signature: AppenderOperation(list, value) -> void
          * <p>
@@ -11093,7 +11094,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Ends a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.AppenderOperation AppenderOperation} operation.
+         * Ends a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.AppenderOperation AppenderOperation} operation.
          * <p>
          * Signature: AppenderOperation(list, value) -> void
          *
@@ -11121,7 +11122,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Begins a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.TeeLocal TeeLocal} operation.
+         * Begins a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.TeeLocal TeeLocal} operation.
          * <p>
          * Signature: TeeLocal(value) -> Object
          * <p>
@@ -11152,7 +11153,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Ends a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.TeeLocal TeeLocal} operation.
+         * Ends a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.TeeLocal TeeLocal} operation.
          * <p>
          * Signature: TeeLocal(value) -> Object
          *
@@ -11181,7 +11182,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Begins a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.TeeLocalRange TeeLocalRange} operation.
+         * Begins a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.TeeLocalRange TeeLocalRange} operation.
          * <p>
          * Signature: TeeLocalRange(value) -> Object
          * <p>
@@ -11220,7 +11221,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Ends a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.TeeLocalRange TeeLocalRange} operation.
+         * Ends a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.TeeLocalRange TeeLocalRange} operation.
          * <p>
          * Signature: TeeLocalRange(value) -> Object
          *
@@ -11248,7 +11249,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Begins a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.Invoke Invoke} operation.
+         * Begins a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.Invoke Invoke} operation.
          * <p>
          * Signature: Invoke(root, args...) -> Object
          * <p>
@@ -11271,7 +11272,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Ends a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.Invoke Invoke} operation.
+         * Ends a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.Invoke Invoke} operation.
          * <p>
          * Signature: Invoke(root, args...) -> Object
          *
@@ -11300,7 +11301,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Emits a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.MaterializeFrame MaterializeFrame} operation.
+         * Emits a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.MaterializeFrame MaterializeFrame} operation.
          * <p>
          * Signature: MaterializeFrame() -> MaterializedFrame
          */
@@ -11321,7 +11322,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Begins a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.CreateClosure CreateClosure} operation.
+         * Begins a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.CreateClosure CreateClosure} operation.
          * <p>
          * Signature: CreateClosure(root) -> TestClosure
          * <p>
@@ -11344,7 +11345,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Ends a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.CreateClosure CreateClosure} operation.
+         * Ends a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.CreateClosure CreateClosure} operation.
          * <p>
          * Signature: CreateClosure(root) -> TestClosure
          *
@@ -11372,7 +11373,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Emits a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.VoidOperation VoidOperation} operation.
+         * Emits a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.VoidOperation VoidOperation} operation.
          * <p>
          * Signature: VoidOperation() -> void
          * <p>
@@ -11395,7 +11396,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Begins a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.ToBoolean ToBoolean} operation.
+         * Begins a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.ToBoolean ToBoolean} operation.
          * <p>
          * Signature: ToBoolean(l|b|s) -> boolean
          * <p>
@@ -11418,7 +11419,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Ends a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.ToBoolean ToBoolean} operation.
+         * Ends a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.ToBoolean ToBoolean} operation.
          * <p>
          * Signature: ToBoolean(l|b|s) -> boolean
          *
@@ -11447,7 +11448,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Emits a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.GetSourcePosition GetSourcePosition} operation.
+         * Emits a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.GetSourcePosition GetSourcePosition} operation.
          * <p>
          * Signature: GetSourcePosition() -> SourceSection
          */
@@ -11468,7 +11469,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Emits a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.GetSourcePositions GetSourcePositions} operation.
+         * Emits a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.GetSourcePositions GetSourcePositions} operation.
          * <p>
          * Signature: GetSourcePositions() -> SourceSection[]
          */
@@ -11489,7 +11490,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Begins a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.CopyLocalsToFrame CopyLocalsToFrame} operation.
+         * Begins a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.CopyLocalsToFrame CopyLocalsToFrame} operation.
          * <p>
          * Signature: CopyLocalsToFrame(length) -> Frame
          * <p>
@@ -11512,7 +11513,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Ends a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.CopyLocalsToFrame CopyLocalsToFrame} operation.
+         * Ends a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.CopyLocalsToFrame CopyLocalsToFrame} operation.
          * <p>
          * Signature: CopyLocalsToFrame(length) -> Frame
          *
@@ -11541,7 +11542,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Emits a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.GetBytecodeLocation GetBytecodeLocation} operation.
+         * Emits a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.GetBytecodeLocation GetBytecodeLocation} operation.
          * <p>
          * Signature: GetBytecodeLocation() -> BytecodeLocation
          */
@@ -11562,7 +11563,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Emits a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.CollectBytecodeLocations CollectBytecodeLocations} operation.
+         * Emits a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.CollectBytecodeLocations CollectBytecodeLocations} operation.
          * <p>
          * Signature: CollectBytecodeLocations() -> List<BytecodeLocation>
          */
@@ -11583,7 +11584,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Emits a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.CollectSourceLocations CollectSourceLocations} operation.
+         * Emits a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.CollectSourceLocations CollectSourceLocations} operation.
          * <p>
          * Signature: CollectSourceLocations() -> List<SourceSection>
          */
@@ -11604,7 +11605,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Emits a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.CollectAllSourceLocations CollectAllSourceLocations} operation.
+         * Emits a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.CollectAllSourceLocations CollectAllSourceLocations} operation.
          * <p>
          * Signature: CollectAllSourceLocations() -> List<SourceSection[]>
          */
@@ -11625,7 +11626,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Begins a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.ContinueNode Continue} operation.
+         * Begins a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.ContinueNode Continue} operation.
          * <p>
          * Signature: Continue(result, value) -> Object
          * <p>
@@ -11648,7 +11649,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Ends a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.ContinueNode Continue} operation.
+         * Ends a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.ContinueNode Continue} operation.
          * <p>
          * Signature: Continue(result, value) -> Object
          *
@@ -11676,7 +11677,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Emits a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.CurrentLocation CurrentLocation} operation.
+         * Emits a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.CurrentLocation CurrentLocation} operation.
          * <p>
          * Signature: CurrentLocation() -> BytecodeLocation
          */
@@ -11697,7 +11698,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Emits a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.PrintHere PrintHere} operation.
+         * Emits a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.PrintHere PrintHere} operation.
          * <p>
          * Signature: PrintHere() -> void
          */
@@ -11721,7 +11722,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Begins a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.IncrementValue IncrementValue} operation.
+         * Begins a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.IncrementValue IncrementValue} operation.
          * <p>
          * Signature: IncrementValue(value) -> Object
          * <p>
@@ -11749,7 +11750,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Ends a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.IncrementValue IncrementValue} operation.
+         * Ends a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.IncrementValue IncrementValue} operation.
          * <p>
          * Signature: IncrementValue(value) -> Object
          *
@@ -11781,7 +11782,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Begins a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.DoubleValue DoubleValue} operation.
+         * Begins a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.DoubleValue DoubleValue} operation.
          * <p>
          * Signature: DoubleValue(value) -> Object
          * <p>
@@ -11807,7 +11808,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Ends a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.DoubleValue DoubleValue} operation.
+         * Ends a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.DoubleValue DoubleValue} operation.
          * <p>
          * Signature: DoubleValue(value) -> Object
          *
@@ -11839,7 +11840,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Emits a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.EnableIncrementValueInstrumentation EnableIncrementValueInstrumentation} operation.
+         * Emits a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.EnableIncrementValueInstrumentation EnableIncrementValueInstrumentation} operation.
          * <p>
          * Signature: EnableIncrementValueInstrumentation() -> void
          */
@@ -11860,7 +11861,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Begins a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.Add Add} operation.
+         * Begins a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.Add Add} operation.
          * <p>
          * Signature: Add(left, right) -> long
          * <p>
@@ -11883,7 +11884,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Ends a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.Add Add} operation.
+         * Ends a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.Add Add} operation.
          * <p>
          * Signature: Add(left, right) -> long
          *
@@ -11913,7 +11914,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Begins a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.Mod Mod} operation.
+         * Begins a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.Mod Mod} operation.
          * <p>
          * Signature: Mod(left, right) -> long
          * <p>
@@ -11936,7 +11937,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Ends a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.Mod Mod} operation.
+         * Ends a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.Mod Mod} operation.
          * <p>
          * Signature: Mod(left, right) -> long
          *
@@ -11966,7 +11967,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Begins a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.Less Less} operation.
+         * Begins a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.Less Less} operation.
          * <p>
          * Signature: Less(left, right) -> boolean
          * <p>
@@ -11989,7 +11990,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Ends a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.Less Less} operation.
+         * Ends a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.Less Less} operation.
          * <p>
          * Signature: Less(left, right) -> boolean
          *
@@ -12019,7 +12020,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Emits a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.EnableDoubleValueInstrumentation EnableDoubleValueInstrumentation} operation.
+         * Emits a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.EnableDoubleValueInstrumentation EnableDoubleValueInstrumentation} operation.
          * <p>
          * Signature: EnableDoubleValueInstrumentation() -> void
          */
@@ -12040,7 +12041,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Emits a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.ExplicitBindingsTest ExplicitBindingsTest} operation.
+         * Emits a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.ExplicitBindingsTest ExplicitBindingsTest} operation.
          * <p>
          * Signature: ExplicitBindingsTest() -> Bindings
          */
@@ -12061,7 +12062,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Emits a custom {@link #com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.ImplicitBindingsTest ImplicitBindingsTest} operation.
+         * Emits a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.ImplicitBindingsTest ImplicitBindingsTest} operation.
          * <p>
          * Signature: ImplicitBindingsTest() -> Bindings
          */

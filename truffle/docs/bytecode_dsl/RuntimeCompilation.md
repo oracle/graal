@@ -30,7 +30,7 @@ Operands whose values guide partial evaluation (e.g., loop counters used to unro
 
 If an operand is sometimes (but not always) always a constant, you can speculate over its const-ness using the regular Truffle DSL. For example, the following operation speculates that the array operand length is constant, unrolling the loop when it is, and falling back on a general specialization when the assumption fails:
 
-```
+```java
 @Operation
 public static final class IterateArray {
     @ExplodeLoop
