@@ -36,6 +36,8 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-49770) Add support for glob patterns in resource-config files in addition to regexp. The Tracing Agent now prints entries in the glob format.
 * (GR-46386) Throw missing registration errors for JNI queries when the query was not included in the reachability metadata.
 * (GR-51479) Implement cgroup support in native code. See the [README](src/com.oracle.svm.native.libcontainer/README.md) and the [PR description](https://github.com/oracle/graal/pull/8989).
+* (GR-54241) Streamline Native Image reachability metadata into a single `reachability-metadata.json`. The formerly-used individual metadata files (`reflection-config.json`, `resource-config.json`, etc.) are now deprecated, but will still be accepted.
+  Native Image will only output `reachability-metadata.json` files, and those will be readable on the previous LTS versions of GraalVM. See the [documentation](../docs/reference-manual/native-image/ReachabilityMetadata.md).
 
 ## GraalVM for JDK 22 (Internal Version 24.0.0)
 * (GR-48304) Red Hat added support for the JFR event ThreadAllocationStatistics.
