@@ -46,6 +46,7 @@ public class PosixDirectives implements CContext.Directives {
                     "<semaphore.h>",
                     "<signal.h>",
                     "<errno.h>",
+                    "<sys/file.h>",
                     "<sys/mman.h>",
                     "<sys/resource.h>",
                     "<sys/stat.h>",
