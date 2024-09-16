@@ -9459,6 +9459,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
          * Signature: LoadArgument() -> Object
          * <p>
          * LoadArgument reads the argument at {@code index} from the frame.
+         * Throws {@link IndexOutOfBoundsException} if the index is out of bounds.
          *
          * @param index the index of the argument to load (must fit into a short).
          */
@@ -10078,7 +10079,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         /**
-         * Emits a custom {@link #com.oracle.truffle.sl.bytecode.SLBytecodeRootNode.SLAlwaysHalt SLAlwaysHalt} operation.
+         * Emits a custom {@link com.oracle.truffle.sl.bytecode.SLBytecodeRootNode.SLAlwaysHalt SLAlwaysHalt} operation.
          * <p>
          * Signature: SLAlwaysHalt() -> void
          */
@@ -10100,7 +10101,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         /**
-         * Emits a custom {@link #com.oracle.truffle.sl.bytecode.SLBytecodeRootNode.SLLoadArgument SLLoadArgument} operation.
+         * Emits a custom {@link com.oracle.truffle.sl.bytecode.SLBytecodeRootNode.SLLoadArgument SLLoadArgument} operation.
          * <p>
          * Signature: SLLoadArgument() -> Object
          *
@@ -10125,7 +10126,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         /**
-         * Emits a custom {@link #com.oracle.truffle.sl.bytecode.SLBytecodeRootNode.Builtin Builtin} operation.
+         * Emits a custom {@link com.oracle.truffle.sl.bytecode.SLBytecodeRootNode.Builtin Builtin} operation.
          * <p>
          * Signature: Builtin() -> Object
          *
@@ -10157,7 +10158,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         /**
-         * Begins a custom {@link #com.oracle.truffle.sl.bytecode.SLBytecodeRootNode.SLInvoke SLInvoke} operation.
+         * Begins a custom {@link com.oracle.truffle.sl.bytecode.SLBytecodeRootNode.SLInvoke SLInvoke} operation.
          * <p>
          * Signature: SLInvoke(function, arguments...) -> Object
          * <p>
@@ -10179,7 +10180,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         /**
-         * Ends a custom {@link #com.oracle.truffle.sl.bytecode.SLBytecodeRootNode.SLInvoke SLInvoke} operation.
+         * Ends a custom {@link com.oracle.truffle.sl.bytecode.SLBytecodeRootNode.SLInvoke SLInvoke} operation.
          * <p>
          * Signature: SLInvoke(function, arguments...) -> Object
          *
@@ -10207,7 +10208,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         /**
-         * Begins a custom {@link #com.oracle.truffle.sl.nodes.expression.SLAddNode SLAdd} operation.
+         * Begins a custom {@link com.oracle.truffle.sl.nodes.expression.SLAddNode SLAdd} operation.
          * <p>
          * Signature: SLAdd(left, right) -> Object
          * <p>
@@ -10229,7 +10230,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         /**
-         * Ends a custom {@link #com.oracle.truffle.sl.nodes.expression.SLAddNode SLAdd} operation.
+         * Ends a custom {@link com.oracle.truffle.sl.nodes.expression.SLAddNode SLAdd} operation.
          * <p>
          * Signature: SLAdd(left, right) -> Object
          *
@@ -10258,7 +10259,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         /**
-         * Begins a custom {@link #com.oracle.truffle.sl.nodes.expression.SLDivNode SLDiv} operation.
+         * Begins a custom {@link com.oracle.truffle.sl.nodes.expression.SLDivNode SLDiv} operation.
          * <p>
          * Signature: SLDiv(left, right) -> Object
          * <p>
@@ -10280,7 +10281,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         /**
-         * Ends a custom {@link #com.oracle.truffle.sl.nodes.expression.SLDivNode SLDiv} operation.
+         * Ends a custom {@link com.oracle.truffle.sl.nodes.expression.SLDivNode SLDiv} operation.
          * <p>
          * Signature: SLDiv(left, right) -> Object
          *
@@ -10309,7 +10310,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         /**
-         * Begins a custom {@link #com.oracle.truffle.sl.nodes.expression.SLEqualNode SLEqual} operation.
+         * Begins a custom {@link com.oracle.truffle.sl.nodes.expression.SLEqualNode SLEqual} operation.
          * <p>
          * Signature: SLEqual(left, right) -> boolean
          * <p>
@@ -10331,7 +10332,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         /**
-         * Ends a custom {@link #com.oracle.truffle.sl.nodes.expression.SLEqualNode SLEqual} operation.
+         * Ends a custom {@link com.oracle.truffle.sl.nodes.expression.SLEqualNode SLEqual} operation.
          * <p>
          * Signature: SLEqual(left, right) -> boolean
          *
@@ -10360,7 +10361,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         /**
-         * Begins a custom {@link #com.oracle.truffle.sl.nodes.expression.SLLessOrEqualNode SLLessOrEqual} operation.
+         * Begins a custom {@link com.oracle.truffle.sl.nodes.expression.SLLessOrEqualNode SLLessOrEqual} operation.
          * <p>
          * Signature: SLLessOrEqual(left, right) -> Object
          * <p>
@@ -10382,7 +10383,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         /**
-         * Ends a custom {@link #com.oracle.truffle.sl.nodes.expression.SLLessOrEqualNode SLLessOrEqual} operation.
+         * Ends a custom {@link com.oracle.truffle.sl.nodes.expression.SLLessOrEqualNode SLLessOrEqual} operation.
          * <p>
          * Signature: SLLessOrEqual(left, right) -> Object
          *
@@ -10411,7 +10412,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         /**
-         * Begins a custom {@link #com.oracle.truffle.sl.nodes.expression.SLLessThanNode SLLessThan} operation.
+         * Begins a custom {@link com.oracle.truffle.sl.nodes.expression.SLLessThanNode SLLessThan} operation.
          * <p>
          * Signature: SLLessThan(left, right) -> boolean
          * <p>
@@ -10433,7 +10434,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         /**
-         * Ends a custom {@link #com.oracle.truffle.sl.nodes.expression.SLLessThanNode SLLessThan} operation.
+         * Ends a custom {@link com.oracle.truffle.sl.nodes.expression.SLLessThanNode SLLessThan} operation.
          * <p>
          * Signature: SLLessThan(left, right) -> boolean
          *
@@ -10462,7 +10463,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         /**
-         * Begins a custom {@link #com.oracle.truffle.sl.nodes.expression.SLLogicalNotNode SLLogicalNot} operation.
+         * Begins a custom {@link com.oracle.truffle.sl.nodes.expression.SLLogicalNotNode SLLogicalNot} operation.
          * <p>
          * Signature: SLLogicalNot(value) -> boolean
          * <p>
@@ -10484,7 +10485,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         /**
-         * Ends a custom {@link #com.oracle.truffle.sl.nodes.expression.SLLogicalNotNode SLLogicalNot} operation.
+         * Ends a custom {@link com.oracle.truffle.sl.nodes.expression.SLLogicalNotNode SLLogicalNot} operation.
          * <p>
          * Signature: SLLogicalNot(value) -> boolean
          *
@@ -10512,7 +10513,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         /**
-         * Begins a custom {@link #com.oracle.truffle.sl.nodes.expression.SLMulNode SLMul} operation.
+         * Begins a custom {@link com.oracle.truffle.sl.nodes.expression.SLMulNode SLMul} operation.
          * <p>
          * Signature: SLMul(left, right) -> Object
          * <p>
@@ -10534,7 +10535,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         /**
-         * Ends a custom {@link #com.oracle.truffle.sl.nodes.expression.SLMulNode SLMul} operation.
+         * Ends a custom {@link com.oracle.truffle.sl.nodes.expression.SLMulNode SLMul} operation.
          * <p>
          * Signature: SLMul(left, right) -> Object
          *
@@ -10563,7 +10564,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         /**
-         * Begins a custom {@link #com.oracle.truffle.sl.nodes.expression.SLReadPropertyNode SLReadProperty} operation.
+         * Begins a custom {@link com.oracle.truffle.sl.nodes.expression.SLReadPropertyNode SLReadProperty} operation.
          * <p>
          * Signature: SLReadProperty(receiver, index|name) -> Object
          * <p>
@@ -10585,7 +10586,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         /**
-         * Ends a custom {@link #com.oracle.truffle.sl.nodes.expression.SLReadPropertyNode SLReadProperty} operation.
+         * Ends a custom {@link com.oracle.truffle.sl.nodes.expression.SLReadPropertyNode SLReadProperty} operation.
          * <p>
          * Signature: SLReadProperty(receiver, index|name) -> Object
          *
@@ -10612,7 +10613,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         /**
-         * Begins a custom {@link #com.oracle.truffle.sl.nodes.expression.SLSubNode SLSub} operation.
+         * Begins a custom {@link com.oracle.truffle.sl.nodes.expression.SLSubNode SLSub} operation.
          * <p>
          * Signature: SLSub(left, right) -> Object
          * <p>
@@ -10634,7 +10635,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         /**
-         * Ends a custom {@link #com.oracle.truffle.sl.nodes.expression.SLSubNode SLSub} operation.
+         * Ends a custom {@link com.oracle.truffle.sl.nodes.expression.SLSubNode SLSub} operation.
          * <p>
          * Signature: SLSub(left, right) -> Object
          *
@@ -10663,7 +10664,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         /**
-         * Begins a custom {@link #com.oracle.truffle.sl.nodes.expression.SLWritePropertyNode SLWriteProperty} operation.
+         * Begins a custom {@link com.oracle.truffle.sl.nodes.expression.SLWritePropertyNode SLWriteProperty} operation.
          * <p>
          * Signature: SLWriteProperty(receiver, index|name, value) -> Object
          * <p>
@@ -10685,7 +10686,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         /**
-         * Ends a custom {@link #com.oracle.truffle.sl.nodes.expression.SLWritePropertyNode SLWriteProperty} operation.
+         * Ends a custom {@link com.oracle.truffle.sl.nodes.expression.SLWritePropertyNode SLWriteProperty} operation.
          * <p>
          * Signature: SLWriteProperty(receiver, index|name, value) -> Object
          *
@@ -10712,7 +10713,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         /**
-         * Begins a custom {@link #com.oracle.truffle.sl.nodes.util.SLUnboxNode SLUnbox} operation.
+         * Begins a custom {@link com.oracle.truffle.sl.nodes.util.SLUnboxNode SLUnbox} operation.
          * <p>
          * Signature: SLUnbox(value) -> Object
          * <p>
@@ -10734,7 +10735,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         /**
-         * Ends a custom {@link #com.oracle.truffle.sl.nodes.util.SLUnboxNode SLUnbox} operation.
+         * Ends a custom {@link com.oracle.truffle.sl.nodes.util.SLUnboxNode SLUnbox} operation.
          * <p>
          * Signature: SLUnbox(value) -> Object
          *
@@ -10762,7 +10763,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         /**
-         * Begins a custom {@link #com.oracle.truffle.sl.nodes.expression.SLFunctionLiteralNode SLFunctionLiteral} operation.
+         * Begins a custom {@link com.oracle.truffle.sl.nodes.expression.SLFunctionLiteralNode SLFunctionLiteral} operation.
          * <p>
          * Signature: SLFunctionLiteral(functionName) -> SLFunction
          * <p>
@@ -10784,7 +10785,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         /**
-         * Ends a custom {@link #com.oracle.truffle.sl.nodes.expression.SLFunctionLiteralNode SLFunctionLiteral} operation.
+         * Ends a custom {@link com.oracle.truffle.sl.nodes.expression.SLFunctionLiteralNode SLFunctionLiteral} operation.
          * <p>
          * Signature: SLFunctionLiteral(functionName) -> SLFunction
          *
@@ -10811,7 +10812,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         /**
-         * Begins a custom {@link #com.oracle.truffle.sl.nodes.util.SLToBooleanNode SLToBoolean} operation.
+         * Begins a custom {@link com.oracle.truffle.sl.nodes.util.SLToBooleanNode SLToBoolean} operation.
          * <p>
          * Signature: SLToBoolean(value) -> boolean
          * <p>
@@ -10833,7 +10834,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         /**
-         * Ends a custom {@link #com.oracle.truffle.sl.nodes.util.SLToBooleanNode SLToBoolean} operation.
+         * Ends a custom {@link com.oracle.truffle.sl.nodes.util.SLToBooleanNode SLToBoolean} operation.
          * <p>
          * Signature: SLToBoolean(value) -> boolean
          *

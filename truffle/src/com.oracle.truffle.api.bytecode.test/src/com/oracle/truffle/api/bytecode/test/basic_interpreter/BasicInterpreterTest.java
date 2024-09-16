@@ -219,10 +219,10 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.beginRoot();
             b.beginIfThenElse();
 
-            b.beginLessThanOperation();
+            b.beginLess();
             b.emitLoadArgument(0);
             b.emitLoadArgument(1);
-            b.endLessThanOperation();
+            b.endLess();
 
             b.beginReturn();
             b.emitLoadArgument(1);
@@ -254,10 +254,10 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.beginRoot();
             b.beginIfThen();
 
-            b.beginLessThanOperation();
+            b.beginLess();
             b.emitLoadArgument(0);
             b.emitLoadConstant(0L);
-            b.endLessThanOperation();
+            b.endLess();
 
             emitReturn(b, 0);
 
@@ -288,10 +288,10 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
             b.beginConditional();
 
-            b.beginLessThanOperation();
+            b.beginLess();
             b.emitLoadArgument(0);
             b.emitLoadConstant(0L);
-            b.endLessThanOperation();
+            b.endLess();
 
             b.emitLoadConstant(0L);
 
@@ -368,10 +368,10 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.endStoreLocal();
 
             b.beginWhile();
-            b.beginLessThanOperation();
+            b.beginLess();
             b.emitLoadLocal(locI);
             b.emitLoadArgument(0);
-            b.endLessThanOperation();
+            b.endLess();
 
             b.beginBlock();
             b.beginStoreLocal(locJ);
@@ -429,10 +429,10 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.beginTryCatch();
 
             b.beginIfThen();
-            b.beginLessThanOperation();
+            b.beginLess();
             b.emitLoadArgument(0);
             b.emitLoadConstant(0L);
-            b.endLessThanOperation();
+            b.endLess();
 
             b.beginThrowOperation();
             b.beginAddOperation();
@@ -525,10 +525,10 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.beginTryCatch();
 
             b.beginIfThen(); // begin inner try
-            b.beginLessThanOperation();
+            b.beginLess();
             b.emitLoadArgument(0);
             b.emitLoadConstant(1L);
-            b.endLessThanOperation();
+            b.endLess();
             b.beginThrowOperation();
             b.emitLoadArgument(0);
             b.endThrowOperation();
@@ -537,10 +537,10 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.beginBlock(); // begin inner catch
 
             b.beginIfThen();
-            b.beginLessThanOperation();
+            b.beginLess();
             b.emitLoadArgument(0);
             b.emitLoadConstant(0L);
-            b.endLessThanOperation();
+            b.endLess();
             b.beginThrowOperation();
             b.beginAddOperation();
             b.emitLoadArgument(0);
@@ -600,10 +600,10 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
             b.beginBlock(); // begin inner try
             b.beginIfThen();
-            b.beginLessThanOperation();
+            b.beginLess();
             b.emitLoadArgument(0);
             b.emitLoadConstant(0L);
-            b.endLessThanOperation();
+            b.endLess();
             b.beginThrowOperation();
             b.emitLoadConstant(-1L);
             b.endThrowOperation();
@@ -766,10 +766,10 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
             b.beginWhile();
 
-            b.beginLessThanOperation();
+            b.beginLess();
             b.emitLoadLocal(local0);
             b.emitLoadConstant(100L);
-            b.endLessThanOperation();
+            b.endLess();
 
             b.beginBlock();
 
@@ -2004,10 +2004,10 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.endStoreLocal();
 
             b.beginWhile();
-            b.beginLessThanOperation();
+            b.beginLess();
             b.emitLoadLocal(x);
             b.emitLoadConstant(5L);
-            b.endLessThanOperation();
+            b.endLess();
 
             b.beginBlock();
             for (int i = 0; i < Short.MAX_VALUE * 2; i++) {

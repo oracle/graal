@@ -322,10 +322,10 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
 
                 b.emitLabel(lbl);
                 b.beginIfThen();
-                    b.beginLessThanOperation();
+                    b.beginLess();
                     b.emitLoadConstant(0L);
                     b.emitLoadLocal(local);
-                    b.endLessThanOperation();
+                    b.endLess();
 
                     b.beginBlock();
                         emitAppend(b, 4);
@@ -651,10 +651,10 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
                     b.endTeeLocal();
 
                     b.beginWhile();
-                        b.beginLessThanOperation();
+                        b.beginLess();
                             b.emitLoadLocal(local);
                             b.emitLoadConstant(7L);
-                        b.endLessThanOperation();
+                        b.endLess();
 
                         b.beginBlock();
                             b.beginAppenderOperation();

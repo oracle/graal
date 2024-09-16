@@ -154,10 +154,10 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
             b.endStoreLocal();
 
             b.beginWhile();
-            b.beginLessThanOperation();
+            b.beginLess();
             b.emitLoadLocal(i);
             b.emitLoadConstant(endValue);
-            b.endLessThanOperation();
+            b.endLess();
 
             b.beginBlock();
 

@@ -101,10 +101,10 @@ public class BranchTest extends AbstractBasicInterpreterTest {
 
                 b.beginIfThen();
 
-                    b.beginLessThanOperation();
+                    b.beginLess();
                     b.emitLoadConstant(5L);
                     b.emitLoadLocal(loc);
-                    b.endLessThanOperation();
+                    b.endLess();
 
                     b.beginReturn();
                     b.emitLoadLocal(loc);
@@ -143,10 +143,10 @@ public class BranchTest extends AbstractBasicInterpreterTest {
             b.beginBlock();
               b.beginIfThen();
 
-              b.beginLessThanOperation();
+              b.beginLess();
               b.emitLoadArgument(0);
               b.emitLoadConstant(0L);
-              b.endLessThanOperation();
+              b.endLess();
 
               b.emitBranch(lbl);
 
@@ -306,10 +306,10 @@ public class BranchTest extends AbstractBasicInterpreterTest {
                     BytecodeLabel x = b.createLabel();
                     BytecodeLabel y = b.createLabel();
                     b.beginIfThen();
-                        b.beginLessThanOperation();
+                        b.beginLess();
                             b.emitLoadArgument(0);
                             b.emitLoadConstant(0L);
-                        b.endLessThanOperation();
+                        b.endLess();
 
                         b.emitBranch(x);
                     b.endIfThen();
