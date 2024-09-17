@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,10 +49,13 @@ import org.graalvm.jniutils.JNI.JObject;
 import org.graalvm.jniutils.JNI.JThrowable;
 import org.graalvm.jniutils.JNI.JValue;
 import org.graalvm.jniutils.JNIExceptionWrapper;
+import org.graalvm.jniutils.JNIExceptionWrapper.ExceptionHandler;
+import org.graalvm.jniutils.JNIExceptionWrapper.ExceptionHandlerContext;
 import org.graalvm.jniutils.JNIUtil;
 import org.graalvm.nativebridge.BinaryOutput.ByteArrayBinaryOutput;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.word.WordFactory;
 
 import static org.graalvm.jniutils.JNIUtil.GetStaticMethodID;
 import static org.graalvm.nativeimage.c.type.CTypeConversion.toCString;
@@ -70,6 +73,15 @@ public final class ForeignException extends RuntimeException {
     private static final ThreadLocal<ForeignException> pendingException = new ThreadLocal<>();
     private static final JNIMethodResolver CreateForeignException = new JNIMethodResolver("createForeignException", "([B)Ljava/lang/Throwable;");
     private static final JNIMethodResolver ToByteArray = new JNIMethodResolver("toByteArray", "(Lorg/graalvm/nativebridge/ForeignException;)[B");
+    private static final JNIMethodResolver GetStackOverflowErrorClass = new JNIMethodResolver("getStackOverflowErrorClass", "()Ljava/lang/Class;");
+    private static final StackOverflowError JNI_STACK_OVERFLOW_ERROR = new StackOverflowError("Stack overflow in transition from Native to Java.") {
+        @Override
+        @SuppressWarnings("sync-override")
+        public Throwable fillInStackTrace() {
+            return this;
+        }
+    };
+
     /**
      * Pre-allocated {@code ForeignException} for double failure.
      */
@@ -198,10 +210,36 @@ public final class ForeignException extends RuntimeException {
     public static JNICalls getJNICalls() {
         JNICalls res = jniCalls;
         if (res == null) {
-            res = createJNICalls();
-            jniCalls = res;
+            synchronized (ForeignException.class) {
+                res = jniCalls;
+                if (res == null) {
+                    res = createJNICalls(WordFactory.nullPointer());
+                    jniCalls = res;
+                }
+            }
         }
         return res;
+    }
+
+    /**
+     * Loads host exceptions that may be thrown by JNI APIs during native to Java transitions. This
+     * method must be called before making any JNI host calls via {@link #getJNICalls()}, otherwise
+     * an {@link IllegalStateException} will be thrown.
+     * <p>
+     * You must call this method if you expect host calls to occur within the thread's yellow zone
+     * and need to ensure that the correct exception types are propagated. If this method is not
+     * called, exceptions thrown by the JNI API may have incorrect types, though this initialization
+     * is unnecessary if such exceptions are not expected.
+     * </p>
+     *
+     * @since 24.2
+     */
+    public static synchronized void loadJNIExceptions(JNIEnv env) {
+        if (jniCalls != null) {
+            throw new IllegalStateException("JNICalls are already created");
+        }
+        JClass stackOverflow = JNIUtil.NewGlobalRef(env, callGetStackOverflowErrorClass(env), StackOverflowError.class.getName());
+        jniCalls = createJNICalls(stackOverflow);
     }
 
     byte[] toByteArray() {
@@ -223,16 +261,8 @@ public final class ForeignException extends RuntimeException {
         throw (T) t;
     }
 
-    private static JNICalls createJNICalls() {
-        return JNICalls.createWithExceptionHandler(context -> {
-            if (ForeignException.class.getName().equals(context.getThrowableClassName())) {
-                JNIEnv env = context.getEnv();
-                byte[] marshalledData = JNIUtil.createArray(env, callToByteArray(env, context.getThrowable()));
-                throw ForeignException.create(marshalledData, ForeignException.GUEST_TO_HOST);
-            } else {
-                context.throwJNIExceptionWrapper();
-            }
-        });
+    private static JNICalls createJNICalls(JClass stackOverflowError) {
+        return JNICalls.createWithExceptionHandler(new ForeignExceptionHandler(stackOverflowError));
     }
 
     private static JThrowable callCreateForeignException(JNIEnv env, JByteArray rawValue) {
@@ -245,6 +275,10 @@ public final class ForeignException extends RuntimeException {
         JValue args = StackValue.get(1, JValue.class);
         args.addressOf(0).setJObject(p0);
         return JNICalls.getDefault().callStaticJObject(env, ToByteArray.getEntryPoints(env), ToByteArray.resolve(env), args);
+    }
+
+    private static JClass callGetStackOverflowErrorClass(JNIEnv env) {
+        return JNICalls.getDefault().callStaticJObject(env, GetStackOverflowErrorClass.getEntryPoints(env), GetStackOverflowErrorClass.resolve(env), WordFactory.nullPointer());
     }
 
     private static final class JNIMethodResolver implements JNICalls.JNIMethod {
@@ -291,6 +325,37 @@ public final class ForeignException extends RuntimeException {
         @Override
         public String getDisplayName() {
             return methodName;
+        }
+    }
+
+    private static final class ForeignExceptionHandler implements ExceptionHandler {
+
+        private final JClass stackOverflowError;
+
+        ForeignExceptionHandler(JClass stackOverflowError) {
+            this.stackOverflowError = stackOverflowError;
+        }
+
+        @Override
+        public void handleException(ExceptionHandlerContext context) {
+            JNIEnv env = context.getEnv();
+            JThrowable exception = context.getThrowable();
+            if (stackOverflowError.isNonNull() && JNIUtil.IsSameObject(env, stackOverflowError, JNIUtil.GetObjectClass(env, exception))) {
+                /*
+                 * The JavaVM lacks sufficient stack space to transition to `_thread_in_Java`.
+                 * Calling a JNI API results in a `StackOverflowError` being set as a pending
+                 * exception. We throw a pre-allocated `StackOverflowError`. Unlike a
+                 * `StackOverflowError` occurring in user code, the one thrown by a VM transition is
+                 * not wrapped in a `ForeignException`. This distinction can be used to identify the
+                 * situation.
+                 */
+                throw JNI_STACK_OVERFLOW_ERROR;
+            } else if (ForeignException.class.getName().equals(context.getThrowableClassName())) {
+                byte[] marshalledData = JNIUtil.createArray(env, callToByteArray(env, exception));
+                throw ForeignException.create(marshalledData, ForeignException.GUEST_TO_HOST);
+            } else {
+                context.throwJNIExceptionWrapper();
+            }
         }
     }
 }
