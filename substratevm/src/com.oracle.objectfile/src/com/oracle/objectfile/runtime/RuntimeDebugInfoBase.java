@@ -1,128 +1,119 @@
+/*
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+
 package com.oracle.objectfile.runtime;
 
-import com.oracle.objectfile.runtime.RuntimeDebugInfoProvider.DebugCodeInfo;
-import com.oracle.objectfile.runtime.RuntimeDebugInfoProvider.DebugFileInfo;
-import com.oracle.objectfile.runtime.RuntimeDebugInfoProvider.DebugLocalInfo;
-import com.oracle.objectfile.runtime.RuntimeDebugInfoProvider.DebugLocalValueInfo;
-import com.oracle.objectfile.runtime.RuntimeDebugInfoProvider.DebugLocationInfo;
-import com.oracle.objectfile.runtime.RuntimeDebugInfoProvider.DebugMethodInfo;
-import com.oracle.objectfile.runtime.RuntimeDebugInfoProvider.DebugTypeInfo.DebugTypeKind;
-import com.oracle.objectfile.runtime.debugentry.CompiledMethodEntry;
-import com.oracle.objectfile.runtime.debugentry.DirEntry;
-import com.oracle.objectfile.runtime.debugentry.FileEntry;
-import com.oracle.objectfile.runtime.debugentry.MethodEntry;
-import com.oracle.objectfile.runtime.debugentry.PrimitiveTypeEntry;
-import com.oracle.objectfile.runtime.debugentry.StringTable;
-import com.oracle.objectfile.runtime.debugentry.TypeEntry;
-import com.oracle.objectfile.runtime.debugentry.TypedefEntry;
-import com.oracle.objectfile.runtime.debugentry.range.PrimaryRange;
-import com.oracle.objectfile.runtime.debugentry.range.Range;
-import com.oracle.objectfile.runtime.debugentry.range.SubRange;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaType;
-
 import java.nio.ByteOrder;
-import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Consumer;
+import java.util.stream.Stream;
 
-public class RuntimeDebugInfoBase {
+import com.oracle.objectfile.debugentry.ArrayTypeEntry;
+import com.oracle.objectfile.debugentry.ClassEntry;
+import com.oracle.objectfile.debugentry.CompiledMethodEntry;
+import com.oracle.objectfile.debugentry.DebugInfoBase;
+import com.oracle.objectfile.debugentry.DirEntry;
+import com.oracle.objectfile.debugentry.EnumClassEntry;
+import com.oracle.objectfile.debugentry.FieldEntry;
+import com.oracle.objectfile.debugentry.FileEntry;
+import com.oracle.objectfile.debugentry.ForeignTypeEntry;
+import com.oracle.objectfile.debugentry.HeaderTypeEntry;
+import com.oracle.objectfile.debugentry.InterfaceClassEntry;
+import com.oracle.objectfile.debugentry.LoaderEntry;
+import com.oracle.objectfile.debugentry.MethodEntry;
+import com.oracle.objectfile.debugentry.PrimitiveTypeEntry;
+import com.oracle.objectfile.debugentry.StringTable;
+import com.oracle.objectfile.debugentry.StructureTypeEntry;
+import com.oracle.objectfile.debugentry.TypeEntry;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 
-    protected ByteOrder byteOrder;
-    /**
-     * A table listing all known strings, some of which may be marked for insertion into the
-     * debug_str section.
-     */
-    private final StringTable stringTable = new StringTable();
-    /**
-     * List of dirs in which files are found to reside.
-     */
-    private final List<DirEntry> dirs = new ArrayList<>();
-    /**
-     * Index of all dirs in which files are found to reside either as part of substrate/compiler or
-     * user code.
-     */
-    private final HashMap<Path, DirEntry> dirsIndex = new HashMap<>();
+import com.oracle.objectfile.debugentry.range.PrimaryRange;
+import com.oracle.objectfile.debugentry.range.Range;
+import com.oracle.objectfile.debugentry.range.SubRange;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugCodeInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFileInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocationInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
+import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo;
 
-    /**
-     * List of all types present in the native image including instance classes, array classes,
-     * primitive types and the one-off Java header struct.
-     */
-    private final List<TypeEntry> types = new ArrayList<>();
-    /**
-     * Index of already seen types keyed by the unique, associated, identifying ResolvedJavaType or,
-     * in the single special case of the TypeEntry for the Java header structure, by key null.
-     */
-    private final HashMap<ResolvedJavaType, TypeEntry> typesIndex = new HashMap<>();
-    /**
-     * List of all types present in the native image including instance classes, array classes,
-     * primitive types and the one-off Java header struct.
-     */
-    private final List<TypedefEntry> typedefs = new ArrayList<>();
-    /**
-     * Index of already seen types keyed by the unique, associated, identifying ResolvedJavaType or,
-     * in the single special case of the TypeEntry for the Java header structure, by key null.
-     */
-    private final HashMap<ResolvedJavaType, TypedefEntry> typedefsIndex = new HashMap<>();
-    /**
-     * Handle on runtime compiled method found in debug info.
-     */
-    private CompiledMethodEntry compiledMethod;
-    /**
-     * List of files which contain primary or secondary ranges.
-     */
-    private final List<FileEntry> files = new ArrayList<>();
-    /**
-     * Index of files which contain primary or secondary ranges keyed by path.
-     */
-    private final HashMap<Path, FileEntry> filesIndex = new HashMap<>();
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
-    /**
-     * Flag set to true if heap references are stored as addresses relative to a heap base register
-     * otherwise false.
-     */
-    private boolean useHeapBase;
+/**
+ * An abstract class which indexes the information presented by the DebugInfoProvider in an
+ * organization suitable for use by subclasses targeting a specific binary format.
+ *
+ * This class provides support for iterating over records detailing all the types and compiled
+ * methods presented via the DebugInfoProvider interface. The obvious hierarchical traversal order
+ * when generating debug info output is:
+ *
+ * 1) by top level compiled method (and associated primary Range) n.b. these are always presented to
+ * the generator in order of ascending address
+ *
+ * 2) by inlined method (sub range) within top level method, also ordered by ascending address
+ *
+ * This traversal ensures that debug records are generated in increasing address order
+ *
+ * An alternative hierarchical traversal order is
+ *
+ * 1) by top level class (unique ResolvedJavaType id) n.b. types are not guaranteed to be presented
+ * to the generator in increasing address order of their method code ranges. In particular many
+ * classes do not have top-level compiled methods and may not even have inlined methods.
+ *
+ * 2) by top level compiled method (and associated primary Range) within a class, which are ordered
+ * by ascending address
+ *
+ * 3) by inlined method (sub range) within top level method, also ordered by ascending address
+ *
+ * Since clients may need to generate records for classes with no compiled methods, the second
+ * traversal order is often employed.
+ *
+ * n.b. methods of a given class do not always appear in a single continuous address range. The
+ * compiler choose to interleave intervening code from other classes or data values in order to get
+ * better cache locality. It may also choose to generate deoptimized variants of methods in a
+ * separate range from normal, optimized compiled code. This out of (code addess) order sorting may
+ * make it difficult to use a class by class traversal to generate debug info in separate per-class
+ * units.
+ */
+public abstract class RuntimeDebugInfoBase extends DebugInfoBase {
+    protected RuntimeDebugInfoProvider debugInfoProvider;
 
     private String cuName;
-    /**
-     * Number of bits oops are left shifted by when using compressed oops.
-     */
-    private int oopCompressShift;
-    /**
-     * Number of low order bits used for tagging oops.
-     */
-    private int oopTagsCount;
-    /**
-     * Number of bytes used to store an oop reference.
-     */
-    private int oopReferenceSize;
-    /**
-     * Number of bytes used to store a raw pointer.
-     */
-    private int pointerSize;
-    /**
-     * Alignment of object memory area (and, therefore, of any oop) in bytes.
-     */
-    private int oopAlignment;
-    /**
-     * Number of bits in oop which are guaranteed 0 by virtue of alignment.
-     */
-    private int oopAlignShift;
-    /**
-     * The compilation directory in which to look for source files as a {@link String}.
-     */
-    private String cachePath;
-
-    /**
-     * The offset of the first byte beyond the end of the Java compiled code address range.
-     */
-    private int compiledCodeMax;
 
     @SuppressWarnings("this-escape")
     public RuntimeDebugInfoBase(ByteOrder byteOrder) {
+        super(byteOrder);
         this.byteOrder = byteOrder;
         this.useHeapBase = true;
         this.oopTagsCount = 0;
@@ -131,13 +122,10 @@ public class RuntimeDebugInfoBase {
         this.pointerSize = 0;
         this.oopAlignment = 0;
         this.oopAlignShift = 0;
+        this.hubClassEntry = null;
         this.compiledCodeMax = 0;
         // create and index an empty dir with index 0.
         ensureDirEntry(EMPTY_PATH);
-    }
-
-    public int compiledCodeMax() {
-        return compiledCodeMax;
     }
 
     /**
@@ -147,6 +135,8 @@ public class RuntimeDebugInfoBase {
      */
     @SuppressWarnings("try")
     public void installDebugInfo(RuntimeDebugInfoProvider debugInfoProvider) {
+        this.debugInfoProvider = debugInfoProvider;
+
         /*
          * Track whether we need to use a heap base register.
          */
@@ -198,60 +188,106 @@ public class RuntimeDebugInfoBase {
             cachePath = uniqueNullString; // fall back to null string
         }
 
-        // TODO: handle method and required typedefs / primitives
         DebugCodeInfo debugCodeInfo = debugInfoProvider.codeInfoProvider();
-        String fileName = debugCodeInfo.fileName();
-        Path filePath = debugCodeInfo.filePath();
-        ResolvedJavaType ownerType = debugCodeInfo.ownerType();
-        String methodName = debugCodeInfo.name();
-        long lo = debugCodeInfo.addressLo();
-        long hi = debugCodeInfo.addressHi();
-        int primaryLine = debugCodeInfo.line();
+        debugCodeInfo.debugContext((debugContext) -> {
+            /*
+             * Primary file name and full method name need to be written to the debug_str section.
+             */
+            ResolvedJavaType ownerType = debugCodeInfo.ownerType();
 
-        TypedefEntry typedefEntry = lookupTypedefEntry(ownerType);
-        MethodEntry methodEntry = processMethod(debugCodeInfo, typedefEntry);
-        PrimaryRange primaryRange = Range.createPrimary(methodEntry, lo, hi, primaryLine);
-        compiledMethod = new CompiledMethodEntry(primaryRange, debugCodeInfo.getFrameSizeChanges(), debugCodeInfo.getFrameSize(), typedefEntry);
-        HashMap<DebugLocationInfo, SubRange> subRangeIndex = new HashMap<>();
-        for(DebugLocationInfo debugLocationInfo : debugCodeInfo.locationInfoProvider()) {
-            addSubrange(debugLocationInfo, primaryRange, subRangeIndex);
-        }
+            DebugInfoProvider.DebugTypeInfo debugTypeInfo = debugInfoProvider.createDebugTypeInfo(ownerType);
+            String typeName = debugTypeInfo.typeName();
+            typeName = stringTable.uniqueDebugString(typeName);
+            DebugTypeKind typeKind = debugTypeInfo.typeKind();
+            int byteSize = debugTypeInfo.size();
+
+            if (debugContext.isLogEnabled(DebugContext.INFO_LEVEL)) {
+                debugContext.log(DebugContext.INFO_LEVEL, "Register %s type %s ", typeKind.toString(), typeName);
+            }
+            String fileName = debugTypeInfo.fileName();
+            Path filePath = debugTypeInfo.filePath();
+            TypeEntry typeEntry = addTypeEntry(ownerType, typeName, fileName, filePath, byteSize, typeKind);
+            typeEntry.addDebugInfo(this, debugTypeInfo, debugContext);
+
+            fileName = debugCodeInfo.fileName();
+            filePath = debugCodeInfo.filePath();
+            String methodName = debugCodeInfo.name();
+            long lo = debugCodeInfo.addressLo();
+            long hi = debugCodeInfo.addressHi();
+            int primaryLine = debugCodeInfo.line();
+
+            /* Search for a method defining this primary range. */
+            ClassEntry classEntry = lookupClassEntry(ownerType);
+            MethodEntry methodEntry = classEntry.ensureMethodEntryForDebugRangeInfo(debugCodeInfo, this, debugContext);
+            PrimaryRange primaryRange = Range.createPrimary(methodEntry, lo, hi, primaryLine);
+            if (debugContext.isLogEnabled(DebugContext.INFO_LEVEL)) {
+                debugContext.log(DebugContext.INFO_LEVEL, "PrimaryRange %s.%s %s %s:%d [0x%x, 0x%x]", ownerType.toJavaName(), methodName, filePath, fileName, primaryLine, lo, hi);
+            }
+            addPrimaryRange(primaryRange, debugCodeInfo, classEntry);
+            /*
+             * Record all subranges even if they have no line or file so we at least get a symbol
+             * for them and don't see a break in the address range.
+             */
+            EconomicMap<DebugLocationInfo, SubRange> subRangeIndex = EconomicMap.create();
+            debugCodeInfo.locationInfoProvider().forEach(debugLocationInfo -> addSubrange(debugLocationInfo, primaryRange, classEntry, subRangeIndex, debugContext));
+
+            collectFilesAndDirs(classEntry);
+
+            debugInfoProvider.recordActivity();
+        });
+
+        // populate a file and dir list and associated index for each class entry
+        // getInstanceClasses().forEach(DebugInfoBase::collectFilesAndDirs);
     }
 
-    private MethodEntry processMethod(DebugMethodInfo debugMethodInfo, TypedefEntry ownerType) {
-        String methodName = debugMethodInfo.name();
-        int line = debugMethodInfo.line();
-        ResolvedJavaType resultType = debugMethodInfo.valueType();
-        List<DebugLocalInfo> paramInfos = debugMethodInfo.getParamInfo();
-        DebugLocalInfo thisParam = debugMethodInfo.getThisParamInfo();
-        int paramCount = paramInfos.size();
-        TypeEntry resultTypeEntry = lookupTypeEntry(resultType);
-        TypeEntry[] typeEntries = new TypeEntry[paramCount];
-        for (int i = 0; i < paramCount; i++) {
-            typeEntries[i] = lookupTypeEntry(paramInfos.get(i).valueType());
-        }
-        FileEntry methodFileEntry = ensureFileEntry(debugMethodInfo);
-        MethodEntry methodEntry = new MethodEntry(this, debugMethodInfo, methodFileEntry, line, methodName, ownerType, resultTypeEntry, typeEntries, paramInfos, thisParam);
-        // indexMethodEntry(methodEntry, debugMethodInfo.idMethod());
-        return methodEntry;
-    }
-
-    private TypeEntry createTypeEntry(String typeName, String fileName, Path filePath, int size, DebugTypeKind typeKind) {
+    @Override
+    protected TypeEntry createTypeEntry(String typeName, String fileName, Path filePath, int size, DebugTypeKind typeKind) {
         TypeEntry typeEntry = null;
         switch (typeKind) {
-            case TYPEDEF:
-                typeEntry = new TypedefEntry(typeName, size);
+            case INSTANCE: {
+                FileEntry fileEntry = addFileEntry(fileName, filePath);
+                typeEntry = new ClassEntry(typeName, fileEntry, size);
+                if (typeEntry.getTypeName().equals(DwarfDebugInfo.HUB_TYPE_NAME)) {
+                    hubClassEntry = (ClassEntry) typeEntry;
+                }
                 break;
+            }
+            case INTERFACE: {
+                FileEntry fileEntry = addFileEntry(fileName, filePath);
+                typeEntry = new InterfaceClassEntry(typeName, fileEntry, size);
+                break;
+            }
+            case ENUM: {
+                FileEntry fileEntry = addFileEntry(fileName, filePath);
+                typeEntry = new EnumClassEntry(typeName, fileEntry, size);
+                break;
+            }
             case PRIMITIVE:
                 assert fileName.length() == 0;
                 assert filePath == null;
                 typeEntry = new PrimitiveTypeEntry(typeName, size);
                 break;
+            case ARRAY:
+                assert fileName.length() == 0;
+                assert filePath == null;
+                typeEntry = new ArrayTypeEntry(typeName, size);
+                break;
+            case HEADER:
+                assert fileName.length() == 0;
+                assert filePath == null;
+                typeEntry = new HeaderTypeEntry(typeName, size);
+                break;
+            case FOREIGN: {
+                FileEntry fileEntry = addFileEntry(fileName, filePath);
+                typeEntry = new ForeignTypeEntry(typeName, fileEntry, size);
+                break;
+            }
         }
         return typeEntry;
     }
 
-    private TypeEntry addTypeEntry(ResolvedJavaType idType, String typeName, String fileName, Path filePath, int size, DebugTypeKind typeKind) {
+    @Override
+    protected TypeEntry addTypeEntry(ResolvedJavaType idType, String typeName, String fileName, Path filePath, int size, DebugTypeKind typeKind) {
         TypeEntry typeEntry = (idType != null ? typesIndex.get(idType) : null);
         if (typeEntry == null) {
             typeEntry = createTypeEntry(typeName, fileName, filePath, size, typeKind);
@@ -259,52 +295,88 @@ public class RuntimeDebugInfoBase {
             if (idType != null) {
                 typesIndex.put(idType, typeEntry);
             }
-            if (typeEntry instanceof TypedefEntry) {
-                indexTypedef(idType, (TypedefEntry) typeEntry);
+            // track object type and header struct
+            if (idType == null) {
+                headerType = (HeaderTypeEntry) typeEntry;
+            }
+            if (typeName.equals("java.lang.Object")) {
+                objectClass = (ClassEntry) typeEntry;
+            }
+            if (typeName.equals("void")) {
+                voidType = typeEntry;
+            }
+            if (typeEntry instanceof ClassEntry) {
+                indexInstanceClass(idType, (ClassEntry) typeEntry);
+            }
+        } else {
+            if (!(typeEntry.isClass())) {
+                assert ((ClassEntry) typeEntry).getFileName().equals(fileName);
             }
         }
         return typeEntry;
     }
 
+    @Override
     public TypeEntry lookupTypeEntry(ResolvedJavaType type) {
         TypeEntry typeEntry = typesIndex.get(type);
         if (typeEntry == null) {
-            if (type.isPrimitive()) {
-                typeEntry = addTypeEntry(type, type.toJavaName(), "", null, (type.getJavaKind() == JavaKind.Void ? 0 : type.getJavaKind().getBitCount()), DebugTypeKind.PRIMITIVE);
-            } else {
-                String fileName = type.getSourceFileName();
-                Path filePath = fullFilePathFromClassName(type);
-                typeEntry = addTypeEntry(type, type.toJavaName(),fileName, filePath, pointerSize, DebugTypeKind.TYPEDEF);
-            }
+            DebugInfoProvider.DebugTypeInfo debugTypeInfo = debugInfoProvider.createDebugTypeInfo(type);
+            debugTypeInfo.debugContext((debugContext) -> {
+                String typeName = debugTypeInfo.typeName();
+                typeName = stringTable.uniqueDebugString(typeName);
+                DebugTypeKind typeKind = debugTypeInfo.typeKind();
+                int byteSize = debugTypeInfo.size();
+
+                if (debugContext.isLogEnabled(DebugContext.INFO_LEVEL)) {
+                    debugContext.log(DebugContext.INFO_LEVEL, "Register %s type %s ", typeKind.toString(), typeName);
+                }
+                String fileName = debugTypeInfo.fileName();
+                Path filePath = debugTypeInfo.filePath();
+                TypeEntry newTypeEntry = addTypeEntry(type, typeName, fileName, filePath, byteSize, typeKind);
+                newTypeEntry.addDebugInfo(this, debugTypeInfo, debugContext);
+            });
+
+            typeEntry = typesIndex.get(type);
+        }
+
+        if (typeEntry == null) {
+            throw new RuntimeException("Type entry not found " + type.getName());
         }
         return typeEntry;
     }
 
-    TypedefEntry lookupTypedefEntry(ResolvedJavaType type) {
-        TypedefEntry typedefEntry = typedefsIndex.get(type);
-        if (typedefEntry == null) {
-            String fileName = type.getSourceFileName();
-            Path filePath = fullFilePathFromClassName(type);
-            typedefEntry = (TypedefEntry) addTypeEntry(type, type.toJavaName(), fileName, filePath, pointerSize, DebugTypeKind.TYPEDEF);
-        }
-        return typedefEntry;
-    }
+    @Override
+    public ClassEntry lookupClassEntry(ResolvedJavaType type) {
+        // lookup key should advertise itself as a resolved instance class or interface
+        assert type.isInstanceClass() || type.isInterface();
+        // lookup target should already be included in the index
+        ClassEntry classEntry = instanceClassesIndex.get(type);
+        if (classEntry == null) {
+            DebugInfoProvider.DebugTypeInfo debugTypeInfo = debugInfoProvider.createDebugTypeInfo(type);
+            debugTypeInfo.debugContext((debugContext) -> {
+                String typeName = debugTypeInfo.typeName();
+                typeName = stringTable.uniqueDebugString(typeName);
+                DebugTypeKind typeKind = debugTypeInfo.typeKind();
+                int byteSize = debugTypeInfo.size();
 
-    protected static Path fullFilePathFromClassName(ResolvedJavaType type) {
-        String[] elements = type.toJavaName().split("\\.");
-        int count = elements.length;
-        String name = elements[count - 1];
-        while (name.startsWith("$")) {
-            name = name.substring(1);
+                if (debugContext.isLogEnabled(DebugContext.INFO_LEVEL)) {
+                    debugContext.log(DebugContext.INFO_LEVEL, "Register %s type %s ", typeKind.toString(), typeName);
+                }
+                String fileName = debugTypeInfo.fileName();
+                Path filePath = debugTypeInfo.filePath();
+                TypeEntry newTypeEntry = addTypeEntry(type, typeName, fileName, filePath, byteSize, typeKind);
+                newTypeEntry.addDebugInfo(this, debugTypeInfo, debugContext);
+            });
+
+            classEntry = instanceClassesIndex.get(type);
         }
-        if (name.contains("$")) {
-            name = name.substring(0, name.indexOf('$'));
+
+        if (classEntry == null || !(classEntry.isClass())) {
+            throw new RuntimeException("Class entry not found " + type.getName());
         }
-        if (name.equals("")) {
-            name = "_nofile_";
-        }
-        elements[count - 1] = name + ".java";
-        return FileSystems.getDefault().getPath("", elements);
+        // lookup target should also be indexed in the types index
+        assert typesIndex.get(type) != null;
+        return classEntry;
     }
 
     /**
@@ -313,12 +385,15 @@ public class RuntimeDebugInfoBase {
      *
      * @param locationInfo
      * @param primaryRange
+     * @param classEntry
      * @param subRangeIndex
+     * @param debugContext
      * @return the subrange for {@code locationInfo} linked with all its caller subranges up to the
      *         primaryRange
      */
     @SuppressWarnings("try")
-    private Range addSubrange(DebugLocationInfo locationInfo, PrimaryRange primaryRange, HashMap<DebugLocationInfo, SubRange> subRangeIndex) {
+    @Override
+    protected Range addSubrange(DebugLocationInfo locationInfo, PrimaryRange primaryRange, ClassEntry classEntry, EconomicMap<DebugLocationInfo, SubRange> subRangeIndex, DebugContext debugContext) {
         /*
          * We still insert subranges for the primary method but they don't actually count as inline.
          * we only need a range so that subranges for inline code can refer to the top level line
@@ -342,35 +417,31 @@ public class RuntimeDebugInfoBase {
         final long lo = primaryRange.getLo() + locationInfo.addressLo();
         final long hi = primaryRange.getLo() + locationInfo.addressHi();
         final int line = locationInfo.line();
-        TypedefEntry subRangeTypedefEntry = lookupTypedefEntry(ownerType);
-        MethodEntry subRangeMethodEntry = processMethod(locationInfo, subRangeTypedefEntry);
+        ClassEntry subRangeClassEntry = lookupClassEntry(ownerType);
+        MethodEntry subRangeMethodEntry = subRangeClassEntry.ensureMethodEntryForDebugRangeInfo(locationInfo, this, debugContext);
         SubRange subRange = Range.createSubrange(subRangeMethodEntry, lo, hi, line, primaryRange, caller, locationInfo.isLeaf());
-        //classEntry.indexSubRange(subRange);
+        classEntry.indexSubRange(subRange);
         subRangeIndex.put(locationInfo, subRange);
-        /*if (debugContext.isLogEnabled(DebugContext.DETAILED_LEVEL)) {
+        if (debugContext.isLogEnabled(DebugContext.DETAILED_LEVEL)) {
             debugContext.log(DebugContext.DETAILED_LEVEL, "SubRange %s.%s %d %s:%d [0x%x, 0x%x] (%d, %d)",
                     ownerType.toJavaName(), methodName, subRange.getDepth(), fullPath, line, lo, hi, loOff, hiOff);
-        }*/
+        }
         assert (callerLocationInfo == null || (callerLocationInfo.addressLo() <= loOff && callerLocationInfo.addressHi() >= hiOff)) : "parent range should enclose subrange!";
-        List<DebugLocalValueInfo> localValueInfos = locationInfo.getLocalValueInfo();
-        /*for (int i = 0; i < localValueInfos.length; i++) {
+        DebugLocalValueInfo[] localValueInfos = locationInfo.getLocalValueInfo();
+        for (int i = 0; i < localValueInfos.length; i++) {
             DebugLocalValueInfo localValueInfo = localValueInfos[i];
             if (debugContext.isLogEnabled(DebugContext.DETAILED_LEVEL)) {
                 debugContext.log(DebugContext.DETAILED_LEVEL, "  locals[%d] %s:%s = %s", localValueInfo.slot(), localValueInfo.name(), localValueInfo.typeName(), localValueInfo);
             }
-        }*/
+        }
         subRange.setLocalValueInfo(localValueInfos);
         return subRange;
     }
 
-    private void indexTypedef(ResolvedJavaType idType, TypedefEntry typedefEntry) {
-        typedefs.add(typedefEntry);
-        typedefsIndex.put(idType, typedefEntry);
-    }
-
     static final Path EMPTY_PATH = Paths.get("");
 
-    private FileEntry addFileEntry(String fileName, Path filePath) {
+    @Override
+    protected FileEntry addFileEntry(String fileName, Path filePath) {
         assert fileName != null;
         Path dirPath = filePath;
         Path fileAsPath;
@@ -396,7 +467,8 @@ public class RuntimeDebugInfoBase {
         return fileEntry;
     }
 
-    public FileEntry ensureFileEntry(DebugFileInfo debugFileInfo) {
+    @Override
+    protected FileEntry ensureFileEntry(DebugFileInfo debugFileInfo) {
         String fileName = debugFileInfo.fileName();
         if (fileName == null || fileName.length() == 0) {
             return null;
@@ -416,180 +488,7 @@ public class RuntimeDebugInfoBase {
         return fileEntry;
     }
 
-    private DirEntry ensureDirEntry(Path filePath) {
-        if (filePath == null) {
-            return null;
-        }
-        DirEntry dirEntry = dirsIndex.get(filePath);
-        if (dirEntry == null) {
-            /* Ensure dir path is entered into the debug_str section. */
-            uniqueDebugString(filePath.toString());
-            dirEntry = new DirEntry(filePath);
-            dirsIndex.put(filePath, dirEntry);
-            dirs.add(dirEntry);
-        }
-        return dirEntry;
-    }
-
-    /* Accessors to query the debug info model. */
-    public ByteOrder getByteOrder() {
-        return byteOrder;
-    }
-
-    public List<TypeEntry> getTypes() {
-        return types;
-    }
-    public List<TypedefEntry> getTypedefs() {
-        return typedefs;
-    }
-
-    public List<FileEntry> getFiles() {
-        return files;
-    }
-
-    public List<DirEntry> getDirs() {
-        return dirs;
-    }
-
-    @SuppressWarnings("unused")
-    public FileEntry findFile(Path fullFileName) {
-        return filesIndex.get(fullFileName);
-    }
-
-    public StringTable getStringTable() {
-        return stringTable;
-    }
-
-    /**
-     * Indirects this call to the string table.
-     *
-     * @param string the string whose index is required.
-     */
-    public String uniqueDebugString(String string) {
-        return stringTable.uniqueDebugString(string);
-    }
-
-    /**
-     * Indirects this call to the string table.
-     *
-     * @param string the string whose index is required.
-     * @return the offset of the string in the .debug_str section.
-     */
-    public int debugStringIndex(String string) {
-        return stringTable.debugStringIndex(string);
-    }
-
-    public boolean useHeapBase() {
-        return useHeapBase;
-    }
-
-    public String cuName() {
-        return cuName;
-    }
-
-    public byte oopTagsMask() {
-        return (byte) ((1 << oopTagsCount) - 1);
-    }
-
-    public byte oopTagsShift() {
-        return (byte) oopTagsCount;
-    }
-
-    public int oopCompressShift() {
-        return oopCompressShift;
-    }
-
-    public int oopReferenceSize() {
-        return oopReferenceSize;
-    }
-
-    public int pointerSize() {
-        return pointerSize;
-    }
-
-    public int oopAlignment() {
-        return oopAlignment;
-    }
-
-    public int oopAlignShift() {
-        return oopAlignShift;
-    }
-
-    public String getCachePath() {
-        return cachePath;
-    }
-
     public CompiledMethodEntry getCompiledMethod() {
-        return compiledMethod;
+        return compiledMethods.getFirst();
     }
-
-    public Iterable<PrimitiveTypeEntry> getPrimitiveTypes() {
-        List<PrimitiveTypeEntry> primitiveTypes = new ArrayList<>();
-        for (TypeEntry typeEntry : types) {
-            if (typeEntry instanceof PrimitiveTypeEntry primitiveTypeEntry) {
-                primitiveTypes.add(primitiveTypeEntry);
-            }
-        }
-        return primitiveTypes;
-    }
-
-
-    /*
-    private static void collectFilesAndDirs(TypedefEntry classEntry) {
-        // track files and dirs we have already seen so that we only add them once
-        EconomicSet<FileEntry> visitedFiles = EconomicSet.create();
-        EconomicSet<DirEntry> visitedDirs = EconomicSet.create();
-        // add the class's file and dir
-        includeOnce(classEntry, classEntry.getFileEntry(), visitedFiles, visitedDirs);
-        // add files for fields (may differ from class file if we have a substitution)
-        for (FieldEntry fieldEntry : classEntry.fields) {
-            includeOnce(classEntry, fieldEntry.getFileEntry(), visitedFiles, visitedDirs);
-        }
-        // add files for declared methods (may differ from class file if we have a substitution)
-        for (MethodEntry methodEntry : classEntry.getMethods()) {
-            includeOnce(classEntry, methodEntry.getFileEntry(), visitedFiles, visitedDirs);
-        }
-        // add files for top level compiled and inline methods
-        classEntry.compiledEntries().forEachOrdered(compiledMethodEntry -> {
-            includeOnce(classEntry, compiledMethodEntry.getPrimary().getFileEntry(), visitedFiles, visitedDirs);
-            // we need files for leaf ranges and for inline caller ranges
-            //
-            // add leaf range files first because they get searched for linearly
-            // during line info processing
-            compiledMethodEntry.leafRangeIterator().forEachRemaining(subRange -> {
-                includeOnce(classEntry, subRange.getFileEntry(), visitedFiles, visitedDirs);
-            });
-            // now the non-leaf range files
-            compiledMethodEntry.topDownRangeIterator().forEachRemaining(subRange -> {
-                if (!subRange.isLeaf()) {
-                    includeOnce(classEntry, subRange.getFileEntry(), visitedFiles, visitedDirs);
-                }
-            });
-        });
-        // now all files and dirs are known build an index for them
-        classEntry.buildFileAndDirIndexes();
-    }*/
-
-    /**
-     * Ensure the supplied file entry and associated directory entry are included, but only once, in
-     * a class entry's file and dir list.
-     *
-     * @param classEntry the class entry whose file and dir list may need to be updated
-     * @param fileEntry a file entry which may need to be added to the class entry's file list or
-     *            whose dir may need adding to the class entry's dir list
-     * @param visitedFiles a set tracking current file list entries, updated if a file is added
-     * @param visitedDirs a set tracking current dir list entries, updated if a dir is added
-     */
-    /*
-    private static void includeOnce(ClassEntry classEntry, FileEntry fileEntry, EconomicSet<FileEntry> visitedFiles, EconomicSet<DirEntry> visitedDirs) {
-        if (fileEntry != null && !visitedFiles.contains(fileEntry)) {
-            visitedFiles.add(fileEntry);
-            classEntry.includeFile(fileEntry);
-            DirEntry dirEntry = fileEntry.getDirEntry();
-            if (dirEntry != null && !dirEntry.getPathString().isEmpty() && !visitedDirs.contains(dirEntry)) {
-                visitedDirs.add(dirEntry);
-                classEntry.includeDir(dirEntry);
-            }
-        }
-    }*/
 }

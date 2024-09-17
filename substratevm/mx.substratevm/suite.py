@@ -999,7 +999,7 @@ suite = {
                 },
                 "<others>": {
                     "<others>": {
-                        "cflags": ["-Wall", "-fPIC", "-O2", "-g", "-gdwarf-4"],
+                        "cflags": ["-Wall", "-fPIC", "-O2", "-g", "-gdwarf-5"],
                     },
                 },
             },

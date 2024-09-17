@@ -26,19 +26,19 @@
 
 package com.oracle.objectfile.runtime.dwarf;
 
-import com.oracle.objectfile.elf.ELFMachine;
+import java.nio.ByteOrder;
+
 import com.oracle.objectfile.runtime.RuntimeDebugInfoBase;
-import com.oracle.objectfile.runtime.RuntimeDebugInfoProvider.DebugLocalInfo;
-import com.oracle.objectfile.runtime.debugentry.CompiledMethodEntry;
-import com.oracle.objectfile.runtime.debugentry.MethodEntry;
-import com.oracle.objectfile.runtime.debugentry.StructureTypeEntry;
-import com.oracle.objectfile.runtime.debugentry.TypeEntry;
-import com.oracle.objectfile.runtime.debugentry.range.Range;
-import com.oracle.objectfile.runtime.dwarf.constants.DwarfLanguage;
 import org.graalvm.collections.EconomicMap;
 
-import java.nio.ByteOrder;
-import java.util.HashMap;
+import com.oracle.objectfile.debugentry.ClassEntry;
+import com.oracle.objectfile.debugentry.MethodEntry;
+import com.oracle.objectfile.debugentry.StructureTypeEntry;
+import com.oracle.objectfile.debugentry.TypeEntry;
+import com.oracle.objectfile.debugentry.range.Range;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
+import com.oracle.objectfile.elf.ELFMachine;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfLanguage;
 
 /**
  * A class that models the debug info in an organization that facilitates generation of the required
@@ -46,6 +46,9 @@ import java.util.HashMap;
  * DwarfSectionImpl that take responsibility for generating content for a specific section type.
  */
 public class RuntimeDwarfDebugInfo extends RuntimeDebugInfoBase {
+
+    public static final String HEAP_BEGIN_NAME = "__svm_heap_begin";
+
     /*
      * Define all the abbrev section codes we need for our DIEs.
      */
@@ -53,17 +56,24 @@ public class RuntimeDwarfDebugInfo extends RuntimeDebugInfoBase {
         /* null marker which must come first as its ordinal has to equal zero */
         NULL,
         /* Level 0 DIEs. */
-        METHOD_UNIT,
+        CLASS_UNIT,
         /* Level 1 DIEs. */
-        PRIMITIVE_TYPE,
-        TYPEDEF,
-        TYPEDEF_POINTER,
+        NAMESPACE,
+        CLASS_LAYOUT,
         METHOD_LOCATION,
-        METHOD_LOCATION_STATIC,
-        ABSTRACT_INLINE_METHOD,
         /* Level 2 DIEs. */
+        METHOD_DECLARATION,
+        METHOD_DECLARATION_INLINE,
+        METHOD_DECLARATION_STATIC,
+        METHOD_DECLARATION_INLINE_STATIC,
         /* Level 2+K DIEs (where inline depth K >= 0) */
-        INLINED_SUBROUTINE,
+        INLINED_SUBROUTINE_WITH_CHILDREN,
+        /* Level 3 DIEs. */
+        METHOD_PARAMETER_DECLARATION_1,
+        METHOD_PARAMETER_DECLARATION_2,
+        METHOD_PARAMETER_DECLARATION_3,
+        METHOD_LOCAL_DECLARATION_1,
+        METHOD_LOCAL_DECLARATION_2,
         METHOD_PARAMETER_LOCATION_1,
         METHOD_PARAMETER_LOCATION_2,
         METHOD_LOCAL_LOCATION_1,
@@ -83,6 +93,21 @@ public class RuntimeDwarfDebugInfo extends RuntimeDebugInfoBase {
     public static final byte rheapbase_x86 = (byte) 14;
     public static final byte rthread_x86 = (byte) 15;
 
+    /*
+     * A prefix used to label indirect types used to ensure gdb performs oop reference --> raw
+     * address translation
+     */
+    public static final String INDIRECT_PREFIX = "_z_.";
+    /*
+     * A prefix used for type signature generation to generate unique type signatures for type
+     * layout type units
+     */
+    public static final String LAYOUT_PREFIX = "_layout_.";
+    /*
+     * The name of the type for header field hub which needs special case processing to remove tag
+     * bits
+     */
+    public static final String HUB_TYPE_NAME = "java.lang.Class";
     /* Full byte/word values. */
     private final RuntimeDwarfStrSectionImpl dwarfStrSection;
     private final RuntimeDwarfAbbrevSectionImpl dwarfAbbrevSection;
@@ -105,7 +130,7 @@ public class RuntimeDwarfDebugInfo extends RuntimeDebugInfoBase {
      * n.b. this collection includes entries for the structure types used to define the object and
      * array headers which do not have an associated TypeEntry.
      */
-    private final EconomicMap<TypeEntry, DwarfTypeProperties> typePropertiesIndex = EconomicMap.create();
+    private final EconomicMap<TypeEntry, DwarfClassProperties> classPropertiesIndex = EconomicMap.create();
 
     /**
      * A collection of method properties associated with each generated method record.
@@ -171,80 +196,26 @@ public class RuntimeDwarfDebugInfo extends RuntimeDebugInfoBase {
     }
 
     /**
-     * A class used to associate properties with a specific type, the most important one being its
-     * index in the info section.
-     */
-    static class DwarfTypeProperties {
-        /**
-         * Index in debug_info section of type declaration for this class.
-         */
-        private int typeInfoIndex;
-        /**
-         * Index in debug_info section of indirect type declaration for this class.
-         *
-         * this is normally just the same as the index of the normal type declaration, however, when
-         * oops are stored in static and instance fields as offsets from the heapbase register gdb
-         * needs to be told how to convert these oops to raw addresses and this requires attaching a
-         * data_location address translation expression to an indirect type that wraps the object
-         * layout type. so, with that encoding this field will identify the wrapper type whenever
-         * the original type is an object, interface or array layout. primitive types and header
-         * types do not need translating.
-         */
-        private int indirectTypeInfoIndex;
-        /**
-         * The type entry with which these properties are associated.
-         */
-        private final TypeEntry typeEntry;
-
-        public int getTypeInfoIndex() {
-            return typeInfoIndex;
-        }
-
-        public void setTypeInfoIndex(int typeInfoIndex) {
-            this.typeInfoIndex = typeInfoIndex;
-        }
-
-        public int getIndirectTypeInfoIndex() {
-            return indirectTypeInfoIndex;
-        }
-
-        public void setIndirectTypeInfoIndex(int typeInfoIndex) {
-            this.indirectTypeInfoIndex = typeInfoIndex;
-        }
-
-        public TypeEntry getTypeEntry() {
-            return typeEntry;
-        }
-
-        DwarfTypeProperties(TypeEntry typeEntry) {
-            this.typeEntry = typeEntry;
-            this.typeInfoIndex = -1;
-            this.indirectTypeInfoIndex = -1;
-        }
-
-    }
-
-    /**
      * A class used to associate extra properties with an instance class type.
      */
 
-    static class DwarfClassProperties extends DwarfTypeProperties {
+    static class DwarfClassProperties {
+        /**
+         * The type entry with which these properties are associated.
+         */
+        private final StructureTypeEntry typeEntry;
         /**
          * Index of the class entry's compile unit in the debug_info section.
          */
         private int cuIndex;
         /**
-         * Index of the class entry's class_layout DIE in the debug_info section.
-         */
-        private int layoutIndex;
-        /**
-         * Index of the class entry's indirect layout DIE in the debug_info section.
-         */
-        private int indirectLayoutIndex;
-        /**
-         * Index of the class entry's code ranges data in the debug_ranges section.
+         * Index of the class entry's code ranges data in the debug_rnglists section.
          */
         private int codeRangesIndex;
+        /**
+         * Index of the class entry's code location data in the debug_loclists section.
+         */
+        private int locationListIndex;
         /**
          * Index of the class entry's line data in the debug_line section.
          */
@@ -258,12 +229,15 @@ public class RuntimeDwarfDebugInfo extends RuntimeDebugInfoBase {
          */
         private EconomicMap<String, Integer> fieldDeclarationIndex;
 
-        DwarfClassProperties(StructureTypeEntry entry) {
-            super(entry);
+        public StructureTypeEntry getTypeEntry() {
+            return typeEntry;
+        }
+
+        DwarfClassProperties(StructureTypeEntry typeEntry) {
+            this.typeEntry = typeEntry;
             this.cuIndex = -1;
-            this.layoutIndex = -1;
-            this.indirectLayoutIndex = -1;
             this.codeRangesIndex = -1;
+            this.locationListIndex = 0;
             this.lineIndex = -1;
             this.linePrologueSize = -1;
             fieldDeclarationIndex = null;
@@ -283,12 +257,12 @@ public class RuntimeDwarfDebugInfo extends RuntimeDebugInfoBase {
          * Per class map that identifies the info declarations for a top level method declaration or
          * an abstract inline method declaration.
          */
-        private HashMap<CompiledMethodEntry, DwarfLocalProperties> localPropertiesMap;
+        private EconomicMap<ClassEntry, DwarfLocalProperties> localPropertiesMap;
 
         /**
          * Per class map that identifies the info declaration for an abstract inline method.
          */
-        private HashMap<CompiledMethodEntry, Integer> abstractInlineMethodIndex;
+        private EconomicMap<ClassEntry, Integer> abstractInlineMethodIndex;
 
         DwarfMethodProperties() {
             methodDeclarationIndex = -1;
@@ -306,46 +280,36 @@ public class RuntimeDwarfDebugInfo extends RuntimeDebugInfoBase {
             methodDeclarationIndex = pos;
         }
 
-        public DwarfLocalProperties getLocalProperties(CompiledMethodEntry compiledEntry) {
+        public DwarfLocalProperties getLocalProperties(ClassEntry classEntry) {
             if (localPropertiesMap == null) {
-                localPropertiesMap = new HashMap<>();
+                localPropertiesMap = EconomicMap.create();
             }
-            DwarfLocalProperties localProperties = localPropertiesMap.get(compiledEntry);
+            DwarfLocalProperties localProperties = localPropertiesMap.get(classEntry);
             if (localProperties == null) {
                 localProperties = new DwarfLocalProperties();
-                localPropertiesMap.put(compiledEntry, localProperties);
+                localPropertiesMap.put(classEntry, localProperties);
             }
             return localProperties;
         }
 
-        public void setAbstractInlineMethodIndex(CompiledMethodEntry compiledEntry, int pos) {
+        public void setAbstractInlineMethodIndex(ClassEntry classEntry, int pos) {
             if (abstractInlineMethodIndex == null) {
-                abstractInlineMethodIndex = new HashMap<>();
+                abstractInlineMethodIndex = EconomicMap.create();
             }
             // replace but check it did not change
-            Integer val = abstractInlineMethodIndex.put(compiledEntry, pos);
+            Integer val = abstractInlineMethodIndex.put(classEntry, pos);
             assert val == null || val == pos;
         }
 
-        public int getAbstractInlineMethodIndex(CompiledMethodEntry compiledEntry) {
+        public int getAbstractInlineMethodIndex(ClassEntry classEntry) {
             // should be set before we get here but an NPE will guard that
-            return abstractInlineMethodIndex.get(compiledEntry);
+            return abstractInlineMethodIndex.get(classEntry);
         }
     }
 
-    private DwarfTypeProperties addTypeProperties(TypeEntry typeEntry) {
-        assert typeEntry != null;
-        assert !typeEntry.isClass();
-        assert typePropertiesIndex.get(typeEntry) == null;
-        DwarfTypeProperties typeProperties = new DwarfTypeProperties(typeEntry);
-        this.typePropertiesIndex.put(typeEntry, typeProperties);
-        return typeProperties;
-    }
-
     private DwarfClassProperties addClassProperties(StructureTypeEntry entry) {
-        assert typePropertiesIndex.get(entry) == null;
         DwarfClassProperties classProperties = new DwarfClassProperties(entry);
-        this.typePropertiesIndex.put(entry, classProperties);
+        this.classPropertiesIndex.put(entry, classProperties);
         return classProperties;
     }
 
@@ -356,18 +320,8 @@ public class RuntimeDwarfDebugInfo extends RuntimeDebugInfoBase {
         return methodProperties;
     }
 
-    private DwarfTypeProperties lookupTypeProperties(TypeEntry typeEntry) {
-        DwarfTypeProperties typeProperties = typePropertiesIndex.get(typeEntry);
-        if (typeProperties == null) {
-            typeProperties = addTypeProperties(typeEntry);
-        }
-        return typeProperties;
-    }
-
     private DwarfClassProperties lookupClassProperties(StructureTypeEntry entry) {
-        DwarfTypeProperties typeProperties = typePropertiesIndex.get(entry);
-        assert typeProperties == null || typeProperties instanceof DwarfClassProperties;
-        DwarfClassProperties classProperties = (DwarfClassProperties) typeProperties;
+        DwarfClassProperties classProperties = classPropertiesIndex.get(entry);
         if (classProperties == null) {
             classProperties = addClassProperties(entry);
         }
@@ -382,38 +336,83 @@ public class RuntimeDwarfDebugInfo extends RuntimeDebugInfoBase {
         return methodProperties;
     }
 
-    void setTypeIndex(TypeEntry typeEntry, int idx) {
+    public void setCUIndex(ClassEntry classEntry, int idx) {
         assert idx >= 0;
-        DwarfTypeProperties typeProperties = lookupTypeProperties(typeEntry);
-        assert typeProperties.getTypeInfoIndex() == -1 || typeProperties.getTypeInfoIndex() == idx;
-        typeProperties.setTypeInfoIndex(idx);
+        DwarfClassProperties classProperties = lookupClassProperties(classEntry);
+        assert classProperties.getTypeEntry() == classEntry;
+        assert classProperties.cuIndex == -1 || classProperties.cuIndex == idx;
+        classProperties.cuIndex = idx;
     }
 
-    int getTypeIndex(TypeEntry typeEntry) {
-        DwarfTypeProperties typeProperties = lookupTypeProperties(typeEntry);
-        return getTypeIndex(typeProperties);
+    public int getCUIndex(ClassEntry classEntry) {
+        DwarfClassProperties classProperties;
+        classProperties = lookupClassProperties(classEntry);
+        assert classProperties.getTypeEntry() == classEntry;
+        assert classProperties.cuIndex >= 0;
+        return classProperties.cuIndex;
     }
 
-    int getTypeIndex(DwarfTypeProperties typeProperties) {
-        assert typeProperties.getTypeInfoIndex() >= 0;
-        return typeProperties.getTypeInfoIndex();
-    }
-
-    void setIndirectTypeIndex(TypeEntry typeEntry, int idx) {
+    public void setCodeRangesIndex(ClassEntry classEntry, int idx) {
         assert idx >= 0;
-        DwarfTypeProperties typeProperties = lookupTypeProperties(typeEntry);
-        assert typeProperties.getIndirectTypeInfoIndex() == -1 || typeProperties.getIndirectTypeInfoIndex() == idx;
-        typeProperties.setIndirectTypeInfoIndex(idx);
+        DwarfClassProperties classProperties = lookupClassProperties(classEntry);
+        assert classProperties.getTypeEntry() == classEntry;
+        assert classProperties.codeRangesIndex == -1 || classProperties.codeRangesIndex == idx;
+        classProperties.codeRangesIndex = idx;
     }
 
-    int getIndirectTypeIndex(TypeEntry typeEntry) {
-        DwarfTypeProperties typeProperties = lookupTypeProperties(typeEntry);
-        return getIndirectTypeIndex(typeProperties);
+    public int getCodeRangesIndex(ClassEntry classEntry) {
+        DwarfClassProperties classProperties;
+        classProperties = lookupClassProperties(classEntry);
+        assert classProperties.getTypeEntry() == classEntry;
+        assert classProperties.codeRangesIndex >= 0;
+        return classProperties.codeRangesIndex;
     }
 
-    int getIndirectTypeIndex(DwarfTypeProperties typeProperties) {
-        assert typeProperties.getIndirectTypeInfoIndex() >= 0;
-        return typeProperties.getIndirectTypeInfoIndex();
+    public void setLocationListIndex(ClassEntry classEntry, int idx) {
+        assert idx >= 0;
+        DwarfClassProperties classProperties = lookupClassProperties(classEntry);
+        assert classProperties.getTypeEntry() == classEntry;
+        assert classProperties.locationListIndex == 0 || classProperties.locationListIndex == idx;
+        classProperties.locationListIndex = idx;
+    }
+
+    public int getLocationListIndex(ClassEntry classEntry) {
+        DwarfClassProperties classProperties;
+        classProperties = lookupClassProperties(classEntry);
+        assert classProperties.getTypeEntry() == classEntry;
+        return classProperties.locationListIndex;
+    }
+
+    public void setLineIndex(ClassEntry classEntry, int idx) {
+        assert idx >= 0;
+        DwarfClassProperties classProperties = lookupClassProperties(classEntry);
+        assert classProperties.getTypeEntry() == classEntry;
+        assert classProperties.lineIndex == -1 || classProperties.lineIndex == idx;
+        classProperties.lineIndex = idx;
+    }
+
+    public int getLineIndex(ClassEntry classEntry) {
+        DwarfClassProperties classProperties;
+        classProperties = lookupClassProperties(classEntry);
+        assert classProperties.getTypeEntry() == classEntry;
+        assert classProperties.lineIndex >= 0;
+        return classProperties.lineIndex;
+    }
+
+    public void setLinePrologueSize(ClassEntry classEntry, int size) {
+        assert size >= 0;
+        DwarfClassProperties classProperties = lookupClassProperties(classEntry);
+        assert classProperties.getTypeEntry() == classEntry;
+        assert classProperties.linePrologueSize == -1 || classProperties.linePrologueSize == size;
+        classProperties.linePrologueSize = size;
+    }
+
+    public int getLinePrologueSize(ClassEntry classEntry) {
+        DwarfClassProperties classProperties;
+        classProperties = lookupClassProperties(classEntry);
+        assert classProperties.getTypeEntry() == classEntry;
+        assert classProperties.linePrologueSize >= 0;
+        return classProperties.linePrologueSize;
     }
 
     public void setFieldDeclarationIndex(StructureTypeEntry entry, String fieldName, int pos) {
@@ -476,12 +475,12 @@ public class RuntimeDwarfDebugInfo extends RuntimeDebugInfoBase {
         }
     }
 
-    public void setAbstractInlineMethodIndex(CompiledMethodEntry compiledEntry, MethodEntry methodEntry, int pos) {
-        lookupMethodProperties(methodEntry).setAbstractInlineMethodIndex(compiledEntry, pos);
+    public void setAbstractInlineMethodIndex(ClassEntry classEntry, MethodEntry methodEntry, int pos) {
+        lookupMethodProperties(methodEntry).setAbstractInlineMethodIndex(classEntry, pos);
     }
 
-    public int getAbstractInlineMethodIndex(CompiledMethodEntry compiledEntry, MethodEntry methodEntry) {
-        return lookupMethodProperties(methodEntry).getAbstractInlineMethodIndex(compiledEntry);
+    public int getAbstractInlineMethodIndex(ClassEntry classEntry, MethodEntry methodEntry) {
+        return lookupMethodProperties(methodEntry).getAbstractInlineMethodIndex(classEntry);
     }
 
     private DwarfLocalProperties addRangeLocalProperties(Range range) {
@@ -490,17 +489,17 @@ public class RuntimeDwarfDebugInfo extends RuntimeDebugInfoBase {
         return localProperties;
     }
 
-    public DwarfLocalProperties lookupLocalProperties(CompiledMethodEntry compiledEntry, MethodEntry methodEntry) {
-        return lookupMethodProperties(methodEntry).getLocalProperties(compiledEntry);
+    public DwarfLocalProperties lookupLocalProperties(ClassEntry classEntry, MethodEntry methodEntry) {
+        return lookupMethodProperties(methodEntry).getLocalProperties(classEntry);
     }
 
-    public void setMethodLocalIndex(CompiledMethodEntry compiledEntry, MethodEntry methodEntry, DebugLocalInfo localInfo, int index) {
-        DwarfLocalProperties localProperties = lookupLocalProperties(compiledEntry, methodEntry);
+    public void setMethodLocalIndex(ClassEntry classEntry, MethodEntry methodEntry, DebugLocalInfo localInfo, int index) {
+        DwarfLocalProperties localProperties = lookupLocalProperties(classEntry, methodEntry);
         localProperties.setIndex(localInfo, index);
     }
 
-    public int getMethodLocalIndex(CompiledMethodEntry compiledEntry, MethodEntry methodEntry, DebugLocalInfo localInfo) {
-        DwarfLocalProperties localProperties = lookupLocalProperties(compiledEntry, methodEntry);
+    public int getMethodLocalIndex(ClassEntry classEntry, MethodEntry methodEntry, DebugLocalInfo localInfo) {
+        DwarfLocalProperties localProperties = lookupLocalProperties(classEntry, methodEntry);
         assert localProperties != null : "get of non-existent local index";
         int index = localProperties.getIndex(localInfo);
         assert index >= 0 : "get of local index before it was set";

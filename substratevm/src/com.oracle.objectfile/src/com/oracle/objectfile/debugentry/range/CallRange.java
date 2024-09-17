@@ -39,7 +39,7 @@ class CallRange extends SubRange {
      */
     protected SubRange lastCallee;
 
-    protected CallRange(MethodEntry methodEntry, int lo, int hi, int line, PrimaryRange primary, Range caller) {
+    protected CallRange(MethodEntry methodEntry, long lo, long hi, int line, PrimaryRange primary, Range caller) {
         super(methodEntry, lo, hi, line, primary, caller);
         this.firstCallee = null;
         this.lastCallee = null;

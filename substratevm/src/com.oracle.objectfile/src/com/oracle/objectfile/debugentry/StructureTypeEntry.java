@@ -69,6 +69,10 @@ public abstract class StructureTypeEntry extends TypeEntry {
         return fields.stream();
     }
 
+    public List<FieldEntry> getFields() {
+        return fields;
+    }
+
     public int fieldCount() {
         return fields.size();
     }

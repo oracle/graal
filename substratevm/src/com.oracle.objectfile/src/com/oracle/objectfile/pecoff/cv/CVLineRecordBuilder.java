@@ -102,7 +102,7 @@ public class CVLineRecordBuilder {
         }
 
         /* Add line record. */
-        int lineLoAddr = range.getLo() - compiledEntry.getPrimary().getLo();
+        int lineLoAddr = (int)(range.getLo() - compiledEntry.getPrimary().getLo());
         int line = Math.max(range.getLine(), 1);
         debug("  processRange:   addNewLine: 0x%05x-0x%05x %s", lineLoAddr, range.getHi() - compiledEntry.getPrimary().getLo(), line);
         lineRecord.addNewLine(lineLoAddr, line);

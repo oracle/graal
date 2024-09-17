@@ -76,7 +76,6 @@ public class DwarfDebugInfo extends DebugInfoBase {
         FOREIGN_STRUCT,
         METHOD_LOCATION,
         STATIC_FIELD_LOCATION,
-        STATIC_FIELD_LOCATION_TYPE_UNIT_REF,
         ARRAY_LAYOUT,
         INTERFACE_LAYOUT,
         COMPRESSED_LAYOUT,

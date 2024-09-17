@@ -131,7 +131,7 @@ public class DwarfRangesSectionImpl extends DwarfSectionImpl {
     private int writeRangeList(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
         int pos = p;
         log(context, "  [0x%08x] ranges start for class %s", pos, classEntry.getTypeName());
-        int base = classEntry.compiledEntriesBase();
+        long base = classEntry.compiledEntriesBase();
         log(context, "  [0x%08x] base 0x%x", pos, base);
         pos = writeRangeListEntry(DwarfRangeListEntry.DW_RLE_base_address, buffer, pos);
         pos = writeRelocatableCodeOffset(base, buffer, pos);
@@ -140,8 +140,8 @@ public class DwarfRangesSectionImpl extends DwarfSectionImpl {
         classEntry.compiledEntries().forEach(compiledMethodEntry -> {
             cursor.set(writeRangeListEntry(DwarfRangeListEntry.DW_RLE_offset_pair, buffer, cursor.get()));
 
-            int loOffset = compiledMethodEntry.getPrimary().getLo() - base;
-            int hiOffset = compiledMethodEntry.getPrimary().getHi() - base;
+            long loOffset = compiledMethodEntry.getPrimary().getLo() - base;
+            long hiOffset = compiledMethodEntry.getPrimary().getHi() - base;
             log(context, "  [0x%08x] lo 0x%x (%s)", cursor.get(), loOffset, compiledMethodEntry.getPrimary().getFullMethodNameWithParams());
             cursor.set(writeULEB(loOffset, buffer, cursor.get()));
             log(context, "  [0x%08x] hi 0x%x", cursor.get(), hiOffset);

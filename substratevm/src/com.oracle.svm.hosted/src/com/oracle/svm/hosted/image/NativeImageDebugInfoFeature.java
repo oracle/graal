@@ -32,6 +32,7 @@ import java.util.function.Supplier;
 
 import com.oracle.svm.core.ReservedRegisters;
 import jdk.graal.compiler.word.Word;
+import com.oracle.svm.core.debug.SubstrateBFDNameProvider;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.word.PointerBase;
@@ -97,7 +98,9 @@ class NativeImageDebugInfoFeature implements InternalFeature {
                 // ensure the mangle ignores prefix generation for Graal loaders
                 List<ClassLoader> ignored = List.of(systemLoader, imageLoaderParent, appLoader, imageLoader);
                 bfdNameProvider = new NativeImageBFDNameProvider(ignored);
+                SubstrateBFDNameProvider substrateBFDNameProvider = new SubstrateBFDNameProvider(ignored);
                 ImageSingletons.add(UniqueShortNameProvider.class, bfdNameProvider);
+                ImageSingletons.add(SubstrateBFDNameProvider.class, substrateBFDNameProvider);
             }
         }
     }

@@ -1386,12 +1386,12 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
         }
 
         @Override
-        public int addressLo() {
+        public long addressLo() {
             return hostedMethod.getCodeAddressOffset();
         }
 
         @Override
-        public int addressHi() {
+        public long addressHi() {
             return hostedMethod.getCodeAddressOffset() + compilation.getTargetCodeSize();
         }
 
@@ -1470,7 +1470,7 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
                 return;
             }
             NativeImageDebugLocationInfo firstLocation = (NativeImageDebugLocationInfo) locationInfos.get(0);
-            int firstLocationOffset = firstLocation.addressLo();
+            long firstLocationOffset = firstLocation.addressLo();
 
             if (firstLocationOffset == 0) {
                 // this is not a normal compiled method so give up
@@ -1859,8 +1859,8 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
      */
     private class NativeImageDebugLocationInfo extends NativeImageDebugBaseMethodInfo implements DebugLocationInfo {
         private final int bci;
-        private int lo;
-        private int hi;
+        private long lo;
+        private long hi;
         private DebugLocationInfo callersLocationInfo;
         private List<DebugLocalValueInfo> localInfoList;
         private boolean isLeaf;
@@ -1869,7 +1869,7 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
             this(frameNode.frame, frameNode.getStartPos(), frameNode.getEndPos() + 1, callersLocationInfo, framesize);
         }
 
-        NativeImageDebugLocationInfo(BytecodePosition bcpos, int lo, int hi, NativeImageDebugLocationInfo callersLocationInfo, int framesize) {
+        NativeImageDebugLocationInfo(BytecodePosition bcpos, long lo, long hi, NativeImageDebugLocationInfo callersLocationInfo, int framesize) {
             super(bcpos.getMethod());
             this.bci = bcpos.getBCI();
             this.lo = lo;
@@ -1885,7 +1885,7 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
         }
 
         // special constructor for synthetic location info added at start of method
-        NativeImageDebugLocationInfo(ResolvedJavaMethod method, int hi, ParamLocationProducer locProducer) {
+        NativeImageDebugLocationInfo(ResolvedJavaMethod method, long hi, ParamLocationProducer locProducer) {
             super(method);
             // bci is always 0 and lo is always 0.
             this.bci = 0;
@@ -2033,12 +2033,12 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
         }
 
         @Override
-        public int addressLo() {
+        public long addressLo() {
             return lo;
         }
 
         @Override
-        public int addressHi() {
+        public long addressHi() {
             return hi;
         }
 

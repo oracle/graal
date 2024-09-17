@@ -314,13 +314,13 @@ public interface DebugInfoProvider {
          * @return the lowest address containing code generated for an outer or inlined code segment
          *         reported at this line represented as an offset into the code segment.
          */
-        int addressLo();
+        long addressLo();
 
         /**
          * @return the first address above the code generated for an outer or inlined code segment
          *         reported at this line represented as an offset into the code segment.
          */
-        int addressHi();
+        long addressHi();
     }
 
     /**
