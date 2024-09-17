@@ -81,6 +81,7 @@ import com.oracle.truffle.api.dsl.Introspection.SpecializationInfo;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 
 /**
@@ -408,6 +409,21 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
                                 b.beginRoot();
                                 b.beginReturn();
                                 b.emitLoadConstant(null);
+                                b.endReturn();
+                                b.endRoot();
+                            });
+                        });
+    }
+
+    @Test
+    public void testBadLoadConstant2() {
+        assertThrowsWithMessage("Invalid builder operation argument: Nodes cannot be used as constants.",
+                        IllegalArgumentException.class, () -> {
+                            parse("badLoadConstant2", b -> {
+                                b.beginRoot();
+                                b.beginReturn();
+                                b.emitLoadConstant(new Node() {
+                                });
                                 b.endReturn();
                                 b.endRoot();
                             });

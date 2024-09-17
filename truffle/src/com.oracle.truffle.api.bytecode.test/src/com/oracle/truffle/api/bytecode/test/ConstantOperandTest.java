@@ -80,6 +80,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
 @RunWith(Parameterized.class)
@@ -532,6 +533,24 @@ abstract class ConstantOperandErrorRootNode extends RootNode implements Bytecode
                         Object dynamic1,
                         @ExpectError("Constant operand parameter must have type double.") String const3,
                         int[] const4) {
+        }
+    }
+
+    @ExpectError("Nodes cannot be used as constant operands.")
+    @Operation
+    @ConstantOperand(type = Node.class)
+    public static final class NodeConstant {
+        @Specialization
+        public static void doNode(Node n) {
+        }
+    }
+
+    // No error expected.
+    @Operation
+    @ConstantOperand(type = RootNode.class)
+    public static final class RootNodeConstant {
+        @Specialization
+        public static void doNode(RootNode n) {
         }
     }
 

@@ -327,14 +327,11 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         int argumentCount = factory.getExecutionSignature().size();
         TruffleString name = SLStrings.fromJavaString(lookupNodeInfo(factory.getNodeClass()).shortName());
 
-        /* Instantiate the builtin node. This node performs the actual functionality. */
-        SLBuiltinNode builtinNode = factory.createNode();
-
         RootNode rootNode;
         if (useBytecode) {
-            rootNode = createBytecodeBuiltin(name, argumentCount, builtinNode);
+            rootNode = createBytecodeBuiltin(name, argumentCount, factory);
         } else {
-            rootNode = createASTBuiltin(name, argumentCount, builtinNode);
+            rootNode = createASTBuiltin(name, argumentCount, factory.createNode());
         }
 
         /*
@@ -349,14 +346,14 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         return newTarget;
     }
 
-    private SLBytecodeRootNode createBytecodeBuiltin(TruffleString name, int argumentCount, SLBuiltinNode builtinNode) {
+    private SLBytecodeRootNode createBytecodeBuiltin(TruffleString name, int argumentCount, NodeFactory<? extends SLBuiltinNode> factory) {
         SLBytecodeRootNode node = SLBytecodeRootNodeGen.create(this, BytecodeConfig.DEFAULT, (b) -> {
             b.beginSource(BUILTIN_SOURCE);
             b.beginSourceSectionUnavailable();
             b.beginRoot();
             b.beginReturn();
             b.beginTag(RootTag.class, RootBodyTag.class);
-            b.emitBuiltin(builtinNode, argumentCount);
+            b.emitBuiltin(factory, argumentCount);
             b.endTag(RootTag.class, RootBodyTag.class);
             b.endReturn();
             b.endRoot().setTSName(name);
@@ -364,9 +361,9 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
             b.endSource();
         }).getNodes().get(0);
         /*
-         * The builtin node is directly allocated so we cannot use uncached mode for builtins. It is
-         * also possible generate uncached versions for all builtins, but in order to reduce
-         * footprint we don't do that here.
+         * Force builtins to run cached because not all builtins have uncached versions. It would be
+         * possible to generate uncached versions for all builtins, but in order to reduce footprint
+         * we don't do that here.
          */
         node.getBytecodeNode().setUncachedThreshold(0);
         return node;

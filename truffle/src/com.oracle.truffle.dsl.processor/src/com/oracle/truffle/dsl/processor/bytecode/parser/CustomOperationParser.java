@@ -651,6 +651,13 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             int dimensions = ElementUtils.getAnnotationValue(Integer.class, constantOperandMirror, "dimensions");
             ConstantOperandModel constantOperand = new ConstantOperandModel(type, operandName, javadoc, specifyAtEnd, dimensions, constantOperandMirror);
 
+            if (ElementUtils.isAssignable(type, types.Node) && !ElementUtils.isAssignable(type, types.RootNode)) {
+                // It is probably a bug if the user tries to define a constant Node. It will not be
+                // adopted, and if the root node splits it will not be duplicated.
+                customOperation.addError(constantOperandMirror, ElementUtils.getAnnotationValue(constantOperandMirror, "type"),
+                                "Nodes cannot be used as constant operands.");
+            }
+
             if (!isValidOperandName(operandName)) {
                 customOperation.addError(constantOperandMirror, ElementUtils.getAnnotationValue(constantOperandMirror, "name"),
                                 "Invalid constant operand name \"%s\". Operand name must be a valid Java identifier.", operandName);

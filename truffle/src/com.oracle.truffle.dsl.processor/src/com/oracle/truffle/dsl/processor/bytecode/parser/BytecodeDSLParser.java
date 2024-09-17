@@ -447,13 +447,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         if (model.getInstrumentations().size() > MAX_INSTRUMENTATIONS) {
             model.addError("Too many @Instrumentation annotated operations specified. The number of instrumentations is " + model.getInstrumentations().size() +
                             ". The maximum number of instrumentations is " + MAX_INSTRUMENTATIONS + ".");
-        }
-
-        if (model.hasErrors()) {
-            return;
-        }
-
-        if (model.getInstrumentations().size() + model.getProvidedTags().size() > MAX_TAGS_AND_INSTRUMENTATIONS) {
+        } else if (model.getInstrumentations().size() + model.getProvidedTags().size() > MAX_TAGS_AND_INSTRUMENTATIONS) {
             model.addError("Too many @Instrumentation and provided tags specified. The number of instrumentrations is " + model.getInstrumentations().size() + " and provided tags is " +
                             model.getProvidedTags().size() +
                             ". The maximum number of instrumentations and provided tags is " + MAX_TAGS_AND_INSTRUMENTATIONS + ".");
