@@ -39,7 +39,7 @@ public class PrimaryRange extends Range {
      */
     protected SubRange lastCallee;
 
-    protected PrimaryRange(MethodEntry methodEntry, int lo, int hi, int line) {
+    protected PrimaryRange(MethodEntry methodEntry, long lo, long hi, int line) {
         super(methodEntry, lo, hi, line, -1);
         this.firstCallee = null;
         this.lastCallee = null;

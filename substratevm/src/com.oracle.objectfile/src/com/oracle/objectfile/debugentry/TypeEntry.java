@@ -38,6 +38,7 @@ import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
 import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo;
 
+import com.oracle.objectfile.runtime.RuntimeDebugInfoBase;
 import jdk.graal.compiler.debug.DebugContext;
 
 public abstract class TypeEntry {

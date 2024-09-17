@@ -26,8 +26,8 @@
 
 package com.oracle.objectfile.runtime.dwarf;
 
-import com.oracle.objectfile.runtime.debugentry.StringEntry;
-import com.oracle.objectfile.runtime.dwarf.constants.DwarfSectionName;
+import com.oracle.objectfile.debugentry.StringEntry;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
 import jdk.graal.compiler.debug.DebugContext;
 
 /**

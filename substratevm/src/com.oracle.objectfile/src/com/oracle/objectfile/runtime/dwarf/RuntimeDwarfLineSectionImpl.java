@@ -30,15 +30,15 @@ import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.debugentry.ClassEntry;
+import com.oracle.objectfile.debugentry.CompiledMethodEntry;
+import com.oracle.objectfile.debugentry.DirEntry;
+import com.oracle.objectfile.debugentry.FileEntry;
+import com.oracle.objectfile.debugentry.range.Range;
+import com.oracle.objectfile.debugentry.range.SubRange;
 import com.oracle.objectfile.elf.dwarf.DwarfSectionImpl;
-import com.oracle.objectfile.runtime.debugentry.CompiledMethodEntry;
-import com.oracle.objectfile.runtime.debugentry.DirEntry;
-import com.oracle.objectfile.runtime.debugentry.FileEntry;
-import com.oracle.objectfile.runtime.debugentry.range.Range;
-import com.oracle.objectfile.runtime.debugentry.range.SubRange;
-import com.oracle.objectfile.runtime.dwarf.constants.DwarfLineOpcode;
-import com.oracle.objectfile.runtime.dwarf.constants.DwarfSectionName;
-import com.oracle.objectfile.runtime.dwarf.constants.DwarfVersion;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfLineOpcode;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfVersion;
 import jdk.graal.compiler.debug.DebugContext;
 
 import java.util.Iterator;
@@ -87,7 +87,7 @@ public class RuntimeDwarfLineSectionImpl extends RuntimeDwarfSectionImpl {
          */
 
         CompiledMethodEntry compiledEntry = compiledMethod();
-        //setLineIndex(compiledEntry, byteCount.get());
+        setLineIndex(compiledEntry.getClassEntry(), 0);
         int headerSize = headerSize();
         int dirTableSize = computeDirTableSize(compiledEntry);
         int fileTableSize = computeFileTableSize(compiledEntry);
@@ -137,14 +137,23 @@ public class RuntimeDwarfLineSectionImpl extends RuntimeDwarfSectionImpl {
          * Table contains a sequence of 'nul'-terminated UTF8 dir name bytes followed by an extra
          * 'nul'.
          */
-        // TODO also check for subranges
-        DirEntry dirEntry = compiledEntry.getPrimary().getFileEntry().getDirEntry();
-        int length = countUTF8Bytes(dirEntry.getPathString()) + 1;
-        assert length > 1; // no empty strings
+        // DirEntry dirEntry = compiledEntry.getPrimary().getFileEntry().getDirEntry();
+        // int length = countUTF8Bytes(dirEntry.getPathString()) + 1;
+        // assert length > 1; // no empty strings
+
+
+        Cursor cursor = new Cursor();
+        compiledEntry.getClassEntry().dirStream().forEachOrdered(dirEntry -> {
+            int length = countUTF8Bytes(dirEntry.getPathString());
+            // We should never have a null or zero length entry in local dirs
+            assert length > 0;
+            cursor.add(length + 1);
+        });
         /*
          * Allow for terminator nul.
          */
-        return length + 1;
+        cursor.add(1);
+        return cursor.get();
     }
 
     private int computeFileTableSize(CompiledMethodEntry compiledEntry) {
@@ -155,19 +164,36 @@ public class RuntimeDwarfLineSectionImpl extends RuntimeDwarfSectionImpl {
          * time stamps
          */
         // TODO also check subranges
-        FileEntry fileEntry = compiledEntry.getPrimary().getFileEntry();
-        int length = countUTF8Bytes(fileEntry.getFileName()) + 1;
-        assert length > 1;
-        // The dir index gets written as a ULEB
-        int dirIdx = 1;
-        length += writeULEB(dirIdx, scratch, 0);
-        // The two zero timestamps require 1 byte each
-        length += 2;
+//        FileEntry fileEntry = compiledEntry.getPrimary().getFileEntry();
+//        int length = countUTF8Bytes(fileEntry.getFileName()) + 1;
+//        assert length > 1;
+//        // The dir index gets written as a ULEB
+//        int dirIdx = 1;
+//        length += writeULEB(dirIdx, scratch, 0);
+//        // The two zero timestamps require 1 byte each
+//        length += 2;
 
+        ClassEntry classEntry = compiledEntry.getClassEntry();
+
+        Cursor cursor = new Cursor();
+        classEntry.fileStream().forEachOrdered(fileEntry -> {
+            // We want the file base name excluding path.
+            String baseName = fileEntry.getFileName();
+            int length = countUTF8Bytes(baseName);
+            // We should never have a null or zero length entry in local files.
+            assert length > 0;
+            cursor.add(length + 1);
+            // The dir index gets written as a ULEB
+            int dirIdx = classEntry.getDirIdx(fileEntry);
+            cursor.add(writeULEB(dirIdx, scratch, 0));
+            // The two zero timestamps require 1 byte each
+            cursor.add(2);
+        });
         /*
          * Allow for terminator nul.
          */
-        return length + 1;
+        cursor.add(1);
+        return cursor.get();
     }
 
     @Override
@@ -198,7 +224,7 @@ public class RuntimeDwarfLineSectionImpl extends RuntimeDwarfSectionImpl {
 
         enableLog(context, pos);
         log(context, "  [0x%08x] DEBUG_LINE", pos);
-        // setLineIndex(classEntry, pos);
+        setLineIndex(compiledEntry.getClassEntry(), pos);
         int lengthPos = pos;
         pos = writeHeader(buffer, pos);
         log(context, "  [0x%08x] headerSize = 0x%08x", pos, pos);
@@ -290,27 +316,32 @@ public class RuntimeDwarfLineSectionImpl extends RuntimeDwarfSectionImpl {
         /*
          * Write out the list of dirs
          */
-        int pos = p;
-        int idx = 1;
+//        int pos = p;
+//        int idx = 1;
+//
+//        // TODO: foreach compiledEntry.dirs() - also check subranges
+//        DirEntry dirEntry = compiledEntry.getPrimary().getMethodEntry().getFileEntry().getDirEntry();
+//        String dirPath = dirEntry.getPathString();
+//        pos = writeUTF8StringBytes(dirPath, buffer, pos);
+//        idx++;
 
-        // TODO: foreach compiledEntry.dirs() - also check subranges
-        DirEntry dirEntry = compiledEntry.getPrimary().getMethodEntry().getFileEntry().getDirEntry();
-        String dirPath = dirEntry.getPathString();
-        pos = writeUTF8StringBytes(dirPath, buffer, pos);
-        idx++;
+        ClassEntry classEntry = compiledEntry.getClassEntry();
 
-//        classEntry.dirStream().forEach(dirEntry -> {
-//            int dirIdx = idx.get();
-//            assert (classEntry.getDirIdx(dirEntry) == dirIdx);
-//            String dirPath = dirEntry.getPathString();
-//            verboseLog(context, "  [0x%08x] %-4d %s", cursor.get(), dirIdx, dirPath);
-//            cursor.set(writeUTF8StringBytes(dirPath, buffer, cursor.get()));
-//            idx.add(1);
-//        });
+        Cursor cursor = new Cursor(p);
+        Cursor idx = new Cursor(1);
+        classEntry.dirStream().forEach(dirEntry -> {
+            int dirIdx = idx.get();
+            assert (classEntry.getDirIdx(dirEntry) == dirIdx);
+            String dirPath = dirEntry.getPathString();
+            verboseLog(context, "  [0x%08x] %-4d %s", cursor.get(), dirIdx, dirPath);
+            cursor.set(writeUTF8StringBytes(dirPath, buffer, cursor.get()));
+            idx.add(1);
+        });
         /*
          * Separate dirs from files with a nul.
          */
-        return writeByte((byte) 0, buffer, pos);
+        cursor.set(writeByte((byte) 0, buffer, cursor.get()));
+        return cursor.get();
     }
 
     private int writeFileTable(DebugContext context, CompiledMethodEntry compiledEntry, byte[] buffer, int p) {
@@ -318,38 +349,42 @@ public class RuntimeDwarfLineSectionImpl extends RuntimeDwarfSectionImpl {
         /*
          * Write out the list of files
          */
-        int pos = p;
-        int idx = 1;
+//        int pos = p;
+//        int idx = 1;
+//
+//        // TODO: foreach compiledEntry.files() - also check subranges
+//
+//        FileEntry fileEntry = compiledEntry.getPrimary().getMethodEntry().getFileEntry();
+//        String baseName = fileEntry.getFileName();
+//        pos = writeUTF8StringBytes(baseName, buffer, pos);
+//        pos = writeULEB(1, buffer, pos);  // TODO set correct dir index, if more than 1 dir in subranges
+//        pos = writeULEB(0, buffer, pos);
+//        pos = writeULEB(0, buffer, pos);
+//        idx++;
 
-        // TODO: foreach compiledEntry.files() - also check subranges
+        ClassEntry classEntry = compiledEntry.getClassEntry();
 
-        FileEntry fileEntry = compiledEntry.getPrimary().getMethodEntry().getFileEntry();
-        String baseName = fileEntry.getFileName();
-        pos = writeUTF8StringBytes(baseName, buffer, pos);
-        pos = writeULEB(1, buffer, pos);  // TODO set correct dir index, if more than 1 dir in subranges
-        pos = writeULEB(0, buffer, pos);
-        pos = writeULEB(0, buffer, pos);
-        idx++;
-
-
-//        classEntry.fileStream().forEach(fileEntry -> {
-//            int pos = cursor.get();
-//            int fileIdx = idx.get();
-//            assert classEntry.getFileIdx(fileEntry) == fileIdx;
-//            int dirIdx = classEntry.getDirIdx(fileEntry);
-//            String baseName = fileEntry.getFileName();
-//            verboseLog(context, "  [0x%08x] %-5d %-5d %s", pos, fileIdx, dirIdx, baseName);
-//            pos = writeUTF8StringBytes(baseName, buffer, pos);
-//            pos = writeULEB(dirIdx, buffer, pos);
-//            pos = writeULEB(0, buffer, pos);
-//            pos = writeULEB(0, buffer, pos);
-//            cursor.set(pos);
-//            idx.add(1);
-//        });
+        Cursor cursor = new Cursor(p);
+        Cursor idx = new Cursor(1);
+        classEntry.fileStream().forEach(fileEntry -> {
+            int pos = cursor.get();
+            int fileIdx = idx.get();
+            assert classEntry.getFileIdx(fileEntry) == fileIdx;
+            int dirIdx = classEntry.getDirIdx(fileEntry);
+            String baseName = fileEntry.getFileName();
+            verboseLog(context, "  [0x%08x] %-5d %-5d %s", pos, fileIdx, dirIdx, baseName);
+            pos = writeUTF8StringBytes(baseName, buffer, pos);
+            pos = writeULEB(dirIdx, buffer, pos);
+            pos = writeULEB(0, buffer, pos);
+            pos = writeULEB(0, buffer, pos);
+            cursor.set(pos);
+            idx.add(1);
+        });
         /*
          * Terminate files with a nul.
          */
-        return writeByte((byte) 0, buffer, pos);
+        cursor.set(writeByte((byte) 0, buffer, cursor.get()));
+        return cursor.get();
     }
 
     private long debugLine = 1;
@@ -358,6 +393,7 @@ public class RuntimeDwarfLineSectionImpl extends RuntimeDwarfSectionImpl {
     private int writeCompiledMethodLineInfo(DebugContext context, CompiledMethodEntry compiledEntry, byte[] buffer, int p) {
         int pos = p;
         Range primaryRange = compiledEntry.getPrimary();
+        ClassEntry classEntry = compiledEntry.getClassEntry();
         // the compiled method might be a substitution and not in the file of the class entry
         FileEntry fileEntry = primaryRange.getFileEntry();
         if (fileEntry == null) {
@@ -366,7 +402,7 @@ public class RuntimeDwarfLineSectionImpl extends RuntimeDwarfSectionImpl {
             return pos;
         }
         String file = fileEntry.getFileName();
-        int fileIdx = 1; // TODO classEntry.getFileIdx(fileEntry);
+        int fileIdx = classEntry.getFileIdx(fileEntry);
         /*
          * Each primary represents a method i.e. a contiguous sequence of subranges. For normal
          * methods we expect the first leaf range to start at offset 0 covering the method prologue.
@@ -382,7 +418,7 @@ public class RuntimeDwarfLineSectionImpl extends RuntimeDwarfSectionImpl {
             if (line > 0) {
                 FileEntry firstFileEntry = prologueRange.getFileEntry();
                 if (firstFileEntry != null) {
-                    fileIdx = 1; // TODO classEntry.getFileIdx(firstFileEntry);
+                    fileIdx = classEntry.getFileIdx(firstFileEntry);
                 }
             }
         }
@@ -433,7 +469,7 @@ public class RuntimeDwarfLineSectionImpl extends RuntimeDwarfSectionImpl {
                 continue;
             }
             String subfile = subFileEntry.getFileName();
-            int subFileIdx = 0; // TODO classEntry.getFileIdx(subFileEntry);
+            int subFileIdx = classEntry.getFileIdx(subFileEntry);
             assert subFileIdx > 0;
             long subLine = subrange.getLine();
             long subAddressLo = subrange.getLo();
@@ -562,7 +598,7 @@ public class RuntimeDwarfLineSectionImpl extends RuntimeDwarfSectionImpl {
     private int writeLineNumberTable(DebugContext context, CompiledMethodEntry compiledEntry, byte[] buffer, int p) {
         int pos = p;
         String methodName = compiledEntry.getPrimary().getFullMethodNameWithParams();
-        String fileName = compiledEntry.getTypedefEntry().getTypeName();
+        String fileName = compiledEntry.getClassEntry().getTypeName();
         log(context, "  [0x%08x] %s %s", pos, methodName, fileName);
         pos = writeCompiledMethodLineInfo(context, compiledEntry, buffer, pos);
         return pos;
@@ -679,7 +715,7 @@ public class RuntimeDwarfLineSectionImpl extends RuntimeDwarfSectionImpl {
          */
         pos = writeULEB(9, buffer, pos);
         pos = writeLineOpcode(opcode, buffer, pos);
-        return writeRelocatableCodeOffset(arg, buffer, pos);
+        return writeLong(arg, buffer, pos);
     }
 
     @SuppressWarnings("unused")

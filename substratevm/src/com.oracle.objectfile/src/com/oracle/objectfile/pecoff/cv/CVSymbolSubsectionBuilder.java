@@ -129,7 +129,7 @@ final class CVSymbolSubsectionBuilder {
         /* S_PROC32 add function definition. */
         int functionTypeIndex = addTypeRecords(compiledEntry);
         byte funcFlags = 0;
-        CVSymbolSubrecord.CVSymbolGProc32Record proc32 = new CVSymbolSubrecord.CVSymbolGProc32Record(cvDebugInfo, externalName, debuggerName, 0, 0, 0, primaryRange.getHi() - primaryRange.getLo(), 0,
+        CVSymbolSubrecord.CVSymbolGProc32Record proc32 = new CVSymbolSubrecord.CVSymbolGProc32Record(cvDebugInfo, externalName, debuggerName, 0, 0, 0, (int)(primaryRange.getHi() - primaryRange.getLo()), 0,
                         0, functionTypeIndex, (short) 0, funcFlags);
         addSymbolRecord(proc32);
 

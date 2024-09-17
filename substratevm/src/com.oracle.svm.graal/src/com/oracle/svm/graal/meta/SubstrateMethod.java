@@ -87,7 +87,6 @@ public class SubstrateMethod implements SharedRuntimeMethod {
     private final String name;
     private final int hashCode;
     private SubstrateType declaringClass;
-    private int encodedGraphStartOffset;
     private LocalVariableTable localVariableTable;
     @UnknownPrimitiveField(availability = ReadyForCompilation.class) private int encodedGraphStartOffset;
     @UnknownPrimitiveField(availability = AfterHeapLayout.class) private int vTableIndex;
