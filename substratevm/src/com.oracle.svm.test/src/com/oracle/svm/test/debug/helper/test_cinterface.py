@@ -68,6 +68,8 @@ class TestLoadPrettyPrinter(unittest.TestCase):
             gdb_set_param("auto-load python-scripts", backup_auto_load_param)
 
     def test_manual_load_without_executable(self):
+        # Exceptions raised by gdb-debughelpers.py are printed to gdbs stdout as a string in GDB 14.2
+        # This behavior might change in newer gdb version that makes self.assertRaises usable
         self.assertIn('AssertionError', gdb_execute("source gdb-debughelpers.py"))
 
     def test_auto_reload(self):
@@ -113,4 +115,6 @@ class TestCInterface(unittest.TestCase):
 
 
 # redirect unittest output to terminal
-unittest.main(testRunner=unittest.TextTestRunner(stream=sys.__stdout__))
+result = unittest.main(testRunner=unittest.TextTestRunner(stream=sys.__stdout__), exit=False)
+# close gdb
+gdb_quit(0 if result.result.wasSuccessful() else 1)

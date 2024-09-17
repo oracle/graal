@@ -26,11 +26,15 @@
 from __future__ import absolute_import, division, print_function
 
 import logging
-import sys
+import os
 import re
+import sys
+
 import gdb
 
-logging.basicConfig(format='%(name)s %(levelname)s: %(message)s')
+logfile = os.environ.get('gdbdebughelperstest_logfile', 'debug_helper.log')
+logging.basicConfig(filename=logfile,
+                    format='%(name)s %(levelname)s: %(message)s', level=logging.DEBUG)
 logger = logging.getLogger('[DebugTest]')
 
 
@@ -46,12 +50,13 @@ hex_rexp = re.compile(r"[\da-fA-F]+")
 
 def gdb_execute(command: str) -> str:
     gdb.flush()
-    logger.info(f'(gdb) {command}')
+    logger.debug(f'(gdb) {command}')
     exec_string = gdb.execute(command, False, True)
+    logger.debug(exec_string)
     try:
         gdb.execute("py SVMUtil.prompt_hook()", False, False)  # inject prompt hook for autonomous tests (will otherwise not be called)
     except gdb.error:
-        logger.debug("Could not execute prompt hook (SVMUtil was not yet loaded)")  # SVMUtil not yet loaded
+        logger.warning("Could not execute prompt hook (SVMUtil was not yet loaded)")  # SVMUtil not yet loaded
     gdb.flush()
     return exec_string
 
@@ -63,7 +68,7 @@ def clear_pretty_printers() -> None:
     try:
         gdb_execute('py SVMUtil.pretty_print_objfiles.clear()')  # SVMUtil is not visible here - let gdb handle this
     except gdb.error:
-        logger.debug("SVMUtil was not yet loaded")  # SVMUtil not yet loaded
+        logger.warning("SVMUtil was not yet loaded")  # SVMUtil not yet loaded
 
 
 def gdb_reload_executable() -> None:
@@ -161,6 +166,11 @@ def gdb_finish() -> None:
     gdb_execute('finish')
 
 
+def gdb_quit(exit_code: int) -> None:
+    logger.info('gdb QUIT')
+    gdb.execute(f'quit {exit_code}', False, False)
+
+
 def set_up_test() -> None:
     logger.info('Set up gdb')
     # gdb setup
@@ -169,7 +179,6 @@ def set_up_test() -> None:
     gdb.set_parameter('confirm', 'off')  # ensure we can exit easily
     gdb.set_parameter('height', 'unlimited')  # sane console output
     gdb.set_parameter('width', 'unlimited')
-    gdb.set_parameter('pagination', 'off')
     gdb.set_parameter('overload-resolution', 'off')
 
 
