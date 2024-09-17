@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import jdk.graal.compiler.asm.aarch64.AArch64Address;
 import jdk.graal.compiler.asm.aarch64.AArch64Assembler;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
 import jdk.graal.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.lir.aarch64.AArch64Move;
 import jdk.vm.ci.aarch64.AArch64;
@@ -81,23 +82,24 @@ public class AArch64HotSpotMacroAssembler extends AArch64MacroAssembler {
             cbz(compressed ? 32 : 64, value, ok);
         }
 
-        AArch64Address hubAddress;
-        int hubSize = config.useCompressedClassPointers ? 32 : 64;
+        Register object = value;
         if (compressed) {
             CompressEncoding encoding = config.getOopEncoding();
             mov(32, tmp, value);
             AArch64Move.UncompressPointerOp.emitUncompressCode(this, tmp, tmp, encoding, true, heapBaseRegister, false);
-            hubAddress = makeAddress(hubSize, tmp, config.hubOffset);
-        } else {
-            hubAddress = makeAddress(hubSize, value, config.hubOffset);
+            object = tmp;
         }
 
         // Load the class
         if (config.useCompressedClassPointers) {
-            ldr(32, tmp, hubAddress);
+            if (config.useCompactObjectHeaders) {
+                loadCompactClassPointer(tmp, object);
+            } else {
+                ldr(32, tmp, makeAddress(32, object, config.hubOffset));
+            }
             AArch64HotSpotMove.decodeKlassPointer(this, tmp, tmp, config.getKlassEncoding());
         } else {
-            ldr(64, tmp, hubAddress);
+            ldr(64, tmp, makeAddress(64, object, config.hubOffset));
         }
         // Klass::_super_check_offset
         ldr(32, tmp2, makeAddress(32, tmp, config.superCheckOffsetOffset));
@@ -127,4 +129,9 @@ public class AArch64HotSpotMacroAssembler extends AArch64MacroAssembler {
         }
     }
 
+    public void loadCompactClassPointer(Register result, Register receiver) {
+        GraalError.guarantee(config.useCompactObjectHeaders, "Load class pointer from markWord only when UseCompactObjectHeaders is on");
+        ldr(64, result, makeAddress(64, receiver, config.markOffset));
+        lsr(64, result, result, config.markWordKlassShift);
+    }
 }

@@ -56,7 +56,7 @@ import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.jv
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.klassAccessFlagsOffset;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.klassMiscFlagsOffset;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.loadWordFromObject;
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.lockMaskInPlace;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.markWordLockMaskInPlace;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.lockMetadataOffset;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.markOffset;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.monitorValue;
@@ -162,7 +162,11 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  *
  *  64 bits:
  *  --------
- *  unused:25 hash:31 -->| unused_gap:1  age:4  unused_gap:1  lock:2 (normal object)
+ *  unused:22 hash:31 -->| unused_gap:4  age:4  self-fwd:1  lock:2 (normal object)
+ *
+ *  64 bits (with compact headers):
+ *  --------
+ *  nklass:22 hash:31 -->| unused_gap:4  age:4  self-fwd:1  lock:2 (normal object)
  *
  *  - hash contains the identity hash value: largest value is
  *    31 bits, see os::random().  Also, 64-bit vm's require
@@ -175,6 +179,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  *    [header          | 00]  locked             locked regular object header (fast-locking in use)
  *    [header          | 01]  unlocked           regular object header
  *    [ptr             | 10]  monitor            inflated lock (header is swapped out)
+ *    [header          | 10]  monitor            inflated lock (UseObjectMonitorTable == true)
  *    [ptr             | 11]  marked             used to mark an object
  *    [0 ............ 0| 00]  inflating          inflation in progress (stack-locking in use)
  *
@@ -557,7 +562,7 @@ public class MonitorSnippets implements Snippets {
         // We elide the monitor check, let the CAS fail instead.
 
         // Try to unlock. Transition lock bits 0b00 => 0b01
-        Word markLocked = mark.and(~lockMaskInPlace(INJECTED_VMCONFIG));
+        Word markLocked = mark.and(WordFactory.unsigned(~markWordLockMaskInPlace(INJECTED_VMCONFIG)));
         Word markUnlocked = mark.or(unlockedValue(INJECTED_VMCONFIG));
         if (probability(FAST_PATH_PROBABILITY, objectPointer.logicCompareAndSwapWord(markOffset(INJECTED_VMCONFIG), markLocked, markUnlocked, MARK_WORD_LOCATION))) {
             traceObject(trace, "-lock{lightweight:cas}", object, false);

@@ -29,7 +29,6 @@ import static jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.QWORD;
 
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
-import jdk.graal.compiler.asm.amd64.AMD64Assembler;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.NumUtil;
@@ -108,25 +107,28 @@ public class AMD64HotSpotMacroAssembler extends AMD64MacroAssembler {
 
         if (!nonNull) {
             // first null check the value
-            testAndJcc(compressed ? DWORD : QWORD, value, value, AMD64Assembler.ConditionFlag.Zero, ok, true);
+            testAndJcc(compressed ? DWORD : QWORD, value, value, ConditionFlag.Zero, ok, true);
         }
 
-        AMD64Address hubAddress;
+        Register object = value;
         if (compressed) {
             CompressEncoding encoding = config.getOopEncoding();
             Register heapBaseRegister = AMD64Move.UncompressPointerOp.hasBase(encoding) ? providers.getRegisters().getHeapBaseRegister() : Register.None;
             movq(tmp, value);
             AMD64Move.UncompressPointerOp.emitUncompressCode(this, tmp, encoding.getShift(), heapBaseRegister, true);
-            hubAddress = new AMD64Address(tmp, config.hubOffset);
-        } else {
-            hubAddress = new AMD64Address(value, config.hubOffset);
+            object = tmp;
         }
 
-        // Load the klass
+        // Load the klass into tmp
         if (config.useCompressedClassPointers) {
-            AMD64HotSpotMove.decodeKlassPointer(this, tmp, tmp2, hubAddress, config);
+            if (config.useCompactObjectHeaders) {
+                loadCompactClassPointer(tmp, object);
+            } else {
+                movl(tmp, new AMD64Address(object, config.hubOffset));
+            }
+            AMD64HotSpotMove.decodeKlassPointer(this, tmp, tmp2, config);
         } else {
-            movq(tmp, hubAddress);
+            movq(tmp, new AMD64Address(object, config.hubOffset));
         }
         // Klass::_super_check_offset
         movl(tmp2, new AMD64Address(tmp, config.superCheckOffsetOffset));
@@ -136,7 +138,7 @@ public class AMD64HotSpotMacroAssembler extends AMD64MacroAssembler {
         // Load the klass from the primary supers
         movq(tmp2, new AMD64Address(tmp, tmp2, Stride.S1));
         // the Klass* should be equal
-        cmpqAndJcc(tmp2, tmp, AMD64Assembler.ConditionFlag.Equal, ok, true);
+        cmpqAndJcc(tmp2, tmp, ConditionFlag.Equal, ok, true);
         illegal();
         bind(ok);
     }
@@ -175,5 +177,11 @@ public class AMD64HotSpotMacroAssembler extends AMD64MacroAssembler {
     @Override
     public Register getZeroValueRegister() {
         return providers.getRegisters().getZeroValueRegister(config);
+    }
+
+    public void loadCompactClassPointer(Register result, Register receiver) {
+        GraalError.guarantee(config.useCompactObjectHeaders, "Load class pointer from markWord only when UseCompactObjectHeaders is on");
+        movq(result, new AMD64Address(receiver, config.markOffset));
+        shrq(result, config.markWordKlassShift);
     }
 }
