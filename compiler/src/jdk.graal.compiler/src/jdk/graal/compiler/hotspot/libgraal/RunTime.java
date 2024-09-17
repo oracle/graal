@@ -124,7 +124,7 @@ public class RunTime {
         HotSpotResolvedJavaMethod method = runtime.unhand(HotSpotResolvedJavaMethod.class, methodHandle);
         HotSpotCompilationRequest request = new HotSpotCompilationRequest(method, entryBCI, 0L);
         try (CompilationContext ignored = HotSpotGraalServices.openLocalCompilationContext(request)) {
-            CompilationTask task = new CompilationTask(runtime, compiler, request, useProfilingInfo, false, eagerResolving, installAsDefault);
+            CompilationTask task = new CompilationTask(runtime, compiler, request, useProfilingInfo, false, false, eagerResolving, installAsDefault);
             long allocatedBytesBefore = 0;
             long timeBefore = 0;
             if (timeAndMemConsumer != null) {

@@ -38,6 +38,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -202,13 +203,22 @@ public final class ProfileReplaySupport {
                         throw GraalError.shouldNotReachHere(String.format("No file for method %s found in %s, strict profiles, abort", s, loadDir)); // ExcludeFromJacocoGeneratedReport
                     }
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    boolean wasSet = profileReplayPrologueExceptionPrinted.getAndSet(true);
+                    if (!wasSet) {
+                        e.printStackTrace();
+                    }
                 }
             }
             return new ProfileReplaySupport(lambdaNameFormatter, expectedResult, expectedCodeSignature, expectedGraphSignature, profileFilter, profileSaveFilter);
         }
         return null;
     }
+
+    /**
+     * Guard to prevent flood of stack traces when CTRL-C'ing tasks such as
+     * {@code mx benchmark compile-all:fuzzedClasses}.
+     */
+    private static final AtomicBoolean profileReplayPrologueExceptionPrinted = new AtomicBoolean();
 
     /**
      * Finishes a previously started profile record/replay (see {@link #profileReplayPrologue}.
