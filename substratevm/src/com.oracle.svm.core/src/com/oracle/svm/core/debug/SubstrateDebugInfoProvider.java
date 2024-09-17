@@ -3,31 +3,39 @@ package com.oracle.svm.core.debug;
 import com.oracle.objectfile.BasicNobitsSectionImpl;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.SectionName;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.objectfile.runtime.RuntimeDebugInfoProvider;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.c.CGlobalData;
-import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.CompilationResultFrameTree;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
+import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
+import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
+import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
+import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.target.Backend;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.java.StableMethodNameFormatter;
-import jdk.graal.compiler.word.Word;
+import jdk.graal.compiler.util.Digest;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaValue;
@@ -57,9 +65,10 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
-import static com.oracle.objectfile.runtime.RuntimeDebugInfoProvider.DebugFrameSizeChange.Type.CONTRACT;
-import static com.oracle.objectfile.runtime.RuntimeDebugInfoProvider.DebugFrameSizeChange.Type.EXTEND;
+import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange.Type.CONTRACT;
+import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange.Type.EXTEND;
 
 
 public class SubstrateDebugInfoProvider implements RuntimeDebugInfoProvider {
@@ -81,9 +90,6 @@ public class SubstrateDebugInfoProvider implements RuntimeDebugInfoProvider {
     private final ObjectFile objectFile;
     private final List<ObjectFile.Element> sortedObjectFileElements;
     private final int debugInfoSize;
-
-    public static final CGlobalData<Word> TEST_DATA = CGlobalDataFactory.forSymbol("__svm_heap_begin");
-    //public static final CGlobalData<Word> TEST_DATA2 = CGlobalDataFactory.forSymbol("__svm_test_symbol");
 
 
     public SubstrateDebugInfoProvider(DebugContext debugContext, ResolvedJavaMethod method, CompilationResult compilation, RuntimeConfiguration runtimeConfiguration, long codeAddress, int codeSize) {
@@ -112,9 +118,6 @@ public class SubstrateDebugInfoProvider implements RuntimeDebugInfoProvider {
         sortedObjectFileElements = new ArrayList<>();
         debugInfoSize = objectFile.bake(sortedObjectFileElements);
         dumpObjectFile();
-
-        //System.out.println("__svm_heap_begin: " + TEST_DATA.get().rawValue());
-        //System.out.println("__svm_test_symbol: " + TEST_DATA2.get().rawValue());
     }
 
     public NonmovableArray<Byte> writeDebugInfoData() {
@@ -185,13 +188,29 @@ public class SubstrateDebugInfoProvider implements RuntimeDebugInfoProvider {
     }
 
     @Override
-    public Iterable<DebugTypeInfo> typeInfoProvider() {
-        return List.of();
+    public DebugInfoProvider.DebugCodeInfo codeInfoProvider() {
+        return new SubstrateDebugCodeInfo(method, compilation);
     }
 
     @Override
-    public DebugCodeInfo codeInfoProvider() {
-        return new SubstrateDebugCodeInfo(method, compilation);
+    public DebugInfoProvider.DebugTypeInfo createDebugTypeInfo(ResolvedJavaType javaType) {
+
+        try (DebugContext.Scope s = debugContext.scope("DebugTypeInfo", javaType.toJavaName())) {
+            if (javaType.isInstanceClass()) {
+                return new SubstrateDebugInstanceTypeInfo(javaType);
+            } else if (javaType.isInterface()) {
+                return new SubstrateDebugInterfaceTypeInfo(javaType);
+            } else if (javaType.isArray()) {
+                return new SubstrateDebugArrayTypeInfo(javaType);
+            } else if (javaType.isPrimitive()) {
+                return new SubstrateDebugPrimitiveTypeInfo(javaType);
+            } else {
+                System.out.println(javaType.getName());
+                return new SubstrateDebugForeignTypeInfo(javaType);
+            }
+        } catch (Throwable e) {
+            throw debugContext.handle(e);
+        }
     }
 
     @Override
@@ -204,7 +223,7 @@ public class SubstrateDebugInfoProvider implements RuntimeDebugInfoProvider {
 
     }
 
-    private class SubstrateDebugFileInfo implements DebugFileInfo {
+    private class SubstrateDebugFileInfo implements DebugInfoProvider.DebugFileInfo {
         private final Path fullFilePath;
         private final String fileName;
 
@@ -250,12 +269,17 @@ public class SubstrateDebugInfoProvider implements RuntimeDebugInfoProvider {
 
 
     // actually unused currently
-    private abstract class SubstrateDebugTypeInfo extends SubstrateDebugFileInfo implements DebugTypeInfo {
+    private abstract class SubstrateDebugTypeInfo extends SubstrateDebugFileInfo implements DebugInfoProvider.DebugTypeInfo {
         protected final ResolvedJavaType type;
 
         SubstrateDebugTypeInfo(ResolvedJavaType type) {
             super(type);
             this.type = type;
+        }
+
+        @Override
+        public long typeSignature(String prefix) {
+            return Digest.digestAsUUID(prefix + typeName()).getLeastSignificantBits();
         }
 
         @Override
@@ -265,7 +289,11 @@ public class SubstrateDebugInfoProvider implements RuntimeDebugInfoProvider {
 
         @Override
         public void debugContext(Consumer<DebugContext> action) {
-
+            try (DebugContext.Scope s = debugContext.scope("DebugTypeInfo", method)) {
+                action.accept(debugContext);
+            } catch (Throwable e) {
+                throw debugContext.handle(e);
+            }
         }
 
         @Override
@@ -281,28 +309,181 @@ public class SubstrateDebugInfoProvider implements RuntimeDebugInfoProvider {
 
         @Override
         public int size() {
-            if (type.isPrimitive()) {
-                JavaKind javaKind = type.getJavaKind();
-                return (javaKind == JavaKind.Void ? 0 : javaKind.getByteCount());
-            } else {
-                // typedef
-                return pointerSize();
-            }
+            return 0;
         }
     }
 
-    private class SubstrateDebugTypedefInfo extends SubstrateDebugTypeInfo implements DebugTypedefInfo {
-        SubstrateDebugTypedefInfo(ResolvedJavaType type) {
-            super(type);
+    private class SubstrateDebugEnumTypeInfo extends SubstrateDebugInstanceTypeInfo implements DebugInfoProvider.DebugEnumTypeInfo {
+
+        SubstrateDebugEnumTypeInfo(ResolvedJavaType enumType) {
+            super(enumType);
         }
 
         @Override
         public DebugTypeKind typeKind() {
-            return DebugTypeKind.TYPEDEF;
+            return DebugTypeKind.ENUM;
         }
     }
 
-    private class SubstrateDebugPrimitiveTypeInfo extends SubstrateDebugTypeInfo implements DebugPrimitiveTypeInfo {
+    private class SubstrateDebugInstanceTypeInfo extends SubstrateDebugTypeInfo implements DebugInfoProvider.DebugInstanceTypeInfo {
+        SubstrateDebugInstanceTypeInfo(ResolvedJavaType javaType) {
+            super(javaType);
+        }
+
+        @Override
+        public long typeSignature(String prefix) {
+            return super.typeSignature(prefix + loaderName());
+        }
+
+        @Override
+        public DebugTypeKind typeKind() {
+            return DebugTypeKind.INSTANCE;
+        }
+
+        @Override
+        public String loaderName() {
+            // return UniqueShortNameProvider.singleton().uniqueShortLoaderName(type.getClass().getClassLoader());
+            return ImageSingletons.lookup(SubstrateBFDNameProvider.class).uniqueShortLoaderName(type.getClass().getClassLoader());
+        }
+
+        @Override
+        public Stream<DebugInfoProvider.DebugFieldInfo> fieldInfoProvider() {
+            return Stream.empty();
+        }
+
+        @Override
+        public Stream<DebugInfoProvider.DebugMethodInfo> methodInfoProvider() {
+            return Stream.empty();
+        }
+
+        @Override
+        public ResolvedJavaType superClass() {
+            return type.getSuperclass();
+        }
+
+        @Override
+        public Stream<ResolvedJavaType> interfaces() {
+            // map through getOriginal so we can use the result as an id type
+            return Arrays.stream(type.getInterfaces());
+        }
+    }
+
+    private class SubstrateDebugInterfaceTypeInfo extends SubstrateDebugInstanceTypeInfo implements DebugInfoProvider.DebugInterfaceTypeInfo {
+
+        SubstrateDebugInterfaceTypeInfo(ResolvedJavaType interfaceType) {
+            super(interfaceType);
+        }
+
+        @Override
+        public DebugTypeKind typeKind() {
+            return DebugTypeKind.INTERFACE;
+        }
+    }
+
+    private class SubstrateDebugForeignTypeInfo extends SubstrateDebugInstanceTypeInfo implements DebugInfoProvider.DebugForeignTypeInfo {
+
+        SubstrateDebugForeignTypeInfo(ResolvedJavaType foreignType) {
+            super(foreignType);
+        }
+
+        @Override
+        public DebugTypeKind typeKind() {
+            return DebugTypeKind.FOREIGN;
+        }
+
+        @Override
+        public String typedefName() {
+            return "";
+        }
+
+        @Override
+        public boolean isWord() {
+            return false;
+        }
+
+        @Override
+        public boolean isStruct() {
+            return false;
+        }
+
+        @Override
+        public boolean isPointer() {
+            return false;
+        }
+
+        @Override
+        public boolean isIntegral() {
+            return false;
+        }
+
+        @Override
+        public boolean isFloat() {
+            return false;
+        }
+
+        @Override
+        public boolean isSigned() {
+            return false;
+        }
+
+        @Override
+        public ResolvedJavaType parent() {
+            return null;
+        }
+
+        @Override
+        public ResolvedJavaType pointerTo() {
+            return null;
+        }
+    }
+
+    private class SubstrateDebugArrayTypeInfo extends SubstrateDebugTypeInfo implements DebugInfoProvider.DebugArrayTypeInfo {
+
+        SubstrateDebugArrayTypeInfo(ResolvedJavaType arrayClass) {
+            super(arrayClass);
+        }
+
+        @Override
+        public long typeSignature(String prefix) {
+            ResolvedJavaType elementType = type.getComponentType();
+            while (elementType.isArray()) {
+                elementType = elementType.getComponentType();
+            }
+            String loaderId = "";
+            if (elementType.isInstanceClass() || elementType.isInterface()) {
+                // loaderId = UniqueShortNameProvider.singleton().uniqueShortLoaderName(elementType.getClass().getClassLoader());
+                loaderId = ImageSingletons.lookup(SubstrateBFDNameProvider.class).uniqueShortLoaderName(elementType.getClass().getClassLoader());
+            }
+            return super.typeSignature(prefix + loaderId);
+        }
+
+        @Override
+        public DebugTypeKind typeKind() {
+            return DebugTypeKind.ARRAY;
+        }
+
+        @Override
+        public int baseSize() {
+            return 0;
+        }
+
+        @Override
+        public int lengthOffset() {
+            return 0;
+        }
+
+        @Override
+        public ResolvedJavaType elementType() {
+            return type.getComponentType();
+        }
+
+        @Override
+        public Stream<DebugInfoProvider.DebugFieldInfo> fieldInfoProvider() {
+            return Stream.empty();
+        }
+    }
+
+    private class SubstrateDebugPrimitiveTypeInfo extends SubstrateDebugTypeInfo implements DebugInfoProvider.DebugPrimitiveTypeInfo {
 
         SubstrateDebugPrimitiveTypeInfo(ResolvedJavaType type) {
             super(type);
@@ -340,11 +521,11 @@ public class SubstrateDebugInfoProvider implements RuntimeDebugInfoProvider {
         }
     }
 
-    private class SubstrateDebugMethodInfo extends SubstrateDebugFileInfo implements DebugMethodInfo {
+    private class SubstrateDebugMethodInfo extends SubstrateDebugFileInfo implements DebugInfoProvider.DebugMethodInfo {
         protected final ResolvedJavaMethod method;
         protected int line;
-        protected final List<DebugLocalInfo> paramInfo;
-        protected final DebugLocalInfo thisParamInfo;
+        protected final List<DebugInfoProvider.DebugLocalInfo> paramInfo;
+        protected final DebugInfoProvider.DebugLocalInfo thisParamInfo;
 
         SubstrateDebugMethodInfo(ResolvedJavaMethod method) {
             super(method);
@@ -367,10 +548,10 @@ public class SubstrateDebugInfoProvider implements RuntimeDebugInfoProvider {
             }
         }
 
-        private List<DebugLocalInfo> createParamInfo(ResolvedJavaMethod method, int line) {
+        private List<DebugInfoProvider.DebugLocalInfo> createParamInfo(ResolvedJavaMethod method, int line) {
             Signature signature = method.getSignature();
             int parameterCount = signature.getParameterCount(false);
-            List<DebugLocalInfo> paramInfos = new ArrayList<>(parameterCount);
+            List<DebugInfoProvider.DebugLocalInfo> paramInfos = new ArrayList<>(parameterCount);
             LocalVariableTable table = method.getLocalVariableTable();
             int slot = 0;
             ResolvedJavaType ownerType = method.getDeclaringClass();
@@ -419,18 +600,19 @@ public class SubstrateDebugInfoProvider implements RuntimeDebugInfoProvider {
         }
 
         @Override
-        public List<DebugLocalInfo> getParamInfo() {
-            return paramInfo;
+        public DebugInfoProvider.DebugLocalInfo[] getParamInfo() {
+            return paramInfo.toArray(new DebugInfoProvider.DebugLocalInfo[]{});
         }
 
         @Override
-        public DebugLocalInfo getThisParamInfo() {
+        public DebugInfoProvider.DebugLocalInfo getThisParamInfo() {
             return thisParamInfo;
         }
 
         @Override
         public String symbolNameForMethod() {
-            return method.getName(); //SubstrateUtil.uniqueShortName(method);
+            // SubstrateOptions.ImageSymbolsPrefix.getValue() + getUniqueShortName(sm);
+            return ImageSingletons.lookup(SubstrateBFDNameProvider.class).uniqueShortName(null, method.getDeclaringClass(), method.getName(), method.getSignature(), method.isConstructor());
         }
 
         @Override
@@ -470,7 +652,7 @@ public class SubstrateDebugInfoProvider implements RuntimeDebugInfoProvider {
         }
     }
 
-    private class SubstrateDebugCodeInfo extends SubstrateDebugMethodInfo implements DebugCodeInfo {
+    private class SubstrateDebugCodeInfo extends SubstrateDebugMethodInfo implements DebugInfoProvider.DebugCodeInfo {
         private final CompilationResult compilation;
 
         SubstrateDebugCodeInfo(ResolvedJavaMethod method, CompilationResult compilation) {
@@ -499,14 +681,14 @@ public class SubstrateDebugInfoProvider implements RuntimeDebugInfoProvider {
         }
 
         @Override
-        public Iterable<DebugLocationInfo> locationInfoProvider() {
+        public Stream<DebugInfoProvider.DebugLocationInfo> locationInfoProvider() {
             int maxDepth = Integer.MAX_VALUE; //SubstrateOptions.DebugCodeInfoMaxDepth.getValue();
             boolean useSourceMappings = false; //SubstrateOptions.DebugCodeInfoUseSourceMappings.getValue();
             final CompilationResultFrameTree.CallNode root = new CompilationResultFrameTree.Builder(debugContext, compilation.getTargetCodeSize(), maxDepth, useSourceMappings, true).build(compilation);
             if (root == null) {
-                return List.of();
+                return Stream.empty();
             }
-            final List<DebugLocationInfo> locationInfos = new ArrayList<>();
+            final List<DebugInfoProvider.DebugLocationInfo> locationInfos = new ArrayList<>();
             int frameSize = getFrameSize();
             final CompilationResultFrameTree.Visitor visitor = new MultiLevelVisitor(locationInfos, frameSize);
             // arguments passed by visitor to apply are
@@ -514,7 +696,74 @@ public class SubstrateDebugInfoProvider implements RuntimeDebugInfoProvider {
             // CallNode nodeToEmbed parent call node to convert to entry code leaf
             // NativeImageDebugLocationInfo leaf into which current leaf may be merged
             root.visitChildren(visitor, (Object) null, (Object) null, (Object) null);
-            return locationInfos;
+            // try to add a location record for offset zero
+            updateInitialLocation(locationInfos);
+            return locationInfos.stream();
+        }
+
+        private int findMarkOffset(SubstrateBackend.SubstrateMarkId markId) {
+            for (CompilationResult.CodeMark mark : compilation.getMarks()) {
+                if (mark.id.equals(markId)) {
+                    return mark.pcOffset;
+                }
+            }
+            return -1;
+        }
+
+        private void updateInitialLocation(List<DebugInfoProvider.DebugLocationInfo> locationInfos) {
+            int prologueEnd = findMarkOffset(SubstrateBackend.SubstrateMarkId.PROLOGUE_END);
+            if (prologueEnd < 0) {
+                // this is not a normal compiled method so give up
+                return;
+            }
+            int stackDecrement = findMarkOffset(SubstrateBackend.SubstrateMarkId.PROLOGUE_DECD_RSP);
+            if (stackDecrement < 0) {
+                // this is not a normal compiled method so give up
+                return;
+            }
+            // if there are any location info records then the first one will be for
+            // a nop which follows the stack decrement, stack range check and pushes
+            // of arguments into the stack frame.
+            //
+            // We can construct synthetic location info covering the first instruction
+            // based on the method arguments and the calling convention and that will
+            // normally be valid right up to the nop. In exceptional cases a call
+            // might pass arguments on the stack, in which case the stack decrement will
+            // invalidate the original stack locations. Providing location info for that
+            // case requires adding two locations, one for initial instruction that does
+            // the stack decrement and another for the range up to the nop. They will
+            // be essentially the same but the stack locations will be adjusted to account
+            // for the different value of the stack pointer.
+
+            if (locationInfos.isEmpty()) {
+                // this is not a normal compiled method so give up
+                return;
+            }
+            SubstrateDebugLocationInfo firstLocation = (SubstrateDebugLocationInfo) locationInfos.get(0);
+            long firstLocationOffset = firstLocation.addressLo();
+
+            if (firstLocationOffset == 0) {
+                // this is not a normal compiled method so give up
+                return;
+            }
+            if (firstLocationOffset < prologueEnd) {
+                // this is not a normal compiled method so give up
+                return;
+            }
+            // create a synthetic location record including details of passed arguments
+            ParamLocationProducer locProducer = new ParamLocationProducer(method);
+            debugContext.log(DebugContext.DETAILED_LEVEL, "Add synthetic Location Info : %s (0, %d)", method.getName(), firstLocationOffset - 1);
+            SubstrateDebugLocationInfo locationInfo = new SubstrateDebugLocationInfo(method, firstLocationOffset, locProducer);
+            // if the prologue extends beyond the stack extend and uses the stack then the info
+            // needs
+            // splitting at the extend point with the stack offsets adjusted in the new info
+            if (locProducer.usesStack() && firstLocationOffset > stackDecrement) {
+                SubstrateDebugLocationInfo splitLocationInfo = locationInfo.split(stackDecrement, getFrameSize());
+                debugContext.log(DebugContext.DETAILED_LEVEL, "Split synthetic Location Info : %s (%d, %d) (%d, %d)", locationInfo.name(), 0,
+                        locationInfo.addressLo() - 1, locationInfo.addressLo(), locationInfo.addressHi() - 1);
+                locationInfos.add(0, splitLocationInfo);
+            }
+            locationInfos.add(0, locationInfo);
         }
 
         // indices for arguments passed to SingleLevelVisitor::apply
@@ -524,10 +773,10 @@ public class SubstrateDebugInfoProvider implements RuntimeDebugInfoProvider {
 
         private abstract class SingleLevelVisitor implements CompilationResultFrameTree.Visitor {
 
-            protected final List<DebugLocationInfo> locationInfos;
+            protected final List<DebugInfoProvider.DebugLocationInfo> locationInfos;
             protected final int frameSize;
 
-            SingleLevelVisitor(List<DebugLocationInfo> locationInfos, int frameSize) {
+            SingleLevelVisitor(List<DebugInfoProvider.DebugLocationInfo> locationInfos, int frameSize) {
                 this.locationInfos = locationInfos;
                 this.frameSize = frameSize;
             }
@@ -549,7 +798,7 @@ public class SubstrateDebugInfoProvider implements RuntimeDebugInfoProvider {
         }
 
         private class TopLevelVisitor extends SingleLevelVisitor {
-            TopLevelVisitor(List<DebugLocationInfo> locationInfos, int frameSize) {
+            TopLevelVisitor(List<DebugInfoProvider.DebugLocationInfo> locationInfos, int frameSize) {
                 super(locationInfos, frameSize);
             }
 
@@ -575,7 +824,7 @@ public class SubstrateDebugInfoProvider implements RuntimeDebugInfoProvider {
         }
 
         public class MultiLevelVisitor extends SingleLevelVisitor {
-            MultiLevelVisitor(List<DebugLocationInfo> locationInfos, int frameSize) {
+            MultiLevelVisitor(List<DebugInfoProvider.DebugLocationInfo> locationInfos, int frameSize) {
                 super(locationInfos, frameSize);
             }
 
@@ -839,8 +1088,8 @@ public class SubstrateDebugInfoProvider implements RuntimeDebugInfoProvider {
         }
 
         @Override
-        public List<DebugFrameSizeChange> getFrameSizeChanges() {
-            List<DebugFrameSizeChange> frameSizeChanges = new LinkedList<>();
+        public List<DebugInfoProvider.DebugFrameSizeChange> getFrameSizeChanges() {
+            List<DebugInfoProvider.DebugFrameSizeChange> frameSizeChanges = new LinkedList<>();
             for (CompilationResult.CodeMark mark : compilation.getMarks()) {
                 /* We only need to observe stack increment or decrement points. */
                 if (mark.id.equals(SubstrateBackend.SubstrateMarkId.PROLOGUE_DECD_RSP)) {
@@ -863,12 +1112,12 @@ public class SubstrateDebugInfoProvider implements RuntimeDebugInfoProvider {
         }
     }
 
-    private class SubstrateDebugLocationInfo extends SubstrateDebugMethodInfo implements DebugLocationInfo {
+    private class SubstrateDebugLocationInfo extends SubstrateDebugMethodInfo implements DebugInfoProvider.DebugLocationInfo {
         private final int bci;
         private long lo;
         private long hi;
-        private DebugLocationInfo callersLocationInfo;
-        private List<DebugLocalValueInfo> localInfoList;
+        private DebugInfoProvider.DebugLocationInfo callersLocationInfo;
+        private List<DebugInfoProvider.DebugLocalValueInfo> localInfoList;
         private boolean isLeaf;
 
         SubstrateDebugLocationInfo(CompilationResultFrameTree.FrameNode frameNode, SubstrateDebugLocationInfo callersLocationInfo, int framesize) {
@@ -890,7 +1139,57 @@ public class SubstrateDebugInfoProvider implements RuntimeDebugInfoProvider {
             }
         }
 
-        private List<DebugLocalValueInfo> initLocalInfoList(BytecodePosition bcpos, int framesize) {
+        // special constructor for synthetic location info added at start of method
+        SubstrateDebugLocationInfo(ResolvedJavaMethod method, long hi, ParamLocationProducer locProducer) {
+            super(method);
+            // bci is always 0 and lo is always 0.
+            this.bci = 0;
+            this.lo = 0;
+            this.hi = hi;
+            // this is always going to be a top-level leaf range.
+            this.callersLocationInfo = null;
+            // location info is synthesized off the method signature
+            this.localInfoList = initSyntheticInfoList(locProducer);
+            // assume this is a leaf until we find out otherwise
+            this.isLeaf = true;
+        }
+
+        // special constructor for synthetic location info which splits off the initial segment
+        // of the first range to accommodate a stack access prior to the stack extend
+        SubstrateDebugLocationInfo(SubstrateDebugLocationInfo toSplit, int stackDecrement, int frameSize) {
+            super(toSplit.method);
+            this.lo = stackDecrement;
+            this.hi = toSplit.hi;
+            toSplit.hi = this.lo;
+            this.bci = toSplit.bci;
+            this.callersLocationInfo = toSplit.callersLocationInfo;
+            this.isLeaf = toSplit.isLeaf;
+            toSplit.isLeaf = true;
+            this.localInfoList = new ArrayList<>(toSplit.localInfoList.size());
+            for (DebugInfoProvider.DebugLocalValueInfo localInfo : toSplit.localInfoList) {
+                if (localInfo.localKind() == DebugInfoProvider.DebugLocalValueInfo.LocalKind.STACKSLOT) {
+                    // need to redefine the value for this param using a stack slot value
+                    // that allows for the stack being extended by framesize. however we
+                    // also need to remove any adjustment that was made to allow for the
+                    // difference between the caller SP and the pre-extend callee SP
+                    // because of a stacked return address.
+                    int adjustment = frameSize - PRE_EXTEND_FRAME_SIZE;
+                    SubstrateDebugLocalValue value = SubstrateDebugStackValue.create(localInfo, adjustment);
+                    SubstrateDebugLocalValueInfo nativeLocalInfo = (SubstrateDebugLocalValueInfo) localInfo;
+                    SubstrateDebugLocalValueInfo newLocalinfo = new SubstrateDebugLocalValueInfo(nativeLocalInfo.name,
+                            value,
+                            nativeLocalInfo.kind,
+                            nativeLocalInfo.type,
+                            nativeLocalInfo.slot,
+                            nativeLocalInfo.line);
+                    localInfoList.add(newLocalinfo);
+                } else {
+                    localInfoList.add(localInfo);
+                }
+            }
+        }
+
+        private List<DebugInfoProvider.DebugLocalValueInfo> initLocalInfoList(BytecodePosition bcpos, int framesize) {
             if (!(bcpos instanceof BytecodeFrame)) {
                 return null;
             }
@@ -908,7 +1207,7 @@ public class SubstrateDebugInfoProvider implements RuntimeDebugInfoProvider {
                 return Collections.emptyList();
             }
             int count = Integer.min(localsBySlot.length, frame.numLocals);
-            ArrayList<DebugLocalValueInfo> localInfos = new ArrayList<>(count);
+            ArrayList<DebugInfoProvider.DebugLocalValueInfo> localInfos = new ArrayList<>(count);
             for (int i = 0; i < count; i++) {
                 Local l = localsBySlot[i];
                 if (l != null) {
@@ -933,6 +1232,42 @@ public class SubstrateDebugInfoProvider implements RuntimeDebugInfoProvider {
                         debugContext.log(DebugContext.DETAILED_LEVEL, "  value kind incompatible with var kind %s!", type.getJavaKind());
                     }
                 }
+            }
+            return localInfos;
+        }
+
+        private List<DebugInfoProvider.DebugLocalValueInfo> initSyntheticInfoList(ParamLocationProducer locProducer) {
+            Signature signature = method.getSignature();
+            int parameterCount = signature.getParameterCount(false);
+            ArrayList<DebugInfoProvider.DebugLocalValueInfo> localInfos = new ArrayList<>();
+            LocalVariableTable table = method.getLocalVariableTable();
+            LineNumberTable lineNumberTable = method.getLineNumberTable();
+            int firstLine = (lineNumberTable != null ? lineNumberTable.getLineNumber(0) : -1);
+            int slot = 0;
+            int localIdx = 0;
+            ResolvedJavaType ownerType = method.getDeclaringClass();
+            if (!method.isStatic()) {
+                String name = "this";
+                JavaKind kind = ownerType.getJavaKind();
+                assert kind == JavaKind.Object : "must be an object";
+                SubstrateDebugLocalValue value = locProducer.thisLocation();
+                debugContext.log(DebugContext.DETAILED_LEVEL, "locals[%d] %s type %s slot %d", localIdx, name, ownerType.getName(), slot);
+                debugContext.log(DebugContext.DETAILED_LEVEL, "  =>  %s kind %s", value, kind);
+                localInfos.add(new SubstrateDebugLocalValueInfo(name, value, kind, ownerType, slot, firstLine));
+                slot += kind.getSlotCount();
+                localIdx++;
+            }
+            for (int i = 0; i < parameterCount; i++) {
+                Local local = (table == null ? null : table.getLocal(slot, 0));
+                String name = (local != null ? local.getName() : "__" + i);
+                ResolvedJavaType paramType = (ResolvedJavaType) signature.getParameterType(i, ownerType);
+                JavaKind kind = paramType.getJavaKind();
+                SubstrateDebugLocalValue value = locProducer.paramLocation(i);
+                debugContext.log(DebugContext.DETAILED_LEVEL, "locals[%d] %s type %s slot %d", localIdx, name, ownerType.getName(), slot);
+                debugContext.log(DebugContext.DETAILED_LEVEL, "  =>  %s kind %s", value, kind);
+                localInfos.add(new SubstrateDebugLocalValueInfo(name, value, kind, paramType, slot, firstLine));
+                slot += kind.getSlotCount();
+                localIdx++;
             }
             return localInfos;
         }
@@ -975,16 +1310,16 @@ public class SubstrateDebugInfoProvider implements RuntimeDebugInfoProvider {
         }
 
         @Override
-        public DebugLocationInfo getCaller() {
+        public DebugInfoProvider.DebugLocationInfo getCaller() {
             return callersLocationInfo;
         }
 
         @Override
-        public List<DebugLocalValueInfo> getLocalValueInfo() {
+        public DebugInfoProvider.DebugLocalValueInfo[] getLocalValueInfo() {
             if (localInfoList != null) {
-                return localInfoList;
+                return localInfoList.toArray(new DebugInfoProvider.DebugLocalValueInfo[]{});
             } else {
-                return Collections.emptyList();
+                return new DebugInfoProvider.DebugLocalValueInfo[]{};
             }
         }
 
@@ -995,7 +1330,7 @@ public class SubstrateDebugInfoProvider implements RuntimeDebugInfoProvider {
 
         public int depth() {
             int depth = 1;
-            DebugLocationInfo caller = getCaller();
+            DebugInfoProvider.DebugLocationInfo caller = getCaller();
             while (caller != null) {
                 depth++;
                 caller = caller.getCaller();
@@ -1050,6 +1385,12 @@ public class SubstrateDebugInfoProvider implements RuntimeDebugInfoProvider {
 
             return this;
         }
+
+        public SubstrateDebugLocationInfo split(int stackDecrement, int frameSize) {
+            // this should be for an initial range extending beyond the stack decrement
+            assert lo == 0 && lo < stackDecrement && stackDecrement < hi : "invalid split request";
+            return new SubstrateDebugLocationInfo(this, stackDecrement, frameSize);
+        }
     }
 
     /**
@@ -1058,7 +1399,80 @@ public class SubstrateDebugInfoProvider implements RuntimeDebugInfoProvider {
      */
     static final int PRE_EXTEND_FRAME_SIZE = ConfigurationValues.getTarget().arch.getReturnAddressSize();
 
-    private class SubstrateDebugLocalInfo implements DebugLocalInfo {
+    class ParamLocationProducer {
+        private final ResolvedJavaMethod method;
+        private final CallingConvention callingConvention;
+        private boolean usesStack;
+
+        SubstrateDebugLocalValue thisLocation() {
+
+            assert !method.isStatic();
+            return unpack(callingConvention.getArgument(0));
+        }
+
+        ParamLocationProducer(ResolvedJavaMethod method) {
+            assert method instanceof SharedMethod;
+            this.method = method;
+            this.callingConvention = getCallingConvention((SharedMethod) method);
+            // assume no stack slots until we find out otherwise
+            this.usesStack = false;
+        }
+
+        SubstrateDebugLocalValue paramLocation(int paramIdx) {
+            assert paramIdx < method.getSignature().getParameterCount(false);
+            int idx = paramIdx;
+            if (!method.isStatic()) {
+                idx++;
+            }
+            return unpack(callingConvention.getArgument(idx));
+        }
+
+        private SubstrateDebugLocalValue unpack(AllocatableValue value) {
+            if (value instanceof RegisterValue) {
+                RegisterValue registerValue = (RegisterValue) value;
+                return SubstrateDebugRegisterValue.create(registerValue);
+            } else {
+                // call argument must be a stack slot if it is not a register
+                StackSlot stackSlot = (StackSlot) value;
+                this.usesStack = true;
+                // the calling convention provides offsets from the SP relative to the current
+                // frame size. At the point of call the frame may or may not include a return
+                // address depending on the architecture.
+                return SubstrateDebugStackValue.create(stackSlot, PRE_EXTEND_FRAME_SIZE);
+            }
+        }
+
+
+        /**
+         * Retrieve details of the native calling convention for a top level compiled method, including
+         * details of which registers or stack slots are used to pass parameters.
+         *
+         * @param method The method whose calling convention is required.
+         * @return The calling convention for the method.
+         */
+        private SubstrateCallingConvention getCallingConvention(SharedMethod method) {
+            SubstrateCallingConventionKind callingConventionKind = method.getCallingConventionKind();
+            ResolvedJavaType declaringClass = method.getDeclaringClass();
+            ResolvedJavaType receiverType = method.isStatic() ? null : declaringClass;
+            var signature = method.getSignature();
+            final SubstrateCallingConventionType type;
+            if (callingConventionKind.isCustom()) {
+                type = method.getCustomCallingConventionType();
+            } else {
+                type = callingConventionKind.toType(false);
+            }
+            Backend backend = runtimeConfiguration.lookupBackend(method);
+            RegisterConfig registerConfig = backend.getCodeCache().getRegisterConfig();
+            assert registerConfig instanceof SubstrateRegisterConfig;
+            return (SubstrateCallingConvention) registerConfig.getCallingConvention(type, signature.getReturnType(null), signature.toParameterTypes(receiverType), backend);
+        }
+
+        public boolean usesStack() {
+            return usesStack;
+        }
+    }
+
+    private class SubstrateDebugLocalInfo implements DebugInfoProvider.DebugLocalInfo {
         protected final String name;
         protected ResolvedJavaType type;
         protected final JavaKind kind;
@@ -1148,23 +1562,23 @@ public class SubstrateDebugInfoProvider implements RuntimeDebugInfoProvider {
         }
     }
 
-    private class SubstrateDebugLocalValueInfo extends SubstrateDebugLocalInfo implements DebugLocalValueInfo {
+    private class SubstrateDebugLocalValueInfo extends SubstrateDebugLocalInfo implements DebugInfoProvider.DebugLocalValueInfo {
         private final SubstrateDebugLocalValue value;
-        private DebugLocalValueInfo.LocalKind localKind;
+        private DebugInfoProvider.DebugLocalValueInfo.LocalKind localKind;
 
         SubstrateDebugLocalValueInfo(String name, JavaValue value, int framesize, JavaKind kind, ResolvedJavaType resolvedType, int slot, int line) {
             super(name, kind, resolvedType, slot, line);
             if (value instanceof RegisterValue) {
-                this.localKind = DebugLocalValueInfo.LocalKind.REGISTER;
+                this.localKind = DebugInfoProvider.DebugLocalValueInfo.LocalKind.REGISTER;
                 this.value = SubstrateDebugRegisterValue.create((RegisterValue) value);
             } else if (value instanceof StackSlot) {
-                this.localKind = DebugLocalValueInfo.LocalKind.STACKSLOT;
+                this.localKind = DebugInfoProvider.DebugLocalValueInfo.LocalKind.STACKSLOT;
                 this.value = SubstrateDebugStackValue.create((StackSlot) value, framesize);
             } else if (value instanceof JavaConstant constant && (constant instanceof PrimitiveConstant || constant.isNull())) {
-                this.localKind = DebugLocalValueInfo.LocalKind.CONSTANT;
+                this.localKind = DebugInfoProvider.DebugLocalValueInfo.LocalKind.CONSTANT;
                 this.value = SubstrateDebugConstantValue.create(constant);
             } else {
-                this.localKind = DebugLocalValueInfo.LocalKind.UNDEFINED;
+                this.localKind = DebugInfoProvider.DebugLocalValueInfo.LocalKind.UNDEFINED;
                 this.value = null;
             }
         }
@@ -1172,13 +1586,13 @@ public class SubstrateDebugInfoProvider implements RuntimeDebugInfoProvider {
         SubstrateDebugLocalValueInfo(String name, SubstrateDebugLocalValue value, JavaKind kind, ResolvedJavaType type, int slot, int line) {
             super(name, kind, type, slot, line);
             if (value == null) {
-                this.localKind = DebugLocalValueInfo.LocalKind.UNDEFINED;
+                this.localKind = DebugInfoProvider.DebugLocalValueInfo.LocalKind.UNDEFINED;
             } else if (value instanceof SubstrateDebugRegisterValue) {
-                this.localKind = DebugLocalValueInfo.LocalKind.REGISTER;
+                this.localKind = DebugInfoProvider.DebugLocalValueInfo.LocalKind.REGISTER;
             } else if (value instanceof SubstrateDebugStackValue) {
-                this.localKind = DebugLocalValueInfo.LocalKind.STACKSLOT;
+                this.localKind = DebugInfoProvider.DebugLocalValueInfo.LocalKind.STACKSLOT;
             } else if (value instanceof SubstrateDebugConstantValue) {
-                this.localKind = DebugLocalValueInfo.LocalKind.CONSTANT;
+                this.localKind = DebugInfoProvider.DebugLocalValueInfo.LocalKind.CONSTANT;
             }
             this.value = value;
         }
@@ -1232,7 +1646,7 @@ public class SubstrateDebugInfoProvider implements RuntimeDebugInfoProvider {
         }
 
         @Override
-        public DebugLocalValueInfo.LocalKind localKind() {
+        public DebugInfoProvider.DebugLocalValueInfo.LocalKind localKind() {
             return localKind;
         }
 
@@ -1328,8 +1742,8 @@ public class SubstrateDebugInfoProvider implements RuntimeDebugInfoProvider {
             return memoizedCreate(offset);
         }
 
-        static SubstrateDebugStackValue create(DebugLocalValueInfo previous, int adjustment) {
-            assert previous.localKind() == DebugLocalValueInfo.LocalKind.STACKSLOT;
+        static SubstrateDebugStackValue create(DebugInfoProvider.DebugLocalValueInfo previous, int adjustment) {
+            assert previous.localKind() == DebugInfoProvider.DebugLocalValueInfo.LocalKind.STACKSLOT;
             return memoizedCreate(previous.stackSlot() + adjustment);
         }
 
@@ -1422,7 +1836,7 @@ public class SubstrateDebugInfoProvider implements RuntimeDebugInfoProvider {
      * Implementation of the DebugFrameSizeChange API interface that allows stack frame size change
      * info to be passed to an ObjectFile when generation of debug info is enabled.
      */
-    private class SubstrateDebugFrameSizeChange implements DebugFrameSizeChange {
+    private class SubstrateDebugFrameSizeChange implements DebugInfoProvider.DebugFrameSizeChange {
         private int offset;
         private Type type;
 

@@ -318,7 +318,7 @@ public class ClassEntry extends StructureTypeEntry {
         return compiledEntryCount() != 0;
     }
 
-    public int compiledEntriesBase() {
+    public long compiledEntriesBase() {
         assert hasCompiledEntries();
         return compiledEntries.get(0).getPrimary().getLo();
     }
@@ -353,7 +353,7 @@ public class ClassEntry extends StructureTypeEntry {
      *
      * @return the lowest code section offset for compiled method code belonging to this class
      */
-    public int lowpc() {
+    public long lowpc() {
         assert hasCompiledEntries();
         return compiledEntries.get(0).getPrimary().getLo();
     }
@@ -365,7 +365,7 @@ public class ClassEntry extends StructureTypeEntry {
      *
      * @return the highest code section offset for compiled method code belonging to this class
      */
-    public int hipc() {
+    public long hipc() {
         assert hasCompiledEntries();
         return compiledEntries.get(compiledEntries.size() - 1).getPrimary().getHi();
     }

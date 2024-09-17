@@ -60,7 +60,7 @@ public abstract class SubRange extends Range {
     private DebugInfoProvider.DebugLocalInfo[] localInfos;
 
     @SuppressWarnings("this-escape")
-    protected SubRange(MethodEntry methodEntry, int lo, int hi, int line, PrimaryRange primary, Range caller) {
+    protected SubRange(MethodEntry methodEntry, long lo, long hi, int line, PrimaryRange primary, Range caller) {
         super(methodEntry, lo, hi, line, (caller == null ? 0 : caller.depth + 1));
         this.caller = caller;
         if (caller != null) {

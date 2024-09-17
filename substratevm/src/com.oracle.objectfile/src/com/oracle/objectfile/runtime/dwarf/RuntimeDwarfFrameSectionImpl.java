@@ -26,11 +26,11 @@
 
 package com.oracle.objectfile.runtime.dwarf;
 
-import com.oracle.objectfile.runtime.RuntimeDebugInfoProvider;
-import com.oracle.objectfile.runtime.debugentry.CompiledMethodEntry;
-import com.oracle.objectfile.runtime.debugentry.range.Range;
-import com.oracle.objectfile.runtime.dwarf.constants.DwarfFrameValue;
-import com.oracle.objectfile.runtime.dwarf.constants.DwarfSectionName;
+import com.oracle.objectfile.debugentry.CompiledMethodEntry;
+import com.oracle.objectfile.debugentry.range.Range;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfFrameValue;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
 import jdk.graal.compiler.debug.DebugContext;
 
 import java.util.List;
@@ -159,7 +159,7 @@ public abstract class RuntimeDwarfFrameSectionImpl extends RuntimeDwarfSectionIm
         return pos;
     }
 
-    protected abstract int writeFDEs(int frameSize, List<RuntimeDebugInfoProvider.DebugFrameSizeChange> frameSizeInfos, byte[] buffer, int pos);
+    protected abstract int writeFDEs(int frameSize, List<DebugInfoProvider.DebugFrameSizeChange> frameSizeInfos, byte[] buffer, int pos);
 
     private int writeFDEHeader(long lo, long hi, byte[] buffer, int p) {
         /*
@@ -187,7 +187,7 @@ public abstract class RuntimeDwarfFrameSectionImpl extends RuntimeDwarfSectionIm
         /* CIE_offset */
         pos = writeInt(0, buffer, pos);
         /* Initial address. */
-        pos = writeRelocatableCodeOffset(lo, buffer, pos);
+        pos = writeLong(lo, buffer, pos);
         /* Address range. */
         return writeLong(hi - lo, buffer, pos);
     }

@@ -27,11 +27,12 @@
 package com.oracle.objectfile.runtime.dwarf;
 
 import com.oracle.objectfile.runtime.dwarf.RuntimeDwarfDebugInfo.AbbrevCode;
-import com.oracle.objectfile.runtime.dwarf.constants.DwarfAttribute;
-import com.oracle.objectfile.runtime.dwarf.constants.DwarfForm;
-import com.oracle.objectfile.runtime.dwarf.constants.DwarfHasChildren;
-import com.oracle.objectfile.runtime.dwarf.constants.DwarfSectionName;
-import com.oracle.objectfile.runtime.dwarf.constants.DwarfTag;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfAttribute;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfForm;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfHasChildren;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfTag;
+
 import jdk.graal.compiler.debug.DebugContext;
 
 public class RuntimeDwarfAbbrevSectionImpl extends RuntimeDwarfSectionImpl {
@@ -44,6 +45,8 @@ public class RuntimeDwarfAbbrevSectionImpl extends RuntimeDwarfSectionImpl {
     @Override
     public void createContent() {
         assert !contentByteArrayCreated();
+        /*
+         */
 
         int pos = 0;
         pos = writeAbbrevs(null, null, pos);
@@ -69,18 +72,21 @@ public class RuntimeDwarfAbbrevSectionImpl extends RuntimeDwarfSectionImpl {
 
     public int writeAbbrevs(DebugContext context, byte[] buffer, int p) {
         int pos = p;
-        // Level 0
-        pos = writeMethodCompileUnitAbbrev(context, buffer, pos);
+        pos = writeCompileUnitAbbrev(context, buffer, pos);
 
-        // Level 1
-        pos = writePrimitiveTypeAbbrev(context, buffer, pos);
-        pos = writeTypedefAbbrev(context, buffer, pos);
-        pos = writeTypedefPointerAbbrev(context, buffer, pos);
-        pos = writeMethodLocationAbbrevs(context, buffer, pos);
-        pos = writeAbstractInlineMethodAbbrev(context, buffer, pos);
+        pos = writeNamespaceAbbrev(context, buffer, pos);
 
-        // Level 2 + inline depth
+        pos = writeClassLayoutAbbrev(context, buffer, pos);
+
+        pos = writeMethodDeclarationAbbrevs(context, buffer, pos);
+
+        pos = writeMethodLocationAbbrev(context, buffer, pos);
+
         pos = writeInlinedSubroutineAbbrev(buffer, pos);
+
+        pos = writeParameterDeclarationAbbrevs(context, buffer, pos);
+        pos = writeLocalDeclarationAbbrevs(context, buffer, pos);
+
         pos = writeParameterLocationAbbrevs(context, buffer, pos);
         pos = writeLocalLocationAbbrevs(context, buffer, pos);
 
@@ -101,13 +107,11 @@ public class RuntimeDwarfAbbrevSectionImpl extends RuntimeDwarfSectionImpl {
         return writeByte(hasChildren.value(), buffer, pos);
     }
 
-    private int writeMethodCompileUnitAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
+    private int writeCompileUnitAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
         int pos = p;
-        pos = writeAbbrevCode(AbbrevCode.METHOD_UNIT, buffer, pos);
+        pos = writeAbbrevCode(AbbrevCode.CLASS_UNIT, buffer, pos);
         pos = writeTag(DwarfTag.DW_TAG_compile_unit, buffer, pos);
         pos = writeHasChildren(DwarfHasChildren.DW_CHILDREN_yes, buffer, pos);
-        // pos = writeAttrType(DwarfAttribute.DW_AT_producer, buffer, pos);
-        // pos = writeAttrForm(DwarfForm.DW_FORM_strp, buffer, pos);
         pos = writeAttrType(DwarfAttribute.DW_AT_language, buffer, pos);
         pos = writeAttrForm(DwarfForm.DW_FORM_data1, buffer, pos);
         pos = writeAttrType(DwarfAttribute.DW_AT_use_UTF8, buffer, pos);
@@ -122,6 +126,8 @@ public class RuntimeDwarfAbbrevSectionImpl extends RuntimeDwarfSectionImpl {
         pos = writeAttrForm(DwarfForm.DW_FORM_addr, buffer, pos);
         pos = writeAttrType(DwarfAttribute.DW_AT_stmt_list, buffer, pos);
         pos = writeAttrForm(DwarfForm.DW_FORM_sec_offset, buffer, pos);
+        pos = writeAttrType(DwarfAttribute.DW_AT_loclists_base, buffer, pos);
+        pos = writeAttrForm(DwarfForm.DW_FORM_sec_offset, buffer, pos);
         /*
          * Now terminate.
          */
@@ -130,17 +136,11 @@ public class RuntimeDwarfAbbrevSectionImpl extends RuntimeDwarfSectionImpl {
         return pos;
     }
 
-    private int writePrimitiveTypeAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
+    private int writeNamespaceAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
         int pos = p;
-        pos = writeAbbrevCode(AbbrevCode.PRIMITIVE_TYPE, buffer, pos);
-        pos = writeTag(DwarfTag.DW_TAG_base_type, buffer, pos);
-        pos = writeHasChildren(DwarfHasChildren.DW_CHILDREN_no, buffer, pos);
-        pos = writeAttrType(DwarfAttribute.DW_AT_byte_size, buffer, pos);
-        pos = writeAttrForm(DwarfForm.DW_FORM_data1, buffer, pos);
-        pos = writeAttrType(DwarfAttribute.DW_AT_bit_size, buffer, pos);
-        pos = writeAttrForm(DwarfForm.DW_FORM_data1, buffer, pos);
-        pos = writeAttrType(DwarfAttribute.DW_AT_encoding, buffer, pos);
-        pos = writeAttrForm(DwarfForm.DW_FORM_data1, buffer, pos);
+        pos = writeAbbrevCode(AbbrevCode.NAMESPACE, buffer, pos);
+        pos = writeTag(DwarfTag.DW_TAG_namespace, buffer, pos);
+        pos = writeHasChildren(DwarfHasChildren.DW_CHILDREN_yes, buffer, pos);
         pos = writeAttrType(DwarfAttribute.DW_AT_name, buffer, pos);
         pos = writeAttrForm(DwarfForm.DW_FORM_strp, buffer, pos);
         /*
@@ -151,81 +151,69 @@ public class RuntimeDwarfAbbrevSectionImpl extends RuntimeDwarfSectionImpl {
         return pos;
     }
 
-
-
-    private int writeTypedefAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
+    private int writeClassLayoutAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
         int pos = p;
-        /* A pointer to the class struct type. */
-        pos = writeAbbrevCode(AbbrevCode.TYPEDEF, buffer, pos);
-        pos = writeTag(DwarfTag.DW_TAG_typedef, buffer, pos);
-        pos = writeHasChildren(DwarfHasChildren.DW_CHILDREN_no, buffer, pos);
+
+        pos = writeAbbrevCode(AbbrevCode.CLASS_LAYOUT, buffer, pos);
+        pos = writeTag(DwarfTag.DW_TAG_class_type, buffer, pos);
+        pos = writeHasChildren(DwarfHasChildren.DW_CHILDREN_yes, buffer, pos);
         pos = writeAttrType(DwarfAttribute.DW_AT_name, buffer, pos);
         pos = writeAttrForm(DwarfForm.DW_FORM_strp, buffer, pos);
+        pos = writeAttrType(DwarfAttribute.DW_AT_declaration, buffer, pos);
+        pos = writeAttrForm(DwarfForm.DW_FORM_flag, buffer, pos);
+        pos = writeAttrType(DwarfAttribute.DW_AT_signature, buffer, pos);
+        pos = writeAttrForm(DwarfForm.DW_FORM_ref_sig8, buffer, pos);
         /*
          * Now terminate.
          */
         pos = writeAttrType(DwarfAttribute.DW_AT_null, buffer, pos);
         pos = writeAttrForm(DwarfForm.DW_FORM_null, buffer, pos);
+
         return pos;
     }
 
-    private int writeTypedefPointerAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
+    private int writeMethodDeclarationAbbrevs(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
         int pos = p;
-        /* A pointer to a typedef. */
-        pos = writeAbbrevCode(AbbrevCode.TYPEDEF_POINTER, buffer, pos);
-        pos = writeTag(DwarfTag.DW_TAG_pointer_type, buffer, pos);
-        pos = writeHasChildren(DwarfHasChildren.DW_CHILDREN_no, buffer, pos);
-        pos = writeAttrType(DwarfAttribute.DW_AT_byte_size, buffer, pos);
-        pos = writeAttrForm(DwarfForm.DW_FORM_data1, buffer, pos);
-        pos = writeAttrType(DwarfAttribute.DW_AT_type, buffer, pos);
-        pos = writeAttrForm(DwarfForm.DW_FORM_ref4, buffer, pos);
-        /*
-         * Now terminate.
-         */
-        pos = writeAttrType(DwarfAttribute.DW_AT_null, buffer, pos);
-        pos = writeAttrForm(DwarfForm.DW_FORM_null, buffer, pos);
+        pos = writeMethodDeclarationAbbrev(context, AbbrevCode.METHOD_DECLARATION, buffer, pos);
+        pos = writeMethodDeclarationAbbrev(context, AbbrevCode.METHOD_DECLARATION_INLINE, buffer, pos);
+        pos = writeMethodDeclarationAbbrev(context, AbbrevCode.METHOD_DECLARATION_STATIC, buffer, pos);
+        pos = writeMethodDeclarationAbbrev(context, AbbrevCode.METHOD_DECLARATION_INLINE_STATIC, buffer, pos);
         return pos;
     }
 
-
-    private int writeMethodLocationAbbrevs(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
-        int pos = p;
-        pos = writeMethodLocationAbbrev(context, AbbrevCode.METHOD_LOCATION, buffer, pos);
-        pos = writeMethodLocationAbbrev(context, AbbrevCode.METHOD_LOCATION_STATIC, buffer, pos);
-        return pos;
-    }
-
-    private int writeMethodLocationAbbrev(@SuppressWarnings("unused") DebugContext context, AbbrevCode abbrevCode, byte[] buffer, int p) {
+    private int writeMethodDeclarationAbbrev(@SuppressWarnings("unused") DebugContext context, AbbrevCode abbrevCode, byte[] buffer, int p) {
         int pos = p;
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         pos = writeTag(DwarfTag.DW_TAG_subprogram, buffer, pos);
         pos = writeHasChildren(DwarfHasChildren.DW_CHILDREN_yes, buffer, pos);
+        if (abbrevCode == AbbrevCode.METHOD_DECLARATION_INLINE || abbrevCode == AbbrevCode.METHOD_DECLARATION_INLINE_STATIC) {
+            pos = writeAttrType(DwarfAttribute.DW_AT_inline, buffer, pos);
+            pos = writeAttrForm(DwarfForm.DW_FORM_data1, buffer, pos);
+        }
         pos = writeAttrType(DwarfAttribute.DW_AT_external, buffer, pos);
         pos = writeAttrForm(DwarfForm.DW_FORM_flag, buffer, pos);
         pos = writeAttrType(DwarfAttribute.DW_AT_name, buffer, pos);
         pos = writeAttrForm(DwarfForm.DW_FORM_strp, buffer, pos);
-//        pos = writeAttrType(DwarfAttribute.DW_AT_decl_file, buffer, pos);
-//        pos = writeAttrForm(DwarfForm.DW_FORM_data2, buffer, pos);
-//        pos = writeAttrType(DwarfAttribute.DW_AT_decl_line, buffer, pos);
-//        pos = writeAttrForm(DwarfForm.DW_FORM_data2, buffer, pos);
-//        pos = writeAttrType(DwarfAttribute.DW_AT_linkage_name, buffer, pos);
-//        pos = writeAttrForm(DwarfForm.DW_FORM_strp, buffer, pos);
-        pos = writeAttrType(DwarfAttribute.DW_AT_low_pc, buffer, pos);
-        pos = writeAttrForm(DwarfForm.DW_FORM_addr, buffer, pos);
-        pos = writeAttrType(DwarfAttribute.DW_AT_hi_pc, buffer, pos);
-        pos = writeAttrForm(DwarfForm.DW_FORM_addr, buffer, pos);
+        pos = writeAttrType(DwarfAttribute.DW_AT_decl_file, buffer, pos);
+        pos = writeAttrForm(DwarfForm.DW_FORM_data2, buffer, pos);
+        pos = writeAttrType(DwarfAttribute.DW_AT_decl_line, buffer, pos);
+        pos = writeAttrForm(DwarfForm.DW_FORM_data2, buffer, pos);
+        pos = writeAttrType(DwarfAttribute.DW_AT_linkage_name, buffer, pos);
+        pos = writeAttrForm(DwarfForm.DW_FORM_strp, buffer, pos);
         pos = writeAttrType(DwarfAttribute.DW_AT_type, buffer, pos);
-        pos = writeAttrForm(DwarfForm.DW_FORM_ref_addr, buffer, pos);
+        pos = writeAttrForm(DwarfForm.DW_FORM_ref_sig8, buffer, pos);
         pos = writeAttrType(DwarfAttribute.DW_AT_artificial, buffer, pos);
         pos = writeAttrForm(DwarfForm.DW_FORM_flag, buffer, pos);
         pos = writeAttrType(DwarfAttribute.DW_AT_accessibility, buffer, pos);
         pos = writeAttrForm(DwarfForm.DW_FORM_data1, buffer, pos);
+        pos = writeAttrType(DwarfAttribute.DW_AT_declaration, buffer, pos);
+        pos = writeAttrForm(DwarfForm.DW_FORM_flag, buffer, pos);
         /* This is not in DWARF2 */
         // pos = writeAttrType(DW_AT_virtuality, buffer, pos);
         // pos = writeAttrForm(DW_FORM_data1, buffer, pos);
         pos = writeAttrType(DwarfAttribute.DW_AT_containing_type, buffer, pos);
-        pos = writeAttrForm(DwarfForm.DW_FORM_ref_addr, buffer, pos);
-        if (abbrevCode == AbbrevCode.METHOD_LOCATION) {
+        pos = writeAttrForm(DwarfForm.DW_FORM_ref_sig8, buffer, pos);
+        if (abbrevCode == AbbrevCode.METHOD_DECLARATION || abbrevCode == AbbrevCode.METHOD_DECLARATION_INLINE) {
             pos = writeAttrType(DwarfAttribute.DW_AT_object_pointer, buffer, pos);
             pos = writeAttrForm(DwarfForm.DW_FORM_ref4, buffer, pos);
         }
@@ -237,18 +225,18 @@ public class RuntimeDwarfAbbrevSectionImpl extends RuntimeDwarfSectionImpl {
         return pos;
     }
 
-    private int writeAbstractInlineMethodAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
+    private int writeMethodLocationAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
         int pos = p;
-        pos = writeAbbrevCode(AbbrevCode.ABSTRACT_INLINE_METHOD, buffer, pos);
+        pos = writeAbbrevCode(AbbrevCode.METHOD_LOCATION, buffer, pos);
         pos = writeTag(DwarfTag.DW_TAG_subprogram, buffer, pos);
         pos = writeHasChildren(DwarfHasChildren.DW_CHILDREN_yes, buffer, pos);
-        pos = writeAttrType(DwarfAttribute.DW_AT_inline, buffer, pos);
-        pos = writeAttrForm(DwarfForm.DW_FORM_data1, buffer, pos);
+        pos = writeAttrType(DwarfAttribute.DW_AT_low_pc, buffer, pos);
+        pos = writeAttrForm(DwarfForm.DW_FORM_addr, buffer, pos);
+        pos = writeAttrType(DwarfAttribute.DW_AT_hi_pc, buffer, pos);
+        pos = writeAttrForm(DwarfForm.DW_FORM_addr, buffer, pos);
         pos = writeAttrType(DwarfAttribute.DW_AT_external, buffer, pos);
         pos = writeAttrForm(DwarfForm.DW_FORM_flag, buffer, pos);
-        pos = writeAttrType(DwarfAttribute.DW_AT_name, buffer, pos);
-        pos = writeAttrForm(DwarfForm.DW_FORM_strp, buffer, pos);
-        pos = writeAttrType(DwarfAttribute.DW_AT_type, buffer, pos);
+        pos = writeAttrType(DwarfAttribute.DW_AT_specification, buffer, pos);
         pos = writeAttrForm(DwarfForm.DW_FORM_ref_addr, buffer, pos);
         /*
          * Now terminate.
@@ -258,23 +246,73 @@ public class RuntimeDwarfAbbrevSectionImpl extends RuntimeDwarfSectionImpl {
         return pos;
     }
 
-
-    private int writeInlinedSubroutineAbbrev(byte[] buffer, int p) {
+    private int writeParameterDeclarationAbbrevs(DebugContext context, byte[] buffer, int p) {
         int pos = p;
-        pos = writeAbbrevCode(AbbrevCode.INLINED_SUBROUTINE, buffer, pos);
-        pos = writeTag(DwarfTag.DW_TAG_inlined_subroutine, buffer, pos);
-        pos = writeHasChildren(DwarfHasChildren.DW_CHILDREN_yes, buffer, pos);
-        pos = writeAttrType(DwarfAttribute.DW_AT_abstract_origin, buffer, pos);
-        pos = writeAttrForm(DwarfForm.DW_FORM_ref4, buffer, pos);
-        pos = writeAttrType(DwarfAttribute.DW_AT_low_pc, buffer, pos);
-        pos = writeAttrForm(DwarfForm.DW_FORM_addr, buffer, pos);
-        pos = writeAttrType(DwarfAttribute.DW_AT_hi_pc, buffer, pos);
-        pos = writeAttrForm(DwarfForm.DW_FORM_addr, buffer, pos);
-        pos = writeAttrType(DwarfAttribute.DW_AT_call_file, buffer, pos);
-        pos = writeAttrForm(DwarfForm.DW_FORM_data4, buffer, pos);
-        pos = writeAttrType(DwarfAttribute.DW_AT_call_line, buffer, pos);
-        pos = writeAttrForm(DwarfForm.DW_FORM_data4, buffer, pos);
-        /* Now terminate. */
+        pos = writeParameterDeclarationAbbrev(context, AbbrevCode.METHOD_PARAMETER_DECLARATION_1, buffer, pos);
+        pos = writeParameterDeclarationAbbrev(context, AbbrevCode.METHOD_PARAMETER_DECLARATION_2, buffer, pos);
+        pos = writeParameterDeclarationAbbrev(context, AbbrevCode.METHOD_PARAMETER_DECLARATION_3, buffer, pos);
+        return pos;
+    }
+
+    private int writeParameterDeclarationAbbrev(@SuppressWarnings("unused") DebugContext context, AbbrevCode abbrevCode, byte[] buffer, int p) {
+        int pos = p;
+        pos = writeAbbrevCode(abbrevCode, buffer, pos);
+        pos = writeTag(DwarfTag.DW_TAG_formal_parameter, buffer, pos);
+        pos = writeHasChildren(DwarfHasChildren.DW_CHILDREN_no, buffer, pos);
+        pos = writeAttrType(DwarfAttribute.DW_AT_name, buffer, pos);
+        pos = writeAttrForm(DwarfForm.DW_FORM_strp, buffer, pos);
+        if (abbrevCode == AbbrevCode.METHOD_PARAMETER_DECLARATION_2) {
+            /* Line numbers for parameter declarations are not (yet?) available. */
+            pos = writeAttrType(DwarfAttribute.DW_AT_decl_file, buffer, pos);
+            pos = writeAttrForm(DwarfForm.DW_FORM_data2, buffer, pos);
+            pos = writeAttrType(DwarfAttribute.DW_AT_decl_line, buffer, pos);
+            pos = writeAttrForm(DwarfForm.DW_FORM_data2, buffer, pos);
+        }
+        pos = writeAttrType(DwarfAttribute.DW_AT_type, buffer, pos);
+        pos = writeAttrForm(DwarfForm.DW_FORM_ref_sig8, buffer, pos);
+        if (abbrevCode == AbbrevCode.METHOD_PARAMETER_DECLARATION_1) {
+            /* Only this parameter is artificial and it has no line. */
+            pos = writeAttrType(DwarfAttribute.DW_AT_artificial, buffer, pos);
+            pos = writeAttrForm(DwarfForm.DW_FORM_flag, buffer, pos);
+        }
+        pos = writeAttrType(DwarfAttribute.DW_AT_declaration, buffer, pos);
+        pos = writeAttrForm(DwarfForm.DW_FORM_flag, buffer, pos);
+        /*
+         * Now terminate.
+         */
+        pos = writeAttrType(DwarfAttribute.DW_AT_null, buffer, pos);
+        pos = writeAttrForm(DwarfForm.DW_FORM_null, buffer, pos);
+        return pos;
+    }
+
+    private int writeLocalDeclarationAbbrevs(DebugContext context, byte[] buffer, int p) {
+        int pos = p;
+        pos = writeLocalDeclarationAbbrev(context, AbbrevCode.METHOD_LOCAL_DECLARATION_1, buffer, pos);
+        pos = writeLocalDeclarationAbbrev(context, AbbrevCode.METHOD_LOCAL_DECLARATION_2, buffer, pos);
+        return pos;
+    }
+
+    private int writeLocalDeclarationAbbrev(@SuppressWarnings("unused") DebugContext context, AbbrevCode abbrevCode, byte[] buffer, int p) {
+        int pos = p;
+        pos = writeAbbrevCode(abbrevCode, buffer, pos);
+        pos = writeTag(DwarfTag.DW_TAG_variable, buffer, pos);
+        pos = writeHasChildren(DwarfHasChildren.DW_CHILDREN_no, buffer, pos);
+        pos = writeAttrType(DwarfAttribute.DW_AT_name, buffer, pos);
+        pos = writeAttrForm(DwarfForm.DW_FORM_strp, buffer, pos);
+        if (abbrevCode == AbbrevCode.METHOD_LOCAL_DECLARATION_1) {
+            /* Line numbers for parameter declarations are not (yet?) available. */
+            pos = writeAttrType(DwarfAttribute.DW_AT_decl_file, buffer, pos);
+            pos = writeAttrForm(DwarfForm.DW_FORM_data2, buffer, pos);
+            pos = writeAttrType(DwarfAttribute.DW_AT_decl_line, buffer, pos);
+            pos = writeAttrForm(DwarfForm.DW_FORM_data2, buffer, pos);
+        }
+        pos = writeAttrType(DwarfAttribute.DW_AT_type, buffer, pos);
+        pos = writeAttrForm(DwarfForm.DW_FORM_ref_sig8, buffer, pos);
+        pos = writeAttrType(DwarfAttribute.DW_AT_declaration, buffer, pos);
+        pos = writeAttrForm(DwarfForm.DW_FORM_flag, buffer, pos);
+        /*
+         * Now terminate.
+         */
         pos = writeAttrType(DwarfAttribute.DW_AT_null, buffer, pos);
         pos = writeAttrForm(DwarfForm.DW_FORM_null, buffer, pos);
         return pos;
@@ -299,13 +337,11 @@ public class RuntimeDwarfAbbrevSectionImpl extends RuntimeDwarfSectionImpl {
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         pos = writeTag(DwarfTag.DW_TAG_formal_parameter, buffer, pos);
         pos = writeHasChildren(DwarfHasChildren.DW_CHILDREN_no, buffer, pos);
-        pos = writeAttrType(DwarfAttribute.DW_AT_name, buffer, pos);
-        pos = writeAttrForm(DwarfForm.DW_FORM_strp, buffer, pos);
-        pos = writeAttrType(DwarfAttribute.DW_AT_type, buffer, pos);
+        pos = writeAttrType(DwarfAttribute.DW_AT_abstract_origin, buffer, pos);
         pos = writeAttrForm(DwarfForm.DW_FORM_ref_addr, buffer, pos);
         if (abbrevCode == AbbrevCode.METHOD_PARAMETER_LOCATION_2) {
             pos = writeAttrType(DwarfAttribute.DW_AT_location, buffer, pos);
-            pos = writeAttrForm(DwarfForm.DW_FORM_sec_offset, buffer, pos);
+            pos = writeAttrForm(DwarfForm.DW_FORM_loclistx, buffer, pos);
         }
         /*
          * Now terminate.
@@ -320,13 +356,11 @@ public class RuntimeDwarfAbbrevSectionImpl extends RuntimeDwarfSectionImpl {
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         pos = writeTag(DwarfTag.DW_TAG_variable, buffer, pos);
         pos = writeHasChildren(DwarfHasChildren.DW_CHILDREN_no, buffer, pos);
-        pos = writeAttrType(DwarfAttribute.DW_AT_name, buffer, pos);
-        pos = writeAttrForm(DwarfForm.DW_FORM_strp, buffer, pos);
-        pos = writeAttrType(DwarfAttribute.DW_AT_type, buffer, pos);
+        pos = writeAttrType(DwarfAttribute.DW_AT_abstract_origin, buffer, pos);
         pos = writeAttrForm(DwarfForm.DW_FORM_ref_addr, buffer, pos);
         if (abbrevCode == AbbrevCode.METHOD_LOCAL_LOCATION_2) {
             pos = writeAttrType(DwarfAttribute.DW_AT_location, buffer, pos);
-            pos = writeAttrForm(DwarfForm.DW_FORM_sec_offset, buffer, pos);
+            pos = writeAttrForm(DwarfForm.DW_FORM_loclistx, buffer, pos);
         }
         /*
          * Now terminate.
@@ -339,6 +373,27 @@ public class RuntimeDwarfAbbrevSectionImpl extends RuntimeDwarfSectionImpl {
     private int writeNullAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
         int pos = p;
         pos = writeAbbrevCode(AbbrevCode.NULL, buffer, pos);
+        return pos;
+    }
+
+    private int writeInlinedSubroutineAbbrev(byte[] buffer, int p) {
+        int pos = p;
+        pos = writeAbbrevCode(AbbrevCode.INLINED_SUBROUTINE_WITH_CHILDREN, buffer, pos);
+        pos = writeTag(DwarfTag.DW_TAG_inlined_subroutine, buffer, pos);
+        pos = writeHasChildren(DwarfHasChildren.DW_CHILDREN_yes, buffer, pos);
+        pos = writeAttrType(DwarfAttribute.DW_AT_abstract_origin, buffer, pos);
+        pos = writeAttrForm(DwarfForm.DW_FORM_ref4, buffer, pos);
+        pos = writeAttrType(DwarfAttribute.DW_AT_low_pc, buffer, pos);
+        pos = writeAttrForm(DwarfForm.DW_FORM_addr, buffer, pos);
+        pos = writeAttrType(DwarfAttribute.DW_AT_hi_pc, buffer, pos);
+        pos = writeAttrForm(DwarfForm.DW_FORM_addr, buffer, pos);
+        pos = writeAttrType(DwarfAttribute.DW_AT_call_file, buffer, pos);
+        pos = writeAttrForm(DwarfForm.DW_FORM_data4, buffer, pos);
+        pos = writeAttrType(DwarfAttribute.DW_AT_call_line, buffer, pos);
+        pos = writeAttrForm(DwarfForm.DW_FORM_data4, buffer, pos);
+        /* Now terminate. */
+        pos = writeAttrType(DwarfAttribute.DW_AT_null, buffer, pos);
+        pos = writeAttrForm(DwarfForm.DW_FORM_null, buffer, pos);
         return pos;
     }
 }
