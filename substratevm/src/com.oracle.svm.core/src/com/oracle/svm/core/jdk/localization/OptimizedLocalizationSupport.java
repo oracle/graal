@@ -58,8 +58,8 @@ public class OptimizedLocalizationSupport extends LocalizationSupport {
 
     final Map<BundleCacheKey, ResourceBundle> resourceBundles = new HashMap<>();
 
-    public OptimizedLocalizationSupport(Locale defaultLocale, Set<Locale> locales, Charset defaultCharset) {
-        super(defaultLocale, locales, defaultCharset);
+    public OptimizedLocalizationSupport(Set<Locale> locales, Charset defaultCharset) {
+        super(locales, defaultCharset);
     }
 
     @Override
