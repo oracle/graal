@@ -381,7 +381,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
-    public void testFinallyTry() {
+    public void testTryFinally() {
         // try {
         //   A
         // } finally {
@@ -389,9 +389,9 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
         // }
         BasicInterpreter root = parseNode("finallyTry", b -> {
             b.beginRoot();
-            b.beginFinallyTry(() -> emitNop(b, "B"));
+            b.beginTryFinally(() -> emitNop(b, "B"));
                 emitNop(b, "A");
-            b.endFinallyTry();
+            b.endTryFinally();
             b.endRoot();
         });
         assertEquals(null, root.getCallTarget().call());
@@ -399,7 +399,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
-    public void testFinallyTryEarlyExitsInTry() {
+    public void testTryFinallyEarlyExitsInTry() {
         // try {
         //   A
         //   if (arg0) return 42
@@ -415,7 +415,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
             b.beginBlock();
             BytecodeLabel lbl = b.createLabel();
 
-            b.beginFinallyTry(() -> emitNop(b, "D"));
+            b.beginTryFinally(() -> emitNop(b, "D"));
                 b.beginBlock();
                     emitNop(b, "A");
                     emitReturnIf(b, 0, 42);
@@ -423,7 +423,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
                     emitBranchIf(b, 1, lbl);
                     emitNop(b, "C");
                 b.endBlock();
-            b.endFinallyTry();
+            b.endTryFinally();
 
             b.emitLabel(lbl);
             b.endBlock();
@@ -436,7 +436,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
-    public void testFinallyTryEarlyExitsInCatch() {
+    public void testTryFinallyEarlyExitsInCatch() {
         // try {
         //   A
         // } finally ex1 {
@@ -452,7 +452,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
             b.beginBlock();
             BytecodeLabel lbl = b.createLabel();
 
-            b.beginFinallyTry(() -> {
+            b.beginTryFinally(() -> {
                 b.beginBlock();
                     emitNop(b, "B");
                     emitReturnIf(b, 0, 42);
@@ -462,7 +462,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
                 b.endBlock();
             });
                 emitNop(b, "A");
-            b.endFinallyTry();
+            b.endTryFinally();
 
             b.emitLabel(lbl);
             b.endBlock();
@@ -475,7 +475,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
-    public void testFinallyTryNested() {
+    public void testTryFinallyNested() {
         // try {
         //   try {
         //     A
@@ -487,11 +487,11 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
         // }
         BasicInterpreter root = parseNode("finallyTry", b -> {
             b.beginRoot();
-            b.beginFinallyTry(() -> emitNop(b, "C"));
-                b.beginFinallyTry(() -> emitNop(b, "B"));
+            b.beginTryFinally(() -> emitNop(b, "C"));
+                b.beginTryFinally(() -> emitNop(b, "B"));
                     emitNop(b, "A");
-                b.endFinallyTry();
-            b.endFinallyTry();
+                b.endTryFinally();
+            b.endTryFinally();
             b.endRoot();
         });
         assertEquals(null, root.getCallTarget().call());
@@ -500,7 +500,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
 
 
     @Test
-    public void testFinallyTryNestedEarlyExitsInTry() {
+    public void testTryFinallyNestedEarlyExitsInTry() {
         // try {
         //   try {                          // opens inner + outer
         //     A
@@ -524,10 +524,10 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
             b.beginBlock();
 
             BytecodeLabel outerLbl = b.createLabel();
-            b.beginFinallyTry(() -> emitNop(b, "G"));
+            b.beginTryFinally(() -> emitNop(b, "G"));
                 b.beginBlock();
                     BytecodeLabel innerLbl = b.createLabel();
-                    b.beginFinallyTry(() -> emitNop(b, "E"));
+                    b.beginTryFinally(() -> emitNop(b, "E"));
                         b.beginBlock();
                             emitNop(b, "A");
                             emitReturnIf(b, 0, 42);
@@ -537,11 +537,11 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
                             emitBranchIf(b, 2, innerLbl);
                             emitNop(b, "D");
                         b.endBlock();
-                    b.endFinallyTry();
+                    b.endTryFinally();
                     b.emitLabel(innerLbl);
                     emitNop(b, "F");
                 b.endBlock();
-            b.endFinallyTry();
+            b.endTryFinally();
 
             b.emitLabel(outerLbl);
             b.endBlock();
@@ -559,7 +559,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
-    public void testFinallyTryNestedEarlyExitsInFinally() {
+    public void testTryFinallyNestedEarlyExitsInFinally() {
         // try {
         //   try {                          // opens inner + outer
         //     A
@@ -574,9 +574,9 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
         // outerLbl:
         BasicInterpreter root = parseNode("finallyTryNestedEarlyExitsInFinally", b -> {
             b.beginRoot();
-            b.beginFinallyTry(() -> emitNop(b, "G"));
+            b.beginTryFinally(() -> emitNop(b, "G"));
                 b.beginBlock();
-                    b.beginFinallyTry(() -> {
+                    b.beginTryFinally(() -> {
                         b.beginBlock();
                             emitNop(b, "B");
                             emitReturnIf(b, 0, 42);
@@ -584,9 +584,9 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
                         b.endBlock();
                     });
                         emitNop(b, "A");
-                    b.endFinallyTry();
+                    b.endTryFinally();
                 b.endBlock();
-            b.endFinallyTry();
+            b.endTryFinally();
             b.endRoot();
         });
         assertEquals(null, root.getCallTarget().call(false));

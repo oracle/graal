@@ -217,7 +217,7 @@ public class PrologEpilogTest extends AbstractInstructionTest {
     }
 
     @Test
-    public void testFinallyTry() {
+    public void testTryFinally() {
         // @formatter:off
         // try {
         //    if (arg0) return 42 else throw "oops"
@@ -228,7 +228,7 @@ public class PrologEpilogTest extends AbstractInstructionTest {
         PrologEpilogBytecodeNode root = parseNode(b -> {
             // @formatter:off
             b.beginRoot();
-            b.beginFinallyTry(() -> {
+            b.beginTryFinally(() -> {
                 b.beginReturn();
                     b.emitLoadConstant(-1);
                 b.endReturn();
@@ -244,7 +244,7 @@ public class PrologEpilogTest extends AbstractInstructionTest {
                         b.emitLoadConstant("oops");
                     b.endThrowException();
                 b.endIfThenElse();
-            b.endFinallyTry();
+            b.endTryFinally();
             b.endRoot();
             // @formatter:on
         });

@@ -589,7 +589,7 @@ public class ParsingTutorial {
      * This tutorial demonstrated how to parse programs using visitors. It also demonstrated how to
      * "desugar" complex nodes into simpler operations.
      * <p>
-     * Still, some more advanced features (e.g., {@code FinallyTry} operations) have not been
+     * Still, some more advanced features (e.g., {@code TryFinally} operations) have not been
      * covered. We encourage you to consult the other resources available:
      *
      * @see <a href=

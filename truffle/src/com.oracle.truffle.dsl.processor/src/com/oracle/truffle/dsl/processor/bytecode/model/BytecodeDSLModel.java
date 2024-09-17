@@ -138,8 +138,8 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public OperationModel conditionalOperation;
     public OperationModel whileOperation;
     public OperationModel tryCatchOperation;
-    public OperationModel finallyTryOperation;
-    public OperationModel finallyTryCatchOperation;
+    public OperationModel tryFinallyOperation;
+    public OperationModel tryFinallyCatchOperation;
     public OperationModel finallyHandlerOperation;
     public OperationModel loadConstantOperation;
     public OperationModel loadNullOperation;
