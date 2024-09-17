@@ -145,6 +145,20 @@ public final class ModulesSupport {
         }
     }
 
+    public static void exportTruffleRuntimeTo(Class<?> client) {
+        Module truffleModule = ModulesSupport.class.getModule();
+        Module clientModule = client.getModule();
+        if (truffleModule != clientModule) {
+            Set<String> packages = truffleModule.getPackages();
+            for (String pkg : packages) {
+                boolean exported = truffleModule.isExported(pkg, clientModule);
+                if (!exported) {
+                    truffleModule.addExports(pkg, clientModule);
+                }
+            }
+        }
+    }
+
     /**
      * Gets {@code ModulesAccessor} reflectively.
      * <p>
@@ -154,7 +168,7 @@ public final class ModulesSupport {
      */
     private static ModulesAccessor getModulesAccessor() {
         try {
-            Class<?> resourceCacheClass = Class.forName("com.oracle.truffle.polyglot.ModuleUtils", false, ModulesSupport.class.getClassLoader());
+            Class<?> resourceCacheClass = Class.forName("com.oracle.truffle.polyglot.ModulesSupport", false, ModulesSupport.class.getClassLoader());
             Method getModulesAccessor = resourceCacheClass.getDeclaredMethod("getModulesAccessor");
             getModulesAccessor.setAccessible(true);
             return (ModulesAccessor) getModulesAccessor.invoke(null);

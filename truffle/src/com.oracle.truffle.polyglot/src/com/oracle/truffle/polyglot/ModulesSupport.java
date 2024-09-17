@@ -76,11 +76,11 @@ import com.oracle.truffle.api.impl.asm.Opcodes;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.module.Modules;
 
-final class ModuleUtils {
+final class ModulesSupport {
 
     /*
-     * We use reflective access to addEnableAccess and addEnableNativeAccessToAllUnnamed
-     * to make Truffle compilable on JDK-17.
+     * We use reflective access to addEnableAccess and addEnableNativeAccessToAllUnnamed to make
+     * Truffle compilable on JDK-17.
      */
     private static final Method ADD_ENABLE_NATIVE_ACCESS;
     private static final Method ADD_ENABLE_NATIVE_ACCESS_TO_ALL_UNNAMED;
@@ -102,8 +102,7 @@ final class ModuleUtils {
 
     private static volatile Accessor.ModulesAccessor modulesAccessor;
 
-
-    private ModuleUtils() {
+    private ModulesSupport() {
     }
 
     static void exportTo(Module clientModule) {
@@ -121,7 +120,7 @@ final class ModuleUtils {
             return;
         }
         Module truffleModule = Truffle.class.getModule();
-        forEach(clientModule, EnumSet.of(Edge.READS, Edge.USES), (m) -> m != truffleModule && m.canRead(truffleModule), ModuleUtils::exportFromTo);
+        forEach(clientModule, EnumSet.of(Edge.READS, Edge.USES), (m) -> m != truffleModule && m.canRead(truffleModule), ModulesSupport::exportFromTo);
     }
 
     static void enableNativeAccess(Module clientModule) {
@@ -138,7 +137,7 @@ final class ModuleUtils {
     static Accessor.ModulesAccessor getModulesAccessor() {
         Accessor.ModulesAccessor result = modulesAccessor;
         if (result == null) {
-            synchronized (ModuleUtils.class) {
+            synchronized (ModulesSupport.class) {
                 result = modulesAccessor;
                 if (result == null) {
                     String attachLibPath = System.getProperty("truffle.attach.library");
@@ -377,73 +376,73 @@ final class ModuleUtils {
             constructor.visitEnd();
 
             MethodVisitor mv1 = cw.visitMethod(Opcodes.ACC_PUBLIC + Opcodes.ACC_STATIC, "addExports",
-                    "(Ljava/lang/Module;Ljava/lang/String;Ljava/lang/Module;)V", null, null);
+                            "(Ljava/lang/Module;Ljava/lang/String;Ljava/lang/Module;)V", null, null);
             mv1.visitCode();
             mv1.visitVarInsn(Opcodes.ALOAD, 0); // Load first argument (Module base)
             mv1.visitVarInsn(Opcodes.ALOAD, 1); // Load second argument (String p)
             mv1.visitVarInsn(Opcodes.ALOAD, 2); // Load third argument (Module target)
             mv1.visitMethodInsn(Opcodes.INVOKESTATIC, "jdk/internal/module/Modules", "addExports",
-                    "(Ljava/lang/Module;Ljava/lang/String;Ljava/lang/Module;)V", false);
+                            "(Ljava/lang/Module;Ljava/lang/String;Ljava/lang/Module;)V", false);
             mv1.visitInsn(Opcodes.RETURN);
             mv1.visitMaxs(3, 3);
             mv1.visitEnd();
 
             MethodVisitor mv2 = cw.visitMethod(Opcodes.ACC_PUBLIC + Opcodes.ACC_STATIC, "addExportsToAllUnnamed",
-                    "(Ljava/lang/Module;Ljava/lang/String;)V", null, null);
+                            "(Ljava/lang/Module;Ljava/lang/String;)V", null, null);
             mv2.visitCode();
             mv2.visitVarInsn(Opcodes.ALOAD, 0); // Load first argument (Module target)
             mv2.visitVarInsn(Opcodes.ALOAD, 1); // Load second argument (String p)
             mv2.visitMethodInsn(Opcodes.INVOKESTATIC, "jdk/internal/module/Modules", "addExportsToAllUnnamed",
-                    "(Ljava/lang/Module;Ljava/lang/String;)V", false);
+                            "(Ljava/lang/Module;Ljava/lang/String;)V", false);
             mv2.visitInsn(Opcodes.RETURN);
             mv2.visitMaxs(2, 2);
             mv2.visitEnd();
 
             MethodVisitor mv3 = cw.visitMethod(Opcodes.ACC_PUBLIC + Opcodes.ACC_STATIC, "addOpens",
-                    "(Ljava/lang/Module;Ljava/lang/String;Ljava/lang/Module;)V", null, null);
+                            "(Ljava/lang/Module;Ljava/lang/String;Ljava/lang/Module;)V", null, null);
             mv3.visitCode();
             mv3.visitVarInsn(Opcodes.ALOAD, 0); // Load first argument (Module base)
             mv3.visitVarInsn(Opcodes.ALOAD, 1); // Load second argument (String p)
             mv3.visitVarInsn(Opcodes.ALOAD, 2); // Load third argument (Module target)
             mv3.visitMethodInsn(Opcodes.INVOKESTATIC, "jdk/internal/module/Modules", "addOpens",
-                    "(Ljava/lang/Module;Ljava/lang/String;Ljava/lang/Module;)V", false);
+                            "(Ljava/lang/Module;Ljava/lang/String;Ljava/lang/Module;)V", false);
             mv3.visitInsn(Opcodes.RETURN);
             mv3.visitMaxs(3, 3);
             mv3.visitEnd();
 
             MethodVisitor mv4 = cw.visitMethod(Opcodes.ACC_PUBLIC + Opcodes.ACC_STATIC, "addOpensToAllUnnamed",
-                    "(Ljava/lang/Module;Ljava/lang/String;)V", null, null);
+                            "(Ljava/lang/Module;Ljava/lang/String;)V", null, null);
             mv4.visitCode();
             mv4.visitVarInsn(Opcodes.ALOAD, 0); // Load first argument (Module target)
             mv4.visitVarInsn(Opcodes.ALOAD, 1); // Load second argument (String p)
             mv4.visitMethodInsn(Opcodes.INVOKESTATIC, "jdk/internal/module/Modules", "addOpensToAllUnnamed",
-                    "(Ljava/lang/Module;Ljava/lang/String;)V", false);
+                            "(Ljava/lang/Module;Ljava/lang/String;)V", false);
             mv4.visitInsn(Opcodes.RETURN);
             mv4.visitMaxs(2, 2);
             mv4.visitEnd();
 
             MethodVisitor mv5 = cw.visitMethod(Opcodes.ACC_PUBLIC + Opcodes.ACC_STATIC, "addEnableNativeAccess",
-                    "(Ljava/lang/Module;)V", null, null);
+                            "(Ljava/lang/Module;)V", null, null);
             mv5.visitCode();
             if (ADD_ENABLE_NATIVE_ACCESS != null) {
                 mv5.visitMethodInsn(Opcodes.INVOKESTATIC, "jdk/internal/access/SharedSecrets", "getJavaLangAccess",
-                        "()Ljdk/internal/access/JavaLangAccess;", false);
+                                "()Ljdk/internal/access/JavaLangAccess;", false);
                 mv5.visitVarInsn(Opcodes.ALOAD, 0); // Load first argument (Module module)
                 mv5.visitMethodInsn(Opcodes.INVOKEINTERFACE, "jdk/internal/access/JavaLangAccess", "addEnableNativeAccess",
-                        "(Ljava/lang/Module;)Ljava/lang/Module;", true);
+                                "(Ljava/lang/Module;)Ljava/lang/Module;", true);
             }
             mv5.visitInsn(Opcodes.RETURN);
             mv5.visitMaxs(2, 2);
             mv5.visitEnd();
 
             MethodVisitor mv6 = cw.visitMethod(Opcodes.ACC_PUBLIC + Opcodes.ACC_STATIC, "addEnableNativeAccessToAllUnnamed",
-                    "()V", null, null);
+                            "()V", null, null);
             mv6.visitCode();
             if (ADD_ENABLE_NATIVE_ACCESS_TO_ALL_UNNAMED != null) {
                 mv6.visitMethodInsn(Opcodes.INVOKESTATIC, "jdk/internal/access/SharedSecrets", "getJavaLangAccess",
-                        "()Ljdk/internal/access/JavaLangAccess;", false);
+                                "()Ljdk/internal/access/JavaLangAccess;", false);
                 mv6.visitMethodInsn(Opcodes.INVOKEINTERFACE, "jdk/internal/access/JavaLangAccess", "addEnableNativeAccessToAllUnnamed",
-                        "()V", true);
+                                "()V", true);
             }
             mv6.visitInsn(Opcodes.RETURN);
             mv6.visitMaxs(1, 1);
@@ -580,7 +579,7 @@ final class ModuleUtils {
     }
 
     @InternalResource.Id(value = LibTruffleAttachResource.ID, componentId = "engine", optional = true)
-    final static class LibTruffleAttachResource implements InternalResource {
+    static final class LibTruffleAttachResource implements InternalResource {
 
         static final String ID = "libtruffleattach";
 

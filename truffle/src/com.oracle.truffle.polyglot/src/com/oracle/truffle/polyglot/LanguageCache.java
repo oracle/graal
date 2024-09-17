@@ -306,7 +306,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
     @SuppressWarnings("deprecation")
     private static Stream<? extends ProviderAdapter> loadLegacyProviders(ClassLoader loader) {
-        ModuleUtils.exportToUnnamedModuleOf(loader);
+        ModulesSupport.exportToUnnamedModuleOf(loader);
         return StreamSupport.stream(ServiceLoader.load(TruffleLanguage.Provider.class, loader).spliterator(), false).map(LegacyProvider::new);
     }
 
@@ -322,14 +322,14 @@ final class LanguageCache implements Comparable<LanguageCache> {
     private static void loadLanguageImpl(ProviderAdapter providerAdapter, List<LanguageCache> into, Map<String, Map<String, Supplier<InternalResourceCache>>> optionalResources) {
         Class<?> providerClass = providerAdapter.getProviderClass();
         Module providerModule = providerClass.getModule();
-        ModuleUtils.exportTransitivelyTo(providerModule);
+        ModulesSupport.exportTransitivelyTo(providerModule);
         Registration reg = providerClass.getAnnotation(Registration.class);
         if (reg == null) {
             emitWarning("Warning Truffle language ignored: Provider %s is missing @Registration annotation.", providerClass);
             return;
         }
         if (reg.enableNativeAccess()) {
-            ModuleUtils.enableNativeAccess(providerModule);
+            ModulesSupport.enableNativeAccess(providerModule);
         }
         String className = providerAdapter.getLanguageClassName();
         String name = reg.name();

@@ -411,7 +411,7 @@ final class InternalResourceCache {
                 continue;
             }
             StreamSupport.stream(ServiceLoader.load(InternalResourceProvider.class, loader).spliterator(), false).filter((p) -> supplier.accepts(p.getClass())).forEach((p) -> {
-                ModuleUtils.exportTransitivelyTo(p.getClass().getModule());
+                ModulesSupport.exportTransitivelyTo(p.getClass().getModule());
                 String componentId = EngineAccessor.LANGUAGE_PROVIDER.getInternalResourceComponentId(p);
                 String resourceId = EngineAccessor.LANGUAGE_PROVIDER.getInternalResourceId(p);
                 var componentOptionalResources = cache.computeIfAbsent(componentId, (k) -> new HashMap<>());

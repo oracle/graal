@@ -804,7 +804,7 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
             return capability.cast(tvmci);
         } else if (capability == com.oracle.truffle.api.object.LayoutFactory.class) {
             com.oracle.truffle.api.object.LayoutFactory layoutFactory = loadObjectLayoutFactory();
-            ModuleUtil.exportTo(layoutFactory.getClass());
+            ModulesSupport.exportTruffleRuntimeTo(layoutFactory.getClass());
             return capability.cast(layoutFactory);
         } else if (capability == TVMCI.Test.class) {
             return capability.cast(getTestTvmci());
