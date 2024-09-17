@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -169,9 +169,12 @@ public class AMD64HotSpotMove {
         }
     }
 
-    public static void decodeKlassPointer(AMD64MacroAssembler masm, Register register, Register scratch, AMD64Address address, GraalHotSpotVMConfig config) {
+    /**
+     * Decode compressed class pointer stored in {@code register}. The content in {@code scratch}
+     * might be destroyed.
+     */
+    public static void decodeKlassPointer(AMD64MacroAssembler masm, Register register, Register scratch, GraalHotSpotVMConfig config) {
         CompressEncoding encoding = config.getKlassEncoding();
-        masm.movl(register, address);
         if (encoding.getShift() != 0) {
             masm.shlq(register, encoding.getShift());
         }
