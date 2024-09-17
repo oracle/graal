@@ -10784,6 +10784,9 @@ public final class BasicInterpreterProductionLocalScopes extends BasicInterprete
             if (constant == null) {
                 throw failArgument("The constant parameter must not be null. Use emitLoadNull() instead for null values.");
             }
+            if (constant instanceof Node && !(constant instanceof RootNode)) {
+                throw failArgument("Nodes cannot be used as constants.");
+            }
             beforeChild();
             doEmitInstructionI(Instructions.LOAD_CONSTANT, 1, constantPool.addConstant(constant));
             afterChild(true, bci - 6);
@@ -11643,7 +11646,7 @@ public final class BasicInterpreterProductionLocalScopes extends BasicInterprete
             }
             validateRootOperationBegin();
             if (interpreterValue == null) {
-                throw failArgument("The interpreterValue parameter must not be null. Use emitLoadNull() instead for null values.");
+                throw failArgument("The interpreterValue parameter must not be null. Constant operands do not permit null values.");
             }
             int interpreterIndex = constantPool.addConstant(interpreterValue);
             beforeChild();
@@ -12071,7 +12074,7 @@ public final class BasicInterpreterProductionLocalScopes extends BasicInterprete
             }
             validateRootOperationBegin();
             if (setterValue == null) {
-                throw failArgument("The setterValue parameter must not be null. Use emitLoadNull() instead for null values.");
+                throw failArgument("The setterValue parameter must not be null. Constant operands do not permit null values.");
             }
             int setterIndex = constantPool.addConstant(LocalSetter.constantOf(setterValue));
             beforeChild();
@@ -12139,7 +12142,7 @@ public final class BasicInterpreterProductionLocalScopes extends BasicInterprete
             }
             validateRootOperationBegin();
             if (setterValue == null) {
-                throw failArgument("The setterValue parameter must not be null. Use emitLoadNull() instead for null values.");
+                throw failArgument("The setterValue parameter must not be null. Constant operands do not permit null values.");
             }
             int setterIndex = constantPool.addConstant(LocalSetterRange.constantOf(setterValue));
             beforeChild();

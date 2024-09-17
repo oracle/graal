@@ -59,7 +59,9 @@ import com.oracle.truffle.api.bytecode.Variadic;
 import com.oracle.truffle.api.debug.DebuggerTags.AlwaysHalt;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
@@ -220,26 +222,29 @@ public abstract class SLBytecodeRootNode extends SLRootNode implements BytecodeR
     }
 
     @Operation
-    @ConstantOperand(type = SLBuiltinNode.class)
+    @ConstantOperand(type = NodeFactory.class)
     @ConstantOperand(type = int.class)
     public static final class Builtin {
 
         @Specialization(guards = "arguments.length == argumentCount")
         @SuppressWarnings("unused")
         static Object doInBounds(VirtualFrame frame,
-                        SLBuiltinNode builtin,
+                        NodeFactory<?> factory,
                         int argumentCount,
                         @Bind Node bytecode,
-                        @Bind("frame.getArguments()") Object[] arguments) {
+                        @Bind("frame.getArguments()") Object[] arguments,
+                        @Shared @Cached(value = "createBuiltin(factory)", uncached = "getUncachedBuiltin()", neverDefault = true) SLBuiltinNode builtin) {
             return doInvoke(frame, bytecode, builtin, arguments);
         }
 
         @Fallback
         @ExplodeLoop
+        @SuppressWarnings("unused")
         static Object doOutOfBounds(VirtualFrame frame,
-                        SLBuiltinNode builtin,
+                        NodeFactory<?> factory,
                         int argumentCount,
-                        @Bind Node bytecode) {
+                        @Bind Node bytecode,
+                        @Shared @Cached(value = "createBuiltin(factory)", uncached = "getUncachedBuiltin()", neverDefault = true) SLBuiltinNode builtin) {
             Object[] originalArguments = frame.getArguments();
             Object[] arguments = new Object[argumentCount];
             for (int i = 0; i < argumentCount; i++) {
@@ -250,6 +255,18 @@ public abstract class SLBytecodeRootNode extends SLRootNode implements BytecodeR
                 }
             }
             return doInvoke(frame, bytecode, builtin, arguments);
+        }
+
+        static SLBuiltinNode createBuiltin(NodeFactory<?> factory) {
+            return (SLBuiltinNode) factory.createNode();
+        }
+
+        static SLBuiltinNode getUncachedBuiltin() {
+            /*
+             * We force the uncached threshold to 0 for builtin roots, so this code path should
+             * never execute.
+             */
+            throw CompilerDirectives.shouldNotReachHere("Builtins should not execute uncached.");
         }
 
         private static Object doInvoke(VirtualFrame frame, Node node, SLBuiltinNode builtin, Object[] arguments) {

@@ -46,6 +46,11 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NodeFactory;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.nodes.Node;
+
 import com.oracle.truffle.api.bytecode.ConstantOperand.Repeat;
 
 /**
@@ -59,7 +64,7 @@ import com.oracle.truffle.api.bytecode.ConstantOperand.Repeat;
  * computation.
  * <li>Constant operands have {@link com.oracle.truffle.api.CompilerDirectives.CompilationFinal}
  * semantics. Though an interpreter can use {@code LoadConstant} operations to supply dynamic
- * operands, those constants are *not guaranteed to be compilation-final*.
+ * operands, those constants are <strong>not guaranteed to be compilation-final</strong>.
  * <li>{@link Instrumentation} and {@link Prolog} operations are restricted and cannot encode
  * arbitrary dynamic operands. Constant operands can be used to encode other information needed by
  * these operations.
@@ -71,7 +76,13 @@ import com.oracle.truffle.api.bytecode.ConstantOperand.Repeat;
  * <p>
  * When parsing the operation, a constant must be supplied as an additional parameter to the
  * {@code begin} or {@code emit} method of the {@link BytecodeBuilder}. Constant operands to the
- * {@link Prolog} should be supplied to the {@code beginRoot} method.
+ * {@link Prolog} should be supplied to the {@code beginRoot} method (or {@code endRoot} if the
+ * operand is {@link #specifyAtEnd() specified at the end}).
+ * <p>
+ * Except for {@link RootNode}s, a constant operand cannot be a subclass of {@link Node}. If an
+ * operation needs a compilation-final node operand, it can declare a {@link NodeFactory} constant
+ * operand and then declare a {@link Cached} parameter initialized with the result of
+ * {@link NodeFactory#createNode(Object...) createNode}.
  *
  * @since 24.2
  */
@@ -112,8 +123,9 @@ public @interface ConstantOperand {
      * In some cases, it may be more convenient to specify a constant operand after parsing the
      * child operations; for example, the constant may only be known after traversing child ASTs.
      * <p>
-     * This flag is meaningless if the operation is not the {@link Prolog} and does not take dynamic
-     * operands, since all constant operands will be supplied to a single {@code emit} method.
+     * This flag is meaningless if the operation does not take dynamic operands, since all constant
+     * operands will be supplied to a single {@code emit} method (except for {@link Prolog}s, which
+     * receive their operands as arguments to {@link beginRoot} and {@link endRoot}).
      *
      * @since 24.2
      */
@@ -123,8 +135,8 @@ public @interface ConstantOperand {
      * Specifies the number of array dimensions to be marked as compilation final. See
      * {@link com.oracle.truffle.api.CompilerDirectives.CompilationFinal#dimensions}.
      * <p>
-     * The Bytecode DSL currently only supports a value of 0; that is, array elements are *not*
-     * compilation-final.
+     * The Bytecode DSL currently only supports a value of 0; that is, array elements are
+     * <strong>not</strong> compilation-final.
      *
      * @since 24.2
      */

@@ -38,6 +38,7 @@ import com.oracle.truffle.api.bytecode.serialization.BytecodeDeserializer.Deseri
 import com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer.SerializerContext;
 import com.oracle.truffle.api.debug.DebuggerTags.AlwaysHalt;
 import com.oracle.truffle.api.dsl.GeneratedBy;
+import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.dsl.DSLSupport.SpecializationDataNode;
 import com.oracle.truffle.api.dsl.InlineSupport.InlineTarget;
@@ -495,9 +496,9 @@ import java.util.function.Supplier;
  *     signature: Object (int)
  *   - Instruction c.Builtin
  *     kind: CUSTOM
- *     encoding: [68 : short, builtin (const) : int, argumentCount (const) : int, node : int]
+ *     encoding: [68 : short, factory (const) : int, argumentCount (const) : int, node : int]
  *     nodeType: Builtin
- *     signature: Object (SLBuiltinNode, int)
+ *     signature: Object (NodeFactory<?>, int)
  *   - Instruction c.SLInvoke
  *     kind: CUSTOM
  *     encoding: [69 : short, node : int]
@@ -1723,7 +1724,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                         new NodeProfileArgument(bytecode, "node", bci + 6));
                 case Instructions.BUILTIN_ :
                     return List.of(
-                        new ConstantArgument(bytecode, "builtin", bci + 2),
+                        new ConstantArgument(bytecode, "factory", bci + 2),
                         new ConstantArgument(bytecode, "argumentCount", bci + 6),
                         new NodeProfileArgument(bytecode, "node", bci + 10));
                 case Instructions.SL_ADD_ :
@@ -3126,8 +3127,8 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                         }
                         case Instructions.BUILTIN_ :
                         {
-                            int builtin = BYTES.getIntUnaligned(bc, bci + 2 /* imm builtin */);
-                            if (builtin < 0 || builtin >= constants.length) {
+                            int factory = BYTES.getIntUnaligned(bc, bci + 2 /* imm factory */);
+                            if (factory < 0 || factory >= constants.length) {
                                 throw CompilerDirectives.shouldNotReachHere(String.format("Bytecode validation error at index: %s. constant is out of bounds%n%s", bci, dumpInvalid(findLocation(bci))));
                             }
                             int argumentCount = BYTES.getIntUnaligned(bc, bci + 6 /* imm argumentCount */);
@@ -8104,7 +8105,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
 
         private void doBuiltin_(VirtualFrame frame, byte[] bc, int bci, int sp) {
             FRAMES.setInt(frame, BCI_INDEX, bci);
-            Object result = Builtin_Node.UNCACHED.executeUncached(frame, ACCESS.uncheckedCast(ACCESS.readObject(constants, BYTES.getIntUnaligned(bc, bci + 2 /* imm builtin */)), SLBuiltinNode.class), ACCESS.uncheckedCast(ACCESS.readObject(constants, BYTES.getIntUnaligned(bc, bci + 6 /* imm argumentCount */)), Integer.class), this, bc, bci, sp);
+            Object result = Builtin_Node.UNCACHED.executeUncached(frame, ACCESS.uncheckedCast(ACCESS.readObject(constants, BYTES.getIntUnaligned(bc, bci + 2 /* imm factory */)), NodeFactory.class), ACCESS.uncheckedCast(ACCESS.readObject(constants, BYTES.getIntUnaligned(bc, bci + 6 /* imm argumentCount */)), Integer.class), this, bc, bci, sp);
             FRAMES.setObject(frame, sp, result);
         }
 
@@ -9426,6 +9427,9 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             if (constant == null) {
                 throw failArgument("The constant parameter must not be null. Use emitLoadNull() instead for null values.");
             }
+            if (constant instanceof Node && !(constant instanceof RootNode)) {
+                throw failArgument("Nodes cannot be used as constants.");
+            }
             beforeChild();
             doEmitInstructionI(Instructions.LOAD_CONSTANT, 1, constantPool.addConstant(constant));
             afterChild(true, bci - 6);
@@ -10130,16 +10134,16 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
          * <p>
          * Signature: Builtin() -> Object
          *
-         * @param builtinValue
+         * @param factoryValue
          * @param argumentCountValue
          */
-        public void emitBuiltin(SLBuiltinNode builtinValue, int argumentCountValue) {
+        public void emitBuiltin(NodeFactory<?> factoryValue, int argumentCountValue) {
             if (serialization != null) {
                 try {
-                    int builtinValue_index = serialization.serializeObject(builtinValue);
+                    int factoryValue_index = serialization.serializeObject(factoryValue);
                     int argumentCountValue_index = serialization.serializeObject(argumentCountValue);
                     serialization.buffer.writeShort(SerializationState.CODE_EMIT_BUILTIN);
-                    serialization.buffer.writeInt(builtinValue_index);
+                    serialization.buffer.writeInt(factoryValue_index);
                     serialization.buffer.writeInt(argumentCountValue_index);
                 } catch (IOException ex) {
                     throw new IOError(ex);
@@ -10147,13 +10151,13 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 return;
             }
             validateRootOperationBegin();
-            if (builtinValue == null) {
-                throw failArgument("The builtinValue parameter must not be null. Use emitLoadNull() instead for null values.");
+            if (factoryValue == null) {
+                throw failArgument("The factoryValue parameter must not be null. Constant operands do not permit null values.");
             }
-            int builtinIndex = constantPool.addConstant(builtinValue);
+            int factoryIndex = constantPool.addConstant(factoryValue);
             int argumentCountIndex = constantPool.addConstant(argumentCountValue);
             beforeChild();
-            doEmitInstructionIII(Instructions.BUILTIN_, 1, builtinIndex, argumentCountIndex, allocateNode());
+            doEmitInstructionIII(Instructions.BUILTIN_, 1, factoryIndex, argumentCountIndex, allocateNode());
             afterChild(true, bci - 14);
         }
 
@@ -12801,9 +12805,9 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                         }
                         case SerializationState.CODE_EMIT_BUILTIN :
                         {
-                            SLBuiltinNode builtinValue = (SLBuiltinNode) context.consts.get(buffer.readInt());
+                            NodeFactory<?> factoryValue = (NodeFactory<?>) context.consts.get(buffer.readInt());
                             int argumentCountValue = (int) context.consts.get(buffer.readInt());
-                            emitBuiltin(builtinValue, argumentCountValue);
+                            emitBuiltin(factoryValue, argumentCountValue);
                             break;
                         }
                         case SerializationState.CODE_BEGIN_SL_INVOKE :
@@ -13266,7 +13270,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 ensureBytecodeCapacity(newBci);
             }
             BYTES.putShort(bc, bci + 0, instruction);
-            BYTES.putInt(bc, bci + 2 /* imm builtin */, data0);
+            BYTES.putInt(bc, bci + 2 /* imm factory */, data0);
             BYTES.putInt(bc, bci + 6 /* imm argumentCount */, data1);
             BYTES.putInt(bc, bci + 10 /* imm node */, data2);
             bci = newBci;
@@ -14772,9 +14776,9 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         /*
          * Instruction c.Builtin
          * kind: CUSTOM
-         * encoding: [68 : short, builtin (const) : int, argumentCount (const) : int, node : int]
+         * encoding: [68 : short, factory (const) : int, argumentCount (const) : int, node : int]
          * nodeType: Builtin
-         * signature: Object (SLBuiltinNode, int)
+         * signature: Object (NodeFactory<?>, int)
          */
         private static final short BUILTIN_ = 68;
         /*
@@ -15735,43 +15739,54 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
          *   1: SpecializationActive {@link Builtin#doOutOfBounds}
          * </pre> */
         @CompilationFinal private int state_0_;
+        /**
+         * Source Info: <pre>
+         *   Specialization: {@link Builtin#doInBounds}
+         *   Parameter: {@link SLBuiltinNode} builtin</pre> */
+        @Child private SLBuiltinNode builtin;
 
         private Object execute(VirtualFrame frameValue, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
             int state_0 = this.state_0_;
-            SLBuiltinNode builtinValue_ = ACCESS.uncheckedCast(ACCESS.readObject($bytecode.constants, BYTES.getIntUnaligned($bc, $bci + 2 /* imm builtin */)), SLBuiltinNode.class);
+            NodeFactory<?> factoryValue_ = ACCESS.uncheckedCast(ACCESS.readObject($bytecode.constants, BYTES.getIntUnaligned($bc, $bci + 2 /* imm factory */)), NodeFactory.class);
             int argumentCountValue_ = ACCESS.uncheckedCast(ACCESS.readObject($bytecode.constants, BYTES.getIntUnaligned($bc, $bci + 6 /* imm argumentCount */)), Integer.class);
-            if (state_0 != 0 /* is SpecializationActive[SLBytecodeRootNode.Builtin.doInBounds(VirtualFrame, SLBuiltinNode, int, Node, Object[])] || SpecializationActive[SLBytecodeRootNode.Builtin.doOutOfBounds(VirtualFrame, SLBuiltinNode, int, Node)] */) {
-                if ((state_0 & 0b1) != 0 /* is SpecializationActive[SLBytecodeRootNode.Builtin.doInBounds(VirtualFrame, SLBuiltinNode, int, Node, Object[])] */) {
+            if (state_0 != 0 /* is SpecializationActive[SLBytecodeRootNode.Builtin.doInBounds(VirtualFrame, NodeFactory<?>, int, Node, Object[], SLBuiltinNode)] || SpecializationActive[SLBytecodeRootNode.Builtin.doOutOfBounds(VirtualFrame, NodeFactory<?>, int, Node, SLBuiltinNode)] */) {
+                if ((state_0 & 0b1) != 0 /* is SpecializationActive[SLBytecodeRootNode.Builtin.doInBounds(VirtualFrame, NodeFactory<?>, int, Node, Object[], SLBuiltinNode)] */) {
                     {
-                        Object[] arguments__ = (frameValue.getArguments());
-                        if ((arguments__.length == argumentCountValue_)) {
-                            Node bytecode__ = (this);
-                            return Builtin.doInBounds(frameValue, builtinValue_, argumentCountValue_, bytecode__, arguments__);
+                        SLBuiltinNode builtin_ = this.builtin;
+                        if (builtin_ != null) {
+                            Object[] arguments__ = (frameValue.getArguments());
+                            if ((arguments__.length == argumentCountValue_)) {
+                                Node bytecode__ = (this);
+                                return Builtin.doInBounds(frameValue, factoryValue_, argumentCountValue_, bytecode__, arguments__, builtin_);
+                            }
                         }
                     }
                 }
-                if ((state_0 & 0b10) != 0 /* is SpecializationActive[SLBytecodeRootNode.Builtin.doOutOfBounds(VirtualFrame, SLBuiltinNode, int, Node)] */) {
+                if ((state_0 & 0b10) != 0 /* is SpecializationActive[SLBytecodeRootNode.Builtin.doOutOfBounds(VirtualFrame, NodeFactory<?>, int, Node, SLBuiltinNode)] */) {
                     {
-                        Node bytecode__1 = (this);
-                        if (fallbackGuard_(state_0, frameValue, builtinValue_, argumentCountValue_, $bytecode, $bc, $bci, $sp)) {
-                            return Builtin.doOutOfBounds(frameValue, builtinValue_, argumentCountValue_, bytecode__1);
+                        SLBuiltinNode builtin_1 = this.builtin;
+                        if (builtin_1 != null) {
+                            Node bytecode__1 = (this);
+                            if (fallbackGuard_(state_0, frameValue, factoryValue_, argumentCountValue_, $bytecode, $bc, $bci, $sp)) {
+                                return Builtin.doOutOfBounds(frameValue, factoryValue_, argumentCountValue_, bytecode__1, builtin_1);
+                            }
                         }
                     }
                 }
             }
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            return executeAndSpecialize(frameValue, builtinValue_, argumentCountValue_, $bytecode, $bc, $bci, $sp);
+            return executeAndSpecialize(frameValue, factoryValue_, argumentCountValue_, $bytecode, $bc, $bci, $sp);
         }
 
         @SuppressWarnings("static-method")
-        private boolean fallbackGuard_(int state_0, VirtualFrame frameValue, SLBuiltinNode builtinValue, int argumentCountValue, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
-            if (!((state_0 & 0b1) != 0 /* is SpecializationActive[SLBytecodeRootNode.Builtin.doInBounds(VirtualFrame, SLBuiltinNode, int, Node, Object[])] */) && ((frameValue.getArguments()).length == argumentCountValue)) {
+        private boolean fallbackGuard_(int state_0, VirtualFrame frameValue, NodeFactory<?> factoryValue, int argumentCountValue, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
+            if (!((state_0 & 0b1) != 0 /* is SpecializationActive[SLBytecodeRootNode.Builtin.doInBounds(VirtualFrame, NodeFactory<?>, int, Node, Object[], SLBuiltinNode)] */) && ((frameValue.getArguments()).length == argumentCountValue)) {
                 return false;
             }
             return true;
         }
 
-        private Object executeAndSpecialize(VirtualFrame frameValue, SLBuiltinNode builtinValue, int argumentCountValue, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
+        private Object executeAndSpecialize(VirtualFrame frameValue, NodeFactory<?> factoryValue, int argumentCountValue, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
             int state_0 = this.state_0_;
             {
                 Object[] arguments__ = null;
@@ -15780,18 +15795,46 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                     arguments__ = (frameValue.getArguments());
                     if ((arguments__.length == argumentCountValue)) {
                         bytecode__ = (this);
-                        state_0 = state_0 | 0b1 /* add SpecializationActive[SLBytecodeRootNode.Builtin.doInBounds(VirtualFrame, SLBuiltinNode, int, Node, Object[])] */;
+                        SLBuiltinNode builtin_;
+                        SLBuiltinNode builtin__shared = this.builtin;
+                        if (builtin__shared != null) {
+                            builtin_ = builtin__shared;
+                        } else {
+                            builtin_ = this.insert((Builtin.createBuiltin(factoryValue)));
+                            if (builtin_ == null) {
+                                throw new IllegalStateException("A specialization returned a default value for a cached initializer. Default values are not supported for shared cached initializers because the default value is reserved for the uninitialized state.");
+                            }
+                        }
+                        if (this.builtin == null) {
+                            VarHandle.storeStoreFence();
+                            this.builtin = builtin_;
+                        }
+                        state_0 = state_0 | 0b1 /* add SpecializationActive[SLBytecodeRootNode.Builtin.doInBounds(VirtualFrame, NodeFactory<?>, int, Node, Object[], SLBuiltinNode)] */;
                         this.state_0_ = state_0;
-                        return Builtin.doInBounds(frameValue, builtinValue, argumentCountValue, bytecode__, arguments__);
+                        return Builtin.doInBounds(frameValue, factoryValue, argumentCountValue, bytecode__, arguments__, builtin_);
                     }
                 }
             }
             {
                 Node bytecode__1 = null;
                 bytecode__1 = (this);
-                state_0 = state_0 | 0b10 /* add SpecializationActive[SLBytecodeRootNode.Builtin.doOutOfBounds(VirtualFrame, SLBuiltinNode, int, Node)] */;
+                SLBuiltinNode builtin_1;
+                SLBuiltinNode builtin_1_shared = this.builtin;
+                if (builtin_1_shared != null) {
+                    builtin_1 = builtin_1_shared;
+                } else {
+                    builtin_1 = this.insert((Builtin.createBuiltin(factoryValue)));
+                    if (builtin_1 == null) {
+                        throw new IllegalStateException("A specialization returned a default value for a cached initializer. Default values are not supported for shared cached initializers because the default value is reserved for the uninitialized state.");
+                    }
+                }
+                if (this.builtin == null) {
+                    VarHandle.storeStoreFence();
+                    this.builtin = builtin_1;
+                }
+                state_0 = state_0 | 0b10 /* add SpecializationActive[SLBytecodeRootNode.Builtin.doOutOfBounds(VirtualFrame, NodeFactory<?>, int, Node, SLBuiltinNode)] */;
                 this.state_0_ = state_0;
-                return Builtin.doOutOfBounds(frameValue, builtinValue, argumentCountValue, bytecode__1);
+                return Builtin.doOutOfBounds(frameValue, factoryValue, argumentCountValue, bytecode__1, builtin_1);
             }
         }
 
@@ -15799,12 +15842,12 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         @DenyReplace
         private static final class Uncached extends Node implements UnadoptableNode {
 
-            public Object executeUncached(VirtualFrame frameValue, SLBuiltinNode builtinValue, int argumentCountValue, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
+            public Object executeUncached(VirtualFrame frameValue, NodeFactory<?> factoryValue, int argumentCountValue, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 if (((frameValue.getArguments()).length == argumentCountValue)) {
-                    return Builtin.doInBounds(frameValue, builtinValue, argumentCountValue, ($bytecode), (frameValue.getArguments()));
+                    return Builtin.doInBounds(frameValue, factoryValue, argumentCountValue, ($bytecode), (frameValue.getArguments()), (Builtin.getUncachedBuiltin()));
                 }
-                return Builtin.doOutOfBounds(frameValue, builtinValue, argumentCountValue, ($bytecode));
+                return Builtin.doOutOfBounds(frameValue, factoryValue, argumentCountValue, ($bytecode), (Builtin.getUncachedBuiltin()));
             }
 
         }

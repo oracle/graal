@@ -61,7 +61,6 @@ import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel;
-import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
@@ -129,17 +128,17 @@ final class BytecodeRootNodeErrorElement extends CodeTypeElement {
     }
 
     private CodeExecutableElement createCreate() {
-        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC, STATIC), generic(types.BytecodeRootNodes, model.templateType.asType()), "create");
-        ex.addParameter(new CodeVariableElement(types.BytecodeConfig, "config"));
-        ex.addParameter(new CodeVariableElement(generic(types.BytecodeParser, builder.asType()), "generator"));
-        CodeTreeBuilder b = ex.getBuilder();
+        CodeExecutableElement method = new CodeExecutableElement(Set.of(PUBLIC, STATIC), generic(types.BytecodeRootNodes, model.templateType.asType()), "create");
+        method.addParameter(new CodeVariableElement(model.languageClass, "language"));
+        method.addParameter(new CodeVariableElement(types.BytecodeConfig, "config"));
+        method.addParameter(new CodeVariableElement(generic(types.BytecodeParser, builder.asType()), "generator"));
+        CodeTreeBuilder b = method.getBuilder();
         emitThrowNotImplemented(b);
-        return ex;
+        return method;
     }
 
     private CodeExecutableElement createSerialize() {
         CodeExecutableElement method = new CodeExecutableElement(Set.of(PUBLIC, STATIC), type(void.class), "serialize");
-        method.addParameter(new CodeVariableElement(types.BytecodeConfig, "config"));
         method.addParameter(new CodeVariableElement(type(DataOutput.class), "buffer"));
         method.addParameter(new CodeVariableElement(types.BytecodeSerializer, "callback"));
         method.addParameter(new CodeVariableElement(parserType, "parser"));
@@ -152,7 +151,7 @@ final class BytecodeRootNodeErrorElement extends CodeTypeElement {
     private CodeExecutableElement createDeserialize() {
         CodeExecutableElement method = new CodeExecutableElement(Set.of(PUBLIC, STATIC),
                         generic(types.BytecodeRootNodes, model.getTemplateType().asType()), "deserialize");
-        method.addParameter(new CodeVariableElement(types.TruffleLanguage, "language"));
+        method.addParameter(new CodeVariableElement(model.languageClass, "language"));
         method.addParameter(new CodeVariableElement(types.BytecodeConfig, "config"));
         method.addParameter(new CodeVariableElement(generic(Supplier.class, DataInput.class), "input"));
         method.addParameter(new CodeVariableElement(types.BytecodeDeserializer, "callback"));
@@ -187,16 +186,56 @@ final class BytecodeRootNodeErrorElement extends CodeTypeElement {
 
             this.add(createMethodStub("createLocal", types.BytecodeLocal));
             this.add(createMethodStub("createLabel", types.BytecodeLabel));
+            this.add(createMethodStub("beginSourceSectionUnavailable", type(void.class)));
+            this.add(createMethodStub("endSourceSectionUnavailable", type(void.class)));
 
             for (OperationModel operation : model.getOperations()) {
-                /**
-                 * If parsing fails, we may not know if the operation takes dynamic operands (e.g.,
-                 * it could have only constant operands). Conservatively generate stubs for all
-                 * three builder methods.
-                 */
-                this.add(createBegin(operation));
-                this.add(createEnd(operation));
-                this.add(createEmit(operation));
+                switch (operation.kind) {
+                    case ROOT: {
+                        this.add(createBegin(operation));
+                        // endRoot should return the root node.
+                        CodeExecutableElement end = createEnd(operation);
+                        end.setReturnType(model.templateType.asType());
+                        this.add(end);
+                        break;
+                    }
+                    case FINALLY_TRY, FINALLY_TRY_CATCH: {
+                        /**
+                         * Java type inference does not accept a lambda (e.g. "() -> {...}") as an
+                         * argument to Object..., so special-case the parameter type.
+                         */
+                        CodeExecutableElement begin = createBegin(operation);
+                        begin.getParameters().set(0, new CodeVariableElement(context.getDeclaredType(Runnable.class), "finallyParser"));
+                        begin.setVarArgs(false);
+                        this.add(begin);
+                        this.add(createEnd(operation));
+                        break;
+                    }
+                    case TAG: {
+                        /**
+                         * Passing an explicit Class<?>[] to beginTag/endTag causes a compiler
+                         * warning with the Object... signature.
+                         */
+                        TypeMirror tagsType = ElementHelpers.arrayOf(context.getDeclaredType(Class.class));
+                        CodeExecutableElement begin = createBegin(operation);
+                        begin.getParameters().set(0, new CodeVariableElement(tagsType, "tags"));
+                        this.add(begin);
+                        CodeExecutableElement end = createEnd(operation);
+                        end.getParameters().set(0, new CodeVariableElement(tagsType, "tags"));
+                        this.add(end);
+                        break;
+                    }
+                    default:
+                        /**
+                         * If parsing fails, we may not know if the operation takes dynamic operands
+                         * (e.g., it could have only constant operands). Conservatively generate
+                         * stubs for all three builder methods.
+                         */
+                        this.add(createBegin(operation));
+                        this.add(createEnd(operation));
+                        this.add(createEmit(operation));
+                }
+
             }
 
             this.add(createConstructor());
@@ -215,8 +254,7 @@ final class BytecodeRootNodeErrorElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createEnd(OperationModel operation) {
-            return createMethodStub("end" + operation.name,
-                            operation.kind == OperationKind.ROOT ? model.templateType.asType() : type(void.class));
+            return createMethodStub("end" + operation.name, type(void.class));
         }
 
         private CodeExecutableElement createEmit(OperationModel operation) {

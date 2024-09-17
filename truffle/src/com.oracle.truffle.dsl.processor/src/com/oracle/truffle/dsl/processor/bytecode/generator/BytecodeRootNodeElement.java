@@ -3840,7 +3840,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             if (operation.constantOperands != null && operation.constantOperands.hasConstantOperands()) {
                 int index = 0;
                 for (ConstantOperandModel operand : operation.constantOperands.before()) {
-                    buildOperandNonNullCheck(b, operand.type(), operation.getOperationBeginArgumentName(index++));
+                    buildConstantOperandNonNullCheck(b, operand.type(), operation.getOperationBeginArgumentName(index++));
                 }
             }
 
@@ -3970,7 +3970,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             if (model.prolog != null) {
                 for (OperationArgument operationArgument : model.prolog.operation.operationBeginArguments) {
-                    buildOperandNonNullCheck(b, operationArgument.builderType(), operationArgument.name());
+                    buildConstantOperandNonNullCheck(b, operationArgument.builderType(), operationArgument.name());
                 }
             }
 
@@ -4361,7 +4361,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             if (operation.constantOperands != null && operation.constantOperands.hasConstantOperands()) {
                 int index = 0;
                 for (ConstantOperandModel operand : operation.constantOperands.after()) {
-                    buildOperandNonNullCheck(b, operand.type(), operation.getOperationEndArgumentName(index++));
+                    buildConstantOperandNonNullCheck(b, operand.type(), operation.getOperationEndArgumentName(index++));
                 }
             }
 
@@ -4709,7 +4709,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     int endConstantsOffset = prologOperation.constantOperands.before().size();
 
                     for (OperationArgument operationArgument : model.prolog.operation.operationEndArguments) {
-                        buildOperandNonNullCheck(b, operationArgument.builderType(), operationArgument.name());
+                        buildConstantOperandNonNullCheck(b, operationArgument.builderType(), operationArgument.name());
                     }
 
                     for (int i = 0; i < prologOperation.operationEndArguments.length; i++) {
@@ -5395,17 +5395,26 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             }
 
             if (operation.kind == OperationKind.LOAD_CONSTANT) {
-                buildOperandNonNullCheck(b, type(Object.class), operation.operationBeginArguments[0].name());
+                String constantArgument = operation.operationBeginArguments[0].name();
+                b.startIf().string(constantArgument, " == null").end().startBlock();
+                b.startThrow().startCall("failArgument").doubleQuote("The " + constantArgument + " parameter must not be null. Use emitLoadNull() instead for null values.").end().end();
+                b.end();
+                b.startIf();
+                b.instanceOf(constantArgument, types.Node).string(" && ");
+                b.string("!").startParantheses().instanceOf(constantArgument, types.RootNode).end();
+                b.end().startBlock();
+                b.startThrow().startCall("failArgument").doubleQuote("Nodes cannot be used as constants.").end().end();
+                b.end();
             }
 
             if (operation.constantOperands != null && operation.constantOperands.hasConstantOperands()) {
                 int index = 0;
                 for (ConstantOperandModel operand : operation.constantOperands.before()) {
-                    buildOperandNonNullCheck(b, operand.type(), operation.getOperationBeginArgumentName(index++));
+                    buildConstantOperandNonNullCheck(b, operand.type(), operation.getOperationBeginArgumentName(index++));
                 }
                 index = 0;
                 for (ConstantOperandModel operand : operation.constantOperands.after()) {
-                    buildOperandNonNullCheck(b, operand.type(), operation.getOperationEndArgumentName(index++));
+                    buildConstantOperandNonNullCheck(b, operand.type(), operation.getOperationEndArgumentName(index++));
                 }
             }
 
@@ -5469,10 +5478,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             return ex;
         }
 
-        private void buildOperandNonNullCheck(CodeTreeBuilder b, TypeMirror type, String name) {
+        private void buildConstantOperandNonNullCheck(CodeTreeBuilder b, TypeMirror type, String name) {
             if (!ElementUtils.isPrimitive(type)) {
                 b.startIf().string(name, " == null").end().startBlock();
-                b.startThrow().startCall("failArgument").doubleQuote("The " + name + " parameter must not be null. Use emitLoadNull() instead for null values.").end().end();
+                b.startThrow().startCall("failArgument").doubleQuote("The " + name + " parameter must not be null. Constant operands do not permit null values.").end().end();
                 b.end();
             }
         }
