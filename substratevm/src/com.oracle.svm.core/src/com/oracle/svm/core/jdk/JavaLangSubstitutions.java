@@ -49,6 +49,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
@@ -579,13 +580,13 @@ class ClassValueInitializer implements FieldValueTransformerWithAvailability {
         return map;
     }
 
+    /*
+     * We want to wait to constant fold this value until all possible HotSpot initialization code
+     * has run.
+     */
     @Override
-    public ValueAvailability valueAvailability() {
-        /*
-         * We want to wait to constant fold this value until all possible HotSpot initialization
-         * code has run.
-         */
-        return ValueAvailability.AfterAnalysis;
+    public boolean isAvailable() {
+        return BuildPhaseProvider.isHostedUniverseBuilt();
     }
 }
 
@@ -659,7 +660,7 @@ final class Target_jdk_internal_loader_BootLoader {
         return ClassForNameSupport.forNameOrNull(name, null);
     }
 
-    @SuppressWarnings("unused")
+    @SuppressWarnings({"unused", "restricted"})
     @Substitute
     private static void loadLibrary(String name) {
         System.loadLibrary(name);

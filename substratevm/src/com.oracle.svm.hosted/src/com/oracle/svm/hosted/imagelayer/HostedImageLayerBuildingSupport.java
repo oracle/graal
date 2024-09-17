@@ -28,8 +28,8 @@ import static com.oracle.svm.core.SubstrateOptions.IncludeAllFromModule;
 import static com.oracle.svm.core.SubstrateOptions.IncludeAllFromPath;
 import static com.oracle.svm.core.SubstrateOptions.LayerCreate;
 import static com.oracle.svm.core.SubstrateOptions.LayerUse;
-import static com.oracle.svm.core.SubstrateOptions.imageLayerEnabledHandler;
 import static com.oracle.svm.core.SubstrateOptions.imageLayerCreateEnabledHandler;
+import static com.oracle.svm.core.SubstrateOptions.imageLayerEnabledHandler;
 import static com.oracle.svm.hosted.imagelayer.LayerArchiveSupport.MODULE_OPTION;
 import static com.oracle.svm.hosted.imagelayer.LayerArchiveSupport.PACKAGE_OPTION;
 
@@ -41,6 +41,7 @@ import java.util.List;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.graal.pointsto.heap.ImageLayerLoader;
 import com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.SubstrateOptions;
@@ -94,7 +95,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
     }
 
     public void archiveLayer(String imageName) {
-        writer.dumpFile();
+        writer.dumpFiles();
         writeLayerArchiveSupport.write(imageName);
     }
 
@@ -142,16 +143,11 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         }
         if (LayerUse.hasBeenSet(hostedOptions)) {
             /* The last value wins, GR-55565 will warn about the overwritten values. */
-            String layerUseValue = LayerUse.getValue(hostedOptions).lastValue().orElseThrow();
-            if (layerUseValue.isEmpty()) {
+            Path layerUseValue = LayerUse.getValue(hostedOptions).lastValue().orElseThrow();
+            if (layerUseValue.toString().isEmpty()) {
                 /* Nothing to do, an empty --layer-use= disables the layer application. */
             } else {
-                LayerOption layerOption = LayerOption.parse(LayerUse.getValue(hostedOptions).lastValue().orElseThrow());
-                if (layerOption.fileName() == null) {
-                    String optionName = SubstrateOptionsParser.commandArgument(LayerUse, "");
-                    throw UserError.abort("Option %s requires a layer file argument, e.g., %s=layer-file.nil.", optionName, optionName);
-                }
-                SubstrateOptions.ClosedTypeWorld.update(values, false);
+                SubstrateOptions.ClosedTypeWorldHubLayout.update(values, false);
                 SubstrateOptions.ParseRuntimeOptions.update(values, false);
                 if (imageLayerEnabledHandler != null) {
                     imageLayerEnabledHandler.onOptionEnabled(values);
@@ -160,10 +156,10 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         }
     }
 
-    private static boolean isEnabled(HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> option, HostedOptionValues values) {
+    private static boolean isLayerOptionEnabled(HostedOptionKey<? extends AccumulatingLocatableMultiOptionValue<?>> option, HostedOptionValues values) {
         if (option.hasBeenSet(values)) {
-            String lastOptionValue = option.getValue(values).lastValue().orElseThrow();
-            return !lastOptionValue.isEmpty();
+            Object lastOptionValue = option.getValue(values).lastValue().orElseThrow();
+            return !lastOptionValue.toString().isEmpty();
         }
         return false;
     }
@@ -172,17 +168,18 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         WriteLayerArchiveSupport writeLayerArchiveSupport = null;
         SVMImageLayerWriter writer = null;
         ArchiveSupport archiveSupport = new ArchiveSupport(false);
-        if (isEnabled(LayerCreate, values)) {
+        if (isLayerOptionEnabled(LayerCreate, values)) {
             LayerOption layerOption = LayerOption.parse(LayerCreate.getValue(values).lastValue().orElseThrow());
             writeLayerArchiveSupport = new WriteLayerArchiveSupport(archiveSupport, layerOption.fileName());
             writer = new SVMImageLayerWriter(SubstrateOptions.UseSharedLayerGraphs.getValue(values));
         }
         SVMImageLayerLoader loader = null;
         LoadLayerArchiveSupport loadLayerArchiveSupport = null;
-        if (isEnabled(LayerUse, values)) {
-            LayerOption layerOption = LayerOption.parse(LayerUse.getValue(values).lastValue().orElseThrow());
-            loadLayerArchiveSupport = new LoadLayerArchiveSupport(layerOption.fileName(), archiveSupport);
-            loader = new SVMImageLayerLoader(List.of(loadLayerArchiveSupport.getSnapshotPath()));
+        if (isLayerOptionEnabled(LayerUse, values)) {
+            Path layerFileName = LayerUse.getValue(values).lastValue().orElseThrow();
+            loadLayerArchiveSupport = new LoadLayerArchiveSupport(layerFileName, archiveSupport);
+            ImageLayerLoader.FilePaths paths = new ImageLayerLoader.FilePaths(loadLayerArchiveSupport.getSnapshotPath(), loadLayerArchiveSupport.getSnapshotGraphsPath());
+            loader = new SVMImageLayerLoader(List.of(paths));
         }
 
         boolean buildingImageLayer = loader != null || writer != null;
@@ -204,14 +201,25 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         nativeLibs.addDynamicNonJniLibrary(libName.substring("lib".length(), libName.indexOf(".so")));
     }
 
-    public static void setupImageLayerArtifact(String imageName) {
+    public static void setupImageLayerArtifacts(String imageName) {
         VMError.guarantee(!imageName.contains(File.separator), "Expected simple file name, found %s.", imageName);
+
         Path snapshotFile = NativeImageGenerator.getOutputDirectory().resolve(ImageLayerSnapshotUtil.snapshotFileName(imageName));
-        Path fileName = snapshotFile.getFileName();
-        if (fileName == null) {
-            throw VMError.shouldNotReachHere("Layer snapshot file doesn't exist.");
-        }
-        HostedImageLayerBuildingSupport.singleton().getWriter().setFileInfo(snapshotFile, fileName.toString(), ImageLayerSnapshotUtil.FILE_EXTENSION);
+        Path snapshotFileName = getFileName(snapshotFile);
+        HostedImageLayerBuildingSupport.singleton().getWriter().setSnapshotFileInfo(snapshotFile, snapshotFileName.toString(), ImageLayerSnapshotUtil.FILE_EXTENSION);
         BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.LAYER_SNAPSHOT, snapshotFile);
+
+        Path graphsFile = NativeImageGenerator.getOutputDirectory().resolve(ImageLayerSnapshotUtil.snapshotGraphsFileName(imageName));
+        Path graphsFileName = getFileName(graphsFile);
+        HostedImageLayerBuildingSupport.singleton().getWriter().openGraphsOutput(graphsFile, graphsFileName.toString(), ImageLayerSnapshotUtil.FILE_EXTENSION);
+        BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.LAYER_SNAPSHOT_GRAPHS, graphsFile);
+    }
+
+    private static Path getFileName(Path path) {
+        Path fileName = path.getFileName();
+        if (fileName == null) {
+            throw VMError.shouldNotReachHere("Layer snapshot file(s) missing.");
+        }
+        return fileName;
     }
 }

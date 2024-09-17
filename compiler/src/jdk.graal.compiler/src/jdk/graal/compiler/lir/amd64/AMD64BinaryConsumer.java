@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,10 +24,10 @@
  */
 package jdk.graal.compiler.lir.amd64;
 
+import static jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.DWORD;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
-import static jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.DWORD;
 
 import jdk.graal.compiler.asm.amd64.AMD64Address;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic;
@@ -43,7 +43,6 @@ import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.Opcode;
 import jdk.graal.compiler.lir.StandardOp;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
-
 import jdk.vm.ci.code.site.DataSectionReference;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
@@ -119,10 +118,10 @@ public class AMD64BinaryConsumer {
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             if (isRegister(x)) {
-                opcode.emit(masm, size, asRegister(x), y, shouldAnnotate());
+                masm.emitAMD64MIOp(opcode, size, asRegister(x), y, shouldAnnotate());
             } else {
                 assert isStackSlot(x);
-                opcode.emit(masm, size, (AMD64Address) crb.asAddress(x), y, shouldAnnotate());
+                masm.emitAMD64MIOp(opcode, size, (AMD64Address) crb.asAddress(x), y, shouldAnnotate());
             }
         }
 
@@ -228,7 +227,7 @@ public class AMD64BinaryConsumer {
             if (state != null) {
                 crb.recordImplicitException(masm.position(), state);
             }
-            opcode.emit(masm, size, asRegister(x), y.toAddress());
+            opcode.emit(masm, size, asRegister(x), y.toAddress(masm));
         }
 
         @Override
@@ -272,7 +271,7 @@ public class AMD64BinaryConsumer {
             if (state != null) {
                 crb.recordImplicitException(masm.position(), state);
             }
-            opcode.emit(masm, size, x.toAddress(), asRegister(y));
+            opcode.emit(masm, size, x.toAddress(masm), asRegister(y));
         }
 
         @Override
@@ -324,7 +323,7 @@ public class AMD64BinaryConsumer {
             if (state != null) {
                 crb.recordImplicitException(masm.position(), state);
             }
-            opcode.emit(masm, size, x.toAddress(), y, shouldAnnotate());
+            masm.emitAMD64MIOp(opcode, size, x.toAddress(masm), y, shouldAnnotate());
         }
 
         protected boolean shouldAnnotate() {

@@ -51,9 +51,15 @@ public final class Target_java_lang_Module {
     @TargetElement(onlyWith = JDK21OrEarlier.class)
     public native void ensureNativeAccess(Class<?> owner, String methodName);
 
-    @Alias
+    /**
+     * Allow all native access. This is a workaround for JDK-8331671 until we have a better
+     * solution. (GR-57608)
+     */
+    @Substitute
     @TargetElement(onlyWith = JDKLatest.class)
-    public native void ensureNativeAccess(Class<?> owner, String methodName, Class<?> currentClass);
+    public void ensureNativeAccess(Class<?> owner, String methodName, Class<?> currentClass, boolean jni) {
+        /* Do Nothing */
+    }
 
     @Substitute
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+10/src/hotspot/share/classfile/modules.cpp#L275-L479")

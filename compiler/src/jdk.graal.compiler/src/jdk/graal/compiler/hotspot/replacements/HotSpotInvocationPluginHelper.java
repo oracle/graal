@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,11 +35,13 @@ import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.JA
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_OSTHREAD_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_SCOPED_VALUE_CACHE_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_ACCESS_FLAGS_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_MISC_FLAGS_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_MODIFIER_FLAGS_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_SUPER_KLASS_LOCATION;
 
 import java.util.function.Function;
 
+import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
@@ -130,6 +132,7 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
         JAVA_THREAD_CARRIER_THREAD_OBJECT(config -> config.threadCarrierThreadObjectOffset, JAVA_THREAD_CARRIER_THREAD_OBJECT_LOCATION, null),
         JAVA_THREAD_SCOPED_VALUE_CACHE_OFFSET(config -> config.threadScopedValueCacheOffset, JAVA_THREAD_SCOPED_VALUE_CACHE_LOCATION, null),
         KLASS_ACCESS_FLAGS_OFFSET(config -> config.klassAccessFlagsOffset, KLASS_ACCESS_FLAGS_LOCATION, StampFactory.forKind(JavaKind.Int)),
+        KLASS_MISC_FLAGS_OFFSET(config -> config.klassMiscFlagsOffset, KLASS_MISC_FLAGS_LOCATION, StampFactory.forKind(JavaKind.Int)),
         HOTSPOT_OOP_HANDLE_VALUE(config -> 0, HOTSPOT_OOP_HANDLE_LOCATION, StampFactory.forKind(JavaKind.Object));
 
         private final Function<GraalHotSpotVMConfig, Integer> getter;
@@ -180,6 +183,13 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
     }
 
     /**
+     * Read {@code Klass::_misc_flags}.
+     */
+    public ValueNode readKlassMiscFlags(ValueNode klass) {
+        return readLocation(klass, HotSpotVMConfigField.KLASS_MISC_FLAGS_OFFSET);
+    }
+
+    /**
      * Read {@code Klass:_layout_helper}.
      */
     public ValueNode klassLayoutHelper(ValueNode klass) {
@@ -202,9 +212,9 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
         return readLocation(klassNonNull, HotSpotVMConfigField.KLASS_SUPER_KLASS_OFFSET);
     }
 
-    public PiNode emitNullReturnGuard(ValueNode klass, ValueNode returnValue, double probability) {
-        GuardingNode nonnullGuard = emitReturnIf(IsNullNode.create(klass), returnValue, probability);
-        return piCast(klass, nonnullGuard, KlassPointerStamp.klassNonNull());
+    public PiNode emitNullReturnGuard(ValueNode pointer, ValueNode returnValue, double probability) {
+        GuardingNode nonnullGuard = emitReturnIf(IsNullNode.create(pointer), returnValue, probability);
+        return piCast(pointer, nonnullGuard, ((AbstractPointerStamp) pointer.stamp(NodeView.DEFAULT)).asNonNull());
     }
 
     /**

@@ -48,7 +48,6 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -80,7 +79,7 @@ public class OpenTypeWorldFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(Feature.IsInConfigurationAccess access) {
-        return !SubstrateOptions.closedTypeWorld();
+        return !SubstrateOptions.useClosedTypeWorldHubLayout();
     }
 
     @Override
@@ -318,7 +317,7 @@ public class OpenTypeWorldFeature implements InternalFeature {
         }
 
         private static boolean logErrorMessages() {
-            return SubstrateUtil.assertionsEnabled() || Options.LogOpenTypeWorldDiscrepancies.getValue();
+            return Options.LogOpenTypeWorldDiscrepancies.getValue();
         }
 
         private static boolean generateErrorMessage() {
@@ -450,7 +449,7 @@ public class OpenTypeWorldFeature implements InternalFeature {
                     } else {
                         if (priorIdx != vTableIndex) {
                             if (generateErrorMessage()) {
-                                String message = String.format("VTable Index Mismatch %s. prior: %s new: %s", method.format("%H.%n"), priorIdx, vTableIndex);
+                                String message = String.format("VTable Index Mismatch %s. prior: %s new: %s", method.format("%H.%n(%p)"), priorIdx, vTableIndex);
                                 if (logErrorMessages()) {
                                     System.out.println(message);
                                 }

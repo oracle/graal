@@ -85,7 +85,7 @@ public final class AMD64HotSpotZCompareAndSwapOp extends AMD64HotSpotZStoreBarri
         if (crb.target.isMP) {
             masm.lock();
         }
-        masm.cmpxchgq(asRegister(tmp), storeAddress.toAddress());
+        masm.cmpxchgq(asRegister(tmp), storeAddress.toAddress(masm));
         if (!isLogic) {
             Register ref = asRegister(cmpValue);
             AMD64HotSpotZBarrierSetLIRGenerator.zUncolor(crb, masm, ref);

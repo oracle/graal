@@ -75,7 +75,7 @@ public abstract class AMD64HotSpotZStoreBarrieredOp extends AMD64LIRInstruction 
     }
 
     protected void emitPreWriteBarrier(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register resultReg, LIRFrameState state) {
-        AMD64HotSpotZBarrierSetLIRGenerator.emitPreWriteBarrier(crb, masm, this, config, storeAddress.toAddress(), resultReg, storeKind, asRegister(tmp), asRegister(tmp2), callTarget,
+        AMD64HotSpotZBarrierSetLIRGenerator.emitPreWriteBarrier(crb, masm, this, config, storeAddress.toAddress(masm), resultReg, storeKind, asRegister(tmp), asRegister(tmp2), callTarget,
                         state);
     }
 }

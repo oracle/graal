@@ -52,6 +52,7 @@ import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.APIOptionGroup;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.BundleMember;
+import com.oracle.svm.core.option.BundleMember.Role;
 import com.oracle.svm.core.option.GCOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
@@ -134,7 +135,8 @@ public class SubstrateOptions {
 
     // @APIOption(name = "layer-use")//
     @Option(help = "Experimental: Build an image based on a Native Image layer.")//
-    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> LayerUse = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
+    @BundleMember(role = Role.Input) //
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Paths> LayerUse = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Paths.build());
 
     @APIOption(name = "libc")//
     @Option(help = "Selects the libc implementation to use. Available implementations: glibc, musl, bionic")//
@@ -630,6 +632,17 @@ public class SubstrateOptions {
 
     @Option(help = "JNI functions will return more specific error codes.", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> JNIEnhancedErrorCodes = new HostedOptionKey<>(false);
+
+    @Option(help = "Enable JVM Tool Interface (JVMTI) support.", type = OptionType.User)//
+    public static final HostedOptionKey<Boolean> JVMTI = new HostedOptionKey<>(false);
+
+    @Option(help = "Loads the specified native agent library. " +
+                    "After the library name, a comma-separated list of options specific to the library can be used.", type = OptionType.User)//
+    public static final RuntimeOptionKey<String> JVMTIAgentLib = new RuntimeOptionKey<>(null);
+
+    @Option(help = "Loads the specified native agent library specified by the absolute path name. " +
+                    "After the library path, a comma-separated list of options specific to the library can be used.", type = OptionType.User)//
+    public static final RuntimeOptionKey<String> JVMTIAgentPath = new RuntimeOptionKey<>(null);
 
     @Option(help = "Alignment of AOT and JIT compiled code in bytes.")//
     public static final HostedOptionKey<Integer> CodeAlignment = new HostedOptionKey<>(16);
@@ -1262,10 +1275,23 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> ForeignAPISupport = new HostedOptionKey<>(false);
 
     @Option(help = "Assume new types cannot be added after analysis", type = OptionType.Expert) //
-    public static final HostedOptionKey<Boolean> ClosedTypeWorld = new HostedOptionKey<>(true);
+    public static final HostedOptionKey<Boolean> ClosedTypeWorld = new HostedOptionKey<>(true) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+            ClosedTypeWorldHubLayout.update(values, newValue);
+        }
+    };
+
+    @Option(help = "Use the closed type world dynamic hub representation. This is only allowed when the option ClosedTypeWorld is also set to true.", type = OptionType.Expert) //
+    public static final HostedOptionKey<Boolean> ClosedTypeWorldHubLayout = new HostedOptionKey<>(true);
 
     @Fold
-    public static boolean closedTypeWorld() {
+    public static boolean useClosedTypeWorldHubLayout() {
+        return ClosedTypeWorldHubLayout.getValue();
+    }
+
+    @Fold
+    public static boolean useClosedTypeWorld() {
         return ClosedTypeWorld.getValue();
     }
 

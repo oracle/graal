@@ -62,6 +62,7 @@ import java.util.function.Function;
 
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueDispatch;
+import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.polyglot.proxy.Proxy;
 
 /**
@@ -489,7 +490,7 @@ public final class Value extends AbstractValue {
      * </pre>
      *
      * In case the goal is to read the whole contents into a single byte array, the easiest way is
-     * to do that through {@link org.graalvm.polyglot.io.ByteSequence}:
+     * to do that through {@link ByteSequence}:
      * 
      * <pre>
      * byte[] byteArray = val.as(ByteSequence.class).toByteArray();
@@ -1431,13 +1432,20 @@ public final class Value extends AbstractValue {
      * {@link HostAccess.MutableTargetMapping#ARRAY_TO_JAVA_LIST} is
      * {@link HostAccess.Builder#allowMutableTargetMappings(HostAccess.MutableTargetMapping...)
      * allowed} and the value has {@link #hasArrayElements() array elements} and it has an
-     * {@link Value#getArraySize() array size} that is smaller or equal than
+     * {@link Value#getArraySize() array size} that is smaller or equal to
      * {@link Integer#MAX_VALUE}. The returned list can be safely cast to
      * <code>List&lt;Object&gt;</code>. It is recommended to use {@link #as(TypeLiteral) type
      * literals} to specify the expected component type. With type literals the value type can be
      * restricted to any supported target type, for example to <code>List&lt;Integer&gt;</code>. If
      * the raw <code>{@link List}.class</code> or an Object component type is used, then the return
      * types of the the list are recursively subject to Object target type mapping rules.
+     * <li><code>{@link ByteSequence}.class</code> is supported if the value has
+     * {@link #hasBufferElements() buffer elements} and it has a {@link Value#getBufferSize() buffer
+     * size} that is smaller or equal to {@link Integer#MAX_VALUE}.
+     * <li><code>byte[].class</code> is supported if the value has {@link #hasBufferElements()
+     * buffer elements} and it has a {@link Value#getBufferSize() buffer size} that is smaller or
+     * equal to <code>{@link Integer#MAX_VALUE} - 8</code>. The contents of the buffer will be
+     * copied to a new byte array with appropriate size.
      * <li>Any Java array type of a supported target type. The values of the value will be eagerly
      * coerced and copied into a new instance of the provided array type. This means that changes in
      * returned array will not be reflected in the original value. Since conversion to a Java array
@@ -1509,6 +1517,8 @@ public final class Value extends AbstractValue {
      * assert context.eval("js", "42").as(Integer.class) == 42;
      * assert context.eval("js", "({foo:'bar'})").as(Map.class).get("foo").equals("bar");
      * assert context.eval("js", "[42]").as(List.class).get(0).equals(42);
+     * assert Arrays.equals(context.eval("js", "([0, 1, 127])").as(byte[].class), new byte[]{0, 1, 127});
+     * assert Arrays.equals(context.eval("js", "(new Uint8Array([0, 1, 127, 255]))").getMember("buffer").as(byte[].class), new byte[]{0, 1, 127, -1});
      * assert ((Map&lt;String, Object>) context.eval("js", "[{foo:'bar'}]").as(List.class).get(0)).get("foo").equals("bar");
      *
      * &#64;FunctionalInterface

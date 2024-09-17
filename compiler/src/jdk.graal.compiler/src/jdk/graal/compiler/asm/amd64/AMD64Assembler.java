@@ -512,7 +512,8 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         // @formatter:off
         public static final AMD64MROp MOVB   = new AMD64MROp("MOVB", 0x88, OpAssertion.ByteAssertion);
         public static final AMD64MROp MOV    = new AMD64MROp("MOV",  0x89, OpAssertion.WordOrLargerAssertion);
-       // @formatter:on
+        public static final AMD64MROp TEST   = new AMD64MROp("TEST", 0x85, OpAssertion.WordOrLargerAssertion);
+        // @formatter:on
 
         protected AMD64MROp(String opcode, int op, OpAssertion assertion) {
             this(opcode, 0, 0, op, assertion, null);
@@ -1087,6 +1088,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         XMM_CPU(CPUFeature.AVX, null, null, null, XMM, null, CPU, null),
         XMM_XMM_CPU(CPUFeature.AVX, null, null, null, XMM, XMM, CPU, null),
         CPU_XMM(CPUFeature.AVX, null, null, null, CPU, null, XMM, null),
+        AVX1_CPU_XMM(CPUFeature.AVX, CPUFeature.AVX, null, null, CPU, null, XMM, null),
         AVX1_2_CPU_XMM(CPUFeature.AVX, CPUFeature.AVX2, null, null, CPU, null, XMM, null),
         BMI1(CPUFeature.BMI1, null, null, null, CPU, CPU, CPU, null),
         BMI2(CPUFeature.BMI2, null, null, null, CPU, CPU, CPU, null),
@@ -1099,12 +1101,14 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         CPU_XMM_AVX512F_128ONLY(CPUFeature.AVX, null, null, EVEXFeatureAssertion.AVX512F_128ONLY, CPU, null, XMM, null),
         XMM_XMM_XMM_AVX512F_128ONLY(CPUFeature.AVX, null, null, EVEXFeatureAssertion.AVX512F_128ONLY, XMM, XMM, XMM, null),
         XMM_XMM_CPU_AVX512F_128ONLY(CPUFeature.AVX, null, null, EVEXFeatureAssertion.AVX512F_128ONLY, XMM, XMM, CPU, null),
+        XMM_XMM_CPU_AVX512BW_128ONLY(CPUFeature.AVX, null, null, EVEXFeatureAssertion.AVX512BW_128ONLY, XMM, XMM, CPU, null),
+        XMM_XMM_CPU_AVX512DQ_128ONLY(CPUFeature.AVX, null, null, EVEXFeatureAssertion.AVX512DQ_128ONLY, XMM, XMM, CPU, null),
         XMM_CPU_AVX512BW_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, CPUFeature.AVX512BW, EVEXFeatureAssertion.AVX512F_BW_VL, XMM, null, CPU, null),
         XMM_CPU_AVX512F_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, CPUFeature.AVX512F, EVEXFeatureAssertion.AVX512F_VL, XMM, null, CPU, null),
         AVX1_AVX512F_128_ONLY(CPUFeature.AVX, CPUFeature.AVX, EVEXFeatureAssertion.AVX512F_128ONLY),
         AVX1_AVX512F_ALL(CPUFeature.AVX, CPUFeature.AVX, EVEXFeatureAssertion.AVX512F_ALL),
         AVX1_AVX512F_VL(CPUFeature.AVX, CPUFeature.AVX, EVEXFeatureAssertion.AVX512F_VL),
-        AVX1_256ONLY_AVX512F_VL(null, CPUFeature.AVX, EVEXFeatureAssertion.AVX512F_VL),
+        AVX1_256ONLY_AVX512F_VL(null, CPUFeature.AVX, EVEXFeatureAssertion.AVX512F_VL_256_512),
         AVX1_128ONLY_AVX512F_128ONLY(CPUFeature.AVX, null, EVEXFeatureAssertion.AVX512F_128ONLY),
         AVX1_AVX2_AVX512F_BW(CPUFeature.AVX, CPUFeature.AVX2, EVEXFeatureAssertion.AVX512F_BW_ALL),
         AVX1_AVX2_AVX512BW_VL(CPUFeature.AVX, CPUFeature.AVX2, EVEXFeatureAssertion.AVX512F_BW_VL),
@@ -1426,6 +1430,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRMOp VCVTTPS2DQ      = new VexRMOp("VCVTTPS2DQ",      VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x5B, VEXOpAssertion.AVX1_AVX512F_VL,           EVEXTuple.FVM,       VEXPrefixConfig.W0);
         public static final VexRMOp VCVTTPD2DQ      = new VexRMOp("VCVTTPD2DQ",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xE6, VEXOpAssertion.AVX1_AVX512F_VL,           EVEXTuple.FVM,       VEXPrefixConfig.W1);
         public static final VexRMOp VCVTDQ2PD       = new VexRMOp("VCVTDQ2PD",       VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xE6, VEXOpAssertion.AVX1_AVX512F_VL,           EVEXTuple.HVM,       VEXPrefixConfig.W0);
+        public static final VexRMOp VMOVDDUP        = new VexRMOp("VMOVDDUP",        VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x12, VEXOpAssertion.AVX1_AVX512F_VL,           EVEXTuple.DUP,       VEXPrefixConfig.W1);
         public static final VexRMOp VBROADCASTSS    = new VexRMOp("VBROADCASTSS",    VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x18, VEXOpAssertion.AVX1_AVX512F_VL,           EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
         public static final VexRMOp VBROADCASTSD    = new VexRMOp("VBROADCASTSD",    VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x19, VEXOpAssertion.AVX1_256ONLY_AVX512F_VL,   EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
         public static final VexRMOp VBROADCASTF128  = new VexRMOp("VBROADCASTF128",  VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x1A, VEXOpAssertion.AVX1_256ONLY);
@@ -1435,6 +1440,8 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRMOp VPBROADCASTD    = new VexRMOp("VPBROADCASTD",    VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x58, VEXOpAssertion.AVX2_AVX512F_VL,           EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
         public static final VexRMOp VPBROADCASTQ    = new VexRMOp("VPBROADCASTQ",    VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x59, VEXOpAssertion.AVX2_AVX512F_VL,           EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
         public static final VexRMOp VPMOVMSKB       = new VexRMOp("VPMOVMSKB",       VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xD7, VEXOpAssertion.AVX1_2_CPU_XMM);
+        public static final VexRMOp VMOVMSKPD       = new VexRMOp("VMOVMSKPD",       VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x50, VEXOpAssertion.AVX1_CPU_XMM);
+        public static final VexRMOp VMOVMSKPS       = new VexRMOp("VMOVMSKPS",       VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x50, VEXOpAssertion.AVX1_CPU_XMM);
 
         public static final VexRMOp VPMOVSXBW       = new VexRMOp("VPMOVSXBW",       VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.WIG, 0x20, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,     EVEXTuple.HVM,       VEXPrefixConfig.WIG);
         public static final VexRMOp VPMOVSXBD       = new VexRMOp("VPMOVSXBD",       VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.WIG, 0x21, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,      EVEXTuple.QVM,       VEXPrefixConfig.WIG);
@@ -1473,6 +1480,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRMOp EVCVTTPD2DQ     = new VexRMOp("EVCVTTPD2DQ",     VCVTTPD2DQ);
         public static final VexRMOp EVCVTTPD2QQ     = new VexRMOp("EVCVTTPD2QQ",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.W1,  0x7A, VEXOpAssertion.AVX512DQ_VL,               EVEXTuple.FVM,       VEXPrefixConfig.W1, true);
         public static final VexRMOp EVCVTDQ2PD      = new VexRMOp("EVCVTDQ2PD",      VCVTDQ2PD);
+        public static final VexRMOp EVMOVDDUP       = new VexRMOp("EVMOVDDUP",       VMOVDDUP);
         public static final VexRMOp EVBROADCASTSS   = new VexRMOp("EVBROADCASTSS",   VBROADCASTSS);
         public static final VexRMOp EVBROADCASTSD   = new VexRMOp("EVBROADCASTSD",   VBROADCASTSD);
         public static final VexRMOp EVPBROADCASTB   = new VexRMOp("EVPBROADCASTB",   VPBROADCASTB);
@@ -1595,8 +1603,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexMoveOp VMOVUPS   = new VexMoveOp("VMOVUPS",   VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F, VEXPrefixConfig.WIG, 0x10, 0x11, VEXOpAssertion.AVX1_AVX512F_VL,         EVEXTuple.FVM,       VEXPrefixConfig.W0);
         public static final VexMoveOp VMOVUPD   = new VexMoveOp("VMOVUPD",   VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F, VEXPrefixConfig.WIG, 0x10, 0x11, VEXOpAssertion.AVX1_AVX512F_VL,         EVEXTuple.FVM,       VEXPrefixConfig.W1);
         // VMOVSS and VMOVSD are RVM instructions when both src and dest are registers.
-        public static final VexMoveOp VMOVSS    = new VexMoveOp("VMOVSS",    VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F, VEXPrefixConfig.WIG, 0x10, 0x11, VEXOpAssertion.AVX1_AVX512F_ALL,        EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
-        public static final VexMoveOp VMOVSD    = new VexMoveOp("VMOVSD",    VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F, VEXPrefixConfig.WIG, 0x10, 0x11, VEXOpAssertion.AVX1_AVX512F_ALL,        EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
+        // VexRVMOp.VMOVSS/VMOVSD utilize the merge semantics, while these simply move the whole
+        // XMM register from src to dst
+        public static final VexMoveOp VMOVSS    = new VexMoveOp("VMOVSS",    VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F, VEXPrefixConfig.WIG, 0x10, 0x11, VEXOpAssertion.AVX1_128ONLY_AVX512F_128ONLY, EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
+        public static final VexMoveOp VMOVSD    = new VexMoveOp("VMOVSD",    VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F, VEXPrefixConfig.WIG, 0x10, 0x11, VEXOpAssertion.AVX1_128ONLY_AVX512F_128ONLY, EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
         public static final VexMoveOp VMOVD     = new VexMoveOp("VMOVD",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F, VEXPrefixConfig.W0,  0x6E, 0x7E, VEXOpAssertion.XMM_CPU_AVX512F_128ONLY, EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
         public static final VexMoveOp VMOVQ     = new VexMoveOp("VMOVQ",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F, VEXPrefixConfig.W1,  0x6E, 0x7E, VEXOpAssertion.XMM_CPU_AVX512F_128ONLY, EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
 
@@ -1609,7 +1619,6 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexMoveOp EVMOVAPD   = new VexMoveOp("EVMOVAPD",   VMOVAPD);
         public static final VexMoveOp EVMOVUPS   = new VexMoveOp("EVMOVUPS",   VMOVUPS);
         public static final VexMoveOp EVMOVUPD   = new VexMoveOp("EVMOVUPD",   VMOVUPD);
-        // VMOVSS and VMOVSD are RVM instructions when both src and dest are registers.
         public static final VexMoveOp EVMOVSS    = new VexMoveOp("EVMOVSS",    VMOVSS);
         public static final VexMoveOp EVMOVSD    = new VexMoveOp("EVMOVSD",    VMOVSD);
         public static final VexMoveOp EVMOVD     = new VexMoveOp("EVMOVD",     VMOVD);
@@ -1695,10 +1704,16 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRMIOp VPSHUFLW         = new VexRMIOp("VPSHUFLW",         VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x70, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,   EVEXTuple.FVM, VEXPrefixConfig.WIG);
         public static final VexRMIOp VPSHUFHW         = new VexRMIOp("VPSHUFHW",         VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x70, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,   EVEXTuple.FVM, VEXPrefixConfig.WIG);
         public static final VexRMIOp VPSHUFD          = new VexRMIOp("VPSHUFD",          VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x70, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,    EVEXTuple.FVM, VEXPrefixConfig.W0);
+        public static final VexRMIOp VPERMILPD        = new VexRMIOp("VPERMILPD",        VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0,  0x05, VEXOpAssertion.AVX1_AVX512F_VL,         EVEXTuple.FVM, VEXPrefixConfig.W1);
+        public static final VexRMIOp VPERMILPS        = new VexRMIOp("VPERMILPS",        VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0,  0x04, VEXOpAssertion.AVX1_AVX512F_VL,         EVEXTuple.FVM, VEXPrefixConfig.W0);
+        public static final VexRMIOp VPERMPD          = new VexRMIOp("VPERMPD",          VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W1,  0x01, VEXOpAssertion.AVX2_AVX512F_VL_256_512, EVEXTuple.FVM, VEXPrefixConfig.W1);
         public static final VexRMIOp RORXL            = new VexRMIOp("RORXL",            VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0,  0xF0, VEXOpAssertion.BMI2);
         public static final VexRMIOp RORXQ            = new VexRMIOp("RORXQ",            VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W1,  0xF0, VEXOpAssertion.BMI2);
 
         // EVEX encoded instructions
+        public static final VexRMIOp EVPERMILPD       = new VexRMIOp("EVPERMILPD",       VPERMILPD);
+        public static final VexRMIOp EVPERMILPS       = new VexRMIOp("EVPERMILPS",       VPERMILPS);
+        public static final VexRMIOp EVPERMPD         = new VexRMIOp("EVPERMPD",         VPERMPD);
         public static final VexRMIOp EVPERMQ          = new VexRMIOp("EVPERMQ",          VPERMQ);
         public static final VexRMIOp EVPSHUFLW        = new VexRMIOp("EVPSHUFLW",        VPSHUFLW);
         public static final VexRMIOp EVPSHUFHW        = new VexRMIOp("EVPSHUFHW",        VPSHUFHW);
@@ -1857,16 +1872,16 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexMRIOp VPEXTRQ       = new VexMRIOp("VPEXTRQ",       VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W1, 0x16, VEXOpAssertion.XMM_CPU_AVX512DQ_128ONLY, EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
 
         // AVX/AVX2 128-bit extract
-        public static final VexMRIOp VEXTRACTF128  = new VexMRIOp("VEXTRACTF128",  VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0, 0x19, VEXOpAssertion.AVX1_256ONLY);
-        public static final VexMRIOp VEXTRACTI128  = new VexMRIOp("VEXTRACTI128",  VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0, 0x39, VEXOpAssertion.AVX2_256ONLY);
+        public static final VexMRIOp VEXTRACTF128  = new VexMRIOp("VEXTRACTF128",  VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0, 0x19, VEXOpAssertion.AVX1_256ONLY_AVX512F_VL,  EVEXTuple.T4_32BIT,  VEXPrefixConfig.W0);
+        public static final VexMRIOp VEXTRACTI128  = new VexMRIOp("VEXTRACTI128",  VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0, 0x39, VEXOpAssertion.AVX2_AVX512F_VL_256_512,  EVEXTuple.T4_32BIT,  VEXPrefixConfig.W0);
 
         // AVX-512 extract
         public static final VexMRIOp EVPEXTRB       = new VexMRIOp("EVPEXTRB",       VPEXTRB);
         public static final VexMRIOp EVPEXTRW       = new VexMRIOp("EVPEXTRW",       VPEXTRW);
         public static final VexMRIOp EVPEXTRD       = new VexMRIOp("EVPEXTRD",       VPEXTRD);
         public static final VexMRIOp EVPEXTRQ       = new VexMRIOp("EVPEXTRQ",       VPEXTRQ);
-        public static final VexMRIOp EVEXTRACTF32X4 = new VexMRIOp("EVEXTRACTF32X4", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0, 0x19, VEXOpAssertion.AVX512F_VL_256_512,       EVEXTuple.T4_32BIT,  VEXPrefixConfig.W0, true);
-        public static final VexMRIOp EVEXTRACTI32X4 = new VexMRIOp("EVEXTRACTI32X4", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0, 0x39, VEXOpAssertion.AVX512F_VL_256_512,       EVEXTuple.T4_32BIT,  VEXPrefixConfig.W0, true);
+        public static final VexMRIOp EVEXTRACTF32X4 = new VexMRIOp("EVEXTRACTF32X4", VEXTRACTF128);
+        public static final VexMRIOp EVEXTRACTI32X4 = new VexMRIOp("EVEXTRACTI32X4", VEXTRACTI128);
         public static final VexMRIOp EVEXTRACTF64X2 = new VexMRIOp("EVEXTRACTF64X2", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W1, 0x19, VEXOpAssertion.AVX512DQ_VL_256_512,      EVEXTuple.T2_64BIT,  VEXPrefixConfig.W1, true);
         public static final VexMRIOp EVEXTRACTI64X2 = new VexMRIOp("EVEXTRACTI64X2", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W1, 0x39, VEXOpAssertion.AVX512DQ_VL_256_512,      EVEXTuple.T2_64BIT,  VEXPrefixConfig.W1, true);
 
@@ -2057,6 +2072,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRVMOp VMAXSD          = new VexRVMOp("VMAXSD",      VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x5F, VEXOpAssertion.AVX1_128ONLY_AVX512F_128ONLY, EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
         public static final VexRVMOp VPACKUSDW       = new VexRVMOp("VPACKUSDW",   VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x2B, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,        EVEXTuple.FVM,       VEXPrefixConfig.W0);
         public static final VexRVMOp VPACKUSWB       = new VexRVMOp("VPACKUSWB",   VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x67, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,        EVEXTuple.FVM,       VEXPrefixConfig.WIG);
+        public static final VexRVMOp VPACKSSWB       = new VexRVMOp("VPACKSSWB",   VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x63, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,        EVEXTuple.FVM,       VEXPrefixConfig.WIG);
         public static final VexRVMOp VADDSUBPS       = new VexRVMOp("VADDSUBPS",   VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xD0, VEXOpAssertion.AVX1);
         public static final VexRVMOp VADDSUBPD       = new VexRVMOp("VADDSUBPD",   VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xD0, VEXOpAssertion.AVX1);
         public static final VexRVMOp VPAND           = new VexRVMOp("VPAND",       VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xDB, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,         EVEXTuple.FVM,       VEXPrefixConfig.W1);
@@ -2112,7 +2128,11 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         public static final VexRVMOp VPERMD          = new VexRVMOp("VPERMD",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x36, VEXOpAssertion.AVX2_AVX512F_VL_256_512,      EVEXTuple.FVM,       VEXPrefixConfig.W0);
 
-        public static final VexRVMOp MOVLHPS         = new VexRVMOp("MOVLHPS",     VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x16, VEXOpAssertion.XMM_XMM_XMM_AVX512F_128ONLY,  EVEXTuple.FVM,       VEXPrefixConfig.W0);
+        public static final VexRVMOp VMOVSS          = new VexRVMOp("VMOVSS",      VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x10, VEXOpAssertion.AVX1_128ONLY_AVX512F_128ONLY, EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
+        public static final VexRVMOp VMOVSD          = new VexRVMOp("VMOVSD",      VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x10, VEXOpAssertion.AVX1_128ONLY_AVX512F_128ONLY, EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
+        public static final VexRVMOp VMOVHPD         = new VexRVMOp("VMOVHPD",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x16, VEXOpAssertion.AVX1_128ONLY_AVX512F_128ONLY, EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
+        public static final VexRVMOp VMOVLPD         = new VexRVMOp("VMOVLPD",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x12, VEXOpAssertion.AVX1_128ONLY_AVX512F_128ONLY, EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
+        public static final VexRVMOp VMOVLHPS        = new VexRVMOp("MOVLHPS",     VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x16, VEXOpAssertion.XMM_XMM_XMM_AVX512F_128ONLY,  EVEXTuple.FVM,       VEXPrefixConfig.W0);
 
         public static final VexRVMOp VPHADDW         = new VexRVMOp("VPHADDW",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.WIG, 0x01, VEXOpAssertion.AVX1_2);
         public static final VexRVMOp VPHADDD         = new VexRVMOp("VPHADDD",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.WIG, 0x02, VEXOpAssertion.AVX1_2);
@@ -2222,7 +2242,11 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRVMOp EVBLENDMPD      = new VexRVMOp("EVBLENDMPD",   VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W1,  0x65, VEXOpAssertion.AVX512F_VL,                   EVEXTuple.FVM,       VEXPrefixConfig.W1, true);
         public static final VexRVMOp EVPERMT2B       = new VexRVMOp("EVPERMT2B",    VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x7D, VEXOpAssertion.AVX512F_VL,                   EVEXTuple.FVM,       VEXPrefixConfig.W0, true);
 
-        public static final VexRVMOp EMOVLHPS        = new VexRVMOp("EMOVLHPS",     MOVLHPS);
+        public static final VexRVMOp EVMOVSS         = new VexRVMOp("EVMOVSS",      VMOVSS);
+        public static final VexRVMOp EVMOVSD         = new VexRVMOp("EVMOVSD",      VMOVSD);
+        public static final VexRVMOp EVMOVHPD        = new VexRVMOp("EVMOVHPD",     VMOVHPD);
+        public static final VexRVMOp EVMOVLPD        = new VexRVMOp("EVMOVLPD",     VMOVLPD);
+        public static final VexRVMOp EVMOVLHPS       = new VexRVMOp("EVMOVLHPS",    VMOVLHPS);
         // @formatter:on
 
         protected VexRVMOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion) {
@@ -2832,17 +2856,18 @@ public class AMD64Assembler extends AMD64BaseAssembler {
      */
     public static final class VexRVMIOp extends VexOp {
         // @formatter:off
-        public static final VexRVMIOp VPINSRB      = new VexRVMIOp("VPINSRB",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0,  0x20, VEXOpAssertion.XMM_XMM_CPU);
-        public static final VexRVMIOp VPINSRW      = new VexRVMIOp("VPINSRW",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.W0,  0xC4, VEXOpAssertion.XMM_XMM_CPU);
-        public static final VexRVMIOp VPINSRD      = new VexRVMIOp("VPINSRD",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0,  0x22, VEXOpAssertion.XMM_XMM_CPU);
-        public static final VexRVMIOp VPINSRQ      = new VexRVMIOp("VPINSRQ",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W1,  0x22, VEXOpAssertion.XMM_XMM_CPU);
+        public static final VexRVMIOp VPINSRB      = new VexRVMIOp("VPINSRB",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0,  0x20, VEXOpAssertion.XMM_XMM_CPU_AVX512BW_128ONLY, EVEXTuple.T1S_8BIT,  VEXPrefixConfig.WIG);
+        public static final VexRVMIOp VPINSRW      = new VexRVMIOp("VPINSRW",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.W0,  0xC4, VEXOpAssertion.XMM_XMM_CPU_AVX512BW_128ONLY, EVEXTuple.T1S_16BIT, VEXPrefixConfig.WIG);
+        public static final VexRVMIOp VPINSRD      = new VexRVMIOp("VPINSRD",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0,  0x22, VEXOpAssertion.XMM_XMM_CPU_AVX512DQ_128ONLY, EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
+        public static final VexRVMIOp VPINSRQ      = new VexRVMIOp("VPINSRQ",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W1,  0x22, VEXOpAssertion.XMM_XMM_CPU_AVX512DQ_128ONLY, EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
+        public static final VexRVMIOp VINSERTPS    = new VexRVMIOp("VINSERTPS",    VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.WIG, 0x21, VEXOpAssertion.AVX1_128ONLY_AVX512F_128ONLY, EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
 
         public static final VexRVMIOp VSHUFPS      = new VexRVMIOp("VSHUFPS",      VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xC6, VEXOpAssertion.AVX1_AVX512F_VL,          EVEXTuple.FVM,      VEXPrefixConfig.W0);
         public static final VexRVMIOp VSHUFPD      = new VexRVMIOp("VSHUFPD",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xC6, VEXOpAssertion.AVX1_AVX512F_VL,          EVEXTuple.FVM,      VEXPrefixConfig.W1);
 
         // AVX/AVX2 insert
-        public static final VexRVMIOp VINSERTF128  = new VexRVMIOp("VINSERTF128",  VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0,  0x18, VEXOpAssertion.AVX1_256ONLY);
-        public static final VexRVMIOp VINSERTI128  = new VexRVMIOp("VINSERTI128",  VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0,  0x38, VEXOpAssertion.AVX2_256ONLY);
+        public static final VexRVMIOp VINSERTF128  = new VexRVMIOp("VINSERTF128",  VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0,  0x18, VEXOpAssertion.AVX1_256ONLY_AVX512F_VL,  EVEXTuple.T4_32BIT, VEXPrefixConfig.W0);
+        public static final VexRVMIOp VINSERTI128  = new VexRVMIOp("VINSERTI128",  VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0,  0x38, VEXOpAssertion.AVX2_AVX512F_VL_256_512,  EVEXTuple.T4_32BIT, VEXPrefixConfig.W0);
 
         // AVX2 128-bit permutation
         public static final VexRVMIOp VPERM2I128   = new VexRVMIOp("VPERM2I128",   VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0,  0x46, VEXOpAssertion.AVX2_256ONLY);
@@ -2858,6 +2883,11 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRVMIOp VGF2P8AFFINEQB  = new VexRVMIOp("VGF2P8AFFINEQB",  VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W1, 0xCE, VEXOpAssertion.AVX1_GFNI_AVX512F_VL,      EVEXTuple.FVM,      VEXPrefixConfig.W1);
 
         // EVEX encoded instructions
+        public static final VexRVMIOp EVPINSRB        = new VexRVMIOp("EVPINSRB",        VPINSRB);
+        public static final VexRVMIOp EVPINSRW        = new VexRVMIOp("EVPINSRW",        VPINSRW);
+        public static final VexRVMIOp EVPINSRD        = new VexRVMIOp("EVPINSRD",        VPINSRD);
+        public static final VexRVMIOp EVPINSRQ        = new VexRVMIOp("EVPINSRQ",        VPINSRQ);
+        public static final VexRVMIOp EVINSERTPS      = new VexRVMIOp("EVINSERTPS",      VINSERTPS);
         public static final VexRVMIOp EVSHUFPS        = new VexRVMIOp("EVSHUFPS",        VSHUFPS);
         public static final VexRVMIOp EVSHUFPD        = new VexRVMIOp("EVSHUFPD",        VSHUFPD);
         public static final VexRVMIOp EVPTERNLOGD     = new VexRVMIOp("EVPTERNLOGD",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0,  0x25, VEXOpAssertion.AVX512F_VL,               EVEXTuple.FVM,      VEXPrefixConfig.W0, true);
@@ -2867,8 +2897,8 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRVMIOp EVPALIGNR       = new VexRVMIOp("EVPALIGNR",       VPALIGNR);
 
         // AVX-512 insert
-        public static final VexRVMIOp EVINSERTF32X4   = new VexRVMIOp("EVINSERTF32X4",   VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0,  0x18, VEXOpAssertion.AVX512F_VL_256_512,       EVEXTuple.T4_32BIT, VEXPrefixConfig.W0, true);
-        public static final VexRVMIOp EVINSERTI32X4   = new VexRVMIOp("EVINSERTI32X4",   VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0,  0x38, VEXOpAssertion.AVX512F_VL_256_512,       EVEXTuple.T4_32BIT, VEXPrefixConfig.W0, true);
+        public static final VexRVMIOp EVINSERTF32X4   = new VexRVMIOp("EVINSERTF32X4",   VINSERTF128);
+        public static final VexRVMIOp EVINSERTI32X4   = new VexRVMIOp("EVINSERTI32X4",   VINSERTI128);
         public static final VexRVMIOp EVINSERTF64X2   = new VexRVMIOp("EVINSERTF64X2",   VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W1,  0x18, VEXOpAssertion.AVX512DQ_VL_256_512,      EVEXTuple.T2_64BIT, VEXPrefixConfig.W1, true);
         public static final VexRVMIOp EVINSERTI64X2   = new VexRVMIOp("EVINSERTI64X2",   VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W1,  0x38, VEXOpAssertion.AVX512DQ_VL_256_512,      EVEXTuple.T2_64BIT, VEXPrefixConfig.W1, true);
         public static final VexRVMIOp EVINSERTF32X8   = new VexRVMIOp("EVINSERTF32X8",   VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0,  0x1A, VEXOpAssertion.AVX512DQ_512ONLY,         EVEXTuple.T8_32BIT, VEXPrefixConfig.W0, true);

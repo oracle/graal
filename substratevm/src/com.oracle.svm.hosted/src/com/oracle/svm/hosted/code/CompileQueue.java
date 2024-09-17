@@ -60,7 +60,6 @@ import com.oracle.svm.core.graal.phases.DeadStoreRemovalPhase;
 import com.oracle.svm.core.graal.phases.OptimizeExceptionPathsPhase;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.util.InterruptImageBuilding;
@@ -180,14 +179,6 @@ public class CompileQueue {
 
     private final boolean printMethodHistogram = NativeImageOptions.PrintMethodHistogram.getValue();
     private final boolean optionAOTTrivialInline = SubstrateOptions.AOTTrivialInline.getValue();
-
-    /**
-     * Indicates we need to force compilation of all possible methods so that all calls to the prior
-     * layers have a target.
-     *
-     * The criteria for this will become more nuanced as part of GR-57021.
-     */
-    private final boolean layeredForceCompilation = ImageLayerBuildingSupport.buildingSharedLayer() && !SubstrateOptions.UseSharedLayerGraphs.getValue();
 
     public record UnpublishedTrivialMethods(CompilationGraph unpublishedGraph, boolean newlyTrivial) {
     }
@@ -637,8 +628,8 @@ public class CompileQueue {
                      */
                     continue;
                 }
-                if (layeredForceCompilation || layeredForceCompilation(hMethod)) {
-                    // when layered force compilation is enabled we try to parse all graphs
+                if (layeredForceCompilation(hMethod)) {
+                    // when layered force compilation is triggered we try to parse all graphs
                     if (method.wrapped.getAnalyzedGraph() != null) {
                         ensureParsed(method, null, new EntryPointReason());
                     }
@@ -845,6 +836,16 @@ public class CompileQueue {
     }
 
     private boolean makeInlineDecision(HostedMethod method, HostedMethod callee) {
+        // GR-57832 this will be removed
+        if (callee.compilationInfo.getCompilationGraph() == null) {
+            /*
+             * We have compiled this method in a prior layer, but don't have the graph available
+             * here.
+             */
+            assert callee.isCompiledInPriorLayer() : method;
+            return false;
+        }
+
         if (universe.hostVM().neverInlineTrivial(method.getWrapped(), callee.getWrapped())) {
             return false;
         }
@@ -925,9 +926,9 @@ public class CompileQueue {
                     continue;
                 }
 
-                if (layeredForceCompilation || layeredForceCompilation(hMethod)) {
+                if (layeredForceCompilation(hMethod)) {
                     /*
-                     * when layeredForceCompilation is enabled we try to parse all graphs.
+                     * when layeredForceCompilation is triggered we try to parse all graphs.
                      */
                     if (method.compilationInfo.getCompilationGraph() != null) {
                         ensureCompiled(hMethod, new EntryPointReason());

@@ -56,15 +56,16 @@ import com.oracle.svm.core.posix.headers.Dlfcn;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Locale;
 import com.oracle.svm.core.posix.headers.Pwd;
+import com.oracle.svm.core.posix.headers.Pwd.passwd;
+import com.oracle.svm.core.posix.headers.Pwd.passwdPointer;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posix.headers.Wait;
-import com.oracle.svm.core.posix.headers.Pwd.passwd;
-import com.oracle.svm.core.posix.headers.Pwd.passwdPointer;
 import com.oracle.svm.core.posix.headers.darwin.DarwinTime;
 import com.oracle.svm.core.posix.headers.linux.LinuxTime;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.VMError;
 
 public class PosixUtils {
@@ -352,6 +353,7 @@ public class PosixUtils {
         return getUserNameOrDir(uid, false);
     }
 
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+13/src/hotspot/os/posix/perfMemory_posix.cpp#L436-L486")
     private static String getUserNameOrDir(int uid, boolean name) {
         /* Determine max. pwBuf size. */
         long bufSize = Unistd.sysconf(_SC_GETPW_R_SIZE_MAX());

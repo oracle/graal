@@ -36,6 +36,7 @@ import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.nativeimage.AnnotationAccess;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
@@ -53,6 +54,8 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.PrimitiveConstantTypeState;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.util.ImageBuildStatistics;
 
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
@@ -182,6 +185,9 @@ public abstract class StrengthenGraphs {
     private final StrengthenGraphsCounters beforeCounters;
     private final StrengthenGraphsCounters afterCounters;
 
+    /** Used to avoid aggressive optimizations for open type world analysis. */
+    private final boolean isClosedTypeWorld;
+
     public StrengthenGraphs(BigBang bb, Universe converter) {
         this.bb = bb;
         this.converter = converter;
@@ -197,6 +203,7 @@ public abstract class StrengthenGraphs {
             beforeCounters = null;
             afterCounters = null;
         }
+        this.isClosedTypeWorld = converter.hostVM().isClosedTypeWorld();
     }
 
     private static void reportNeverNullInstanceFields(BigBang bb) {
@@ -291,7 +298,7 @@ public abstract class StrengthenGraphs {
     protected abstract boolean simplifyDelegate(Node n, SimplifierTool tool);
 
     /* Wrapper to clearly identify phase in IGV graph dumps. */
-    class AnalysisStrengthenGraphsPhase extends BasePhase<CoreProviders> {
+    public class AnalysisStrengthenGraphsPhase extends BasePhase<CoreProviders> {
         final CanonicalizerPhase phase;
 
         AnalysisStrengthenGraphsPhase(AnalysisMethod method, StructuredGraph graph) {
@@ -554,7 +561,8 @@ public abstract class StrengthenGraphs {
             FixedNode node = invoke.asFixedNode();
             MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
 
-            if (callTarget.invokeKind().isDirect() && !((AnalysisMethod) callTarget.targetMethod()).isSimplyImplementationInvoked()) {
+            AnalysisMethod targetMethod = (AnalysisMethod) callTarget.targetMethod();
+            if (callTarget.invokeKind().isDirect() && !targetMethod.isSimplyImplementationInvoked()) {
                 /*
                  * This is a direct call to a method that the static analysis did not see as
                  * invoked. This can happen when the receiver is always null. In most cases, the
@@ -619,27 +627,66 @@ public abstract class StrengthenGraphs {
                 }
             }
 
-            if (callees.size() == 1) {
+            if (callTarget.invokeKind().isDirect()) {
+                /*
+                 * Note: A direct invoke doesn't necessarily imply that the analysis should have
+                 * discovered a single callee. When dealing with interfaces it is in fact possible
+                 * that the Graal stamps are more accurate than the analysis results. So an
+                 * interface call may have already been optimized to a special call by stamp
+                 * strengthening of the receiver object, hence the invoke kind is direct, whereas
+                 * the points-to analysis inaccurately concluded there can be more than one callee.
+                 * 
+                 * Below we just check that if there is a direct invoke *and* the analysis
+                 * discovered a single callee, then the callee should match the target method.
+                 */
+                if (callees.size() == 1) {
+                    AnalysisMethod singleCallee = callees.iterator().next();
+                    assert targetMethod.equals(singleCallee) : "Direct invoke target mismatch: " + targetMethod + " != " + singleCallee + ". Called from " + graph.method().format("%H.%n");
+                }
+            } else if (AnnotationAccess.isAnnotationPresent(targetMethod, Delete.class)) {
+                /* We de-virtualize invokes to deleted methods since the callee must be unique. */
+                AnalysisError.guarantee(callees.size() == 1, "@Delete methods should have a single callee.");
                 AnalysisMethod singleCallee = callees.iterator().next();
-                if (callTarget.invokeKind().isDirect()) {
-                    assert callTarget.targetMethod().equals(singleCallee) : "Direct invoke target mismatch: " + callTarget.targetMethod() + " != " + singleCallee;
-                } else {
+                devirtualizeInvoke(singleCallee, invoke);
+            } else if (targetMethod.canBeStaticallyBound() || isClosedTypeWorld) {
+                /*
+                 * We only de-virtualize invokes if we run a closed type world analysis or the
+                 * target method can be trivially statically bound.
+                 */
+                if (callees.size() == 1) {
+                    AnalysisMethod singleCallee = callees.iterator().next();
                     devirtualizeInvoke(singleCallee, invoke);
+                } else {
+                    TypeState receiverTypeState = null;
+                    /* If the receiver flow is saturated, its exact type state does not matter. */
+                    if (invokeFlow.getTargetMethod().hasReceiver() && !methodFlow.isSaturated((PointsToAnalysis) bb, invokeFlow.getReceiver())) {
+                        receiverTypeState = methodFlow.foldTypeFlow((PointsToAnalysis) bb, invokeFlow.getReceiver());
+                    }
+
+                    /*
+                     * In an open type world we cannot trust the type state of the receiver for
+                     * virtual calls as new subtypes could be added later.
+                     *
+                     * Note: MethodFlowsGraph.saturateAllParameters() does saturate the receiver in
+                     * many cases, so the check above would also lead to a null typeProfile, but we
+                     * cannot guarantee that we cover all cases.
+                     */
+                    JavaTypeProfile typeProfile = makeTypeProfile(receiverTypeState);
+                    /*
+                     * In a closed type world analysis the method profile of an invoke is complete
+                     * and contains all the callees reachable at that invocation location. Even if
+                     * that invoke is saturated it is still correct as it contains all the reachable
+                     * implementations of the target method. However, in an open type world the
+                     * method profile of an invoke, saturated or not, is incomplete, as there can be
+                     * implementations that we haven't yet seen.
+                     */
+                    JavaMethodProfile methodProfile = makeMethodProfile(callees);
+
+                    assert typeProfile == null || typeProfile.getTypes().length > 1 : "Should devirtualize with typeProfile=" + typeProfile + " and methodProfile=" + methodProfile;
+                    assert methodProfile == null || methodProfile.getMethods().length > 1 : "Should devirtualize with typeProfile=" + typeProfile + " and methodProfile=" + methodProfile;
+
+                    setInvokeProfiles(invoke, typeProfile, methodProfile);
                 }
-
-            } else {
-                TypeState receiverTypeState = null;
-                /* If the receiver flow is saturated, its exact type state does not matter. */
-                if (invokeFlow.getTargetMethod().hasReceiver() && !methodFlow.isSaturated((PointsToAnalysis) bb, invokeFlow.getReceiver())) {
-                    receiverTypeState = methodFlow.foldTypeFlow((PointsToAnalysis) bb, invokeFlow.getReceiver());
-                }
-
-                JavaTypeProfile typeProfile = makeTypeProfile(receiverTypeState);
-                JavaMethodProfile methodProfile = makeMethodProfile(callees);
-                assert typeProfile == null || typeProfile.getTypes().length > 1 : "Should devirtualize with typeProfile=" + typeProfile + " and methodProfile=" + methodProfile;
-                assert methodProfile == null || methodProfile.getMethods().length > 1 : "Should devirtualize with typeProfile=" + typeProfile + " and methodProfile=" + methodProfile;
-
-                setInvokeProfiles(invoke, typeProfile, methodProfile);
             }
 
             if (allowOptimizeReturnParameter) {

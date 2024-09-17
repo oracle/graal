@@ -666,7 +666,10 @@ public final class JDWPContextImpl implements JDWPContext {
     public Object getMonitorOwnerThread(Object object) {
         if (object instanceof StaticObject) {
             EspressoLock lock = ((StaticObject) object).getLock(context);
-            return asGuestThread(lock.getOwnerThread());
+            Thread ownerThread = lock.getOwnerThread();
+            if (ownerThread != null) {
+                return asGuestThread(ownerThread);
+            }
         }
         return null;
     }

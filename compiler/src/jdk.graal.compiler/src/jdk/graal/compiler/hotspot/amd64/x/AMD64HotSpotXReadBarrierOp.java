@@ -55,7 +55,7 @@ public class AMD64HotSpotXReadBarrierOp extends AMD64HotSpotXBarrieredOp {
             crb.recordImplicitException(masm.position(), state);
         }
         final Register resultReg = asRegister(result);
-        MOV.emit(masm, AMD64BaseAssembler.OperandSize.QWORD, resultReg, loadAddress.toAddress());
+        MOV.emit(masm, AMD64BaseAssembler.OperandSize.QWORD, resultReg, loadAddress.toAddress(masm));
         emitBarrier(crb, masm);
     }
 }

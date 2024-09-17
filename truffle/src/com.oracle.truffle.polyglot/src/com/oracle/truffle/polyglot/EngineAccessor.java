@@ -475,6 +475,11 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
+        public LanguageInfo getHostLanguage(Object polyglotLanguageContext) {
+            return ((PolyglotLanguageContext) polyglotLanguageContext).context.engine.hostLanguage.info;
+        }
+
+        @Override
         public Map<String, LanguageInfo> getPublicLanguages(Object polyglotObject) {
             return ((PolyglotLanguageContext) polyglotObject).getAccessibleLanguages(false);
         }
@@ -501,13 +506,14 @@ final class EngineAccessor extends Accessor {
         @Override
         public Object getScope(Object polyglotLanguageContext, LanguageInfo requiredLanguage, boolean internal) {
             PolyglotLanguageContext languageContext = (PolyglotLanguageContext) polyglotLanguageContext;
-            Map<String, LanguageInfo> allowedLanguages;
+            Set<String> allowedLanguages;
             if (internal) {
-                allowedLanguages = getInternalLanguages(languageContext);
+                allowedLanguages = getInternalLanguages(languageContext).keySet();
             } else {
-                allowedLanguages = getPublicLanguages(languageContext);
+                allowedLanguages = getPublicLanguages(languageContext).keySet();
             }
-            if (!allowedLanguages.containsKey(requiredLanguage.getId())) {
+            String requiredId = requiredLanguage.getId();
+            if (!allowedLanguages.contains(requiredId) && !(internal && PolyglotEngineImpl.HOST_LANGUAGE_ID.equals(requiredId) && languageContext.context.config.hostLookupAllowed)) {
                 throw new PolyglotEngineException(new SecurityException(String.format("Access to language '%s' is not permitted.", requiredLanguage.getId())));
             }
             PolyglotContextImpl context = languageContext.context;

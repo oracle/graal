@@ -68,8 +68,8 @@ public class FieldsOffsetsFeature implements Feature {
 
     abstract static class IterationMaskRecomputation implements FieldValueTransformerWithAvailability {
         @Override
-        public ValueAvailability valueAvailability() {
-            return ValueAvailability.AfterAnalysis;
+        public boolean isAvailable() {
+            return BuildPhaseProvider.isHostedUniverseBuilt();
         }
 
         @Override

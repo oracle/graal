@@ -84,7 +84,7 @@ public class AMD64G1PreWriteBarrierOp extends AMD64LIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        AMD64Address storeAddress = ((AMD64AddressValue) this.address).toAddress();
+        AMD64Address storeAddress = ((AMD64AddressValue) this.address).toAddress(masm);
         Register thread = tool.getThread(masm);
         Register tmp = asRegister(temp);
         Register previousValue = expectedObject.equals(Value.ILLEGAL) ? asRegister(temp2) : asRegister(expectedObject);

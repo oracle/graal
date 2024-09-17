@@ -89,6 +89,7 @@ import com.oracle.svm.core.layeredimagesingleton.ApplicationLayerOnlyImageSingle
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
+import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.UserError;
@@ -1125,6 +1126,18 @@ public class SubstrateGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode classNode) {
                 Class<?> key = constantObjectParameter(b, targetMethod, 0, Class.class, classNode);
                 boolean result = ImageSingletons.contains(key);
+                if (!result && ImageLayerBuildingSupport.buildingImageLayer()) {
+                    if (ApplicationLayerOnlyImageSingleton.class.isAssignableFrom(key) || MultiLayeredImageSingleton.class.isAssignableFrom(key)) {
+                        /*
+                         * ApplicationLayerOnlyImageSingletons and the array representation of a
+                         * MultiLayeredImageSingleton will only be created in the final layer.
+                         * However, we assume they exist in all layers. If lookup/getAllLayers is
+                         * called on this key, then our infrastructure will ensure it is either
+                         * created in the application layer or produce a buildtime error.
+                         */
+                        result = true;
+                    }
+                }
                 b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(result));
                 return true;
             }

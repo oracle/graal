@@ -42,7 +42,7 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.TimeUtils;
 
 @AutomaticallyRegisteredImageSingleton(ThreadCpuTimeSupport.class)
-final class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
+public class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

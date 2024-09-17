@@ -125,7 +125,7 @@ public final class KnownOffsets {
     }
 
     public int getTypeIDSlotsOffset() {
-        assert isFullyInitialized() && SubstrateOptions.closedTypeWorld();
+        assert isFullyInitialized() && SubstrateOptions.useClosedTypeWorldHubLayout();
         return typeIDSlotsOffset;
     }
 

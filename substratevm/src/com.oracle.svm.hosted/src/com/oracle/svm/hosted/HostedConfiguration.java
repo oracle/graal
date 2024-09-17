@@ -43,6 +43,7 @@ import com.oracle.graal.pointsto.heap.ImageLayerWriter;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccessExtensionProvider;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.results.StrengthenGraphs;
 import com.oracle.objectfile.ObjectFile;
@@ -187,7 +188,7 @@ public class HostedConfiguration {
         int closedTypeWorldTypeCheckSlotSize;
 
         Set<HostedField> ignoredFields;
-        if (SubstrateOptions.closedTypeWorld()) {
+        if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
             closedTypeWorldTypeCheckSlotsOffset = layout.getArrayLengthOffset() + layout.sizeInBytes(JavaKind.Int);
             closedTypeWorldTypeCheckSlotSize = layout.sizeInBytes(closedTypeWorldTypeCheckSlotsField.getType().getComponentType().getStorageKind());
 
@@ -248,8 +249,8 @@ public class HostedConfiguration {
         return new SVMMethodTypeFlowBuilder(bb, method, flowsGraph, graphKind);
     }
 
-    public MetaAccessExtensionProvider createAnalysisMetaAccessExtensionProvider() {
-        return new AnalysisMetaAccessExtensionProvider();
+    public MetaAccessExtensionProvider createAnalysisMetaAccessExtensionProvider(AnalysisUniverse aUniverse) {
+        return new AnalysisMetaAccessExtensionProvider(aUniverse);
     }
 
     public MetaAccessExtensionProvider createCompilationMetaAccessExtensionProvider(@SuppressWarnings("unused") MetaAccessProvider metaAccess) {

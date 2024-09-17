@@ -45,6 +45,10 @@ import org.graalvm.nativeimage.hosted.Feature;
  * annotated class must not rely on other features being registered already, or other image
  * singletons being present already.
  *
+ * If both a class and a subclass are annotated with {@link AutomaticallyRegisteredImageSingleton}
+ * (and the subclass is not disabled by {@link #onlyWith}), only the subclass will be registered as
+ * an image singleton.
+ *
  * The requirements and restrictions of {@link AutomaticallyRegisteredFeature} apply also to this
  * annotation.
  */
@@ -54,14 +58,17 @@ import org.graalvm.nativeimage.hosted.Feature;
 public @interface AutomaticallyRegisteredImageSingleton {
 
     /**
-     * The keys under which the singleton is registered in {@link ImageSingletons}. If no keys are
-     * specified, the annotated class itself is used as the key.
+     * The keys under which the singleton is registered in {@link ImageSingletons}. If the annotated
+     * class extends another annotated class, keys from the base class are inherited. If no keys are
+     * specified (or inherited), the annotated class itself is used as the key.
      */
     Class<?>[] value() default {};
 
     /**
      * Register only if all provided {@link BooleanSupplier} objects evaluate to true. If there are
      * no suppliers, the singleton is registered unconditionally.
+     *
+     * The values of this attribute are not inherited; a subclass may have fewer restrictions.
      */
     Class<? extends BooleanSupplier>[] onlyWith() default {};
 }

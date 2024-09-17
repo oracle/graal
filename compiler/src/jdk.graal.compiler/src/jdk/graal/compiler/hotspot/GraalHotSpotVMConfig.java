@@ -221,6 +221,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int klassSuperKlassOffset = getFieldOffset("Klass::_super", Integer.class, "Klass*");
     public final int klassModifierFlagsOffset = getFieldOffset("Klass::_modifier_flags", Integer.class, "jint");
     public final int klassAccessFlagsOffset = getFieldOffset("Klass::_access_flags", Integer.class, "AccessFlags");
+    public final int klassMiscFlagsOffset = getFieldOffset("Klass::_misc_flags._flags", Integer.class, "u1", 0, JDK >= 24);
     public final int klassLayoutHelperOffset = getFieldOffset("Klass::_layout_helper", Integer.class, "jint");
 
     public final int klassLayoutHelperNeutralValue = getConstant("Klass::_lh_neutral_value", Integer.class);
@@ -251,10 +252,10 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     public final int arrayClassElementOffset = getFieldOffset("ObjArrayKlass::_element_klass", Integer.class, "Klass*");
 
-    public final int jvmAccHasFinalizer = getConstant("JVM_ACC_HAS_FINALIZER", Integer.class);
     public final int jvmAccWrittenFlags = getConstant("JVM_ACC_WRITTEN_FLAGS", Integer.class);
-    public final int jvmAccIsHiddenClass = getConstant("JVM_ACC_IS_HIDDEN_CLASS", Integer.class); // JDK-8219607
-    public final int jvmAccIsValueBasedClass = verifyConstant("JVM_ACC_IS_VALUE_BASED_CLASS", Integer.class, 0x08000000);
+    public final int jvmAccIsHiddenClass = JDK >= 24 ? getConstant("KlassFlags::_misc_is_hidden_class", Integer.class) : getConstant("JVM_ACC_IS_HIDDEN_CLASS", Integer.class);
+    public final int jvmAccIsValueBasedClass = JDK >= 24 ? getConstant("KlassFlags::_misc_is_value_based_class", Integer.class) : getConstant("JVM_ACC_IS_VALUE_BASED_CLASS", Integer.class);
+    public final int jvmAccHasFinalizer = JDK >= 24 ? getConstant("KlassFlags::_misc_has_finalizer", Integer.class) : getConstant("JVM_ACC_HAS_FINALIZER", Integer.class);
 
     public final int jvmciCompileStateCanPostOnExceptionsOffset = getFieldOffset("JVMCICompileState::_jvmti_can_post_on_exceptions", Integer.class, "jbyte");
     public final int jvmciCompileStateCanPopFrameOffset = getFieldOffset("JVMCICompileState::_jvmti_can_pop_frame", Integer.class, "jbyte");
@@ -369,6 +370,9 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
      * Mark word right shift to get identity hash code.
      */
     public final int identityHashCodeShift = getConstant("markWord::hash_shift", Integer.class);
+
+    public final int contEntry = getFieldOffset("JavaThread::_cont_entry", Integer.class, "ContinuationEntry*", -1, JDK >= 24);
+    public final int pinCount = getFieldOffset("ContinuationEntry::_pin_count", Integer.class, "uint32_t", -1, JDK >= 24);
 
     /**
      * Identity hash code value when uninitialized.

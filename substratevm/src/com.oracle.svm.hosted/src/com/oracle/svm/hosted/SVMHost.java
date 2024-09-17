@@ -105,7 +105,6 @@ import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.analysis.NativeImagePointsToAnalysis;
 import com.oracle.svm.hosted.analysis.SVMParsingSupport;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
@@ -193,7 +192,6 @@ public class SVMHost extends HostVM {
     private final SVMParsingSupport parsingSupport;
     private final InlineBeforeAnalysisPolicy inlineBeforeAnalysisPolicy;
 
-    private final FieldValueInterceptionSupport fieldValueInterceptionSupport;
     private final MissingRegistrationSupport missingRegistrationSupport;
 
     private final int layerId;
@@ -201,6 +199,7 @@ public class SVMHost extends HostVM {
     private Set<Field> excludedFields;
 
     private final Boolean optionAllowUnsafeAllocationOfAllInstantiatedTypes = SubstrateOptions.AllowUnsafeAllocationOfAllInstantiatedTypes.getValue();
+    private final boolean isClosedTypeWorld = SubstrateOptions.useClosedTypeWorld();
 
     @SuppressWarnings("this-escape")
     public SVMHost(OptionValues options, ImageClassLoader loader, ClassInitializationSupport classInitializationSupport, AnnotationSubstitutionProcessor annotationSubstitutions,
@@ -228,8 +227,6 @@ public class SVMHost extends HostVM {
         } else {
             parsingSupport = null;
         }
-        fieldValueInterceptionSupport = new FieldValueInterceptionSupport(annotationSubstitutions, classInitializationSupport);
-        ImageSingletons.add(FieldValueInterceptionSupport.class, fieldValueInterceptionSupport);
         layerId = ImageLayerBuildingSupport.buildingImageLayer() ? DynamicImageLayerInfo.singleton().layerNumber : 0;
         useBaseLayer = ImageLayerBuildingSupport.buildingExtensionLayer();
         if (SubstrateOptions.includeAll()) {
@@ -691,7 +688,7 @@ public class SVMHost extends HostVM {
     }
 
     protected void optimizeAfterParsing(BigBang bb, AnalysisMethod method, StructuredGraph graph) {
-        if (!SubstrateOptions.closedTypeWorld()) {
+        if (!SubstrateOptions.useClosedTypeWorldHubLayout()) {
             new OpenTypeWorldConvertCallTargetPhase().apply(graph, getProviders(method.getMultiMethodKey()));
         }
 
@@ -887,6 +884,9 @@ public class SVMHost extends HostVM {
         excludedFields.add(ReflectionUtil.lookupField(DynamicHub.class, "monitorOffset"));
         excludedFields.add(ReflectionUtil.lookupField(DynamicHub.class, "hubType"));
 
+        /* Needs to be immutable for correct lowering of SubstrateIdentityHashCodeNode. */
+        excludedFields.add(ReflectionUtil.lookupField(DynamicHub.class, "identityHashOffset"));
+
         /*
          * Including this field makes ThreadLocalAllocation.getTlabDescriptorSize reachable through
          * ThreadLocalAllocation.regularTLAB which is accessed with
@@ -931,6 +931,11 @@ public class SVMHost extends HostVM {
             return !annotationSubstitutionProcessor.isDeleted(field) && !annotationSubstitutionProcessor.isAnnotationPresent(field, InjectAccessors.class);
         }
         return super.isFieldIncluded(bb, field);
+    }
+
+    @Override
+    public boolean isClosedTypeWorld() {
+        return isClosedTypeWorld;
     }
 
     private final List<BiPredicate<AnalysisMethod, AnalysisMethod>> neverInlineTrivialHandlers = new CopyOnWriteArrayList<>();

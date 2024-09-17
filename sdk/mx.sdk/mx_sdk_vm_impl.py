@@ -2508,7 +2508,6 @@ class PolyglotIsolateLibraryBuildTask(GraalVmLibraryBuildTask):
             '-H:APIFunctionPrefix=truffle_isolate_',
         ] + svm_experimental_options([
             '-H:+IgnoreMaxHeapSizeWhileInVMOperation',
-            '-H:+BuildOutputPrefix',
             '-H:+GenerateBuildArtifactsFile',  # generate 'build-artifacts.json'
         ]) + mx.get_runtime_jvm_args(self.subject.native_image_jar_distributions) + \
         project.native_image_config.build_args + project.native_image_config.build_args_enterprise
@@ -3281,6 +3280,10 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
             **kwargs
         )
 
+    def isJDKDependent(self):
+        # because of -DLAUNCHER_JDK_VERSION (GR-57817)
+        return True
+
     @staticmethod
     def library_launcher_project_name(language_library_config, for_jvm_standalone=False):
         return "org.graalvm.launcher.native." + ("jvm_standalone." if for_jvm_standalone else "") + language_library_config.language
@@ -3298,6 +3301,8 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
             '-DCP_SEP=' + os.pathsep,
             '-DDIR_SEP=' + ('\\\\' if mx.is_windows() else '/'),
             '-DGRAALVM_VERSION=' + _suite.release_version(),
+            # Might not be needed anymore if GR-57817 gets fixed.
+            f'-DLAUNCHER_JDK_VERSION={mx_sdk_vm.base_jdk_version()}',
         ]
         if not mx.is_windows():
             _dynamic_cflags += ['-pthread']

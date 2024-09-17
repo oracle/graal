@@ -25,6 +25,7 @@
 package jdk.graal.compiler.hotspot.replacements;
 
 import static jdk.graal.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
+import static jdk.graal.compiler.hotspot.GraalHotSpotVMConfigAccess.JDK;
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.VERIFY_OOP;
 
 import java.lang.ref.Reference;
@@ -339,6 +340,17 @@ public class HotSpotReplacementsUtil {
     public static final LocationIdentity PROTOTYPE_MARK_WORD_LOCATION = NamedLocationIdentity.mutable("PrototypeMarkWord");
 
     public static final LocationIdentity KLASS_ACCESS_FLAGS_LOCATION = NamedLocationIdentity.immutable("Klass::_access_flags");
+    public static final LocationIdentity KLASS_MISC_FLAGS_LOCATION = NamedLocationIdentity.immutable("Klass::_misc_flags");
+
+    @Fold
+    public static boolean shouldUseKlassMiscFlags() {
+        return JDK >= 24;
+    }
+
+    @Fold
+    public static int klassMiscFlagsOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.klassMiscFlagsOffset;
+    }
 
     @Fold
     public static int klassAccessFlagsOffset(@InjectedParameter GraalHotSpotVMConfig config) {
@@ -901,6 +913,9 @@ public class HotSpotReplacementsUtil {
     public static final LocationIdentity HOTSPOT_JAVA_THREAD_IS_IN_TMP_VTMS_TRANSITION = NamedLocationIdentity.mutable("JavaThread::_is_in_tmp_VTMS_transition");
     public static final LocationIdentity HOTSPOT_JAVA_THREAD_IS_DISABLE_SUSPEND = NamedLocationIdentity.mutable("JavaThread::_is_disable_suspend");
     public static final LocationIdentity HOTSPOT_JAVA_LANG_THREAD_IS_IN_VTMS_TRANSITION = NamedLocationIdentity.mutable("Thread::_is_in_VTMS_transition");
+    public static final LocationIdentity HOTSPOT_JAVA_THREAD_CONT_ENTRY = NamedLocationIdentity.mutable("JavaThread::_cont_entry");
+
+    public static final LocationIdentity HOTSPOT_CONTINUATION_ENTRY_PIN_COUNT = NamedLocationIdentity.mutable("ContinuationEntry::_pin_count");
 
     @Fold
     public static int layoutHelperHeaderSizeShift(@InjectedParameter GraalHotSpotVMConfig config) {

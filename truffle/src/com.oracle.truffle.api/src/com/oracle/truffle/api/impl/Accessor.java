@@ -383,6 +383,8 @@ public abstract class Accessor {
 
         public abstract Map<String, LanguageInfo> getInternalLanguages(Object polyglotObject);
 
+        public abstract LanguageInfo getHostLanguage(Object polyglotLanguageContext);
+
         public abstract Map<String, LanguageInfo> getPublicLanguages(Object polyglotObject);
 
         public abstract Map<String, InstrumentInfo> getInstruments(Object polyglotObject);

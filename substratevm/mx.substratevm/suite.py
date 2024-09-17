@@ -308,6 +308,9 @@ suite = {
                     "jdk.internal.util",
                     "jdk.internal.org.objectweb.asm",
                 ],
+                "java.instrument":[
+                    "java.lang.instrument"
+                ],
                 "java.management": [
                     "com.sun.jmx.mbeanserver",
                     "sun.management",
@@ -640,6 +643,9 @@ suite = {
                     "sun.util.cldr",
                     "sun.util.locale",
                     "sun.invoke.util",
+                ],
+                "java.instrument":[
+                    "java.lang.instrument"
                 ],
                 "java.management": [
                     "com.sun.jmx.mbeanserver", # Needed for javadoc links (MXBeanIntrospector,DefaultMXBeanMappingFactory, MXBeanProxy)
@@ -981,6 +987,7 @@ suite = {
                 "jdk.jfr",
                 "java.management",
                 "jdk.management.jfr",
+                "java.instrument",
                 "java.rmi",
             ],
             "requiresConcealed" : {
@@ -1314,7 +1321,7 @@ suite = {
             "jacoco" : "exclude",
         },
 
-        "com.oracle.svm.graal.hotspot.guestgraal" : {
+        "com.oracle.svm.graal.hotspot.libgraal" : {
             "subDir": "src",
             "sourceDirs" : [
                 "src",
@@ -1348,39 +1355,6 @@ suite = {
             "checkstyle" : "com.oracle.svm.hosted",
             "javaCompliance" : "21+",
             "workingSets" : "SVM",
-            "jacoco" : "exclude",
-        },
-
-        "com.oracle.svm.graal.hotspot.libgraal" : {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": [
-                "com.oracle.svm.graal.hotspot",
-                "com.oracle.svm.graal",
-                "compiler:GRAAL",
-                "sdk:NATIVEBRIDGE",
-            ],
-            "requires" : [
-            	"jdk.management"
-            ],
-            "requiresConcealed" : {
-                "java.base" : [
-                    "jdk.internal.misc",
-                ],
-                "jdk.internal.vm.ci": [
-                    "jdk.vm.ci.meta",
-                    "jdk.vm.ci.code",
-                    "jdk.vm.ci.hotspot",
-                ]
-            },
-            "checkstyle" : "com.oracle.svm.hosted",
-            "javaCompliance" : "21+",
-            "annotationProcessors": [
-                "truffle:TRUFFLE_LIBGRAAL_PROCESSOR",
-                "compiler:GRAAL_PROCESSOR",
-                "SVM_PROCESSOR",
-            ],
-            "defaultBuild": False,
             "jacoco" : "exclude",
         },
 
@@ -1853,32 +1827,12 @@ suite = {
           "maven" : False,
         },
 
-        "GRAAL_HOTSPOT_LIBRARY": {
+        "LIBGRAAL_LIBRARY": {
             "subDir": "src",
-            "description" : "SubstrateVM HotSpot Graal library support",
+            "description" : "LibGraal feature",
             "javaCompliance" : "21+",
             "dependencies": [
                 "com.oracle.svm.graal.hotspot.libgraal",
-            ],
-            "overlaps" : [
-                "LIBRARY_SUPPORT",
-                "GUESTGRAAL_LIBRARY"
-            ],
-            "distDependencies": [
-                "SVM",
-                "sdk:JNIUTILS",
-                "sdk:NATIVEBRIDGE",
-            ],
-            "defaultBuild": False,
-            "maven": False,
-        },
-
-        "GUESTGRAAL_LIBRARY": {
-            "subDir": "src",
-            "description" : "GuestGraal HotSpot Graal library support",
-            "javaCompliance" : "21+",
-            "dependencies": [
-                "com.oracle.svm.graal.hotspot.guestgraal",
             ],
             "distDependencies": [
                 "SVM",

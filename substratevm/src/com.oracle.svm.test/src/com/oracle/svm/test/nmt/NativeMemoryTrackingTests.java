@@ -87,11 +87,11 @@ public class NativeMemoryTrackingTests {
         assertEquals(0, getUsedMemory());
 
         Pointer ptr1 = NativeMemory.malloc(M, NmtCategory.Code);
-        long peakUsed = NativeMemoryTracking.singleton().getPeakUsedMemory(NmtCategory.Code);
+        long peakUsed = NativeMemoryTracking.singleton().getPeakMallocMemory(NmtCategory.Code);
         assertEquals(M, peakUsed);
 
         Pointer ptr2 = NativeMemory.malloc(M, NmtCategory.Code);
-        peakUsed = NativeMemoryTracking.singleton().getPeakUsedMemory(NmtCategory.Code);
+        peakUsed = NativeMemoryTracking.singleton().getPeakMallocMemory(NmtCategory.Code);
         assertEquals(2 * M, peakUsed);
 
         NativeMemory.free(ptr1);
@@ -101,20 +101,54 @@ public class NativeMemoryTrackingTests {
         ptr2 = WordFactory.nullPointer();
 
         assertEquals(0, getUsedMemory());
-        assertEquals(2 * M, NativeMemoryTracking.singleton().getPeakUsedMemory(NmtCategory.Code));
+        assertEquals(2 * M, NativeMemoryTracking.singleton().getPeakMallocMemory(NmtCategory.Code));
 
         Pointer ptr3 = NativeMemory.malloc(3 * M, NmtCategory.Code);
-        peakUsed = NativeMemoryTracking.singleton().getPeakUsedMemory(NmtCategory.Code);
+        peakUsed = NativeMemoryTracking.singleton().getPeakMallocMemory(NmtCategory.Code);
         assertEquals(3 * M, peakUsed);
 
         NativeMemory.free(ptr3);
         ptr3 = WordFactory.nullPointer();
 
         assertEquals(0, getUsedMemory());
-        assertEquals(3 * M, NativeMemoryTracking.singleton().getPeakUsedMemory(NmtCategory.Code));
+        assertEquals(3 * M, NativeMemoryTracking.singleton().getPeakMallocMemory(NmtCategory.Code));
     }
 
     private static long getUsedMemory() {
-        return NativeMemoryTracking.singleton().getUsedMemory(NmtCategory.Code);
+        return NativeMemoryTracking.singleton().getMallocMemory(NmtCategory.Code);
+    }
+
+    @Test
+    public void testVirtualMemoryTracking() {
+        // The application should already be using some virtual memory for the heap.
+        assertTrue(NativeMemoryTracking.singleton().getReservedVirtualMemory(NmtCategory.ImageHeap) > 0);
+        assertTrue(NativeMemoryTracking.singleton().getReservedVirtualMemory(NmtCategory.JavaHeap) > 0);
+
+        assertTrue(NativeMemoryTracking.singleton().getCommittedVirtualMemory(NmtCategory.JavaHeap) > 0);
+        assertTrue(NativeMemoryTracking.singleton().getCommittedVirtualMemory(NmtCategory.ImageHeap) > 0);
+
+        assertTrue(NativeMemoryTracking.singleton().getPeakCommittedVirtualMemory(NmtCategory.JavaHeap) > 0);
+        assertTrue(NativeMemoryTracking.singleton().getPeakCommittedVirtualMemory(NmtCategory.ImageHeap) > 0);
+
+        assertTrue(NativeMemoryTracking.singleton().getPeakReservedVirtualMemory(NmtCategory.JavaHeap) > 0);
+        assertTrue(NativeMemoryTracking.singleton().getPeakReservedVirtualMemory(NmtCategory.ImageHeap) > 0);
+
+        // Ensure we have a zero baseline
+        assertTrue(NativeMemoryTracking.singleton().getReservedVirtualMemory(NmtCategory.Code) == 0);
+        assertTrue(NativeMemoryTracking.singleton().getCommittedVirtualMemory(NmtCategory.Code) == 0);
+        assertTrue(NativeMemoryTracking.singleton().getPeakReservedVirtualMemory(NmtCategory.Code) == 0);
+        assertTrue(NativeMemoryTracking.singleton().getPeakCommittedVirtualMemory(NmtCategory.Code) == 0);
+
+        // Use some memory
+        NativeMemoryTracking.singleton().trackReserve(1024, NmtCategory.Code);
+        NativeMemoryTracking.singleton().trackCommit(512, NmtCategory.Code);
+        assertTrue(NativeMemoryTracking.singleton().getReservedVirtualMemory(NmtCategory.Code) == 1024);
+        assertTrue(NativeMemoryTracking.singleton().getCommittedVirtualMemory(NmtCategory.Code) == 512);
+
+        // Uncommit and check peaks
+        NativeMemoryTracking.singleton().trackUncommit(512, NmtCategory.Code);
+        NativeMemoryTracking.singleton().trackFree(1024, NmtCategory.Code);
+        assertTrue(NativeMemoryTracking.singleton().getPeakReservedVirtualMemory(NmtCategory.Code) == 1024);
+        assertTrue(NativeMemoryTracking.singleton().getPeakCommittedVirtualMemory(NmtCategory.Code) == 512);
     }
 }

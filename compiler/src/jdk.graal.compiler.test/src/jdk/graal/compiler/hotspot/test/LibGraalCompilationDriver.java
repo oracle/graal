@@ -157,7 +157,7 @@ public class LibGraalCompilationDriver {
 
     /**
      * Implemented by
-     * {@code com.oracle.svm.graal.hotspot.libgraal.LibGraalEntryPoints.compileMethod}.
+     * {@code com.oracle.svm.graal.hotspot.libgraal.LibGraalEntryPoints#compileMethod}.
      */
     public static native long compileMethodInLibgraal(long isolateThread,
                     long methodHandle,

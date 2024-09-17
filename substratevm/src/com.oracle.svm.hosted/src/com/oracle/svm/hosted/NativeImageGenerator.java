@@ -201,6 +201,7 @@ import com.oracle.svm.hosted.FeatureImpl.OnAnalysisExitAccessImpl;
 import com.oracle.svm.hosted.ProgressReporter.ReporterClosable;
 import com.oracle.svm.hosted.ameta.AnalysisConstantFieldProvider;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
+import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.ameta.SVMHostedValueProvider;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.analysis.NativeImagePointsToAnalysis;
@@ -549,7 +550,7 @@ public class NativeImageGenerator {
         try (TemporaryBuildDirectoryProviderImpl tempDirectoryProvider = new TemporaryBuildDirectoryProviderImpl()) {
             ImageSingletons.add(TemporaryBuildDirectoryProvider.class, tempDirectoryProvider);
             if (ImageLayerBuildingSupport.buildingSharedLayer()) {
-                HostedImageLayerBuildingSupport.setupImageLayerArtifact(imageName);
+                HostedImageLayerBuildingSupport.setupImageLayerArtifacts(imageName);
             }
             doRun(entryPoints, javaMainSupport, imageName, k, harnessSubstitutions);
             if (ImageLayerBuildingSupport.buildingSharedLayer()) {
@@ -1124,7 +1125,9 @@ public class NativeImageGenerator {
     public static AnnotationSubstitutionProcessor createAnnotationSubstitutionProcessor(MetaAccessProvider originalMetaAccess, ImageClassLoader loader,
                     ClassInitializationSupport classInitializationSupport) {
         AnnotationSubstitutionProcessor annotationSubstitutions = new AnnotationSubstitutionProcessor(loader, originalMetaAccess, classInitializationSupport);
-        annotationSubstitutions.init();
+        var fieldValueInterceptionSupport = new FieldValueInterceptionSupport(annotationSubstitutions);
+        ImageSingletons.add(FieldValueInterceptionSupport.class, fieldValueInterceptionSupport);
+        annotationSubstitutions.init(fieldValueInterceptionSupport);
         return annotationSubstitutions;
     }
 
@@ -1149,7 +1152,7 @@ public class NativeImageGenerator {
         /*
          * Eagerly register all target fields of recomputed value fields as unsafe accessed.
          */
-        bb.getAnnotationSubstitutionProcessor().processComputedValueFields(bb);
+        bb.getAnnotationSubstitutionProcessor().registerUnsafeAccessedFields(bb);
 
         /*
          * Install feature supported substitutions.
@@ -1257,7 +1260,7 @@ public class NativeImageGenerator {
 
         HostedSnippetReflectionProvider aSnippetReflection = new HostedSnippetReflectionProvider(null, aWordTypes);
 
-        MetaAccessExtensionProvider aMetaAccessExtensionProvider = HostedConfiguration.instance().createAnalysisMetaAccessExtensionProvider();
+        MetaAccessExtensionProvider aMetaAccessExtensionProvider = HostedConfiguration.instance().createAnalysisMetaAccessExtensionProvider(aUniverse);
 
         LoweringProvider aLoweringProvider = SubstrateLoweringProvider.createForHosted(aMetaAccess, null, platformConfig, aMetaAccessExtensionProvider);
 
@@ -1540,7 +1543,7 @@ public class NativeImageGenerator {
             Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings = lowerer.getLowerings();
 
             lowerer.setConfiguration(runtimeConfig, options, providers);
-            if (SubstrateOptions.closedTypeWorld()) {
+            if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
                 TypeSnippets.registerLowerings(options, providers, lowerings);
             } else {
                 OpenTypeWorldSnippets.registerLowerings(options, providers, lowerings);
@@ -1798,8 +1801,8 @@ public class NativeImageGenerator {
         /*
          * We do not want any parts of the native image generator in the generated image. Therefore,
          * no element whose name contains "hosted" must be seen as reachable by the static analysis.
-         * The same holds for "hotspot" elements, which come from the hosting HotSpot VM, unless
-         * they are JDK internal types.
+         * The same holds for "host VM" elements, which come from the hosting VM, unless they are
+         * JDK internal types.
          */
         String message = checkName(name);
         if (message != null) {
@@ -1922,7 +1925,7 @@ public class NativeImageGenerator {
                 writer.print("reachable  ");
             }
 
-            if (SubstrateOptions.closedTypeWorld()) {
+            if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
                 writer.format("type check start %d range %d slot # %d ", type.getTypeCheckStart(), type.getTypeCheckRange(), type.getTypeCheckSlot());
                 writer.format("type check slots %s  ", slotsToString(type.getClosedTypeWorldTypeCheckSlots()));
             } else {

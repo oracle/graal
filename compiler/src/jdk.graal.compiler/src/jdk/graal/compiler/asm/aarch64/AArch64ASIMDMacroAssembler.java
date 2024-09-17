@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -247,6 +247,25 @@ public class AArch64ASIMDMacroAssembler extends AArch64ASIMDAssembler {
         } else {
             assert dst.getRegisterCategory().equals(SIMD);
             dupSX(srcESize, dst, src, index);
+        }
+    }
+
+    /**
+     * Insert a value into an indexed SIMD element.<br>
+     *
+     * <code>dst[index] = src</code>
+     *
+     * @param eSize width of element.
+     * @param dst SIMD register.
+     * @param src Either floating-point or general-purpose register.
+     * @param index lane position of element to insert into.
+     */
+    public void moveToIndex(ElementSize eSize, Register dst, Register src, int index) {
+        GraalError.guarantee(dst.getRegisterCategory().equals(SIMD), "%s", dst);
+        if (src.getRegisterCategory().equals(CPU)) {
+            insXG(eSize, dst, index, src);
+        } else {
+            insXX(eSize, dst, index, src, 0);
         }
     }
 

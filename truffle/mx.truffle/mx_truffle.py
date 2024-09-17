@@ -227,6 +227,9 @@ class TruffleUnittestConfig(mx_unittest.MxUnittestConfig):
 
         # Disable VirtualThread warning
         vmArgs = vmArgs + ['-Dpolyglot.engine.WarnVirtualThreadSupport=false']
+        if mx.get_jdk().javaCompliance > '21':
+            # Ignore illegal native access until is GR-57817 fixed.
+            vmArgs = vmArgs + ['--illegal-native-access=allow']
 
         return (vmArgs, mainClass, mainClassArgs)
 
@@ -365,6 +368,14 @@ def _sl_command(jdk, vm_args, sl_args, use_optimized_runtime=True, use_enterpris
         main_class = ["com.oracle.truffle.sl.launcher.SLMain"]
     else:
         main_class = ["--module", "org.graalvm.sl_launcher/com.oracle.truffle.sl.launcher.SLMain"]
+
+    if use_optimized_runtime and jdk.javaCompliance > '21':
+        if force_cp:
+            vm_args += ["--enable-native-access=ALL-UNNAMED"]
+        else:
+            # revisit once GR-57817 is fixed
+            vm_args += ["--enable-native-access=org.graalvm.truffle.runtime"]
+
     return [jdk.java] + vm_args + mx.get_runtime_jvm_args(names=dist_names, force_cp=force_cp) + main_class + sl_args
 
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package com.oracle.svm.processor;
 
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -35,6 +36,8 @@ import javax.annotation.processing.SupportedAnnotationTypes;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 
 import jdk.graal.compiler.processor.AbstractProcessor;
@@ -83,8 +86,11 @@ public class AutomaticallyRegisteredImageSingletonProcessor extends AbstractProc
                 out.println("@Platforms({" + platforms + "})");
             }
             out.println("@" + getSimpleName(AutomaticallyRegisteredFeatureProcessor.ANNOTATION_CLASS_NAME));
-            out.println("public final class " + featureClassName + " implements " +
-                            String.join(", ", new String[]{AutomaticallyRegisteredFeatureProcessor.FEATURE_INTERFACE_CLASS_NAME, FEATURE_SINGLETON_NAME, UNSAVED_SINGLETON_NAME}) + " {");
+            List<TypeElement> singletonSuperclasses = getSingletonSuperclasses(annotatedType);
+            String supertypes = singletonSuperclasses.isEmpty()
+                            ? " implements " + String.join(", ", new String[]{AutomaticallyRegisteredFeatureProcessor.FEATURE_INTERFACE_CLASS_NAME, FEATURE_SINGLETON_NAME, UNSAVED_SINGLETON_NAME})
+                            : " extends " + getPackage(singletonSuperclasses.get(0)).getQualifiedName().toString() + "." + getTypeNameWithEnclosingClasses(singletonSuperclasses.get(0), "Feature");
+            out.println("public class " + featureClassName + supertypes + " {");
             out.println("    @Override");
             out.println("    public void afterRegistration(AfterRegistrationAccess access) {");
 
@@ -92,12 +98,20 @@ public class AutomaticallyRegisteredImageSingletonProcessor extends AbstractProc
             if (!onlyWithList.isEmpty()) {
                 for (var onlyWith : onlyWithList) {
                     out.println("        if (!new " + onlyWith + "().getAsBoolean()) {");
+                    if (!singletonSuperclasses.isEmpty()) {
+                        out.println("            super.afterRegistration(access);");
+                    }
                     out.println("            return;");
                     out.println("        }");
                 }
             }
 
             List<TypeMirror> keysFromAnnotation = getAnnotationValueList(singletonAnnotation, "value", TypeMirror.class);
+            for (var superclass : singletonSuperclasses) {
+                AnnotationMirror superclassAnnotation = getAnnotation(superclass, getType(ANNOTATION_CLASS_NAME));
+                keysFromAnnotation.addAll(getAnnotationValueList(superclassAnnotation, "value", TypeMirror.class));
+            }
+
             if (keysFromAnnotation.isEmpty()) {
                 String keyname = "" + annotatedType + ".class";
                 out.println("        if (ImageSingletons.lookup(" + LAYERED_SINGLETON_INFO + ".class).handledDuringLoading(" + keyname + ")){");
@@ -128,6 +142,29 @@ public class AutomaticallyRegisteredImageSingletonProcessor extends AbstractProc
             out.println("    }");
             out.println("}");
         }
+    }
+
+    /**
+     * Get the inheritance chain from {@code annotatedType} up to (excluding) the first
+     * non-{@code @AutomaticallyRegisteredImageSingleton} type.
+     *
+     * @return a list ordered from the most specific to the least specific, empty if not even the
+     *         direct superclass is annotated
+     */
+    private List<TypeElement> getSingletonSuperclasses(TypeElement annotatedType) {
+        List<TypeElement> list = new ArrayList<>();
+        for (TypeElement curr = annotatedType;;) {
+            TypeMirror next = curr.getSuperclass();
+            if (next.getKind() != TypeKind.DECLARED) {
+                break;
+            }
+            curr = (TypeElement) ((DeclaredType) next).asElement();
+            if (getAnnotation(curr, getType(ANNOTATION_CLASS_NAME)) == null) {
+                break;
+            }
+            list.add(curr);
+        }
+        return list;
     }
 
     /**

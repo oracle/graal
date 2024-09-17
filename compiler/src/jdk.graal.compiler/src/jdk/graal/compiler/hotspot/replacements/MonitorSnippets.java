@@ -37,16 +37,22 @@ import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.JA
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_LOCK_STACK_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_LOCK_STACK_TOP_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_OM_CACHE_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_ACCESS_FLAGS_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_MISC_FLAGS_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.MARK_WORD_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.OBJECT_MONITOR_CXQ_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.OBJECT_MONITOR_ENTRY_LIST_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.OBJECT_MONITOR_OWNER_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.OBJECT_MONITOR_RECURSION_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.OBJECT_MONITOR_SUCC_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.diagnoseSyncOnValueBasedClasses;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.isCAssertEnabled;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.javaThreadLockStackEndOffset;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.javaThreadLockStackTopOffset;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.javaThreadOomCacheOffset;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.jvmAccIsValueBasedClass;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.klassAccessFlagsOffset;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.klassMiscFlagsOffset;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.loadWordFromObject;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.lockMaskInPlace;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.lockMetadataOffset;
@@ -61,6 +67,7 @@ import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.om
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.omCacheOopToOopDifference;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.pageSize;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.registerAsWord;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.shouldUseKlassMiscFlags;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.unlockedValue;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.useLightweightLocking;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.useObjectMonitorTable;
@@ -179,8 +186,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * appropriately to comply with the layouts above.
  */
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/96911537557dd95cd11598cd9a9f4e64e05e6aac/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L175-L578",
-          sha1 = "91e78d5d7123accf17637fbfd2f0b46a2763807a")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/0cfd08f55aa166dc3f027887c886fa0b40a2ca21/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L175-L577",
+          sha1 = "581920c0efef6a8b8fd0541be9145532ef88cecd")
 // @formatter:on
 public class MonitorSnippets implements Snippets {
 
@@ -209,9 +216,10 @@ public class MonitorSnippets implements Snippets {
 
         incCounter();
 
-        if (HotSpotReplacementsUtil.diagnoseSyncOnValueBasedClasses(INJECTED_VMCONFIG)) {
-            if (hub.readWord(HotSpotReplacementsUtil.klassAccessFlagsOffset(INJECTED_VMCONFIG), HotSpotReplacementsUtil.KLASS_ACCESS_FLAGS_LOCATION).and(
-                            HotSpotReplacementsUtil.jvmAccIsValueBasedClass(INJECTED_VMCONFIG)).notEqual(0)) {
+        if (diagnoseSyncOnValueBasedClasses(INJECTED_VMCONFIG)) {
+            int flags = shouldUseKlassMiscFlags() ? hub.readInt(klassMiscFlagsOffset(INJECTED_VMCONFIG), KLASS_MISC_FLAGS_LOCATION)
+                            : hub.readInt(klassAccessFlagsOffset(INJECTED_VMCONFIG), KLASS_ACCESS_FLAGS_LOCATION);
+            if (probability(SLOW_PATH_PROBABILITY, (flags & jvmAccIsValueBasedClass(INJECTED_VMCONFIG)) != 0)) {
                 monitorenterStubC(MONITORENTER, object, lock);
                 return;
             }
@@ -376,8 +384,8 @@ public class MonitorSnippets implements Snippets {
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/bd4160cea8b6b0fcf0507199ed76a12f5d0aaba9/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L580-L739",
-              sha1 = "ec1ab37868e6a441b9afc988a8bf45f630863e9f")
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/0cfd08f55aa166dc3f027887c886fa0b40a2ca21/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L579-L737",
+              sha1 = "393458a9c3b055b97fd247e424fe5b7a63840489")
     // @formatter:on
     @SuppressWarnings("unused")
     private static boolean tryLightweightLocking(Object object, Word lock, Word mark, Word thread, boolean trace, Counters counters, Register stackPointerRegister) {
@@ -504,7 +512,7 @@ public class MonitorSnippets implements Snippets {
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/bd4160cea8b6b0fcf0507199ed76a12f5d0aaba9/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L741-L890",
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/96a0502d624e3eff1b00a7c63e8b3a27870b475e/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L739-L888",
               sha1 = "1c68e25285d8a4de454c2d075ae6bac4e2e3e3d5")
     // @formatter:on
     private static boolean tryLightweightUnlocking(Object object, Word thread, Word lock, boolean trace, Counters counters) {

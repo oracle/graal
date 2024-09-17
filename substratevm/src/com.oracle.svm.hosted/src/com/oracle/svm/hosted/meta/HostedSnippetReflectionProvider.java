@@ -36,7 +36,6 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.word.WordTypes;
-import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -80,8 +79,8 @@ public class HostedSnippetReflectionProvider implements SnippetReflectionProvide
                 return null;
             }
         }
-
-        if (type == Class.class && constant instanceof HotSpotObjectConstant) {
+        VMError.guarantee(!(constant instanceof ImageHeapConstant));
+        if (type == Class.class && constant.getJavaKind().isObject()) {
             /* Only unwrap the DynamicHub if a Class object is required explicitly. */
             if (heapScanner.getHostedValuesProvider().asObject(Object.class, constant) instanceof DynamicHub hub) {
                 return type.cast(hub.getHostedJavaClass());

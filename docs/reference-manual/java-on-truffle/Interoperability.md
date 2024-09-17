@@ -2,30 +2,30 @@
 layout: docs
 toc_group: espresso
 link_title: Interoperability with Truffle Languages
-permalink: /reference-manual/java-on-truffle/interoperability/
+permalink: /reference-manual/espresso/interoperability/
+redirect_from: /reference-manual/java-on-truffle/interoperability/
 ---
 
 # Interoperability with Truffle Languages
 
-Java on Truffle allows you to interface other "Truffle" languages (languages which interpreters are implemented with the [Truffle framework](../../../truffle/docs/README.md)) to create polyglot programs&mdash;programs written in more than one language.
+Espresso enables you to interface other "Truffle" languages (languages which interpreters are implemented with the [Truffle framework](../../../truffle/docs/README.md)) to create polyglot programs&mdash;programs written in more than one language.
 
-This guide describes how to load code written in foreign languages, how to export and import objects between languages, how to use Java on Truffle objects from a foreign language, how to use foreign objects from Java on Truffle, and how to embed in host Java.
+This guide describes how to load code written in other languages, how to export and import objects between languages, how to use Espresso objects from a foreign language, how to use foreign objects from Espresso, and how to embed in a Java application.
 
-To avoid confusion, the terms *host* and *guest* are used to differentiate the different layers where Java is executed. Java on Truffle refers to the guest layer.
+To avoid confusion, the terms *host* and *guest* are used to differentiate the different layers where Java is executed. Espresso refers to the guest layer.
 
 You pass polyglot options to the `java -truffle` launcher.
 If you are using the native configuration, you will need to use the `--polyglot` flag to get access to other languages.
 
-Foreign objects must "inhabit" a guest Java type when flowing into Java on Truffle.
+Foreign objects must "inhabit" a guest Java type when flowing into Espresso.
 How this type is attached to foreign objects is an implementation detail.
 
 ## Polyglot
 
-Java on Truffle provides a guest Java Polyglot API, described in `polyglot.jar`.
-This JAR file is automatically injected on guest Java contexts but can be excluded with `--java.Polyglot=false`.
+Espresso provides a guest Java Polyglot API, described in `polyglot.jar`.
+This JAR file is automatically injected in a guest Java context, but can be excluded with `--java.Polyglot=false`.
 
 You can import the `Polyglot` class to interact with other guest languages:
-
 ```java
 // guest java
 import com.oracle.truffle.espresso.polyglot.Polyglot;
@@ -86,18 +86,18 @@ You can access the polyglot bindings:
 // guest java
 Object foreignObject = Polyglot.importObject("foreign_object");
 
-// Also typed imports
+// typed imports
 String userName = Polyglot.importObject("user_name", String.class);
 int year = Polyglot.importObject("year", int.class);
 
-// And exports
+// exports
 Polyglot.exportObject("data", new double[]{56.77, 59.23, 55.67, 57.50, 64.44, 61.37);
 Polyglot.exportObject("message", "Hello, Espresso!");
 ```
 
 ## Interop Protocol
 
-Java on Truffle provides an explicit guest API to access the [Interop protocol](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/InteropLibrary.html).
+Espresso provides an explicit guest API to access the [Interop protocol](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/InteropLibrary.html).
 It contains methods mimicking the interop protocol messages.
 This API can be used on guest Java objects as well.
 
@@ -116,7 +116,7 @@ System.out.println(Interop.asInt(elem0));     // prints 2
 
 ## Embedding in Host Java
 
-Java on Truffle is embedded via the [Polyglot API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/package-summary.html), which is part of GraalVM.
+Espresso is embedded via the [Polyglot API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/package-summary.html), which is part of GraalVM.
 
 ```java
 // host java
@@ -152,10 +152,10 @@ A number of useful context option can be set with `contextBuilder.option(key, va
 * `java.PolyglotTypeConverters` can be set to declare a type conversion function that maps a meta qualified name to a type converter class. Please refer to more details in a dedicated section below.
 * `java.PolyglotInterfaceMappings` can be set to a semicolon-separated list of 1:1 interface type mappings to automatically construct guest proxies for host objects that implement declared interfaces in the list. Please refer to more details in a dedicated section below.
 
-***Java on Truffle does not support evaluation (`.eval`) of Java sources.**
+***Espresso does not support evaluation (`.eval`) of Java sources.**
 
-In Java, methods can be overloaded, e.g., several methods can share the same name, with different signatures.
-To remove ambiguity, Java on Truffle allows to specify the [method descriptor](https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-MethodDescriptor) in the `methodName/methodDescriptor` form:
+In Java, methods can be overloaded, for example, several methods can share the same name, with different signatures.
+To remove ambiguity, Espresso allows to specify the [method descriptor](https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-MethodDescriptor) in the `methodName/methodDescriptor` form:
 
 ```java
 // host java
@@ -185,12 +185,12 @@ assert java_lang_Integer.equals(integer_class.getMember("static"));
 assert java_lang_Number.equals(java_lang_Integer.getMember("super"));
 ```
 
-### Converting host objects to guest types using type converters
+### Converting Host Objects to Guest Types Using Type Converters
 
-Since version 22.3.0 Java on Truffle has built-in support for declaring type conversion of host objects to proper guest-typed objects. This is done via context builder options as described above. The main idea is to allow transparent flow of objects from host to guest without having to perform guest type checks when host objects enter an embedded Java on Truffle context. Specifically the following options can be set to control type conversion for an embedded context:
+Espresso has built-in support for declaring type conversion of host objects to proper guest-typed objects. This is done via context builder options as described above. The main idea is to allow transparent flow of objects from a host to a guest without having to perform guest type checks when host objects enter an embedded Espresso context. Specifically the following options can be set to control type conversion for an embedded context:
 
 #### java.PolyglotTypeConverters
-This option takes precedence over `java.PolyglotInterfaceMappings` and thus, if a dedicated type converter function is defined, no other automatic interface mapping proxies are generated by Java on Truffle. 
+This option takes precedence over `java.PolyglotInterfaceMappings` and thus, if a dedicated type converter function is defined, no other automatic interface mapping proxies are generated Espresso.
 
 *Note: Declared type converters must implement the `GuestTypeConversion` interface located in the `com.oracle.truffle.espresso.polyglot` package in `polyglor.jar`.*
 ```java
@@ -202,7 +202,6 @@ public interface GuestTypeConversion<T> {
 ```
 
 For each type converter declared use one option call like this:
-
 ```java
 // host java
 Context polyglot = Context.newBuilder().allowAllAccess(true).
@@ -233,13 +232,13 @@ public class BigDecimalConverter implements GuestTypeConversion<BigDecimal> {
 }
 
 ```
-The `java.math.Bigdecimal` part of the option declares the fully qualified meta name of a host object entering Java on Truffle.
+The `java.math.Bigdecimal` part of the option declares the fully qualified meta name of a host object entering Espresso.
 
 #### java.PolyglotInterfaceMappings
 
-If there are no dedicated `java.PolyglotTypeConverters` for a host object flowing into an embedded Java on Truffle context, automatic interface type mapping kicks in. `java.PolyglotInterfaceMappings` enables seamless interface type sharing between the host and the embedded context. 
+If there are no dedicated `java.PolyglotTypeConverters` for a host object flowing into an embedded Espresso context, automatic interface type mapping kicks in. `java.PolyglotInterfaceMappings` enables seamless interface type sharing between the host and the embedded context. 
 
-The following example shows how this option can be used to allow passing common JDK collection types by interface to an embedded Java on Truffle context:
+The following example shows how this option can be used to allow passing common JDK collection types by interface to an embedded Espresso context:
 
 ```java
 // host java
@@ -260,18 +259,17 @@ private static String getInterfaceMappings(){
 
 ## Multithreading
 
-Java on Truffle is designed to be a multithreaded language and much of the ecosystem expects threads to be available.
+Espresso is designed to be a multithreaded language and much of the ecosystem expects threads to be available.
 This may be incompatible with other Truffle languages which do not support threading, so you can disable the creation of multiple threads with the option `--java.MultiThreaded=false`.
 
 When this option is enabled, finalizers will not run, neither the `ReferenceQueue` notification mechanism.
 Both these features would require starting new threads. Note that the garbage-collection of weakly reachable objects remains unaffected.
 
 Instead, reference processing can be manually triggered through a special command, only available in single-threaded environments.
-
 ```java
 // Host Java
 // Will trigger Reference processing and run finalizers
 polyglot.eval("java", "<ProcessReferences>");
 ```
 
-Note that this command might trigger arbitrary cleaner and finalizer code. As such, this should ideally be run with as few guest java frames on the stack as possible. 
+Note that this command might trigger arbitrary cleaner and finalizer code. As such, this should ideally be run with as few guest java frames on the stack as possible.

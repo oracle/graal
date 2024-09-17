@@ -111,10 +111,6 @@ public abstract class ReplacingLocatableMultiOptionValue<T> extends LocatableMul
         public static DelimitedString buildWithCommaDelimiter(String... defaultStrings) {
             return new DelimitedString(",", List.of(defaultStrings));
         }
-
-        public static DelimitedString buildWithDefaults(String... defaultStrings) {
-            return new DelimitedString(NO_DELIMITER, List.of(defaultStrings));
-        }
     }
 
 }

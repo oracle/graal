@@ -499,17 +499,39 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
     }
 
     @Test
-    public void testHostOOMResourceLimit() {
-        try (Context c = Context.newBuilder().allowHostAccess(HostAccess.ALL).build()) {
-            Value v = c.asValue(new ThrowOOM());
-            assertFails(() -> v.execute(), PolyglotException.class, (e) -> {
-                assertTrue(e.isResourceExhausted());
-                assertFalse(e.isInternalError());
-                assertFalse(e.isGuestException());
-                assertTrue(e.isHostException());
-                assertFalse(e.isCancelled());
-                // no guarantees for stack frames.
-            });
+    public void testHostOOMResourceLimit() throws IOException, InterruptedException {
+        Runnable test = () -> {
+            try (Context c = Context.newBuilder().allowHostAccess(HostAccess.ALL).build()) {
+                Value v = c.asValue(new ThrowOOM());
+                assertFails(() -> v.execute(), PolyglotException.class, (e) -> {
+                    assertTrue(e.isResourceExhausted());
+                    assertFalse(e.isInternalError());
+                    assertFalse(e.isGuestException());
+                    assertTrue(e.isHostException());
+                    assertFalse(e.isCancelled());
+                    // no guarantees for stack frames.
+                });
+            }
+        };
+        if (ImageInfo.inImageCode()) {
+            test.run();
+        } else {
+            List<String> vmOptions = new ArrayList<>();
+            /*
+             * Limits the maximum heap size to prevent hotspot crashes when the operating system is
+             * unable to commit the reserved memory. This can happen when the physical memory is
+             * unable to hold a large heap and the swap space is not configured or is too small.
+             */
+            vmOptions.add("-Xmx1G");
+            /*
+             * The optimized HotSpot runtime is initialized lazily. We have to use synchronous
+             * compilation to prevent OOM in the compiler thread.
+             */
+            if (TruffleTestAssumptions.isOptimizingRuntime()) {
+                vmOptions.add("-Dpolyglot.engine.CompileImmediately=true");
+                vmOptions.add("-Dpolyglot.engine.BackgroundCompilation=false");
+            }
+            SubprocessTestUtils.newBuilder(PolyglotExceptionTest.class, test).prefixVmOption(vmOptions.toArray(new String[0])).postfixVmOption("-Djdk.graal.CompilationFailureAction=Print").run();
         }
     }
 

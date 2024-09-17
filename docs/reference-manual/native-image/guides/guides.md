@@ -39,7 +39,7 @@ Here you will learn how to:
 
 ## Microservices Frameworks
 
-- <a href="https://docs.spring.io/spring-boot/docs/3.0.0/reference/htmlsingle/#native-image.developing-your-first-application" target="_blank">Build a Native Executable from a Spring Boot 3 Application</a>
+- [Build a Native Executable from a Spring Boot 3 Application](build-spring-boot-application-aot.md)
 - <a href="https://guides.micronaut.io/latest/micronaut-creating-first-graal-app.html" target="_blank">Build a Native Executable from a Micronaut Application</a>
 - <a href="https://quarkus.io/guides/building-native-image" target="_blank">Build a Native Executable from a Quarkus Application</a>
 - <a href="https://helidon.io/docs/v3/#/mp/guides/graalnative" target="_blank">Build a Native Executable from a Helidon MP Application</a>

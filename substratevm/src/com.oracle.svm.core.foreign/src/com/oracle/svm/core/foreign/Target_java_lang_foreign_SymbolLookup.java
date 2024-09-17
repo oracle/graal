@@ -142,7 +142,7 @@ final class Util_java_lang_foreign_SymbolLookup {
         if (JavaVersionUtil.JAVA_SPEC <= 21) {
             module.ensureNativeAccess(owner, methodName);
         } else {
-            module.ensureNativeAccess(owner, methodName, currentClass);
+            module.ensureNativeAccess(owner, methodName, currentClass, false);
         }
 
     }

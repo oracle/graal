@@ -297,8 +297,8 @@ public class LocalizationFeature implements InternalFeature {
         parentLocalesMapField = access.findField(CLDRLocaleProviderAdapter.class, "parentLocalesMap");
 
         if (JavaVersionUtil.JAVA_SPEC >= 23) {
-            baseLocaleCacheField = access.findField("sun.util.locale.BaseLocale", "CACHE");
-            localeCacheField = access.findField("java.util.Locale", "LOCALE_CACHE");
+            baseLocaleCacheField = access.findField("sun.util.locale.BaseLocale$1InterningCache", "CACHE");
+            localeCacheField = access.findField("java.util.Locale$LocaleCache", "LOCALE_CACHE");
             localeObjectCacheMapField = null;
         } else {
             baseLocaleCacheField = access.findField("sun.util.locale.BaseLocale$Cache", "CACHE");

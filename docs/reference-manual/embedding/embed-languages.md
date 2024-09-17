@@ -681,7 +681,7 @@ To summarize, the code cache can be controlled by keeping and maintaining strong
 
 On Oracle GraalVM, a polyglot engine can be configured to run in a dedicated Native Image isolate.
 A polyglot engine in this mode executes within a VM-level fault domain with a dedicated garbage collector and JIT compiler.
-Polyglot isolates are useful for [polyglot sandboxing](../../security/polyglot-sandbox.md).
+Polyglot isolates are useful for [sandboxing](../../security/polyglot-sandbox.md).
 Running languages in an isolate works with HotSpot and Native Image host virtual machines.
 
 Languages used as polyglot isolates can be downloaded from Maven Central using the `-isolate` suffix.
