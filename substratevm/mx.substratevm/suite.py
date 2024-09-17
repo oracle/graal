@@ -291,6 +291,7 @@ suite = {
                     "sun.security.util",
                     "sun.text.spi",
                     "sun.util",
+                    "sun.util.locale",
                     "sun.util.calendar",
                     "sun.util.locale.provider",
                     "sun.util.resources",

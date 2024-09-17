@@ -51,7 +51,7 @@ public class ProcessPropertiesTest {
     public void testSetLocale() {
         /* Get the default locale. */
         String before = ProcessProperties.setLocale("LC_ALL", null);
-        Assert.assertTrue("Default locale is wrong.", before.equals("C") || before.equals("POSIX"));
+        Assert.assertFalse("Default locale is empty.", before.isEmpty());
 
         /* Set locale to a new value. */
         ProcessProperties.setLocale("LC_ALL", "en_US.UTF-8");

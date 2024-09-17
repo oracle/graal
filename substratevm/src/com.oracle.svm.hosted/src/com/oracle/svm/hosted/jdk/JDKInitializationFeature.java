@@ -187,6 +187,7 @@ public class JDKInitializationFeature implements InternalFeature {
         rci.initializeAtRunTime("java.lang.StrictMath$RandomNumberGeneratorHolder", "Contains random seeds");
 
         rci.initializeAtRunTime("jdk.internal.misc.InnocuousThread", "Contains a thread group INNOCUOUSTHREADGROUP.");
+        rci.initializeAtRunTime("jdk.internal.util.StaticProperty", "Contains run time specific values.");
 
         rci.initializeAtRunTime("sun.nio.ch.Poller", "Contains an InnocuousThread.");
         rci.initializeAtRunTime("jdk.internal.jimage", "Pulls in direct byte buffers");
