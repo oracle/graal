@@ -123,8 +123,8 @@ public final class HotSpotCompressionNode extends CompressionNode {
      * Returns true only if {@code value} is compressible and the original preservesOrder holds.
      */
     @Override
-    public boolean preservesOrder(CanonicalCondition op, Constant value, ConstantReflectionProvider constantReflection) {
-        return isCompressible(value) && super.preservesOrder(op, value, constantReflection);
+    public boolean preservesOrder(CanonicalCondition condition, Constant constant, ConstantReflectionProvider constantReflection) {
+        return isCompressible(constant) && super.preservesOrder(condition, constant, constantReflection);
     }
 
 }
