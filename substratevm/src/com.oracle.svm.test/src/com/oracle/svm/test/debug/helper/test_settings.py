@@ -26,6 +26,7 @@
 import os
 import sys
 import unittest
+
 import gdb
 
 # add test directory to path to allow import of gdb_helper.py
@@ -278,4 +279,6 @@ class TestParameters(unittest.TestCase):
 
 
 # redirect unittest output to terminal
-unittest.main(testRunner=unittest.TextTestRunner(stream=sys.__stdout__))
+result = unittest.main(testRunner=unittest.TextTestRunner(stream=sys.__stdout__), exit=False)
+# close gdb
+gdb_quit(0 if result.result.wasSuccessful() else 1)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -33,16 +33,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Stream;
 
-import com.oracle.objectfile.elf.dwarf.constants.DwarfAccess;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfEncoding;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfExpressionOpcode;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfFlag;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfInline;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfLanguage;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfVersion;
 import org.graalvm.collections.EconomicSet;
-import jdk.graal.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.debugentry.ArrayTypeEntry;
 import com.oracle.objectfile.debugentry.ClassEntry;
@@ -62,7 +53,16 @@ import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugPrimitiveTypeInfo;
 import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.AbbrevCode;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfAccess;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfEncoding;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfExpressionOpcode;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfFlag;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfInline;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfLanguage;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfVersion;
 
+import jdk.graal.compiler.debug.DebugContext;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.PrimitiveConstant;
@@ -513,11 +513,11 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x]     definition(true)", pos);
         pos = writeFlag(DwarfFlag.DW_FLAG_true, buffer, pos);
         /*
-         * We need to force encoding of this location as a heap base relative relocatable address
-         * rather than an offset from the heapbase register.
+         * Encode this location as a relative relocatable address or an offset from the heapbase
+         * register.
          */
         log(context, "  [0x%08x]     location  heapbase + 0x%x (class constant)", pos, offset);
-        pos = writeHeapLocationExprLoc(offset, false, buffer, pos);
+        pos = writeHeapLocationExprLoc(offset, buffer, pos);
         return pos;
     }
 
