@@ -289,7 +289,9 @@ b.endBlock();
 All local accesses must be (directly or indirectly) nested within the operation that created the local.
 
 `LoadLocal` and `StoreLocal` are the preferred way to access locals because they are efficient and can be quickened to [avoid boxing](Optimization.md#boxing-elimination).
-You can also access locals using [`LocalSetter`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/LocalSetter.java), [`LocalSetterRange`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/LocalSetterRange.java), or various helper methods on the [`BytecodeNode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeNode.java).
+You can also access locals using [`LocalSetter`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/LocalSetter.java), [`LocalSetterRange`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/LocalSetterRange.java), or the various helper methods on the [`BytecodeNode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeNode.java).
+
+Local reads/writes should always use these abstractions; **you should not directly read from or write to the frame**.
 
 It is undefined behaviour to load a local before a value is stored into it.
 
@@ -339,16 +341,23 @@ The `IfThen`, `IfThenElse`, `Conditional`, and `While` operations can be used fo
 Their behaviour is as you would expect.
 `Conditional` produces a value; the rest do not.
 
-For example, the code below declares an `IfThenElse` operation that executes different code depending on the value of the first argument:
+For example, the following if-then block:
+```python
+if arg0:
+  return 42
+else:
+  return 123
+```
+can be implemented using an `IfThenElse` operation:
 ```java
 b.beginIfThenElse();
   b.emitLoadArgument(0); // first child: condition
-  b.beginBlock(); // second child: positive branch
-    ...
-  b.endBlock();
-  b.beginBlock(); // third child: negative branch
-    ...
-  b.endBlock();
+  b.beginReturn(); // second child: positive branch
+    b.emitLoadConstant(42);
+  b.endReturn();
+  b.beginReturn(); // third child: negative branch
+    b.emitLoadConstant(123);
+  b.endReturn();
 b.endIfThenElse();
 ```
 
@@ -383,14 +392,85 @@ Unstructured control flow is useful for implementing loop breaks, continues, and
 
 Bytecode DSL interpreters have three built-in exception handler operations.
 
-- `TryCatch` executes a `try` operation (its first child), and if a Truffle exception is thrown, executes a `catch` operation (its second child).
+The first, `TryCatch`, executes a `try` operation (its first child), and if a Truffle exception is thrown, executes a `catch` operation (its second child).
 
-- `TryFinally` executes a `try` operation (its first child), and ensures a `finally` operation (specified by a `Runnable` parser) is always executed, even if a Truffle exception is thrown. If an exception was thrown, it rethrows the exception afterward.
+For example, the following try-catch block:
+```python
+try:
+  A
+catch:
+  B
+```
+can be implemented using a `TryCatch` operation:
+```java
+b.beginTryCatch();
+  b.emitA(); // first child (try block)
+  b.emitB(); // second child (catch block)
+b.endTryCatch();
+```
 
-- `TryFinallyCatch` is a variant of `TryFinally` that executes a separate `catch` operation (its second child) *instead of* the `finally` operation when a Truffle exception is thrown from `try`. (Note that unlike a Java try-catch-finally construct, the `finally` operation does *not* execute if the `catch` block executes.)
+The other two handlers are `TryFinally` and `TryFinallyCatch`.
 
-The bytecode for `finally` operations is emitted multiple times (once for each exit point of `try`, including at early returns), so it is specified using a `Runnable` parser that can be repeatedly invoked. This parser must be idempotent.
+`TryFinally` executes a `try` operation (its first child), and ensures a `finally` operation is always executed, even if a Truffle exception is thrown. If an exception was thrown, it rethrows the exception afterward.
+The bytecode for `finally` is emitted multiple times (once for each exit point of `try`, including at early returns), so it is specified using a `Runnable` parser that can be repeatedly invoked. This parser must be idempotent.
 
+For example, the following try-finally block:
+```python
+try:
+  A
+finally:
+  B
+```
+can be implemented using a `TryFinally` operation:
+```java
+b.beginTryFinally(() -> b.emitB() /* finally block */);
+  b.emitA(); // first child (try block)
+b.endTryCatch();
+```
+
+As another example, the following try-catch-finally block:
+```python
+try:
+  A
+catch:
+  B
+finally:
+  C
+```
+can be implemented with a combination of `TryFinally` and `TryCatch` operations:
+```java
+b.beginTryFinally(() -> b.emitC() /* finally block */);
+  b.beginTryCatch(); // first child of TryFinally (try block)
+    b.emitA(); // first child of TryCatch (try block)
+    b.emitB(); // second child of TryCatch (catch block)
+  b.endTryCatch();
+b.endTryCatch();
+```
+
+
+`TryFinallyCatch` is a variant of `TryFinally` that executes a separate `catch` operation (its second child) *instead of* the `finally` operation when a Truffle exception is thrown from `try`.
+
+Note that `TryFinallyCatch` has different semantics from a Java try-catch-finally block.
+Whereas a try-catch-finally always executes the `finally` operation even if the `catch` block executes, the `TryFinallyCatch` operation executes *either* its `finally` or `catch` operation (not both).
+It is typically useful to implement try-finally semantics with different behaviour for exceptional exits.
+
+For example, the following try-finally block:
+```python
+try:
+  A
+finally:
+  if exception was thrown:
+    B
+  else:
+    C
+```
+can be implemented with a `TryFinallyCatch` operation:
+```java
+b.beginTryFinallyCatch(() -> b.emitC() /* finally block */);
+    b.emitA(); // first child (try block)
+    b.emitB(); // second child (catch block)
+b.endTryCatch();
+```
 
 The `LoadException` operation can be used within the `catch` operation of a `TryCatch` or `TryFinallyCatch` to read the current exception.
 
