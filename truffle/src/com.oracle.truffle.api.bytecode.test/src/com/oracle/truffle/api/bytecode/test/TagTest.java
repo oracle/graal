@@ -1697,13 +1697,13 @@ public class TagTest extends AbstractInstructionTest {
     }
 
     @Test
-    public void testFinallyTry() {
+    public void testTryFinally() {
         TagInstrumentationTestRootNode node = parse((b) -> {
             b.beginRoot();
             var l = b.createLabel();
 
             b.beginTag(StatementTag.class);
-            b.beginFinallyTry(() -> {
+            b.beginTryFinally(() -> {
                 b.beginTag(StatementTag.class);
                 b.emitBranch(l);
                 b.endTag(StatementTag.class);
@@ -1718,7 +1718,7 @@ public class TagTest extends AbstractInstructionTest {
             b.endReturn();
             b.endTag(ExpressionTag.class);
 
-            b.endFinallyTry();
+            b.endTryFinally();
             b.endTag(StatementTag.class);
 
             b.emitLabel(l);
@@ -1875,12 +1875,12 @@ public class TagTest extends AbstractInstructionTest {
     }
 
     @Test
-    public void testFinallyTryYieldInTry() {
+    public void testTryFinallyYieldInTry() {
         TagInstrumentationTestRootNode node = parse((b) -> {
             b.beginRoot();
 
             b.beginTag(StatementTag.class);
-            b.beginFinallyTry(() -> {
+            b.beginTryFinally(() -> {
                 b.beginTag(StatementTag.class);
                 b.emitLoadConstant(123L);
                 b.endTag(StatementTag.class);
@@ -1897,7 +1897,7 @@ public class TagTest extends AbstractInstructionTest {
             b.endReturn();
             b.endTag(ExpressionTag.class);
 
-            b.endFinallyTry();
+            b.endTryFinally();
             b.endTag(StatementTag.class);
 
             b.endRoot();
@@ -1979,12 +1979,12 @@ public class TagTest extends AbstractInstructionTest {
     }
 
     @Test
-    public void testFinallyTryYieldInFinally() {
+    public void testTryFinallyYieldInFinally() {
         TagInstrumentationTestRootNode node = parse((b) -> {
             b.beginRoot();
 
             b.beginTag(StatementTag.class);
-            b.beginFinallyTry(() -> {
+            b.beginTryFinally(() -> {
                 b.beginTag(StatementTag.class);
                 b.beginYield();
                 b.emitLoadConstant(123L);
@@ -2001,7 +2001,7 @@ public class TagTest extends AbstractInstructionTest {
             b.endReturn();
             b.endTag(ExpressionTag.class);
 
-            b.endFinallyTry();
+            b.endTryFinally();
             b.endTag(StatementTag.class);
 
             b.endRoot();
@@ -2461,7 +2461,7 @@ public class TagTest extends AbstractInstructionTest {
      * constant pool layout do not change between parses.
      */
     @Test
-    public void testReachabilityFinallyTry() {
+    public void testReachabilityTryFinally() {
         TagInstrumentationTestRootNode node = parse((b) -> {
             b.beginRoot();
             BytecodeLabel lbl = b.createLabel();
@@ -2470,11 +2470,11 @@ public class TagTest extends AbstractInstructionTest {
             b.emitBranch(lbl);
             b.endTag(ExpressionTag.class);
 
-            b.beginFinallyTry(() -> {
+            b.beginTryFinally(() -> {
                 b.emitLoadConstant(123L);
             });
             b.emitLoadConstant(555L);
-            b.endFinallyTry();
+            b.endTryFinally();
 
             b.emitLabel(lbl);
 
@@ -2493,7 +2493,7 @@ public class TagTest extends AbstractInstructionTest {
     }
 
     @Test
-    public void testReachabilityFinallyTryEarlyExit() {
+    public void testReachabilityTryFinallyEarlyExit() {
         TagInstrumentationTestRootNode node = parse((b) -> {
             b.beginRoot();
             BytecodeLabel lbl = b.createLabel();
@@ -2502,7 +2502,7 @@ public class TagTest extends AbstractInstructionTest {
             b.emitBranch(lbl);
             b.endTag(ExpressionTag.class);
 
-            b.beginFinallyTry(() -> {
+            b.beginTryFinally(() -> {
                 b.emitLoadConstant(1L);
             });
             // early exit: when we emit the finally handler in-line, it should increase the max
@@ -2522,7 +2522,7 @@ public class TagTest extends AbstractInstructionTest {
             b.endAdd();
             b.endAdd();
             b.endAdd();
-            b.endFinallyTry();
+            b.endTryFinally();
 
             b.emitLabel(lbl);
 
@@ -2545,7 +2545,7 @@ public class TagTest extends AbstractInstructionTest {
         TagInstrumentationTestRootNode node = parse((b) -> {
             b.beginRoot();
 
-            b.beginFinallyTry(() -> {
+            b.beginTryFinally(() -> {
                 b.beginYield();
                 b.emitLoadConstant(123L);
                 b.endYield();
@@ -2560,7 +2560,7 @@ public class TagTest extends AbstractInstructionTest {
             b.endReturn();
             b.endTag(ExpressionTag.class);
 
-            b.endFinallyTry();
+            b.endTryFinally();
 
             b.endRoot();
         });

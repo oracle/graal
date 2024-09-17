@@ -60,13 +60,13 @@ public abstract class BasicInterpreterBuilder extends BytecodeBuilder {
 
     public abstract void endTryCatch();
 
-    public abstract void beginFinallyTry(Runnable finallyParser);
+    public abstract void beginTryFinally(Runnable finallyParser);
 
-    public abstract void endFinallyTry();
+    public abstract void endTryFinally();
 
-    public abstract void beginFinallyTryCatch(Runnable finallyParser);
+    public abstract void beginTryFinallyCatch(Runnable finallyParser);
 
-    public abstract void endFinallyTryCatch();
+    public abstract void endTryFinallyCatch();
 
     public abstract void emitLabel(BytecodeLabel label);
 

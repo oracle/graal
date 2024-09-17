@@ -594,8 +594,8 @@ public class GettingStarted {
 
     /*
      * In addition to the condition and looping contructs, Bytecode DSL has other control flow
-     * mechanisms for exception handling ({@code TryCatch}, {@code FinallyTry}, and {@code
-     * FinallyTryCatch}) and continuations ({@code Yield}). We will not cover those here.
+     * mechanisms for exception handling ({@code TryCatch}, {@code TryFinally}, and {@code
+     * TryFinallyCatch}) and continuations ({@code Yield}). We will not cover those here.
      */
 
     /**

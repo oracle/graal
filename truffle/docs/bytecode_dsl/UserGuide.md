@@ -169,8 +169,8 @@ The built-in operations are:
   - `Label`, `Branch` (see [Unstructured control flow](#unstructured-control-flow))
 - Exception handler operations (see [Exception handling](#exception-handling))
   - `TryCatch`
-  - `FinallyTry`
-  - `FinallyTryCatch`
+  - `TryFinally`
+  - `TryFinallyCatch`
   - `LoadException`
 - Source operations (see [Source information](#source-information))
   - `Source`
@@ -385,16 +385,14 @@ Bytecode DSL interpreters have three built-in exception handler operations.
 
 - `TryCatch` executes a `try` operation (its first child), and if a Truffle exception is thrown, executes a `catch` operation (its second child).
 
-- `FinallyTry` executes a `try` operation (its second child), and ensures a `finally` operation (its first child) is always executed, even if a Truffle exception is thrown. If an exception was thrown, it rethrows the exception afterward.
+- `TryFinally` executes a `try` operation (its first child), and ensures a `finally` operation (specified by a `Runnable` parser) is always executed, even if a Truffle exception is thrown. If an exception was thrown, it rethrows the exception afterward.
 
-- `FinallyTryCatch` has the same behaviour as `FinallyTry`, except it has a `catch` operation (its third child) that it executes when a Truffle exception is thrown.
+- `TryFinallyCatch` is a variant of `TryFinally` that executes a separate `catch` operation (its second child) *instead of* the `finally` operation when a Truffle exception is thrown from `try`. (Note that unlike a Java try-catch-finally construct, the `finally` operation does *not* execute if the `catch` block executes.)
 
-The bytecode for `finally` operations may be emitted multiple times (once for each exit point of `try`, including at early returns).
-To support emitting it multiple times, the `finally` operation is defined using a `Runnable` parser that can be repeatedly invoked (it must be idempotent).
-The naming of the `FinallyTry` and `FinallyTryCatch` operations reflects the fact that the finally parser is supplied at the beginning of parsing, _not_ that the `finally` operation executes first.
+The bytecode for `finally` operations is emitted multiple times (once for each exit point of `try`, including at early returns), so it is specified using a `Runnable` parser that can be repeatedly invoked. This parser must be idempotent.
 
 
-The `LoadException` operation can be used within the `catch` operation of a `TryCatch` or `FinallyTryCatch` to read the current exception.
+The `LoadException` operation can be used within the `catch` operation of a `TryCatch` or `TryFinallyCatch` to read the current exception.
 
 ### Intercepting exceptions
 

@@ -124,7 +124,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
     }
 
     @Test
-    public void testUnreachableFinallyTry1() {
+    public void testUnreachableTryFinally1() {
         // @formatter:off
         // try {
         //   throw();
@@ -137,7 +137,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
             b.beginRoot();
 
-            b.beginFinallyTry(() -> {
+            b.beginTryFinally(() -> {
                 b.beginBlock();
                 b.beginReturn();
                 b.emitLoadConstant(42);
@@ -146,7 +146,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
                 b.endBlock();
             });
             b.emitThrow();
-            b.endFinallyTry();
+            b.endTryFinally();
 
             emitUnreachableCode(b);
 
@@ -165,7 +165,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
     }
 
     @Test
-    public void testUnreachableFinallyTry2() {
+    public void testUnreachableTryFinally2() {
         // @formatter:off
         // try {
         //   try {
@@ -182,8 +182,8 @@ public class DeadCodeTest extends AbstractInstructionTest {
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
             b.beginRoot();
 
-            b.beginFinallyTry(() -> b.emitLoadArgument(0));
-            b.beginFinallyTry(() -> {
+            b.beginTryFinally(() -> b.emitLoadArgument(0));
+            b.beginTryFinally(() -> {
                 b.beginBlock();
                 b.beginReturn();
                 b.emitLoadConstant(42);
@@ -192,8 +192,8 @@ public class DeadCodeTest extends AbstractInstructionTest {
                 b.endBlock();
             });
             b.emitThrow();
-            b.endFinallyTry();
-            b.endFinallyTry();
+            b.endTryFinally();
+            b.endTryFinally();
 
             emitUnreachableCode(b);
 
@@ -220,7 +220,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
     }
 
     @Test
-    public void testUnreachableFinallyTryCatch1() {
+    public void testUnreachableTryFinallyCatch1() {
         // @formatter:off
         // try {
         //   throw();
@@ -236,7 +236,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
             b.beginRoot();
 
-            b.beginFinallyTryCatch(() -> {
+            b.beginTryFinallyCatch(() -> {
                 b.beginBlock(); // finally
                 b.beginReturn();
                 b.emitLoadConstant(42);
@@ -254,7 +254,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
             emitUnreachableCode(b);
             b.endBlock();
 
-            b.endFinallyTryCatch();
+            b.endTryFinallyCatch();
 
             emitUnreachableCode(b);
 
@@ -273,7 +273,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
     }
 
     @Test
-    public void testUnreachableFinallyTryCatch2() {
+    public void testUnreachableTryFinallyCatch2() {
         // @formatter:off
         // return 42;
         // try {
@@ -294,7 +294,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
             b.emitLoadConstant(42);
             b.endReturn();
 
-            b.beginFinallyTryCatch(() -> {
+            b.beginTryFinallyCatch(() -> {
                 b.beginBlock(); // finally
                 b.beginReturn();
                 b.emitLoadConstant(41);
@@ -312,7 +312,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
             emitUnreachableCode(b);
             b.endBlock();
 
-            b.endFinallyTryCatch();
+            b.endTryFinallyCatch();
 
             emitUnreachableCode(b);
 
@@ -327,7 +327,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
     }
 
     @Test
-    public void testReachableFinallyTryCatch1() {
+    public void testReachableTryFinallyCatch1() {
         // @formatter:off
         // try {
         //   41;
@@ -342,7 +342,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
             b.beginRoot();
 
-            b.beginFinallyTryCatch(() -> {
+            b.beginTryFinallyCatch(() -> {
                 b.beginBlock(); // finally
                 b.beginReturn();
                 b.emitLoadConstant(42);
@@ -355,7 +355,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
 
             b.emitLoadConstant(43); // catch
 
-            b.endFinallyTryCatch();
+            b.endTryFinallyCatch();
 
             b.beginReturn();
             b.emitLoadConstant(44);
@@ -379,7 +379,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
     }
 
     @Test
-    public void testReachableFinallyTryCatch2() {
+    public void testReachableTryFinallyCatch2() {
         // @formatter:off
         // try {
         //   throw();
@@ -394,7 +394,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
             b.beginRoot();
 
-            b.beginFinallyTryCatch(() -> b.emitLoadConstant(41));
+            b.beginTryFinallyCatch(() -> b.emitLoadConstant(41));
             b.emitThrow(); // try
 
             b.beginBlock(); // catch
@@ -404,7 +404,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
             emitUnreachableCode(b);
             b.endBlock();
 
-            b.endFinallyTryCatch();
+            b.endTryFinallyCatch();
 
             b.beginReturn();
             b.emitLoadConstant(44);
@@ -771,11 +771,11 @@ public class DeadCodeTest extends AbstractInstructionTest {
             b.emitLoadConstant(42);
             b.endReturn();
 
-            b.beginFinallyTry(() -> b.emitLoadArgument(0));
+            b.beginTryFinally(() -> b.emitLoadArgument(0));
             b.beginBlock();
             b.emitLabel(b.createLabel());
             b.endBlock();
-            b.endFinallyTry();
+            b.endTryFinally();
 
             b.endRoot();
         }).getRootNode();
@@ -824,7 +824,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
             b.beginBlock();
 
             BytecodeLabel lbl = b.createLabel();
-            b.beginFinallyTry(() -> b.emitLoadArgument(0));
+            b.beginTryFinally(() -> b.emitLoadArgument(0));
 
             b.beginBlock(); // begin try
             b.beginReturn();
@@ -833,7 +833,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
             b.emitBranch(lbl);
             b.endBlock(); // end try
 
-            b.endFinallyTry();
+            b.endTryFinally();
 
             b.emitLabel(lbl);
 
@@ -879,11 +879,11 @@ public class DeadCodeTest extends AbstractInstructionTest {
         b.endReturn();
         b.endIfThen();
 
-        b.beginFinallyTry(() -> b.emitLoadConstant(41));
+        b.beginTryFinally(() -> b.emitLoadConstant(41));
         b.beginReturn();
         b.emitLoadConstant(41);
         b.endReturn();
-        b.endFinallyTry();
+        b.endTryFinally();
 
         b.beginTryCatch();
         b.emitLoadConstant(41);

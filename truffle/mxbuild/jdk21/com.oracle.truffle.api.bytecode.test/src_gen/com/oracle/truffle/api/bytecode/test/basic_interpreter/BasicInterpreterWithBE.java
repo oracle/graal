@@ -113,10 +113,10 @@ import java.util.function.Supplier;
  *     kind: WHILE
  *   - Operation TryCatch
  *     kind: TRY_CATCH
- *   - Operation FinallyTry
- *     kind: FINALLY_TRY
- *   - Operation FinallyTryCatch
- *     kind: FINALLY_TRY_CATCH
+ *   - Operation TryFinally
+ *     kind: TRY_FINALLY
+ *   - Operation TryFinallyCatch
+ *     kind: TRY_FINALLY_CATCH
  *   - Operation FinallyHandler
  *     kind: FINALLY_HANDLER
  *   - Operation Label
@@ -8603,7 +8603,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
     public static final class Builder extends BasicInterpreterBuilder {
 
         private static final byte UNINITIALIZED = -1;
-        private static final String[] OPERATION_NAMES = new String[] {null, "Block", "Root", "IfThen", "IfThenElse", "Conditional", "While", "TryCatch", "FinallyTry", "FinallyTryCatch", "FinallyHandler", "Label", "Branch", "LoadConstant", "LoadNull", "LoadArgument", "LoadException", "LoadLocal", "LoadLocalMaterialized", "StoreLocal", "StoreLocalMaterialized", "Return", "Yield", "Source", "SourceSection", "Tag", "EarlyReturn", "AddOperation", "Call", "AddConstantOperation", "AddConstantOperationAtEnd", "VeryComplexOperation", "ThrowOperation", "ReadExceptionOperation", "AlwaysBoxOperation", "AppenderOperation", "TeeLocal", "TeeLocalRange", "Invoke", "MaterializeFrame", "CreateClosure", "VoidOperation", "ToBoolean", "GetSourcePosition", "GetSourcePositions", "CopyLocalsToFrame", "GetBytecodeLocation", "CollectBytecodeLocations", "CollectSourceLocations", "CollectAllSourceLocations", "Continue", "CurrentLocation", "PrintHere", "IncrementValue", "DoubleValue", "EnableIncrementValueInstrumentation", "Add", "Mod", "Less", "EnableDoubleValueInstrumentation", "ExplicitBindingsTest", "ImplicitBindingsTest", "ScAnd", "ScOr"};
+        private static final String[] OPERATION_NAMES = new String[] {null, "Block", "Root", "IfThen", "IfThenElse", "Conditional", "While", "TryCatch", "TryFinally", "TryFinallyCatch", "FinallyHandler", "Label", "Branch", "LoadConstant", "LoadNull", "LoadArgument", "LoadException", "LoadLocal", "LoadLocalMaterialized", "StoreLocal", "StoreLocalMaterialized", "Return", "Yield", "Source", "SourceSection", "Tag", "EarlyReturn", "AddOperation", "Call", "AddConstantOperation", "AddConstantOperationAtEnd", "VeryComplexOperation", "ThrowOperation", "ReadExceptionOperation", "AlwaysBoxOperation", "AppenderOperation", "TeeLocal", "TeeLocalRange", "Invoke", "MaterializeFrame", "CreateClosure", "VoidOperation", "ToBoolean", "GetSourcePosition", "GetSourcePositions", "CopyLocalsToFrame", "GetBytecodeLocation", "CollectBytecodeLocations", "CollectSourceLocations", "CollectAllSourceLocations", "Continue", "CurrentLocation", "PrintHere", "IncrementValue", "DoubleValue", "EnableIncrementValueInstrumentation", "Add", "Mod", "Less", "EnableDoubleValueInstrumentation", "ExplicitBindingsTest", "ImplicitBindingsTest", "ScAnd", "ScOr"};
         private static final Class<?>[] TAGS_ROOT_TAG_ROOT_BODY_TAG = new Class<?>[]{RootTag.class, RootBodyTag.class};
 
         private int operationSequenceNumber;
@@ -9340,27 +9340,27 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Begins a built-in FinallyTry operation.
+         * Begins a built-in TryFinally operation.
          * <p>
-         * Signature: FinallyTry(try) -> void
+         * Signature: TryFinally(try) -> void
          * <p>
-         * FinallyTry implements a finally handler. It runs the given {@code finallyParser} to parse a {@code finally} operation.
-         * FinallyTry executes {@code try}, and after execution finishes it always executes {@code finally}.
-         * If {@code try} finishes normally, {@code finally} executes and control continues after the FinallyTry operation.
+         * TryFinally implements a finally handler. It runs the given {@code finallyParser} to parse a {@code finally} operation.
+         * TryFinally executes {@code try}, and after execution finishes it always executes {@code finally}.
+         * If {@code try} finishes normally, {@code finally} executes and control continues after the TryFinally operation.
          * If {@code try} finishes exceptionally, {@code finally} executes and then rethrows the exception.
          * If {@code try} finishes with a control flow operation, {@code finally} executes and then the control flow operation continues (i.e., a Branch will branch, a Return will return).
          * This is a void operation; both {@code finally} and {@code try} can also be void.
          * <p>
-         * A corresponding call to {@link #endFinallyTry} is required to end the operation.
+         * A corresponding call to {@link #endTryFinally} is required to end the operation.
          *
          * @param finallyParser a runnable that uses the builder to parse the finally operation (must be idempotent).
          */
         @Override
-        public void beginFinallyTry(Runnable finallyParser) {
+        public void beginTryFinally(Runnable finallyParser) {
             if (serialization != null) {
                 try {
                     short finallyParserIndex = serializeFinallyParser(finallyParser);
-                    serialization.buffer.writeShort(SerializationState.CODE_BEGIN_FINALLY_TRY);
+                    serialization.buffer.writeShort(SerializationState.CODE_BEGIN_TRY_FINALLY);
                     serialization.buffer.writeShort(serialization.depth);
                     serialization.buffer.writeShort(finallyParserIndex);
                 } catch (IOException ex) {
@@ -9370,33 +9370,33 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
             }
             validateRootOperationBegin();
             beforeChild();
-            FinallyTryData operationData = new FinallyTryData(++numHandlers, safeCastShort(currentStackHeight), finallyParser, bci, this.reachable, this.reachable, false);
-            beginOperation(Operations.FINALLYTRY, operationData);
+            TryFinallyData operationData = new TryFinallyData(++numHandlers, safeCastShort(currentStackHeight), finallyParser, bci, this.reachable, this.reachable, false);
+            beginOperation(Operations.TRYFINALLY, operationData);
         }
 
         /**
-         * Ends a built-in FinallyTry operation.
+         * Ends a built-in TryFinally operation.
          * <p>
-         * Signature: FinallyTry(try) -> void
+         * Signature: TryFinally(try) -> void
          *
-         * @see #beginFinallyTry
+         * @see #beginTryFinally
          */
         @Override
-        public void endFinallyTry() {
+        public void endTryFinally() {
             if (serialization != null) {
                 try {
-                    serialization.buffer.writeShort(SerializationState.CODE_END_FINALLY_TRY);
+                    serialization.buffer.writeShort(SerializationState.CODE_END_TRY_FINALLY);
                 } catch (IOException ex) {
                     throw new IOError(ex);
                 }
                 return;
             }
-            OperationStackEntry operation = endOperation(Operations.FINALLYTRY);
+            OperationStackEntry operation = endOperation(Operations.TRYFINALLY);
             if (operation.childCount != 1) {
-                throw failState("Operation FinallyTry expected exactly 1 child, but " + operation.childCount + " provided. This is probably a bug in the parser.");
+                throw failState("Operation TryFinally expected exactly 1 child, but " + operation.childCount + " provided. This is probably a bug in the parser.");
             }
-            if (!(operation.data instanceof FinallyTryData operationData)) {
-                throw assertionFailed("Data class FinallyTryData expected, but was " + operation.data);
+            if (!(operation.data instanceof TryFinallyData operationData)) {
+                throw assertionFailed("Data class TryFinallyData expected, but was " + operation.data);
             }
             int handlerSp = currentStackHeight + 1 /* reserve space for the exception */;
             updateMaxStackHeight(handlerSp);
@@ -9433,27 +9433,30 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         }
 
         /**
-         * Begins a built-in FinallyTryCatch operation.
+         * Begins a built-in TryFinallyCatch operation.
          * <p>
-         * Signature: FinallyTryCatch(try, catch) -> void
+         * Signature: TryFinallyCatch(try, catch) -> void
          * <p>
-         * FinallyTryCatch implements a finally handler with different behaviour for thrown exceptions. It runs the given {@code finallyParser} to parse a {@code finally} operation.
-         * FinallyTryCatch executes {@code try} and then one of the handlers.
-         * If {@code try} finishes normally, {@code finally} executes and control continues after the FinallyTryCatch operation.
+         * TryFinallyCatch is a variation of TryFinally that executes a different operation for thrown exceptions. It runs the given {@code finallyParser} to parse a {@code finally} operation.
+         * TryFinallyCatch executes {@code try} and then one of the handlers.
+         * If {@code try} finishes normally, {@code finally} executes and control continues after the TryFinallyCatch operation.
          * If {@code try} finishes exceptionally, {@code catch} executes. The exception can be accessed using LoadException, and it is rethrown afterwards.
          * If {@code try} finishes with a control flow operation, {@code finally} executes and then the control flow operation continues (i.e., a Branch will branch, a Return will return).
+         *
+         * This operation is <strong>not</strong> the same as a Java try-catch-finally block. If {@code catch} executes, {@code finally} will not run.
+         *
          * This is a void operation; any of {@code finally}, {@code try}, or {@code catch} can be void.
          * <p>
-         * A corresponding call to {@link #endFinallyTryCatch} is required to end the operation.
+         * A corresponding call to {@link #endTryFinallyCatch} is required to end the operation.
          *
          * @param finallyParser a runnable that uses the builder to parse the finally operation (must be idempotent).
          */
         @Override
-        public void beginFinallyTryCatch(Runnable finallyParser) {
+        public void beginTryFinallyCatch(Runnable finallyParser) {
             if (serialization != null) {
                 try {
                     short finallyParserIndex = serializeFinallyParser(finallyParser);
-                    serialization.buffer.writeShort(SerializationState.CODE_BEGIN_FINALLY_TRY_CATCH);
+                    serialization.buffer.writeShort(SerializationState.CODE_BEGIN_TRY_FINALLY_CATCH);
                     serialization.buffer.writeShort(serialization.depth);
                     serialization.buffer.writeShort(finallyParserIndex);
                 } catch (IOException ex) {
@@ -9463,33 +9466,33 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
             }
             validateRootOperationBegin();
             beforeChild();
-            FinallyTryData operationData = new FinallyTryData(++numHandlers, safeCastShort(currentStackHeight), finallyParser, bci, this.reachable, this.reachable, this.reachable);
-            beginOperation(Operations.FINALLYTRYCATCH, operationData);
+            TryFinallyData operationData = new TryFinallyData(++numHandlers, safeCastShort(currentStackHeight), finallyParser, bci, this.reachable, this.reachable, this.reachable);
+            beginOperation(Operations.TRYFINALLYCATCH, operationData);
         }
 
         /**
-         * Ends a built-in FinallyTryCatch operation.
+         * Ends a built-in TryFinallyCatch operation.
          * <p>
-         * Signature: FinallyTryCatch(try, catch) -> void
+         * Signature: TryFinallyCatch(try, catch) -> void
          *
-         * @see #beginFinallyTryCatch
+         * @see #beginTryFinallyCatch
          */
         @Override
-        public void endFinallyTryCatch() {
+        public void endTryFinallyCatch() {
             if (serialization != null) {
                 try {
-                    serialization.buffer.writeShort(SerializationState.CODE_END_FINALLY_TRY_CATCH);
+                    serialization.buffer.writeShort(SerializationState.CODE_END_TRY_FINALLY_CATCH);
                 } catch (IOException ex) {
                     throw new IOError(ex);
                 }
                 return;
             }
-            OperationStackEntry operation = endOperation(Operations.FINALLYTRYCATCH);
+            OperationStackEntry operation = endOperation(Operations.TRYFINALLYCATCH);
             if (operation.childCount != 2) {
-                throw failState("Operation FinallyTryCatch expected exactly 2 children, but " + operation.childCount + " provided. This is probably a bug in the parser.");
+                throw failState("Operation TryFinallyCatch expected exactly 2 children, but " + operation.childCount + " provided. This is probably a bug in the parser.");
             }
-            if (!(operation.data instanceof FinallyTryData operationData)) {
-                throw assertionFailed("Data class FinallyTryData expected, but was " + operation.data);
+            if (!(operation.data instanceof TryFinallyData operationData)) {
+                throw assertionFailed("Data class TryFinallyData expected, but was " + operation.data);
             }
             markReachable(operationData.tryReachable || operationData.catchReachable);
             afterChild(false, -1);
@@ -9724,7 +9727,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
          * Signature: LoadException() -> Object
          * <p>
          * LoadException reads the current exception from the frame.
-         * This operation is only permitted inside the {@code catch} operation of TryCatch and FinallyTryCatch operations.
+         * This operation is only permitted inside the {@code catch} operation of TryCatch and TryFinallyCatch operations.
          */
         @Override
         public void emitLoadException() {
@@ -9756,10 +9759,10 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
                         }
                         break;
                     }
-                    case Operations.FINALLYTRYCATCH :
+                    case Operations.TRYFINALLYCATCH :
                     {
-                        if (!(operationStack[i].data instanceof FinallyTryData operationData)) {
-                            throw assertionFailed("Data class FinallyTryData expected, but was " + operationStack[i].data);
+                        if (!(operationStack[i].data instanceof TryFinallyData operationData)) {
+                            throw assertionFailed("Data class TryFinallyData expected, but was " + operationStack[i].data);
                         }
                         if (operationStack[i].childCount == 1) {
                             exceptionStackHeight = operationData.stackHeight;
@@ -9770,7 +9773,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
                 }
             }
             if (exceptionStackHeight == UNINITIALIZED) {
-                throw failState("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation in the current root.");
+                throw failState("LoadException can only be used in the catch operation of a TryCatch/TryFinallyCatch operation in the current root.");
             }
             doEmitInstructionS(Instructions.LOAD_EXCEPTION, 1, exceptionStackHeight);
             afterChild(true, bci - 4);
@@ -12097,10 +12100,10 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
                             }
                             return;
                         }
-                        case Operations.FINALLYTRY :
+                        case Operations.TRYFINALLY :
                         {
-                            if (!(operationStack[i].data instanceof FinallyTryData operationData)) {
-                                throw assertionFailed("Data class FinallyTryData expected, but was " + operationStack[i].data);
+                            if (!(operationStack[i].data instanceof TryFinallyData operationData)) {
+                                throw assertionFailed("Data class TryFinallyData expected, but was " + operationStack[i].data);
                             }
                             if (operation.childCount == 0) {
                                 operationData.tryReachable = newReachable;
@@ -12109,10 +12112,10 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
                             }
                             return;
                         }
-                        case Operations.FINALLYTRYCATCH :
+                        case Operations.TRYFINALLYCATCH :
                         {
-                            if (!(operationStack[i].data instanceof FinallyTryData operationData)) {
-                                throw assertionFailed("Data class FinallyTryData expected, but was " + operationStack[i].data);
+                            if (!(operationStack[i].data instanceof TryFinallyData operationData)) {
+                                throw assertionFailed("Data class TryFinallyData expected, but was " + operationStack[i].data);
                             }
                             if (operation.childCount == 0) {
                                 operationData.tryReachable = newReachable;
@@ -12226,10 +12229,10 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
                         }
                         return oldReachable;
                     }
-                    case Operations.FINALLYTRY :
+                    case Operations.TRYFINALLY :
                     {
-                        if (!(operationStack[i].data instanceof FinallyTryData operationData)) {
-                            throw assertionFailed("Data class FinallyTryData expected, but was " + operationStack[i].data);
+                        if (!(operationStack[i].data instanceof TryFinallyData operationData)) {
+                            throw assertionFailed("Data class TryFinallyData expected, but was " + operationStack[i].data);
                         }
                         if (operation.childCount == 0) {
                             this.reachable = operationData.tryReachable;
@@ -12238,10 +12241,10 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
                         }
                         return oldReachable;
                     }
-                    case Operations.FINALLYTRYCATCH :
+                    case Operations.TRYFINALLYCATCH :
                     {
-                        if (!(operationStack[i].data instanceof FinallyTryData operationData)) {
-                            throw assertionFailed("Data class FinallyTryData expected, but was " + operationStack[i].data);
+                        if (!(operationStack[i].data instanceof TryFinallyData operationData)) {
+                            throw assertionFailed("Data class TryFinallyData expected, but was " + operationStack[i].data);
                         }
                         if (operation.childCount == 0) {
                             this.reachable = operationData.tryReachable;
@@ -12376,7 +12379,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
                 case Operations.IFTHEN :
                 case Operations.IFTHENELSE :
                 case Operations.CONDITIONAL :
-                case Operations.FINALLYTRY :
+                case Operations.TRYFINALLY :
                     if (childIndex >= 1) {
                         updateReachable();
                     }
@@ -12394,10 +12397,10 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
                     }
                     break;
                 }
-                case Operations.FINALLYTRYCATCH :
+                case Operations.TRYFINALLYCATCH :
                 {
-                    if (!(operationStack[operationSp - 1].data instanceof FinallyTryData operationData)) {
-                        throw assertionFailed("Data class FinallyTryData expected, but was " + operationStack[operationSp - 1].data);
+                    if (!(operationStack[operationSp - 1].data instanceof TryFinallyData operationData)) {
+                        throw assertionFailed("Data class TryFinallyData expected, but was " + operationStack[operationSp - 1].data);
                     }
                     if (childIndex == 1) {
                         updateReachable();
@@ -12635,20 +12638,20 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
                     }
                     break;
                 }
-                case Operations.FINALLYTRY :
+                case Operations.TRYFINALLY :
                 {
                     if (producedValue) {
                         doEmitInstructionI(Instructions.POP, -1, childBci);
                     }
                     break;
                 }
-                case Operations.FINALLYTRYCATCH :
+                case Operations.TRYFINALLYCATCH :
                 {
                     if (producedValue) {
                         doEmitInstructionI(Instructions.POP, -1, childBci);
                     }
-                    if (!(operationStack[operationSp - 1].data instanceof FinallyTryData operationData)) {
-                        throw assertionFailed("Data class FinallyTryData expected, but was " + operationStack[operationSp - 1].data);
+                    if (!(operationStack[operationSp - 1].data instanceof TryFinallyData operationData)) {
+                        throw assertionFailed("Data class TryFinallyData expected, but was " + operationStack[operationSp - 1].data);
                     }
                     if (childIndex == 0) {
                         int handlerSp = currentStackHeight + 1 /* reserve space for the exception */;
@@ -13043,15 +13046,15 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
             }
         }
 
-        private void doEmitFinallyHandler(FinallyTryData finallyTryData, int finallyOperationSp) {
-            assert finallyTryData.finallyHandlerSp == UNINITIALIZED;
+        private void doEmitFinallyHandler(TryFinallyData TryFinallyData, int finallyOperationSp) {
+            assert TryFinallyData.finallyHandlerSp == UNINITIALIZED;
             try {
-                finallyTryData.finallyHandlerSp = operationSp;
+                TryFinallyData.finallyHandlerSp = operationSp;
                 beginFinallyHandler(safeCastShort(finallyOperationSp));
-                finallyTryData.finallyParser.run();
+                TryFinallyData.finallyParser.run();
                 endFinallyHandler();
             } finally {
-                finallyTryData.finallyHandlerSp = UNINITIALIZED;
+                TryFinallyData.finallyHandlerSp = UNINITIALIZED;
             }
         }
 
@@ -13153,10 +13156,10 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
                         }
                         break;
                     }
-                    case Operations.FINALLYTRY :
+                    case Operations.TRYFINALLY :
                     {
-                        if (!(operationStack[i].data instanceof FinallyTryData operationData)) {
-                            throw assertionFailed("Data class FinallyTryData expected, but was " + operationStack[i].data);
+                        if (!(operationStack[i].data instanceof TryFinallyData operationData)) {
+                            throw assertionFailed("Data class TryFinallyData expected, but was " + operationStack[i].data);
                         }
                         if (operationStack[i].childCount == 0 /* still in try */) {
                             if (reachable) {
@@ -13173,10 +13176,10 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
                         }
                         break;
                     }
-                    case Operations.FINALLYTRYCATCH :
+                    case Operations.TRYFINALLYCATCH :
                     {
-                        if (!(operationStack[i].data instanceof FinallyTryData operationData)) {
-                            throw assertionFailed("Data class FinallyTryData expected, but was " + operationStack[i].data);
+                        if (!(operationStack[i].data instanceof TryFinallyData operationData)) {
+                            throw assertionFailed("Data class TryFinallyData expected, but was " + operationStack[i].data);
                         }
                         if (operationStack[i].childCount == 0 /* still in try */) {
                             if (reachable) {
@@ -13238,8 +13241,8 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
              */
             if (needsRewind) {
                 for (int i = declaringOperationSp + 1; i < operationSp; i++) {
-                    if (operationStack[i].operation == Operations.FINALLYTRY || operationStack[i].operation == Operations.FINALLYTRYCATCH) {
-                        int finallyHandlerSp = ((FinallyTryData) operationStack[i].data).finallyHandlerSp;
+                    if (operationStack[i].operation == Operations.TRYFINALLY || operationStack[i].operation == Operations.TRYFINALLYCATCH) {
+                        int finallyHandlerSp = ((TryFinallyData) operationStack[i].data).finallyHandlerSp;
                         if (finallyHandlerSp != UNINITIALIZED) {
                             i = finallyHandlerSp - 1;
                             continue;
@@ -13254,11 +13257,11 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
                             operationData.handlerStartBci = bci;
                             break;
                         }
-                        case Operations.FINALLYTRY :
-                        case Operations.FINALLYTRYCATCH :
+                        case Operations.TRYFINALLY :
+                        case Operations.TRYFINALLYCATCH :
                             if (operationStack[i].childCount == 0 /* still in try */) {
-                                if (!(operationStack[i].data instanceof FinallyTryData operationData)) {
-                                    throw assertionFailed("Data class FinallyTryData expected, but was " + operationStack[i].data);
+                                if (!(operationStack[i].data instanceof TryFinallyData operationData)) {
+                                    throw assertionFailed("Data class TryFinallyData expected, but was " + operationStack[i].data);
                                 }
                                 operationData.tryStartBci = bci;
                             }
@@ -13327,10 +13330,10 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
                         }
                         break;
                     }
-                    case Operations.FINALLYTRY :
+                    case Operations.TRYFINALLY :
                     {
-                        if (!(operationStack[i].data instanceof FinallyTryData operationData)) {
-                            throw assertionFailed("Data class FinallyTryData expected, but was " + operationStack[i].data);
+                        if (!(operationStack[i].data instanceof TryFinallyData operationData)) {
+                            throw assertionFailed("Data class TryFinallyData expected, but was " + operationStack[i].data);
                         }
                         if (operationStack[i].childCount == 0 /* still in try */) {
                             if (reachable) {
@@ -13347,10 +13350,10 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
                         }
                         break;
                     }
-                    case Operations.FINALLYTRYCATCH :
+                    case Operations.TRYFINALLYCATCH :
                     {
-                        if (!(operationStack[i].data instanceof FinallyTryData operationData)) {
-                            throw assertionFailed("Data class FinallyTryData expected, but was " + operationStack[i].data);
+                        if (!(operationStack[i].data instanceof TryFinallyData operationData)) {
+                            throw assertionFailed("Data class TryFinallyData expected, but was " + operationStack[i].data);
                         }
                         if (operationStack[i].childCount == 0 /* still in try */) {
                             if (reachable) {
@@ -13411,8 +13414,8 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
              */
             if (needsRewind) {
                 for (int i = rootOperationSp + 1; i < operationSp; i++) {
-                    if (operationStack[i].operation == Operations.FINALLYTRY || operationStack[i].operation == Operations.FINALLYTRYCATCH) {
-                        int finallyHandlerSp = ((FinallyTryData) operationStack[i].data).finallyHandlerSp;
+                    if (operationStack[i].operation == Operations.TRYFINALLY || operationStack[i].operation == Operations.TRYFINALLYCATCH) {
+                        int finallyHandlerSp = ((TryFinallyData) operationStack[i].data).finallyHandlerSp;
                         if (finallyHandlerSp != UNINITIALIZED) {
                             i = finallyHandlerSp - 1;
                             continue;
@@ -13427,11 +13430,11 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
                             operationData.handlerStartBci = bci;
                             break;
                         }
-                        case Operations.FINALLYTRY :
-                        case Operations.FINALLYTRYCATCH :
+                        case Operations.TRYFINALLY :
+                        case Operations.TRYFINALLYCATCH :
                             if (operationStack[i].childCount == 0 /* still in try */) {
-                                if (!(operationStack[i].data instanceof FinallyTryData operationData)) {
-                                    throw assertionFailed("Data class FinallyTryData expected, but was " + operationStack[i].data);
+                                if (!(operationStack[i].data instanceof TryFinallyData operationData)) {
+                                    throw assertionFailed("Data class TryFinallyData expected, but was " + operationStack[i].data);
                                 }
                                 operationData.tryStartBci = bci;
                             }
@@ -13565,8 +13568,8 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
                 return;
             }
             for (int i = rootOperationSp; i < operationSp; i++) {
-                if (operationStack[i].operation == Operations.FINALLYTRY || operationStack[i].operation == Operations.FINALLYTRYCATCH) {
-                    int finallyHandlerSp = ((FinallyTryData) operationStack[i].data).finallyHandlerSp;
+                if (operationStack[i].operation == Operations.TRYFINALLY || operationStack[i].operation == Operations.TRYFINALLYCATCH) {
+                    int finallyHandlerSp = ((TryFinallyData) operationStack[i].data).finallyHandlerSp;
                     if (finallyHandlerSp != UNINITIALIZED) {
                         i = finallyHandlerSp - 1;
                         continue;
@@ -13809,26 +13812,26 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
                             endTryCatch();
                             break;
                         }
-                        case SerializationState.CODE_BEGIN_FINALLY_TRY :
+                        case SerializationState.CODE_BEGIN_TRY_FINALLY :
                         {
                             Runnable finallyParser = context.getContext(buffer.readShort()).finallyParsers.get(buffer.readShort());
-                            beginFinallyTry(finallyParser);
+                            beginTryFinally(finallyParser);
                             break;
                         }
-                        case SerializationState.CODE_END_FINALLY_TRY :
+                        case SerializationState.CODE_END_TRY_FINALLY :
                         {
-                            endFinallyTry();
+                            endTryFinally();
                             break;
                         }
-                        case SerializationState.CODE_BEGIN_FINALLY_TRY_CATCH :
+                        case SerializationState.CODE_BEGIN_TRY_FINALLY_CATCH :
                         {
                             Runnable finallyParser = context.getContext(buffer.readShort()).finallyParsers.get(buffer.readShort());
-                            beginFinallyTryCatch(finallyParser);
+                            beginTryFinallyCatch(finallyParser);
                             break;
                         }
-                        case SerializationState.CODE_END_FINALLY_TRY_CATCH :
+                        case SerializationState.CODE_END_TRY_FINALLY_CATCH :
                         {
-                            endFinallyTryCatch();
+                            endTryFinallyCatch();
                             break;
                         }
                         case SerializationState.CODE_EMIT_LABEL :
@@ -14986,7 +14989,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
             }
 
         }
-        private static final class FinallyTryData {
+        private static final class TryFinallyData {
 
             final int handlerId;
             final short stackHeight;
@@ -15005,7 +15008,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
              */
             int finallyHandlerSp;
 
-            FinallyTryData(int handlerId, short stackHeight, Runnable finallyParser, int tryStartBci, boolean operationReachable, boolean tryReachable, boolean catchReachable) {
+            TryFinallyData(int handlerId, short stackHeight, Runnable finallyParser, int tryStartBci, boolean operationReachable, boolean tryReachable, boolean catchReachable) {
                 this.handlerId = handlerId;
                 this.stackHeight = stackHeight;
                 this.finallyParser = finallyParser;
@@ -15023,7 +15026,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         private static final class FinallyHandlerData {
 
             /**
-             * The index of the finally operation (FinallyTry/FinallyTryCatch) on the operation stack.
+             * The index of the finally operation (TryFinally/TryFinallyCatch) on the operation stack.
              * This index should only be used to skip over the handler when walking the operation stack.
              * It should *not* be used to access the finally operation data, because a FinallyHandler is
              * sometimes emitted after the finally operation has already been popped.
@@ -15250,10 +15253,10 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
             private static final short CODE_END_WHILE = (6 << 1) | 0b1;
             private static final short CODE_BEGIN_TRY_CATCH = 7 << 1;
             private static final short CODE_END_TRY_CATCH = (7 << 1) | 0b1;
-            private static final short CODE_BEGIN_FINALLY_TRY = 8 << 1;
-            private static final short CODE_END_FINALLY_TRY = (8 << 1) | 0b1;
-            private static final short CODE_BEGIN_FINALLY_TRY_CATCH = 9 << 1;
-            private static final short CODE_END_FINALLY_TRY_CATCH = (9 << 1) | 0b1;
+            private static final short CODE_BEGIN_TRY_FINALLY = 8 << 1;
+            private static final short CODE_END_TRY_FINALLY = (8 << 1) | 0b1;
+            private static final short CODE_BEGIN_TRY_FINALLY_CATCH = 9 << 1;
+            private static final short CODE_END_TRY_FINALLY_CATCH = (9 << 1) | 0b1;
             private static final short CODE_EMIT_LABEL = 11 << 1;
             private static final short CODE_EMIT_BRANCH = 12 << 1;
             private static final short CODE_EMIT_LOAD_CONSTANT = 13 << 1;
@@ -16797,8 +16800,8 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         private static final int CONDITIONAL = 5;
         private static final int WHILE = 6;
         private static final int TRYCATCH = 7;
-        private static final int FINALLYTRY = 8;
-        private static final int FINALLYTRYCATCH = 9;
+        private static final int TRYFINALLY = 8;
+        private static final int TRYFINALLYCATCH = 9;
         private static final int FINALLYHANDLER = 10;
         private static final int LABEL = 11;
         private static final int BRANCH = 12;

@@ -145,11 +145,11 @@ public class BytecodeDSLBuiltins {
                         .setDynamicOperands(voidableChild("try"), voidableChild("catch"));
 
         TypeMirror parserType = context.getDeclaredType(Runnable.class);
-        m.finallyTryOperation = m.operation(OperationKind.FINALLY_TRY, "FinallyTry",
+        m.tryFinallyOperation = m.operation(OperationKind.TRY_FINALLY, "TryFinally",
                         """
-                                        FinallyTry implements a finally handler. It runs the given {@code finallyParser} to parse a {@code finally} operation.
-                                        FinallyTry executes {@code try}, and after execution finishes it always executes {@code finally}.
-                                        If {@code try} finishes normally, {@code finally} executes and control continues after the FinallyTry operation.
+                                        TryFinally implements a finally handler. It runs the given {@code finallyParser} to parse a {@code finally} operation.
+                                        TryFinally executes {@code try}, and after execution finishes it always executes {@code finally}.
+                                        If {@code try} finishes normally, {@code finally} executes and control continues after the TryFinally operation.
                                         If {@code try} finishes exceptionally, {@code finally} executes and then rethrows the exception.
                                         If {@code try} finishes with a control flow operation, {@code finally} executes and then the control flow operation continues (i.e., a Branch will branch, a Return will return).
                                         This is a void operation; both {@code finally} and {@code try} can also be void.
@@ -158,13 +158,16 @@ public class BytecodeDSLBuiltins {
                         .setOperationBeginArguments(new OperationArgument(parserType, Encoding.FINALLY_PARSER, "finallyParser",
                                         "a runnable that uses the builder to parse the finally operation (must be idempotent)") //
                         ).setDynamicOperands(voidableChild("try"));
-        m.finallyTryCatchOperation = m.operation(OperationKind.FINALLY_TRY_CATCH, "FinallyTryCatch",
+        m.tryFinallyCatchOperation = m.operation(OperationKind.TRY_FINALLY_CATCH, "TryFinallyCatch",
                         """
-                                        FinallyTryCatch implements a finally handler with different behaviour for thrown exceptions. It runs the given {@code finallyParser} to parse a {@code finally} operation.
-                                        FinallyTryCatch executes {@code try} and then one of the handlers.
-                                        If {@code try} finishes normally, {@code finally} executes and control continues after the FinallyTryCatch operation.
+                                        TryFinallyCatch is a variation of TryFinally that executes a different operation for thrown exceptions. It runs the given {@code finallyParser} to parse a {@code finally} operation.
+                                        TryFinallyCatch executes {@code try} and then one of the handlers.
+                                        If {@code try} finishes normally, {@code finally} executes and control continues after the TryFinallyCatch operation.
                                         If {@code try} finishes exceptionally, {@code catch} executes. The exception can be accessed using LoadException, and it is rethrown afterwards.
                                         If {@code try} finishes with a control flow operation, {@code finally} executes and then the control flow operation continues (i.e., a Branch will branch, a Return will return).
+
+                                        This operation is <strong>not</strong> the same as a Java try-catch-finally block. If {@code catch} executes, {@code finally} will not run.
+
                                         This is a void operation; any of {@code finally}, {@code try}, or {@code catch} can be void.
                                         """) //
                         .setVoid(true) //
@@ -218,7 +221,7 @@ public class BytecodeDSLBuiltins {
                                         .addImmediate(ImmediateKind.SHORT, "index"));
         m.operation(OperationKind.LOAD_EXCEPTION, "LoadException", """
                         LoadException reads the current exception from the frame.
-                        This operation is only permitted inside the {@code catch} operation of TryCatch and FinallyTryCatch operations.
+                        This operation is only permitted inside the {@code catch} operation of TryCatch and TryFinallyCatch operations.
                         """) //
                         .setInstruction(m.instruction(InstructionKind.LOAD_EXCEPTION, "load.exception", m.signature(Object.class))//
                                         .addImmediate(ImmediateKind.STACK_POINTER, "exceptionSp"));

@@ -172,7 +172,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
             b.beginSourceSection(0, 11);
             b.beginRoot();
 
-            b.beginFinallyTry(() -> {
+            b.beginTryFinally(() -> {
                 b.beginSourceSection(4, 7); // finally
                 b.emitVoidOperation();
                 b.endSourceSection();
@@ -186,7 +186,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
             b.endReturn();
             b.endIfThen();
             b.endSourceSection();
-            b.endFinallyTry();
+            b.endTryFinally();
 
             b.beginReturn();
             b.emitLoadConstant(123L);
@@ -553,7 +553,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
-    public void testSourceFinallyTry() {
+    public void testSourceTryFinally() {
         // Finally handlers get emitted multiple times. Each handler's source info should be emitted
         // as expected.
 
@@ -566,13 +566,13 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
          *  @formatter:on
          */
 
-        Source source = Source.newBuilder("test", "try finally", "sourceFinallyTry").build();
+        Source source = Source.newBuilder("test", "try finally", "sourceTryFinally").build();
         BasicInterpreter node = parseNodeWithSource("source", b -> {
             b.beginRoot();
             b.beginSource(source);
             b.beginSourceSection(0, 11);
 
-            b.beginFinallyTry(() -> {
+            b.beginTryFinally(() -> {
                 // finally
                 b.beginSourceSection(4, 7);
                 b.beginReturn();
@@ -613,7 +613,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
             b.endBlock();
             b.endSourceSection();
 
-            b.endFinallyTry();
+            b.endTryFinally();
 
             b.endSourceSection();
             b.endSource();
@@ -627,7 +627,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
-    public void testSourceOfRootWithFinallyTry() {
+    public void testSourceOfRootWithTryFinally() {
         // The root node is nested in Source/SourceSection operations, so there is a source section
         // for the root.
 
@@ -640,13 +640,13 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
          *  @formatter:on
          */
 
-        Source source = Source.newBuilder("test", "try finally", "sourceOfRootWithFinallyTry").build();
+        Source source = Source.newBuilder("test", "try finally", "sourceOfRootWithTryFinally").build();
         BasicInterpreter node = parseNodeWithSource("source", b -> {
             b.beginSource(source);
             b.beginSourceSection(0, 11);
             b.beginRoot();
 
-            b.beginFinallyTry(() -> {
+            b.beginTryFinally(() -> {
                 // finally
                 b.beginSourceSection(4, 7);
                 b.emitVoidOperation();
@@ -660,7 +660,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
             b.endBlock();
             b.endSourceSection();
 
-            b.endFinallyTry();
+            b.endTryFinally();
 
             b.endRoot();
             b.endSourceSection();
@@ -690,7 +690,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
-    public void testSourceOfRootWithFinallyTryNotNestedInSource() {
+    public void testSourceOfRootWithTryFinallyNotNestedInSource() {
         // Unlike the previous test, a root node may not have a valid source section when it is not
         // enclosed in Source/SourceSection operations because the full bytecode range is not always
         // enclosed by a single source table entry (due to early exits).
@@ -704,13 +704,13 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
          *  @formatter:on
          */
 
-        Source source = Source.newBuilder("test", "try finally", "sourceOfRootWithFinallyTryNotNestedInSource").build();
+        Source source = Source.newBuilder("test", "try finally", "sourceOfRootWithTryFinallyNotNestedInSource").build();
         BasicInterpreter node = parseNodeWithSource("source", b -> {
             b.beginRoot();
             b.beginSource(source);
             b.beginSourceSection(0, 11);
 
-            b.beginFinallyTry(() -> {
+            b.beginTryFinally(() -> {
                 // finally
                 b.beginSourceSection(4, 7);
                 b.emitVoidOperation();
@@ -724,7 +724,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
             b.endBlock();
             b.endSourceSection();
 
-            b.endFinallyTry();
+            b.endTryFinally();
 
             b.endSourceSection();
             b.endSource();
@@ -759,7 +759,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
-    public void testSourceRootNodeDeclaredInFinallyTry() {
+    public void testSourceRootNodeDeclaredInTryFinally() {
         // Ensures root nodes declared in a finally handler inherit sources declared outside the
         // root node.
 
@@ -773,13 +773,13 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
          *  @formatter:on
          */
 
-        Source source = Source.newBuilder("test", "try finally { def f(){body}; return f }", "sourceRootNodeDeclaredInFinallyTry").build();
+        Source source = Source.newBuilder("test", "try finally { def f(){body}; return f }", "sourceRootNodeDeclaredInTryFinally").build();
         BasicInterpreter node = parseNodeWithSource("source", b -> {
             b.beginRoot();
             b.beginSource(source);
             b.beginSourceSection(0, 39);
 
-            b.beginFinallyTry(() -> {
+            b.beginTryFinally(() -> {
                 // finally
                 b.beginSourceSection(14, 23);
 
@@ -834,7 +834,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
             b.endBlock();
             b.endSourceSection();
 
-            b.endFinallyTry();
+            b.endTryFinally();
 
             b.endSourceSection();
             b.endSource();
