@@ -35,10 +35,14 @@ import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 import jdk.graal.compiler.util.json.JsonWriter;
 
 final class ConfigurationConditionPrintable {
-    static void printConditionAttribute(UnresolvedConfigurationCondition condition, JsonWriter writer) throws IOException {
+    static void printConditionAttribute(UnresolvedConfigurationCondition condition, JsonWriter writer, boolean combinedFile) throws IOException {
         if (!condition.isAlwaysTrue()) {
             writer.quote(CONDITIONAL_KEY).appendFieldSeparator().appendObjectStart();
-            writer.quote(condition.isRuntimeChecked() ? TYPE_REACHED_KEY : TYPE_REACHABLE_KEY).appendFieldSeparator().quote(condition.getTypeName());
+            /*
+             * typeReachable conditions are emitted as typeReached in reachability-metadata.json.
+             * typeReached conditions are emitted as typeReachable in resource-config.json
+             */
+            writer.quote(combinedFile ? TYPE_REACHED_KEY : TYPE_REACHABLE_KEY).appendFieldSeparator().quote(condition.getTypeName());
             writer.appendObjectEnd().appendSeparator();
         }
     }

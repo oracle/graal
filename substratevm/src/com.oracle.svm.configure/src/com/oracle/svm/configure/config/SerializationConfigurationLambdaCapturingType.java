@@ -57,7 +57,7 @@ public class SerializationConfigurationLambdaCapturingType implements JsonPrinta
     @Override
     public void printJson(JsonWriter writer) throws IOException {
         writer.append('{').indent().newline();
-        ConfigurationConditionPrintable.printConditionAttribute(condition, writer);
+        ConfigurationConditionPrintable.printConditionAttribute(condition, writer, false);
 
         writer.quote(SerializationConfigurationParser.NAME_KEY).append(":").quote(qualifiedJavaName);
         writer.unindent().newline().append('}');

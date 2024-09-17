@@ -460,7 +460,7 @@ public class ConfigurationType implements JsonPrintable {
     @Override
     public synchronized void printJson(JsonWriter writer) throws IOException {
         writer.appendObjectStart();
-        ConfigurationConditionPrintable.printConditionAttribute(condition, writer);
+        ConfigurationConditionPrintable.printConditionAttribute(condition, writer, true);
         writer.quote("type").appendFieldSeparator();
         typeDescriptor.printJson(writer);
 
