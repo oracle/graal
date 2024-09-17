@@ -216,7 +216,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     private Thread creatingThread;
     private volatile boolean created;
     private volatile boolean initialized;
-    private boolean initializing;
+    private volatile Thread initializingThread;
     volatile boolean finalized;
     volatile TruffleLanguage.ExitMode exited;
     @CompilationFinal private volatile Object hostBindings;
@@ -730,8 +730,14 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     boolean ensureInitialized(PolyglotLanguage accessingLanguage) {
         ensureCreated(accessingLanguage);
         if (initialized) {
-            // fast-path exit
-            return false;
+            Thread initThread = initializingThread;
+            if (initThread == null || initThread == Thread.currentThread()) {
+                // initialized can be re-set to false during initialization
+                if (initialized) {
+                    // fast-path exit
+                    return false;
+                }
+            }
         }
 
         if (context.finalizingEmbedderThreads) {
@@ -744,7 +750,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             if (initialized) {
                 return false;
             } else {
-                initializing = true;
+                initializingThread = Thread.currentThread();
             }
         }
         try {
@@ -797,7 +803,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             }
         } finally {
             synchronized (context) {
-                initializing = false;
+                initializingThread = null;
                 context.notifyAll();
             }
         }
@@ -821,7 +827,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     private void waitWhileInitializing() {
         assert Thread.holdsLock(context);
         boolean interrupted = false;
-        while (initializing) {
+        while (initializingThread != null && initializingThread != Thread.currentThread()) {
             try {
                 context.wait();
             } catch (InterruptedException ie) {

@@ -1694,10 +1694,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         PolyglotLanguageContext languageContext = getContext(language);
         assert languageContext != null;
         languageContext.checkAccess(null);
-        if (!languageContext.isInitialized()) {
-            return languageContext.ensureInitialized(null);
-        }
-        return false;
+        return languageContext.ensureInitialized(null);
     }
 
     public boolean initializeLanguage(String languageId) {
