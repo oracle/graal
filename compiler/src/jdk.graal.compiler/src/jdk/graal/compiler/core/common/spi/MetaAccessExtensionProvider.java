@@ -24,8 +24,10 @@
  */
 package jdk.graal.compiler.core.common.spi;
 
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -63,4 +65,15 @@ public interface MetaAccessExtensionProvider {
      * given type.
      */
     boolean canVirtualize(ResolvedJavaType instanceType);
+
+    /**
+     * Given an unsafe access, try to find the static field that is being accessed.
+     *
+     * @param base the base object used in the access.
+     * @param offset the offset used in the access.
+     * @param accessKind the kind of data being accessed.
+     * @return the static field being accessed or null if this is not a static field access or if it
+     *         can't be determined.
+     */
+    ResolvedJavaField getStaticFieldForAccess(JavaConstant base, long offset, JavaKind accessKind);
 }

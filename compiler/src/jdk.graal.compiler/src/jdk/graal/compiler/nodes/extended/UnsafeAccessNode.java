@@ -27,11 +27,10 @@ package jdk.graal.compiler.nodes.extended;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
-import java.nio.ByteOrder;
-
 import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
+import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
@@ -46,7 +45,6 @@ import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.TrackedUnsafeAccess;
 import jdk.graal.compiler.nodes.type.StampTool;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -117,8 +115,8 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
             ResolvedJavaType receiverType = StampTool.typeOrNull(object(), tool.getMetaAccess());
             if (receiverType != null) {
                 ResolvedJavaField field = null;
-                if (offset().isConstant()) {
-                    field = getStaticFieldUnsafeAccess(tool.getConstantReflection());
+                if (offset().isJavaConstant()) {
+                    field = getStaticFieldUnsafeAccess(tool.getMetaAccessExtensionProvider());
                     if (field == null) {
                         long constantOffset = offset().asJavaConstant().asLong();
                         field = receiverType.findInstanceFieldWithOffset(constantOffset, accessKind());
@@ -164,7 +162,7 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
      *
      * @return the static field, if any, that this node is reading
      */
-    private ResolvedJavaField getStaticFieldUnsafeAccess(ConstantReflectionProvider constantReflection) {
+    private ResolvedJavaField getStaticFieldUnsafeAccess(MetaAccessExtensionProvider metaAccessExtension) {
         if (!object().isJavaConstant() || !offset().isJavaConstant() ||
                         object().isNullConstant() || offset().isNullConstant()) {
             return null;
@@ -172,42 +170,6 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
         JavaConstant objectConstant = object().asJavaConstant();
         JavaConstant offsetConstant = offset().asJavaConstant();
         assert objectConstant != null && offsetConstant != null : "Verified by the check at the beginning.";
-        ResolvedJavaType staticReceiverType = constantReflection.asJavaType(objectConstant);
-        if (staticReceiverType == null) {
-            // object is not of type Class so it is not a static field
-            return null;
-        }
-        return findStaticFieldWithOffset(staticReceiverType, offsetConstant.asLong(), accessKind);
+        return metaAccessExtension.getStaticFieldForAccess(objectConstant, offsetConstant.asLong(), accessKind);
     }
-
-    public static ResolvedJavaField findStaticFieldWithOffset(ResolvedJavaType type, long offset, JavaKind expectedEntryKind) {
-        try {
-            ResolvedJavaField[] declaredFields = type.getStaticFields();
-            return findFieldWithOffset(offset, expectedEntryKind, declaredFields);
-        } catch (UnsupportedOperationException e) {
-            return null;
-        }
-    }
-
-    /**
-     * NOTE GR-18873: this is a copy-paste implementation derived from
-     * {@code jdk.vm.ci.hotspot.HotSpotResolvedObjectTypeImpl#findStaticFieldWithOffset}.
-     */
-    private static ResolvedJavaField findFieldWithOffset(long offset, JavaKind expectedEntryKind, ResolvedJavaField[] declaredFields) {
-        for (ResolvedJavaField field : declaredFields) {
-            long resolvedFieldOffset = field.getOffset();
-            if (ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN &&
-                            expectedEntryKind.isPrimitive() &&
-                            !expectedEntryKind.equals(JavaKind.Void) &&
-                            field.getJavaKind().isPrimitive()) {
-                resolvedFieldOffset += field.getJavaKind().getByteCount() -
-                                Math.min(field.getJavaKind().getByteCount(), 4 + expectedEntryKind.getByteCount());
-            }
-            if (resolvedFieldOffset == offset) {
-                return field;
-            }
-        }
-        return null;
-    }
-
 }
