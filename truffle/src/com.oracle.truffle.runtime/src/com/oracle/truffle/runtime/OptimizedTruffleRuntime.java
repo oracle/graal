@@ -1275,7 +1275,7 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
                 if (target instanceof OptimizedCallTarget) {
                     OptimizedCallTarget callTarget = ((OptimizedCallTarget) target);
                     if (callTarget.isSplit()) {
-                        builder.append(" <split-").append(Integer.toHexString(callTarget.hashCode())).append(">");
+                        builder.append(" <split-").append(callTarget.id).append(">");
                     }
                 }
 
