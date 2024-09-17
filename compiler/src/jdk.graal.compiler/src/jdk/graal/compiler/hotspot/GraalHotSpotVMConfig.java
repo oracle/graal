@@ -56,7 +56,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     GraalHotSpotVMConfig(HotSpotVMConfigStore store) {
         super(store);
 
-        assert narrowKlassShift <= logKlassAlignment : Assertions.errorMessageContext("narrowKlassShift", narrowKlassShift, "logKlassAlignment", logKlassAlignment);
         int logMinObjAlignment = logMinObjAlignment();
         assert narrowOopShift <= logMinObjAlignment : Assertions.errorMessageContext("narrowOopShift", narrowOopShift, "logMinObjAlignment", logMinObjAlignment);
         oopEncoding = new CompressEncoding(narrowOopBase, narrowOopShift);
@@ -187,6 +186,11 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     // Compressed Oops related values.
     public final boolean useCompressedOops = getFlag("UseCompressedOops", Boolean.class);
     public final boolean useCompressedClassPointers = getFlag("UseCompressedClassPointers", Boolean.class);
+    // JDK-8305895 allows storing the compressed class pointer in the upper 22 bits of the mark
+    // word. This runtime optimization is guarded by the flag UseCompactObjectHeaders. It depends
+    // on compressed class pointers, meaning that if useCompactObjectHeaders is true,
+    // useCompressedClassPointers is certainly true.
+    public final boolean useCompactObjectHeaders = getFlag("UseCompactObjectHeaders", Boolean.class, false, JDK >= 24);
 
     public final long narrowOopBase = getFieldValue("CompilerToVM::Data::Universe_narrow_oop_base", Long.class, "address");
     public final int narrowOopShift = getFieldValue("CompilerToVM::Data::Universe_narrow_oop_shift", Integer.class, "int");
@@ -199,7 +203,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int narrowKlassSize = getFieldValue("CompilerToVM::Data::sizeof_narrowKlass", Integer.class, "int");
     public final long narrowKlassBase = getFieldValue("CompilerToVM::Data::Universe_narrow_klass_base", Long.class, "address");
     public final int narrowKlassShift = getFieldValue("CompilerToVM::Data::Universe_narrow_klass_shift", Integer.class, "int");
-    public final int logKlassAlignment = getConstant("LogKlassAlignmentInBytes", Integer.class);
 
     public final int stackShadowPages = getFlag("StackShadowPages", Integer.class);
     public final int vmPageSize = getFieldValue("CompilerToVM::Data::vm_page_size", Integer.class, "size_t");
@@ -207,7 +210,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int softwarePrefetchHintDistance = getFlag("SoftwarePrefetchHintDistance", Integer.class, -1, "aarch64".equals(osArch));
 
     public final int markOffset = getFieldOffset("oopDesc::_mark", Integer.class, markWord);
-    public final int hubOffset = getFieldOffset("oopDesc::_metadata._klass", Integer.class, "Klass*");
+    // TODO remove before merge
+    public final int hubOffset = useCompactObjectHeaders ? 0xBAADCAFE : getFieldOffset("oopDesc::_metadata._klass", Integer.class, "Klass*");
 
     public final int superCheckOffsetOffset = getFieldOffset("Klass::_super_check_offset", Integer.class, "juint");
     public final int secondarySuperCacheOffset = getFieldOffset("Klass::_secondary_super_cache", Integer.class, "Klass*");
@@ -238,12 +242,17 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     public final int arrayOopDescSize = getFieldValue("CompilerToVM::Data::sizeof_arrayOopDesc", Integer.class, "int");
 
+    public final int arrayLengthOffsetInBytes = getFieldValue("CompilerToVM::Data::arrayOopDesc_length_offset_in_bytes", Integer.class, "int", -1, JDK >= 24);
+
     /**
      * The offset of the array length word in an array object's header.
      *
      * See {@code arrayOopDesc::length_offset_in_bytes()}.
      */
     public final int arrayOopDescLengthOffset() {
+        if (JDK >= 24) {
+            return arrayLengthOffsetInBytes;
+        }
         return useCompressedClassPointers ? hubOffset + narrowKlassSize : arrayOopDescSize;
     }
 
@@ -348,9 +357,22 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int frameInterpreterFrameSenderSpOffset = getConstant("frame::interpreter_frame_sender_sp_offset", Integer.class, 0, osArch.equals("amd64"));
     public final int frameInterpreterFrameLastSpOffset = getConstant("frame::interpreter_frame_last_sp_offset", Integer.class, 0, osArch.equals("amd64"));
 
-    public final int lockMaskInPlace = getConstant("markWord::lock_mask_in_place", Integer.class);
+    public final long markWordLockMaskInPlace = getConstant("markWord::lock_mask_in_place", Long.class);
+    public final long markWordHashMask = getConstant("markWord::hash_mask", Long.class);
+
+    public final long markWordNoHashInPlace = getConstant("markWord::no_hash_in_place", Long.class);
+    public final long markWordNoLockInPlace = getConstant("markWord::no_lock_in_place", Long.class);
+
+    // Mark word right shift to get identity hash code.
+    public final int markWordHashCodeShift = getConstant("markWord::hash_shift", Integer.class);
+    // Mark word right shift to get compressed klass pointer
+    public final int markWordKlassShift = getConstant("markWord::klass_shift", Integer.class, 0, JDK >= 24);
+
+    // The following three constants are declared as 64 bits uintptr_t, but known to be 32 bits
     public final int unlockedValue = getConstant("markWord::unlocked_value", Integer.class);
     public final int monitorValue = getConstant("markWord::monitor_value", Integer.class);
+    // Identity hash code value when uninitialized.
+    public final int uninitializedIdentityHashCodeValue = getConstant("markWord::no_hash", Integer.class);
 
     // This field has no type in vmStructs.cpp
     public final int objectMonitorOwner = getFieldOffset("ObjectMonitor::_owner", Integer.class, null);
@@ -359,25 +381,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int objectMonitorEntryList = getFieldOffset("ObjectMonitor::_EntryList", Integer.class, "ObjectWaiter*");
     public final int objectMonitorSucc = getFieldOffset("ObjectMonitor::_succ", Integer.class, "JavaThread*");
 
-    public final int markWordNoHashInPlace = getConstant("markWord::no_hash_in_place", Integer.class);
-    public final int markWordNoLockInPlace = getConstant("markWord::no_lock_in_place", Integer.class);
-
-    public long defaultPrototypeMarkWord() {
-        return this.markWordNoHashInPlace | this.markWordNoLockInPlace;
-    }
-
-    /**
-     * Mark word right shift to get identity hash code.
-     */
-    public final int identityHashCodeShift = getConstant("markWord::hash_shift", Integer.class);
-
     public final int contEntry = getFieldOffset("JavaThread::_cont_entry", Integer.class, "ContinuationEntry*", -1, JDK >= 24);
     public final int pinCount = getFieldOffset("ContinuationEntry::_pin_count", Integer.class, "uint32_t", -1, JDK >= 24);
-
-    /**
-     * Identity hash code value when uninitialized.
-     */
-    public final int uninitializedIdentityHashCodeValue = getConstant("markWord::no_hash", Integer.class);
 
     public final int methodCompiledEntryOffset = getFieldOffset("Method::_from_compiled_entry", Integer.class, "address");
 

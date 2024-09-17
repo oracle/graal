@@ -27,24 +27,27 @@ package jdk.graal.compiler.hotspot.replacements;
 import static jdk.graal.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
 import static jdk.graal.compiler.hotspot.GraalHotSpotVMConfigAccess.JDK;
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.VERIFY_OOP;
+import static jdk.graal.compiler.nodes.CompressionNode.CompressionOp.Compress;
 
 import java.lang.ref.Reference;
 
-import jdk.graal.compiler.core.common.type.Stamp;
-import jdk.graal.compiler.hotspot.meta.HotSpotLoweringProvider;
-import jdk.vm.ci.meta.Constant;
+import jdk.graal.compiler.hotspot.nodes.HotSpotCompressionNode;
+import jdk.graal.compiler.nodes.CompressionNode.CompressionOp;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.Fold.InjectedParameter;
+import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
+import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.TypeReference;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
 import jdk.graal.compiler.graph.Node.NodeIntrinsic;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
+import jdk.graal.compiler.hotspot.meta.HotSpotLoweringProvider;
 import jdk.graal.compiler.hotspot.word.KlassPointer;
 import jdk.graal.compiler.nodes.CanonicalizableLocation;
 import jdk.graal.compiler.nodes.CompressionNode;
@@ -71,11 +74,13 @@ import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
+import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
+import org.graalvm.word.WordFactory;
 
 //JaCoCo Exclude
 
@@ -463,13 +468,38 @@ public class HotSpotReplacementsUtil {
     };
 
     @Fold
+    public static boolean useCompactObjectHeaders(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.useCompactObjectHeaders;
+    }
+
+    @Fold
+    public static int markWordKlassShift(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.markWordKlassShift;
+    }
+
+    @NodeIntrinsic(HotSpotCompressionNode.class)
+    private static native KlassPointer compress(@ConstantNodeParameter CompressionOp op, KlassPointer hub, @ConstantNodeParameter CompressEncoding encoding);
+
+    @Fold
     static int hubOffset(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.hubOffset;
     }
 
+    @Fold
+    static CompressEncoding klassEncoding(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.getKlassEncoding();
+    }
+
     public static void initializeObjectHeader(Word memory, Word markWord, KlassPointer hub) {
-        memory.writeWord(markOffset(INJECTED_VMCONFIG), markWord, MARK_WORD_LOCATION);
-        StoreHubNode.write(memory, hub);
+        if (useCompactObjectHeaders(INJECTED_VMCONFIG)) {
+            Word compressedHub = WordFactory.unsigned(compress(Compress, hub, klassEncoding(INJECTED_VMCONFIG)).asInt());
+            Word hubInPlace = compressedHub.shiftLeft(markWordKlassShift(INJECTED_VMCONFIG));
+            Word newMarkWord = markWord.or(hubInPlace);
+            memory.writeWord(markOffset(INJECTED_VMCONFIG), newMarkWord, MARK_WORD_LOCATION);
+        } else {
+            memory.writeWord(markOffset(INJECTED_VMCONFIG), markWord, MARK_WORD_LOCATION);
+            StoreHubNode.write(memory, hub);
+        }
     }
 
     @Fold
@@ -528,8 +558,8 @@ public class HotSpotReplacementsUtil {
      * bits afterwards due to elimination of the biased locking.
      */
     @Fold
-    public static int lockMaskInPlace(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.lockMaskInPlace;
+    public static long markWordLockMaskInPlace(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.markWordLockMaskInPlace;
     }
 
     @Fold
@@ -714,7 +744,7 @@ public class HotSpotReplacementsUtil {
 
     @Fold
     public static long defaultPrototypeMarkWord(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.defaultPrototypeMarkWord();
+        return config.markWordNoHashInPlace | config.markWordNoLockInPlace;
     }
 
     @Fold
@@ -723,8 +753,13 @@ public class HotSpotReplacementsUtil {
     }
 
     @Fold
-    static int identityHashCodeShift(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.identityHashCodeShift;
+    static int markWordHashCodeShift(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.markWordHashCodeShift;
+    }
+
+    @Fold
+    static long markWordHashMark(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.markWordHashMask;
     }
 
     /**
@@ -765,17 +800,17 @@ public class HotSpotReplacementsUtil {
     private static native Object verifyOopStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Object object);
 
     public static Word loadWordFromObject(Object object, int offset) {
-        ReplacementsUtil.staticAssert(offset != hubOffset(INJECTED_VMCONFIG), "Use loadHubIntrinsic instead of loadWordFromObject");
+        ReplacementsUtil.staticAssert(useCompactObjectHeaders(INJECTED_VMCONFIG) || offset != hubOffset(INJECTED_VMCONFIG), "Use loadHubIntrinsic instead of loadWordFromObject");
         return loadWordFromObjectIntrinsic(object, offset, LocationIdentity.any(), getWordKind());
     }
 
     public static Word loadWordFromObject(Object object, int offset, LocationIdentity identity) {
-        ReplacementsUtil.staticAssert(offset != hubOffset(INJECTED_VMCONFIG), "Use loadHubIntrinsic instead of loadWordFromObject");
+        ReplacementsUtil.staticAssert(useCompactObjectHeaders(INJECTED_VMCONFIG) || offset != hubOffset(INJECTED_VMCONFIG), "Use loadHubIntrinsic instead of loadWordFromObject");
         return loadWordFromObjectIntrinsic(object, offset, identity, getWordKind());
     }
 
     public static KlassPointer loadKlassFromObject(Object object, int offset, LocationIdentity identity) {
-        ReplacementsUtil.staticAssert(offset != hubOffset(INJECTED_VMCONFIG), "Use loadHubIntrinsic instead of loadKlassFromObject");
+        ReplacementsUtil.staticAssert(useCompactObjectHeaders(INJECTED_VMCONFIG) || offset != hubOffset(INJECTED_VMCONFIG), "Use loadHubIntrinsic instead of loadKlassFromObject");
         return loadKlassFromObjectIntrinsic(object, offset, identity, getWordKind());
     }
 
