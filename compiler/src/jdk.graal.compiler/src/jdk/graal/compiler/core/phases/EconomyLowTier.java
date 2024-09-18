@@ -25,11 +25,14 @@
 package jdk.graal.compiler.core.phases;
 
 import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.graph.Graph;
+import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.PlaceholderPhase;
 import jdk.graal.compiler.phases.common.AddressLoweringPhase;
 import jdk.graal.compiler.phases.common.BarrierSetVerificationPhase;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.ExpandLogicPhase;
+import jdk.graal.compiler.phases.common.InitMemoryVerificationPhase;
 import jdk.graal.compiler.phases.common.LowTierLoweringPhase;
 import jdk.graal.compiler.phases.common.RemoveOpaqueValuePhase;
 import jdk.graal.compiler.phases.common.TransplantGraphsPhase;
@@ -39,7 +42,10 @@ import jdk.graal.compiler.phases.tiers.LowTierContext;
 public class EconomyLowTier extends BaseTier<LowTierContext> {
 
     @SuppressWarnings("this-escape")
-    public EconomyLowTier() {
+    public EconomyLowTier(OptionValues options) {
+        if (Graph.Options.VerifyGraalGraphs.getValue(options)) {
+            appendPhase(new InitMemoryVerificationPhase());
+        }
         CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
         appendPhase(new LowTierLoweringPhase(canonicalizer));
         appendPhase(new ExpandLogicPhase(canonicalizer));

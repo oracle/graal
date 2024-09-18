@@ -139,6 +139,7 @@ import jdk.graal.compiler.nodes.extended.JavaWriteNode;
 import jdk.graal.compiler.nodes.extended.MembarNode;
 import jdk.graal.compiler.nodes.extended.ObjectIsArrayNode;
 import jdk.graal.compiler.nodes.extended.OpaqueValueNode;
+import jdk.graal.compiler.nodes.extended.PublishWritesNode;
 import jdk.graal.compiler.nodes.extended.RawLoadNode;
 import jdk.graal.compiler.nodes.extended.RawStoreNode;
 import jdk.graal.compiler.nodes.extended.StateSplitProxyNode;
@@ -623,7 +624,9 @@ public class StandardGraphBuilderPlugins {
                  */
                 checkedLength = b.maybeEmitExplicitNegativeArraySizeCheck(lengthNode, BytecodeExceptionNode.BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_NEGATIVE_LENGTH);
             }
-            b.addPush(JavaKind.Object, new NewArrayNode(componentType, checkedLength, false));
+            NewArrayNode newArray = b.add(new NewArrayNode(componentType, checkedLength, false));
+            // For verification purposes
+            b.addPush(JavaKind.Object, new PublishWritesNode(newArray));
             return true;
 
         }

@@ -39,7 +39,6 @@ import jdk.graal.compiler.phases.tiers.CompilerConfiguration;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.LowTierContext;
 import jdk.graal.compiler.phases.tiers.MidTierContext;
-
 import jdk.vm.ci.code.Architecture;
 
 /**
@@ -60,7 +59,7 @@ public class EconomyCompilerConfiguration implements CompilerConfiguration {
 
     @Override
     public PhaseSuite<LowTierContext> createLowTier(OptionValues options, Architecture arch) {
-        return new EconomyLowTier();
+        return new EconomyLowTier(options);
     }
 
     @Override

@@ -28,6 +28,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.RawStructure;
+import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -165,7 +166,7 @@ public final class StoredContinuationAccess {
          * the ip is only visible after all the stores that fill in the stack data. To guarantee
          * that, we issue a STORE_STORE memory barrier before setting the ip.
          */
-        MembarNode.memoryBarrier(MembarNode.FenceKind.ALLOCATION_INIT);
+        MembarNode.memoryBarrier(MembarNode.FenceKind.ALLOCATION_INIT, LocationIdentity.INIT_LOCATION);
         cont.ip = ip;
     }
 
