@@ -100,8 +100,7 @@ public class AMD64HotSpotZVectorReadBarrierOp extends AMD64HotSpotZLoadBarriered
         } else if (features.contains(AMD64.CPUFeature.AVX2)) {
             broadcastOp = VexRMOp.VPBROADCASTQ;
         } else {
-            GraalError.guarantee(size == AVXSize.XMM, "requires AVX2");
-            broadcastOp = VexRMOp.VMOVDDUP;
+            broadcastOp = size == AVXSize.XMM ? VexRMOp.VMOVDDUP : VexRMOp.VBROADCASTSD;
         }
         broadcastOp.emit(masm, size, tempReg, new AMD64Address(r15, config.threadAddressBadMaskOffset));
         masm.vptest(resultReg, tempReg, size);
