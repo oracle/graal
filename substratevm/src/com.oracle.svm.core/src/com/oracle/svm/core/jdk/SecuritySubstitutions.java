@@ -26,7 +26,6 @@ package com.oracle.svm.core.jdk;
 
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
 
-import java.lang.ref.ReferenceQueue;
 import java.lang.reflect.Constructor;
 import java.net.URL;
 import java.security.AccessControlContext;
@@ -70,6 +69,8 @@ import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import sun.security.util.SecurityConstants;
 
 /*
@@ -359,6 +360,7 @@ final class Target_javax_crypto_JceSecurity {
     // value == PROVIDER_VERIFIED is successfully verified
     // value is failure cause Exception in error case
     @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     private static Map<Object, Object> verificationResults;
 
     @Alias //
@@ -369,16 +371,11 @@ final class Target_javax_crypto_JceSecurity {
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias) //
     private static Map<Class<?>, URL> codeBaseCacheRef = new WeakHashMap<>();
 
-    @Alias //
-    @TargetElement //
-    private static ReferenceQueue<Object> queue;
-
     @Substitute
     static Exception getVerificationResult(Provider p) {
         /* Start code block copied from original method. */
         /* The verification results map key is an identity wrapper object. */
-        Object key = new Target_javax_crypto_JceSecurity_WeakIdentityWrapper(p, queue);
-        Object o = verificationResults.get(key);
+        Object o = SecurityProvidersSupport.singleton().getSecurityProviderVerificationResult(p.getName());
         if (o == PROVIDER_VERIFIED) {
             return null;
         } else if (o != null) {
@@ -393,15 +390,6 @@ final class Target_javax_crypto_JceSecurity {
          */
         throw VMError.unsupportedFeature("Trying to verify a provider that was not registered at build time: " + p + ". " +
                         "All providers must be registered and verified in the Native Image builder. ");
-    }
-}
-
-@TargetClass(className = "javax.crypto.JceSecurity", innerClass = "WeakIdentityWrapper")
-@SuppressWarnings({"unused"})
-final class Target_javax_crypto_JceSecurity_WeakIdentityWrapper {
-
-    @Alias //
-    Target_javax_crypto_JceSecurity_WeakIdentityWrapper(Provider obj, ReferenceQueue<Object> queue) {
     }
 }
 
@@ -578,19 +566,120 @@ final class Target_sun_security_jca_ProviderConfig {
     @Alias //
     private String provName;
 
+    @Alias//
+    private static sun.security.util.Debug debug;
+
+    @Alias//
+    private Provider provider;
+
+    @Alias//
+    private boolean isLoading;
+
+    @Alias//
+    private int tries;
+
+    @Alias
+    private native Provider doLoadProvider();
+
+    @Alias
+    private native boolean shouldLoad();
+
     /**
-     * All security providers used in a native-image must be registered during image build time. At
-     * runtime, we shouldn't have a call to doLoadProvider. However, this method is still reachable
-     * at runtime, and transitively includes other types in the image, among which is
-     * sun.security.jca.ProviderConfig.ProviderLoader. This class contains a static field with a
-     * cache of providers loaded during the image build. The contents of this cache can vary even
-     * when building the same image due to the way services are loaded on Java 11. This cache can
-     * increase the final image size substantially (if it contains, for example,
-     * {@code org.jcp.xml.dsig.internal.dom.XMLDSigRI}.
+     * The `entrypoint` for allocating security providers at runtime. The implementation is copied
+     * from the JDK with a small tweak to filter out providers that are neither user-requested nor
+     * reachable via a security service.
      */
     @Substitute
-    private Provider doLoadProvider() {
-        throw VMError.unsupportedFeature("Cannot load new security provider at runtime: " + provName + ".");
+    @SuppressWarnings("fallthrough")
+    @SuppressFBWarnings(value = "DC_DOUBLECHECK", justification = "This double-check is implemented correctly and is intentional.")
+    Provider getProvider() {
+        // volatile variable load
+        Provider p = provider;
+        if (p != null) {
+            return p;
+        }
+        // DCL
+        synchronized (this) {
+            p = provider;
+            if (p != null) {
+                return p;
+            }
+            if (!shouldLoad()) {
+                return null;
+            }
+
+            // Create providers which are in java.base directly
+            SecurityProvidersSupport support = SecurityProvidersSupport.singleton();
+            switch (provName) {
+                case "SUN", "sun.security.provider.Sun": {
+                    p = support.isSecurityProviderExpected("SUN", "sun.security.provider.Sun") ? new sun.security.provider.Sun() : null;
+                    break;
+                }
+                case "SunRsaSign", "sun.security.rsa.SunRsaSign": {
+                    p = support.isSecurityProviderExpected("SunRsaSign", "sun.security.rsa.SunRsaSign") ? new sun.security.rsa.SunRsaSign() : null;
+                    break;
+                }
+                case "SunJCE", "com.sun.crypto.provider.SunJCE": {
+                    p = support.isSecurityProviderExpected("SunJCE", "com.sun.crypto.provider.SunJCE") ? new com.sun.crypto.provider.SunJCE() : null;
+                    break;
+                }
+                case "SunJSSE": {
+                    p = support.isSecurityProviderExpected("SunJSSE", "sun.security.ssl.SunJSSE") ? new sun.security.ssl.SunJSSE() : null;
+                    break;
+                }
+                case "Apple", "apple.security.AppleProvider": {
+                    // need to use reflection since this class only exists on MacOsx
+                    try {
+                        Class<?> c = Class.forName("apple.security.AppleProvider");
+                        if (Provider.class.isAssignableFrom(c)) {
+                            @SuppressWarnings("deprecation")
+                            Object newInstance = c.newInstance();
+                            p = (Provider) newInstance;
+                        }
+                    } catch (Exception ex) {
+                        if (debug != null) {
+                            debug.println("Error loading provider Apple");
+                            ex.printStackTrace();
+                        }
+                    }
+                    break;
+                }
+                case "SunEC": {
+                    if (JavaVersionUtil.JAVA_SPEC > 21) {
+                        // Constructor inside method and then allocate. ModuleSupport to open.
+                        p = support.isSecurityProviderExpected("SunEC", "sun.security.ec.SunEC") ? support.allocateSunECProvider() : null;
+                        break;
+                    }
+                    /*
+                     * On older JDK versions, SunEC was part of the `jdk.crypto.ec` module and was
+                     * allocated via the service loading mechanism, so this fallthrough is
+                     * intentional. On newer JDK versions, SunEC is part of `java.base` and is
+                     * allocated directly.
+                     */
+                }
+                // fall through
+                default: {
+                    if (isLoading) {
+                        // because this method is synchronized, this can only
+                        // happen if there is recursion.
+                        if (debug != null) {
+                            debug.println("Recursion loading provider: " + this);
+                            new Exception("Call trace").printStackTrace();
+                        }
+                        return null;
+                    }
+                    try {
+                        isLoading = true;
+                        tries++;
+                        p = doLoadProvider();
+                    } finally {
+                        isLoading = false;
+                    }
+                }
+            }
+            provider = p;
+        }
+        return p;
     }
 }
 
