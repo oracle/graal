@@ -84,12 +84,18 @@ For other installation options, visit the [Downloads section](https://www.graalv
     javac SimpleJmx.java
     ```
     This creates _SimpleJmx.class_, _SimpleJmx$Simple.class_, and _SimpleJmx$SimpleMBean.class_ files.
-
-3. Add dynamic proxy configuration. JMX uses dynamic proxies, a [dynamic feature](../DynamicFeatures.md) of Java, to access MBeans. To be able to interact with the custom `SimpleMBean` at runtime, you need to provide Native Image with additional [dynamic proxy configuration](../DynamicProxy.md) for the MBean interface. For this, create a JSON file named _proxy-config.json_ with the following contents:
+   
+3. Add dynamic proxy configuration. JMX uses dynamic proxies, a [dynamic feature](../DynamicFeatures.md) of Java, to access MBeans. To be able to interact with the custom `SimpleMBean` at runtime, you need to provide Native Image with additional [dynamic-proxy metadata](../ReachabilityMetadata.md#reflection) for the MBean interface. For this, create or modify a JSON file named _reachability-metadata.json_ with the following contents:
     ```json
-    [
-      { "interfaces": [ "SimpleJmx$SimpleMBean"] }
-    ]
+    {
+      "reflection": [
+        {
+          "type": {
+            "proxy": ["SimpleJmx$SimpleMBean"]
+          }
+        }
+      ]
+    }
     ```
 
 4. Build a native executable with VM monitoring enabled and pass the JSON configuration file to `native-image`:
@@ -136,4 +142,4 @@ Users can enable the JMX agent in a native executable to monitor a client applic
 
 - [Enabling and disabling JMX](https://docs.oracle.com/javadb/10.10.1.2/adminguide/radminjmxenabledisable.html)
 - [Create Heap Dumps with VisualVM](create-heap-dump-from-native-executable.md)
-- [Dynamic Proxy](../DynamicProxy.md)
+- [Dynamic Proxy](../ReachabilityMetadata.md#reflection)
