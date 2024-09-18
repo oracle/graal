@@ -43,12 +43,12 @@ import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.graal.nodes.DeoptProxyAnchorNode;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.nodes.NewPodInstanceNode;
+import com.oracle.svm.core.graal.nodes.TestDeoptimizeNode;
 import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.core.heap.Pod.RuntimeSupport.PodFactory;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
-import com.oracle.svm.hosted.nodes.TestDeoptimizeNode;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 
 import jdk.graal.compiler.core.common.type.StampFactory;
@@ -133,7 +133,9 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
         int nextDeoptIndex = startMethod(kit, deoptInfo, 0);
         instantiatePod(kit, factoryType, podConcreteType, instanceLocal);
         if (isAnnotationPresent(DeoptTest.class)) {
-            kit.append(new TestDeoptimizeNode());
+            if (!SubstrateCompilationDirectives.isDeoptTarget(method)) {
+                kit.append(new TestDeoptimizeNode());
+            }
         }
         nextDeoptIndex = invokeConstructor(kit, deoptInfo, nextDeoptIndex, targetCtor, instanceLocal);
 

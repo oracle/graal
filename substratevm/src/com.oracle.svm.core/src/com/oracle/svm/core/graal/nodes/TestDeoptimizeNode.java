@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,9 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.nodes;
+package com.oracle.svm.core.graal.nodes;
 
-import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
+import com.oracle.svm.core.BuildPhaseProvider;
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.Node;
@@ -40,8 +42,8 @@ import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 
 /**
- * For deoptimzation testing. The node performs a deoptimization in a normally compiled method, but
- * is a no-op in the deoptimization target method.
+ * For deoptimization testing. The node performs a deoptimization, but the lowering to
+ * DeoptimizeNode is delayed, so that the analysis sees a return from original method.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED)
 public class TestDeoptimizeNode extends FixedWithNextNode implements Canonicalizable {
@@ -53,12 +55,12 @@ public class TestDeoptimizeNode extends FixedWithNextNode implements Canonicaliz
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (SubstrateCompilationDirectives.isDeoptTarget(graph().method())) {
-            /* no-op for deoptimization target methods. */
-            return null;
-        } else {
-            /* deoptimization for all other methods. */
+        if (SubstrateUtil.HOSTED) {
+            if (!BuildPhaseProvider.isAnalysisFinished()) {
+                return this;
+            }
             return new DeoptimizeNode(DeoptimizationAction.None, DeoptimizationReason.TransferToInterpreter);
         }
+        throw VMError.shouldNotReachHere("Should only be used in hosted.");
     }
 }
