@@ -37,26 +37,28 @@ import java.util.random.RandomGenerator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import jdk.graal.compiler.hotspot.CompilerConfigurationFactory;
-import jdk.graal.compiler.hotspot.HotSpotBackendFactory;
-import jdk.graal.compiler.hotspot.meta.DefaultHotSpotLoweringProvider;
-import jdk.graal.compiler.hotspot.meta.HotSpotInvocationPluginProvider;
-import jdk.graal.compiler.truffle.hotspot.TruffleCallBoundaryInstrumentationFactory;
-import jdk.vm.ci.hotspot.HotSpotJVMCIBackendFactory;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 
+import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.jdk.SecurityProvidersSupport;
 import com.oracle.svm.core.jdk.ServiceCatalogSupport;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.hosted.analysis.Inflation;
 
+import jdk.graal.compiler.hotspot.CompilerConfigurationFactory;
+import jdk.graal.compiler.hotspot.HotSpotBackendFactory;
+import jdk.graal.compiler.hotspot.meta.DefaultHotSpotLoweringProvider;
+import jdk.graal.compiler.hotspot.meta.HotSpotInvocationPluginProvider;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionType;
+import jdk.graal.compiler.truffle.hotspot.TruffleCallBoundaryInstrumentationFactory;
+import jdk.vm.ci.hotspot.HotSpotJVMCIBackendFactory;
 import sun.util.locale.provider.LocaleDataMetaInfo;
 
 /**
@@ -114,7 +116,6 @@ public class ServiceLoaderFeature implements InternalFeature {
                      * initialized at image build time.
                      */
                     RandomGenerator.class,
-                    java.security.Provider.class,        // see SecurityServicesFeature
                     LocaleDataMetaInfo.class,            // see LocaleSubstitutions
 
                     /* Graal hotspot-specific services */
@@ -180,81 +181,98 @@ public class ServiceLoaderFeature implements InternalFeature {
         });
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+11/src/java.base/share/classes/java/util/ServiceLoader.java#L745-L793")
     void handleServiceClassIsReachable(DuringAnalysisAccess access, Class<?> serviceProvider, Collection<String> providers) {
         LinkedHashSet<String> registeredProviders = new LinkedHashSet<>();
         for (String provider : providers) {
             if (serviceProvidersToSkip.contains(provider)) {
                 continue;
             }
-            /* Make provider reflectively instantiable */
-            Class<?> providerClass = access.findClassByName(provider);
-
-            if (providerClass == null || providerClass.isArray() || providerClass.isPrimitive()) {
-                continue;
-            }
-            FeatureImpl.DuringAnalysisAccessImpl accessImpl = (FeatureImpl.DuringAnalysisAccessImpl) access;
-            if (!accessImpl.getHostVM().platformSupported(providerClass)) {
-                continue;
-            }
-            if (((Inflation) accessImpl.getBigBang()).getAnnotationSubstitutionProcessor().isDeleted(providerClass)) {
-                /* Disallow services with implementation classes that are marked as @Deleted */
-                continue;
-            }
-
-            /*
-             * Find either a public static provider() method or a nullary constructor (or both).
-             * Skip providers that do not comply with requirements.
-             *
-             * See ServiceLoader#loadProvider and ServiceLoader#findStaticProviderMethod.
-             */
-            Method nullaryProviderMethod = findProviderMethod(providerClass);
-            Constructor<?> nullaryConstructor = findNullaryConstructor(providerClass);
-            if (nullaryConstructor != null || nullaryProviderMethod != null) {
-                RuntimeReflection.register(providerClass);
-                if (nullaryConstructor != null) {
-                    /*
-                     * Registering a constructor with
-                     * RuntimeReflection.registerConstructorLookup(providerClass) does not produce
-                     * the same behavior as using RuntimeReflection.register(nullaryConstructor). In
-                     * the first case, the constructor is marked for query purposes only, so this
-                     * if-statement cannot be eliminated.
-                     *
-                     */
-                    RuntimeReflection.register(nullaryConstructor);
+            if (serviceProvider.equals(java.security.Provider.class) && FutureDefaultsOptions.isJDKInitializedAtRunTime()) {
+                SecurityProvidersSupport support = SecurityProvidersSupport.singleton();
+                /* Only register the security providers that are requested. */
+                if (support.isUserRequestedSecurityProvider(provider)) {
+                    registerProviderForRuntimeReflectionAccess(access, provider, registeredProviders);
                 } else {
-                    /*
-                     * If there's no nullary constructor, register it as negative lookup to avoid
-                     * throwing a MissingReflectionRegistrationError at run time.
-                     */
-                    RuntimeReflection.registerConstructorLookup(providerClass);
+                    support.markSecurityProviderAsNotLoaded(provider);
                 }
-                if (nullaryProviderMethod != null) {
-                    RuntimeReflection.register(nullaryProviderMethod);
-                } else {
-                    /*
-                     * If there's no declared public provider() method, register it as negative
-                     * lookup to avoid throwing a MissingReflectionRegistrationError at run time.
-                     */
-                    RuntimeReflection.registerMethodLookup(providerClass, "provider");
-                }
+                continue;
             }
-            /*
-             * Register the provider in both cases: when it is JCA-compliant (has a nullary
-             * constructor or a provider method) or when it lacks both. If neither is present, a
-             * ServiceConfigurationError will be thrown at runtime, consistent with HotSpot
-             * behavior.
-             */
-            registeredProviders.add(provider);
+            registerProviderForRuntimeReflectionAccess(access, provider, registeredProviders);
         }
+        registerProviderForRuntimeResourceAccess(access.getApplicationClassLoader().getUnnamedModule(), serviceProvider.getName(), registeredProviders);
+    }
+
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+21/src/java.base/share/classes/java/util/ServiceLoader.java#L745-L793")
+    public static void registerProviderForRuntimeReflectionAccess(DuringAnalysisAccess access, String provider, Set<String> registeredProviders) {
+        /* Make provider reflectively instantiable */
+        Class<?> providerClass = access.findClassByName(provider);
+
+        if (providerClass == null || providerClass.isArray() || providerClass.isPrimitive()) {
+            return;
+        }
+        FeatureImpl.DuringAnalysisAccessImpl accessImpl = (FeatureImpl.DuringAnalysisAccessImpl) access;
+        if (!accessImpl.getHostVM().platformSupported(providerClass)) {
+            return;
+        }
+        if (((Inflation) accessImpl.getBigBang()).getAnnotationSubstitutionProcessor().isDeleted(providerClass)) {
+            /* Disallow services with implementation classes that are marked as @Deleted */
+            return;
+        }
+
+        /*
+         * Find either a public static provider() method or a nullary constructor (or both). Skip
+         * providers that do not comply with requirements.
+         *
+         * See ServiceLoader#loadProvider and ServiceLoader#findStaticProviderMethod.
+         */
+        Method nullaryProviderMethod = findProviderMethod(providerClass);
+        Constructor<?> nullaryConstructor = findNullaryConstructor(providerClass);
+        if (nullaryConstructor != null || nullaryProviderMethod != null) {
+            RuntimeReflection.register(providerClass);
+            if (nullaryConstructor != null) {
+                /*
+                 * Registering a constructor with
+                 * RuntimeReflection.registerConstructorLookup(providerClass) does not produce the
+                 * same behavior as using RuntimeReflection.register(nullaryConstructor). In the
+                 * first case, the constructor is marked for query purposes only, so this
+                 * if-statement cannot be eliminated.
+                 *
+                 */
+                RuntimeReflection.register(nullaryConstructor);
+            } else {
+                /*
+                 * If there's no nullary constructor, register it as negative lookup to avoid
+                 * throwing a MissingReflectionRegistrationError at run time.
+                 */
+                RuntimeReflection.registerConstructorLookup(providerClass);
+            }
+            if (nullaryProviderMethod != null) {
+                RuntimeReflection.register(nullaryProviderMethod);
+            } else {
+                /*
+                 * If there's no declared public provider() method, register it as negative lookup
+                 * to avoid throwing a MissingReflectionRegistrationError at run time.
+                 */
+                RuntimeReflection.registerMethodLookup(providerClass, "provider");
+            }
+        }
+        /*
+         * Register the provider in both cases: when it is JCA-compliant (has a nullary constructor
+         * or a provider method) or when it lacks both. If neither is present, a
+         * ServiceConfigurationError will be thrown at runtime, consistent with HotSpot behavior.
+         */
+        registeredProviders.add(provider);
+    }
+
+    public static void registerProviderForRuntimeResourceAccess(Module module, String serviceProviderName, Set<String> registeredProviders) {
         if (!registeredProviders.isEmpty()) {
-            String serviceResourceLocation = "META-INF/services/" + serviceProvider.getName();
-            byte[] serviceFileData = registeredProviders.stream().collect(Collectors.joining("\n")).getBytes(StandardCharsets.UTF_8);
-            RuntimeResourceAccess.addResource(access.getApplicationClassLoader().getUnnamedModule(), serviceResourceLocation, serviceFileData);
+            String serviceResourceLocation = "META-INF/services/" + serviceProviderName;
+            byte[] serviceFileData = String.join("\n", registeredProviders).getBytes(StandardCharsets.UTF_8);
+            RuntimeResourceAccess.addResource(module, serviceResourceLocation, serviceFileData);
         }
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+11/src/java.base/share/classes/java/util/ServiceLoader.java#L620-L631")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+21/src/java.base/share/classes/java/util/ServiceLoader.java#L620-L631")
     private static Constructor<?> findNullaryConstructor(Class<?> providerClass) {
         Constructor<?> nullaryConstructor = null;
         try {
@@ -268,7 +286,7 @@ public class ServiceLoaderFeature implements InternalFeature {
         return nullaryConstructor;
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+11/src/java.base/share/classes/java/util/ServiceLoader.java#L583-L612")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+21/src/java.base/share/classes/java/util/ServiceLoader.java#L583-L612")
     private static Method findProviderMethod(Class<?> providerClass) {
         Method nullaryProviderMethod = null;
         try {
