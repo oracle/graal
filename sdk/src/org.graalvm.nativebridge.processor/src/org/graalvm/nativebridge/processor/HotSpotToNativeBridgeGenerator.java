@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -591,7 +591,8 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
         builder.methodStart(EnumSet.of(Modifier.STATIC), methodName, endMethodReturnType, params, Collections.emptyList());
         builder.indent();
         String scopeName = targetClassSimpleName + "::" + methodName;
-        String scopeInit = new CodeBuilder(builder).write(typeCache.jniMethodScope).write(" scope = ").newInstance(typeCache.jniMethodScope, "\"" + scopeName + "\"", jniEnvVariable).build();
+        String scopeInit = new CodeBuilder(builder).write(typeCache.jniMethodScope).write(" scope = ").invokeStatic(typeCache.foreignException, "openJNIMethodScope", "\"" + scopeName + "\"",
+                        jniEnvVariable).build();
         if (objectReturnType) {
             builder.lineStart(scopeInit).lineEnd(";");
             scopeInit = new CodeBuilder(builder).write(typeCache.jniMethodScope).write(" sc = scope").build();
