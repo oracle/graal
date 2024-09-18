@@ -40,4 +40,13 @@ public interface MultiMemoryKill extends MemoryKill {
      */
     LocationIdentity[] getKilledLocationIdentities();
 
+    @Override
+    default boolean killsInit() {
+        for (LocationIdentity identity : getKilledLocationIdentities()) {
+            if (identity.isInit()) {
+                return true;
+            }
+        }
+        return false;
+    }
 }
