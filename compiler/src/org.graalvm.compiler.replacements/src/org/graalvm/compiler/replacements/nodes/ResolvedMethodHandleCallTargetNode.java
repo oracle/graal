@@ -33,6 +33,7 @@ import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import org.graalvm.compiler.nodes.java.ResolvedMethodHandleCallTargetNodeMarker;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -52,7 +53,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * invocation drops these arguments which means the interpreter won't find them.
  */
 @NodeInfo
-public final class ResolvedMethodHandleCallTargetNode extends MethodCallTargetNode implements Lowerable {
+public final class ResolvedMethodHandleCallTargetNode extends ResolvedMethodHandleCallTargetNodeMarker implements Lowerable {
 
     public static final NodeClass<ResolvedMethodHandleCallTargetNode> TYPE = NodeClass.create(ResolvedMethodHandleCallTargetNode.class);
 

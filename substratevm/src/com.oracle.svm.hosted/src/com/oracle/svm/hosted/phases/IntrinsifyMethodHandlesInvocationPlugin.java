@@ -446,7 +446,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                  * They are too complex and cannot be reduced to a single invoke or field access.
                  * There is also no need to inline them, because they are not related to any
                  * MethodHandle mechanism.
-                 * 
+                 *
                  * Methods defined in VarHandle itself are fine and not covered by this rule, apart
                  * from well-known methods that are never useful to be inlined. If these methods are
                  * reached, intrinsification will not be possible in any case.
@@ -967,7 +967,8 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
              * BytecodeParser are safe. We want to avoid putting additional rarely used methods into
              * GraphBuilderContext.
              */
-            classInitializationPlugin.apply(b, declaringClass, () -> ((BytecodeParser) b).getFrameStateBuilder().create(b.bci(), (BytecodeParser) b.getNonIntrinsicAncestor(), false, null, null));
+            classInitializationPlugin.apply(b, declaringClass, () -> ((BytecodeParser) b).getFrameStateBuilder().create(b.bci(), (BytecodeParser) b.getNonIntrinsicAncestor(), false, null, null),
+                            null);
         }
     }
 

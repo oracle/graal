@@ -520,15 +520,13 @@ public class StandardGraphBuilderPlugins {
             Class<?> javaClass = getJavaClass(kind);
             String kindName = getKindName(isSunMiscUnsafe, kind);
             boolean isLogic = true;
-            JavaKind returnKind = JavaKind.Boolean.getStackKind();
             if (casPrefix.startsWith("compareAndExchange")) {
                 isLogic = false;
-                returnKind = kind.isNumericInteger() ? kind.getStackKind() : kind;
             }
             for (String memoryOrderString : memoryOrders) {
                 MemoryOrderMode memoryOrder = memoryOrderString.equals("") ? MemoryOrderMode.VOLATILE : MemoryOrderMode.valueOf(memoryOrderString.toUpperCase());
                 r.register5(casPrefix + kindName + memoryOrderString, Receiver.class, Object.class, long.class, javaClass, javaClass,
-                                new UnsafeCompareAndSwapPlugin(returnKind, kind, memoryOrder, isLogic, explicitUnsafeNullChecks));
+                                new UnsafeCompareAndSwapPlugin(kind, kind, memoryOrder, isLogic, explicitUnsafeNullChecks));
             }
         }
     }
@@ -562,7 +560,7 @@ public class StandardGraphBuilderPlugins {
         for (JavaKind kind : unsafeJavaKinds) {
             Class<?> javaClass = kind == JavaKind.Object ? Object.class : kind.toJavaClass();
             String kindName = kind == JavaKind.Object ? objectKindName : kind.name();
-            r.register4("getAndSet" + kindName, Receiver.class, Object.class, long.class, javaClass, new UnsafeAccessPlugin(kind, explicitUnsafeNullChecks) {
+            r.register4("getAndSet" + kindName, Receiver.class, Object.class, long.class, javaClass, new UnsafeAccessPlugin(kind, kind, explicitUnsafeNullChecks) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode value) {
                     // Emits a null-check for the otherwise unused receiver
@@ -573,7 +571,7 @@ public class StandardGraphBuilderPlugins {
             });
 
             if (kind != JavaKind.Boolean && kind.isNumericInteger()) {
-                r.register4("getAndAdd" + kindName, Receiver.class, Object.class, long.class, javaClass, new UnsafeAccessPlugin(kind, explicitUnsafeNullChecks) {
+                r.register4("getAndAdd" + kindName, Receiver.class, Object.class, long.class, javaClass, new UnsafeAccessPlugin(kind, kind, explicitUnsafeNullChecks) {
                     @Override
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode delta) {
                         // Emits a null-check for the otherwise unused receiver
@@ -1147,10 +1145,12 @@ public class StandardGraphBuilderPlugins {
         }
 
         protected final JavaKind unsafeAccessKind;
+        protected final JavaKind returnKind;
         private final boolean explicitUnsafeNullChecks;
 
-        public UnsafeAccessPlugin(JavaKind kind, boolean explicitUnsafeNullChecks) {
-            unsafeAccessKind = kind;
+        public UnsafeAccessPlugin(JavaKind unsafeAccessKind, JavaKind returnKind, boolean explicitUnsafeNullChecks) {
+            this.unsafeAccessKind = unsafeAccessKind;
+            this.returnKind = returnKind;
             this.explicitUnsafeNullChecks = explicitUnsafeNullChecks;
         }
 
@@ -1162,13 +1162,9 @@ public class StandardGraphBuilderPlugins {
             return nodeConstructor.create(ConstantNode.forLong(0L, graph), OFF_HEAP_LOCATION);
         }
 
-        private static boolean isLoad(ValueNode node) {
-            return node.getStackKind() != JavaKind.Void;
-        }
-
         private void setAccessNodeResult(FixedWithNextNode node, GraphBuilderContext b) {
-            if (isLoad(node)) {
-                b.addPush(unsafeAccessKind, node);
+            if (returnKind != JavaKind.Void) {
+                b.addPush(returnKind, node);
             } else {
                 b.add(node);
             }
@@ -1210,25 +1206,25 @@ public class StandardGraphBuilderPlugins {
                     EndNode endNode = graph.add(new EndNode());
                     node.setNext(endNode);
                     if (node instanceof StateSplit) {
-                        if (isLoad(node)) {
+                        if (returnKind != JavaKind.Void) {
                             /*
                              * Temporarily push the access node so that the frame state has the node
                              * on the expression stack.
                              */
-                            b.push(unsafeAccessKind, node);
+                            b.push(returnKind, node);
                         }
                         b.setStateAfter((StateSplit) node);
-                        if (isLoad(node)) {
-                            ValueNode popped = b.pop(unsafeAccessKind);
+                        if (returnKind != JavaKind.Void) {
+                            ValueNode popped = b.pop(returnKind);
                             assert popped == node;
                         }
                     }
                     merge.addForwardEnd(endNode);
                 }
 
-                if (isLoad(objectAccess)) {
+                if (returnKind != JavaKind.Void) {
                     ValuePhiNode phi = new ValuePhiNode(objectAccess.stamp(NodeView.DEFAULT), merge, accessNodes);
-                    b.push(unsafeAccessKind, graph.addOrUnique(phi));
+                    b.push(returnKind, graph.addOrUnique(phi));
                 }
                 b.setStateAfter(merge);
             }
@@ -1243,7 +1239,7 @@ public class StandardGraphBuilderPlugins {
         }
 
         public UnsafeGetPlugin(JavaKind kind, MemoryOrderMode memoryOrder, boolean explicitUnsafeNullChecks) {
-            super(kind, explicitUnsafeNullChecks);
+            super(kind, kind, explicitUnsafeNullChecks);
             this.memoryOrder = memoryOrder;
         }
 
@@ -1251,7 +1247,7 @@ public class StandardGraphBuilderPlugins {
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode address) {
             // Emits a null-check for the otherwise unused receiver
             unsafe.get();
-            b.addPush(unsafeAccessKind, new UnsafeMemoryLoadNode(address, unsafeAccessKind, OFF_HEAP_LOCATION));
+            b.addPush(returnKind, new UnsafeMemoryLoadNode(address, unsafeAccessKind, OFF_HEAP_LOCATION));
             b.getGraph().markUnsafeAccess();
             return true;
         }
@@ -1296,7 +1292,7 @@ public class StandardGraphBuilderPlugins {
         }
 
         private UnsafePutPlugin(JavaKind kind, MemoryOrderMode memoryOrder, boolean explicitUnsafeNullChecks) {
-            super(kind, explicitUnsafeNullChecks);
+            super(kind, JavaKind.Void, explicitUnsafeNullChecks);
             this.memoryOrder = memoryOrder;
         }
 
@@ -1340,13 +1336,11 @@ public class StandardGraphBuilderPlugins {
 
     public static class UnsafeCompareAndSwapPlugin extends UnsafeAccessPlugin {
         private final MemoryOrderMode memoryOrder;
-        private final JavaKind accessKind;
         private final boolean isLogic;
 
         public UnsafeCompareAndSwapPlugin(JavaKind returnKind, JavaKind accessKind, MemoryOrderMode memoryOrder, boolean isLogic, boolean explicitUnsafeNullChecks) {
-            super(returnKind, explicitUnsafeNullChecks);
+            super(returnKind, isLogic ? JavaKind.Boolean : accessKind, explicitUnsafeNullChecks);
             this.memoryOrder = memoryOrder;
-            this.accessKind = accessKind;
             this.isLogic = isLogic;
         }
 
@@ -1355,9 +1349,9 @@ public class StandardGraphBuilderPlugins {
             // Emits a null-check for the otherwise unused receiver
             unsafe.get();
             if (isLogic) {
-                createUnsafeAccess(object, b, (obj, loc) -> new UnsafeCompareAndSwapNode(obj, offset, expected, newValue, accessKind, loc, memoryOrder));
+                createUnsafeAccess(object, b, (obj, loc) -> new UnsafeCompareAndSwapNode(obj, offset, expected, newValue, unsafeAccessKind, loc, memoryOrder));
             } else {
-                createUnsafeAccess(object, b, (obj, loc) -> new UnsafeCompareAndExchangeNode(obj, offset, expected, newValue, accessKind, loc, memoryOrder));
+                createUnsafeAccess(object, b, (obj, loc) -> new UnsafeCompareAndExchangeNode(obj, offset, expected, newValue, unsafeAccessKind, loc, memoryOrder));
             }
             return true;
         }

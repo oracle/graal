@@ -27,10 +27,10 @@ package org.graalvm.compiler.nodes.graphbuilderconf;
 import java.util.function.Supplier;
 
 import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.ValueNode;
 
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.compiler.nodes.ValueNode;
 
 /**
  * Plugin for emitting a class initialization barrier (i.e., initializes a class if it's not already
@@ -49,22 +49,10 @@ public interface ClassInitializationPlugin extends GraphBuilderPlugin {
      *
      * @param frameState supplier to create a frame state representing the state just prior to
      *            execution of the class initialization barrier
-     * @param classInit if non-null, the node representing the class initialization barrier should
-     *            be returned in element 0 of this array
+     * @param classInit
      * @return {@code true} if this method emitted a barrier,{@code false} if not
      */
     boolean apply(GraphBuilderContext builder, ResolvedJavaType type, Supplier<FrameState> frameState, ValueNode[] classInit);
-
-    /**
-     * Emits a class initialization barrier for {@code type}.
-     *
-     * @param frameState supplier to create a frame state representing the state just prior to
-     *            execution of the class initialization barrier
-     * @return {@code true} if this method emitted a barrier,{@code false} if not
-     */
-    default boolean apply(GraphBuilderContext builder, ResolvedJavaType type, Supplier<FrameState> frameState) {
-        return apply(builder, type, frameState, null);
-    }
 
     /**
      * Determines if {@code cp} has a variation of {@link ConstantPool#loadReferencedType} that can

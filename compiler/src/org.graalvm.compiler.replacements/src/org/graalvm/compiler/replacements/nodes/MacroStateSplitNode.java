@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.replacements.nodes;
 
+import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.InputType;
@@ -68,6 +69,18 @@ public abstract class MacroStateSplitNode extends MacroNode implements StateSpli
     @Override
     public boolean hasSideEffect() {
         return true;
+    }
+
+    @Override
+    protected InvokeNode createInvoke() {
+        InvokeNode invoke = super.createInvoke();
+        if (stateAfter() != null) {
+            invoke.setStateAfter(stateAfter().duplicate());
+            if (getStackKind() != JavaKind.Void) {
+                invoke.stateAfter().replaceFirstInput(this, invoke);
+            }
+        }
+        return invoke;
     }
 
     @Override

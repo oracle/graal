@@ -96,11 +96,13 @@ import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.java.MonitorExitNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
+import org.graalvm.compiler.nodes.java.ResolvedMethodHandleCallTargetNodeMarker;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.common.inlining.info.InlineInfo;
 import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
 import org.graalvm.compiler.phases.util.ValueMergeUtil;
+import org.graalvm.compiler.nodes.MacroInvokableMarker;
 import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 
 import jdk.vm.ci.code.BytecodeFrame;
@@ -482,10 +484,30 @@ public class InliningUtil extends ValueMergeUtil {
             unwindNode = (UnwindNode) duplicates.get(unwindNode);
         }
 
+        if (firstCFGNode instanceof MacroInvokableMarker && firstCFGNode instanceof StateSplit && invoke.callTarget() instanceof ResolvedMethodHandleCallTargetNodeMarker &&
+                        invoke.callTarget() instanceof MethodCallTargetNode) {
+            // Replacing a method handle invoke with a MacroNode
+            MacroInvokableMarker macroInvokable = (MacroInvokableMarker) firstCFGNode;
+            ResolvedMethodHandleCallTargetNodeMarker methodHandle = (ResolvedMethodHandleCallTargetNodeMarker) invoke.callTarget();
+            if (methodHandle.targetMethod().equals(macroInvokable.getTargetMethod()) && getDepth(invoke.stateAfter()) == getDepth(((StateSplit) macroInvokable).stateAfter())) {
+                macroInvokable.addMethodHandleInfo(methodHandle);
+            }
+        }
+
         finishInlining(invoke, graph, firstCFGNode, returnNodes, unwindNode, inlineGraph, returnAction);
         GraphUtil.killCFG(invokeNode);
 
         return duplicates;
+    }
+
+    static int getDepth(FrameState state) {
+        int depth = 0;
+        FrameState current = state;
+        while (current != null) {
+            depth++;
+            current = current.outerFrameState();
+        }
+        return depth;
     }
 
     /**
