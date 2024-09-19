@@ -48,11 +48,6 @@ abstract class EspressoInstrumentableRootNodeImpl extends EspressoInstrumentable
     }
 
     @Override
-    boolean isTrivial() {
-        return false;
-    }
-
-    @Override
     public boolean canSplit() {
         return false;
     }

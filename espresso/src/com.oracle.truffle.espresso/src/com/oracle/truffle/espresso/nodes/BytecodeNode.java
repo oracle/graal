@@ -3340,6 +3340,9 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         if (!noForeignObjects.isValid() || implicitExceptionProfile) {
             return false;
         }
+        if (instrumentation != null) {
+            return false;
+        }
         if (trivialBytecodesCache == TRIVIAL_UNINITIALIZED) {
             // Cache "triviality" of original bytecodes.
             trivialBytecodesCache = trivialBytecodes() ? TRIVIAL_YES : TRIVIAL_NO;

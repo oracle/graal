@@ -154,13 +154,6 @@ public interface MethodRef {
     KlassRef getDeclaringKlassRef();
 
     /**
-     * Returns the first line number for the method, or -1 if unknown.
-     *
-     * @return first line
-     */
-    int getFirstLine();
-
-    /**
      * Returns the last line number for the method, or -1 if unknown.
      *
      * @return last line

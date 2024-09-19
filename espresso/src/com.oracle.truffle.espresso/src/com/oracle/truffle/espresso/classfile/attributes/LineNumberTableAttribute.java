@@ -46,14 +46,13 @@ public final class LineNumberTableAttribute extends Attribute implements LineNum
 
     private int lastLine = -1;
 
-    private int firstLine = -1;
-
     public LineNumberTableAttribute(Symbol<Name> name, char[] entries) {
         super(name, null);
         assert entries.length % 2 == 0;
         this.bciToLineEntries = entries;
     }
 
+    @Override
     public List<Entry> getEntries() {
         return new ListWrapper();
     }
@@ -91,28 +90,7 @@ public final class LineNumberTableAttribute extends Attribute implements LineNum
         for (int i = 0; i < length(); i++) {
             max = Math.max(max, lineAt(i));
         }
-        return max;
-    }
-
-    public int getFirstLine() {
-        if (firstLine != -1) {
-            return firstLine;
-        }
-        int min = Integer.MAX_VALUE;
-        for (int i = 0; i < length(); i++) {
-            min = Math.min(min, lineAt(i));
-        }
-        return min;
-    }
-
-    public int getNextLine(int line) {
-        int next = Integer.MAX_VALUE;
-        for (int i = 0; i < length(); i++) {
-            if (lineAt(i) > line) {
-                next = Math.min(next, lineAt(i));
-            }
-        }
-        return next;
+        return lastLine = max;
     }
 
     private int bciAt(int i) {
@@ -141,10 +119,12 @@ public final class LineNumberTableAttribute extends Attribute implements LineNum
             this.lineNumber = lineNumber;
         }
 
+        @Override
         public int getBCI() {
             return bci;
         }
 
+        @Override
         public int getLineNumber() {
             return lineNumber;
         }
