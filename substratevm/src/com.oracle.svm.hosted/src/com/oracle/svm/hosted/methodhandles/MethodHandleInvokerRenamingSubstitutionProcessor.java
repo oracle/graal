@@ -113,10 +113,6 @@ public class MethodHandleInvokerRenamingSubstitutionProcessor extends Substituti
     }
 
     public static boolean isMethodHandleType(ResolvedJavaType type) {
-        return type.isFinalFlagSet() && isMethodHandleName(type);
-    }
-
-    private static boolean isMethodHandleName(ResolvedJavaType type) {
         String name = type.getName();
         return name.contains(DMH_CLASS_NAME_SUBSTRING) || name.contains(MH_CLASS_NAME_SUBSTRING) || name.contains(VH_CLASS_NAME_SUBSTRING);
     }
