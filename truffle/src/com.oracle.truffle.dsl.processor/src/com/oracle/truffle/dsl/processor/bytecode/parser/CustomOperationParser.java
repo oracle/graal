@@ -644,7 +644,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         List<ConstantOperandModel> after = new ArrayList<>();
 
         for (AnnotationMirror constantOperandMirror : constantOperands) {
-            TypeMirror type = (TypeMirror) ElementUtils.getAnnotationValue(constantOperandMirror, "type").getValue();
+            TypeMirror type = parseConstantOperandType(constantOperandMirror);
             String operandName = ElementUtils.getAnnotationValue(String.class, constantOperandMirror, "name");
             String javadoc = ElementUtils.getAnnotationValue(String.class, constantOperandMirror, "javadoc");
             Boolean specifyAtEnd = ElementUtils.getAnnotationValue(Boolean.class, constantOperandMirror, "specifyAtEnd", false);
@@ -674,6 +674,20 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             }
         }
         return new ConstantOperandsModel(before, after);
+    }
+
+    /**
+     * Extracts the type of a constant operand from its annotation. Converts a raw type to a generic
+     * type with wildcards.
+     * <p>
+     * Specializations may declare operands with generic types (e.g., {@code NodeFactory<?>}), but a
+     * ConstantOperand annotation can only encode a raw type (e.g., {@code NodeFactory}). ecj treats
+     * the latter as a subclass of the former, but javac does not, leading to problems with node
+     * generation. Replacing the raw type with a wildcarded type prevents these errors.
+     */
+    private TypeMirror parseConstantOperandType(AnnotationMirror constantOperandMirror) {
+        TypeMirror result = (TypeMirror) ElementUtils.getAnnotationValue(constantOperandMirror, "type").getValue();
+        return ElementUtils.rawTypeToWildcardedType(context, result);
     }
 
     private static boolean isValidOperandName(String name) {
