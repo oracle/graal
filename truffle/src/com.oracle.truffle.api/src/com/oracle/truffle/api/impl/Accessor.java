@@ -45,7 +45,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Type;
@@ -1111,24 +1110,6 @@ public abstract class Accessor {
         public abstract TruffleProcessBuilder createProcessBuilder(Object polylgotLanguageContext, FileSystem fileSystem, List<String> command);
     }
 
-    public abstract static class ForeignSupport extends Support {
-        static final String IMPL_CLASS_NAME = "com.oracle.truffle.api.foreign.ForeignSupportImpl";
-
-        protected ForeignSupport() {
-            super(IMPL_CLASS_NAME);
-        }
-
-        public abstract Object libraryLookup(String libraryName, Object arena);
-
-        public abstract MethodHandle downcallHandle(String symbolName, Object functionDescriptor);
-
-        public abstract MethodHandle downcallHandle(Object functionDescriptor);
-
-        public abstract Object upcallStub(MethodHandle methodHandle, Object functionDescriptor, Object arena);
-
-        public abstract Object reinterpret(Object memorySegment, long newSize);
-    }
-
     public abstract static class SomSupport extends Support {
 
         static final String IMPL_CLASS_NAME = "com.oracle.truffle.api.staticobject.SomAccessor";
@@ -1416,7 +1397,6 @@ public abstract class Accessor {
         private static final Accessor.RuntimeSupport RUNTIME;
         private static final Accessor.LanguageProviderSupport LANGUAGE_PROVIDER;
         private static final Accessor.InstrumentProviderSupport INSTRUMENT_PROVIDER;
-        private static final Accessor.ForeignSupport FOREIGN;
         private static final DynamicObjectSupport DYNAMIC_OBJECT;
 
         static {
@@ -1435,7 +1415,6 @@ public abstract class Accessor {
             RUNTIME = getTVMCI().createRuntimeSupport(RuntimeSupport.PERMISSION);
             LANGUAGE_PROVIDER = loadSupport(LanguageProviderSupport.IMPL_CLASS_NAME);
             INSTRUMENT_PROVIDER = loadSupport(InstrumentProviderSupport.IMPL_CLASS_NAME);
-            FOREIGN = loadSupport(ForeignSupport.IMPL_CLASS_NAME);
             DYNAMIC_OBJECT = loadSupport(DynamicObjectSupport.IMPL_CLASS_NAME);
         }
 
@@ -1481,8 +1460,7 @@ public abstract class Accessor {
                         "com.oracle.truffle.polyglot.enterprise.EnterpriseEngineAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.polyglot.enterprise.test.EnterpriseDispatchTestAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.staticobject.SomAccessor".equals(thisClassName) ||
-                        "com.oracle.truffle.api.strings.TStringAccessor".equals(thisClassName) ||
-                        "com.oracle.truffle.nfi.backend.panama.NFIPanamaAccessor".equals(thisClassName)) {
+                        "com.oracle.truffle.api.strings.TStringAccessor".equals(thisClassName)) {
             // OK, classes allowed to use accessors
         } else {
             throw new IllegalStateException(thisClassName);
@@ -1539,10 +1517,6 @@ public abstract class Accessor {
 
     public final InstrumentProviderSupport instrumentProviderSupport() {
         return Constants.INSTRUMENT_PROVIDER;
-    }
-
-    public final ForeignSupport foreignSupport() {
-        return Constants.FOREIGN;
     }
 
     public final DynamicObjectSupport dynamicObjectSupport() {

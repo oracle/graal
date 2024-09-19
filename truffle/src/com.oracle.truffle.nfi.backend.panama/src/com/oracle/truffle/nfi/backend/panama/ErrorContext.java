@@ -41,6 +41,7 @@
 package com.oracle.truffle.nfi.backend.panama;
 
 import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.Linker;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
@@ -75,18 +76,18 @@ public class ErrorContext {
         this.nativeErrno = nativeErrno;
     }
 
-    @SuppressWarnings({"preview"})
+    @SuppressWarnings({"preview", "restricted"})
     MemorySegment lookupErrnoLocation() {
-        FunctionDescriptor desc = FunctionDescriptor.of(ValueLayout.JAVA_LONG);
         try {
-            MethodHandle handle = NFIPanamaAccessor.FOREIGN.downcallHandle(ERRNO_LOCATION, desc);
-            MemorySegment errnoAddress;
+            Linker linker = Linker.nativeLinker();
+            FunctionDescriptor desc = FunctionDescriptor.of(ValueLayout.JAVA_LONG);
+            MemorySegment sym = linker.defaultLookup().find(ERRNO_LOCATION).orElseThrow();
+            MethodHandle handle = linker.downcallHandle(desc);
             try {
-                errnoAddress = MemorySegment.ofAddress((long) handle.invokeExact());
+                return MemorySegment.ofAddress((long) handle.invokeExact(sym)).reinterpret(4);
             } catch (Throwable e) {
                 throw new RuntimeException(e);
             }
-            return (MemorySegment) NFIPanamaAccessor.FOREIGN.reinterpret(errnoAddress, 4);
         } catch (IllegalCallerException ic) {
             throw NFIError.illegalNativeAccess(null);
         }

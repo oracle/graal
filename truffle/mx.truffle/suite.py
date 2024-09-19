@@ -238,25 +238,6 @@ suite = {
       "graalCompilerSourceEdition": "ignore",
     },
 
-    "com.oracle.truffle.api.jdk22" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-      ],
-      "requires" : [
-      ],
-      "overlayTarget" : "com.oracle.truffle.api",
-      "checkPackagePrefix" : "false",
-      "multiReleaseJarVersion" : "22",
-      "javaCompliance" : "22+",
-      "forceJavac": True,
-      "checkstyle" : "com.oracle.truffle.api",
-      "workingSets" : "API,Truffle",
-      "graalCompilerSourceEdition": "ignore",
-      # disable SpotBugs as long JDK 22 is unsupported [GR-49566]
-      "spotbugs" : "false",
-    },
-
     "com.oracle.truffle.api.jdk21" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
