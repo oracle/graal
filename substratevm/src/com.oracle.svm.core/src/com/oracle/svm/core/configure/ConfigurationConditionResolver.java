@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,36 +24,27 @@
  */
 package com.oracle.svm.core.configure;
 
-import java.util.Collection;
-import java.util.Locale;
-
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
-import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
-public interface ResourcesRegistry extends RuntimeResourceSupport {
+import com.oracle.svm.core.TypeResult;
 
-    @SuppressWarnings("unchecked")
-    static ResourcesRegistry singleton() {
-        return ImageSingletons.lookup(ResourcesRegistry.class);
+public interface ConfigurationConditionResolver {
+
+    static ConfigurationConditionResolver identityResolver() {
+        return new ConfigurationConditionResolver() {
+            @Override
+            public TypeResult<ConfigurationCondition> resolveCondition(ConfigurationCondition unresolvedCondition) {
+                return TypeResult.forType(unresolvedCondition.getTypeName(), unresolvedCondition);
+            }
+
+            @Override
+            public ConfigurationCondition alwaysTrue() {
+                return ConfigurationCondition.alwaysTrue();
+            }
+        };
     }
 
-    void addClassBasedResourceBundle(ConfigurationCondition condition, String basename, String className);
+    TypeResult<ConfigurationCondition> resolveCondition(ConfigurationCondition unresolvedCondition);
 
-    /**
-     * Although the interface-methods below are already defined in the super-interface
-     * {@link RuntimeResourceSupport} they are also needed here for legacy code that accesses them
-     * reflectively.
-     */
-    @Override
-    void addResources(ConfigurationCondition condition, String pattern);
-
-    @Override
-    void ignoreResources(ConfigurationCondition condition, String pattern);
-
-    @Override
-    void addResourceBundles(ConfigurationCondition condition, String name);
-
-    @Override
-    void addResourceBundles(ConfigurationCondition condition, String basename, Collection<Locale> locales);
+    ConfigurationCondition alwaysTrue();
 }

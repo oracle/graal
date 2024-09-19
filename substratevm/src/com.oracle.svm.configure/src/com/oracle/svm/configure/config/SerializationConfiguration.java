@@ -37,11 +37,11 @@ import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
 import com.oracle.svm.configure.ConfigurationBase;
-import com.oracle.svm.core.util.json.JsonPrintable;
-import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.core.configure.ConditionalElement;
 import com.oracle.svm.core.configure.ConfigurationParser;
 import com.oracle.svm.core.configure.SerializationConfigurationParser;
+import com.oracle.svm.core.util.json.JsonPrintable;
+import com.oracle.svm.core.util.json.JsonWriter;
 
 public final class SerializationConfiguration extends ConfigurationBase<SerializationConfiguration, SerializationConfiguration.Predicate>
                 implements RuntimeSerializationSupport {
@@ -123,8 +123,8 @@ public final class SerializationConfiguration extends ConfigurationBase<Serializ
     }
 
     @Override
-    public ConfigurationParser createParser() {
-        return new SerializationConfigurationParser(this, true);
+    public ConfigurationParser createParser(boolean strictMetadata) {
+        return SerializationConfigurationParser.create(strictMetadata, this, true);
     }
 
     private void printProxies(JsonWriter writer) throws IOException {

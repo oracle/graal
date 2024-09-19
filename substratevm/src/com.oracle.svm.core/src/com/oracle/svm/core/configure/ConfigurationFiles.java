@@ -35,6 +35,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionStability;
 import org.graalvm.compiler.options.OptionType;
 
 import com.oracle.svm.core.option.BundleMember;
@@ -49,7 +50,7 @@ import com.oracle.svm.core.util.UserError;
 public final class ConfigurationFiles {
 
     public static final class Options {
-        @Option(help = "Directories directly containing configuration files for dynamic features at runtime.", type = OptionType.User)//
+        @Option(help = "Directories directly containing configuration files for dynamic features at runtime.", type = OptionType.User, stability = OptionStability.STABLE)//
         @BundleMember(role = BundleMember.Role.Input)//
         static final HostedOptionKey<LocatableMultiOptionValue.Paths> ConfigurationFileDirectories = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
 
@@ -81,10 +82,12 @@ public final class ConfigurationFiles {
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> SerializationDenyConfigurationResources = new HostedOptionKey<>(
                         LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
-        @Option(help = "Files describing Java resources to be included in the image.", type = OptionType.User)//
+        @Option(help = "Files describing Java resources to be included in the image according to the schema at " +
+                        "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/resource-config-schema-v1.0.0.json", type = OptionType.User)//
         @BundleMember(role = BundleMember.Role.Input)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Paths> ResourceConfigurationFiles = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
-        @Option(help = "Resources describing Java resources to be included in the image.", type = OptionType.User)//
+        @Option(help = "Resources describing Java resources to be included in the image according to the schema at " +
+                        "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/resource-config-schema-v1.0.0.json", type = OptionType.User)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ResourceConfigurationResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
         @Option(help = "Files describing program elements to be made accessible via JNI (for syntax, see ReflectionConfigurationFiles)", type = OptionType.User)//
@@ -93,15 +96,31 @@ public final class ConfigurationFiles {
         @Option(help = "Resources describing program elements to be made accessible via JNI (see JNIConfigurationFiles).", type = OptionType.User)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> JNIConfigurationResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
-        @Option(help = "Files describing predefined classes that can be loaded at runtime.", type = OptionType.User)//
+        @Option(help = "Resources describing reachability metadata needed for the program " +
+                        "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/reachability-metadata-schema-v1.0.0.json", type = OptionType.User)//
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ReachabilityMetadataResources = new HostedOptionKey<>(
+                        LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
+
+        @Option(help = "Files describing stubs allowing foreign calls.", type = OptionType.User)//
+        @BundleMember(role = BundleMember.Role.Input)//
+        public static final HostedOptionKey<LocatableMultiOptionValue.Paths> ForeignConfigurationFiles = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
+        @Option(help = "Resources describing stubs allowing foreign calls.", type = OptionType.User)//
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ForeignResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
+
+        @Option(help = "Files describing predefined classes that can be loaded at runtime according to the schema at " +
+                        "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/predefined-classes-config-schema-v1.0.0.json", type = OptionType.User)//
         @BundleMember(role = BundleMember.Role.Input)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Paths> PredefinedClassesConfigurationFiles = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
-        @Option(help = "Resources describing predefined classes that can be loaded at runtime.", type = OptionType.User)//
+        @Option(help = "Resources describing predefined classes that can be loaded at runtime according to the schema at " +
+                        "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/predefined-classes-config-schema-v1.0.0.json", type = OptionType.User)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> PredefinedClassesConfigurationResources = new HostedOptionKey<>(
                         LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
-        @Option(help = "Causes unknown attributes in configuration objects to abort the image build instead of emitting a warning.")//
+        @Option(help = "When configuration files do not match their schema, abort the image build instead of emitting a warning.")//
         public static final HostedOptionKey<Boolean> StrictConfiguration = new HostedOptionKey<>(false);
+
+        @Option(help = "Warn when reflection and JNI configuration files have elements that could not be found on the classpath or modulepath.", type = OptionType.Expert)//
+        public static final HostedOptionKey<Boolean> WarnAboutMissingReflectionOrJNIMetadataElements = new HostedOptionKey<>(false);
     }
 
     public static List<Path> findConfigurationFiles(String fileName) {
