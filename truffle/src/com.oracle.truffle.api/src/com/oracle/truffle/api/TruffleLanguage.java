@@ -2851,6 +2851,26 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
+         * Returns the {@link LanguageInfo language info} for a given language class if available.
+         * The class may be obtained with <code>InteropLibrary.getLanguage(Object)</code>. Throws an
+         * {@link IllegalArgumentException} if the provided language is not registered.
+         *
+         * @param languageClass the language class to convert
+         * @return the associated language info
+         * @throws IllegalArgumentException if the language class is not valid.
+         * @since 24.2
+         */
+        @TruffleBoundary
+        public LanguageInfo getLanguageInfo(Class<? extends TruffleLanguage<?>> languageClass) {
+            try {
+                Objects.requireNonNull(languageClass);
+                return LanguageAccessor.engineAccess().getLanguageInfo(polyglotLanguageContext, languageClass);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
+        }
+
+        /**
          * Returns a map instrument-id to instrument instance of all instruments that are installed
          * in the environment. Using the instrument instance additional services can be
          * {@link #lookup(InstrumentInfo, Class) looked up} .
