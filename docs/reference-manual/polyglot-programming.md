@@ -34,7 +34,7 @@ The following examples are designed to get you started with a basic polyglot app
 Select a section for your *Start Language* and then select a tab for the *Target Language*.
 
 The below examples are expected to work equally from a JVM or native standalone distribution.
-For native launchers and native executables using Java as a Target Language and accessing classes other than Java arrays, it is required to recompile the image and provide a [reflection configuration file](native-image/Reflection.md).
+For native launchers and native executables using Java as a Target Language and accessing classes other than Java arrays, it is required to recompile the image and provide a [reflection configuration file](native-image/ReachabilityMetadata.md#reflection).
 
 Note: To start an application with LLVM as a Target Language, make sure to precompile the _polyglot.c_ file provided below.
 

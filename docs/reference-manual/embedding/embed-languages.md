@@ -565,7 +565,7 @@ The language home options remain functional for compatibility reasons but may be
 ### Configuring Native Host Reflection
 
 Accessing host Java code from the guest application requires Java reflection in order to work.
-When reflection is used within a native executable, the [reflection configuration file](../native-image/Reflection.md) is required.
+When reflection is used within a native executable, the [reflection configuration file](../native-image/ReachabilityMetadata.md#reflection) is required.
 
 For this example we use JavaScript to show host access with native executables.
 Copy the following code in a new file named `AccessJavaFromJS.java`.
@@ -601,13 +601,18 @@ public class AccessJavaFromJS {
 }
 ```
 
-Copy the following code into `reflect.json`:
+Copy the following code into `reachability-metadata.json`:
+```json
+{
+  "reflection": [
+     { "type": "AccessJavaFromJS$MyClass", "allPublicFields": true },
+     { "type": "java.util.concurrent.Callable", "allPublicMethods": true }
+  ]
+}
+```
 
-{% highlight java %}
-{% include embed/access_java_from_reflection_config.json %}
-{% endhighlight %}
 
-Now, you can create a native executable that supports host access and add the additional `-H:ReflectionConfigurationFiles=reflect.json` build-time option.
+Now, you can add `reachability-metadata.json` to `META-INF/native-image/<group-id>/` of your project.
 
 ## Code Caching Across Multiple Contexts
 
