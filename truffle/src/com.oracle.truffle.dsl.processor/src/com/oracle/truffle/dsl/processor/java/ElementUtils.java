@@ -74,6 +74,7 @@ import javax.lang.model.element.ModuleElement;
 import javax.lang.model.element.Name;
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.TypeParameterElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
@@ -347,6 +348,29 @@ public class ElementUtils {
 
     public static DeclaredType getDeclaredType(TypeElement typeElem, TypeMirror... typeArgs) {
         return new DeclaredCodeTypeMirror(typeElem, Arrays.asList(typeArgs));
+    }
+
+    /**
+     * This method converts a raw type to a generic type with wildcard arguments.
+     *
+     * For example, {@code List} becomes {@code List<?>}.
+     */
+    public static TypeMirror rawTypeToWildcardedType(ProcessorContext context, TypeMirror type) {
+        if (type.getKind() != TypeKind.DECLARED) {
+            return type;
+        }
+        DeclaredType declaredType = (DeclaredType) type;
+        TypeElement typeElement = (TypeElement) declaredType.asElement();
+        List<? extends TypeParameterElement> typeParameters = typeElement.getTypeParameters();
+        if (typeParameters.isEmpty()) {
+            return type;
+        }
+        Types typeUtils = context.getEnvironment().getTypeUtils();
+        TypeMirror[] wildcards = new TypeMirror[typeParameters.size()];
+        for (int i = 0; i < wildcards.length; i++) {
+            wildcards[i] = typeUtils.getWildcardType(null, null);
+        }
+        return typeUtils.getDeclaredType(typeElement, wildcards);
     }
 
     public static List<AnnotationMirror> collectAnnotations(AnnotationMirror markerAnnotation, String elementName, Element element, DeclaredType annotationClass) {
