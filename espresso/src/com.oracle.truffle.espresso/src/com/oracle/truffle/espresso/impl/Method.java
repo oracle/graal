@@ -1685,11 +1685,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
 
         @Override
-        public int getFirstLine() {
-            return getLineNumberTable().getFirstLine();
-        }
-
-        @Override
         public int getLastLine() {
             return getLineNumberTable().getLastLine();
         }
