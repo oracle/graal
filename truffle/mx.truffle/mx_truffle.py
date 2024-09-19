@@ -228,7 +228,11 @@ class TruffleUnittestConfig(mx_unittest.MxUnittestConfig):
         # Disable VirtualThread warning
         vmArgs = vmArgs + ['-Dpolyglot.engine.WarnVirtualThreadSupport=false']
         # Enable native access to Truffle, truffle delegates native access to languages
-        vmArgs = vmArgs + ['--enable-native-access=org.graalvm.truffle']
+        if '-p' in vmArgs or '--module-path' in vmArgs:
+            native_access_target_module = 'org.graalvm.truffle'
+        else:
+            native_access_target_module = 'ALL-UNNAMED'
+        vmArgs = vmArgs + [f'--enable-native-access={native_access_target_module}']
         return (vmArgs, mainClass, mainClassArgs)
 
 
@@ -367,12 +371,10 @@ def _sl_command(jdk, vm_args, sl_args, use_optimized_runtime=True, use_enterpris
     else:
         main_class = ["--module", "org.graalvm.sl_launcher/com.oracle.truffle.sl.launcher.SLMain"]
 
-    if use_optimized_runtime and jdk.javaCompliance > '21':
-        if force_cp:
-            vm_args += ["--enable-native-access=ALL-UNNAMED"]
-        else:
-            # revisit once GR-57817 is fixed
-            vm_args += ["--enable-native-access=org.graalvm.truffle.runtime"]
+    if force_cp:
+        vm_args += ["--enable-native-access=ALL-UNNAMED"]
+    else:
+        vm_args += ["--enable-native-access=org.graalvm.truffle"]
 
     return [jdk.java] + jdk.processArgs(vm_args + mx.get_runtime_jvm_args(names=dist_names, force_cp=force_cp) + main_class + sl_args)
 
@@ -406,6 +408,10 @@ def _native_image_sl(jdk, vm_args, target_dir, use_optimized_runtime=True, use_e
 
     if hosted_assertions:
         native_image_args += ["-J-ea", "-J-esa"]
+
+    # Even when Truffle is on the classpath, it is loaded as a named module due to
+    # the ForceOnModulePath option in its native-image.properties
+    native_image_args += ["--enable-native-access=org.graalvm.truffle"]
 
     native_image_args += mx.get_runtime_jvm_args(names=dist_names, force_cp=force_cp)
     if force_cp:
@@ -818,6 +824,7 @@ def truffle_native_unit_tests_gate(use_optimized_runtime=True, quick_build=False
         '-H:+AddAllCharsets',
         '--add-exports=org.graalvm.polyglot/org.graalvm.polyglot.impl=ALL-UNNAMED',
         '--add-exports=org.graalvm.truffle/com.oracle.truffle.api.impl.asm=ALL-UNNAMED',
+        '--enable-native-access=org.graalvm.truffle',
     ]
     run_args = run_truffle_runtime_args + [
         mx_subst.path_substitutions.substitute('-Dnative.test.path=<path:truffle:TRUFFLE_TEST_NATIVE>'),
