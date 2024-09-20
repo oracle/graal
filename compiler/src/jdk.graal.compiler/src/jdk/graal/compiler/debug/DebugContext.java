@@ -456,22 +456,36 @@ public final class DebugContext implements AutoCloseable {
      *         ends
      */
     public CompilerPhaseScope enterCompilerPhase(CharSequence phaseName) {
+        CompilationAlarm.current().enterPhase(phaseName.toString());
         if (compilationListener != null) {
-            return enterCompilerPhase(() -> phaseName);
-        }
-        CompilationAlarm currentAlarm = CompilationAlarm.current();
-        if (currentAlarm.isEnabled()) {
-            currentAlarm.enterPhase(phaseName.toString());
+            return new DecoratingCompilerPhaseScope(() -> {
+                CompilationAlarm.current().exitPhase(phaseName.toString());
+            }, enterCompilerPhase(() -> phaseName));
         }
         return new CompilerPhaseScope() {
 
             @Override
             public void close() {
-                if (currentAlarm.isEnabled()) {
-                    currentAlarm.exitPhase(phaseName.toString());
-                }
+                CompilationAlarm.current().exitPhase(phaseName.toString());
             }
         };
+    }
+
+    private static class DecoratingCompilerPhaseScope implements CompilerPhaseScope {
+        final Runnable closeAction;
+        final CompilerPhaseScope wrapped;
+
+        DecoratingCompilerPhaseScope(Runnable closeAction, CompilerPhaseScope wrapped) {
+            this.closeAction = closeAction;
+            this.wrapped = wrapped;
+        }
+
+        @Override
+        public void close() {
+            closeAction.run();
+            wrapped.close();
+        }
+
     }
 
     /**

@@ -64,11 +64,21 @@ public final class CompilationAlarm implements AutoCloseable {
     public static final boolean LOG_PROGRESS_DETECTION = !Services.IS_IN_NATIVE_IMAGE &&
                     Boolean.parseBoolean(GraalServices.getSavedProperty("debug." + CompilationAlarm.class.getName() + ".logProgressDetection"));
 
+    /**
+     * The previously installed alarm.
+     */
+    private final CompilationAlarm previous;
+
     @SuppressWarnings("this-escape")
     private CompilationAlarm(double period) {
+        this.previous = currentAlarm.get();
         reset(period);
     }
 
+    /**
+     * Resets the compilation alarm with a new period for expiration. See
+     * {@link #trackCompilationPeriod} for details about tracking compilation periods.
+     */
     public void reset(double newPeriod) {
         if (this != NEVER_EXPIRES) {
             this.period = newPeriod;
@@ -76,6 +86,10 @@ public final class CompilationAlarm implements AutoCloseable {
         }
     }
 
+    /**
+     * Use the option value defined compilation expiration period and reset this alarm. See
+     * {@link #reset(double)}.
+     */
     public void reset(OptionValues options) {
         double optionPeriod = Options.CompilationExpirationPeriod.getValue(options);
         if (optionPeriod > 0) {
@@ -119,7 +133,13 @@ public final class CompilationAlarm implements AutoCloseable {
      *         period} seconds, {@code false} otherwise
      */
     public boolean hasExpired() {
-        return this != NEVER_EXPIRES && System.currentTimeMillis() > expiration;
+        /*
+         * We have multiple ways to mark a disabled alarm: it can be NEVER_EXPIRES which is shared
+         * among all threads and thus must not be altered, or it can be an Alarm object with an
+         * expiration=0. We cannot share disabled timers across threads because we record the
+         * previous timer to continue afterwards with the actual timer.
+         */
+        return this != NEVER_EXPIRES && expiration != 0 && System.currentTimeMillis() > expiration;
     }
 
     public long elapsed() {
@@ -139,16 +159,17 @@ public final class CompilationAlarm implements AutoCloseable {
      */
     public void checkExpiration() {
         if (hasExpired()) {
-            throw new PermanentBailoutException("Compilation exceeded %.3f seconds", period);
+            // update the timing of the current phase node to have exact information in the phase
+            // times
+            updateCurrentPhaseNodeTime();
+            throw new PermanentBailoutException("Compilation exceeded %.3f seconds. %n Phase timings %s", period, elapsedPhaseTreeAsString());
         }
     }
 
     @Override
     public void close() {
-        if (this != NEVER_EXPIRES) {
-            currentAlarm.set(null);
-            resetProgressDetection();
-        }
+        currentAlarm.set(previous);
+        resetProgressDetection();
     }
 
     /**
@@ -165,6 +186,9 @@ public final class CompilationAlarm implements AutoCloseable {
      * Signal the execution of the phase identified by {@code name} starts.
      */
     public void enterPhase(String name) {
+        if (!isEnabled()) {
+            return;
+        }
         PhaseTreeNode node = new PhaseTreeNode(name);
         node.parent = currentNode;
         node.time = elapsed();
@@ -176,12 +200,17 @@ public final class CompilationAlarm implements AutoCloseable {
      * Signal the execution of the phase identified by {@code name} is over.
      */
     public void exitPhase(String name) {
+        if (!isEnabled()) {
+            return;
+        }
         assert currentNode.name.equals(name) : Assertions.errorMessage("Must see the same phase that was opened in the close operation", name, elapsedPhaseTreeAsString());
-
-        long duration = elapsed() - currentNode.time;
-        currentNode.time = duration;
-
+        updateCurrentPhaseNodeTime();
         currentNode = currentNode.parent;
+    }
+
+    private void updateCurrentPhaseNodeTime() {
+        final long duration = elapsed() - currentNode.time;
+        currentNode.time = duration;
     }
 
     /**
@@ -190,14 +219,15 @@ public final class CompilationAlarm implements AutoCloseable {
      * the tree is printed from the root.
      */
     private PhaseTreeNode root = new PhaseTreeNode("Root");
+
     /**
-     * The current tree node to add children to. That is, the phase that currently runs int he
+     * The current tree node to add children to. That is, the phase that currently runs in the
      * compiler.
      */
     private PhaseTreeNode currentNode = root;
 
     /**
-     * Tree data structure representing phase nesting and the respective wall clock time of teach
+     * Tree data structure representing phase nesting and the respective wall clock time of each
      * phase.
      */
     private class PhaseTreeNode {
@@ -205,18 +235,22 @@ public final class CompilationAlarm implements AutoCloseable {
          * Link to the parent node.
          */
         private PhaseTreeNode parent;
+
         /**
          * All children of this node.
          */
         private PhaseTreeNode[] children;
+
         /**
          * The next free index to add child nodes.
          */
         private int childIndex = 0;
+
         /**
          * The name of this node, normally the {@link BasePhase#contractorName()}.
          */
         private final String name;
+
         /**
          * The wall clock time spent in this phase. Note this value is only correct after a phase
          * regularly finished.
@@ -233,8 +267,8 @@ public final class CompilationAlarm implements AutoCloseable {
                 children[childIndex++] = child;
                 return;
             }
-            // just double the child array if we seem to run out of slots
-            if (childIndex >= children.length / 2) {
+            // double the array if it needs expanding
+            if (childIndex >= children.length) {
                 children = Arrays.copyOf(children, children.length * 2);
             }
             children[childIndex++] = child;
@@ -248,7 +282,7 @@ public final class CompilationAlarm implements AutoCloseable {
     }
 
     /**
-     * Initial size of a {@link PhaseTreeNode} children array when allocating it the first time.
+     * Initial size of a {@link PhaseTreeNode} children array.
      */
     private static final int CHILD_TREE_INIT_SIZE = 2;
 
