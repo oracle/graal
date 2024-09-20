@@ -3085,6 +3085,33 @@ public class LanguageSPITest {
     }
 
     @Test
+    public void testLanguageInfoLookup() throws Exception {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
+        try (Context context = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.ALL).build()) {
+            context.initialize(ProxyLanguage.ID);
+            context.enter();
+            Env env = ProxyLanguage.LanguageContext.get(null).getEnv();
+            LanguageInfo languageInfo = env.getLanguageInfo(ProxyLanguage.class);
+            assertEquals(ProxyLanguage.ID, languageInfo.getId());
+
+            assertFails(() -> env.getLanguageInfo(InvalidLanguageClass.class), IllegalArgumentException.class);
+
+            Class<? extends TruffleLanguage<?>> hostLanguage = InteropLibrary.getUncached().getLanguage(env.asBoxedGuestValue(1));
+            assertEquals("host", env.getLanguageInfo(hostLanguage).getId());
+        }
+    }
+
+    static class InvalidLanguageClass extends TruffleLanguage<Env> {
+
+        @Override
+        protected Env createContext(Env env) {
+            return env;
+        }
+
+    }
+
+    @Test
     public void testConcurrentLookupWhileInitializing() throws InterruptedException {
         TruffleTestAssumptions.assumeWeakEncapsulation();
 
