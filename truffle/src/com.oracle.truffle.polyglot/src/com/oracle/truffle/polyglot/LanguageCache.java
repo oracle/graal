@@ -323,13 +323,11 @@ final class LanguageCache implements Comparable<LanguageCache> {
         Class<?> providerClass = providerAdapter.getProviderClass();
         Module providerModule = providerClass.getModule();
         ModulesSupport.exportTransitivelyTo(providerModule);
+        ModulesSupport.enableNativeAccess(providerModule);
         Registration reg = providerClass.getAnnotation(Registration.class);
         if (reg == null) {
             emitWarning("Warning Truffle language ignored: Provider %s is missing @Registration annotation.", providerClass);
             return;
-        }
-        if (reg.enableNativeAccess()) {
-            ModulesSupport.enableNativeAccess(providerModule);
         }
         String className = providerAdapter.getLanguageClassName();
         String name = reg.name();

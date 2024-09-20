@@ -210,6 +210,7 @@ final class InstrumentCache {
         Class<?> providerClass = providerAdapter.getProviderClass();
         Module providerModule = providerClass.getModule();
         ModulesSupport.exportTransitivelyTo(providerModule);
+        ModulesSupport.enableNativeAccess(providerModule);
         Registration reg = providerClass.getAnnotation(Registration.class);
         if (reg == null) {
             emitWarning("Warning Truffle instrument ignored: Provider %s is missing @Registration annotation.", providerClass);

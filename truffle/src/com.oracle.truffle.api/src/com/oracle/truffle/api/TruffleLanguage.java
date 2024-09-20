@@ -540,15 +540,6 @@ public abstract class TruffleLanguage<C> {
          * @since 23.1
          */
         Class<? extends InternalResource>[] internalResources() default {};
-
-        /**
-         * Indicates whether the language requires native access, as determined by
-         * {@link Module#isNativeAccessEnabled()}. If {@code true}, Truffle will delegate the
-         * necessary native access privileges to the language.
-         *
-         * @since 24.2
-         */
-        boolean enableNativeAccess() default false;
     }
 
     /**
