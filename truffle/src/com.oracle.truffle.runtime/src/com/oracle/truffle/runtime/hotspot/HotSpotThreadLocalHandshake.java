@@ -42,15 +42,15 @@ package com.oracle.truffle.runtime.hotspot;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.impl.Accessor.JavaLangAccessor;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.Node;
-import jdk.internal.access.JavaLangAccess;
-import jdk.internal.access.SharedSecrets;
+import com.oracle.truffle.runtime.ModulesSupport;
 
 final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
 
     private static final sun.misc.Unsafe UNSAFE = HotSpotTruffleRuntime.UNSAFE;
-    private static final JavaLangAccess JAVA_LANG_ACCESS = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangAccessor JAVA_LANG_ACCESS = ModulesSupport.getJavaLangAccessor();
 
     static final HotSpotThreadLocalHandshake SINGLETON = new HotSpotThreadLocalHandshake();
     private static final ThreadLocal<TruffleSafepointImpl> STATE = new ThreadLocal<>();

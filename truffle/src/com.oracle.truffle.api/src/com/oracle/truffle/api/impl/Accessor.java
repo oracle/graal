@@ -1370,6 +1370,48 @@ public abstract class Accessor {
 
         public abstract Module getTargetModule();
 
+        public abstract JavaLangAccessor getJavaLangAccessor();
+
+    }
+
+    public abstract static class JavaLangAccessor {
+
+        private static volatile Consumer<? super Thread> onMountCallBack;
+        private static volatile Consumer<? super Thread> onUnmountCallBack;
+
+        public final void registerVirtualThreadMountHooks(Consumer<? super Thread> onMount, Consumer<? super Thread> onUnmount) {
+            if (onMountCallBack != null) {
+                throw new IllegalStateException("OnMount callback is already set");
+            }
+            if (onUnmountCallBack != null) {
+                throw new IllegalStateException("OnUnmount callback is already set");
+            }
+            onMountCallBack = onMount;
+            onUnmountCallBack = onUnmount;
+            registerJVMTIHook();
+        }
+
+        public abstract Thread currentCarrierThread();
+
+        private static native void registerJVMTIHook();
+
+        /** Called from a JVMTI VirtualThreadMount hook. */
+        @SuppressWarnings("unused")
+        private static void mountHook(Thread currentThread) {
+            if (Thread.currentThread() != currentThread) {
+                throw CompilerDirectives.shouldNotReachHere("Thread.currentThread() not matching");
+            }
+            onMountCallBack.accept(currentThread);
+        }
+
+        /** Called from a JVMTI VirtualThreadUnmount hook. */
+        @SuppressWarnings("unused")
+        private static void unmountHook(Thread currentThread) {
+            if (Thread.currentThread() != currentThread) {
+                throw CompilerDirectives.shouldNotReachHere("Thread.currentThread() not matching");
+            }
+            onUnmountCallBack.accept(currentThread);
+        }
     }
 
     public final void transferOSRFrameStaticSlot(FrameWithoutBoxing sourceFrame, FrameWithoutBoxing targetFrame, int slot) {

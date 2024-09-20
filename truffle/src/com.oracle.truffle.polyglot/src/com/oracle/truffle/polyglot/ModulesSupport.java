@@ -70,9 +70,13 @@ import java.util.stream.Stream;
 import com.oracle.truffle.api.InternalResource;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.impl.Accessor;
+import com.oracle.truffle.api.impl.Accessor.JavaLangAccessor;
+import com.oracle.truffle.api.impl.Accessor.ModulesAccessor;
 import com.oracle.truffle.api.impl.asm.ClassWriter;
+import com.oracle.truffle.api.impl.asm.FieldVisitor;
 import com.oracle.truffle.api.impl.asm.MethodVisitor;
 import com.oracle.truffle.api.impl.asm.Opcodes;
+import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.module.Modules;
 
@@ -100,7 +104,7 @@ final class ModulesSupport {
         }
     }
 
-    private static volatile Accessor.ModulesAccessor modulesAccessor;
+    private static volatile ModulesAccessor modulesAccessor;
 
     private ModulesSupport() {
     }
@@ -134,8 +138,8 @@ final class ModulesSupport {
     }
 
     @SuppressWarnings("restricted")
-    static Accessor.ModulesAccessor getModulesAccessor() {
-        Accessor.ModulesAccessor result = modulesAccessor;
+    static ModulesAccessor getModulesAccessor() {
+        ModulesAccessor result = modulesAccessor;
         if (result == null) {
             synchronized (ModulesSupport.class) {
                 result = modulesAccessor;
@@ -162,7 +166,7 @@ final class ModulesSupport {
                     }
                     Module javaBase = ModuleLayer.boot().findModule("java.base").orElseThrow();
                     addExports0(javaBase, "jdk.internal.module", result.getTargetModule());
-                    result.addExports(javaBase, "jdk.internal.access", result.getTargetModule());
+                    addExports0(javaBase, "jdk.internal.access", result.getTargetModule());
                     modulesAccessor = result;
                 }
             }
@@ -288,6 +292,11 @@ final class ModulesSupport {
     private static final class DirectImpl extends Accessor.ModulesAccessor {
 
         private final Class<?> baseClass;
+        /**
+         * {@code javaLangAccessor} needs to be initialized lazily when the
+         * {@code jdk.internal.access} package is already open.
+         */
+        private volatile JavaLangAccessor javaLangAccessor;
 
         DirectImpl(Class<?> baseClass) {
             if (!baseClass.getModule().isNamed()) {
@@ -342,6 +351,25 @@ final class ModulesSupport {
         public Module getTargetModule() {
             return baseClass.getModule();
         }
+
+        @Override
+        public JavaLangAccessor getJavaLangAccessor() {
+            JavaLangAccessor res = javaLangAccessor;
+            if (res == null) {
+                res = new JavaLangAccessor() {
+
+                    private final JavaLangAccess javaLang = SharedSecrets.getJavaLangAccess();
+
+                    @Override
+                    public Thread currentCarrierThread() {
+                        return javaLang.currentCarrierThread();
+                    }
+                };
+
+                javaLangAccessor = res;
+            }
+            return res;
+        }
     }
 
     /*
@@ -356,7 +384,9 @@ final class ModulesSupport {
         private final MethodHandle addOpensToAllUnnamed;
         private final MethodHandle addEnableNativeAccess;
         private final MethodHandle addEnableNativeAccessToAllUnnamed;
+        private final MethodHandle currentCarrierThread;
         private final Module targetModule;
+        private final JavaLangAccessor javaLangAccessor;
 
         IsolatedImpl(Class<?> baseClass) throws ReflectiveOperationException {
             final String moduleName = "org.graalvm.truffle.generated";
@@ -366,6 +396,17 @@ final class ModulesSupport {
 
             ClassWriter cw = new ClassWriter(0);
             cw.visit(Opcodes.V1_8, Opcodes.ACC_PUBLIC + Opcodes.ACC_SUPER, binaryClassName, null, "java/lang/Object", null);
+
+            FieldVisitor fv = cw.visitField(Opcodes.ACC_PRIVATE + Opcodes.ACC_STATIC + Opcodes.ACC_FINAL, "javaLangAccess", "Ljdk/internal/access/JavaLangAccess;", null, null);
+            fv.visitEnd();
+
+            MethodVisitor clinit = cw.visitMethod(Opcodes.ACC_STATIC, "<clinit>", "()V", null, null);
+            clinit.visitCode();
+            clinit.visitMethodInsn(Opcodes.INVOKESTATIC, "jdk/internal/access/SharedSecrets", "getJavaLangAccess", "()Ljdk/internal/access/JavaLangAccess;", false);
+            clinit.visitFieldInsn(Opcodes.PUTSTATIC, binaryClassName, "javaLangAccess", "Ljdk/internal/access/JavaLangAccess;");
+            clinit.visitInsn(Opcodes.RETURN);
+            clinit.visitMaxs(1, 0);
+            clinit.visitEnd();
 
             MethodVisitor constructor = cw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null);
             constructor.visitCode();
@@ -448,6 +489,15 @@ final class ModulesSupport {
             mv6.visitMaxs(1, 1);
             mv6.visitEnd();
 
+            MethodVisitor mv7 = cw.visitMethod(Opcodes.ACC_PUBLIC + Opcodes.ACC_STATIC, "currentCarrierThread",
+                            "()Ljava/lang/Thread;", null, null);
+            mv7.visitCode();
+            mv7.visitFieldInsn(Opcodes.GETSTATIC, binaryClassName, "javaLangAccess", "Ljdk/internal/access/JavaLangAccess;");
+            mv7.visitMethodInsn(Opcodes.INVOKEINTERFACE, "jdk/internal/access/JavaLangAccess", "currentCarrierThread", "()Ljava/lang/Thread;", true);
+            mv7.visitInsn(Opcodes.ARETURN);
+            mv7.visitMaxs(1, 0);
+            mv7.visitEnd();
+
             cw.visitEnd();
 
             byte[] classBytes = cw.toByteArray();
@@ -516,6 +566,18 @@ final class ModulesSupport {
             this.addOpensToAllUnnamed = l.findStatic(generatedClass, "addOpensToAllUnnamed", MethodType.methodType(void.class, Module.class, String.class));
             this.addEnableNativeAccess = l.findStatic(generatedClass, "addEnableNativeAccess", MethodType.methodType(void.class, Module.class));
             this.addEnableNativeAccessToAllUnnamed = l.findStatic(generatedClass, "addEnableNativeAccessToAllUnnamed", MethodType.methodType(void.class));
+            this.currentCarrierThread = l.findStatic(generatedClass, "currentCarrierThread", MethodType.methodType(Thread.class));
+            this.javaLangAccessor = new JavaLangAccessor() {
+
+                @Override
+                public Thread currentCarrierThread() {
+                    try {
+                        return (Thread) currentCarrierThread.invokeExact();
+                    } catch (Throwable e) {
+                        throw new InternalError(e);
+                    }
+                }
+            };
         }
 
         @Override
@@ -575,6 +637,11 @@ final class ModulesSupport {
             } catch (Throwable e) {
                 throw new InternalError(e);
             }
+        }
+
+        @Override
+        public JavaLangAccessor getJavaLangAccessor() {
+            return javaLangAccessor;
         }
     }
 

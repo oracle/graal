@@ -48,6 +48,7 @@ import static com.oracle.truffle.runtime.OptimizedTruffleRuntime.NEXT_VERSION_UP
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Set;
+import java.util.function.Consumer;
 
 import org.graalvm.home.Version;
 
@@ -140,11 +141,6 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
             }
         }
 
-        // For SharedSecrets.getJavaLangAccess().currentCarrierThread()
-        ModulesSupport.addExports(javaBase, "jdk.internal.access", runtimeModule);
-        // HotSpotVirtualThreadHooks has a native method to register JVMTI hook
-        ModulesSupport.enableNativeAccess(runtimeModule);
-
         TruffleCompilationSupport compilationSupport;
         if (LibGraal.isAvailable()) {
             // try LibGraal
@@ -206,9 +202,26 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
             }
         }
         HotSpotTruffleRuntime rt = new HotSpotTruffleRuntime(compilationSupport);
-        HotSpotVirtualThreadHooks.ensureLoaded();
+        registerVirtualThreadSupport();
         compilationSupport.registerRuntime(rt);
         return rt;
+    }
+
+    private static void registerVirtualThreadSupport() {
+        // Ensure that HotSpotThreadLocalHandshake and HotSpotFastThreadLocal are loaded before the
+        // hooks are called
+        try {
+            Class.forName(HotSpotThreadLocalHandshake.class.getName(), false, HotSpotTruffleRuntimeAccess.class.getClassLoader());
+            Class.forName(HotSpotFastThreadLocal.class.getName(), false, HotSpotTruffleRuntimeAccess.class.getClassLoader());
+        } catch (ClassNotFoundException cnf) {
+            throw new InternalError(cnf);
+        }
+        Consumer<Thread> onMount = (t) -> {
+            HotSpotFastThreadLocal.mount();
+            HotSpotThreadLocalHandshake.setPendingFlagForVirtualThread();
+        };
+        Consumer<Thread> onUmount = (t) -> HotSpotFastThreadLocal.unmount();
+        ModulesSupport.getJavaLangAccessor().registerVirtualThreadMountHooks(onMount, onUmount);
     }
 
     private static RuntimeException throwVersionError(String errorFormat, Object... args) {
