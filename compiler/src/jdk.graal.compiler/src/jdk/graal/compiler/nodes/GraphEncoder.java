@@ -223,8 +223,12 @@ public class GraphEncoder {
         }
     }
 
+    protected Object replaceObjectForEncoding(Object object) {
+        return object;
+    }
+
     protected void addObject(Object object) {
-        objects.addObject(object);
+        objects.addObject(replaceObjectForEncoding(object));
     }
 
     public void finishPrepare() {
@@ -448,8 +452,7 @@ public class GraphEncoder {
                 long primitive = fields.getRawPrimitive(node, idx);
                 writer.putSV(primitive);
             } else {
-                Object property = fields.get(node, idx);
-                writeObjectId(property);
+                writeObjectId(node, fields, idx);
             }
         }
     }
@@ -498,8 +501,17 @@ public class GraphEncoder {
         }
     }
 
-    protected void writeObjectId(Object object) {
+    private void writeObjectId(Object value) {
+        Object object = replaceObjectForEncoding(value);
         writer.putUV(objects.getIndex(object));
+    }
+
+    private void writeObjectId(Node node, Fields fields, int fieldIndex) {
+        Object value = fields.get(node, fieldIndex);
+        Object object = replaceObjectForEncoding(value);
+        int index = objects.findIndex(object);
+        assert index >= 0 : Assertions.errorMessageContext("node", node, "field", fields.getName(fieldIndex), "object", object);
+        writer.putUV(index);
     }
 
     /**
