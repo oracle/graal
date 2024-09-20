@@ -760,12 +760,14 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         return context;
     }
 
-    public synchronized void explicitEnter() {
+    public void explicitEnter() {
         try {
             Object[] prev = engine.enter(this);
-            PolyglotThreadInfo current = getCurrentThreadInfo();
-            assert current.getThread() == Thread.currentThread();
-            current.explicitContextStack.addLast(prev);
+            synchronized (this) {
+                PolyglotThreadInfo current = getCurrentThreadInfo();
+                assert current.getThread() == Thread.currentThread();
+                current.explicitContextStack.addLast(prev);
+            }
         } catch (Throwable t) {
             throw PolyglotImpl.guestToHostException(engine, t);
         }
@@ -818,6 +820,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
     @TruffleBoundary
     Object[] enterThreadChanged(boolean enterReverted, boolean pollSafepoint, boolean mustSucceed, PolyglotThreadTask polyglotThreadFirstEnter,
                     boolean leaveAndEnter) {
+        List<Map.Entry<Thread, PolyglotThreadInfo>> deadThreads = null;
         PolyglotThreadInfo enteredThread = null;
         Object[] prev = null;
         Thread current = Thread.currentThread();
@@ -875,14 +878,6 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                          * thread doesn't do it.
                          */
                         setCachedThreadInfo(PolyglotThreadInfo.NULL);
-                    }
-                    if (needsInitialization) {
-                        /*
-                         * A thread is added to the threads map only by the thread itself, so when
-                         * the thread is in the map, and it is not alive, then it surely won't be
-                         * used ever again.
-                         */
-                        threads.entrySet().removeIf(threadInfoEntry -> !threadInfoEntry.getKey().isAlive());
                     }
                     boolean transitionToMultiThreading = isSingleThreaded() && hasActiveOtherThread(true, false);
 
@@ -963,6 +958,14 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
 
                     // never cache last thread on close or when closingThread
                     setCachedThreadInfo(threadInfo);
+
+                    if (needsInitialization && !threadInfo.isPolyglotThread()) {
+                        deadThreads = collectDeadThreads();
+                    }
+                }
+
+                if (deadThreads != null) {
+                    finalizeAndDisposeThreads(deadThreads);
                 }
 
                 if (needsInitialization) {
@@ -991,6 +994,45 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             }
             throw t;
         }
+    }
+
+    private void finalizeAndDisposeThreads(List<Map.Entry<Thread, PolyglotThreadInfo>> deadThreads) {
+        assert !Thread.holdsLock(this);
+        Throwable ex = null;
+        for (Map.Entry<Thread, PolyglotThreadInfo> removedThreadInfoEntryToRemove : deadThreads) {
+            ex = notifyThreadFinalizing(removedThreadInfoEntryToRemove.getValue(), ex, false);
+        }
+
+        synchronized (this) {
+            for (Map.Entry<Thread, PolyglotThreadInfo> threadInfoEntryToRemove : deadThreads) {
+                ex = notifyThreadDisposing(threadInfoEntryToRemove.getValue(), ex);
+                threadInfoEntryToRemove.getValue().setContextThreadLocals(DISPOSED_CONTEXT_THREAD_LOCALS);
+                threads.remove(threadInfoEntryToRemove.getKey());
+            }
+
+            if (ex != null) {
+                sneakyThrow(ex);
+            }
+        }
+    }
+
+    private List<Map.Entry<Thread, PolyglotThreadInfo>> collectDeadThreads() {
+        assert Thread.holdsLock(this);
+        List<Map.Entry<Thread, PolyglotThreadInfo>> deadThreads = null;
+        /*
+         * A thread is added to the threads map only by the thread itself, so when the thread is in
+         * the map, and it is not alive, then it surely won't be used ever again.
+         */
+        for (Map.Entry<Thread, PolyglotThreadInfo> threadInfoEntry : threads.entrySet()) {
+            if (!threadInfoEntry.getKey().isAlive() && !threadInfoEntry.getValue().isFinalizingDeadThread()) {
+                if (deadThreads == null) {
+                    deadThreads = new ArrayList<>();
+                }
+                deadThreads.add(threadInfoEntry);
+                threadInfoEntry.getValue().setFinalizingDeadThread();
+            }
+        }
+        return deadThreads;
     }
 
     PolyglotThreadInfo getThreadInfo(Thread thread) {
