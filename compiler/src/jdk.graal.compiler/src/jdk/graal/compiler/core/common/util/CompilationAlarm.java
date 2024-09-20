@@ -35,6 +35,7 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.vm.ci.services.Services;
 
@@ -161,33 +162,118 @@ public final class CompilationAlarm implements AutoCloseable {
     private long expiration;
 
     /**
-     * The elapsed time so far.
+     * Signal the execution of the phase identified by {@code name} starts.
      */
-    private long elapsedCompilationAlarmPeriod;
+    public void enterPhase(String name) {
+        PhaseTreeNode node = new PhaseTreeNode(name);
+        node.parent = currentNode;
+        node.time = elapsed();
+        currentNode.addChild(node);
+        currentNode = node;
+    }
 
     /**
-     * All phases and their timings in a human printable format.
+     * Signal the execution of the phase identified by {@code name} is over.
      */
-    private StringBuilder elapsedPhaseTimes;
+    public void exitPhase(String name) {
+        assert currentNode.name.equals(name) : Assertions.errorMessage("Must see the same phase that was opened in the close operation", name, elapsedPhaseTreeAsString());
 
-    public void setElapsedCompilationAlarmPeriod(long elapsedCompilationAlarmPeriod) {
-        this.elapsedCompilationAlarmPeriod = elapsedCompilationAlarmPeriod;
+        long duration = elapsed() - currentNode.time;
+        currentNode.time = duration;
+
+        currentNode = currentNode.parent;
     }
 
-    public long getElapsedCompilationAlarmPeriod() {
-        return elapsedCompilationAlarmPeriod;
-    }
+    /**
+     * The phase tree root node during compilation. Special marker node to avoid null checking
+     * logic. Note that the {@link PhaseTreeNode#time} of the root is only set and calculated when
+     * the tree is printed from the root.
+     */
+    private PhaseTreeNode root = new PhaseTreeNode("Root");
+    /**
+     * The current tree node to add children to. That is, the phase that currently runs int he
+     * compiler.
+     */
+    private PhaseTreeNode currentNode = root;
 
-    public void appendPhaseTime(String contractorName, long newElapsedCompilationAlarmPeriod) {
-        if (elapsedPhaseTimes == null) {
-            elapsedPhaseTimes = new StringBuilder();
+    /**
+     * Tree data structure representing phase nesting and the respective wall clock time of teach
+     * phase.
+     */
+    private class PhaseTreeNode {
+        /**
+         * Link to the parent node.
+         */
+        private PhaseTreeNode parent;
+        /**
+         * All children of this node.
+         */
+        private PhaseTreeNode[] children;
+        /**
+         * The next free index to add child nodes.
+         */
+        private int childIndex = 0;
+        /**
+         * The name of this node, normally the {@link BasePhase#contractorName()}.
+         */
+        private final String name;
+        /**
+         * The wall clock time spent in this phase. Note this value is only correct after a phase
+         * regularly finished.
+         */
+        private long time = -1L;
+
+        PhaseTreeNode(String name) {
+            this.name = name;
         }
-        elapsedPhaseTimes.append(contractorName).append("->").append(newElapsedCompilationAlarmPeriod - elapsedCompilationAlarmPeriod).append(";");
-        setElapsedCompilationAlarmPeriod(newElapsedCompilationAlarmPeriod);
+
+        private void addChild(PhaseTreeNode child) {
+            if (children == null) {
+                children = new PhaseTreeNode[CHILD_TREE_INIT_SIZE];
+                children[childIndex++] = child;
+                return;
+            }
+            // just double the child array if we seem to run out of slots
+            if (childIndex >= children.length / 2) {
+                children = Arrays.copyOf(children, children.length * 2);
+            }
+            children[childIndex++] = child;
+        }
+
+        @Override
+        public String toString() {
+            return name + "->" + time + "ns";
+        }
+
     }
 
-    public StringBuilder getElapsedPhaseTimes() {
-        return elapsedPhaseTimes;
+    /**
+     * Initial size of a {@link PhaseTreeNode} children array when allocating it the first time.
+     */
+    private static final int CHILD_TREE_INIT_SIZE = 2;
+
+    /**
+     * Recursively print the phase tree represented by {@code node}.
+     */
+    private void printTree(String indent, StringBuilder sb, PhaseTreeNode node) {
+        sb.append(indent);
+        if (node == root) {
+            // only update the root timing incrementally when needed
+            root.time = elapsed();
+        }
+        sb.append(node);
+        sb.append(System.lineSeparator());
+        if (node.children != null) {
+            for (int i = 0; i < node.childIndex; i++) {
+                printTree(indent + "\t", sb, node.children[i]);
+            }
+        }
+    }
+
+    public StringBuilder elapsedPhaseTreeAsString() {
+        StringBuilder sb = new StringBuilder();
+        printTree("", sb, root);
+        return sb;
     }
 
     /**

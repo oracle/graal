@@ -203,9 +203,9 @@ public final class GraphPrinterDumpHandler implements DebugDumpHandler {
 
                     CompilationAlarm currentAlarm = CompilationAlarm.current();
                     if (currentAlarm.isEnabled()) {
-                        properties.put("elapsedCompilationAlarm", currentAlarm.getElapsedCompilationAlarmPeriod());
-                        if (currentAlarm.getElapsedPhaseTimes() != null) {
-                            properties.put("elapsedPhaseTimes", currentAlarm.getElapsedPhaseTimes().toString());
+                        properties.put("elapsedCompilationAlarm", currentAlarm.elapsed());
+                        if (currentAlarm.elapsedPhaseTreeAsString() != null) {
+                            properties.put("elapsedPhaseTimes", currentAlarm.elapsedPhaseTreeAsString().toString());
                         }
                     }
                 }

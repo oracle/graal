@@ -51,6 +51,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 
+import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.graphio.GraphOutput;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
@@ -458,7 +459,19 @@ public final class DebugContext implements AutoCloseable {
         if (compilationListener != null) {
             return enterCompilerPhase(() -> phaseName);
         }
-        return null;
+        CompilationAlarm currentAlarm = CompilationAlarm.current();
+        if (currentAlarm.isEnabled()) {
+            currentAlarm.enterPhase(phaseName.toString());
+        }
+        return new CompilerPhaseScope() {
+
+            @Override
+            public void close() {
+                if (currentAlarm.isEnabled()) {
+                    currentAlarm.exitPhase(phaseName.toString());
+                }
+            }
+        };
     }
 
     /**
