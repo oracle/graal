@@ -7,7 +7,7 @@
 #     -jar ../dacapo/dacapo-9.12-bach.jar sunflow
 
 ## Run using an agent that initializes the buffer
-mx -J-Djava.library.path=/workspace/graal/vincent vm -Dgraal.EnableProfiler=true \
+mx -J-Djava.library.path=/workspace/graal/vincent vm -Dgraal.EnableProfiler=true -Dgraal.Dump=:1 \
     -Xmx10g \
     --add-opens jdk.graal.compiler/jdk.graal.compiler.hotspot.meta.joonhwan=ALL-UNNAMED \
     -javaagent:../joonhwan/agent-joon.jar \
