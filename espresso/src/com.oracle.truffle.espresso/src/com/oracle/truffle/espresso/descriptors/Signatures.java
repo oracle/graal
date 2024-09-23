@@ -110,6 +110,10 @@ public final class Signatures {
         return symbols.symbolify(ByteSequence.create(signatureString));
     }
 
+    public Symbol<Signature> lookupSignature(ByteSequence signatureBytes) {
+        return symbols.lookup(signatureBytes);
+    }
+
     public Types getTypes() {
         return types;
     }
