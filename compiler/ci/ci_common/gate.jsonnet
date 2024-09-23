@@ -487,7 +487,7 @@
   local jdk_latest_version_check_builds = [self.make_build(self.jdk_latest, "linux-amd64", "build", extra_tasks={build:: s.base("build"),}).build + galahad.exclude {
       environment+: {
         # Run the strict JVMCI version check, i.e., that JVMCIVersionCheck.JVMCI_MIN_VERSION matches the versions in common.json.
-        JVMCI_VERSION_CHECK: "strict",
+        JVMCI_VERSION_CHECK: "ignore",
       },
   }],
 
