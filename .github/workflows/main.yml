@@ -90,7 +90,7 @@ permissions:
 jobs:
   build-graalvm-linux:
     name: /${{ matrix.env.PRIMARY }} ${{ matrix.env.GATE_TAGS }} JDK${{ matrix.env.JDK_VERSION }}
-    runs-on: ubuntu-20.04
+    runs-on: ${{ matrix.os || 'ubuntu-20.04' }}
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -120,7 +120,8 @@ jobs:
               GATE_TAGS: "build,helloworld,native_unittests"
               PRIMARY: "substratevm"
               PIP_PACKAGES: "jsonschema==4.6.1"
-          - env:
+          - os: ubuntu-24.04
+            env:
               JDK_VERSION: "latest"
               GATE_TAGS: "build,debuginfotest"
               PRIMARY: "substratevm"

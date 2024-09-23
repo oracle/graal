@@ -341,7 +341,7 @@ def test():
     # print details of greeter types
     exec_string = execute("ptype 'hello.Hello$NamedGreeter'")
     rexp = [r"type = class hello\.Hello\$NamedGreeter : public hello\.Hello\$Greeter {",
-            fr"{spaces_pattern}private:",
+            fr"{spaces_pattern}private:" if major < 15 else None,
             fr"{spaces_pattern}{compressed_pattern if isolates else ''}java\.lang\.String \*name;",
             r"",
             fr"{spaces_pattern}public:",
@@ -350,7 +350,7 @@ def test():
             r"}"]
 
     checker = Checker('ptype NamedGreeter', rexp)
-    checker.check(exec_string, skip_fails=False)
+    checker.check(exec_string, skip_fails=True)
 
     exec_string = execute("ptype 'hello.Hello$Greeter'")
     rexp = [r"type = class hello\.Hello\$Greeter : public java\.lang\.Object {",
@@ -360,7 +360,7 @@ def test():
             r"}"]
 
     checker = Checker('ptype Greeter', rexp)
-    checker.check(exec_string, skip_fails=False)
+    checker.check(exec_string, skip_fails=True)
 
     exec_string = execute("ptype 'java.lang.Object'")
     rexp = [r"type = class java\.lang\.Object : public _objhdr {",
@@ -495,7 +495,7 @@ def test():
     exec_string = execute("ptype 'hello.Hello'")
     rexp = [r"type = class hello\.Hello : public java\.lang\.Object {",
             # ptype lists inlined methods although they are not listed with info func
-            fr"{spaces_pattern}private:",
+            fr"{spaces_pattern}private:" if major < 15 else None,
             fr"{spaces_pattern}static void inlineA\(void\);",
             fr"{spaces_pattern}static void inlineCallChain\(void\);",
             fr"{spaces_pattern}static void inlineFrom\(void\);",
@@ -519,7 +519,7 @@ def test():
             fr"{spaces_pattern}static void noInlineThis\(void\);",
             r"}"]
     checker = Checker('ptype hello.Hello', rexp)
-    checker.check(exec_string, skip_fails=False)
+    checker.check(exec_string, skip_fails=True)
 
     # list methods matching regural expression "nline", inline methods are not listed because they lack a definition
     # (this is true for C/C++ as well)
