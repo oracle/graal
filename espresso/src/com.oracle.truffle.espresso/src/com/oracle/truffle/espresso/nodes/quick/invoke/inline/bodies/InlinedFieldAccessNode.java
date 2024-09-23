@@ -99,14 +99,14 @@ public abstract class InlinedFieldAccessNode extends InlinedMethodNode.BodyNode 
         Method.MethodVersion methodVersion = resolvedCall.getResolvedMethod().getMethodVersion();
         char fieldCpi = InlinedFieldAccessNode.getFieldCpi(false, methodVersion);
         ConditionalInlinedMethodNode.Recipes recipes = new FieldAccessRecipes(() -> new InlinedGetterNode(methodVersion, fieldCpi));
-        return create(resolvedCall, methodVersion, top, opCode, curBCI, statementIndex, recipes, fieldCpi);
+        return create(resolvedCall, top, opCode, curBCI, statementIndex, recipes, fieldCpi);
     }
 
     public static InlinedMethodNode createSetter(ResolvedCall resolvedCall, int top, int opCode, int curBCI, int statementIndex) {
         Method.MethodVersion methodVersion = resolvedCall.getResolvedMethod().getMethodVersion();
         char fieldCpi = InlinedFieldAccessNode.getFieldCpi(true, methodVersion);
         ConditionalInlinedMethodNode.Recipes recipes = new FieldAccessRecipes(() -> new InlinedSetterNode(methodVersion, fieldCpi));
-        return create(resolvedCall, methodVersion, top, opCode, curBCI, statementIndex, recipes, fieldCpi);
+        return create(resolvedCall, top, opCode, curBCI, statementIndex, recipes, fieldCpi);
     }
 
     /**
@@ -123,9 +123,10 @@ public abstract class InlinedFieldAccessNode extends InlinedMethodNode.BodyNode 
      * to a generic invoke if the method is no longer a leaf.</li>
      * </ul>
      */
-    private static InlinedMethodNode create(ResolvedCall resolvedCall, Method.MethodVersion inlinedMethod, int top, int opCode, int curBCI, int statementIndex,
+    private static InlinedMethodNode create(ResolvedCall resolvedCall, int top, int opCode, int curBCI, int statementIndex,
                     ConditionalInlinedMethodNode.Recipes recipes, char fieldCpi) {
         assert isInlineCandidate(resolvedCall);
+        Method.MethodVersion inlinedMethod = resolvedCall.getResolvedMethod().getMethodVersion();
         boolean isDefinitive = isResolutionSuccessAt(inlinedMethod, fieldCpi);
         if (isDefinitive) {
             if (isUnconditionalInlineCandidate(resolvedCall)) {
@@ -137,9 +138,9 @@ public abstract class InlinedFieldAccessNode extends InlinedMethodNode.BodyNode 
         }
         InlinedMethodPredicate condition = (context, version, frame, node) -> isResolutionSuccessAt(version, fieldCpi);
         if (isUnconditionalInlineCandidate(resolvedCall)) {
-            return new ConditionalInlinedMethodNode(inlinedMethod, top, opCode, curBCI, statementIndex, recipes, condition);
+            return new ConditionalInlinedMethodNode(resolvedCall, top, opCode, curBCI, statementIndex, recipes, condition);
         } else {
-            return new GuardedConditionalInlinedMethodNode(inlinedMethod, top, opCode, curBCI, statementIndex, recipes, condition, InlinedMethodPredicate.LEAF_ASSUMPTION_CHECK);
+            return new GuardedConditionalInlinedMethodNode(resolvedCall, top, opCode, curBCI, statementIndex, recipes, condition, InlinedMethodPredicate.LEAF_ASSUMPTION_CHECK);
         }
     }
 
