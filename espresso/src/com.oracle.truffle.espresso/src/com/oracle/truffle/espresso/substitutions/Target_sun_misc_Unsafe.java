@@ -3082,7 +3082,7 @@ public final class Target_sun_misc_Unsafe {
     // endregion UnsafeAccessors
 
     public static class SharedUnsafe extends SubstitutionNamesProvider {
-        private static String[] NAMES = new String[]{
+        private static final String[] NAMES = {
                         TARGET_SUN_MISC_UNSAFE,
                         TARGET_JDK_INTERNAL_MISC_UNSAFE
         };
@@ -3104,7 +3104,7 @@ public final class Target_sun_misc_Unsafe {
     }
 
     public static class SharedUnsafeObjectAccessToReference extends SubstitutionNamesProvider {
-        private static String[] NAMES = new String[]{
+        private static final String[] NAMES = {
                         TARGET_SUN_MISC_UNSAFE,
                         TARGET_JDK_INTERNAL_MISC_UNSAFE,
                         TARGET_JDK_INTERNAL_MISC_UNSAFE
@@ -3127,7 +3127,7 @@ public final class Target_sun_misc_Unsafe {
     }
 
     public static class Unsafe8 extends SubstitutionNamesProvider {
-        private static String[] NAMES = new String[]{
+        private static final String[] NAMES = {
                         TARGET_SUN_MISC_UNSAFE
         };
         public static SubstitutionNamesProvider INSTANCE = new Unsafe8();
@@ -3139,7 +3139,7 @@ public final class Target_sun_misc_Unsafe {
     }
 
     public static class Unsafe11 extends SubstitutionNamesProvider {
-        private static String[] NAMES = new String[]{
+        private static final String[] NAMES = {
                         TARGET_JDK_INTERNAL_MISC_UNSAFE
         };
         public static SubstitutionNamesProvider INSTANCE = new Unsafe11();
