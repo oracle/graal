@@ -111,6 +111,7 @@ import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
 import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM.EspressoStackElement;
 
@@ -673,11 +674,19 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     private static Symbol<Signature> rebuildConstructorSignature(Meta meta, StaticObject rootMethod) {
-        StaticObject[] parameterTypes = meta.java_lang_reflect_Constructor_parameterTypes.getObject(rootMethod).unwrap(meta.getLanguage());
-        int len = 3;
+        StaticObject ptypes = meta.java_lang_reflect_Constructor_parameterTypes.getObject(rootMethod);
+        return meta.getSignatures().lookupValidSignature(getSignatureFromGuestDescription(ptypes, meta._void.mirror(), meta));
+    }
+
+    public static ByteSequence getSignatureFromGuestDescription(@JavaType(Class[].class) StaticObject ptypes,
+                    @JavaType(Class.class) StaticObject rtype, Meta meta) {
+        Symbol<Type> returnType = rtype.getMirrorKlass(meta).getType();
+        StaticObject[] parameterTypes = ptypes.unwrap(meta.getLanguage());
+        int len = 2;
         for (StaticObject parameterType : parameterTypes) {
             len += parameterType.getMirrorKlass(meta).getType().length();
         }
+        len += returnType.length();
         byte[] bytes = new byte[len];
         int pos = 0;
         bytes[pos++] = '(';
@@ -687,10 +696,10 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             pos += paramType.length();
         }
         bytes[pos++] = ')';
-        bytes[pos++] = 'V';
+        returnType.writeTo(bytes, pos);
+        pos += returnType.length();
         assert pos == bytes.length;
-        Symbol<Signature> signature = meta.getSignatures().lookupSignature(ByteSequence.wrap(bytes));
-        return signature;
+        return ByteSequence.wrap(bytes);
     }
 
     // Polymorphic signature method 'creation'
