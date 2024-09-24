@@ -1323,7 +1323,7 @@ public class NativeImageGenerator {
                 throw new InterruptImageBuilding("Exiting image generation because of " + SubstrateOptionsParser.commandArgument(CAnnotationProcessorCache.Options.ExitAfterCAPCache, "+"));
             }
             if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
-                HostedImageLayerBuildingSupport.setupSharedLayerLibrary(nativeLibs);
+                HostedImageLayerBuildingSupport.singleton().setupSharedLayerLibrary(nativeLibs);
             }
             return nativeLibs;
         }
