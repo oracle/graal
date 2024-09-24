@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api;
 
-import java.util.Objects;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.locks.Lock;
 import java.util.function.Consumer;
@@ -142,16 +141,13 @@ public abstract class TruffleSafepoint {
      * }
      * </pre>
      *
-     * @param location the location of the poll. Must not be <code>null</code>.
+     * @param location the location of the poll. May be <code>null</code>, but it is recommended to
+     *            always pass a location node, if available.
      * @see TruffleSafepoint
      * @see #pollHere(Node)
      * @since 21.1
      */
     public static void poll(Node location) {
-        if (location == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new NullPointerException();
-        }
         HANDSHAKE.poll(location);
     }
 
@@ -180,7 +176,6 @@ public abstract class TruffleSafepoint {
      */
     @TruffleBoundary
     public static void pollHere(Node location) {
-        Objects.requireNonNull(location);
         HANDSHAKE.poll(location);
     }
 
@@ -260,8 +255,9 @@ public abstract class TruffleSafepoint {
      * blocked state allows safepoint notification while the current thread is blocked. This allows
      * Truffle to interrupt e.g. locks temporarily to perform a thread local action.
      * <p>
-     * The <code>location></code> parameter is used {@link #poll(Node) poll} all pending thread
-     * local actions before transition to blocked state.
+     * The <code>location</code> parameter is used to {@link #poll(Node) poll} all pending thread
+     * local actions before transition to blocked state. It may be <code>null</code>, but it is
+     * recommended to always pass a location node, if available.
      * <p>
      * The <code>interrupter</code> parameter specifies how the blocked state can be interrupted
      * from another thread. The interrupter allows to interrupt the blocked state from other

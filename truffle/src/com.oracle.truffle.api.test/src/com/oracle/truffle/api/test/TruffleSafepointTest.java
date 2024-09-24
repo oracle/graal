@@ -78,8 +78,6 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
-import com.oracle.truffle.api.test.common.TestUtils;
-import com.oracle.truffle.api.test.polyglot.AbstractThreadedPolyglotTest;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.junit.After;
@@ -92,6 +90,8 @@ import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -114,13 +114,13 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.common.TestUtils;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
+import com.oracle.truffle.api.test.polyglot.AbstractThreadedPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyInstrument;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 
 @SuppressWarnings("hiding")
 @RunWith(Parameterized.class)
@@ -412,7 +412,7 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
     public void testAsynchronous() {
         forEachConfig((threads, events) -> {
             try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
-                sleepNanosBoundary(50000);
+                TruffleSafepoint.getCurrent().setBlocked(node, Interrupter.THREAD_INTERRUPT, ignored -> Thread.sleep(1), null, null, null);
                 TruffleSafepoint.poll(node);
                 return false;
             })) {

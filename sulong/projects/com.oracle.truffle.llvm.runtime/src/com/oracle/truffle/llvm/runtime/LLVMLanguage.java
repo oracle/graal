@@ -416,7 +416,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     @Override
     protected void initializeThread(LLVMContext context, Thread thread) {
         getCapability(PlatformCapability.class).initializeThread(context, thread);
-        try (TLSInitializerAccess access = context.getTLSInitializerAccess()) {
+        try (TLSInitializerAccess access = context.getTLSInitializerAccess(true)) {
             // need to duplicate the thread local globals for this thread.
             for (AggregateTLGlobalInPlaceNode globalInitializer : access.getThreadLocalGlobalInitializer()) {
                 // TODO: use the call target of AggregateTLGlobalInPlaceNode, rather than the node
@@ -869,7 +869,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
             freeThreadLocalGlobal(threadLocalValue);
         }
 
-        try (TLSInitializerAccess access = context.getTLSInitializerAccess()) {
+        try (TLSInitializerAccess access = context.getTLSInitializerAccess(false)) {
             access.unregisterLiveThread(thread);
         }
     }
