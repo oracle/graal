@@ -830,8 +830,11 @@ def _get_image_vm_options(jdk, use_upgrade_module_path, modules, synthetic_modul
                 if default_to_jvmci == 'lib':
                     vm_options.append('-XX:+UseJVMCINativeLibrary')
                 vm_options.extend(['-XX:-UnlockExperimentalVMOptions'])
+<<<<<<< HEAD
                 if 'jdk.graal.compiler' in non_synthetic_modules:
                     vm_options.extend(['--add-exports=java.base/jdk.internal.misc=jdk.graal.compiler'])
+=======
+>>>>>>> 0895a05137a (remove --add-exports from preset VM options in GraalVM)
             else:
                 # Don't default to using JVMCI as JIT unless Graal is being updated in the image.
                 # This avoids unexpected issues with using the out-of-date Graal compiler in
