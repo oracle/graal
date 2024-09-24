@@ -274,6 +274,11 @@ public final class Meta extends ContextAccessImpl {
         java_lang_IllegalArgumentException = knownKlass(Type.java_lang_IllegalArgumentException);
         java_lang_IllegalStateException = knownKlass(Type.java_lang_IllegalStateException);
         java_lang_NullPointerException = knownKlass(Type.java_lang_NullPointerException);
+        if (getJavaVersion().java14OrLater()) {
+            java_lang_NullPointerException_extendedMessageState = java_lang_NullPointerException.requireDeclaredField(Name.extendedMessageState, Type._int);
+        } else {
+            java_lang_NullPointerException_extendedMessageState = null;
+        }
         java_lang_ClassNotFoundException = knownKlass(Type.java_lang_ClassNotFoundException);
         java_lang_NoClassDefFoundError = knownKlass(Type.java_lang_NoClassDefFoundError);
         java_lang_InterruptedException = knownKlass(Type.java_lang_InterruptedException);
@@ -1466,6 +1471,7 @@ public final class Meta extends ContextAccessImpl {
     public final ObjectKlass java_lang_IllegalMonitorStateException;
     public final ObjectKlass java_lang_IllegalStateException;
     public final ObjectKlass java_lang_NullPointerException;
+    public final Field java_lang_NullPointerException_extendedMessageState;
     public final ObjectKlass java_lang_ClassNotFoundException;
     public final ObjectKlass java_lang_NoClassDefFoundError;
     public final ObjectKlass java_lang_InterruptedException;

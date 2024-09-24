@@ -62,6 +62,11 @@ public final class ExceptionDispatch extends ContextAccessImpl {
         // TODO: Remove this when truffle exceptions are reworked.
         InterpreterToVM.fillInStackTrace(ex, meta);
 
+        // Support extended NPE messages
+        if (meta.java_lang_NullPointerException == klass && meta.java_lang_NullPointerException_extendedMessageState != null) {
+            meta.java_lang_NullPointerException_extendedMessageState.setInt(ex, 1);
+        }
+
         if (message != null) {
             meta.java_lang_Throwable_detailMessage.setObject(ex, message);
         }
