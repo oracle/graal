@@ -170,7 +170,7 @@ The built-in operations are:
 - Exception handler operations (see [Exception handling](#exception-handling))
   - `TryCatch`
   - `TryFinally`
-  - `TryFinallyCatch`
+  - `TryCatchOtherwise`
   - `LoadException`
 - Source operations (see [Source information](#source-information))
   - `Source`
@@ -409,7 +409,7 @@ b.beginTryCatch();
 b.endTryCatch();
 ```
 
-The other two handlers are `TryFinally` and `TryFinallyCatch`.
+The other two handlers are `TryFinally` and `TryCatchOtherwise`.
 
 `TryFinally` executes a `try` operation (its first child), and ensures a `finally` operation is always executed, even if a Truffle exception is thrown. If an exception was thrown, it rethrows the exception afterward.
 The bytecode for `finally` is emitted multiple times (once for each exit point of `try`, including at early returns), so it is specified using a `Runnable` parser that can be repeatedly invoked. This parser must be idempotent.
@@ -448,10 +448,10 @@ b.endTryCatch();
 ```
 
 
-`TryFinallyCatch` is a variant of `TryFinally` that executes a separate `catch` operation (its second child) *instead of* the `finally` operation when a Truffle exception is thrown from `try`.
+`TryCatchOtherwise` is a variant of `TryFinally` that executes a separate `catch` operation (its second child) *instead of* the `finally` operation when a Truffle exception is thrown from `try`.
 
-Note that `TryFinallyCatch` has different semantics from a Java try-catch-finally block.
-Whereas a try-catch-finally always executes the `finally` operation even if the `catch` block executes, the `TryFinallyCatch` operation executes *either* its `finally` or `catch` operation (not both).
+Note that `TryCatchOtherwise` has different semantics from a Java try-catch-finally block.
+Whereas a try-catch-finally always executes the `finally` operation even if the `catch` block executes, the `TryCatchOtherwise` operation executes *either* its `finally` or `catch` operation (not both).
 It is typically useful to implement try-finally semantics with different behaviour for exceptional exits.
 
 For example, the following try-finally block:
@@ -464,15 +464,15 @@ finally:
   else:
     C
 ```
-can be implemented with a `TryFinallyCatch` operation:
+can be implemented with a `TryCatchOtherwise` operation:
 ```java
-b.beginTryFinallyCatch(() -> b.emitC() /* finally block */);
+b.beginTryCatchOtherwise(() -> b.emitC() /* finally block */);
     b.emitA(); // first child (try block)
     b.emitB(); // second child (catch block)
 b.endTryCatch();
 ```
 
-The `LoadException` operation can be used within the `catch` operation of a `TryCatch` or `TryFinallyCatch` to read the current exception.
+The `LoadException` operation can be used within the `catch` operation of a `TryCatch` or `TryCatchOtherwise` to read the current exception.
 
 ### Intercepting exceptions
 

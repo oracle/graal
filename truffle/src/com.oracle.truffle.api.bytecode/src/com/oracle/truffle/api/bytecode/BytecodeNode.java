@@ -834,7 +834,7 @@ public abstract class BytecodeNode extends Node {
      *            using @{@link Bind Bind}("$bytecodeIndex") annotation. The value must be a partial
      *            evaluation constant. If the bytecode index is inconsistent with the state of the
      *            frame passed then the result of this method is unspecified.
-     * @param frame the frame to store the locals value into
+     * @param frame the frame to store the local value into
      * @param localOffset the logical offset of the local (as obtained by
      *            {@link BytecodeLocal#getLocalOffset()} or {@link LocalVariable#getLocalOffset()}).
      * @param value the value to store into the local

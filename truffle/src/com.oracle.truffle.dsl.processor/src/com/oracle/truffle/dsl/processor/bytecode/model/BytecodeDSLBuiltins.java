@@ -147,32 +147,50 @@ public class BytecodeDSLBuiltins {
         TypeMirror parserType = context.getDeclaredType(Runnable.class);
         m.tryFinallyOperation = m.operation(OperationKind.TRY_FINALLY, "TryFinally",
                         """
-                                        TryFinally implements a finally handler. It runs the given {@code finallyParser} to parse a {@code finally} operation.
-                                        TryFinally executes {@code try}, and after execution finishes it always executes {@code finally}.
+                                        TryFinally implements a finally handler. It executes {@code try}, and after execution finishes it always executes {@code finally}.
                                         If {@code try} finishes normally, {@code finally} executes and control continues after the TryFinally operation.
                                         If {@code try} finishes exceptionally, {@code finally} executes and then rethrows the exception.
                                         If {@code try} finishes with a control flow operation, {@code finally} executes and then the control flow operation continues (i.e., a Branch will branch, a Return will return).
-                                        This is a void operation; both {@code finally} and {@code try} can also be void.
+                                        <p>
+                                        Unlike other child operations, {@code finally} is emitted multiple times in the bytecode (once for each regular, exceptional, and early control flow exit).
+                                        To facilitate this, the {@code finally} operation is specified by a {@code finallyParser} that can be invoked multiple times. It should be repeatable and not have side effects.
+                                        <p>
+                                        This is a void operation; either of {@code try} or {@code finally} can be void.
                                         """) //
                         .setVoid(true) //
                         .setOperationBeginArguments(new OperationArgument(parserType, Encoding.FINALLY_PARSER, "finallyParser",
-                                        "a runnable that uses the builder to parse the finally operation (must be idempotent)") //
+                                        "an idempotent Runnable that parses the {@code finally} operation using builder calls") //
                         ).setDynamicOperands(voidableChild("try"));
-        m.tryFinallyCatchOperation = m.operation(OperationKind.TRY_FINALLY_CATCH, "TryFinallyCatch",
+        m.tryCatchOtherwiseOperation = m.operation(OperationKind.TRY_CATCH_OTHERWISE, "TryCatchOtherwise",
                         """
-                                        TryFinallyCatch is a variation of TryFinally that executes a different operation for thrown exceptions. It runs the given {@code finallyParser} to parse a {@code finally} operation.
-                                        TryFinallyCatch executes {@code try} and then one of the handlers.
-                                        If {@code try} finishes normally, {@code finally} executes and control continues after the TryFinallyCatch operation.
-                                        If {@code try} finishes exceptionally, {@code catch} executes. The exception can be accessed using LoadException, and it is rethrown afterwards.
-                                        If {@code try} finishes with a control flow operation, {@code finally} executes and then the control flow operation continues (i.e., a Branch will branch, a Return will return).
-
-                                        This operation is <strong>not</strong> the same as a Java try-catch-finally block. If {@code catch} executes, {@code finally} will not run.
-
-                                        This is a void operation; any of {@code finally}, {@code try}, or {@code catch} can be void.
+                                        TryCatchOtherwise implements a try block with different handling for regular and exceptional behaviour. It executes {@code try} and then one of the handlers.
+                                        If {@code try} finishes normally, {@code otherwise} executes and control continues after the TryCatchOtherwise operation.
+                                        If {@code try} finishes exceptionally, {@code catch} executes. The exception can be accessed using LoadException. Control continues after the TryCatchOtherwise operation.
+                                        If {@code try} finishes with a control flow operation, {@code otherwise} executes and then the control flow operation continues (i.e., a Branch will branch, a Return will return).
+                                        <p>
+                                        Unlike other child operations, {@code otherwise} is emitted multiple times in the bytecode (once for each regular and early control flow exit).
+                                        To facilitate this, the {@code otherwise} operation is specified by an {@code otherwiseParser} that can be invoked multiple times. It should be repeatable and not have side effects.
+                                        <p>
+                                        This operation is effectively a TryFinally operation with a specialized handler for the exception case.
+                                        It does <strong>not</strong> implement try-catch-finally semantics: if an exception is thrown {@code catch} executes and {@code otherwise} does not.
+                                        In pseudocode, it implements:
+                                        <pre>
+                                        try {
+                                            tryOperation
+                                        } finally {
+                                            if (exceptionThrown) {
+                                                catchOperation
+                                            } else {
+                                                otherwiseOperation
+                                            }
+                                        }
+                                        </pre>
+                                        <p>
+                                        This is a void operation; any of {@code try}, {@code catch}, or {@code otherwise} can be void.
                                         """) //
                         .setVoid(true) //
-                        .setOperationBeginArguments(new OperationArgument(parserType, Encoding.FINALLY_PARSER, "finallyParser",
-                                        "a runnable that uses the builder to parse the finally operation (must be idempotent)") //
+                        .setOperationBeginArguments(new OperationArgument(parserType, Encoding.FINALLY_PARSER, "otherwiseParser",
+                                        "an idempotent Runnable that parses the {@code otherwise} operation using builder calls") //
                         ).setDynamicOperands(voidableChild("try"), voidableChild("catch"));
         m.finallyHandlerOperation = m.operation(OperationKind.FINALLY_HANDLER, "FinallyHandler",
                         """
@@ -221,7 +239,7 @@ public class BytecodeDSLBuiltins {
                                         .addImmediate(ImmediateKind.SHORT, "index"));
         m.operation(OperationKind.LOAD_EXCEPTION, "LoadException", """
                         LoadException reads the current exception from the frame.
-                        This operation is only permitted inside the {@code catch} operation of TryCatch and TryFinallyCatch operations.
+                        This operation is only permitted inside the {@code catch} operation of TryCatch and TryCatchOtherwise operations.
                         """) //
                         .setInstruction(m.instruction(InstructionKind.LOAD_EXCEPTION, "load.exception", m.signature(Object.class))//
                                         .addImmediate(ImmediateKind.STACK_POINTER, "exceptionSp"));

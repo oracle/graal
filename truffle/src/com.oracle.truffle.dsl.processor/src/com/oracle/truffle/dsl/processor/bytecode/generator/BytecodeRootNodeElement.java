@@ -2784,12 +2784,12 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                             b.end();
                             break;
                         case TRY_FINALLY:
-                        case TRY_FINALLY_CATCH:
+                        case TRY_CATCH_OTHERWISE:
                             b.startCase().tree(createOperationConstant(op)).end().startBlock();
                             emitCastOperationData(b, op, "i");
                             b.startIf().string("operation.childCount == 0").end().startBlock();
                             b.statement("operationData.tryReachable = newReachable");
-                            if (op.kind == OperationKind.TRY_FINALLY_CATCH) {
+                            if (op.kind == OperationKind.TRY_CATCH_OTHERWISE) {
                                 b.end().startElseIf().string("operation.childCount == 1").end().startBlock();
                                 b.statement("operationData.catchReachable = newReachable");
                             }
@@ -2907,12 +2907,12 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                             b.end();
                             break;
                         case TRY_FINALLY:
-                        case TRY_FINALLY_CATCH:
+                        case TRY_CATCH_OTHERWISE:
                             b.startCase().tree(createOperationConstant(op)).end().startBlock();
                             emitCastOperationData(b, op, "i");
                             b.startIf().string("operation.childCount == 0").end().startBlock();
                             b.statement("this.reachable = operationData.tryReachable");
-                            if (op.kind == OperationKind.TRY_FINALLY_CATCH) {
+                            if (op.kind == OperationKind.TRY_CATCH_OTHERWISE) {
                                 b.end().startElseIf().string("operation.childCount == 2").end().startBlock();
                                 b.statement("this.reachable = operationData.catchReachable");
                             }
@@ -3920,7 +3920,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 case WHILE:
                 case RETURN:
                 case TRY_FINALLY:
-                case TRY_FINALLY_CATCH:
+                case TRY_CATCH_OTHERWISE:
                     break;
             }
 
@@ -4161,7 +4161,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 case TRY_FINALLY -> createOperationData(className, "++numHandlers", safeCastShort("currentStackHeight"), operation.getOperationBeginArgumentName(0), "bci", "this.reachable",
                                 "this.reachable",
                                 "false");
-                case TRY_FINALLY_CATCH -> createOperationData(className, "++numHandlers", safeCastShort("currentStackHeight"), operation.getOperationBeginArgumentName(0), "bci", "this.reachable",
+                case TRY_CATCH_OTHERWISE -> createOperationData(className, "++numHandlers", safeCastShort("currentStackHeight"), operation.getOperationBeginArgumentName(0), "bci", "this.reachable",
                                 "this.reachable",
                                 "this.reachable");
                 case FINALLY_HANDLER -> createOperationData(className, "finallyOperationSp");
@@ -4463,7 +4463,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     emitFixFinallyBranchBci(b);
                     b.statement("markReachable(operationData.tryReachable)");
                     break;
-                case TRY_FINALLY_CATCH:
+                case TRY_CATCH_OTHERWISE:
                     emitCastCurrentOperationData(b, operation);
                     b.statement("markReachable(operationData.tryReachable || operationData.catchReachable)").end();
                     break;
@@ -4970,7 +4970,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         /**
          * Generates code to walk the "logical" operation stack. If we're currently emitting a
          * finally handler (marked by a FinallyHandler operation), skips past the
-         * TryFinally/TryFinallyCatch operation.
+         * TryFinally/TryCatchOtherwise operation.
          *
          * The supplied Runnable contains the loop body and can use "i" to reference the current
          * index.
@@ -5014,11 +5014,11 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             b.startIf();
             b.string("operationStack[i].operation == ").tree(createOperationConstant(model.tryFinallyOperation));
-            b.string(" || operationStack[i].operation == ").tree(createOperationConstant(model.tryFinallyCatchOperation));
+            b.string(" || operationStack[i].operation == ").tree(createOperationConstant(model.tryCatchOtherwiseOperation));
             b.end().startBlock();
 
-            if (!getDataClassName(model.tryFinallyOperation).equals(getDataClassName(model.tryFinallyCatchOperation))) {
-                throw new AssertionError("TryFinally and TryFinallyCatch operations have different data classes.");
+            if (!getDataClassName(model.tryFinallyOperation).equals(getDataClassName(model.tryCatchOtherwiseOperation))) {
+                throw new AssertionError("TryFinally and TryCatchOtherwise operations have different data classes.");
             }
             b.startDeclaration(type(int.class), "finallyHandlerSp");
             b.startParantheses();
@@ -5073,7 +5073,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         /**
          * Produces code to emit finally handler(s) after the try block.
          *
-         * For TryFinally, emits both regular and exceptional handlers; for TryFinallyCatch, just
+         * For TryFinally, emits both regular and exceptional handlers; for TryCatchOtherwise, just
          * emits the regular handler.
          *
          * NB: each call to doEmitFinallyHandler must happen regardless of reachability so that the
@@ -5117,7 +5117,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             b.end(); // if operationReachable
 
-            if (op.kind != OperationKind.TRY_FINALLY_CATCH) {
+            if (op.kind != OperationKind.TRY_CATCH_OTHERWISE) {
                 b.lineComment("emit handler for exceptional case");
                 b.statement("currentStackHeight = handlerSp");
                 b.statement("doEmitFinallyHandler(operationData, " + finallyHandlerSp + ")");
@@ -5333,21 +5333,21 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.statement("break");
                 b.end(); // case TryCatch
 
-                b.startCase().tree(createOperationConstant(model.tryFinallyCatchOperation)).end();
+                b.startCase().tree(createOperationConstant(model.tryCatchOtherwiseOperation)).end();
                 b.startBlock();
-                emitCastOperationData(b, model.tryFinallyCatchOperation, "i");
+                emitCastOperationData(b, model.tryCatchOtherwiseOperation, "i");
                 b.startIf().string("operationStack[i].childCount == 1").end().startBlock();
                 b.statement("exceptionStackHeight = operationData.stackHeight");
                 b.statement("break loop");
                 b.end();
                 b.statement("break");
-                b.end(); // case TryFinallyCatch
+                b.end(); // case TryCatchOtherwise
 
                 b.end(); // switch
             });
 
             b.startIf().string("exceptionStackHeight == ", UNINIT).end().startBlock();
-            b.startThrow().startCall("failState").doubleQuote("LoadException can only be used in the catch operation of a TryCatch/TryFinallyCatch operation in the current root.").end().end();
+            b.startThrow().startCall("failState").doubleQuote("LoadException can only be used in the catch operation of a TryCatch/TryCatchOtherwise operation in the current root.").end().end();
             b.end();
 
             buildEmitInstruction(b, operation.instruction, "exceptionStackHeight");
@@ -5680,7 +5680,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                                 op.kind == OperationKind.TRY_FINALLY) {
                     return BeforeChildKind.UPDATE_REACHABLE;
                 } else if (op.kind == OperationKind.TRY_CATCH ||
-                                op.kind == OperationKind.TRY_FINALLY_CATCH) {
+                                op.kind == OperationKind.TRY_CATCH_OTHERWISE) {
                     return BeforeChildKind.EXCEPTION_HANDLER;
                 } else {
                     return BeforeChildKind.DEFAULT;
@@ -6067,7 +6067,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         break;
                     case TRY_FINALLY:
                         break;
-                    case TRY_FINALLY_CATCH:
+                    case TRY_CATCH_OTHERWISE:
                         emitCastOperationData(b, op, "operationSp - 1");
                         b.startIf().string("childIndex == 0").end().startBlock();
                         emitFinallyHandlersAfterTry(b, op, "operationSp - 1");
@@ -6993,7 +6993,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     b.end(); // case epilog
                 }
 
-                for (OperationKind finallyOpKind : List.of(OperationKind.TRY_FINALLY, OperationKind.TRY_FINALLY_CATCH)) {
+                for (OperationKind finallyOpKind : List.of(OperationKind.TRY_FINALLY, OperationKind.TRY_CATCH_OTHERWISE)) {
                     b.startCase().tree(createOperationConstant(model.findOperation(finallyOpKind))).end();
                     b.startBlock();
                     emitCastOperationData(b, model.tryFinallyOperation, "i");
@@ -7085,7 +7085,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 }
 
                 b.startCase().tree(createOperationConstant(model.findOperation(OperationKind.TRY_FINALLY))).end();
-                b.startCase().tree(createOperationConstant(model.findOperation(OperationKind.TRY_FINALLY_CATCH))).end();
+                b.startCase().tree(createOperationConstant(model.findOperation(OperationKind.TRY_CATCH_OTHERWISE))).end();
                 b.startCaseBlock();
                 b.startIf().string("operationStack[i].childCount == 0 /* still in try */").end().startBlock();
                 emitCastOperationData(b, model.tryFinallyOperation, "i");
@@ -7396,7 +7396,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                                         field(type(int.class), "extraTableEntriesStart").withInitializer(UNINIT),
                                         field(type(int.class), "extraTableEntriesEnd").withInitializer(UNINIT));
                         break;
-                    case TRY_FINALLY, TRY_FINALLY_CATCH:
+                    case TRY_FINALLY, TRY_CATCH_OTHERWISE:
                         name = "TryFinallyData";
                         fields = List.of(//
                                         field(type(int.class), "handlerId").asFinal(),
@@ -7420,7 +7420,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         name = "FinallyHandlerData";
                         fields = List.of(field(type(int.class), "finallyOperationSp").asFinal().withDoc(
                                         """
-                                                        The index of the finally operation (TryFinally/TryFinallyCatch) on the operation stack.
+                                                        The index of the finally operation (TryFinally/TryCatchOtherwise) on the operation stack.
                                                         This index should only be used to skip over the handler when walking the operation stack.
                                                         It should *not* be used to access the finally operation data, because a FinallyHandler is
                                                         sometimes emitted after the finally operation has already been popped.

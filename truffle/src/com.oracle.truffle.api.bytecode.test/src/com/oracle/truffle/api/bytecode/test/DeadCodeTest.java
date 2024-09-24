@@ -220,15 +220,15 @@ public class DeadCodeTest extends AbstractInstructionTest {
     }
 
     @Test
-    public void testUnreachableTryFinallyCatch1() {
+    public void testUnreachableTryCatchOtherwise1() {
         // @formatter:off
         // try {
         //   throw();
-        // } finally {
-        //   return 42;
-        //   <dead>
         // } catch ex {
         //   return 41;
+        //   <dead>
+        // } otherwise {
+        //   return 42;
         //   <dead>
         // }
         // <dead>
@@ -236,7 +236,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
             b.beginRoot();
 
-            b.beginTryFinallyCatch(() -> {
+            b.beginTryCatchOtherwise(() -> {
                 b.beginBlock(); // finally
                 b.beginReturn();
                 b.emitLoadConstant(42);
@@ -254,7 +254,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
             emitUnreachableCode(b);
             b.endBlock();
 
-            b.endTryFinallyCatch();
+            b.endTryCatchOtherwise();
 
             emitUnreachableCode(b);
 
@@ -273,15 +273,15 @@ public class DeadCodeTest extends AbstractInstructionTest {
     }
 
     @Test
-    public void testUnreachableTryFinallyCatch2() {
+    public void testUnreachableTryCatchOtherwise2() {
         // @formatter:off
         // return 42;
         // try {
         //   throw
-        // } finally {
+        // } catch ex {
         //   return 41;
         //   <dead>
-        // } catch ex {
+        // } otherwise {
         //   return 41;
         //   <dead>
         // }
@@ -294,7 +294,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
             b.emitLoadConstant(42);
             b.endReturn();
 
-            b.beginTryFinallyCatch(() -> {
+            b.beginTryCatchOtherwise(() -> {
                 b.beginBlock(); // finally
                 b.beginReturn();
                 b.emitLoadConstant(41);
@@ -312,7 +312,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
             emitUnreachableCode(b);
             b.endBlock();
 
-            b.endTryFinallyCatch();
+            b.endTryCatchOtherwise();
 
             emitUnreachableCode(b);
 
@@ -327,22 +327,22 @@ public class DeadCodeTest extends AbstractInstructionTest {
     }
 
     @Test
-    public void testReachableTryFinallyCatch1() {
+    public void testReachableTryCatchOtherwise1() {
         // @formatter:off
         // try {
         //   41;
-        // } finally {
-        //   return 42;
-        //   <dead>
         // } catch ex {
         //   43;
+        // } otherwise {
+        //   return 42;
+        //   <dead>
         // }
         // return 44;
         // @formatter:on
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
             b.beginRoot();
 
-            b.beginTryFinallyCatch(() -> {
+            b.beginTryCatchOtherwise(() -> {
                 b.beginBlock(); // finally
                 b.beginReturn();
                 b.emitLoadConstant(42);
@@ -355,7 +355,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
 
             b.emitLoadConstant(43); // catch
 
-            b.endTryFinallyCatch();
+            b.endTryCatchOtherwise();
 
             b.beginReturn();
             b.emitLoadConstant(44);
@@ -379,22 +379,22 @@ public class DeadCodeTest extends AbstractInstructionTest {
     }
 
     @Test
-    public void testReachableTryFinallyCatch2() {
+    public void testReachableTryCatchOtherwise2() {
         // @formatter:off
         // try {
         //   throw();
-        // } finally {
-        //   41;
         // } catch ex {
         //   return 42;
         //   <dead>
+        // } otherwise {
+        //   41;
         // }
         // return 44;
         // @formatter:on
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
             b.beginRoot();
 
-            b.beginTryFinallyCatch(() -> b.emitLoadConstant(41));
+            b.beginTryCatchOtherwise(() -> b.emitLoadConstant(41));
             b.emitThrow(); // try
 
             b.beginBlock(); // catch
@@ -404,7 +404,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
             emitUnreachableCode(b);
             b.endBlock();
 
-            b.endTryFinallyCatch();
+            b.endTryCatchOtherwise();
 
             b.beginReturn();
             b.emitLoadConstant(44);

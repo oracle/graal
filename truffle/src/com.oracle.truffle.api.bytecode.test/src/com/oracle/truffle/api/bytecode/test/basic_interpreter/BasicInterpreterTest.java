@@ -644,7 +644,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testBadLoadExceptionUsage1() {
-        assertThrowsWithMessage("LoadException can only be used in the catch operation of a TryCatch/TryFinallyCatch operation in the current root.",
+        assertThrowsWithMessage("LoadException can only be used in the catch operation of a TryCatch/TryCatchOtherwise operation in the current root.",
                         IllegalStateException.class, () -> {
                             parse("badLoadExceptionUsage1", b -> {
                                 b.beginRoot();
@@ -678,7 +678,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testBadLoadExceptionUsage2() {
-        assertThrowsWithMessage("LoadException can only be used in the catch operation of a TryCatch/TryFinallyCatch operation in the current root.", IllegalStateException.class, () -> {
+        assertThrowsWithMessage("LoadException can only be used in the catch operation of a TryCatch/TryCatchOtherwise operation in the current root.", IllegalStateException.class, () -> {
             parse("badLoadExceptionUsage2", b -> {
                 b.beginRoot();
                 b.beginTryCatch();
@@ -694,15 +694,15 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testBadLoadExceptionUsage3() {
-        assertThrowsWithMessage("LoadException can only be used in the catch operation of a TryCatch/TryFinallyCatch operation in the current root.", IllegalStateException.class, () -> {
+        assertThrowsWithMessage("LoadException can only be used in the catch operation of a TryCatch/TryCatchOtherwise operation in the current root.", IllegalStateException.class, () -> {
             parse("badLoadExceptionUsage3", b -> {
                 b.beginRoot();
-                b.beginTryFinallyCatch(() -> b.emitVoidOperation());
+                b.beginTryCatchOtherwise(() -> b.emitVoidOperation());
                 b.beginReturn();
                 b.emitLoadException();
                 b.endReturn();
                 b.emitVoidOperation();
-                b.endTryFinallyCatch();
+                b.endTryCatchOtherwise();
                 b.endRoot();
             });
         });
@@ -710,13 +710,13 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testBadLoadExceptionUsage4() {
-        assertThrowsWithMessage("LoadException can only be used in the catch operation of a TryCatch/TryFinallyCatch operation in the current root.", IllegalStateException.class, () -> {
+        assertThrowsWithMessage("LoadException can only be used in the catch operation of a TryCatch/TryCatchOtherwise operation in the current root.", IllegalStateException.class, () -> {
             parse("badLoadExceptionUsage4", b -> {
                 b.beginRoot();
-                b.beginTryFinallyCatch(() -> b.emitLoadException());
+                b.beginTryCatchOtherwise(() -> b.emitLoadException());
                 b.emitVoidOperation();
                 b.emitVoidOperation();
-                b.endTryFinallyCatch();
+                b.endTryCatchOtherwise();
                 b.endRoot();
             });
         });
@@ -724,7 +724,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testBadLoadExceptionUsage5() {
-        assertThrowsWithMessage("LoadException can only be used in the catch operation of a TryCatch/TryFinallyCatch operation in the current root.", IllegalStateException.class, () -> {
+        assertThrowsWithMessage("LoadException can only be used in the catch operation of a TryCatch/TryCatchOtherwise operation in the current root.", IllegalStateException.class, () -> {
             parse("badLoadExceptionUsage5", b -> {
                 b.beginRoot();
                 b.beginTryFinally(() -> b.emitLoadException());
@@ -737,7 +737,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testBadLoadExceptionUsage6() {
-        assertThrowsWithMessage("LoadException can only be used in the catch operation of a TryCatch/TryFinallyCatch operation in the current root.", IllegalStateException.class, () -> {
+        assertThrowsWithMessage("LoadException can only be used in the catch operation of a TryCatch/TryCatchOtherwise operation in the current root.", IllegalStateException.class, () -> {
             parse("testBadLoadExceptionUsage6", b -> {
                 b.beginRoot();
                 b.beginTryCatch();
