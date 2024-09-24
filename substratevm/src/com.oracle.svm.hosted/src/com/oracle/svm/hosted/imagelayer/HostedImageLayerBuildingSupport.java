@@ -196,9 +196,11 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         nativeLibs.getLibraryPaths().add(parent.toString());
         Path fileName = sharedLibPath.getFileName();
         VMError.guarantee(fileName != null, "Cannot determine shared layer library file name.");
-        String libName = fileName.toString();
-        VMError.guarantee(libName.startsWith("lib") && libName.endsWith(".so"), "Expecting that shared layer library file starts with lib and ends with .so. Found: %s", libName);
-        nativeLibs.addDynamicNonJniLibrary(libName.substring("lib".length(), libName.indexOf(".so")));
+        String fullLibName = fileName.toString();
+        VMError.guarantee(fullLibName.startsWith("lib") && fullLibName.endsWith(".so"), "Expecting that shared layer library file starts with lib and ends with .so. Found: %s", fullLibName);
+        String libName = fullLibName.substring("lib".length(), fullLibName.length() - ".so".length());
+        HostedDynamicLayerInfo.singleton().registerLibName(libName);
+        nativeLibs.addDynamicNonJniLibrary(libName);
     }
 
     public static void setupImageLayerArtifacts(String imageName) {
