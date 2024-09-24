@@ -392,7 +392,7 @@ Unstructured control flow is useful for implementing loop breaks, continues, and
 
 Bytecode DSL interpreters have three built-in exception handler operations.
 
-The first, `TryCatch`, executes a `try` operation (its first child), and if a Truffle exception is thrown, executes a `catch` operation (its second child).
+The first handler operation, `TryCatch`, executes a `try` operation (its first child), and if a Truffle exception is thrown, executes a `catch` operation (its second child).
 
 For example, the following try-catch block:
 ```python
@@ -409,10 +409,11 @@ b.beginTryCatch();
 b.endTryCatch();
 ```
 
-The other two handlers are `TryFinally` and `TryCatchOtherwise`.
+The second handler operation, `TryFinally`, executes a `try` operation (its first child), and ensures a `finally` operation is always executed, even if a Truffle exception is thrown or the `try` returns/branches out.
+If an exception was thrown, it rethrows the exception afterward.
 
-`TryFinally` executes a `try` operation (its first child), and ensures a `finally` operation is always executed, even if a Truffle exception is thrown. If an exception was thrown, it rethrows the exception afterward.
-The bytecode for `finally` is emitted multiple times (once for each exit point of `try`, including at early returns), so it is specified using a `Runnable` parser that can be repeatedly invoked. This parser must be idempotent.
+The bytecode for `finally` is emitted multiple times (once for each exit point of `try`, including at early returns), so it is specified using a `Runnable` parser that can be repeatedly invoked.
+This parser must be idempotent.
 
 For example, the following try-finally block:
 ```python
@@ -447,11 +448,15 @@ b.beginTryFinally(() -> b.emitC() /* finally block */);
 b.endTryCatch();
 ```
 
+The last handler operation, `TryCatchOtherwise`, is a combination of the previous two.
+It executes a `try` operation (its first child); if an exception is thrown, it then executes its `catch` operation (its second child), otherwise it executes its `otherwise` operation (even if `try` returns/branches out).
+Effectively, it implements `TryFinally` with a specialized handler for when an exception is thrown.
 
-`TryCatchOtherwise` is a variant of `TryFinally` that executes a separate `catch` operation (its second child) *instead of* the `finally` operation when a Truffle exception is thrown from `try`.
+The bytecode for `otherwise` is emitted multiple times (once for each non-exceptional exit point of `try`), so it is specified using a `Runnable` parser that can be repeatedly invoked.
+This parser must be idempotent.
 
 Note that `TryCatchOtherwise` has different semantics from a Java try-catch-finally block.
-Whereas a try-catch-finally always executes the `finally` operation even if the `catch` block executes, the `TryCatchOtherwise` operation executes *either* its `finally` or `catch` operation (not both).
+Whereas a try-catch-finally always executes the `finally` operation even if the `catch` block executes, the `TryCatchOtherwise` operation executes *either* its `catch` or `otherwise` operation (not both).
 It is typically useful to implement try-finally semantics with different behaviour for exceptional exits.
 
 For example, the following try-finally block:
@@ -466,7 +471,7 @@ finally:
 ```
 can be implemented with a `TryCatchOtherwise` operation:
 ```java
-b.beginTryCatchOtherwise(() -> b.emitC() /* finally block */);
+b.beginTryCatchOtherwise(() -> b.emitC() /* otherwise block */);
     b.emitA(); // first child (try block)
     b.emitB(); // second child (catch block)
 b.endTryCatch();
