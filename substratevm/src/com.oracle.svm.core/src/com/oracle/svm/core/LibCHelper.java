@@ -46,12 +46,12 @@ public class LibCHelper {
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+13/src/java.base/windows/native/libjava/locale_str.h")
     public static class Locale {
         @CFunction(transition = Transition.TO_NATIVE)
-        @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+13/src/java.base/unix/native/libjava/java_props_md.c#L93-L540")
+        @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+16/src/java.base/unix/native/libjava/java_props_md.c#L93-L540")
         @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+13/src/java.base/windows/native/libjava/java_props_md.c#L257-L713")
         public static native CCharPointerPointer parseDisplayLocale();
 
         @CFunction(transition = Transition.TO_NATIVE)
-        @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+13/src/java.base/unix/native/libjava/java_props_md.c#L93-L540")
+        @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+16/src/java.base/unix/native/libjava/java_props_md.c#L93-L540")
         @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+13/src/java.base/windows/native/libjava/java_props_md.c#L257-L713")
         public static native CCharPointerPointer parseFormatLocale();
     }
