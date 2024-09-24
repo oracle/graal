@@ -230,6 +230,7 @@ public class AMD64VectorMove {
             this.backupSlot = backupSlot;
             this.scratch = scratch;
             this.encoding = encoding;
+            assert result.getPlatformKind().getSizeInBytes() <= input.getPlatformKind().getSizeInBytes() : "cannot move " + input + " into a larger Value " + result;
         }
 
         @Override
