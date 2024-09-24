@@ -1544,21 +1544,21 @@ public class TryFinallyTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
-    public void testTryFinallyCatchBasic() {
+    public void testTryCatchOtherwiseBasic() {
         // try {
         //   arg0.append(1);
-        // } finally {
-        //   arg0.append(2);
         // } catch ex {
         //   arg0.append(3);
+        // } otherwise {
+        //   arg0.append(2);
         // }
 
-        RootCallTarget root = parse("finallyTryCatchBasic", b -> {
+        RootCallTarget root = parse("tryCatchOtherwiseBasic", b -> {
             b.beginRoot();
-            b.beginTryFinallyCatch(() -> emitAppend(b, 2));
+            b.beginTryCatchOtherwise(() -> emitAppend(b, 2));
             emitAppend(b, 1);
             emitAppend(b, 3);
-            b.endTryFinallyCatch();
+            b.endTryCatchOtherwise();
             b.endRoot();
         });
 
@@ -1566,20 +1566,20 @@ public class TryFinallyTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
-    public void testTryFinallyCatchException() {
+    public void testTryCatchOtherwiseException() {
         // try {
         //   arg0.append(1);
         //   throw 0;
         //   arg0.append(2);
-        // } finally {
-        //   arg0.append(3);
         // } catch ex {
         //   arg0.append(4);
+        // } otherwise {
+        //   arg0.append(3);
         // }
 
-        RootCallTarget root = parse("finallyTryCatchException", b -> {
+        RootCallTarget root = parse("tryCatchOtherwiseException", b -> {
             b.beginRoot();
-            b.beginTryFinallyCatch(() -> emitAppend(b, 3));
+            b.beginTryCatchOtherwise(() -> emitAppend(b, 3));
                 b.beginBlock();
                     emitAppend(b, 1);
                     emitThrow(b, 0);
@@ -1587,7 +1587,7 @@ public class TryFinallyTest extends AbstractBasicInterpreterTest {
                 b.endBlock();
 
                 emitAppend(b, 4);
-            b.endTryFinallyCatch();
+            b.endTryCatchOtherwise();
             b.endRoot();
         });
 
@@ -1595,27 +1595,27 @@ public class TryFinallyTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
-    public void testTryFinallyCatchReturn() {
+    public void testTryCatchOtherwiseReturn() {
         // try {
         //   arg0.append(1);
         //   return 0;
-        // } finally {
-        //   arg0.append(2);
         // } catch ex {
         //   arg0.append(3);
+        // } otherwise {
+        //   arg0.append(2);
         // }
         // arg0.append(4);
 
-        RootCallTarget root = parse("finallyTryCatchReturn", b -> {
+        RootCallTarget root = parse("tryCatchOtherwiseReturn", b -> {
             b.beginRoot();
-            b.beginTryFinallyCatch(() -> emitAppend(b, 2));
+            b.beginTryCatchOtherwise(() -> emitAppend(b, 2));
                 b.beginBlock();
                     emitAppend(b, 1);
                     emitReturn(b, 0);
                 b.endBlock();
 
                 emitAppend(b, 3);
-            b.endTryFinallyCatch();
+            b.endTryCatchOtherwise();
 
             emitAppend(b, 4);
 
@@ -1626,19 +1626,19 @@ public class TryFinallyTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
-    public void testTryFinallyCatchBindException() {
+    public void testTryCatchOtherwiseBindException() {
         // try {
         //   arg0.append(1);
         //   if (arg1) throw arg2
-        // } finally {
-        //   arg0.append(2);
         // } catch ex {
         //   arg0.append(ex.value);
+        // } otherwise {
+        //   arg0.append(2);
         // }
 
-        RootCallTarget root = parse("finallyTryCatchBindBasic", b -> {
+        RootCallTarget root = parse("tryCatchOtherwiseBindBasic", b -> {
             b.beginRoot();
-            b.beginTryFinallyCatch(() -> emitAppend(b, 2));
+            b.beginTryCatchOtherwise(() -> emitAppend(b, 2));
                 b.beginBlock();
                     emitAppend(b, 1);
                     b.beginIfThen();
@@ -1655,7 +1655,7 @@ public class TryFinallyTest extends AbstractBasicInterpreterTest {
                     b.emitLoadException();
                     b.endReadExceptionOperation();
                 b.endAppenderOperation();
-            b.endTryFinallyCatch();
+            b.endTryCatchOtherwise();
 
             b.endRoot();
         });
@@ -1667,25 +1667,25 @@ public class TryFinallyTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
-    public void testTryFinallyCatchBranchOut() {
+    public void testTryCatchOtherwiseBranchOut() {
         // try {
         //   arg0.append(1);
         //   goto lbl;
         //   arg0.append(2);
-        // } finally {
-        //   arg0.append(3);
         // } catch ex {
         //   arg0.append(4);
+        // } otherwise {
+        //   arg0.append(3);
         // }
         // arg0.append(5)
         // lbl:
         // arg0.append(6);
 
-        RootCallTarget root = parse("finallyTryCatchBranchOut", b -> {
+        RootCallTarget root = parse("tryCatchOtherwiseBranchOut", b -> {
             b.beginRoot();
             BytecodeLabel lbl = b.createLabel();
 
-            b.beginTryFinallyCatch(() -> emitAppend(b, 3));
+            b.beginTryCatchOtherwise(() -> emitAppend(b, 3));
                 b.beginBlock();
                     emitAppend(b, 1);
                     b.emitBranch(lbl);
@@ -1693,7 +1693,7 @@ public class TryFinallyTest extends AbstractBasicInterpreterTest {
                 b.endBlock();
 
                 emitAppend(b, 4);
-            b.endTryFinallyCatch();
+            b.endTryCatchOtherwise();
 
             emitAppend(b, 5);
             b.emitLabel(lbl);
@@ -1706,27 +1706,27 @@ public class TryFinallyTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
-    public void testTryFinallyCatchBranchOutOfCatch() {
+    public void testTryCatchOtherwiseBranchOutOfCatch() {
         // try {
         //   arg0.append(1);
         //   if (arg1) throw 0;
         //   arg0.append(2);
-        // } finally {
-        //   arg0.append(3);
         // } catch ex {
         //   arg0.append(4);
         //   goto lbl
         //   arg0.append(5);
+        // } otherwise {
+        //   arg0.append(3);
         // }
         // arg0.append(6)
         // lbl:
         // arg0.append(7);
 
-        RootCallTarget root = parse("finallyTryCatchBranchOutOfCatch", b -> {
+        RootCallTarget root = parse("tryCatchOtherwiseBranchOutOfCatch", b -> {
             b.beginRoot();
             BytecodeLabel lbl = b.createLabel();
 
-            b.beginTryFinallyCatch(() -> emitAppend(b, 3));
+            b.beginTryCatchOtherwise(() -> emitAppend(b, 3));
                 b.beginBlock();
                     emitAppend(b, 1);
                     emitThrowIf(b, 1, 0);
@@ -1738,7 +1738,7 @@ public class TryFinallyTest extends AbstractBasicInterpreterTest {
                     b.emitBranch(lbl);
                     emitAppend(b, 5);
                 b.endBlock();
-            b.endTryFinallyCatch();
+            b.endTryCatchOtherwise();
 
             emitAppend(b, 6);
             b.emitLabel(lbl);
@@ -1753,26 +1753,26 @@ public class TryFinallyTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
-    public void testTryFinallyCatchBranchWithinHandler() {
+    public void testTryCatchOtherwiseBranchWithinHandler() {
         // try {
         //   arg0.append(1);
         //   return 0;
         //   arg0.append(2);
-        // } finally {
+        // } catch ex {
+        //   arg0.append(6);
+        // } otherwise {
         //   arg0.append(3);
         //   goto lbl;
         //   arg0.append(4);
         //   lbl:
         //   arg0.append(5);
-        // } catch ex {
-        //   arg0.append(6);
         // }
         // arg0.append(7);
 
-        RootCallTarget root = parse("finallyTryCatchBranchWithinHandler", b -> {
+        RootCallTarget root = parse("tryCatchOtherwiseBranchWithinHandler", b -> {
             b.beginRoot();
 
-            b.beginTryFinallyCatch(() -> {
+            b.beginTryCatchOtherwise(() -> {
                 b.beginBlock();
                     BytecodeLabel lbl = b.createLabel();
                     emitAppend(b, 3);
@@ -1789,7 +1789,7 @@ public class TryFinallyTest extends AbstractBasicInterpreterTest {
                 b.endBlock();
 
                 emitAppend(b, 6);
-            b.endTryFinallyCatch();
+            b.endTryCatchOtherwise();
 
             emitAppend(b, 7);
 
@@ -1800,26 +1800,26 @@ public class TryFinallyTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
-    public void testTryFinallyCatchBranchWithinCatchHandler() {
+    public void testTryCatchOtherwiseBranchWithinCatchHandler() {
         // try {
         //   arg0.append(1);
         //   throw 0;
         //   arg0.append(2);
-        // } finally {
-        //   arg0.append(3);
         // } catch ex {
         //   arg0.append(4);
         //   goto lbl;
         //   arg0.append(5);
         //   lbl:
         //   arg0.append(6);
+        // } otherwise {
+        //   arg0.append(3);
         // }
         // arg0.append(7);
 
-        RootCallTarget root = parse("finallyTryCatchBranchWithinCatchHandler", b -> {
+        RootCallTarget root = parse("tryCatchOtherwiseBranchWithinCatchHandler", b -> {
             b.beginRoot();
 
-            b.beginTryFinallyCatch(() -> emitAppend(b, 3));
+            b.beginTryCatchOtherwise(() -> emitAppend(b, 3));
                 b.beginBlock();
                     emitAppend(b, 1);
                     emitThrow(b, 0);
@@ -1834,7 +1834,7 @@ public class TryFinallyTest extends AbstractBasicInterpreterTest {
                     b.emitLabel(lbl);
                     emitAppend(b, 6);
                 b.endBlock();
-            b.endTryFinallyCatch();
+            b.endTryCatchOtherwise();
 
             emitAppend(b, 7);
 
@@ -1845,22 +1845,22 @@ public class TryFinallyTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
-    public void testTryFinallyCatchExceptionInCatch() {
+    public void testTryCatchOtherwiseExceptionInCatch() {
         // try {
         //   arg0.append(1);
         //   throw 0;
         //   arg0.append(2);
-        // } finally {
-        //   arg0.append(3);
         // } catch ex {
         //   arg0.append(4);
         //   throw 1;
         //   arg0.append(5);
+        // } otherwise {
+        //   arg0.append(3);
         // }
 
-        RootCallTarget root = parse("finallyTryCatchException", b -> {
+        RootCallTarget root = parse("tryCatchOtherwiseException", b -> {
             b.beginRoot();
-            b.beginTryFinallyCatch(() -> emitAppend(b, 3));
+            b.beginTryCatchOtherwise(() -> emitAppend(b, 3));
                 b.beginBlock();
                     emitAppend(b, 1);
                     emitThrow(b, 0);
@@ -1872,7 +1872,7 @@ public class TryFinallyTest extends AbstractBasicInterpreterTest {
                     emitThrow(b, 1);
                     emitAppend(b, 5);
                 b.endBlock();
-            b.endTryFinallyCatch();
+            b.endTryCatchOtherwise();
 
             emitReturn(b, 0);
 
@@ -1883,22 +1883,22 @@ public class TryFinallyTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
-    public void testTryFinallyCatchExceptionInFinally() {
+    public void testTryCatchOtherwiseExceptionInOtherwise() {
         // try {
         //   arg0.append(1);
         //   return 0;
         //   arg0.append(2);
-        // } finally {
+        // } catch ex {
+        //   arg0.append(5);
+        // } otherwise {
         //   arg0.append(3);
         //   throw 0;
         //   arg0.append(4);
-        // } catch ex {
-        //   arg0.append(5);
         // }
 
-        RootCallTarget root = parse("finallyTryCatchExceptionInFinally", b -> {
+        RootCallTarget root = parse("tryCatchOtherwiseExceptionInOtherwise", b -> {
             b.beginRoot();
-            b.beginTryFinallyCatch(() -> {
+            b.beginTryCatchOtherwise(() -> {
                 b.beginBlock();
                     emitAppend(b, 3);
                     emitThrow(b, 0);
@@ -1912,7 +1912,7 @@ public class TryFinallyTest extends AbstractBasicInterpreterTest {
                 b.endBlock();
 
                 emitAppend(b, 5);
-            b.endTryFinallyCatch();
+            b.endTryCatchOtherwise();
 
             emitReturn(b, 0);
 

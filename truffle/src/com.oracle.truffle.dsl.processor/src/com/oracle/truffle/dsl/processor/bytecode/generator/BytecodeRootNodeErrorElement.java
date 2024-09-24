@@ -199,7 +199,7 @@ final class BytecodeRootNodeErrorElement extends CodeTypeElement {
                         this.add(end);
                         break;
                     }
-                    case TRY_FINALLY, TRY_FINALLY_CATCH: {
+                    case TRY_FINALLY, TRY_CATCH_OTHERWISE: {
                         /**
                          * Java type inference does not accept a lambda (e.g. "() -> {...}") as an
                          * argument to Object..., so special-case the parameter type.
