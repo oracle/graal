@@ -61,15 +61,15 @@ public final class LinkResolver {
     /**
      * Resolve a call-site given the symbolic resolution of the method in the constant pool.
      *
-     * @param accessingKlass The class in which the call site to resolve appears.
+     * @param currentKlass The class in which the call site to resolve appears.
      * @param symbolicResolution The result of the symbolic resolution of the method declared in the
      *            call site.
      * @param callSiteType The {@link CallSiteType} representing the call site to resolve.
      * @param symbolicHolder The declared holder for symbolic resolution. May differ from
      *            {@code symbolicResolution.getDeclaringKlass()}.
      */
-    public static ResolvedCall resolveCallSite(EspressoContext ctx, Klass accessingKlass, Method symbolicResolution, CallSiteType callSiteType, Klass symbolicHolder) {
-        return LinkResolverImpl.resolveCallSite(ctx, accessingKlass, symbolicResolution, callSiteType, symbolicHolder);
+    public static ResolvedCall resolveCallSite(EspressoContext ctx, Klass currentKlass, Method symbolicResolution, CallSiteType callSiteType, Klass symbolicHolder) {
+        return LinkResolverImpl.resolveCallSite(ctx, currentKlass, symbolicResolution, callSiteType, symbolicHolder);
     }
 
     // Only static
@@ -112,7 +112,7 @@ final class LinkResolverImpl {
         return resolved;
     }
 
-    public static ResolvedCall resolveCallSite(EspressoContext ctx, Klass accessingKlass, Method symbolicResolution, CallSiteType callSiteType, Klass symbolicHolder) {
+    public static ResolvedCall resolveCallSite(EspressoContext ctx, Klass currentKlass, Method symbolicResolution, CallSiteType callSiteType, Klass symbolicHolder) {
         Method resolved = symbolicResolution;
         CallKind callKind;
         Meta meta = ctx.getMeta();
@@ -144,6 +144,7 @@ final class LinkResolverImpl {
                         // Interface private methods do not appear in itables.
                         callKind = CallKind.DIRECT;
                     } else {
+                        assert resolved.getVTableIndex() >= 0;
                         // Can happen in old classfiles that calls j.l.Object on interfaces.
                         callKind = CallKind.VTABLE_LOOKUP;
                     }
@@ -201,11 +202,11 @@ final class LinkResolverImpl {
                 // version of the class file.
                 if (!resolved.isConstructor()) {
                     if (!symbolicHolder.isInterface() &&
-                                    symbolicHolder != accessingKlass &&
-                                    accessingKlass.getSuperKlass() != null &&
-                                    symbolicHolder != accessingKlass.getSuperKlass() &&
-                                    symbolicHolder.isAssignableFrom(accessingKlass)) {
-                        resolved = accessingKlass.getSuperKlass().lookupMethod(resolved.getName(), resolved.getRawSignature(), Klass.LookupMode.INSTANCE_ONLY);
+                                    symbolicHolder != currentKlass &&
+                                    currentKlass.getSuperKlass() != null &&
+                                    symbolicHolder != currentKlass.getSuperKlass() &&
+                                    symbolicHolder.isAssignableFrom(currentKlass)) {
+                        resolved = currentKlass.getSuperKlass().lookupMethod(resolved.getName(), resolved.getRawSignature(), Klass.LookupMode.INSTANCE_ONLY);
                     }
                 }
                 callKind = CallKind.DIRECT;

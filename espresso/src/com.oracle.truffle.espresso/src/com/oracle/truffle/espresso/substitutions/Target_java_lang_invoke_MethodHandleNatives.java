@@ -102,19 +102,13 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             // Actual planting
             Method target = Method.getHostReflectiveMethodRoot(ref, meta);
             plantResolvedMethod(self, target, target.getRefKind(), meta);
-            // Finish the job
-            meta.java_lang_invoke_MemberName_clazz.setObject(self, target.getDeclaringKlass().mirror());
         } else if (targetKlass.getType() == Type.java_lang_reflect_Field) {
             // Actual planting
             Field field = Field.getReflectiveFieldRoot(ref, meta);
             plantResolvedField(self, field, getRefKind(meta.java_lang_invoke_MemberName_flags.getInt(self)), meta, language);
-            // Finish the job
-            Klass fieldKlass = meta.java_lang_reflect_Field_class.getObject(ref).getMirrorKlass(meta);
-            meta.java_lang_invoke_MemberName_clazz.setObject(self, fieldKlass.mirror());
         } else if (targetKlass.getType() == Type.java_lang_reflect_Constructor) {
             Method target = Method.getHostReflectiveConstructorRoot(ref, meta);
             plantResolvedMethod(self, target, target.getRefKind(), meta);
-            meta.java_lang_invoke_MemberName_clazz.setObject(self, target.getDeclaringKlass().mirror());
         } else {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("invalid argument for MemberName.init: " + ref.getKlass());
@@ -436,6 +430,12 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                         @Cached BranchProfile internalErrorProfile,
                         @Cached BranchProfile linkageErrorProfile,
                         @Cached BranchProfile isHandleMethodProfile) {
+            if (StaticObject.isNull(memberName)) {
+                internalErrorProfile.enter();
+                throw meta.throwExceptionWithMessage(meta.java_lang_InternalError, "Member Name is null.");
+            }
+            // JDK code should have already checked that 'caller' has access to 'memberName.clazz'.
+
             if (meta.HIDDEN_VMTARGET.getHiddenObject(memberName) != null) {
                 return memberName; // Already planted
             }
@@ -495,7 +495,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             }
 
             Symbol<Signature> sig = lookupSignature(meta, desc, mhMethodId);
-            Method m = LinkResolver.resolveSymbol(meta.getContext(), callerKlass, name, sig, resolutionKlass, refKind == REF_invokeInterface, doAccessChecks, doConstraintsChecks);
+            Method m = LinkResolver.resolveSymbol(meta.getContext(), callerKlass, name, sig, resolutionKlass, resolutionKlass.isInterface(), doAccessChecks, doConstraintsChecks);
             ResolvedCall resolvedCall = LinkResolver.resolveCallSite(meta.getContext(), callerKlass, m, CallSiteType.fromRefKind(refKind), resolutionKlass);
 
             plantResolvedMethod(memberName, resolvedCall, meta);
@@ -582,14 +582,14 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     private static long refKindToVMIndex(int refKind) {
         switch (refKind) {
             case REF_invokeStatic:
-                return Constants.STATIC;
+                return Constants.STATIC_INDEX;
             case REF_invokeVirtual:
-                return Constants.VIRTUAL;
+                return Constants.VIRTUAL_INDEX;
             case REF_invokeInterface:
-                return Constants.INTERFACE;
+                return Constants.INTERFACE_INDEX;
             case REF_invokeSpecial: // fallthrough
             case REF_newInvokeSpecial:
-                return Constants.SPECIAL;
+                return Constants.SPECIAL_INDEX;
         }
         CompilerDirectives.transferToInterpreterAndInvalidate();
         throw EspressoError.shouldNotReachHere();
@@ -755,11 +755,11 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         } // static only
 
         // VM_Index spoofs
-        static final long NONE = -3_000_000L;
-        static final long VIRTUAL = 1_000_000L;
-        static final long INTERFACE = 2_000_000L;
-        static final long STATIC = -1_000_000L;
-        static final long SPECIAL = -2_000_000L;
+        static final long NONE_INDEX = -3_000_000L;
+        static final long VIRTUAL_INDEX = 1_000_000L;
+        static final long INTERFACE_INDEX = 2_000_000L;
+        static final long STATIC_INDEX = -1_000_000L;
+        static final long SPECIAL_INDEX = -2_000_000L;
 
         public static final int MN_IS_METHOD = 0x00010000; // method (not constructor)
         public static final int MN_IS_CONSTRUCTOR = 0x00020000; // constructor
