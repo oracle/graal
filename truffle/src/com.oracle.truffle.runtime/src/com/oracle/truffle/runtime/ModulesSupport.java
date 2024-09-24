@@ -94,6 +94,9 @@ public final class ModulesSupport {
             // jvmci not found -> fallback to default runtime
             return "JVMCI is not enabled for this JVM. Enable JVMCI using -XX:+EnableJVMCI.";
         }
+        if (ACCESSOR == null) {
+            return "The Truffle attach library is not available or cannot be loaded.";
+        }
         addExportsRecursive(layer, jvmciModule, module, seenModules);
         return null;
     }

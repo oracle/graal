@@ -270,14 +270,15 @@ final class LanguageCache implements Comparable<LanguageCache> {
     private static synchronized Map<String, LanguageCache> createLanguages(List<AbstractClassLoaderSupplier> suppliers) {
         List<LanguageCache> caches = new ArrayList<>();
         Map<String, Map<String, Supplier<InternalResourceCache>>> optionalResources = InternalResourceCache.loadOptionalInternalResources(suppliers);
+        boolean enableNativeAccess = isEnableNativeAccess();
         for (AbstractClassLoaderSupplier supplier : suppliers) {
             ClassLoader loader = supplier.get();
             if (loader == null) {
                 continue;
             }
-            loadProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadLanguageImpl(p, caches, optionalResources));
+            loadProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadLanguageImpl(p, caches, optionalResources, enableNativeAccess));
             if (supplier.supportsLegacyProviders()) {
-                loadLegacyProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadLanguageImpl(p, caches, optionalResources));
+                loadLegacyProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadLanguageImpl(p, caches, optionalResources, enableNativeAccess));
             }
         }
 
@@ -319,11 +320,14 @@ final class LanguageCache implements Comparable<LanguageCache> {
     }
 
     @SuppressWarnings("deprecation")
-    private static void loadLanguageImpl(ProviderAdapter providerAdapter, List<LanguageCache> into, Map<String, Map<String, Supplier<InternalResourceCache>>> optionalResources) {
+    private static void loadLanguageImpl(ProviderAdapter providerAdapter, List<LanguageCache> into, Map<String, Map<String, Supplier<InternalResourceCache>>> optionalResources,
+                    boolean enableNativeAccess) {
         Class<?> providerClass = providerAdapter.getProviderClass();
         Module providerModule = providerClass.getModule();
         ModulesSupport.exportTransitivelyTo(providerModule);
-        ModulesSupport.enableNativeAccess(providerModule);
+        if (enableNativeAccess) {
+            ModulesSupport.enableNativeAccess(providerModule);
+        }
         Registration reg = providerClass.getAnnotation(Registration.class);
         if (reg == null) {
             emitWarning("Warning Truffle language ignored: Provider %s is missing @Registration annotation.", providerClass);
@@ -661,6 +665,10 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
     SandboxPolicy getSandboxPolicy() {
         return sandboxPolicy;
+    }
+
+    static boolean isEnableNativeAccess() {
+        return !Boolean.FALSE.toString().equals(System.getProperty("truffle.DelegateEnableNativeAccess"));
     }
 
     private static void emitWarning(String message, Object... args) {

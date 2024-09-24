@@ -103,8 +103,9 @@ final class ModulesSupport {
             ADD_ENABLE_NATIVE_ACCESS_TO_ALL_UNNAMED = null;
         }
     }
+    private static final Object INVALID_MODULES_ACCESSOR = new Object();
 
-    private static volatile ModulesAccessor modulesAccessor;
+    private static volatile Object modulesAccessor;
 
     private ModulesSupport() {
     }
@@ -129,17 +130,25 @@ final class ModulesSupport {
 
     static void enableNativeAccess(Module clientModule) {
         forEach(clientModule, EnumSet.of(Edge.READS), (m) -> true, (m) -> {
-            if (m.isNamed()) {
-                getModulesAccessor().addEnableNativeAccess(m);
-            } else {
-                getModulesAccessor().addEnableNativeAccessToAllUnnamed();
+            ModulesAccessor accessor = getModulesAccessor();
+            /*
+             * The accessor is null if libtruffleattach cannot be loaded, such as when Truffle with
+             * a fallback runtime is loaded by multiple class loaders. In this case, we do not
+             * delegate enable-native-access and let the JDK emit native access warnings.
+             */
+            if (accessor != null) {
+                if (m.isNamed()) {
+                    getModulesAccessor().addEnableNativeAccess(m);
+                } else {
+                    getModulesAccessor().addEnableNativeAccessToAllUnnamed();
+                }
             }
         });
     }
 
     @SuppressWarnings("restricted")
     static ModulesAccessor getModulesAccessor() {
-        ModulesAccessor result = modulesAccessor;
+        Object result = modulesAccessor;
         if (result == null) {
             synchronized (ModulesSupport.class) {
                 result = modulesAccessor;
@@ -154,24 +163,27 @@ final class ModulesSupport {
                             throw new InternalError(ioe);
                         }
                     }
-                    System.load(attachLibPath);
-                    if (Accessor.ModulesAccessor.class.getModule().isNamed()) {
-                        result = new DirectImpl(Accessor.ModulesAccessor.class);
-                    } else {
-                        try {
-                            result = new IsolatedImpl(Accessor.ModulesAccessor.class);
-                        } catch (ReflectiveOperationException e) {
-                            throw new InternalError(e);
+                    try {
+                        System.load(attachLibPath);
+                        ModulesAccessor accessor;
+                        if (ModulesAccessor.class.getModule().isNamed()) {
+                            accessor = new DirectImpl(Accessor.ModulesAccessor.class);
+                        } else {
+                            accessor = new IsolatedImpl(Accessor.ModulesAccessor.class);
                         }
+                        Module javaBase = ModuleLayer.boot().findModule("java.base").orElseThrow();
+                        addExports0(javaBase, "jdk.internal.module", accessor.getTargetModule());
+                        addExports0(javaBase, "jdk.internal.access", accessor.getTargetModule());
+                        modulesAccessor = result = accessor;
+                    } catch (UnsatisfiedLinkError failedToLoad) {
+                        modulesAccessor = result = INVALID_MODULES_ACCESSOR;
+                    } catch (ReflectiveOperationException re) {
+                        throw new InternalError(re);
                     }
-                    Module javaBase = ModuleLayer.boot().findModule("java.base").orElseThrow();
-                    addExports0(javaBase, "jdk.internal.module", result.getTargetModule());
-                    addExports0(javaBase, "jdk.internal.access", result.getTargetModule());
-                    modulesAccessor = result;
                 }
             }
         }
-        return result;
+        return result == INVALID_MODULES_ACCESSOR ? null : (ModulesAccessor) result;
     }
 
     private static native void addExports0(Module m1, String pn, Module m2);
