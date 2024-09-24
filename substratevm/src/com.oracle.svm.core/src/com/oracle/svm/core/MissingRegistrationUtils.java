@@ -43,8 +43,6 @@ public final class MissingRegistrationUtils {
         return SubstrateOptions.MissingRegistrationReportingMode.getValue();
     }
 
-    private static final int CONTEXT_LINES = 4;
-
     private static final AtomicReference<Set<String>> seenOutputs = new AtomicReference<>(null);
 
     public static void report(Error exception, StackTraceElement responsibleClass) {
@@ -88,14 +86,15 @@ public final class MissingRegistrationUtils {
                         printLine(sb, stackTraceElement);
                         printed++;
                     }
-                    if (printed >= CONTEXT_LINES) {
+                    if (printed >= SubstrateOptions.MissingRegistrationWarnContextLines.getValue()) {
                         break;
                     }
                 }
                 if (seenOutputs.get() == null && seenOutputs.compareAndSet(null, ConcurrentHashMap.newKeySet())) {
                     /* First output, we print an explanation message */
                     System.out.println("Note: this run will print partial stack traces of the locations where a " + exception.getClass().toString() + " would be thrown " +
-                                    "when the -H:+ThrowMissingRegistrationErrors option is set. The trace stops at the first entry of JDK code and provides " + CONTEXT_LINES + " lines of context.");
+                                    "when the -H:+ThrowMissingRegistrationErrors option is set. The trace stops at the first entry of JDK code and provides " +
+                                    SubstrateOptions.MissingRegistrationWarnContextLines.getValue() + " lines of context.");
                 }
                 String output = sb.toString();
                 if (seenOutputs.get().add(output)) {
