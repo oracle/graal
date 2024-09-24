@@ -183,6 +183,7 @@ public class AMD64Move {
             this.input = input;
             this.backupSlot = backupSlot;
             this.scratch = scratch;
+            assert result.getPlatformKind().getSizeInBytes() <= input.getPlatformKind().getSizeInBytes() : "cannot move " + input + " into a larger Value " + result;
         }
 
         @Override
