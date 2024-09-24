@@ -28,14 +28,18 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probabilit
 
 import java.lang.reflect.Modifier;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
@@ -43,8 +47,8 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-@NodeInfo
-public final class DynamicNewInstanceNode extends AbstractNewObjectNode implements Canonicalizable {
+@NodeInfo(allowedUsageTypes = {InputType.Memory})
+public final class DynamicNewInstanceNode extends AbstractNewObjectNode implements Canonicalizable, SingleMemoryKill {
     public static final NodeClass<DynamicNewInstanceNode> TYPE = NodeClass.create(DynamicNewInstanceNode.class);
 
     @Input ValueNode clazz;
@@ -77,6 +81,12 @@ public final class DynamicNewInstanceNode extends AbstractNewObjectNode implemen
             }
         }
         return null;
+    }
+
+    @Override
+    public LocationIdentity getKilledLocationIdentity() {
+        // Reading the class init state requires an ACQUIRE barrier, which orders memory accesses
+        return LocationIdentity.ANY_LOCATION;
     }
 
     @Override
