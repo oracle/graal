@@ -86,6 +86,7 @@ public class GetCompilerConfig {
                         "-XX:+UnlockExperimentalVMOptions",
                         "-XX:+EnableJVMCI",
                         "-XX:-UseJVMCICompiler", // avoid deadlock with jargraal
+                        "--add-exports=java.base/jdk.internal.misc=jdk.graal.compiler,com.oracle.graal.graal_enterprise",
                         "-Djdk.vm.ci.services.aot=true"));
 
         Module module = ObjectCopier.class.getModule();
