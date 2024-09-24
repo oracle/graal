@@ -274,6 +274,7 @@ suite = {
                 "jdk.jfr",
                 "jdk.management",
                 "jdk.zipfs",
+                "java.instrument",
             ],
             "requiresConcealed" : {
                 "java.base" : [
@@ -308,9 +309,6 @@ suite = {
                     "jdk.internal.vm",
                     "jdk.internal.util",
                     "jdk.internal.org.objectweb.asm",
-                ],
-                "java.instrument":[
-                    "java.lang.instrument"
                 ],
                 "java.management": [
                     "com.sun.jmx.mbeanserver",

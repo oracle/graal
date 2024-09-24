@@ -268,8 +268,8 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public LanguageInfo getLanguageInfo(Object polyglotInstrument, Class<? extends TruffleLanguage<?>> languageClass) {
-            return ((PolyglotInstrument) polyglotInstrument).engine.getLanguage(languageClass, true).info;
+        public LanguageInfo getLanguageInfo(Object vmObject, Class<? extends TruffleLanguage<?>> languageClass) {
+            return ((VMObject) vmObject).getEngine().getLanguage(languageClass, true).info;
         }
 
         @Override

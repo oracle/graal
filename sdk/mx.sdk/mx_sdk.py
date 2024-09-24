@@ -264,11 +264,20 @@ class GraalVMJDKConfig(mx.JDKConfig):
     """
     def __init__(self):
         default_jdk = mx.get_jdk(tag='default')
-        if GraalVMJDKConfig._is_graalvm(default_jdk.home):
+        if GraalVMJDKConfig.is_graalvm(default_jdk.home):
             graalvm_home = default_jdk.home
+            additional_vm_args = []
+        elif GraalVMJDKConfig.is_libgraal_jdk(default_jdk.home):
+            # Oracle JDK includes the libjvmci compiler, allowing it to function as GraalVM.
+            # However, the Graal compiler is disabled by default and must be explicitly enabled using the -XX:+UseJVMCICompiler option.
+            graalvm_home = default_jdk.home
+            # GR-58388: Switch '-XX:+UseJVMCINativeLibrary' to '-XX:+UseGraalJIT'
+            additional_vm_args = ['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI', '-XX:+UseJVMCINativeLibrary', '-XX:-UnlockExperimentalVMOptions']
         else:
             graalvm_home = mx_sdk_vm.graalvm_home(fatalIfMissing=True)
+            additional_vm_args = []
         self._home_internal = graalvm_home
+        self._vm_args = additional_vm_args
         mx.JDKConfig.__init__(self, graalvm_home, tag='graalvm')
 
     @property
@@ -279,14 +288,32 @@ class GraalVMJDKConfig(mx.JDKConfig):
     def home(self, home):
         return
 
+    def processArgs(self, args, addDefaultArgs=True):
+        processed_args = super(GraalVMJDKConfig, self).processArgs(args, addDefaultArgs)
+        if addDefaultArgs and self._vm_args:
+            processed_args = self._vm_args + processed_args
+        return processed_args
+
     @staticmethod
-    def _is_graalvm(java_home):
+    def is_graalvm(java_home):
         release_file = os.path.join(java_home, 'release')
         if not os.path.isfile(release_file):
             return False
         with open(release_file, 'r') as file:
             for line in file:
                 if line.startswith('GRAALVM_VERSION'):
+                    return True
+        return False
+
+    @staticmethod
+    def is_libgraal_jdk(java_home):
+        release_file = os.path.join(java_home, 'release')
+        if not os.path.isfile(release_file):
+            return False
+        with open(release_file, 'r') as file:
+            for line in file:
+                if line.startswith('MODULES') and 'jdk.graal.compiler.lib' in line:
+                    # Oracle JDK has libjvmcicompiler
                     return True
         return False
 
