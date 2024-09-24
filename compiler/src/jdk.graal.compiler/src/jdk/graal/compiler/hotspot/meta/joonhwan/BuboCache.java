@@ -38,7 +38,7 @@ import java.io.FileWriter;
 
     
 
- public class BuboCache extends Thread {
+ public class BuboCache {
         
         public static long[] Buffer;
         public static int pointer;
@@ -46,21 +46,6 @@ import java.io.FileWriter;
         public static long[][] BufferArray;
 
         public static long sampleCounter;
-
-        // public BuboCache() {
-        //         BufferArray = new long[2][250_000];
-        //         BufferPointer = 0;
-        //         pointer = 0;
-        //         Buffer = BufferArray[BufferPointer];
-        // }
-
-        // static {
-        //         System.out.println("CACHE INITIALIZATION");
-        //         BufferArray = new long[5][250_000];
-        //         BufferPointer = 0;
-        //         pointer = 0;
-        //         Buffer = BufferArray[BufferPointer];
-        // }
 
         static {
                 System.out.println("CACHE INITIALIZATION");
@@ -110,6 +95,7 @@ import java.io.FileWriter;
                 for (int i = 0; i < pointer; i += 2) {
                         writer.append(String.format("%d,%d\n", Buffer[i], Buffer[i + 1]));
                 }
+                System.out.println(String.format("current samplecount: %d\n", sampleCounter));
                 System.out.println("CSV file '" + fileName + "' has been created successfully.");
                 } catch (Exception e) {
                 System.err.println("An error occurred while writing to the CSV file: " + e.getMessage());
