@@ -131,11 +131,11 @@ import jdk.vm.ci.meta.TriState;
 /**
  * This class applies static analysis results directly to the {@link StructuredGraph Graal IR} used
  * to build the type flow graph.
- * 
+ *
  * It uses a {@link CustomSimplification} for the {@link CanonicalizerPhase}, because that provides
  * all the framework for iterative stamp propagation and adding/removing control flow nodes while
  * processing the graph.
- * 
+ *
  * From the single-method view that the compiler has when later compiling the graph, static analysis
  * results appear "out of thin air": At some random point in the graph, we suddenly have a more
  * precise type (= stamp) for a value. Since many nodes are floating, and even currently fixed nodes
@@ -275,17 +275,17 @@ public abstract class StrengthenGraphs {
      * Returns a type that can replace the original type in stamps as an exact type. When the
      * returned type is the original type itself, the original type has no subtype and can be used
      * as an exact type.
-     * 
+     *
      * Returns null if there is no single implementor type.
      */
     protected abstract AnalysisType getSingleImplementorType(AnalysisType originalType);
 
     /*
      * Returns a type that can replace the original type in stamps.
-     * 
+     *
      * Returns null if the original type has no assignable type that is instantiated, i.e., the code
      * using the type is unreachable.
-     * 
+     *
      * Returns the original type itself if there is no optimization potential, i.e., if the original
      * type itself is instantiated or has more than one instantiated direct subtype.
      */
@@ -388,7 +388,7 @@ public abstract class StrengthenGraphs {
             this.toTargetFunction = bb.getHostVM().getStrengthenGraphsToTargetFunction(method.getMultiMethodKey());
         }
 
-        private TypeFlow<?> getNodeFlow(Node node) {
+        protected TypeFlow<?> getNodeFlow(Node node) {
             return nodeFlows == null || nodeFlows.isNew(node) ? null : nodeFlows.get(node);
         }
 
@@ -563,6 +563,7 @@ public abstract class StrengthenGraphs {
         }
 
         private void handleInvoke(Invoke invoke, SimplifierTool tool) {
+
             FixedNode node = invoke.asFixedNode();
             MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
 
@@ -668,32 +669,25 @@ public abstract class StrengthenGraphs {
                     if (invokeFlow.getTargetMethod().hasReceiver() && !methodFlow.isSaturated((PointsToAnalysis) bb, invokeFlow.getReceiver())) {
                         receiverTypeState = methodFlow.foldTypeFlow((PointsToAnalysis) bb, invokeFlow.getReceiver());
                     }
-
-                    /*
-                     * In an open type world we cannot trust the type state of the receiver for
-                     * virtual calls as new subtypes could be added later.
-                     *
-                     * Note: MethodFlowsGraph.saturateAllParameters() does saturate the receiver in
-                     * many cases, so the check above would also lead to a null typeProfile, but we
-                     * cannot guarantee that we cover all cases.
-                     */
-                    JavaTypeProfile typeProfile = makeTypeProfile(receiverTypeState);
-                    /*
-                     * In a closed type world analysis the method profile of an invoke is complete
-                     * and contains all the callees reachable at that invocation location. Even if
-                     * that invoke is saturated it is still correct as it contains all the reachable
-                     * implementations of the target method. However, in an open type world the
-                     * method profile of an invoke, saturated or not, is incomplete, as there can be
-                     * implementations that we haven't yet seen.
-                     */
-                    JavaMethodProfile methodProfile = makeMethodProfile(callees);
-
-                    assert typeProfile == null || typeProfile.getTypes().length > 1 : "Should devirtualize with typeProfile=" + typeProfile + " and methodProfile=" + methodProfile + " and callees" +
-                                    callees + " invoke " + invokeFlow + " " + invokeFlow.getReceiver() + " in method " + getQualifiedName(graph);
-                    assert methodProfile == null || methodProfile.getMethods().length > 1 : "Should devirtualize with typeProfile=" + typeProfile + " and methodProfile=" + methodProfile +
-                                    " and callees" + callees + " invoke " + invokeFlow + " " + invokeFlow.getReceiver() + " in method " + getQualifiedName(graph);
-
-                    setInvokeProfiles(invoke, typeProfile, methodProfile);
+                    assignInvokeProfiles(invoke, invokeFlow, callees, receiverTypeState, false);
+                }
+            } else {
+                /* Last resort, try to inject profiles optimistically. */
+                TypeState receiverTypeState = null;
+                if (invokeFlow.getTargetMethod().hasReceiver()) {
+                    if (invokeFlow.isSaturated()) {
+                        /*
+                         * For saturated invokes use all seen instantiated subtypes of target method
+                         * declaring class. In an open world this is incomplete as new types may be
+                         * seen later, but it is an optimistic approximation.
+                         */
+                        receiverTypeState = targetMethod.getDeclaringClass().getTypeFlow(bb, false).getState();
+                    } else {
+                        receiverTypeState = methodFlow.foldTypeFlow((PointsToAnalysis) bb, invokeFlow.getReceiver());
+                    }
+                }
+                if (receiverTypeState != null && receiverTypeState.typesCount() <= MAX_TYPES_OPTIMISTIC_PROFILES) {
+                    assignInvokeProfiles(invoke, invokeFlow, callees, receiverTypeState, true);
                 }
             }
 
@@ -716,6 +710,45 @@ public abstract class StrengthenGraphs {
             }
             Object newStampOrConstant = strengthenStampFromTypeFlow(node, nodeFlow, anchorPointAfterInvoke, tool);
             updateStampUsingPiNode(node, newStampOrConstant, anchorPointAfterInvoke, tool);
+        }
+
+        /**
+         * Maximum number of types seen in a {@link TypeState} for a virtual {@link Invoke} to
+         * consider optimistic profile injection. See {@link #handleInvoke(Invoke, SimplifierTool)}
+         * for more details. Note that this is a footprint consideration - we do not want to carry
+         * around gargantuan {@link JavaTypeProfile} in {@link MethodCallTargetNode} that cannot be
+         * used anyway.
+         */
+        private static final int MAX_TYPES_OPTIMISTIC_PROFILES = 100;
+
+        private void assignInvokeProfiles(Invoke invoke, InvokeTypeFlow invokeFlow, Collection<AnalysisMethod> callees, TypeState receiverTypeState, boolean assumeNotRecorded) {
+            /*
+             * In an open type world we cannot trust the type state of the receiver for virtual
+             * calls as new subtypes could be added later.
+             *
+             * Note: assumeNotRecorded specifies if profiles are injected for a closed or open
+             * world. For a closed world with precise analysis results we never have a
+             * notRecordedProbabiltiy in any profile. For the open world we always assume that there
+             * is a not recorded probability in the profile. Such a not recorded probability will be
+             * injected if assumeNotRecorded==true.
+             */
+            JavaTypeProfile typeProfile = makeTypeProfile(receiverTypeState, assumeNotRecorded);
+            /*
+             * In a closed type world analysis the method profile of an invoke is complete and
+             * contains all the callees reachable at that invocation location. Even if that invoke
+             * is saturated it is still correct as it contains all the reachable implementations of
+             * the target method. However, in an open type world the method profile of an invoke,
+             * saturated or not, is incomplete, as there can be implementations that we haven't yet
+             * seen.
+             */
+            JavaMethodProfile methodProfile = makeMethodProfile(callees, assumeNotRecorded);
+
+            assert typeProfile == null || typeProfile.getTypes().length > 1 || assumeNotRecorded : "Should devirtualize with typeProfile=" + typeProfile + " and methodProfile=" + methodProfile +
+                            " and callees" + callees + " invoke " + invokeFlow + " " + invokeFlow.getReceiver() + " in method " + getQualifiedName(graph);
+            assert methodProfile == null || methodProfile.getMethods().length > 1 || assumeNotRecorded : "Should devirtualize with typeProfile=" + typeProfile + " and methodProfile=" + methodProfile +
+                            " and callees" + callees + " invoke " + invokeFlow + " " + invokeFlow.getReceiver() + " in method " + getQualifiedName(graph);
+
+            setInvokeProfiles(invoke, typeProfile, methodProfile);
         }
 
         /**
@@ -1101,17 +1134,17 @@ public abstract class StrengthenGraphs {
         return ((AnalysisMethod) graph.method()).getQualifiedName();
     }
 
-    protected JavaTypeProfile makeTypeProfile(TypeState typeState) {
+    protected JavaTypeProfile makeTypeProfile(TypeState typeState, boolean injectNotRecordedProbability) {
         if (typeState == null || analysisSizeCutoff != -1 && typeState.typesCount() > analysisSizeCutoff) {
             return null;
         }
-        var created = createTypeProfile(typeState);
+        var created = createTypeProfile(typeState, injectNotRecordedProbability);
         var existing = cachedTypeProfiles.putIfAbsent(created, created);
         return existing != null ? existing : created;
     }
 
-    private JavaTypeProfile createTypeProfile(TypeState typeState) {
-        double probability = 1d / typeState.typesCount();
+    private JavaTypeProfile createTypeProfile(TypeState typeState, boolean injectNotRecordedProbability) {
+        double probability = 1d / (typeState.typesCount() + (injectNotRecordedProbability ? 1 : 0));
 
         Stream<? extends ResolvedJavaType> stream = typeState.typesStream(bb);
         if (converter != null) {
@@ -1121,22 +1154,22 @@ public abstract class StrengthenGraphs {
                         .map(type -> new JavaTypeProfile.ProfiledType(type, probability))
                         .toArray(JavaTypeProfile.ProfiledType[]::new);
 
-        return new JavaTypeProfile(TriState.get(typeState.canBeNull()), 0, pitems);
+        return new JavaTypeProfile(TriState.get(typeState.canBeNull()), injectNotRecordedProbability ? probability : 0, pitems);
     }
 
-    protected JavaMethodProfile makeMethodProfile(Collection<AnalysisMethod> callees) {
+    protected JavaMethodProfile makeMethodProfile(Collection<AnalysisMethod> callees, boolean injectNotRecordedProbability) {
         if (analysisSizeCutoff != -1 && callees.size() > analysisSizeCutoff) {
             return null;
         }
-        var created = createMethodProfile(callees);
+        var created = createMethodProfile(callees, injectNotRecordedProbability);
         var existing = cachedMethodProfiles.putIfAbsent(created, created);
         return existing != null ? existing.profile : created.profile;
     }
 
-    private CachedJavaMethodProfile createMethodProfile(Collection<AnalysisMethod> callees) {
+    private CachedJavaMethodProfile createMethodProfile(Collection<AnalysisMethod> callees, boolean injectNotRecordedProbability) {
         JavaMethodProfile.ProfiledMethod[] pitems = new JavaMethodProfile.ProfiledMethod[callees.size()];
         int hashCode = 0;
-        double probability = 1d / pitems.length;
+        double probability = 1d / (pitems.length + (injectNotRecordedProbability ? 1 : 0));
 
         int idx = 0;
         for (AnalysisMethod aMethod : callees) {
@@ -1144,8 +1177,9 @@ public abstract class StrengthenGraphs {
             pitems[idx++] = new JavaMethodProfile.ProfiledMethod(convertedMethod, probability);
             hashCode = hashCode * 31 + convertedMethod.hashCode();
         }
-        return new CachedJavaMethodProfile(new JavaMethodProfile(0, pitems), hashCode);
+        return new CachedJavaMethodProfile(new JavaMethodProfile(injectNotRecordedProbability ? probability : 0, pitems), hashCode);
     }
+
 }
 
 /**
