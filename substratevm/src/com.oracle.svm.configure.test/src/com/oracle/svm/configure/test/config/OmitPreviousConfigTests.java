@@ -229,8 +229,8 @@ class TypeMethodsWithFlagsTest {
     final Map<ConfigurationMethod, ConfigurationMemberDeclaration> methodsThatMustExist = new HashMap<>();
     final Map<ConfigurationMethod, ConfigurationMemberDeclaration> methodsThatMustNotExist = new HashMap<>();
 
-    final TypeConfiguration previousConfig = new TypeConfiguration();
-    final TypeConfiguration currentConfig = new TypeConfiguration();
+    final TypeConfiguration previousConfig = new TypeConfiguration("");
+    final TypeConfiguration currentConfig = new TypeConfiguration("");
 
     TypeMethodsWithFlagsTest(ConfigurationMemberDeclaration methodKind) {
         this.methodKind = methodKind;

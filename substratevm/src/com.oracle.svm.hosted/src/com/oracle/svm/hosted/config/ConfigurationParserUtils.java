@@ -30,6 +30,7 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Spliterator;
@@ -41,7 +42,7 @@ import java.util.stream.StreamSupport;
 import org.graalvm.nativeimage.impl.ReflectionRegistry;
 import org.graalvm.util.json.JSONParserException;
 
-import com.oracle.svm.core.configure.ConditionalElement;
+import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.ConfigurationParser;
 import com.oracle.svm.core.configure.ReflectionConfigurationParser;
@@ -52,10 +53,9 @@ import com.oracle.svm.hosted.ImageClassLoader;
 
 public final class ConfigurationParserUtils {
 
-    public static ReflectionConfigurationParser<ConditionalElement<Class<?>>> create(ReflectionRegistry registry, ImageClassLoader imageClassLoader) {
-        return new ReflectionConfigurationParser<>(RegistryAdapter.create(registry, imageClassLoader),
-                        ConfigurationFiles.Options.StrictConfiguration.getValue(),
-                        ConfigurationFiles.Options.WarnAboutMissingReflectionOrJNIMetadataElements.getValue());
+    public static ReflectionConfigurationParser<Class<?>> create(String combinedFileKey, boolean strictMetadata, ReflectionRegistry registry, ImageClassLoader imageClassLoader) {
+        return ReflectionConfigurationParser.create(combinedFileKey, strictMetadata, RegistryAdapter.create(registry, imageClassLoader),
+                        ConfigurationFiles.Options.StrictConfiguration.getValue(), ConfigurationFiles.Options.WarnAboutMissingReflectionOrJNIMetadataElements.getValue());
     }
 
     /**
@@ -73,6 +73,10 @@ public final class ConfigurationParserUtils {
         List<Path> paths = configFilesOption.getValue().values();
         List<String> resourceValues = configResourcesOption.getValue().values();
         return parseAndRegisterConfigurations(parser, classLoader, featureName, directoryFileName, paths, resourceValues);
+    }
+
+    public static int parseAndRegisterConfigurationsFromCombinedFile(ConfigurationParser parser, ImageClassLoader classLoader, String featureName) {
+        return parseAndRegisterConfigurations(parser, classLoader, featureName, ConfigurationFile.REACHABILITY_METADATA.getFileName(), Collections.emptyList(), Collections.emptyList());
     }
 
     public static int parseAndRegisterConfigurations(ConfigurationParser parser, ImageClassLoader classLoader,

@@ -32,24 +32,28 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import com.oracle.svm.core.configure.ConfigurationParser;
-import com.oracle.svm.core.configure.ReflectionConfigurationParser;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.configure.ConfigurationBase;
-import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.core.configure.ConditionalElement;
+import com.oracle.svm.core.configure.ConfigurationParser;
+import com.oracle.svm.core.configure.ReflectionConfigurationParser;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.util.json.JsonWriter;
 
 public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration, TypeConfiguration.Predicate> {
 
     private final ConcurrentMap<ConditionalElement<String>, ConfigurationType> types = new ConcurrentHashMap<>();
 
-    public TypeConfiguration() {
+    private final String combinedFileKey;
+
+    public TypeConfiguration(String combinedFileKey) {
+        this.combinedFileKey = combinedFileKey;
     }
 
     public TypeConfiguration(TypeConfiguration other) {
         other.types.forEach((key, value) -> types.put(key, new ConfigurationType(value)));
+        this.combinedFileKey = other.combinedFileKey;
     }
 
     @Override
@@ -142,8 +146,8 @@ public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration
     }
 
     @Override
-    public ConfigurationParser createParser() {
-        return new ReflectionConfigurationParser<>(new ParserConfigurationAdapter(this), true, false);
+    public ConfigurationParser createParser(boolean strictMetadata) {
+        return ReflectionConfigurationParser.create(combinedFileKey, strictMetadata, new ParserConfigurationAdapter(this), true, false);
     }
 
     @Override
