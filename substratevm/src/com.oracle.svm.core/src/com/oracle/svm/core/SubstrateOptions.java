@@ -570,6 +570,12 @@ public class SubstrateOptions {
     @Option(help = "Verify naming conventions during image construction.")//
     public static final HostedOptionKey<Boolean> VerifyNamingConventions = new HostedOptionKey<>(false);
 
+    @Option(help = "Disable the substitutions matched by the option value. " +
+                    "A value can be a fully qualified method name with parameter list, a fully qualified method name without parameter list, or a fully qualified type name. " +
+                    "When multiple methods match a value, then all matching substitutions are disabled.")//
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> DisableSubstitution = new HostedOptionKey<>(
+                    AccumulatingLocatableMultiOptionValue.Strings.build());
+
     @Option(help = "Deprecated, has no effect.", deprecated = true) //
     public static final HostedOptionKey<Boolean> MultiThreaded = new HostedOptionKey<>(true);
 
