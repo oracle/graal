@@ -1,11 +1,10 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <name>IdealGraphVisualizer-app</name>
     <parent>
         <groupId>org.graalvm.visualizer</groupId>
         <artifactId>IdealGraphVisualizer-parent</artifactId>
-        <version>1.20-SNAPSHOT</version>
+        <version>1.20</version>
     </parent>
     <artifactId>IdealGraphVisualizer-app</artifactId>
     <packaging>nbm-application</packaging>
@@ -72,7 +71,7 @@
                         <configuration>
                             <target>
                                 <zip destfile="${project.build.directory}/${brandingToken}-${project.version}.zip" update="true" whenempty="fail">
-                                    <fileset dir="${project.build.directory}" includes="**/${brandingToken}.icns"/>
+                                    <fileset dir="${project.build.directory}" includes="**/${brandingToken}.icns" />
                                 </zip>
                             </target>
                         </configuration>
