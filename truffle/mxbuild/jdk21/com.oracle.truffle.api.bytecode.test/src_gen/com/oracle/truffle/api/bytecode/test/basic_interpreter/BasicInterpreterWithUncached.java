@@ -3790,7 +3790,7 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
             if (CompilerDirectives.inInterpreter() && BytecodeOSRNode.pollOSRBackEdge(this)) {
                 int branchProfileIndex = BYTES.getIntUnaligned(bc, bci + 6 /* imm loop_header_branch_profile */);
                 ensureFalseProfile(branchProfiles_, branchProfileIndex);
-                Object osrResult = BytecodeOSRNode.tryOSR(this, BYTES.getIntUnaligned(bc, bci + 2 /* imm branch_target */), new InterpreterState(frame == localFrame ? null : localFrame, sp), null, frame);
+                Object osrResult = BytecodeOSRNode.tryOSR(this, BYTES.getIntUnaligned(bc, bci + 2 /* imm branch_target */), new InterpreterState(frame != localFrame, sp), null, frame);
                 if (osrResult != null) {
                     return (long) osrResult;
                 }
@@ -4087,7 +4087,24 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
         @Override
         public Object executeOSR(VirtualFrame frame, int target, Object interpreterStateObject) {
             InterpreterState interpreterState = (InterpreterState) interpreterStateObject;
-            return continueAt(getRoot(), frame, interpreterState.localFrame == null ? frame : (MaterializedFrame) interpreterState.localFrame, (((long) interpreterState.sp) << 32) | (target & 0xFFFFFFFFL));
+            VirtualFrame continuationFrame = (MaterializedFrame) frame.getObject(COROUTINE_FRAME_INDEX);
+            VirtualFrame localFrame;
+            if (interpreterState.isContinuation) {
+                localFrame = continuationFrame;
+                if (continuationFrame == null) {
+                    // Regular invocation transitioned to continuation OSR target
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    localFrame = frame;
+                }
+            } else {
+                localFrame = frame;
+                if (continuationFrame != null) {
+                    // Resumed invocation transitioned to regular OSR target
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    localFrame = continuationFrame;
+                }
+            }
+            return continueAt(getRoot(), frame, localFrame, (((long) interpreterState.sp) << 32) | (target & 0xFFFFFFFFL));
         }
 
         @Override
@@ -4604,11 +4621,11 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
 
         private static final class InterpreterState {
 
-            final VirtualFrame localFrame;
+            final boolean isContinuation;
             final int sp;
 
-            InterpreterState(VirtualFrame localFrame, int sp) {
-                this.localFrame = localFrame;
+            InterpreterState(boolean isContinuation, int sp) {
+                this.isContinuation = isContinuation;
                 this.sp = sp;
             }
 

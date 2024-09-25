@@ -25,6 +25,8 @@
 package jdk.graal.compiler.truffle.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.util.concurrent.TimeUnit;
 
@@ -331,6 +333,137 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
         BytecodeDSLOSRTestRootNodeWithYield rootNoYield = BytecodeDSLOSRTestRootNodeWithYieldGen.create(LANGUAGE, BytecodeConfig.DEFAULT, getParserForYieldTest(false)).getNode(0);
         // 1*(# interpreter iterations) + 2*(# compiled iterations)
         assertEquals(OSR_THRESHOLD * 3, rootNoYield.getCallTarget().call());
+    }
+
+    private static final BytecodeParser<BytecodeDSLOSRTestRootNodeWithYieldGen.Builder> badFrameParser = b -> {
+        /*
+         * This is a regression test. An earlier implementation erroneously passed a materialized
+         * continuation frame to OSR using the interpreter state parameter, which is for constant
+         * data. The OSR target was subsequently reused, and it used the old materialized frame for
+         * its locals.
+         *
+         * @formatter:off
+         * if (arg0) {
+         *   yield 0
+         * }
+         * int result = 0;
+         * for (int i = 0; i < arg1; i++) {
+         *  result++;
+         *  if (inCompiledCode) result++;
+         * }
+         * return result;
+         * @formatter:on
+         */
+        b.beginRoot();
+
+        b.beginIfThen();
+        b.emitLoadArgument(0);
+        b.beginYield();
+        b.emitLoadConstant(0);
+        b.endYield();
+        b.endIfThen();
+
+        BytecodeLocal result = b.createLocal();
+        b.beginStoreLocal(result);
+        b.emitLoadConstant(0);
+        b.endStoreLocal();
+
+        BytecodeLocal i = b.createLocal();
+        b.beginStoreLocal(i);
+        b.emitLoadConstant(0);
+        b.endStoreLocal();
+
+        b.beginWhile();
+        b.beginLt();
+        b.emitLoadLocal(i);
+        b.emitLoadArgument(1);
+        b.endLt();
+        b.beginBlock();
+
+        b.beginIncrement(i);
+        b.emitLoadLocal(i);
+        b.endIncrement();
+
+        b.beginIncrement(result);
+        b.emitLoadLocal(result);
+        b.endIncrement();
+
+        b.beginIncrementIfCompiled(result);
+        b.emitLoadLocal(result);
+        b.endIncrementIfCompiled();
+
+        b.endBlock();
+        b.endWhile();
+
+        b.beginReturn();
+        b.emitLoadLocal(result);
+        b.endReturn();
+
+        b.endRoot();
+    };
+
+    @Test
+    public void testBadFrameReuse() {
+        BytecodeDSLOSRTestRootNodeWithYield root = BytecodeDSLOSRTestRootNodeWithYieldGen.create(LANGUAGE, BytecodeConfig.DEFAULT, badFrameParser).getNode(0);
+
+        // First, call it and make it yield, so the OSR compilation uses the continuation frame.
+        ContinuationResult cont = (ContinuationResult) root.getCallTarget().call(true, OSR_THRESHOLD * 2);
+        assertEquals(OSR_THRESHOLD * 3, cont.continueWith(null));
+
+        // Then, call it again with yielding. The OSR compilation should not reuse the old frame.
+        cont = (ContinuationResult) root.getCallTarget().call(true, BytecodeOSRMetadata.OSR_POLL_INTERVAL * 2);
+        // One poll interval in interpreter + one poll interval in compiled
+        assertEquals(BytecodeOSRMetadata.OSR_POLL_INTERVAL * 3, cont.continueWith(null));
+    }
+
+    @Test
+    public void testContinuationThenRegularFrame() {
+        BytecodeDSLOSRTestRootNodeWithYield root = BytecodeDSLOSRTestRootNodeWithYieldGen.create(LANGUAGE, BytecodeConfig.DEFAULT, badFrameParser).getNode(0);
+
+        // First, call it and make it yield, so the OSR compilation uses the continuation frame.
+        ContinuationResult cont = (ContinuationResult) root.getCallTarget().call(true, OSR_THRESHOLD * 2);
+        assertEquals(OSR_THRESHOLD * 3, cont.continueWith(null));
+        /*
+         * Then, call it without yield. A separate OSR compilation should be performed using the
+         * regular frame.
+         *
+         * TODO: this deopts (expecting but not finding a continuation frame) and tries to
+         * recompile. The "interpreter state" used for the first compilation is never modified, so
+         * we cannot recompile a version that uses the regular frame instead. We need to encode the
+         * "isContinuation" state in the target itself. For now, just check that this code deopts
+         * and tries to recompile (failing because of the recompilation limit).
+         */
+        try {
+            root.getCallTarget().call(false, OSR_THRESHOLD * 3);
+            fail("Expected an assertion error");
+        } catch (AssertionError err) {
+            assertTrue("Unexpected error message: " + err.getMessage(), err.getMessage().contains("Max OSR compilation re-attempts reached"));
+        }
+    }
+
+    @Test
+    public void testRegularThenContinuationFrame() {
+        BytecodeDSLOSRTestRootNodeWithYield root = BytecodeDSLOSRTestRootNodeWithYieldGen.create(LANGUAGE, BytecodeConfig.DEFAULT, badFrameParser).getNode(0);
+
+        // First, call it regularly, so OSR uses the regular frame.
+        assertEquals(OSR_THRESHOLD * 3, root.getCallTarget().call(false, OSR_THRESHOLD * 2));
+        /*
+         * Then, call it with yield. A separate OSR compilation should be performed using the
+         * continuation frame.
+         *
+         * TODO: this deopts (finding a continuation frame but not expecting one) and tries to
+         * recompile. The "interpreter state" used for the first compilation is never modified, so
+         * we cannot recompile a version that uses the continuation frame instead. We need to encode
+         * the "isContinuation" state in the target itself. For now, just check that this code
+         * deopts and tries to recompile (failing because of the recompilation limit).
+         */
+        ContinuationResult cont = (ContinuationResult) root.getCallTarget().call(true, OSR_THRESHOLD * 3);
+        try {
+            cont.continueWith(null);
+            fail("Expected an assertion error");
+        } catch (AssertionError err) {
+            assertTrue("Unexpected error message: " + err.getMessage(), err.getMessage().contains("Max OSR compilation re-attempts reached"));
+        }
     }
 
     @TruffleLanguage.Registration(id = "BytecodeDSLOSRTestLanguage")
