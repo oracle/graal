@@ -1,6 +1,10 @@
 # Bytecode DSL user guide <!-- omit in toc -->
 
-This document explains what you can do in a Bytecode DSL interpreter and how to do it. Its goal is to introduce Bytecode DSL topics at a conceptual level. For more concrete technical details, please consult the DSL's [Javadoc](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/bytecode/package-summary.html) and the generated Javadoc for your interpreter. If you haven't already, we recommend reading the [Getting Started guide](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode.test/src/com/oracle/truffle/api/bytecode/test/examples/GettingStarted.java) first.
+This document explains what you can do in a Bytecode DSL interpreter and how to do it.
+It should be treated as a reference.
+If you haven't already, we recommend reading the [Introduction](BytecodeDSL.md) and [Getting Started guide](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode.test/src/com/oracle/truffle/api/bytecode/test/examples/GettingStarted.java) before this one.
+
+This guide presents the conceptual details of Bytecode DSL; for more concrete technical information, consult the DSL's [Javadoc](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/bytecode/package-summary.html), the generated Javadoc for your interpreter, and the provided [code tutorials](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode.test/src/com/oracle/truffle/api/bytecode/test/examples).
 
 
 - [Bytecode DSL from 10,000 feet](#bytecode-dsl-from-10000-feet)
@@ -532,7 +536,7 @@ They incur no overhead until they are enabled at a later time (see [Reparsing me
 
 Bytecode DSL supports two forms of instrumentation:
 
-1. [`@Instrumentation`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/Instrumentation.java) operations, which are emitted and behave just like custom [`@Operation`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/Operation.java)s. These operations can perform special actions like logging or modifying the value produced by another operation. `@Instrumentation` operations must have no stack effects, so they can either have no children and produce no value, or have one child and produce a value.
+1. [`@Instrumentation`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/Instrumentation.java) operations, which are emitted and behave just like custom [`@Operation`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/Operation.java)s. These operations can perform special actions like logging or modifying the value produced by another operation. `@Instrumentation` operations must have no stack effects, so they can either have no children and produce no value, or have one child and produce a value (which allows you to modify the result of an instrumented operation).
 2. Tag-based instrumentation associates operations with particular instrumentation [`Tag`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.instrumentation/src/com/oracle/truffle/api/instrumentation/Tag.java)s using `Tag` operations. If these instrumentations are enabled and [`ExecutionEventNode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.instrumentation/src/com/oracle/truffle/api/instrumentation/ExecutionEventNode.java)s are attached, the bytecode interpreter will invoke the various event callbacks (e.g., `onEnter`, `onReturnValue`) when executing the enclosed operation. Tag-based instrumentation can be enabled using the `enableTagInstrumentation` flag in [`@GenerateBytecode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/GenerateBytecode.java).
 
 Note: once instrumentations are enabled, they cannot be disabled.
