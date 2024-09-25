@@ -2241,7 +2241,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 continue;
             }
 
-            if (!method.getSimpleName().toString().startsWith("execute")) {
+            if (!hasValidExecutableName(method)) {
                 continue;
             }
             if (findAnnotationMirror(method, types.Specialization) != null) {
@@ -2269,6 +2269,11 @@ public final class NodeParser extends AbstractParser<NodeData> {
         namesUnique(typeData);
 
         return typeData;
+    }
+
+    private static boolean hasValidExecutableName(ExecutableElement method) {
+        String methodName = method.getSimpleName().toString();
+        return methodName.startsWith("execute") && !methodName.equals("executeOSR");
     }
 
     private static void namesUnique(List<ExecutableTypeData> typeData) {
