@@ -2,6 +2,8 @@
 
 Bytecode DSL is a DSL for automatically generating bytecode interpreters in Truffle. Just as Truffle DSL abstracts away the tricky and tedious details of AST interpreters, the goal of Bytecode DSL is to abstract away the tricky and tedious details of a bytecode interpreter – the bytecode encoding, control flow, quickening, and so on – leaving only the language-specific semantics for the language to implement.
 
+This document is the starting point for learning about Bytecode DSL. See the [resources](#resources) section below for more guides and tutorials.
+
 Note: At the moment, Bytecode DSL is an **experimental feature**. We encourage you to give it a try, but be forewarned that its APIs are still susceptible to change a little bit between releases.
 
 ## Why a bytecode interpreter?
@@ -101,12 +103,19 @@ Bytecode DSL supports a variety of features, including:
 
 ## Resources
 
-As a next step, we recommend reading the [Getting Started guide](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode.test/src/com/oracle/truffle/api/bytecode/test/examples/GettingStarted.java), which introduces Bytecode DSL by implementing a simple interpreter.
+As a next step, we recommend reading the [Getting Started tutorial](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode.test/src/com/oracle/truffle/api/bytecode/test/examples/GettingStarted.java), which introduces Bytecode DSL by implementing a simple interpreter.
+Afterward, consult the [User guide](UserGuide.md) and [Javadoc](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/bytecode/package-summary.html) for more technical details about Bytecode DSL.
 
-For more technical details about Bytecode DSL, consult the [User guide](UserGuide.md) and [Javadoc](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/bytecode/package-summary.html).
-See also the guides and tutorials on [optimization](Optimization.md), [serialization][serialization], and [continuations][continuations].
+In addition, there are several guides and tutorials which may be helpful:
+- [Optimization guide](Optimization.md)
+- [Short-circuit operations guide](ShortCircuitOperations.md)
+- [Runtime compilation guide](RuntimeCompilation.md)
+- [Parsing tutorial](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode.test/src/com/oracle/truffle/api/bytecode/test/examples/ParsingTutorial.java)
+- [Serialization tutorial][serialization]
+- [Continuations tutorial][continuations]
+- [Builtins tutorial](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode.test/src/com/oracle/truffle/api/bytecode/test/examples/BuiltinTutorial.java)
 
-The Bytecode DSL implementation for [SimpleLanguage](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.sl/src/com/oracle/truffle/sl/bytecode/SLBytecodeRootNode.java) may also serve as a useful reference.
+The Bytecode DSL implementation for [SimpleLanguage](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.sl/src/com/oracle/truffle/sl/bytecode/SLBytecodeRootNode.java) is also a useful reference.
 
 
 [serialization]: https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode.test/src/com/oracle/truffle/api/bytecode/test/examples/SerializationTutorial.java
