@@ -143,16 +143,16 @@ public final class InstructionModel implements PrettyPrintable {
          * Relative local offset into the frame. Without boxing elimination or local scoping
          * localOffset == localIndex.
          */
-        LOCAL_OFFSET("localOffset", ImmediateWidth.SHORT),
+        LOCAL_OFFSET("local_offset", ImmediateWidth.SHORT),
         /**
          * Local index into the locals table. Without boxing elimination or local scoping
          * localOffset == localIndex.
          */
-        LOCAL_INDEX("localIndex", ImmediateWidth.SHORT),
+        LOCAL_INDEX("local_index", ImmediateWidth.SHORT),
         /**
          * Index into BytecodeRootNodes.nodes. Necessary for boxing elimination.
          */
-        LOCAL_ROOT("localRoot", ImmediateWidth.SHORT),
+        LOCAL_ROOT("local_root", ImmediateWidth.SHORT),
         SHORT("short", ImmediateWidth.SHORT),
         BYTECODE_INDEX("bci", ImmediateWidth.INT),
         STACK_POINTER("sp", ImmediateWidth.SHORT),

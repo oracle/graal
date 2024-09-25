@@ -251,7 +251,7 @@ import java.util.function.Supplier;
  *     signature: void (Object)
  *   - Instruction store.local
  *     kind: STORE_LOCAL
- *     encoding: [7 : short, localOffset : short]
+ *     encoding: [7 : short, local_offset : short]
  *     signature: void (Object)
  *   - Instruction throw
  *     kind: THROW
@@ -271,19 +271,19 @@ import java.util.function.Supplier;
  *     signature: Object ()
  *   - Instruction load.exception
  *     kind: LOAD_EXCEPTION
- *     encoding: [12 : short, exceptionSp (sp) : short]
+ *     encoding: [12 : short, exception_sp (sp) : short]
  *     signature: Object ()
  *   - Instruction load.local
  *     kind: LOAD_LOCAL
- *     encoding: [13 : short, localOffset : short]
+ *     encoding: [13 : short, local_offset : short]
  *     signature: Object ()
  *   - Instruction load.local.mat
  *     kind: LOAD_LOCAL_MATERIALIZED
- *     encoding: [14 : short, localOffset : short]
+ *     encoding: [14 : short, local_offset : short]
  *     signature: Object (Object)
  *   - Instruction store.local.mat
  *     kind: STORE_LOCAL_MATERIALIZED
- *     encoding: [15 : short, localOffset : short]
+ *     encoding: [15 : short, local_offset : short]
  *     signature: void (Object, Object)
  *   - Instruction yield
  *     kind: YIELD
@@ -355,7 +355,7 @@ import java.util.function.Supplier;
  *     signature: Object ()
  *   - Instruction clear.local
  *     kind: CLEAR_LOCAL
- *     encoding: [33 : short, localOffset : short]
+ *     encoding: [33 : short, local_offset : short]
  *     signature: void ()
  *   - Instruction c.EarlyReturn
  *     kind: CUSTOM
@@ -1112,7 +1112,7 @@ public final class BasicInterpreterWithGlobalScopes extends BasicInterpreter {
                 case Instructions.STORE_LOCAL_MAT :
                 case Instructions.CLEAR_LOCAL :
                     return List.of(
-                        new LocalOffsetArgument(bytecode, "localOffset", bci + 2));
+                        new LocalOffsetArgument(bytecode, "local_offset", bci + 2));
                 case Instructions.LOAD_CONSTANT :
                     return List.of(
                         new ConstantArgument(bytecode, "constant", bci + 2));
@@ -1121,7 +1121,7 @@ public final class BasicInterpreterWithGlobalScopes extends BasicInterpreter {
                         new IntegerArgument(bytecode, "index", bci + 2, 2));
                 case Instructions.LOAD_EXCEPTION :
                     return List.of(
-                        new IntegerArgument(bytecode, "exceptionSp", bci + 2, 2));
+                        new IntegerArgument(bytecode, "exception_sp", bci + 2, 2));
                 case Instructions.YIELD :
                     return List.of(
                         new ConstantArgument(bytecode, "location", bci + 2));
@@ -2061,9 +2061,9 @@ public final class BasicInterpreterWithGlobalScopes extends BasicInterpreter {
                         case Instructions.LOAD_LOCAL :
                         case Instructions.CLEAR_LOCAL :
                         {
-                            short localOffset = BYTES.getShort(bc, bci + 2 /* imm localOffset */);
+                            short local_offset = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
                             root = this.getRoot();
-                            if (localOffset < USER_LOCALS_START_INDEX || localOffset >= root.maxLocals) {
+                            if (local_offset < USER_LOCALS_START_INDEX || local_offset >= root.maxLocals) {
                                 throw CompilerDirectives.shouldNotReachHere(String.format("Bytecode validation error at index: %s. local offset is out of bounds%n%s", bci, dumpInvalid(findLocation(bci))));
                             }
                             bci = bci + 4;
@@ -2086,10 +2086,10 @@ public final class BasicInterpreterWithGlobalScopes extends BasicInterpreter {
                         }
                         case Instructions.LOAD_EXCEPTION :
                         {
-                            short exceptionSp = BYTES.getShort(bc, bci + 2 /* imm exceptionSp */);
+                            short exception_sp = BYTES.getShort(bc, bci + 2 /* imm exception_sp */);
                             root = this.getRoot();
                             int maxStackHeight = root.getFrameDescriptor().getNumberOfSlots() - root.maxLocals;
-                            if (exceptionSp < 0 || exceptionSp > maxStackHeight) {
+                            if (exception_sp < 0 || exception_sp > maxStackHeight) {
                                 throw CompilerDirectives.shouldNotReachHere(String.format("Bytecode validation error at index: %s. stack pointer is out of bounds%n%s", bci, dumpInvalid(findLocation(bci))));
                             }
                             bci = bci + 4;
@@ -2098,8 +2098,8 @@ public final class BasicInterpreterWithGlobalScopes extends BasicInterpreter {
                         case Instructions.LOAD_LOCAL_MAT :
                         case Instructions.STORE_LOCAL_MAT :
                         {
-                            short localOffset = BYTES.getShort(bc, bci + 2 /* imm localOffset */);
-                            if (localOffset < USER_LOCALS_START_INDEX) {
+                            short local_offset = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
+                            if (local_offset < USER_LOCALS_START_INDEX) {
                                 throw CompilerDirectives.shouldNotReachHere(String.format("Bytecode validation error at index: %s. local offset is out of bounds%n%s", bci, dumpInvalid(findLocation(bci))));
                             }
                             bci = bci + 4;
@@ -3224,7 +3224,7 @@ public final class BasicInterpreterWithGlobalScopes extends BasicInterpreter {
                         }
                         case Instructions.LOAD_EXCEPTION :
                         {
-                            FRAMES.setObject(frame, sp, FRAMES.getObject(frame, $root.maxLocals + BYTES.getShort(bc, bci + 2 /* imm exceptionSp */)));
+                            FRAMES.setObject(frame, sp, FRAMES.getObject(frame, $root.maxLocals + BYTES.getShort(bc, bci + 2 /* imm exception_sp */)));
                             sp += 1;
                             bci += 4;
                             break;
@@ -3364,7 +3364,7 @@ public final class BasicInterpreterWithGlobalScopes extends BasicInterpreter {
                         }
                         case Instructions.CLEAR_LOCAL :
                         {
-                            FRAMES.clear(frame, BYTES.getShort(bc, bci + 2 /* imm localOffset */));
+                            FRAMES.clear(frame, BYTES.getShort(bc, bci + 2 /* imm local_offset */));
                             bci += 4;
                             break;
                         }
@@ -3737,21 +3737,21 @@ public final class BasicInterpreterWithGlobalScopes extends BasicInterpreter {
 
         private void doStoreLocal(Frame stackFrame, Frame frame, byte[] bc, int bci, int sp) {
             Object local = FRAMES.requireObject(stackFrame, sp - 1);
-            FRAMES.setObject(frame, BYTES.getShort(bc, bci + 2 /* imm localOffset */), local);
+            FRAMES.setObject(frame, BYTES.getShort(bc, bci + 2 /* imm local_offset */), local);
             FRAMES.clear(stackFrame, sp - 1);
         }
 
         private void doLoadLocal(AbstractBytecodeNode $this, Frame stackFrame, Frame frame, byte[] bc, int bci, int sp) {
-            FRAMES.setObject(stackFrame, sp, FRAMES.requireObject(frame, BYTES.getShort(bc, bci + 2 /* imm localOffset */)));
+            FRAMES.setObject(stackFrame, sp, FRAMES.requireObject(frame, BYTES.getShort(bc, bci + 2 /* imm local_offset */)));
         }
 
         private void doLoadLocalMat(AbstractBytecodeNode $this, Frame stackFrame, Frame frame, byte[] bc, int bci, int sp) {
-            FRAMES.setObject(stackFrame, sp - 1, FRAMES.requireObject(frame, BYTES.getShort(bc, bci + 2 /* imm localOffset */)));
+            FRAMES.setObject(stackFrame, sp - 1, FRAMES.requireObject(frame, BYTES.getShort(bc, bci + 2 /* imm local_offset */)));
         }
 
         private void doStoreLocalMat(Frame stackFrame, Frame frame, byte[] bc, int bci, int sp) {
             Object local = FRAMES.requireObject(stackFrame, sp - 1);
-            FRAMES.setObject(frame, BYTES.getShort(bc, bci + 2 /* imm localOffset */), local);
+            FRAMES.setObject(frame, BYTES.getShort(bc, bci + 2 /* imm local_offset */), local);
             FRAMES.clear(stackFrame, sp - 1);
             FRAMES.clear(stackFrame, sp - 2);
         }
@@ -11381,7 +11381,7 @@ public final class BasicInterpreterWithGlobalScopes extends BasicInterpreter {
         /*
          * Instruction store.local
          * kind: STORE_LOCAL
-         * encoding: [7 : short, localOffset : short]
+         * encoding: [7 : short, local_offset : short]
          * signature: void (Object)
          */
         private static final short STORE_LOCAL = 7;
@@ -11416,28 +11416,28 @@ public final class BasicInterpreterWithGlobalScopes extends BasicInterpreter {
         /*
          * Instruction load.exception
          * kind: LOAD_EXCEPTION
-         * encoding: [12 : short, exceptionSp (sp) : short]
+         * encoding: [12 : short, exception_sp (sp) : short]
          * signature: Object ()
          */
         private static final short LOAD_EXCEPTION = 12;
         /*
          * Instruction load.local
          * kind: LOAD_LOCAL
-         * encoding: [13 : short, localOffset : short]
+         * encoding: [13 : short, local_offset : short]
          * signature: Object ()
          */
         private static final short LOAD_LOCAL = 13;
         /*
          * Instruction load.local.mat
          * kind: LOAD_LOCAL_MATERIALIZED
-         * encoding: [14 : short, localOffset : short]
+         * encoding: [14 : short, local_offset : short]
          * signature: Object (Object)
          */
         private static final short LOAD_LOCAL_MAT = 14;
         /*
          * Instruction store.local.mat
          * kind: STORE_LOCAL_MATERIALIZED
-         * encoding: [15 : short, localOffset : short]
+         * encoding: [15 : short, local_offset : short]
          * signature: void (Object, Object)
          */
         private static final short STORE_LOCAL_MAT = 15;
@@ -11563,7 +11563,7 @@ public final class BasicInterpreterWithGlobalScopes extends BasicInterpreter {
         /*
          * Instruction clear.local
          * kind: CLEAR_LOCAL
-         * encoding: [33 : short, localOffset : short]
+         * encoding: [33 : short, local_offset : short]
          * signature: void ()
          */
         private static final short CLEAR_LOCAL = 33;

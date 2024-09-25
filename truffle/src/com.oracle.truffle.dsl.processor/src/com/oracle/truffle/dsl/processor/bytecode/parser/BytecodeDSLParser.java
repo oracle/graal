@@ -521,15 +521,15 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
 
             if (model.enableLocalScoping) {
                 // clearLocal does never lookup the type so not needed.
-                model.loadLocalOperation.instruction.addImmediate(ImmediateKind.LOCAL_INDEX, "localIndex");
-                model.storeLocalOperation.instruction.addImmediate(ImmediateKind.LOCAL_INDEX, "localIndex");
+                model.loadLocalOperation.instruction.addImmediate(ImmediateKind.LOCAL_INDEX, "local_index");
+                model.storeLocalOperation.instruction.addImmediate(ImmediateKind.LOCAL_INDEX, "local_index");
 
-                model.loadLocalMaterializedOperation.instruction.addImmediate(ImmediateKind.LOCAL_INDEX, "localIndex");
-                model.storeLocalMaterializedOperation.instruction.addImmediate(ImmediateKind.LOCAL_INDEX, "localIndex");
+                model.loadLocalMaterializedOperation.instruction.addImmediate(ImmediateKind.LOCAL_INDEX, "local_index");
+                model.storeLocalMaterializedOperation.instruction.addImmediate(ImmediateKind.LOCAL_INDEX, "local_index");
             }
 
-            model.loadLocalMaterializedOperation.instruction.addImmediate(ImmediateKind.LOCAL_ROOT, "rootIndex");
-            model.storeLocalMaterializedOperation.instruction.addImmediate(ImmediateKind.LOCAL_ROOT, "rootIndex");
+            model.loadLocalMaterializedOperation.instruction.addImmediate(ImmediateKind.LOCAL_ROOT, "root_index");
+            model.storeLocalMaterializedOperation.instruction.addImmediate(ImmediateKind.LOCAL_ROOT, "root_index");
 
             for (OperationModel operation : model.getOperations()) {
                 if (operation.kind != OperationKind.CUSTOM && operation.kind != OperationKind.CUSTOM_INSTRUMENTATION) {
