@@ -97,6 +97,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeNames.NameImpl;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.WildcardTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedElement;
 import com.oracle.truffle.dsl.processor.model.SpecializationData.Idempotence;
 
@@ -365,12 +366,21 @@ public class ElementUtils {
         if (typeParameters.isEmpty()) {
             return type;
         }
-        Types typeUtils = context.getEnvironment().getTypeUtils();
-        TypeMirror[] wildcards = new TypeMirror[typeParameters.size()];
-        for (int i = 0; i < wildcards.length; i++) {
-            wildcards[i] = typeUtils.getWildcardType(null, null);
+        if (declaredType instanceof DeclaredCodeTypeMirror generatedType) {
+            // Special case: generated types
+            List<TypeMirror> typeArguments = new ArrayList<>(typeParameters.size());
+            for (int i = 0; i < typeArguments.size(); i++) {
+                typeArguments.add(new WildcardTypeMirror(null, null));
+            }
+            return new DeclaredCodeTypeMirror(typeElement, typeArguments);
         }
-        return typeUtils.getDeclaredType(typeElement, wildcards);
+
+        Types typeUtils = context.getEnvironment().getTypeUtils();
+        TypeMirror[] typeArguments = new TypeMirror[typeParameters.size()];
+        for (int i = 0; i < typeArguments.length; i++) {
+            typeArguments[i] = typeUtils.getWildcardType(null, null);
+        }
+        return typeUtils.getDeclaredType(typeElement, typeArguments);
     }
 
     public static List<AnnotationMirror> collectAnnotations(AnnotationMirror markerAnnotation, String elementName, Element element, DeclaredType annotationClass) {
