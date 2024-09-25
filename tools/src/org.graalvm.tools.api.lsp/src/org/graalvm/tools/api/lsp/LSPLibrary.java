@@ -92,7 +92,7 @@ public abstract class LSPLibrary extends Library {
         throw UnsupportedMessageException.create();
     }
 
-    LSPLibrary() {
+    protected LSPLibrary() {
     }
 
     public static LibraryFactory<LSPLibrary> getFactory() {
