@@ -77,6 +77,7 @@ import jdk.graal.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import jdk.graal.compiler.hotspot.nodes.CurrentJavaThreadNode;
 import jdk.graal.compiler.hotspot.nodes.HotSpotLoadReservedReferenceNode;
 import jdk.graal.compiler.hotspot.nodes.HotSpotStoreReservedReferenceNode;
+import jdk.graal.compiler.hotspot.nodes.KlassFullyInitializedCheckNode;
 import jdk.graal.compiler.hotspot.replacements.CallSiteTargetNode;
 import jdk.graal.compiler.hotspot.replacements.DigestBaseSnippets;
 import jdk.graal.compiler.hotspot.replacements.FastNotifyNode;
@@ -140,6 +141,7 @@ import jdk.graal.compiler.nodes.java.DynamicNewArrayNode;
 import jdk.graal.compiler.nodes.java.DynamicNewInstanceNode;
 import jdk.graal.compiler.nodes.java.DynamicNewInstanceWithExceptionNode;
 import jdk.graal.compiler.nodes.java.NewArrayNode;
+import jdk.graal.compiler.nodes.java.ValidateNewInstanceClassNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.nodes.spi.Replacements;
@@ -534,16 +536,18 @@ public class HotSpotGraphBuilderPlugins {
                 }
                 /* Emits a null-check for the otherwise unused receiver. */
                 unsafe.get(true);
+
+                ValidateNewInstanceClassNode clazzLegal = b.add(new ValidateNewInstanceClassNode(clazz));
                 /*
-                 * Note that the provided clazz might not be initialized. The HotSpot lowering
-                 * snippet for DynamicNewInstanceNode performs the necessary class initialization
-                 * check. Such a DynamicNewInstanceNode is also never constant folded to a
-                 * NewInstanceNode.
+                 * Note that the provided clazz might not be initialized. The lowering snippet for
+                 * KlassFullyInitializedCheckNode performs the necessary initialization check.
                  */
+                b.add(new KlassFullyInitializedCheckNode(clazzLegal));
+
                 if (b.currentBlockCatchesOOM()) {
-                    DynamicNewInstanceWithExceptionNode.createAndPush(b, clazz, true);
+                    b.addPush(JavaKind.Object, new DynamicNewInstanceWithExceptionNode(clazzLegal, true));
                 } else {
-                    DynamicNewInstanceNode.createAndPush(b, clazz, true);
+                    b.addPush(JavaKind.Object, new DynamicNewInstanceNode(clazzLegal, true));
                 }
                 return true;
             }

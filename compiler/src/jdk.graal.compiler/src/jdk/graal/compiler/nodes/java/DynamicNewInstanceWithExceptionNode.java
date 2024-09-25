@@ -26,6 +26,7 @@ package jdk.graal.compiler.nodes.java;
 
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_8;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_8;
+import static jdk.graal.compiler.nodes.java.DynamicNewInstanceNode.tryConvertToNonDynamic;
 
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.Node;
@@ -33,30 +34,16 @@ import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
-import jdk.graal.compiler.nodes.spi.CoreProviders;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @NodeInfo(cycles = CYCLES_8, cyclesRationale = "tlab alloc + header init", size = SIZE_8)
 public class DynamicNewInstanceWithExceptionNode extends AllocateWithExceptionNode implements Canonicalizable {
+    public static final NodeClass<DynamicNewInstanceWithExceptionNode> TYPE = NodeClass.create(DynamicNewInstanceWithExceptionNode.class);
 
     @Input ValueNode clazz;
-
-    public static final NodeClass<DynamicNewInstanceWithExceptionNode> TYPE = NodeClass.create(DynamicNewInstanceWithExceptionNode.class);
     protected boolean fillContents;
-
-    public static void createAndPush(GraphBuilderContext b, ValueNode clazz, boolean validateClass) {
-        ResolvedJavaType constantType = tryConvertToNonDynamic(clazz, b);
-        if (constantType != null) {
-            b.addPush(JavaKind.Object, new NewInstanceWithExceptionNode(constantType, true));
-        } else {
-            ValueNode clazzLegal = validateClass ? b.add(new ValidateNewInstanceClassNode(clazz)) : clazz;
-            b.addPush(JavaKind.Object, new DynamicNewInstanceWithExceptionNode(clazzLegal, true));
-        }
-    }
 
     public DynamicNewInstanceWithExceptionNode(ValueNode clazz, boolean fillContents) {
         super(TYPE, StampFactory.objectNonNull());
@@ -66,16 +53,6 @@ public class DynamicNewInstanceWithExceptionNode extends AllocateWithExceptionNo
 
     public ValueNode getInstanceType() {
         return clazz;
-    }
-
-    static ResolvedJavaType tryConvertToNonDynamic(ValueNode clazz, CoreProviders tool) {
-        if (clazz.isConstant()) {
-            ResolvedJavaType type = tool.getConstantReflection().asJavaType(clazz.asConstant());
-            if (type != null && !DynamicNewInstanceNode.throwsInstantiationException(type, tool.getMetaAccess()) && tool.getMetaAccessExtensionProvider().canConstantFoldDynamicAllocation(type)) {
-                return type;
-            }
-        }
-        return null;
     }
 
     @Override
