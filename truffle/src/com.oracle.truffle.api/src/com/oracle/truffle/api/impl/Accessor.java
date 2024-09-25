@@ -432,7 +432,7 @@ public abstract class Accessor {
         public abstract TruffleContext createInternalContext(Object sourcePolyglotLanguageContext, OutputStream out, OutputStream err, InputStream in,
                         ZoneId timeZone, String[] permittedLanguages, Map<String, Object> config, Map<String, String> options, Map<String, String[]> arguments,
                         Boolean sharingEnabled, boolean initializeCreatorContext, Runnable onCancelled, Consumer<Integer> onExited,
-                        Runnable onClosed, boolean inheritAccess, Boolean allowCreateThreads, Boolean allowNativeAccess, Boolean allowIO,
+                        Runnable onClosed, boolean inheritAccess, Boolean allowCreateThreads, Consumer<String> threadAccessDeniedHandler, Boolean allowNativeAccess, Boolean allowIO,
                         Boolean allowHostLookup, Boolean allowHostClassLoading, Boolean allowCreateProcess, Boolean allowPolyglotAccess,
                         Boolean allowEnvironmentAccess, Map<String, String> environment, Boolean allowInnerContextOptions);
 
