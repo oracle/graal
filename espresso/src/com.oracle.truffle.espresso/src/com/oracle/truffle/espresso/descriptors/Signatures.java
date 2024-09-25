@@ -103,11 +103,18 @@ public final class Signatures {
         return symbols.lookup(signatureString);
     }
 
-    public Symbol<Signature> symbolifyValidSignature(String signatureString) {
-        if (!isValid(signatureString)) {
+    public Symbol<Signature> lookupValidSignature(ByteSequence signatureBytes) {
+        if (!isValid(signatureBytes)) {
             return null;
         }
-        return symbols.symbolify(ByteSequence.create(signatureString));
+        return symbols.lookup(signatureBytes);
+    }
+
+    public Symbol<Signature> symbolifyValidSignature(ByteSequence signatureBytes) {
+        if (!isValid(signatureBytes)) {
+            return null;
+        }
+        return symbols.symbolify(signatureBytes);
     }
 
     public Types getTypes() {
@@ -289,6 +296,11 @@ public final class Signatures {
 
     public static boolean isValid(@SuppressWarnings("unused") String signatureString) {
         // TODO(peterssen): Implement FAST validation.
+        return true;
+    }
+
+    public static boolean isValid(@SuppressWarnings("unused") ByteSequence signatureBytes) {
+        // TODO: Implement FAST validation.
         return true;
     }
 

@@ -379,6 +379,10 @@ public final class Types {
         return symbols.lookup(checkType(type));
     }
 
+    public Symbol<Type> lookup(ByteSequence type) {
+        return symbols.lookup(type);
+    }
+
     public static ByteSequence getRuntimePackage(ByteSequence symbol) {
         if (symbol.byteAt(0) == '[') {
             int arrayDimensions = getArrayDimensions(symbol);

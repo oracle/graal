@@ -61,6 +61,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.constantpool.MemberRefConstant;
+import com.oracle.truffle.espresso.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
@@ -486,7 +487,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             if (StaticObject.isNull(type)) {
                 return StaticObject.NULL;
             }
-            String desc = asSignature(type, meta);
+            ByteSequence desc = asSignature(type, meta);
             switch (flags & ALL_KINDS) {
                 case MN_IS_CONSTRUCTOR:
                     isConstructorProfile.enter();
@@ -546,34 +547,24 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         }
     }
 
-    private static String asSignature(StaticObject typeObject, Meta meta) {
+    private static ByteSequence asSignature(StaticObject typeObject, Meta meta) {
         Klass typeKlass = typeObject.getKlass();
         if (meta.java_lang_invoke_MethodType.isAssignableFrom(typeKlass)) {
             return methodTypeAsSignature(typeObject, meta);
         } else if (meta.java_lang_Class.isAssignableFrom(typeKlass)) {
-            return typeObject.getMirrorKlass(meta).getTypeAsString();
+            return typeObject.getMirrorKlass(meta).getType();
         } else if (meta.java_lang_String.isAssignableFrom(typeKlass)) {
-            return meta.toHostString(typeObject);
+            return ByteSequence.create(meta.toHostString(typeObject));
         } else {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere();
         }
     }
 
-    @TruffleBoundary
-    private static String methodTypeAsSignature(StaticObject methodType, Meta meta) {
-        EspressoLanguage language = meta.getLanguage();
-        StringBuilder sb = new StringBuilder("(");
+    private static ByteSequence methodTypeAsSignature(StaticObject methodType, Meta meta) {
         StaticObject ptypes = meta.java_lang_invoke_MethodType_ptypes.getObject(methodType);
-        int numParamTypes = ptypes.length(language);
-        for (int i = 0; i < numParamTypes; i++) {
-            StaticObject ptype = ptypes.get(language, i);
-            sb.append(ptype.getMirrorKlass(meta).getTypeAsString());
-        }
-        sb.append(")");
         StaticObject rtype = meta.java_lang_invoke_MethodType_rtype.getObject(methodType);
-        sb.append(rtype.getMirrorKlass(meta).getTypeAsString());
-        return sb.toString();
+        return Method.getSignatureFromGuestDescription(ptypes, rtype, meta);
     }
 
     // region MemberName planting
