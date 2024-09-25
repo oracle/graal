@@ -47,7 +47,7 @@
 
 // Library entry points
 
-JNIEXPORT void JNICALL Java_com_oracle_truffle_polyglot_ModulesSupport_addExports0(JNIEnv *env, jclass clz, jobject m1, jobject pn, jobject m2) {
+JNIEXPORT void JNICALL Java_com_oracle_truffle_polyglot_JDKSupport_addExports0(JNIEnv *env, jclass clz, jobject m1, jobject pn, jobject m2) {
     jclass modulesClass = (*env)->FindClass(env, "jdk/internal/module/Modules");
     EXCEPTION_CHECK(env);
     jmethodID addExports = (*env)->GetStaticMethodID(env, modulesClass, "addExports", "(Ljava/lang/Module;Ljava/lang/String;Ljava/lang/Module;)V");

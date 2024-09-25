@@ -307,7 +307,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
     @SuppressWarnings("deprecation")
     private static Stream<? extends ProviderAdapter> loadLegacyProviders(ClassLoader loader) {
-        ModulesSupport.exportToUnnamedModuleOf(loader);
+        JDKSupport.exportToUnnamedModuleOf(loader);
         return StreamSupport.stream(ServiceLoader.load(TruffleLanguage.Provider.class, loader).spliterator(), false).map(LegacyProvider::new);
     }
 
@@ -324,9 +324,9 @@ final class LanguageCache implements Comparable<LanguageCache> {
                     boolean enableNativeAccess) {
         Class<?> providerClass = providerAdapter.getProviderClass();
         Module providerModule = providerClass.getModule();
-        ModulesSupport.exportTransitivelyTo(providerModule);
+        JDKSupport.exportTransitivelyTo(providerModule);
         if (enableNativeAccess) {
-            ModulesSupport.enableNativeAccess(providerModule);
+            JDKSupport.enableNativeAccess(providerModule);
         }
         Registration reg = providerClass.getAnnotation(Registration.class);
         if (reg == null) {

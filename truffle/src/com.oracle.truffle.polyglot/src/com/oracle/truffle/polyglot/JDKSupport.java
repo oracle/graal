@@ -80,7 +80,7 @@ import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.module.Modules;
 
-final class ModulesSupport {
+final class JDKSupport {
 
     /*
      * We use reflective access to addEnableAccess and addEnableNativeAccessToAllUnnamed to make
@@ -107,7 +107,7 @@ final class ModulesSupport {
 
     private static volatile Object modulesAccessor;
 
-    private ModulesSupport() {
+    private JDKSupport() {
     }
 
     static void exportTo(Module clientModule) {
@@ -125,7 +125,7 @@ final class ModulesSupport {
             return;
         }
         Module truffleModule = Truffle.class.getModule();
-        forEach(clientModule, EnumSet.of(Edge.READS, Edge.USES), (m) -> m != truffleModule && m.canRead(truffleModule), ModulesSupport::exportFromTo);
+        forEach(clientModule, EnumSet.of(Edge.READS, Edge.USES), (m) -> m != truffleModule && m.canRead(truffleModule), JDKSupport::exportFromTo);
     }
 
     static void enableNativeAccess(Module clientModule) {
@@ -150,7 +150,7 @@ final class ModulesSupport {
     static ModulesAccessor getModulesAccessor() {
         Object result = modulesAccessor;
         if (result == null) {
-            synchronized (ModulesSupport.class) {
+            synchronized (JDKSupport.class) {
                 result = modulesAccessor;
                 if (result == null) {
                     String attachLibPath = System.getProperty("truffle.attach.library");
@@ -304,11 +304,6 @@ final class ModulesSupport {
     private static final class DirectImpl extends Accessor.ModulesAccessor {
 
         private final Class<?> baseClass;
-        /**
-         * {@code javaLangAccessor} needs to be initialized lazily when the
-         * {@code jdk.internal.access} package is already open.
-         */
-        private volatile JavaLangAccessor javaLangAccessor;
 
         DirectImpl(Class<?> baseClass) {
             if (!baseClass.getModule().isNamed()) {
@@ -366,21 +361,21 @@ final class ModulesSupport {
 
         @Override
         public JavaLangAccessor getJavaLangAccessor() {
-            JavaLangAccessor res = javaLangAccessor;
-            if (res == null) {
-                res = new JavaLangAccessor() {
+            return JavaLangAccessorImpl.INSTANCE;
+        }
 
-                    private final JavaLangAccess javaLang = SharedSecrets.getJavaLangAccess();
+        private static final class JavaLangAccessorImpl extends JavaLangAccessor {
 
-                    @Override
-                    public Thread currentCarrierThread() {
-                        return javaLang.currentCarrierThread();
-                    }
-                };
+            private static final JavaLangAccess JAVA_LANG_ACCESS = SharedSecrets.getJavaLangAccess();
+            static final JavaLangAccessor INSTANCE = new JavaLangAccessorImpl();
 
-                javaLangAccessor = res;
+            private JavaLangAccessorImpl() {
             }
-            return res;
+
+            @Override
+            public Thread currentCarrierThread() {
+                return JAVA_LANG_ACCESS.currentCarrierThread();
+            }
         }
     }
 
@@ -398,7 +393,6 @@ final class ModulesSupport {
         private final MethodHandle addEnableNativeAccessToAllUnnamed;
         private final MethodHandle currentCarrierThread;
         private final Module targetModule;
-        private final JavaLangAccessor javaLangAccessor;
 
         IsolatedImpl(Class<?> baseClass) throws ReflectiveOperationException {
             final String moduleName = "org.graalvm.truffle.generated";
@@ -579,17 +573,6 @@ final class ModulesSupport {
             this.addEnableNativeAccess = l.findStatic(generatedClass, "addEnableNativeAccess", MethodType.methodType(void.class, Module.class));
             this.addEnableNativeAccessToAllUnnamed = l.findStatic(generatedClass, "addEnableNativeAccessToAllUnnamed", MethodType.methodType(void.class));
             this.currentCarrierThread = l.findStatic(generatedClass, "currentCarrierThread", MethodType.methodType(Thread.class));
-            this.javaLangAccessor = new JavaLangAccessor() {
-
-                @Override
-                public Thread currentCarrierThread() {
-                    try {
-                        return (Thread) currentCarrierThread.invokeExact();
-                    } catch (Throwable e) {
-                        throw new InternalError(e);
-                    }
-                }
-            };
         }
 
         @Override
@@ -653,7 +636,39 @@ final class ModulesSupport {
 
         @Override
         public JavaLangAccessor getJavaLangAccessor() {
-            return javaLangAccessor;
+            return JavaLangAccessorImpl.INSTANCE;
+        }
+
+        private static final class JavaLangAccessorImpl extends JavaLangAccessor {
+
+            /*
+             * For performance reasons, it is necessary for CURRENT_CARRIER_THREAD to be declared as
+             * static final.
+             */
+            private static final MethodHandle CURRENT_CARRIER_THREAD;
+            static {
+                if (JDKSupport.modulesAccessor == null) {
+                    throw new IllegalStateException("JavaLangAccessorImpl initialized before JDKSupport.modulesAccessor was set");
+                } else if (!(JDKSupport.modulesAccessor instanceof IsolatedImpl)) {
+                    throw new IllegalStateException("JDKSupport.modulesAccessor initialized with wrong type " + JDKSupport.modulesAccessor.getClass());
+                } else {
+                    CURRENT_CARRIER_THREAD = ((IsolatedImpl) JDKSupport.modulesAccessor).currentCarrierThread;
+                }
+            }
+
+            private static final JavaLangAccessor INSTANCE = new JavaLangAccessorImpl();
+
+            private JavaLangAccessorImpl() {
+            }
+
+            @Override
+            public Thread currentCarrierThread() {
+                try {
+                    return (Thread) CURRENT_CARRIER_THREAD.invokeExact();
+                } catch (Throwable e) {
+                    throw new InternalError(e);
+                }
+            }
         }
     }
 

@@ -168,7 +168,7 @@ public final class ModulesSupport {
      */
     private static ModulesAccessor getModulesAccessor() {
         try {
-            Class<?> resourceCacheClass = Class.forName("com.oracle.truffle.polyglot.ModulesSupport", false, ModulesSupport.class.getClassLoader());
+            Class<?> resourceCacheClass = Class.forName("com.oracle.truffle.polyglot.JDKSupport", false, ModulesSupport.class.getClassLoader());
             Method getModulesAccessor = resourceCacheClass.getDeclaredMethod("getModulesAccessor");
             getModulesAccessor.setAccessible(true);
             return (ModulesAccessor) getModulesAccessor.invoke(null);
