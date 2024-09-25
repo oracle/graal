@@ -72,7 +72,7 @@ public class BytecodeDSLBuiltins {
                         .addImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target") //
                         .addImmediate(ImmediateKind.BRANCH_PROFILE, "branch_profile");
         m.storeLocalInstruction = m.instruction(InstructionKind.STORE_LOCAL, "store.local", m.signature(void.class, Object.class)) //
-                        .addImmediate(ImmediateKind.LOCAL_OFFSET, "localOffset");
+                        .addImmediate(ImmediateKind.LOCAL_OFFSET, "local_offset");
         m.throwInstruction = m.instruction(InstructionKind.THROW, "throw", m.signature(void.class, Object.class));
         m.loadConstantInstruction = m.instruction(InstructionKind.LOAD_CONSTANT, "load.constant", m.signature(Object.class)) //
                         .addImmediate(ImmediateKind.CONSTANT, "constant");
@@ -242,7 +242,7 @@ public class BytecodeDSLBuiltins {
                         This operation is only permitted inside the {@code catch} operation of TryCatch and TryCatchOtherwise operations.
                         """) //
                         .setInstruction(m.instruction(InstructionKind.LOAD_EXCEPTION, "load.exception", m.signature(Object.class))//
-                                        .addImmediate(ImmediateKind.STACK_POINTER, "exceptionSp"));
+                                        .addImmediate(ImmediateKind.STACK_POINTER, "exception_sp"));
         m.loadLocalOperation = m.operation(OperationKind.LOAD_LOCAL, "LoadLocal",
                         """
                                         LoadLocal reads {@code local} from the current frame.
@@ -250,7 +250,7 @@ public class BytecodeDSLBuiltins {
                                         """) //
                         .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "local", "the local to load")) //
                         .setInstruction(m.instruction(InstructionKind.LOAD_LOCAL, "load.local", m.signature(Object.class)) //
-                                        .addImmediate(ImmediateKind.LOCAL_OFFSET, "localOffset"));
+                                        .addImmediate(ImmediateKind.LOCAL_OFFSET, "local_offset"));
         m.loadLocalMaterializedOperation = m.operation(OperationKind.LOAD_LOCAL_MATERIALIZED, "LoadLocalMaterialized", """
                         LoadLocalMaterialized reads {@code local} from the frame produced by {@code frame}.
                         This operation can be used to read locals from materialized frames. The materialized frame must belong to the same root node or an enclosing root node.
@@ -258,7 +258,7 @@ public class BytecodeDSLBuiltins {
                         .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "local", "the local to load")) //
                         .setDynamicOperands(child("frame")) //
                         .setInstruction(m.instruction(InstructionKind.LOAD_LOCAL_MATERIALIZED, "load.local.mat", m.signature(Object.class, Object.class)) //
-                                        .addImmediate(ImmediateKind.LOCAL_OFFSET, "localOffset"));
+                                        .addImmediate(ImmediateKind.LOCAL_OFFSET, "local_offset"));
         m.storeLocalOperation = m.operation(OperationKind.STORE_LOCAL, "StoreLocal", """
                         StoreLocal writes the value produced by {@code value} into the {@code local} in the current frame.
                         """) //
@@ -275,7 +275,7 @@ public class BytecodeDSLBuiltins {
                         .setDynamicOperands(child("frame"), child("value")) //
                         .setInstruction(m.instruction(InstructionKind.STORE_LOCAL_MATERIALIZED, "store.local.mat",
                                         m.signature(void.class, Object.class, Object.class)) //
-                                        .addImmediate(ImmediateKind.LOCAL_OFFSET, "localOffset"));
+                                        .addImmediate(ImmediateKind.LOCAL_OFFSET, "local_offset"));
         m.returnOperation = m.operation(OperationKind.RETURN, "Return", "Return returns the value produced by {@code result}.") //
                         .setVoid(true) //
                         .setDynamicOperands(child("result")) //
@@ -351,7 +351,7 @@ public class BytecodeDSLBuiltins {
         m.storeNullInstruction = m.instruction(InstructionKind.STORE_NULL, "constant_null", m.signature(Object.class));
 
         m.clearLocalInstruction = m.instruction(InstructionKind.CLEAR_LOCAL, "clear.local", m.signature(void.class));
-        m.clearLocalInstruction.addImmediate(ImmediateKind.LOCAL_OFFSET, "localOffset");
+        m.clearLocalInstruction.addImmediate(ImmediateKind.LOCAL_OFFSET, "local_offset");
     }
 
     private static DynamicOperandModel child(String name) {
