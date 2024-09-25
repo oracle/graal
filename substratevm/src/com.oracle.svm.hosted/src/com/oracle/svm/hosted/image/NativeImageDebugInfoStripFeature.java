@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.image;
 
+import static com.oracle.svm.core.SubstrateOptions.DeleteLocalSymbols;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -127,7 +129,7 @@ public class NativeImageDebugInfoStripFeature implements InternalFeature {
 
     private static Path createKeepSymbolsListFile(AfterImageWriteAccessImpl accessImpl) throws IOException {
         Path exportedSymbolsPath = accessImpl.getTempDirectory().resolve("keep-symbols.list").toAbsolutePath();
-        Files.write(exportedSymbolsPath, accessImpl.getImageSymbols(true));
+        Files.write(exportedSymbolsPath, accessImpl.getImageSymbols(DeleteLocalSymbols.getValue()));
         return exportedSymbolsPath;
     }
 }
