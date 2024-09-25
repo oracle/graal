@@ -11628,24 +11628,47 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                             new String[]{"frame", "target", model.enableYield ? "interpreterStateObject" : "sp"},
                             new TypeMirror[]{types.VirtualFrame, type(int.class), type(Object.class)});
             CodeTreeBuilder b = ex.getBuilder();
+
             if (model.enableYield) {
                 b.startDeclaration(interpreterStateElement.asType(), "interpreterState");
                 b.cast(interpreterStateElement.asType()).string("interpreterStateObject");
                 b.end();
 
-                b.startReturn().startCall("continueAt");
-                b.string("getRoot()");
-                b.string("frame");
-                b.string("interpreterState.localFrame == null ? frame : (MaterializedFrame) interpreterState.localFrame");
-                b.string(encodeState("target", "interpreterState.sp"));
-                b.end(2);
-            } else {
-                b.startReturn().startCall("continueAt");
-                b.string("getRoot()");
-                b.string("frame");
-                b.string(encodeState("target", "(int) sp"));
-                b.end(2);
+                b.startDeclaration(types.VirtualFrame, "continuationFrame");
+                b.cast(types.MaterializedFrame);
+                startGetFrame(b, "frame", type(Object.class), false).string(COROUTINE_FRAME_INDEX).end();
+                b.end();
+
+                b.declaration(types.VirtualFrame, "localFrame");
+
+                b.startIf().string("interpreterState.isContinuation").end().startBlock();
+                b.statement("localFrame = continuationFrame");
+                b.startIf().string("continuationFrame == null").end().startBlock();
+                b.lineComment("Regular invocation transitioned to continuation OSR target");
+                b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+                b.statement("localFrame = frame");
+                b.end();
+                b.end().startElseBlock();
+                b.statement("localFrame = frame");
+                b.startIf().string("continuationFrame != null").end().startBlock();
+                b.lineComment("Resumed invocation transitioned to regular OSR target");
+                b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+                b.statement("localFrame = continuationFrame");
+                b.end();
+                b.end();
             }
+
+            b.startReturn().startCall("continueAt");
+            b.string("getRoot()");
+            b.string("frame");
+            if (model.enableYield) {
+                b.string("localFrame");
+                b.string(encodeState("target", "interpreterState.sp"));
+            } else {
+                b.string(encodeState("target", "(int) sp"));
+            }
+            b.end(2);
+
             return ex;
         }
 
@@ -11684,7 +11707,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     // Without continuations, this state class is unnecessary. Just pass the sp.
                     throw new AssertionError("A InterpreterState class should only be generated when continuations are enabled.");
                 }
-                this.add(new CodeVariableElement(Set.of(FINAL), types.VirtualFrame, "localFrame"));
+                this.add(new CodeVariableElement(Set.of(FINAL), type(boolean.class), "isContinuation"));
                 this.add(new CodeVariableElement(Set.of(FINAL), type(int.class), "sp"));
                 this.add(createConstructorUsingFields(Set.of(), this));
             }
@@ -13555,13 +13578,18 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             if (model.enableYield) {
                 b.startNew(interpreterStateElement.asType());
                 /**
-                 * If this invocation was resumed, the locals are no longer in the stack frame and
-                 * we need to pass the local frame to executeOSR.
+                 * We need to communicate to the compiler whether the local variables should be
+                 * taken from the continuation frame.
                  *
-                 * If this invocation was not resumed, the locals are in the stack frame, which gets
-                 * passed to executeOSR. We pass null to tell executeOSR to use that frame.
+                 * TODO: We actually need to encode this boolean in the OSR "target". The first
+                 * interpreter state used gets reused for subsequent compilations, so we could
+                 * compile an OSR target that reads locals from the stack frame, then later call the
+                 * same target from a resumed continuation that uses a continuation frame instead.
+                 * executeOSR has guards that deopt if the other kind of frame is used, but we
+                 * currently cannot recompile a second OSR target for the other frame kind. Encoding
+                 * the flag in the "target" allows us to differentiate.
                  */
-                b.string("frame == ", localFrame(), " ? null : ", localFrame());
+                b.string("frame != ", localFrame()); // isContinuation
                 b.string("sp");
                 b.end();
             } else {
