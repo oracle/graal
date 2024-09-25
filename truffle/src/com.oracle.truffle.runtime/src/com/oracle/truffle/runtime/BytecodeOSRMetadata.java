@@ -82,7 +82,7 @@ public final class BytecodeOSRMetadata {
      * Default original stage for bytecode OSR compilation. In this stage,
      * {@link #incrementAndPoll() polling} will succeed only after a {@link #backEdgeCount backedge}
      * has been reported {@link #osrThreshold} times. After the first successful
-     * {@link #requestOSRCompilation(int, OptimizedCallTarget, FrameWithoutBoxing) request for
+     * {@link #requestOSRCompilation(long, OptimizedCallTarget, FrameWithoutBoxing) request for
      * compilation}, switch to {@link #HOT_STAGE}.
      */
     private static final byte FRESH_STAGE = 0;
@@ -139,7 +139,7 @@ public final class BytecodeOSRMetadata {
                     // Support for deprecated frame transfer: GR-38296
                     extends FinalCompilationListMap {
 
-        private final Map<Integer, OptimizedCallTarget> compilationMap;
+        private final Map<Long, OptimizedCallTarget> compilationMap;
         @CompilationFinal private FrameDescriptor frameDescriptor;
 
         LazyState() {
@@ -149,7 +149,7 @@ public final class BytecodeOSRMetadata {
             this.frameDescriptor = null;
         }
 
-        private void push(int target, OptimizedCallTarget callTarget, OsrEntryDescription entry) {
+        private void push(long target, OptimizedCallTarget callTarget, OsrEntryDescription entry) {
             compilationMap.put(target, callTarget);
             // Support for deprecated frame transfer: GR-38296
             put(target, entry);
@@ -244,7 +244,7 @@ public final class BytecodeOSRMetadata {
         }
     }
 
-    Object tryOSR(int target, Object interpreterState, Runnable beforeTransfer, VirtualFrame parentFrame) {
+    Object tryOSR(long target, Object interpreterState, Runnable beforeTransfer, VirtualFrame parentFrame) {
         if (isDisabled()) {
             return null;
         }
@@ -353,13 +353,13 @@ public final class BytecodeOSRMetadata {
      * Creates an OSR call target at the given dispatch target and requests compilation. The node's
      * AST lock should be held when this is invoked.
      */
-    private OptimizedCallTarget createOSRTarget(int target, Object interpreterState, FrameDescriptor frameDescriptor, Object frameEntryState) {
+    private OptimizedCallTarget createOSRTarget(long target, Object interpreterState, FrameDescriptor frameDescriptor, Object frameEntryState) {
         TruffleLanguage<?> language = OptimizedRuntimeAccessor.NODES.getLanguage(((Node) osrNode).getRootNode());
         return (OptimizedCallTarget) new BytecodeOSRRootNode(language, frameDescriptor, osrNode, target, interpreterState, frameEntryState).getCallTarget();
 
     }
 
-    private void requestOSRCompilation(int target, OptimizedCallTarget callTarget, FrameWithoutBoxing frame) {
+    private void requestOSRCompilation(long target, OptimizedCallTarget callTarget, FrameWithoutBoxing frame) {
         OptimizedCallTarget previousCompilation = getCurrentlyCompiling();
         if (previousCompilation != null && !previousCompilation.isSubmittedForCompilation()) {
             // Completed compilation of the previously scheduled compilation. Clear the reference.
@@ -412,7 +412,7 @@ public final class BytecodeOSRMetadata {
      * Transfer state from {@code source} to {@code target}. Can be used to transfer state into an
      * OSR frame.
      */
-    public void transferFrame(FrameWithoutBoxing source, FrameWithoutBoxing target, int bytecodeTarget, Object targetMetadata) {
+    public void transferFrame(FrameWithoutBoxing source, FrameWithoutBoxing target, long bytecodeTarget, Object targetMetadata) {
         LazyState state = getLazyState();
         CompilerAsserts.partialEvaluationConstant(state);
         // The frames should use the same descriptor.
@@ -621,7 +621,7 @@ public final class BytecodeOSRMetadata {
     }
 
     // for testing
-    public Map<Integer, OptimizedCallTarget> getOSRCompilations() {
+    public Map<Long, OptimizedCallTarget> getOSRCompilations() {
         return getLazyState().compilationMap;
     }
 
@@ -640,10 +640,10 @@ public final class BytecodeOSRMetadata {
      * synchronized portions of code.
      */
     private static final class ReAttemptsCounter {
-        private final Set<Integer> knownTargets = new HashSet<>(1);
+        private final Set<Long> knownTargets = new HashSet<>(1);
         private int total = 0;
 
-        public void inc(int target) {
+        public void inc(long target) {
             if (knownTargets.contains(target)) {
                 // Further compilation attempt.
                 total++;
@@ -673,10 +673,10 @@ public final class BytecodeOSRMetadata {
     private abstract static class FinalCompilationListMap {
         private static final class Cell {
             final Cell next;
-            final int target;
+            final long target;
             final OsrEntryDescription entry;
 
-            Cell(int target, OsrEntryDescription entry, Cell next) {
+            Cell(long target, OsrEntryDescription entry, Cell next) {
                 this.next = next;
                 this.target = target;
                 this.entry = entry;
@@ -687,7 +687,7 @@ public final class BytecodeOSRMetadata {
         volatile Cell head = null;
 
         @ExplodeLoop
-        public final OsrEntryDescription get(int target) {
+        public final OsrEntryDescription get(long target) {
             Cell cur = head;
             while (cur != null) {
                 if (cur.target == target) {
@@ -698,7 +698,7 @@ public final class BytecodeOSRMetadata {
             return null;
         }
 
-        public final void put(int target, OsrEntryDescription value) {
+        public final void put(long target, OsrEntryDescription value) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             synchronized (this) {
                 assert get(target) == null;

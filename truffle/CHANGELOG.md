@@ -7,6 +7,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-57164 Added support for reading unaligned ints, shorts and long to `ByteArraySupport`.
 * GR-57164 `RootNode.translateStackTraceElement()` is now always consulted for polyglot and debugger stack traces. Stack traces now use the source section, the executable name, the name of the declared meta-object to build `StackTraceElement` instances.
 * GR-57322 Added `TruffleLanguage.Env.getHostLanguage()` returning the host language info. This allows languages to lookup the top scope of the host language using `Env.getScopeInternal(LanguageInfo)`.
+* GR-57550 Added support for long-width dispatch targets to Bytecode OSR.
 
 
 ## Version 24.1.0
