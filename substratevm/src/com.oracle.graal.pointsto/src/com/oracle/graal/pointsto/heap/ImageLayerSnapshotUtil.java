@@ -327,9 +327,7 @@ public class ImageLayerSnapshotUtil {
         @Override
         public String encode(ObjectCopier.Encoder encoder, Object obj) {
             AnalysisType type = (AnalysisType) obj;
-            if (!type.isReachable() && !imageLayerWriter.typesMap.containsKey(imageLayerWriter.imageLayerSnapshotUtil.getTypeIdentifier(type))) {
-                imageLayerWriter.persistType(type);
-            }
+            imageLayerWriter.persistType(type);
             return String.valueOf(type.getId());
         }
 
@@ -356,19 +354,13 @@ public class ImageLayerSnapshotUtil {
             AnalysisMethod method = (AnalysisMethod) obj;
             AnalysisType declaringClass = method.getDeclaringClass();
             imageLayerWriter.elementsToPersist.add(new AnalysisFuture<>(() -> {
-                if (!method.isReachable() && !imageLayerWriter.methodsMap.containsKey(imageLayerWriter.imageLayerSnapshotUtil.getMethodIdentifier(method))) {
-                    imageLayerWriter.persistAnalysisParsedGraph(method);
-                    imageLayerWriter.persistMethod(method);
-                }
+                imageLayerWriter.persistAnalysisParsedGraph(method);
+                imageLayerWriter.persistMethod(method);
             }));
             for (AnalysisType parameter : method.toParameterList()) {
-                if (!parameter.isReachable() && !imageLayerWriter.typesMap.containsKey(imageLayerWriter.imageLayerSnapshotUtil.getTypeIdentifier(parameter))) {
-                    imageLayerWriter.persistType(parameter);
-                }
+                imageLayerWriter.persistType(parameter);
             }
-            if (!declaringClass.isReachable() && !imageLayerWriter.typesMap.containsKey(imageLayerWriter.imageLayerSnapshotUtil.getTypeIdentifier(declaringClass))) {
-                imageLayerWriter.persistType(declaringClass);
-            }
+            imageLayerWriter.persistType(declaringClass);
             return String.valueOf(method.getId());
         }
 

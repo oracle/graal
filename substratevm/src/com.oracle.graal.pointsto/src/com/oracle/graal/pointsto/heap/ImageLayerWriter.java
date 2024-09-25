@@ -104,7 +104,6 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
-import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -150,6 +149,7 @@ public class ImageLayerWriter {
     protected final EconomicMap<String, Object> jsonMap;
     protected final List<Integer> constantsToRelink;
     private final Set<Integer> persistedTypeIds;
+    private final Set<Integer> persistedMethodIds;
     protected final Map<String, EconomicMap<String, Object>> typesMap;
     protected final Map<String, EconomicMap<String, Object>> methodsMap;
     protected final Map<String, Map<String, Object>> fieldsMap;
@@ -212,7 +212,8 @@ public class ImageLayerWriter {
         this.imageLayerSnapshotUtil = imageLayerSnapshotUtil;
         this.jsonMap = EconomicMap.create();
         this.constantsToRelink = new ArrayList<>();
-        this.persistedTypeIds = new HashSet<>();
+        this.persistedTypeIds = ConcurrentHashMap.newKeySet();
+        this.persistedMethodIds = ConcurrentHashMap.newKeySet();
         this.typesMap = new ConcurrentHashMap<>();
         this.methodsMap = new ConcurrentHashMap<>();
         this.fieldsMap = new ConcurrentHashMap<>();
@@ -325,9 +326,7 @@ public class ImageLayerWriter {
              * Some persisted types are not reachable. In this case, the super class has to be
              * persisted manually as well.
              */
-            if (!superclass.isReachable()) {
-                persistType(superclass);
-            }
+            persistType(superclass);
         }
         EconomicMap<String, Object> typeMap = EconomicMap.create();
 
@@ -384,7 +383,14 @@ public class ImageLayerWriter {
     }
 
     public void persistMethod(AnalysisMethod method) {
+        if (!persistedMethodIds.add(method.getId())) {
+            return;
+        }
         EconomicMap<String, Object> methodMap = getMethodMap(method);
+        persistMethod(method, methodMap);
+    }
+
+    protected void persistMethod(AnalysisMethod method, EconomicMap<String, Object> methodMap) {
         Executable executable = method.getJavaMethod();
 
         if (methodMap.containsKey(ID_TAG)) {
@@ -424,11 +430,6 @@ public class ImageLayerWriter {
         imageLayerWriterHelper.persistMethod(method, methodMap);
     }
 
-    public boolean isMethodPersisted(AnalysisMethod method) {
-        String name = imageLayerSnapshotUtil.getMethodIdentifier(method);
-        return methodsMap.containsKey(name);
-    }
-
     public void persistMethodGraphs() {
         for (AnalysisMethod method : aUniverse.getMethods()) {
             if (method.isReachable()) {
@@ -442,18 +443,22 @@ public class ImageLayerWriter {
 
         Object analyzedGraph = method.getGraph();
         if (analyzedGraph instanceof AnalysisParsedGraph analysisParsedGraph) {
-            if (!persistGraph(analysisParsedGraph.getEncodedGraph(), methodMap, ANALYSIS_PARSED_GRAPH_TAG)) {
-                return;
+            if (!methodMap.containsKey(INTRINSIC_TAG)) {
+                if (!persistGraph(analysisParsedGraph.getEncodedGraph(), methodMap, ANALYSIS_PARSED_GRAPH_TAG)) {
+                    return;
+                }
+                methodMap.put(INTRINSIC_TAG, analysisParsedGraph.isIntrinsic());
             }
-            methodMap.put(INTRINSIC_TAG, analysisParsedGraph.isIntrinsic());
         }
     }
 
     public void persistMethodStrengthenedGraph(AnalysisMethod method) {
         EconomicMap<String, Object> methodMap = getMethodMap(method);
 
-        EncodedGraph analyzedGraph = method.getAnalyzedGraph();
-        persistGraph(analyzedGraph, methodMap, STRENGTHENED_GRAPH_TAG);
+        if (!methodMap.containsKey(STRENGTHENED_GRAPH_TAG)) {
+            EncodedGraph analyzedGraph = method.getAnalyzedGraph();
+            persistGraph(analyzedGraph, methodMap, STRENGTHENED_GRAPH_TAG);
+        }
     }
 
     private boolean persistGraph(EncodedGraph analyzedGraph, EconomicMap<String, Object> methodMap, String graphTag) {
