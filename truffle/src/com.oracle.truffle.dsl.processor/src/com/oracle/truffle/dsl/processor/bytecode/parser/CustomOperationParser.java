@@ -686,7 +686,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
      * generation. Replacing the raw type with a wildcarded type prevents these errors.
      */
     private TypeMirror parseConstantOperandType(AnnotationMirror constantOperandMirror) {
-        TypeMirror result = (TypeMirror) ElementUtils.getAnnotationValue(constantOperandMirror, "type").getValue();
+        TypeMirror result = ElementUtils.getAnnotationValue(TypeMirror.class, constantOperandMirror, "type");
         return ElementUtils.rawTypeToWildcardedType(context, result);
     }
 
