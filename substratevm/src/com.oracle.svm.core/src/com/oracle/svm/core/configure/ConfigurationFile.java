@@ -33,12 +33,12 @@ import java.util.Arrays;
 
 public enum ConfigurationFile {
     /* Combined file */
-    REACHABILITY_METADATA("reachability-metadata", null, true, true),
+    REACHABILITY_METADATA("reachability-metadata", null, true, false),
     /* Main metadata categories (order matters) */
-    REFLECTION("reflect", REFLECTION_KEY, true, false),
-    RESOURCES("resource", RESOURCES_KEY, true, false),
-    SERIALIZATION("serialization", SERIALIZATION_KEY, true, false),
-    JNI("jni", JNI_KEY, true, false),
+    REFLECTION("reflect", REFLECTION_KEY, true, true),
+    RESOURCES("resource", RESOURCES_KEY, true, true),
+    SERIALIZATION("serialization", SERIALIZATION_KEY, true, true),
+    JNI("jni", JNI_KEY, true, true),
     /* Deprecated metadata categories */
     DYNAMIC_PROXY("proxy", null, true, false),
     PREDEFINED_CLASSES_NAME("predefined-classes", null, true, false),
@@ -51,7 +51,7 @@ public enum ConfigurationFile {
     private final String name;
     private final String fieldName;
     private final boolean canAgentGenerate;
-    private final boolean combinedFile;
+    private final boolean inCombinedFile;
 
     public static final String LOCK_FILE_NAME = ".lock";
     public static final String PREDEFINED_CLASSES_AGENT_EXTRACTED_SUBDIR = "agent-extracted-predefined-classes";
@@ -59,12 +59,13 @@ public enum ConfigurationFile {
     public static final String PARTIAL_CONFIGURATION_WITH_ORIGINS = "partial-config-with-origins.json";
 
     private static final ConfigurationFile[] agentGeneratedFiles = computeAgentGeneratedFiles();
+    private static final ConfigurationFile[] combinedFileConfigurations = computeCombinedFileConfigurations();
 
-    ConfigurationFile(String name, String fieldName, boolean canAgentGenerate, boolean combinedFile) {
+    ConfigurationFile(String name, String fieldName, boolean canAgentGenerate, boolean inCombinedFile) {
         this.name = name;
         this.fieldName = fieldName;
         this.canAgentGenerate = canAgentGenerate;
-        this.combinedFile = combinedFile;
+        this.inCombinedFile = inCombinedFile;
     }
 
     public String getName() {
@@ -76,7 +77,7 @@ public enum ConfigurationFile {
     }
 
     public String getFileName() {
-        return name + (combinedFile ? COMBINED_FILE_NAME_SUFFIX : LEGACY_FILE_NAME_SUFFIX);
+        return name + (this == REACHABILITY_METADATA ? COMBINED_FILE_NAME_SUFFIX : LEGACY_FILE_NAME_SUFFIX);
     }
 
     public String getFileName(String suffix) {
@@ -84,7 +85,7 @@ public enum ConfigurationFile {
     }
 
     public boolean canBeGeneratedByAgent() {
-        return canAgentGenerate && !combinedFile;
+        return canAgentGenerate && this != REACHABILITY_METADATA;
     }
 
     public static ConfigurationFile getByName(String name) {
@@ -102,5 +103,13 @@ public enum ConfigurationFile {
 
     private static ConfigurationFile[] computeAgentGeneratedFiles() {
         return Arrays.stream(values()).filter(f -> f.canBeGeneratedByAgent()).toArray(ConfigurationFile[]::new);
+    }
+
+    public static ConfigurationFile[] combinedFileConfigurations() {
+        return combinedFileConfigurations;
+    }
+
+    private static ConfigurationFile[] computeCombinedFileConfigurations() {
+        return Arrays.stream(values()).filter(f -> f.inCombinedFile).toArray(ConfigurationFile[]::new);
     }
 }

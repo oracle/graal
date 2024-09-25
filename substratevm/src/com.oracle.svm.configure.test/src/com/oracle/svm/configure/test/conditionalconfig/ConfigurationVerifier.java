@@ -32,6 +32,7 @@ import java.nio.file.Paths;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.config.ConfigurationFileCollection;
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.core.configure.ConfigurationFile;
@@ -70,9 +71,14 @@ public class ConfigurationVerifier {
         StringWriter sw = new StringWriter();
         try (JsonWriter writer = new JsonWriter(sw)) {
             for (ConfigurationFile file : ConfigurationFile.agentGeneratedFiles()) {
-                if (!config.getConfiguration(file).isEmpty()) {
+                ConfigurationBase<?, ?> configuration = config.getConfiguration(file);
+                if (!configuration.isEmpty()) {
                     sw.append("\n").append(file.getName()).append("\n");
-                    config.getConfiguration(file).printJson(writer);
+                    if (configuration.supportsCombinedFile()) {
+                        configuration.printJson(writer);
+                    } else {
+                        configuration.printLegacyJson(writer);
+                    }
                 }
             }
             return sw.toString();
