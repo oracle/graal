@@ -52,12 +52,19 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
+import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -78,6 +85,7 @@ public class ContextsEventsTest extends AbstractPolyglotTest {
 
     public ContextsEventsTest() {
         enterContext = false;
+        needsInstrumentEnv = true;
     }
 
     @Test
@@ -514,6 +522,84 @@ public class ContextsEventsTest extends AbstractPolyglotTest {
                 throw new CancellationException(CANCELLING_LANGUAGE_CONTEXT_INITIALIZATION);
             }
             super.initializeContext(context);
+        }
+    }
+
+    @Test
+    public void testOtherThreadBlockedDuringLanguageContextInitialization() throws InterruptedException, ExecutionException {
+        setupEnv(Context.newBuilder(), new ProxyLanguage() {
+            @Override
+            protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+                return true;
+            }
+        });
+        /*
+         * Test that when the main thread is not done initializing a language context, other thread
+         * cannot execute the language and must wait for the initialization to finish.
+         */
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        try {
+            CountDownLatch contextInitLatch = new CountDownLatch(1);
+            CountDownLatch contextInitFinishLatch = new CountDownLatch(1);
+            instrumentEnv.getInstrumenter().attachContextsListener(new ContextsListener() {
+                @Override
+                public void onContextCreated(TruffleContext ctx) {
+
+                }
+
+                @Override
+                public void onLanguageContextCreated(TruffleContext ctx, LanguageInfo lang) {
+
+                }
+
+                @Override
+                public void onLanguageContextInitialized(TruffleContext ctx, LanguageInfo lang) {
+                    if (InstrumentationTestLanguage.ID.equals(lang.getId())) {
+                        contextInitLatch.countDown();
+                        try {
+                            /*
+                             * The await here blocks finishing PolyglotLanguageContext
+                             * initialization. The countDown of the contextInitFinishLatch is done
+                             * in a separate thread after it evals a simple statement. Since the
+                             * eval must wait for the PolyglotLanguageContext initialization to
+                             * finish, the await cannot finish successfully, hence the assert.
+                             */
+                            Assert.assertFalse(contextInitFinishLatch.await(1, TimeUnit.SECONDS));
+                        } catch (InterruptedException e) {
+                            throw new AssertionError(e);
+                        }
+                    }
+                }
+
+                @Override
+                public void onLanguageContextFinalized(TruffleContext ctx, LanguageInfo lang) {
+
+                }
+
+                @Override
+                public void onLanguageContextDisposed(TruffleContext ctx, LanguageInfo lang) {
+
+                }
+
+                @Override
+                public void onContextClosed(TruffleContext ctx) {
+
+                }
+            }, false);
+            Future<?> future = executorService.submit(() -> {
+                try {
+                    contextInitLatch.await();
+                } catch (InterruptedException e) {
+                    throw new AssertionError(e);
+                }
+                context.eval(InstrumentationTestLanguage.ID, "STATEMENT");
+                contextInitFinishLatch.countDown();
+            });
+            context.initialize(InstrumentationTestLanguage.ID);
+            future.get();
+        } finally {
+            executorService.shutdownNow();
+            Assert.assertTrue(executorService.awaitTermination(1, TimeUnit.MINUTES));
         }
     }
 }
