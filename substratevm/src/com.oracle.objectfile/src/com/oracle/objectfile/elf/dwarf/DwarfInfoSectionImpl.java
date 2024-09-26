@@ -1133,7 +1133,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             abbrevCode = AbbrevCode.INDIRECT_POINTER;
             log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
             pos = writeAbbrevCode(abbrevCode, buffer, pos);
-            int oopReferenceSize = dwarfSections.oopReferenceSize();
+            int oopReferenceSize = dwarfSections.referenceSize();
             log(context, "  [0x%08x]     byte_size 0x%x", pos, oopReferenceSize);
             pos = writeAttrData1((byte) oopReferenceSize, buffer, pos);
             layoutOffset = getIndirectLayoutIndex(classEntry);
@@ -1170,7 +1170,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             abbrevCode = AbbrevCode.INDIRECT_POINTER;
             log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
             pos = writeAbbrevCode(abbrevCode, buffer, pos);
-            int byteSize = dwarfSections.oopReferenceSize();
+            int byteSize = dwarfSections.referenceSize();
             log(context, "  [0x%08x]     byte_size 0x%x", pos, byteSize);
             pos = writeAttrData1((byte) byteSize, buffer, pos);
             layoutOffset = getIndirectLayoutIndex(interfaceClassEntry);
@@ -1504,7 +1504,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             abbrevCode = AbbrevCode.INDIRECT_POINTER;
             log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
             pos = writeAbbrevCode(abbrevCode, buffer, pos);
-            int byteSize = dwarfSections.oopReferenceSize();
+            int byteSize = dwarfSections.referenceSize();
             log(context, "  [0x%08x]     byte_size  0x%x", pos, byteSize);
             pos = writeAttrData1((byte) byteSize, buffer, pos);
             log(context, "  [0x%08x]     type (pointer) 0x%x (%s)", pos, indirectLayoutOffset, name);
@@ -1884,10 +1884,10 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
          */
 
         boolean useHeapBase = dwarfSections.useHeapBase();
-        int reservedBitsMask = dwarfSections.oopTagsMask();
-        int numReservedBits = dwarfSections.oopTagsShift();
-        int compressionShift = dwarfSections.oopCompressShift();
-        int numAlignmentBits = dwarfSections.oopAlignShift();
+        int reservedBitsMask = dwarfSections.reservedBitsMask();
+        int numReservedBits = dwarfSections.numReservedBits();
+        int compressionShift = dwarfSections.compressionShift();
+        int numAlignmentBits = dwarfSections.numAlignmentBits();
 
         /*
          * First we compute the size of the locexpr and decide how to do any required bit-twiddling
