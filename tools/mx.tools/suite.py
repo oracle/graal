@@ -302,6 +302,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "org.graalvm.tools.lsp",
+                "truffle:TRUFFLE_TEST",
                 "truffle:TRUFFLE_SL",
                 "mx:JUNIT"
             ],
@@ -777,7 +778,7 @@ suite = {
             "distDependencies" : [
                 "LSP",
                 "truffle:TRUFFLE_SL",
-                "truffle:TRUFFLE_TEST",  # runtime dependency for unittest config
+                "truffle:TRUFFLE_TEST",
             ],
             "exclude": [
               "mx:HAMCREST",
