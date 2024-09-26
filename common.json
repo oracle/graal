@@ -10,8 +10,6 @@
   "jdks": {
     "galahad-jdk":        {"name": "jpg-jdk",   "version": "24",      "build_id": "jdk-24+15-1637", "platformspecific": true, "extrabundles": ["static-libs"]},
 
-    "oraclejdk11":        {"name": "jpg-jdk",   "version": "11.0.11", "build_id": "jdk-11.0.11+9", "platformspecific": true, "extrabundles": ["static-libs"] },
-
     "oraclejdk17":        {"name": "jpg-jdk",   "version": "17.0.7",  "build_id": "jdk-17.0.7+8", "platformspecific": true, "extrabundles": ["static-libs"]},
     "labsjdk-ce-17":      {"name": "labsjdk",   "version": "ce-17.0.7+4-jvmci-23.1-b02", "platformspecific": true },
     "labsjdk-ce-17Debug": {"name": "labsjdk",   "version": "ce-17.0.7+4-jvmci-23.1-b02-debug", "platformspecific": true },
