@@ -94,7 +94,7 @@
 
   coverage_base(ctw):: s.base(tags="build,%s" % if ctw then "ctw" else "coverage",
                               cmd_suffix=s.jacoco_gate_args,
-                              extra_vm_args=if !ctw then "" else "-DCompileTheWorld.MaxClasses=5000" /*GR-23372*/) +
+                              extra_vm_args=if !ctw then "" else "-DCompileTheWorld.MaxClasses=5000 -Djdk.graal.CompilationFailureAction=Print" /*GR-23372 for MaxClasses*/) +
   {
     teardown+: [
       s.upload_coverage,
