@@ -94,7 +94,7 @@ public class CompilationAlarmPhaseTimesTest extends GraalCompilerTest {
                 duration += c;
                 index++;
             }
-            assert Integer.parseInt(duration) >= 2000 : "Must at least wait for 2000ms";
+            assert Integer.parseInt(duration) >= 2000 : String.format("Must at least wait for 2000ms but waited %s error was %s", duration, message);
         }
     }
 
