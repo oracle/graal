@@ -142,8 +142,6 @@ public class NativeImage {
 
     static final Map<String, String[]> graalCompilerFlags = getCompilerFlags();
 
-    static Boolean useJVMCINativeLibrary = null;
-
     static String getResource(String resourceName) {
         try (InputStream input = NativeImage.class.getResourceAsStream(resourceName)) {
             BufferedReader reader = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8));
@@ -310,12 +308,23 @@ public class NativeImage {
     BundleSupport bundleSupport;
     private final ArchiveSupport archiveSupport;
 
+    public record HostFlags(
+                    boolean useJVMCINativeLibrary,
+                    boolean hasUseJVMCICompiler,
+                    boolean hasMaxRAMPercentage,
+                    boolean hasGCTimeRatio,
+                    boolean hasExitOnOutOfMemoryError,
+                    boolean hasMaximumHeapSizePercent,
+                    boolean hasUseParallelGC) {
+    }
+
     protected static class BuildConfiguration {
         /*
          * Reuse com.oracle.svm.util.ModuleSupport.isModulePathBuild() to ensure same interpretation
          * of com.oracle.svm.util.ModuleSupport.ENV_VAR_USE_MODULE_SYSTEM environment variable use.
          */
         private static final Method isModulePathBuild = ReflectionUtil.lookupMethod(ModuleSupport.class, "isModulePathBuild");
+        private static final String JAVA_EXECUTABLE_OVERRIDE = System.getProperty("com.oracle.svm.driver.java.executable.override");
 
         protected boolean modulePathBuild;
         String imageBuilderModeEnforcer;
@@ -325,6 +334,8 @@ public class NativeImage {
         protected final Path libJvmciDir;
         protected final List<String> args;
 
+        private HostFlags hostFlags;
+
         BuildConfiguration(BuildConfiguration original) {
             modulePathBuild = original.modulePathBuild;
             imageBuilderModeEnforcer = original.imageBuilderModeEnforcer;
@@ -332,6 +343,7 @@ public class NativeImage {
             rootDir = original.rootDir;
             libJvmciDir = original.libJvmciDir;
             args = original.args;
+            hostFlags = original.hostFlags;
         }
 
         protected BuildConfiguration(List<String> args) {
@@ -405,6 +417,9 @@ public class NativeImage {
          * @return path to Java executable
          */
         public Path getJavaExecutable() {
+            if (JAVA_EXECUTABLE_OVERRIDE != null) {
+                return Paths.get(JAVA_EXECUTABLE_OVERRIDE);
+            }
             Path binJava = Paths.get("bin", OS.getCurrent() == OS.WINDOWS ? "java.exe" : "java");
             if (Files.isExecutable(rootDir.resolve(binJava))) {
                 return rootDir.resolve(binJava);
@@ -478,44 +493,78 @@ public class NativeImage {
             return getJars(rootDir.resolve(Paths.get("lib", "svm")));
         }
 
+        public HostFlags getHostFlags() {
+            if (hostFlags == null) {
+                hostFlags = gatherHostFlags();
+            }
+            return hostFlags;
+        }
+
+        private HostFlags gatherHostFlags() {
+            boolean useJVMCINativeLibrary = false;
+            boolean hasUseJVMCICompiler = false;
+            boolean hasMaxRAMPercentage = false;
+            boolean hasMaximumHeapSizePercent = false;
+            boolean hasGCTimeRatio = false;
+            boolean hasExitOnOutOfMemoryError = false;
+            boolean hasUseParallelGC = false;
+
+            ProcessBuilder pb = new ProcessBuilder();
+            sanitizeJVMEnvironment(pb.environment(), Map.of());
+            List<String> command = pb.command();
+            command.add(getJavaExecutable().toString());
+            command.add("-XX:+PrintFlagsFinal");
+            command.add("-version");
+            Process process = null;
+            try {
+                process = pb.start();
+                try (java.util.Scanner inputScanner = new java.util.Scanner(process.getInputStream())) {
+                    while (inputScanner.hasNextLine()) {
+                        String line = inputScanner.nextLine();
+                        if (line.contains("bool UseJVMCINativeLibrary ")) {
+                            String value = SubstrateUtil.split(line, "=")[1];
+                            if (value.trim().startsWith("true")) {
+                                useJVMCINativeLibrary = true;
+                            }
+                        } else if (line.contains("bool UseJVMCICompiler ")) {
+                            hasUseJVMCICompiler = true;
+                        } else if (line.contains(" MaxRAMPercentage ")) {
+                            hasMaxRAMPercentage = true;
+                        } else if (line.contains(" GCTimeRatio ")) {
+                            hasGCTimeRatio = true;
+                        } else if (line.contains(" bool ExitOnOutOfMemoryError ")) {
+                            hasExitOnOutOfMemoryError = true;
+                        } else if (line.contains(" MaximumHeapSizePercent ")) {
+                            hasMaximumHeapSizePercent = true;
+                        } else if (line.contains(" UseParallelGC ")) {
+                            hasUseParallelGC = true;
+                        }
+                    }
+                }
+                process.waitFor();
+            } catch (Exception e) {
+                /* Probing fails silently */
+            } finally {
+                if (process != null) {
+                    process.destroy();
+                }
+            }
+
+            return new HostFlags(
+                            useJVMCINativeLibrary,
+                            hasUseJVMCICompiler,
+                            hasMaxRAMPercentage,
+                            hasGCTimeRatio,
+                            hasExitOnOutOfMemoryError,
+                            hasMaximumHeapSizePercent,
+                            hasUseParallelGC);
+        }
+
         /**
          * @return additional arguments for JVM that runs image builder
          */
         public List<String> getBuilderJavaArgs() {
             ArrayList<String> builderJavaArgs = new ArrayList<>();
-
-            if (useJVMCINativeLibrary == null) {
-                useJVMCINativeLibrary = false;
-                ProcessBuilder pb = new ProcessBuilder();
-                sanitizeJVMEnvironment(pb.environment(), Map.of());
-                List<String> command = pb.command();
-                command.add(getJavaExecutable().toString());
-                command.add("-XX:+PrintFlagsFinal");
-                command.add("-version");
-                Process process = null;
-                try {
-                    process = pb.start();
-                    try (java.util.Scanner inputScanner = new java.util.Scanner(process.getInputStream())) {
-                        while (inputScanner.hasNextLine()) {
-                            String line = inputScanner.nextLine();
-                            if (line.contains("bool UseJVMCINativeLibrary")) {
-                                String value = SubstrateUtil.split(line, "=")[1];
-                                if (value.trim().startsWith("true")) {
-                                    useJVMCINativeLibrary = true;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    process.waitFor();
-                } catch (Exception e) {
-                    /* Probing fails silently */
-                } finally {
-                    if (process != null) {
-                        process.destroy();
-                    }
-                }
-            }
 
             String javaVersion = String.valueOf(JavaVersionUtil.JAVA_SPEC);
             String[] flagsForVersion = graalCompilerFlags.get(javaVersion);
@@ -546,9 +595,9 @@ public class NativeImage {
                 }
             }
 
-            if (useJVMCINativeLibrary) {
+            if (getHostFlags().useJVMCINativeLibrary()) {
                 builderJavaArgs.add("-XX:+UseJVMCINativeLibrary");
-            } else {
+            } else if (getHostFlags().hasUseJVMCICompiler()) {
                 builderJavaArgs.add("-XX:-UseJVMCICompiler");
             }
 
@@ -897,7 +946,7 @@ public class NativeImage {
 
     private void prepareImageBuildArgs() {
         addImageBuilderJavaArgs("-Xss10m");
-        addImageBuilderJavaArgs(MemoryUtil.determineMemoryFlags());
+        addImageBuilderJavaArgs(MemoryUtil.determineMemoryFlags(config.getHostFlags()));
 
         /* Prevent JVM that runs the image builder to steal focus. */
         addImageBuilderJavaArgs("-Djava.awt.headless=true");
