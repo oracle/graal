@@ -101,7 +101,7 @@ public final class SignatureHelpRequestHandler extends AbstractRequestHandler {
                             if (signature instanceof TruffleObject) {
                                 if (INTEROP.isMemberReadable(signature, PROP_DOCUMENTATION)) {
                                     Object doc = INTEROP.readMember(signature, PROP_DOCUMENTATION);
-                                    Object documentation = completionHandler.getDocumentation(doc, langInfo);
+                                    Object documentation = completionHandler.documentationContent(doc, langInfo);
                                     if (documentation != null) {
                                         info.setDocumentation(documentation);
                                     }
@@ -168,7 +168,7 @@ public final class SignatureHelpRequestHandler extends AbstractRequestHandler {
         }
         ParameterInformation info = ParameterInformation.create(paramLabel, null);
         Object doc = INTEROP.isMemberReadable(param, PROP_DOCUMENTATION) ? INTEROP.readMember(param, PROP_DOCUMENTATION) : null;
-        Object documentation = completionHandler.getDocumentation(doc, langInfo);
+        Object documentation = completionHandler.documentationContent(doc, langInfo);
         if (documentation != null) {
             info.setDocumentation(documentation);
         }
