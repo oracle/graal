@@ -107,7 +107,6 @@ import com.oracle.truffle.espresso.nodes.methodhandle.MethodHandleIntrinsicNode;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
-import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -900,17 +899,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return getRawSignature().toString();
     }
 
-    @TruffleBoundary
-    public Object invokeMethod(Object callee, Object[] args) {
-        if (isConstructor()) {
-            GuestAllocator.AllocationChecks.checkCanAllocateNewReference(getMeta(), getDeclaringKlass(), false);
-            Object theCallee = getAllocator().createNew(getDeclaringKlass());
-            invokeWithConversions(theCallee, args);
-            return theCallee;
-        }
-        return invokeWithConversions(callee, args);
-    }
-
     public String getGenericSignatureAsString() {
         if (genericSignature == null) {
             SignatureAttribute attr = (SignatureAttribute) getLinkedMethod().getAttribute(SignatureAttribute.NAME);
@@ -1657,13 +1645,29 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
 
         @Override
-        public Object invokeMethod(Object callee, Object[] args) {
+        public Object invokeMethodVirtual(Object... args) {
+            checkRemovedByRedefinition();
+            return invokeDirectVirtual(args);
+        }
+
+        @Override
+        public Object invokeMethodStatic(Object... args) {
+            checkRemovedByRedefinition();
+            return invokeDirectStatic(args);
+        }
+
+        @Override
+        public Object invokeMethodSpecial(Object... args) {
+            checkRemovedByRedefinition();
+            return invokeDirectSpecial(args);
+        }
+
+        private void checkRemovedByRedefinition() {
             if (getMethod().isRemovedByRedefinition()) {
                 Meta meta = getMeta();
                 throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError,
                                 meta.toGuestString(getMethod().getDeclaringKlass().getNameAsString() + "." + getName() + getRawSignature()));
             }
-            return getMethod().invokeMethod(callee, args);
         }
 
         @Override
@@ -1717,6 +1721,16 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         @Override
         public boolean isObsolete() {
             return !klassVersion.getAssumption().isValid();
+        }
+
+        @Override
+        public boolean isConstructor() {
+            return getMethod().isConstructor();
+        }
+
+        @Override
+        public boolean isClassInitializer() {
+            return getMethod().isClassInitializer();
         }
 
         @Override
