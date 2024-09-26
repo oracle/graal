@@ -259,6 +259,10 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                 case "-Xint":
                     espressoOptions.put("engine.Compilation", "false");
                     break;
+                case "-Xshare:auto":
+                case "-Xshare:off":
+                    // ignore
+                    break;
 
                 case "-XX:+PauseOnExit":
                     pauseOnExit = true;

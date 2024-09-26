@@ -2192,7 +2192,6 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
         # section of org.graalvm.nativeimage.builder in the substratevm suite.py.
 
         graal_compiler_flags_base = [
-            '-XX:+UseParallelGC',  # native image generation is a throughput-oriented task
             '-XX:+UnlockExperimentalVMOptions',
             '-XX:+EnableJVMCI',
             '-Dtruffle.TrustAllTruffleRuntimeProviders=true', # GR-7046

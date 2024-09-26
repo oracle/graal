@@ -25,6 +25,7 @@
 package com.oracle.svm.driver;
 
 import java.lang.management.ManagementFactory;
+import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.svm.core.util.ExitStatus;
@@ -48,24 +49,36 @@ class MemoryUtil {
      */
     private static final long MAX_HEAP_BYTES = 32_000_000_000L;
 
-    public static List<String> determineMemoryFlags() {
-        return List.of(
-                        /*
-                         * Use MaxRAMPercentage to allow users to overwrite max heap setting with
-                         * -XX:MaxRAMPercentage or -Xmx, and freely adjust the min heap with
-                         * -XX:InitialRAMPercentage or -Xms.
-                         */
-                        "-XX:MaxRAMPercentage=" + determineReasonableMaxRAMPercentage(),
-                        /*
-                         * Optimize for throughput by increasing the goal of the total time for
-                         * garbage collection from 1% to 10% (N=9). This also reduces peak RSS.
-                         */
-                        "-XX:GCTimeRatio=9", // 1/(1+N) time for GC
-                        /*
-                         * Let builder exit on first OutOfMemoryError to provide for shorter
-                         * feedback loops.
-                         */
-                        "-XX:+ExitOnOutOfMemoryError");
+    public static List<String> determineMemoryFlags(NativeImage.HostFlags hostFlags) {
+        List<String> flags = new ArrayList<>();
+        if (hostFlags.hasUseParallelGC()) {
+            // native image generation is a throughput-oriented task
+            flags.add("-XX:+UseParallelGC");
+        }
+        /*
+         * Use MaxRAMPercentage to allow users to overwrite max heap setting with
+         * -XX:MaxRAMPercentage or -Xmx, and freely adjust the min heap with
+         * -XX:InitialRAMPercentage or -Xms.
+         */
+        if (hostFlags.hasMaxRAMPercentage()) {
+            flags.add("-XX:MaxRAMPercentage=" + determineReasonableMaxRAMPercentage());
+        } else if (hostFlags.hasMaximumHeapSizePercent()) {
+            flags.add("-XX:MaximumHeapSizePercent=" + determineReasonableMaxRAMPercentage());
+        }
+        if (hostFlags.hasGCTimeRatio()) {
+            /*
+             * Optimize for throughput by increasing the goal of the total time for garbage
+             * collection from 1% to 10% (N=9). This also reduces peak RSS.
+             */
+            flags.add("-XX:GCTimeRatio=9"); // 1/(1+N) time for GC
+        }
+        if (hostFlags.hasExitOnOutOfMemoryError()) {
+            /*
+             * Let builder exit on first OutOfMemoryError to provide for shorter feedback loops.
+             */
+            flags.add("-XX:+ExitOnOutOfMemoryError");
+        }
+        return flags;
     }
 
     /**
