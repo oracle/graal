@@ -202,17 +202,19 @@ class SVMUtil:
         # recreate correct address for compressed oops
         # For an explanation of the conversion rules see com.oracle.svm.core.heap.ReferenceAccess
         is_hub = cls.get_rtt(obj) == cls.hub_type
-        oop_compressed_shift = cls.compressed_shift
-        oop_tag_shift = int.bit_count(cls.oop_tags_mask)
-        oop_align_shift = int.bit_count(cls.object_alignment - 1)
+        compression_shift = cls.compressed_shift
+        num_reserved_bits = int.bit_count(cls.oop_tags_mask)
+        num_alignment_bits = int.bit_count(cls.object_alignment - 1)
         compressed_adr = absolute_adr
         if cls.use_heap_base:
             compressed_adr -= int(SVMUtil.get_heap_base())
-            if is_hub:
-                if oop_compressed_shift == 0:
-                    oop_compressed_shift = oop_align_shift
-                compressed_adr = compressed_adr << oop_tag_shift
-            compressed_adr = compressed_adr >> oop_compressed_shift
+            assert compression_shift >= 0
+            compressed_adr = compressed_adr >> compression_shift
+        if is_hub:
+            assert num_alignment_bits >= 0
+            compressed_adr = compressed_adr << num_alignment_bits
+            assert num_reserved_bits >= 0
+            compressed_adr = compressed_adr >> num_reserved_bits
 
         return compressed_adr
 
