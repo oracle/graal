@@ -38,11 +38,14 @@ public abstract class ImageLayerSection implements LayeredImageSingleton {
     protected final CGlobalData<Pointer> initialSectionStart;
     protected final CGlobalData<WordPointer> cachedImageFDs;
     protected final CGlobalData<WordPointer> cachedImageHeapOffsets;
+    protected final CGlobalData<WordPointer> cachedImageHeapRelocations;
 
-    protected ImageLayerSection(CGlobalData<Pointer> initialSectionStart, CGlobalData<WordPointer> cachedImageFDs, CGlobalData<WordPointer> cachedImageHeapOffsets) {
+    protected ImageLayerSection(CGlobalData<Pointer> initialSectionStart, CGlobalData<WordPointer> cachedImageFDs, CGlobalData<WordPointer> cachedImageHeapOffsets,
+                    CGlobalData<WordPointer> cachedImageHeapRelocations) {
         this.initialSectionStart = initialSectionStart;
         this.cachedImageFDs = cachedImageFDs;
         this.cachedImageHeapOffsets = cachedImageHeapOffsets;
+        this.cachedImageHeapRelocations = cachedImageHeapRelocations;
     }
 
     public enum SectionEntries {
@@ -78,6 +81,11 @@ public abstract class ImageLayerSection implements LayeredImageSingleton {
     @Fold
     public static CGlobalData<WordPointer> getCachedImageHeapOffsets() {
         return singleton().cachedImageHeapOffsets;
+    }
+
+    @Fold
+    public static CGlobalData<WordPointer> getCachedImageHeapRelocations() {
+        return singleton().cachedImageHeapRelocations;
     }
 
     protected abstract int getEntryOffsetInternal(SectionEntries entry);
