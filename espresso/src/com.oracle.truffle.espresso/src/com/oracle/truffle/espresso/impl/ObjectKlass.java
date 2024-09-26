@@ -1003,8 +1003,9 @@ public final class ObjectKlass extends Klass {
 
     Field lookupFieldTableImpl(int slot) {
         if (slot >= 0) {
-            assert slot < fieldTable.length && !fieldTable[slot].isHidden();
-            return fieldTable[slot];
+            Field field = fieldTable[slot];
+            assert !field.isHidden();
+            return field;
         } else { // negative values used for extension fields
             ObjectKlass objectKlass = this;
             while (objectKlass != null) {
@@ -1022,7 +1023,6 @@ public final class ObjectKlass extends Klass {
 
     Field lookupStaticFieldTableImpl(int slot) {
         if (slot >= 0) {
-            assert slot < staticFieldTable.length;
             return staticFieldTable[slot];
         } else { // negative values used for extension fields
             return extensionFieldsMetadata.getStaticFieldAtSlot(slot);

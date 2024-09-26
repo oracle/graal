@@ -248,6 +248,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> getCause = StaticSymbols.putName("getCause");
         public static final Symbol<Name> detailMessage = StaticSymbols.putName("detailMessage");
         public static final Symbol<Name> printStackTrace = StaticSymbols.putName("printStackTrace");
+        public static final Symbol<Name> extendedMessageState = StaticSymbols.putName("extendedMessageState");
 
         // j.l.Thread
         public static final Symbol<Name> add = StaticSymbols.putName("add");
