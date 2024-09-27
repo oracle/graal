@@ -56,7 +56,7 @@ The words are delimited by commas and may be enclosed by an arbitrary number of 
     ```
 
     The output should be:
-    ```
+    ```txt
     Word #1 is bar.
     ```
 
@@ -76,7 +76,7 @@ The words are delimited by commas and may be enclosed by an arbitrary number of 
     ```
 
     The output should be identical to the former one:
-    ```
+    ```txt
     Word #1 is bar.
     ```
 
