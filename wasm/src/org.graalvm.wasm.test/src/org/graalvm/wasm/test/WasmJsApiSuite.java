@@ -1432,11 +1432,14 @@ public class WasmJsApiSuite {
     @Test
     public void testInitialMemorySizeOutOfBounds() throws IOException {
         runMemoryTest(context -> {
-            try {
-                WebAssembly.memAlloc(32768, 32770, false);
-                Assert.fail("Should have failed - initial memory size exceeds implementation limit");
-            } catch (WasmJsApiException e) {
-                Assert.assertEquals("Range error expected", WasmJsApiException.Kind.RangeError, e.kind());
+            // When not enforcing unsafe memory, implementation limits are lifted.
+            if (context.getContextOptions().useUnsafeMemory()) {
+                try {
+                    WebAssembly.memAlloc(32768, 32770, false);
+                    Assert.fail("Should have failed - initial memory size exceeds implementation limit");
+                } catch (WasmJsApiException e) {
+                    Assert.assertEquals("Range error expected", WasmJsApiException.Kind.RangeError, e.kind());
+                }
             }
         });
     }
