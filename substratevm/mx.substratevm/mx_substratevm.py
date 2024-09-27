@@ -169,7 +169,7 @@ def _run_graalvm_cmd(cmd_args, config, nonZeroIsFatal=True, out=None, err=None, 
         dynamic_imports = [('/' if subdir else '') + di for di, subdir in mx.get_dynamic_imports()]
         if dynamic_imports:
             config_args += ['--dynamicimports=' + ','.join(dynamic_imports)]
-        primary_suite_dir = None
+        primary_suite_dir = mx.primary_suite().dir
 
     args = config_args + cmd_args
     suite = primary_suite_dir or svm_suite().dir
