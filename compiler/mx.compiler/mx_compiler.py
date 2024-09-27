@@ -820,6 +820,11 @@ class GraalUnittestConfig(mx_unittest.MxUnittestConfig):
                 if limited_modules is None or jmd.name in limited_modules:
                     mainClassArgs.extend(['-JUnitOpenPackages', jmd.name + '/*'])
                     vmArgs.append('--add-modules=' + jmd.name)
+                    for dependency, packages in jmd.concealedRequires.items():
+                        if dependency != "jdk.internal.vm.ci":
+                            # JVMCI exporting is done dynamically
+                            for p in packages:
+                                vmArgs.append(f'--add-exports={dependency}/{p}={jmd.name}')
 
         vmArgs.append('-Djdk.graal.TrackNodeSourcePosition=true')
         vmArgs.append('-esa')

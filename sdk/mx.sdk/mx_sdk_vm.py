@@ -837,7 +837,11 @@ def _get_image_vm_options(jdk, use_upgrade_module_path, modules, synthetic_modul
                 if default_to_jvmci == 'lib':
                     vm_options.append('-XX:+UseJVMCINativeLibrary')
                 vm_options.extend(['-XX:-UnlockExperimentalVMOptions'])
-                if 'jdk.graal.compiler' in non_synthetic_modules:
+                import mx_sdk_vm_impl
+                if 'jdk.graal.compiler' in non_synthetic_modules and mx_sdk_vm_impl._get_libgraal_component() is None:
+                    # If libgraal is absent, jargraal is used by default.
+                    # Use of jargraal requires exporting jdk.internal.misc to
+                    # Graal as it uses jdk.internal.misc.Unsafe.
                     if 'com.oracle.graal.graal_enterprise' in non_synthetic_modules:
                         vm_options.extend(['--add-exports=java.base/jdk.internal.misc=jdk.graal.compiler,com.oracle.graal.graal_enterprise'])
                     else:

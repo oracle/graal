@@ -24,7 +24,9 @@
  */
 package com.oracle.svm.graal.hotspot;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -66,6 +68,35 @@ public class GetCompilerConfig {
     }
 
     /**
+     * Tests whether {@code module} is in the boot layer.
+     *
+     * @param javaExe java executable
+     * @param module name of the module to test
+     */
+    private static boolean isInBootLayer(Path javaExe, String module) {
+        String search = "jrt:/" + module;
+        String[] command = {javaExe.toString(), "--show-module-resolution", "--version"};
+        try {
+            Process p = new ProcessBuilder(command).start();
+            BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()));
+            String line;
+            boolean found = false;
+            while ((line = reader.readLine()) != null) {
+                if (line.contains(search)) {
+                    found = true;
+                }
+            }
+            int exitValue = p.waitFor();
+            if (exitValue != 0) {
+                throw new GraalError("Command finished with exit value %d: %s", exitValue, String.join(" ", command));
+            }
+            return found;
+        } catch (Exception e) {
+            throw new GraalError(e, "Error running command: %s", String.join(" ", command));
+        }
+    }
+
+    /**
      * Launches the JVM in {@code javaHome} to run {@link CompilerConfig}.
      *
      * @param javaHome the value of the {@code java.home} system property reported by a Java
@@ -81,11 +112,18 @@ public class GetCompilerConfig {
                         // java.util.ImmutableCollections.EMPTY
                         "java.base", Set.of("java.util"));
 
+        // Only modules in the boot layer can be the target of --add-exports
+        String addExports = "--add-exports=java.base/jdk.internal.misc=jdk.graal.compiler";
+        if (isInBootLayer(javaExe, "com.oracle.graal.graal_enterprise")) {
+            addExports += ",com.oracle.graal.graal_enterprise";
+        }
+
         List<String> command = new ArrayList<>(List.of(
                         javaExe.toFile().getAbsolutePath(),
                         "-XX:+UnlockExperimentalVMOptions",
                         "-XX:+EnableJVMCI",
                         "-XX:-UseJVMCICompiler", // avoid deadlock with jargraal
+                        addExports,
                         "-Djdk.vm.ci.services.aot=true"));
 
         Module module = ObjectCopier.class.getModule();

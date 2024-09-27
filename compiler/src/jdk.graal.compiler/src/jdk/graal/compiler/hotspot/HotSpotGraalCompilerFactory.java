@@ -169,8 +169,9 @@ public final class HotSpotGraalCompilerFactory implements JVMCICompilerFactory {
 
     @Override
     public HotSpotGraalCompiler createCompiler(JVMCIRuntime runtime) {
-        ensureInitialized();
         HotSpotJVMCIRuntime hsRuntime = (HotSpotJVMCIRuntime) runtime;
+        checkUnsafeAccess(hsRuntime);
+        ensureInitialized();
         if (optionsFailure != null) {
             System.err.printf("Error parsing Graal options: %s%nError: A fatal exception has occurred. Program will exit.%n", optionsFailure.getMessage());
             HotSpotGraalServices.exit(1, hsRuntime);
@@ -193,6 +194,28 @@ public final class HotSpotGraalCompilerFactory implements JVMCICompilerFactory {
         // VM events.
         locator.onCompilerCreation(compiler);
         return compiler;
+    }
+
+    /**
+     * Exit the VM now if {@code jdk.internal.misc.Unsafe} is not accessible.
+     */
+    private void checkUnsafeAccess(HotSpotJVMCIRuntime hsRuntime) {
+        if (Services.IS_IN_NATIVE_IMAGE) {
+            // Access checks were performed when building libgraal.
+            return;
+        }
+        try {
+            jdk.internal.misc.Unsafe.getUnsafe();
+        } catch (IllegalAccessError e) {
+            Module module = getClass().getModule();
+            String targets = module.getName();
+            String ee = "com.oracle.graal.graal_enterprise";
+            if (module.getDescriptor().exports().stream().anyMatch(export -> export.targets().contains(ee))) {
+                targets += "," + ee;
+            }
+            System.err.printf("Error: jargraal requires --add-exports=java.base/jdk.internal.misc=%s to be specified to the launcher.%n", targets);
+            HotSpotGraalServices.exit(1, hsRuntime);
+        }
     }
 
     /**
