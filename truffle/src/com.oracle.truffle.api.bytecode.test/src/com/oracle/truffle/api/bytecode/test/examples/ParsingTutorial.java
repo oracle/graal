@@ -475,7 +475,8 @@ public class ParsingTutorial {
      * unspecified number of times, and a custom operation cannot do that. We instead need to
      * "desugar" the node into simpler behaviour that can be implemented with operations.
      * <p>
-     * The general approach is to break down the node's behaviour into multiple smaller steps:
+     * The general approach is to break down the node's behaviour into multiple smaller steps that
+     * can be expressed with operations:
      *
      * <pre>
      * array = [evaluate the array]
@@ -491,6 +492,11 @@ public class ParsingTutorial {
      * we only have one interpreter definition, they are already included in the original
      * interpreter, but we have ignored them until now.) Let's implement a new visitor that supports
      * {@link ForEach}.
+     * <p>
+     * An alternative approach could be to define a simplifying pass over the AST that translates it
+     * to a simpler AST before generating bytecode. Then, you would not need to define how to
+     * translate complex nodes directly to operations. This approach would likely be slower
+     * (requiring another AST traversal), but could improve readability.
      */
     class BytecodeVisitorWithForEach extends BytecodeVisitor {
         BytecodeVisitorWithForEach(GettingStartedBytecodeRootNodeGen.Builder b) {

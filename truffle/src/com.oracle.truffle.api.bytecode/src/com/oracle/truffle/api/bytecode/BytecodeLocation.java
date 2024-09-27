@@ -168,7 +168,7 @@ public final class BytecodeLocation {
      * Ensures source information available for this location and {@link #update() updates} this
      * location to a new location of the bytecode node with source information. Materialization of
      * source information may be an expensive operation if the source information was not yet
-     * materialzed yet.
+     * materialized yet.
      *
      * @since 24.2
      */

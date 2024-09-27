@@ -29,7 +29,7 @@ This guide presents the conceptual details of Bytecode DSL; for more concrete te
   - [Cached and uncached execution](#cached-and-uncached-execution)
   - [Source information](#source-information)
   - [Instrumentation](#instrumentation)
-  - [Reparsing metadata](#reparsing-metadata)
+  - [Reparsing](#reparsing)
   - [Bytecode introspection](#bytecode-introspection)
   - [Reachability analysis](#reachability-analysis)
   - [Interpreter optimizations](#interpreter-optimizations)
@@ -62,7 +62,7 @@ public abstract static class SampleInterpreter extends RootNode implements Bytec
 ```
 
 When this class is compiled, the Bytecode DSL annotation processor parses the specification and uses it to generate a `SampleInterpreterGen` class.
-This class defines an instruction set (including instructions for each custom operations), a `Builder` to generate bytecode, an interpreter to execute bytecode, and various supporting code.
+This class defines an instruction set (including one or more instructions for each operation), a `Builder` to generate bytecode, an interpreter to execute bytecode, and various supporting code.
 You may find it useful to read through the generated code (it is intended to be human-readable).
 
 ### Phase 2: Generating bytecode (parsing)
@@ -104,12 +104,11 @@ The current state is encapsulated in a [`BytecodeNode`](https://github.com/oracl
 `BytecodeNode` defines helper methods for accessing local variables, computing source information, introspecting bytecode, and many other use cases.
 It is worth familiarizing yourself with its APIs.
 
-The `BytecodeNode` (and the bytecode itself) can change over the execution of a program for various reasons (e.g., [transitioning from uncached to cached](#cached-and-uncached-execution), [reparsing metadata](#reparsing-metadata), [quickening](Optimization.md#quickening)), so you should use `BytecodeRootNode#getBytecodeNode()` to obtain the up-to-date bytecode node each time you need it.
+The `BytecodeNode` (and the bytecode itself) can change over the execution of a program for various reasons (e.g., [transitioning from uncached to cached](#cached-and-uncached-execution), [reparsing metadata](#reparsing), [quickening](Optimization.md#quickening)), so you should use `BytecodeRootNode#getBytecodeNode()` to obtain the up-to-date bytecode node each time you need it.
 Custom operations can also `@Bind BytecodeNode` in their specializations (see [Bind parameters](#bind-parameters)).
 
-Note that since the bytecode can change, a bytecode index on its own _does not meaningfully identify a location in the program_: it only has meaning in the context of an accompanying `BytecodeNode`.
-If you need to persist a location, you can instantiate a [`BytecodeLocation`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeLocation.java) using `BytecodeNode#getBytecodeLocation(int)` (or bind it with `@Bind BytecodeLocation`).
-
+Because the bytecode may change, a bytecode index (obtained using `@Bind("$bytecodeIndex")`) must be paired with a `BytecodeNode` to meaningfully identify a program location.
+You can also instantiate a [`BytecodeLocation`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeLocation.java), which logically represents the bytecode node and index, using `BytecodeNode#getBytecodeLocation(int)` or `@Bind BytecodeLocation`.
 
 ## Operations
 Operations are the basic unit of language semantics in Bytecode DSL.
@@ -257,6 +256,7 @@ To bind certain Bytecode DSL state directly, you can often omit the expression a
 - `@Bind Instruction` binds the `Instruction` introspection object for the current instruction.
 - `@Bind BytecodeTier` binds the current `BytecodeTier`.
 
+These values are partial evaluation constants.
 
 #### Advanced use cases
 
@@ -523,8 +523,8 @@ There are several `getSourceLocation` methods defined by [`BytecodeNode`](https:
 It is recommended to enclose the `Root` operation in appropriate `Source` and `SourceSection` operations in order to provide accurate source information for the root node.
 The generated root node will override `Node#getSourceSection` to return this information.
 
-Source information is designed to have no performance overhead until it is requested (see [Reparsing metadata](#reparsing-metadata)).
-
+Source information is designed to have no performance overhead until it is requested (see [Reparsing metadata](#reparsing)).
+This information [should generally not be accessed from compiled code](RuntimeCompilation.md#source-information).
 
 ### Instrumentation
 
@@ -532,7 +532,7 @@ The behaviour of a Bytecode DSL interpreter can be non-intrusively observed (and
 For example, you can instrument your code to trace each guest language statement, or add instrumentation to log return values.
 
 Instrumentations are specified during parsing, but disabled by default.
-They incur no overhead until they are enabled at a later time (see [Reparsing metadata](#reparsing-metadata)).
+They incur no overhead until they are enabled at a later time (see [Reparsing metadata](#reparsing)).
 
 Bytecode DSL supports two forms of instrumentation:
 
@@ -541,22 +541,23 @@ Bytecode DSL supports two forms of instrumentation:
 
 Note: once instrumentations are enabled, they cannot be disabled.
 
-### Reparsing metadata
+### Reparsing
 
-Source information and instrumentation require root nodes to store additional metadata (e.g., tables mapping bytecode indices to source ranges).
-This metadata can contribute significantly to the interpreter footprint, which is especially wasteful if the information is rarely used.
-Bytecode DSL allows a language to omit metadata and *reparse* a node when missing metadata is required.
+Bytecode parsing does not materialize metadata or instructions for `Source`, `SourceSection`, `Tag`, and `@Instrumentation` operations by default.
+Instead, the Bytecode DSL will *reparse* nodes to materialize the metadata/instructions when it is requested.
+Reparsing allows Bytecode DSL interpreters to reduce their footprint for metadata that is infrequently used, and also allows you to dynamically enable instrumentation.
 
-For example, the default parsing mode excludes all metadata; operations like `Source`, `SourceSection`, and `Tag` produce no metadata and have no overhead.
-If metadata is required at a later point in time – for example, a source section is requested — the generated interpreter will re-run the parser and store the metadata for subsequent use.
+To specify what metadata/instructions to materialize, parse and reparse requests take a [`BytecodeConfig`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeConfig.java) parameter.
+There are some pre-defined configurations for convenience (`BytecodeConfig.DEFAULT`, `BytecodeConfig.WITH_SOURCE`, and `BytecodeConfig.COMPLETE`), or you can use the static `newConfigBuilder` method on the generated class to build a specific configuration.
 It may make sense to request some metadata (e.g., source information) on first parse if it is frequently used.
+Note that metadata/instructions are only added; there is no way to "clear" them by requesting less information in a reparse.
 
-In order to support reparsing, [`BytecodeParser`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeParser.java)s **must** be deterministic and idempotent.
-When extra metadata is requested, the parser is invoked again, and is expected to perform the same series of builder calls.
-The parse result (the [`BytecodeRootNodes`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeRootNodes.java)) keeps a reference to the parser, so keep in mind that any strong references the parser holds may keep heap memory alive (e.g., source file contents or ASTs).
+To support reparsing, [`BytecodeParser`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeParser.java)s **must** be deterministic and idempotent.
+When a reparse is requested, the parser is invoked again and is expected to perform the same series of builder calls.
+The [`BytecodeRootNodes`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeRootNodes.java) result from the parse retains a reference to the parser, so keep in mind that any strong references the parser holds may keep some objects (e.g., source file contents or ASTs) alive in the heap.
 
-The metadata to include is specified by a [`BytecodeConfig`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeConfig.java).
-There are some predefined configurations like `BytecodeConfig.DEFAULT` for convenience, but you can also specify a specific configuration using a `BytecodeConfig.Builder` (use the static `newConfigBuilder` method on the generated class). Metadata is only added; there is no way to "clear" information by requesting less information in a reparse.
+Reparsing updates the [`BytecodeNode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeNode.java) for a given root node.
+When the bytecode changes, any compiled code for the root node is invalidated, and the old bytecode is invalidated in order to transition active (on-stack) invocations to the new bytecode.
 
 
 ### Bytecode introspection
@@ -568,7 +569,7 @@ These methods, defined on the [`BytecodeNode`](https://github.com/oracle/graal/b
 - `getExceptionHandlers`, which returns a list of [`ExceptionHandler`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/ExceptionHandler.java) table entries.
 - `getSourceInformation`, which returns a list of [`SourceInformation`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/SourceInformation.java) table entries. There is also `getSourceInformationTree`, which encodes the entries as a [`SourceInformationTree`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/SourceInformationTree.java).
 
-Note that the bytecode encoding is an implementation detail, so the APIs and their outputs are subject to change, so introspection should only be used for debugging purposes.
+Note that the bytecode encoding is an implementation detail, so the APIs and their outputs are subject to change, and introspection should only be used for debugging purposes.
 
 
 ### Reachability analysis
