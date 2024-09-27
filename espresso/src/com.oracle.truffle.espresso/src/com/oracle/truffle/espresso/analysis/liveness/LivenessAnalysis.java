@@ -36,6 +36,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.analysis.DepthFirstBlockIterator;
 import com.oracle.truffle.espresso.analysis.GraphBuilder;
 import com.oracle.truffle.espresso.analysis.Util;
@@ -46,6 +47,7 @@ import com.oracle.truffle.espresso.analysis.liveness.actions.MultiAction;
 import com.oracle.truffle.espresso.analysis.liveness.actions.NullOutAction;
 import com.oracle.truffle.espresso.analysis.liveness.actions.SelectEdgeAction;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.classfile.perf.DebugCloseable;
@@ -149,14 +151,15 @@ public final class LivenessAnalysis {
     }
 
     @SuppressWarnings("try")
-    public static LivenessAnalysis analyze(Method.MethodVersion methodVersion) {
+    public static LivenessAnalysis analyze(EspressoOptions.LivenessAnalysisMode mode, Method.MethodVersion methodVersion) {
 
         EspressoLanguage language = methodVersion.getMethod().getLanguage();
-        if (!enableLivenessAnalysis(language, methodVersion)) {
+        if (!enableLivenessAnalysis(mode, language, methodVersion)) {
             return NO_ANALYSIS;
         }
 
         Method method = methodVersion.getMethod();
+
         TimerCollection scope = method.getContext().getTimers();
         try (DebugCloseable liveness = LIVENESS_TIMER.scope(scope)) {
             Graph<? extends LinkedBlock> graph;
@@ -217,11 +220,11 @@ public final class LivenessAnalysis {
         }
     }
 
-    private static boolean enableLivenessAnalysis(EspressoLanguage language, Method.MethodVersion methodVersion) {
+    private static boolean enableLivenessAnalysis(EspressoOptions.LivenessAnalysisMode mode, EspressoLanguage language, Method.MethodVersion methodVersion) {
         if (isExempt(methodVersion.getMethod())) {
             return false;
         }
-        switch (language.getLivenessAnalysisMode()) {
+        switch (mode) {
             case NONE:
                 return false;
             case ALL:
