@@ -987,6 +987,7 @@ final class EngineAccessor extends Accessor {
                         String[] onlyLanguagesArray, Map<String, Object> config, Map<String, String> options, Map<String, String[]> arguments,
                         Boolean sharingEnabled, boolean initializeCreatorContext, Runnable onCancelledRunnable,
                         Consumer<Integer> onExitedRunnable, Runnable onClosedRunnable, boolean inheritAccess, Boolean allowCreateThreads,
+                        Consumer<String> threadAccessDeniedHandler,
                         Boolean allowNativeAccess, Boolean allowIO, Boolean allowHostLookup, Boolean allowHostClassLoading,
                         Boolean allowCreateProcess, Boolean allowPolyglotAccess, Boolean allowEnvironmentAccess,
                         Map<String, String> customEnvironment, Boolean allowInnerContextOptions) {
@@ -1110,6 +1111,8 @@ final class EngineAccessor extends Accessor {
 
             ZoneId useTimeZone = timeZone == null ? creatorConfig.timeZone : timeZone;
 
+            Consumer<String> useDeniedThreadAccess = threadAccessDeniedHandler != null ? threadAccessDeniedHandler : creatorConfig.threadAccessDeniedHandler;
+
             Map<String, String[]> useArguments;
             if (arguments == null) {
                 // change: application arguments are not inherited by default
@@ -1119,7 +1122,7 @@ final class EngineAccessor extends Accessor {
             }
 
             PolyglotContextConfig innerConfig = new PolyglotContextConfig(engine, creatorConfig.sandboxPolicy, sharingEnabled, useOut, useErr, useIn,
-                            useAllowHostLookup, usePolyglotAccess, useAllowNativeAccess, useAllowCreateThread, useAllowHostClassLoading,
+                            useAllowHostLookup, usePolyglotAccess, useAllowNativeAccess, useAllowCreateThread, useDeniedThreadAccess, useAllowHostClassLoading,
                             useAllowInnerContextOptions, creatorConfig.allowExperimentalOptions,
                             useClassFilter, useArguments, allowedLanguages, useOptions, fileSystemConfig, creatorConfig.logHandler,
                             useAllowCreateProcess, useProcessHandler, useEnvironmentAccess, useCustomEnvironment,
@@ -1184,9 +1187,14 @@ final class EngineAccessor extends Accessor {
                 newThread = new Thread(group, task, name, stackSize);
             }
             newThread.setUncaughtExceptionHandler(threadContext.getPolyglotExceptionHandler());
-
-            threadContext.context.checkMultiThreadedAccess(newThread);
-            return newThread;
+            for (;;) {
+                try {
+                    threadContext.context.checkMultiThreadedAccess(newThread);
+                    return newThread;
+                } catch (PolyglotThreadAccessException ex) {
+                    ex.rethrow(threadContext.context);
+                }
+            }
         }
 
         @Override

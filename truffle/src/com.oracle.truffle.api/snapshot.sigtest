@@ -325,9 +325,10 @@ meth public com.oracle.truffle.api.TruffleContext$Builder onExited(java.util.fun
 meth public com.oracle.truffle.api.TruffleContext$Builder option(java.lang.String,java.lang.String)
 meth public com.oracle.truffle.api.TruffleContext$Builder options(java.util.Map<java.lang.String,java.lang.String>)
 meth public com.oracle.truffle.api.TruffleContext$Builder out(java.io.OutputStream)
+meth public com.oracle.truffle.api.TruffleContext$Builder threadAccessDeniedHandler(java.util.function.Consumer<java.lang.String>)
 meth public com.oracle.truffle.api.TruffleContext$Builder timeZone(java.time.ZoneId)
 supr java.lang.Object
-hfds allowCreateProcess,allowCreateThread,allowEnvironmentAccess,allowHostClassLoading,allowHostLookup,allowIO,allowInnerContextOptions,allowNativeAccess,allowPolyglotAccess,arguments,config,environment,err,in,inheritAccess,initializeCreatorContext,onCancelled,onClosed,onExited,options,out,permittedLanguages,sharingEnabled,sourceEnvironment,timeZone
+hfds allowCreateProcess,allowCreateThread,allowEnvironmentAccess,allowHostClassLoading,allowHostLookup,allowIO,allowInnerContextOptions,allowNativeAccess,allowPolyglotAccess,arguments,config,environment,err,in,inheritAccess,initializeCreatorContext,onCancelled,onClosed,onExited,options,out,permittedLanguages,sharingEnabled,sourceEnvironment,threadAccessDeniedHandler,timeZone
 
 CLSS public final com.oracle.truffle.api.TruffleFile
 fld public final static com.oracle.truffle.api.TruffleFile$AttributeDescriptor<java.lang.Boolean> IS_DIRECTORY

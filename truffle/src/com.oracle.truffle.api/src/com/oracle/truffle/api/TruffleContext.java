@@ -83,7 +83,7 @@ import com.oracle.truffle.api.source.Source;
  * then it is automatically closed together with the parent context.
  * <p>
  * Example usage:
- * 
+ *
  * {@snippet file="com/oracle/truffle/api/TruffleContext.java"
  * region="TruffleContextSnippets.MyNode#executeInContext"}
  *
@@ -533,7 +533,7 @@ public final class TruffleContext implements AutoCloseable {
      *            function is run at most once.
      * @return return value of the interruptible, or <code>null</code> if the interruptibe throws an
      *         {@link InterruptedException} without the context being cancelled or exited.
-     * 
+     *
      * @since 23.1
      */
     @SuppressWarnings("unused")
@@ -757,6 +757,7 @@ public final class TruffleContext implements AutoCloseable {
         private Boolean allowPolyglotAccess;
         private Boolean allowEnvironmentAccess;
         private ZoneId timeZone;
+        private Consumer<String> threadAccessDeniedHandler;
 
         Builder(Env env) {
             this.sourceEnvironment = env;
@@ -1037,6 +1038,23 @@ public final class TruffleContext implements AutoCloseable {
         }
 
         /**
+         * Installs handler to control what happens on multiple thread access. When multiple threads
+         * are accessing a context which isn't ready for multithreaded access an exception is
+         * yielded by default. By installing this {@code handler} one can control what shall happen.
+         * Either to throw exception (with the provided reason) or to resolve the multithreaded
+         * situation somehow and return to retry the thread access again.
+         *
+         * @param handler callback (that gets a reason as an input) that either throws an exception
+         *            or returns to signal a <b>request for retry</b>
+         * @return this builder
+         * @since 24.2
+         */
+        public Builder threadAccessDeniedHandler(Consumer<String> handler) {
+            this.threadAccessDeniedHandler = handler;
+            return this;
+        }
+
+        /**
          * Allows or denies access to the parent context's environment in this context. Set to
          * <code>true</code> to inherit variables from the outer context or <code>false</code> to
          * deny inheritance for this context. Environment variables can be set for the inner context
@@ -1208,7 +1226,8 @@ public final class TruffleContext implements AutoCloseable {
                 return LanguageAccessor.engineAccess().createInternalContext(
                                 sourceEnvironment.getPolyglotLanguageContext(), this.out, this.err, this.in, this.timeZone,
                                 this.permittedLanguages, this.config, this.options, this.arguments, this.sharingEnabled, this.initializeCreatorContext, this.onCancelled, this.onExited,
-                                this.onClosed, this.inheritAccess, this.allowCreateThread, this.allowNativeAccess, this.allowIO, this.allowHostLookup, this.allowHostClassLoading,
+                                this.onClosed, this.inheritAccess, this.allowCreateThread, this.threadAccessDeniedHandler, this.allowNativeAccess, this.allowIO, this.allowHostLookup,
+                                this.allowHostClassLoading,
                                 this.allowCreateProcess, this.allowPolyglotAccess, this.allowEnvironmentAccess, this.environment, this.allowInnerContextOptions);
             } catch (Throwable t) {
                 throw Env.engineToLanguageException(t);
