@@ -307,7 +307,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
             callSiteType = CallSiteType.Virtual;
         }
         ResolvedCall resolvedCall = LinkResolver.resolveCallSite(
-                        meta.getContext(),
+                        meta,
                         null, // No current class.
                         reflectedMethod, callSiteType, klass);
 

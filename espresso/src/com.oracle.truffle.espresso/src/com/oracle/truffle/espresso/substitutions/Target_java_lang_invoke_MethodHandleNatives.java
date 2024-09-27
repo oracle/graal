@@ -495,8 +495,8 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             }
 
             Symbol<Signature> sig = lookupSignature(meta, desc, mhMethodId);
-            Method m = LinkResolver.resolveSymbol(meta.getContext(), callerKlass, name, sig, resolutionKlass, resolutionKlass.isInterface(), doAccessChecks, doConstraintsChecks);
-            ResolvedCall resolvedCall = LinkResolver.resolveCallSite(meta.getContext(), callerKlass, m, CallSiteType.fromRefKind(refKind), resolutionKlass);
+            Method m = LinkResolver.resolveSymbol(meta, callerKlass, name, sig, resolutionKlass, resolutionKlass.isInterface(), doAccessChecks, doConstraintsChecks);
+            ResolvedCall resolvedCall = LinkResolver.resolveCallSite(meta, callerKlass, m, CallSiteType.fromRefKind(refKind), resolutionKlass);
 
             plantResolvedMethod(memberName, resolvedCall, meta);
 

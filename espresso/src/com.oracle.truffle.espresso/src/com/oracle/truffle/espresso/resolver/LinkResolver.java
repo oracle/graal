@@ -38,12 +38,12 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 public final class LinkResolver {
     /**
      * Symbolically resolves a method.
      *
+     * @param meta
      * @param accessingKlass The class requesting resolution.
      * @param name The name of the method.
      * @param signature The signature of the method.
@@ -51,16 +51,17 @@ public final class LinkResolver {
      * @param accessCheck Whether to perform access checks on the resolved method.
      * @param loadingConstraints Whether to check loading constraints on the resolved method.
      */
-    public static Method resolveSymbol(EspressoContext ctx, ObjectKlass accessingKlass,
+    public static Method resolveSymbol(Meta meta, ObjectKlass accessingKlass,
                     Symbol<Name> name, Symbol<Signature> signature, Klass symbolicHolder,
                     boolean interfaceLookup,
                     boolean accessCheck, boolean loadingConstraints) {
-        return LinkResolverImpl.resolveSymbol(ctx, accessingKlass, name, signature, symbolicHolder, interfaceLookup, accessCheck, loadingConstraints);
+        return LinkResolverImpl.resolveSymbol(meta, accessingKlass, name, signature, symbolicHolder, interfaceLookup, accessCheck, loadingConstraints);
     }
 
     /**
      * Resolve a call-site given the symbolic resolution of the method in the constant pool.
      *
+     * @param meta
      * @param currentKlass The class in which the call site to resolve appears.
      * @param symbolicResolution The result of the symbolic resolution of the method declared in the
      *            call site.
@@ -68,8 +69,8 @@ public final class LinkResolver {
      * @param symbolicHolder The declared holder for symbolic resolution. May differ from
      *            {@code symbolicResolution.getDeclaringKlass()}.
      */
-    public static ResolvedCall resolveCallSite(EspressoContext ctx, Klass currentKlass, Method symbolicResolution, CallSiteType callSiteType, Klass symbolicHolder) {
-        return LinkResolverImpl.resolveCallSite(ctx, currentKlass, symbolicResolution, callSiteType, symbolicHolder);
+    public static ResolvedCall resolveCallSite(Meta meta, Klass currentKlass, Method symbolicResolution, CallSiteType callSiteType, Klass symbolicHolder) {
+        return LinkResolverImpl.resolveCallSite(meta, currentKlass, symbolicResolution, callSiteType, symbolicHolder);
     }
 
     // Only static
@@ -83,10 +84,9 @@ final class LinkResolverImpl {
     private static final String A_CLASS = "a class";
 
     @TruffleBoundary
-    public static Method resolveSymbol(EspressoContext ctx, ObjectKlass accessingKlass, Symbol<Name> name, Symbol<Signature> signature, Klass symbolicHolder,
+    public static Method resolveSymbol(Meta meta, ObjectKlass accessingKlass, Symbol<Name> name, Symbol<Signature> signature, Klass symbolicHolder,
                     boolean interfaceLookup,
                     boolean accessCheck, boolean loadingConstraints) {
-        Meta meta = ctx.getMeta();
         Method resolved;
         if (interfaceLookup != symbolicHolder.isInterface()) {
             String expected = interfaceLookup ? AN_INTERFACE : A_CLASS;
@@ -101,7 +101,7 @@ final class LinkResolverImpl {
             resolved = symbolicHolder.lookupMethod(name, signature);
         }
         if (resolved == null) {
-            throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError, meta.toGuestString(symbolicHolder.getNameAsString() + "." + name + signature));
+            throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError, symbolicHolder.getNameAsString() + "." + name + signature);
         }
         if (accessCheck) {
             MemberRefConstant.doAccessCheck(accessingKlass, symbolicHolder, resolved, meta);
@@ -112,10 +112,9 @@ final class LinkResolverImpl {
         return resolved;
     }
 
-    public static ResolvedCall resolveCallSite(EspressoContext ctx, Klass currentKlass, Method symbolicResolution, CallSiteType callSiteType, Klass symbolicHolder) {
+    public static ResolvedCall resolveCallSite(Meta meta, Klass currentKlass, Method symbolicResolution, CallSiteType callSiteType, Klass symbolicHolder) {
         Method resolved = symbolicResolution;
         CallKind callKind;
-        Meta meta = ctx.getMeta();
         switch (callSiteType) {
             case Static:
                 // Otherwise, if the resolved method is an instance method, the invokestatic
@@ -132,7 +131,7 @@ final class LinkResolverImpl {
                 // Otherwise, if the resolved method is static or (jdk8 or earlier) private, the
                 // invokeinterface instruction throws an IncompatibleClassChangeError.
                 if (resolved.isStatic() ||
-                                (ctx.getJavaVersion().java8OrEarlier() && resolved.isPrivate())) {
+                                (meta.getJavaVersion().java8OrEarlier() && resolved.isPrivate())) {
                     throw throwBoundary(meta, meta.java_lang_IncompatibleClassChangeError, "Expected instance method '%s.%s%s'",
                                     resolved.getDeclaringKlass().getName(),
                                     resolved.getName(),
@@ -140,7 +139,7 @@ final class LinkResolverImpl {
                 }
                 if (resolved.getITableIndex() < 0) {
                     if (resolved.isPrivate()) {
-                        assert ctx.getJavaVersion().java9OrLater();
+                        assert meta.getJavaVersion().java9OrLater();
                         // Interface private methods do not appear in itables.
                         callKind = CallKind.DIRECT;
                     } else {

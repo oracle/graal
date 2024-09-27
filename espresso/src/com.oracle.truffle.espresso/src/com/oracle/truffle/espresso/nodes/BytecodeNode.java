@@ -2399,7 +2399,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     private InvokeQuickNode dispatchQuickened(int top, int curBCI, char cpi, int opcode, int statementIndex, Method resolutionSeed, boolean allowBytecodeInlining) {
 
         Klass symbolicRef = ((MethodRefConstant.Indexes) getConstantPool().methodAt(cpi)).getResolvedHolderKlass(getDeclaringKlass(), getConstantPool());
-        ResolvedCall resolvedCall = LinkResolver.resolveCallSite(getContext(), getDeclaringKlass(), resolutionSeed, CallSiteType.fromOpCode(opcode), symbolicRef);
+        ResolvedCall resolvedCall = LinkResolver.resolveCallSite(getMeta(), getDeclaringKlass(), resolutionSeed, CallSiteType.fromOpCode(opcode), symbolicRef);
 
         Method resolved = resolvedCall.getResolvedMethod();
         CallKind callKind = resolvedCall.getCallKind();

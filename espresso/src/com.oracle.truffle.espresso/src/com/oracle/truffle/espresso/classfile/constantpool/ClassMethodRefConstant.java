@@ -176,7 +176,7 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
             Symbol<Name> name = getName(pool);
             Symbol<Signature> signature = getSignature(pool);
 
-            Method method = LinkResolver.resolveSymbol(context, accessingKlass, name, signature, holderKlass, false, true, true);
+            Method method = LinkResolver.resolveSymbol(meta, accessingKlass, name, signature, holderKlass, false, true, true);
 
             if (method.isInvokeIntrinsic()) {
                 MHInvokeGenericNode.MethodHandleInvoker invoker = MHInvokeGenericNode.linkMethod(meta.getLanguage(), meta, accessingKlass, method, name, signature);

@@ -36,7 +36,6 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.resolver.LinkResolver;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 public interface InterfaceMethodRefConstant extends MethodRefConstant {
 
@@ -111,12 +110,11 @@ public interface InterfaceMethodRefConstant extends MethodRefConstant {
         public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, ObjectKlass accessingKlass) {
             METHODREF_RESOLVE_COUNT.inc();
 
-            EspressoContext context = pool.getContext();
             Klass holderInterface = getResolvedHolderKlass(accessingKlass, pool);
             Symbol<Name> name = getName(pool);
             Symbol<Signature> signature = getSignature(pool);
 
-            Method method = LinkResolver.resolveSymbol(context, accessingKlass, name, signature, holderInterface, true, true, true);
+            Method method = LinkResolver.resolveSymbol(pool.getContext().getMeta(), accessingKlass, name, signature, holderInterface, true, true, true);
 
             return new Resolved(method);
         }
