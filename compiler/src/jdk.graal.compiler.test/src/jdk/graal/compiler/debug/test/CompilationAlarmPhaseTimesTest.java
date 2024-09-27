@@ -94,7 +94,12 @@ public class CompilationAlarmPhaseTimesTest extends GraalCompilerTest {
                 duration += c;
                 index++;
             }
-            assert Integer.parseInt(duration) >= 2000 : String.format("Must at least wait for 2000ms but waited %s error was %s", duration, message);
+            /*
+             * NOTE: Thread.sleep is using nanoTime and compilation alarm uses
+             * System.currenTimeMillis which is a different timer so there can be small imprecision.
+             * We allow 100ms total imprecision.
+             */
+            assert Integer.parseInt(duration) >= 2000 - 100/* NOTE */ : String.format("Must at least wait for 2000ms but waited %s error was %s", duration, message);
         }
     }
 
