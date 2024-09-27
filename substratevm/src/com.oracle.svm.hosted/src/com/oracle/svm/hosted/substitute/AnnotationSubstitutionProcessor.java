@@ -328,6 +328,8 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     protected void handleClass(Class<?> annotatedClass) {
         guarantee(Modifier.isFinal(annotatedClass.getModifiers()) || annotatedClass.isInterface(), "Annotated class must be final: %s", annotatedClass);
         guarantee(annotatedClass.getSuperclass() == Object.class || annotatedClass.isInterface(), "Annotated class must inherit directly from Object: %s", annotatedClass);
+        guarantee(annotatedClass.getDeclaringClass() == null || Modifier.isStatic(annotatedClass.getModifiers()),
+                        "Annotated class must be a static inner class, or a top-level class: %s", annotatedClass);
 
         if (!NativeImageGenerator.includedIn(ImageSingletons.lookup(Platform.class), lookupAnnotation(annotatedClass, Platforms.class))) {
             return;
