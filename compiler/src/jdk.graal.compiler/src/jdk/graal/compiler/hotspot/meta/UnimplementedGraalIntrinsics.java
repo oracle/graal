@@ -93,6 +93,9 @@ public final class UnimplementedGraalIntrinsics {
                         // beneficial.
                         "java/lang/Math.max(II)I",
                         "java/lang/Math.min(II)I",
+                        // Newly added by JDK-8338694
+                        "java/lang/Math.tanh(D)D",
+                        // see Math.min/max
                         "java/lang/StrictMath.max(II)I",
                         "java/lang/StrictMath.min(II)I",
                         // handled through an intrinsic for String.equals itself
