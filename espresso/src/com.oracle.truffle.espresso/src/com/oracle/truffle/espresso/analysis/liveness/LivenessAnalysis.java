@@ -88,7 +88,7 @@ public final class LivenessAnalysis {
     private final CatchUpMap catchUpMap;
 
     public void performOnEdge(VirtualFrame frame, int bci, int nextBci, boolean disable) {
-        if (CompilerDirectives.inCompiledCode()) {
+        if (CompilerDirectives.inCompiledCode() || EspressoOptions.LivenessAnalysisInInterpreter) {
             if (!disable) {
                 if (edge != null && edge[nextBci] != null) {
                     edge[nextBci].onEdge(frame, bci);
@@ -98,7 +98,7 @@ public final class LivenessAnalysis {
     }
 
     public void onStart(VirtualFrame frame, boolean disable) {
-        if (CompilerDirectives.inCompiledCode()) {
+        if (CompilerDirectives.inCompiledCode() || EspressoOptions.LivenessAnalysisInInterpreter) {
             if (!disable) {
                 if (onStart != null) {
                     onStart.execute(frame);
@@ -108,7 +108,7 @@ public final class LivenessAnalysis {
     }
 
     public void performPostBCI(VirtualFrame frame, int bci, boolean disable) {
-        if (CompilerDirectives.inCompiledCode()) {
+        if (CompilerDirectives.inCompiledCode() || EspressoOptions.LivenessAnalysisInInterpreter) {
             if (!disable) {
                 if (postBci != null && postBci[bci] != null) {
                     postBci[bci].execute(frame);
@@ -469,7 +469,7 @@ public final class LivenessAnalysis {
         }
     }
 
-    private static final class CatchUpMap {
+    protected static final class CatchUpMap {
         @CompilationFinal(dimensions = 1) //
         private final int[] loopStarts;
         @CompilationFinal(dimensions = 1) //
@@ -495,5 +495,4 @@ public final class LivenessAnalysis {
             }
         }
     }
-
 }

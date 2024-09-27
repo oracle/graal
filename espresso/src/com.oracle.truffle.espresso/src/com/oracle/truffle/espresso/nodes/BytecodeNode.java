@@ -740,7 +740,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         int statementIndex = InstrumentationSupport.NO_STATEMENT;
         int nextStatementIndex = startStatementIndex;
         boolean skipEntryInstrumentation = isOSR;
-        boolean skipLivenessActions = false;
+        boolean skipLivenessActions = instrument != null;
         boolean shouldResumeContinuation = resumeContinuation;
 
         final Counter loopCount = new Counter();
