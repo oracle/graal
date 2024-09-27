@@ -274,6 +274,15 @@ def _test_libgraal_fatal_error_handling(extra_vm_arguments):
                         pass
                     else:
                         mx.abort('Expected "Fatal error in JVMCI" to be in contents of ' + hs_err + ':' + linesep + contents)
+                # check that the hs_err contains libgraal symbols on supported platforms
+                symbol_patterns = {
+                    'linux' : 'com.oracle.svm.core.jdk.VMErrorSubstitutions::doShutdown',
+                    'darwin' : 'VMErrorSubstitutions_doShutdown',
+                    'windows' : None
+                }
+                pattern = symbol_patterns[mx.get_os()]
+                if pattern and pattern not in contents:
+                    mx.abort('Expected "' + pattern + '" to be in contents of ' + hs_err + ':' + linesep + contents)
 
         if 'JVMCINativeLibraryErrorFile' in out.data and not seen_libjvmci_log:
             mx.abort('Expected a file matching "hs_err_pid*_libjvmci.log" in test directory. Entries found=' + str(listdir(scratch_dir)))
