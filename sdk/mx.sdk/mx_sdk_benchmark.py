@@ -1181,6 +1181,321 @@ class SpecJbb2015BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, HeapSettingsMix
 mx_benchmark.add_bm_suite(SpecJbb2015BenchmarkSuite())
 
 
+_baristaConfig = {
+    "benchmarks": ["micronaut-hello-world", "micronaut-shopcart", "micronaut-similarity", "quarkus-hello-world", "quarkus-tika", "spring-hello-world", "spring-petclinic"],
+    "latency_percentiles": [50.0, 75.0, 90.0, 99.0, 99.9, 99.99, 99.999, 100.0],
+    "rss_percentiles": [100, 99, 98, 97, 96, 95, 90, 75, 50, 25],
+    "disable_trackers": [mx_benchmark.RssTracker, mx_benchmark.PsrecordTracker, mx_benchmark.PsrecordMaxrssTracker, mx_benchmark.RssPercentilesTracker, mx_benchmark.RssPercentilesAndMaxTracker],
+}
+
+class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
+    """Barista benchmark suite implementation. A collection of microservice workloads running on the Barista harness.
+    """
+    def __init__(self, *args, **kwargs):
+        super(BaristaBenchmarkSuite, self).__init__(BaristaBenchmarkSuite.BaristaCommand(), *args, **kwargs)
+        self._version = None
+        self._context = None
+
+    @property
+    def context(self):
+        return self._context
+
+    def version(self):
+        if self._version is None:
+            # tomllib was included in python standard library with version 3.11
+            try:
+                import tomllib
+                with open(self.baristaProjectConfigurationPath(), mode="rb") as pyproject:
+                    self._version = tomllib.load(pyproject)["project"]["version"]
+            except ImportError:
+                mx.warn("Could not read the Barista version from the project's `pyproject.toml` file because the `tomllib` python module is not installed. Use python3.11+ or install `tomllib` with pip.")
+                self._version = self.defaultSuiteVersion()
+        return self._version
+
+    def name(self):
+        return "barista"
+
+    def group(self):
+        return "Graal"
+
+    def subgroup(self):
+        return "graal-compiler"
+
+    def benchmarkList(self, bmSuiteArgs):
+        return self.completeBenchmarkList(bmSuiteArgs)
+
+    def completeBenchmarkList(self, bmSuiteArgs):
+        return _baristaConfig["benchmarks"]
+
+    def baristaDirectoryPath(self):
+        barista_home = mx.get_env("BARISTA_HOME")
+        if barista_home is None or not os.path.isdir(barista_home):
+            mx.abort("Please set the BARISTA_HOME environment variable to a " +
+                     "Barista benchmark suite directory.")
+        return barista_home
+
+    def baristaFilePath(self, file_name):
+        barista_home = self.baristaDirectoryPath()
+        file_path = os.path.abspath(os.path.join(barista_home, file_name))
+        if not os.path.isfile(file_path):
+            raise FileNotFoundError("The BARISTA_HOME environment variable points to a directory " +
+                                    f"that does not contain a '{file_name}' file.")
+        return file_path
+
+    def baristaProjectConfigurationPath(self):
+        return self.baristaFilePath("pyproject.toml")
+
+    def baristaHarnessPath(self):
+        return self.baristaFilePath("barista")
+
+    def validateEnvironment(self):
+        self.baristaProjectConfigurationPath()
+        self.baristaHarnessPath()
+
+    def register_tracker(self, name, tracker_type):
+        if tracker_type in _baristaConfig["disable_trackers"]:
+            mx.log(f"Ignoring the registration of '{name}' tracker as it was disabled for {self.__class__.__name__}.")
+            return
+        super(BaristaBenchmarkSuite, self).register_tracker(name, tracker_type)
+
+    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
+        # Pass the VM options, BaristaCommand will form the final command.
+        return self.vmArgs(bmSuiteArgs)
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        json_file_group_name = "barista_json_results_file_path"
+        json_file_pattern = fr"Saving all collected metrics to JSON file: (?P<{json_file_group_name}>\S+?)$"
+        all_rules = []
+
+        # Startup
+        all_rules.append(mx_benchmark.JsonArrayStdOutFileRule(json_file_pattern, json_file_group_name, {
+            "benchmark": ("<benchmark>", str),
+            "metric.name": "request-time",
+            "metric.type": "numeric",
+            "metric.unit": "ms",
+            "metric.value": ("<startup.measurements.response_time>", float),
+            "metric.better": "lower",
+            "metric.iteration": ("<startup.measurements.iteration>", int),
+            "load-tester.id": ("<startup.id>", str),
+            "load-tester.method-type": "requests"
+        }, ["benchmark", "startup.id", "startup.measurements.iteration", "startup.measurements.response_time"]))
+
+        # Warmup
+        all_rules.append(mx_benchmark.JsonArrayStdOutFileRule(json_file_pattern, json_file_group_name, {
+            "benchmark": ("<benchmark>", str),
+            "metric.name": "warmup",
+            "metric.type": "numeric",
+            "metric.unit": "op/s",
+            "metric.value": ("<warmup.measurements.throughput>", float),
+            "metric.better": "higher",
+            "metric.iteration": ("<warmup.measurements.iteration>", int),
+            "load-tester.id": ("<warmup.id>", str),
+            "load-tester.command": ("<warmup.measurements.command>", str)
+        }, ["benchmark", "warmup.id", "warmup.measurements.iteration", "warmup.measurements.throughput", "warmup.measurements.command"]))
+
+        # Throughput
+        all_rules.append(mx_benchmark.JsonArrayStdOutFileRule(json_file_pattern, json_file_group_name, {
+            "benchmark": ("<benchmark>", str),
+            "metric.name": "throughput",
+            "metric.type": "numeric",
+            "metric.unit": "op/s",
+            "metric.value": ("<throughput.measurements.throughput>", float),
+            "metric.better": "higher",
+            "metric.iteration": ("<throughput.measurements.iteration>", int),
+            "load-tester.id": ("<throughput.id>", str),
+            "load-tester.command": ("<throughput.measurements.command>", str)
+        }, ["benchmark", "throughput.id", "throughput.measurements.iteration", "throughput.measurements.throughput", "throughput.measurements.command"]))
+
+        # Latency
+        all_rules += [mx_benchmark.JsonArrayStdOutFileRule(json_file_pattern, json_file_group_name, {
+            "benchmark": ("<benchmark>", str),
+            "metric.name": "latency",
+            "metric.type": "numeric",
+            "metric.unit": "ms",
+            "metric.value": (f"<latency__measurements__final_measurements__p_values__{float(percentile)}>", float),
+            "metric.percentile": float(percentile),
+            "metric.better": "lower",
+            "metric.iteration": ("<latency__measurements__final_measurements__iteration>", int),
+            "load-tester.id": ("<latency__id>", str),
+            "load-tester.command": ("<latency__measurements__final_measurements__command>", str)
+        }, [
+            "benchmark",
+            "latency__id",
+            "latency__measurements__final_measurements__iteration",
+            f"latency__measurements__final_measurements__p_values__{float(percentile)}",
+            "latency__measurements__final_measurements__command"
+        ], indexer_str="__") for percentile in _baristaConfig["latency_percentiles"]]
+
+        # Resource Usage
+        all_rules += [mx_benchmark.JsonArrayStdOutFileRule(json_file_pattern, json_file_group_name, {
+            "benchmark": ("<benchmark>", str),
+            "metric.name": "rss",
+            "metric.type": "numeric",
+            "metric.unit": "MB",
+            "metric.value": (f"<resource_usage__rss__p{float(percentile)}>", float),
+            "metric.percentile": float(percentile),
+            "metric.better": "lower",
+        }, [
+            "benchmark", f"resource_usage__rss__p{float(percentile)}"
+        ], indexer_str="__") for percentile in _baristaConfig["rss_percentiles"]]
+        all_rules.append(mx_benchmark.JsonArrayStdOutFileRule(json_file_pattern, json_file_group_name, {
+            "benchmark": ("<benchmark>", str),
+            "metric.name": "max-rss",
+            "metric.type": "numeric",
+            "metric.unit": "MB",
+            "metric.value": ("<resource_usage__rss__p100.0>", float),
+            "metric.better": "lower",
+        }, ["benchmark", f"resource_usage__rss__p100.0"], indexer_str="__"))
+
+        return all_rules
+
+    def runAndReturnStdOut(self, benchmarks, bmSuiteArgs):
+        if benchmarks is None:
+            benchmarks = self.benchmarkList(bmSuiteArgs)
+
+        out_acc = ""
+        last_dims = None
+        # Run the benchmarks one by one
+        for benchmark in benchmarks:
+            self._currently_running_benchmark = benchmark
+            retcode, out, dims = super(BaristaBenchmarkSuite, self).runAndReturnStdOut([benchmark], bmSuiteArgs)
+            if not self.validateReturnCode(retcode):
+                self.on_fail(f"Benchmark failed, exit code: {retcode}. Benchmark: {benchmark}")
+            out_acc += out
+            if last_dims is not None and last_dims != dims:
+                self.on_fail(f"Expected equal dims\nlast: {last_dims}\ncurr: {dims}")
+            last_dims = dims
+        self._currently_running_benchmark = "".join(benchmarks)
+        return retcode, out_acc, dims
+
+    def validateStdoutWithDimensions(self, out, benchmarks, bmSuiteArgs, retcode=None, dims=None, extraRules=None) -> DataPoints:
+        datapoints = super(BaristaBenchmarkSuite, self).validateStdoutWithDimensions(out, benchmarks, bmSuiteArgs, retcode=retcode, dims=dims, extraRules=extraRules)
+        for datapoint in datapoints:
+            # Expand the 'load-tester' field group
+            if "load-tester.command" in datapoint:
+                command = datapoint["load-tester.command"].split()
+
+                if command[0] == "wrk":
+                    datapoint["load-tester.method-type"] = "throughput"
+                else:
+                    datapoint["load-tester.method-type"] = "latency"
+                datapoint["load-tester.options"] = ' '.join(command[1:])
+                if "-R" in command:
+                    datapoint["load-tester.rate"] = int(command[command.index("-R") + 1])
+                if "-c" in command:
+                    datapoint["load-tester.connections"] = int(command[command.index("-c") + 1])
+                if "-t" in command:
+                    datapoint["load-tester.threads"] = int(command[command.index("-t") + 1])
+
+                del datapoint["load-tester.command"]
+        return datapoints
+
+    def run(self, benchmarks, bmSuiteArgs) -> DataPoints:
+        self._context = BaristaBenchmarkSuite.RuntimeContext(self, benchmarks, bmSuiteArgs)
+        return super(BaristaBenchmarkSuite, self).run(benchmarks, bmSuiteArgs)
+
+    class BaristaCommand(mx_benchmark.CustomHarnessCommand):
+        """Maps a JVM command into a command tailored for the Barista harness.
+        """
+        def _regexFindInCommand(self, cmd, pattern):
+            """Searches through the words of a command for a regex pattern.
+
+            :param list[str] cmd: Command to search through.
+            :param str pattern: Regex pattern to search for.
+            :return: The match if one is found, None otherwise.
+            :rtype: re.Match
+            """
+            for word in cmd:
+                m = re.search(pattern, word)
+                if m:
+                    return m
+            return None
+
+        def _updateCommandOption(self, cmd, option_name, option_short_name, new_value):
+            """Updates command option value, concatenates the new value with the existing one, if it is present.
+
+            :param list[str] cmd: Command to be updated.
+            :param str option_name: Name of the option to be updated.
+            :param str option_short_name: Short name of the option to be updated.
+            :param str new_value: New value for the option, to be concatenated to the existing value, if it is present.
+            :return: Updated command.
+            :rtype: list[str]
+            """
+            option_pattern = f"^(?:{option_name}=|{option_short_name}=)(.+)$"
+            existing_option_match = self._regexFindInCommand(cmd, option_pattern)
+            if existing_option_match:
+                cmd.remove(existing_option_match.group(0))
+                new_value = f"{new_value} {existing_option_match.group(1)}"
+            cmd.append(f"{option_name}={new_value}")
+
+        def produceHarnessCommand(self, cmd, suite):
+            """Maps a JVM command into a command tailored for the Barista harness.
+
+            :param list[str] cmd: JVM command to be mapped.
+            :param BaristaBenchmarkSuite suite: Barista benchmark suite running the benchmark on the Barista harness.
+            :return: Command tailored for the Barista harness.
+            :rtype: list[str]
+            """
+            if not isinstance(suite, BaristaBenchmarkSuite):
+                raise TypeError(f"Expected an instance of {BaristaBenchmarkSuite.__name__}, instead got an instance of {suite.__class__.__name__}")
+            jvm_cmd = cmd
+
+            # Extract the path to the JVM distribution from the JVM command
+            java_exe_pattern = os.path.join("^(.*)", "bin", "java$")
+            java_exe_match = self._regexFindInCommand(jvm_cmd, java_exe_pattern)
+            if not java_exe_match:
+                raise ValueError(f"Could not find the path to the java executable in: {jvm_cmd}")
+
+            # Extract VM options and command prefix from the JVM command
+            index_of_java_exe = jvm_cmd.index(java_exe_match.group(0))
+            jvm_cmd_prefix = jvm_cmd[:index_of_java_exe]
+            jvm_vm_options = jvm_cmd[index_of_java_exe + 1:]
+
+            # Verify that the run arguments don't already contain a "--mode" option
+            run_args = suite.runArgs(suite.context.bmSuiteArgs)
+            mode_pattern = r"^(?:-m|--mode)(=.*)?$"
+            mode_match = self._regexFindInCommand(run_args, mode_pattern)
+            if mode_match:
+                raise ValueError(f"You should not set the Barista '--mode' option manually! Found '{mode_match.group(0)}' in the run arguments!")
+
+            # Construct the Barista command
+            barista_cmd = [suite.baristaHarnessPath()]
+            barista_cmd.append(f"--java-home={java_exe_match.group(1)}")
+            barista_cmd += run_args
+            if jvm_vm_options:
+                self._updateCommandOption(barista_cmd, "--vm-options", "-v", " ".join(jvm_vm_options))
+            if jvm_cmd_prefix:
+                self._updateCommandOption(barista_cmd, "--cmd-app-prefix", "-p", " ".join(jvm_cmd_prefix))
+            barista_cmd += ["--mode", "jvm"]
+            barista_cmd.append(suite._currently_running_benchmark)
+            return barista_cmd
+
+    class RuntimeContext():
+        """Container class for the runtime context of BaristaBenchmarkSuite.
+        """
+        def __init__(self, suite, benchmarks, bmSuiteArgs):
+            if not isinstance(suite, BaristaBenchmarkSuite):
+                raise TypeError(f"Expected an instance of {BaristaBenchmarkSuite.__name__}, instead got an instance of {suite.__class__.__name__}")
+            self._suite = suite
+            self._benchmarks = benchmarks
+            self._bmSuiteArgs = bmSuiteArgs
+
+        @property
+        def suite(self):
+            return self._suite
+
+        @property
+        def benchmarks(self):
+            return self._benchmarks
+
+        @property
+        def bmSuiteArgs(self):
+            return self._bmSuiteArgs
+
+
+mx_benchmark.add_bm_suite(BaristaBenchmarkSuite())
+
+
 _renaissanceConfig = {
     "akka-uct"         : 24,
     "als"              : 60,
