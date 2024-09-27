@@ -56,6 +56,7 @@ import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
+import com.oracle.truffle.api.bytecode.OperationProxy;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation;
 import com.oracle.truffle.api.bytecode.test.BytecodeDSLTestLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -86,8 +87,9 @@ public class GettingStarted {
      */
     @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
     /*
-     * Defines a new {@code ScOr} operation. It uses {@code OR} semantics, converts values to
-     * boolean using {@link ToBool}, and produces the converted boolean values.
+     * Defines a new {@code ScOr} operation ({@code Sc} stands for "short-circuit"). It uses {@code
+     * OR} semantics, converts values to boolean using {@link ToBool}, and produces the converted
+     * boolean values.
      */
     @ShortCircuitOperation(name = "ScOr", operator = ShortCircuitOperation.Operator.OR_RETURN_CONVERTED, booleanConverter = GettingStartedBytecodeRootNode.ToBool.class)
     public abstract static class GettingStartedBytecodeRootNode extends RootNode implements BytecodeRootNode {
@@ -156,10 +158,10 @@ public class GettingStarted {
          * capabilities.
          */
         @Operation
-        public static final class Or {
+        public static final class EagerOr {
             @Specialization
             public static boolean doBools(boolean a, boolean b) {
-                return a || b;
+                return a | b;
             }
         }
 
@@ -268,9 +270,7 @@ public class GettingStarted {
          * {@link BytecodeRootNodes} instance containing the root node(s). These root nodes contain
          * bytecode that implements the series of operations.
          */
-        BytecodeRootNodes<GettingStartedBytecodeRootNode> rootNodes = GettingStartedBytecodeRootNodeGen.create(null /*
-                                                                                                                     * TruffleLanguage
-                                                                                                                     */, BytecodeConfig.DEFAULT, parser);
+        BytecodeRootNodes<GettingStartedBytecodeRootNode> rootNodes = GettingStartedBytecodeRootNodeGen.create(getLanguage(), BytecodeConfig.DEFAULT, parser);
         GettingStartedBytecodeRootNode plusOne = rootNodes.getNode(0);
 
         /**
@@ -627,7 +627,7 @@ public class GettingStarted {
              */
             b.beginRoot();
                 b.beginReturn();
-                    b.beginOr();
+                    b.beginEagerOr();
                         b.beginToBool();
                             b.emitLoadArgument(0);
                         b.endToBool();
@@ -638,7 +638,7 @@ public class GettingStarted {
                                 b.emitLoadConstant(0);
                             b.endDiv();
                         b.endToBool();
-                    b.endOr();
+                    b.endEagerOr();
                 b.endReturn();
             b.endRoot();
 

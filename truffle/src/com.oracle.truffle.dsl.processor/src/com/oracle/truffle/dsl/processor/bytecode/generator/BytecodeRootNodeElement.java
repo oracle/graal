@@ -15261,7 +15261,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
          * To avoid storing the bci in cases when the operation is simple, we use the heuristic that
          * a node will not escape/read its own bci unless it has a cached value.
          *
-         * Note: the caches list includes bind values, so @Bind("$root") is included in the check.
+         * Note: the caches list includes bind values, so @Bind("$rootNode") is included in the
+         * check.
          */
         private boolean customInstructionMayReadBci(InstructionModel instr) {
             for (SpecializationData spec : instr.nodeData.getSpecializations()) {

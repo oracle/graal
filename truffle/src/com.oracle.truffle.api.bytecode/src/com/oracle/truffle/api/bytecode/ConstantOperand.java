@@ -64,7 +64,8 @@ import com.oracle.truffle.api.bytecode.ConstantOperand.Repeat;
  * computation.
  * <li>Constant operands have {@link com.oracle.truffle.api.CompilerDirectives.CompilationFinal}
  * semantics. Though an interpreter can use {@code LoadConstant} operations to supply dynamic
- * operands, those constants are <strong>not guaranteed to be compilation-final</strong>.
+ * operands, those constants are <strong>not guaranteed to be compilation-final</strong> (the
+ * constant is pushed onto and then popped from the stack, which PE cannot always constant fold).
  * <li>{@link Instrumentation} and {@link Prolog} operations are restricted and cannot encode
  * arbitrary dynamic operands. Constant operands can be used to encode other information needed by
  * these operations.

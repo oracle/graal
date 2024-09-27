@@ -6,12 +6,11 @@ Runtime compilation leverages partial evaluation (PE) to specialize  the interpr
 Partial evaluation reduces much of the overhead required to execute the interpreter.
 For Bytecode DSL interpreters, PE unrolls the bytecode dispatch loop using the actual bytecode, which can completely remove the overhead of bytecode dispatch.
 
-Unfortunately, there are some limitations to what values PE can reduce to constants.
-We discuss these limitations below, and offer some workarounds.
+For technical reasons, there are some limitations to runtime-compiled code that you should be aware of.
 
-## Limitations
+## Partial evaluation constants
 
-Because of how the bytecode interpreters execute, sometimes constant data is not determined to be constant by PE.
+Because of how Bytecode DSL interpreters execute, sometimes constant data is not determined to be constant by PE.
 
 A `LoadConstant` operation, despite its name, is not guaranteed to produce a PE constant.
 `LoadConstant` executes by pushing a constant onto the operand stack (in the `Frame`).
@@ -22,7 +21,7 @@ A [`@Variadic`](https://github.com/oracle/graal/blob/master/truffle/src/com.orac
 However, a variadic operand only has a PE constant length up to a certain length (8) because of some limitations with the current implementation.
 PE cannot statically determine the length of larger arrays; there are plans to fix this in a future release.
 
-## Workarounds
+### Workarounds
 
 If an operand is always a constant value, it can be declared as a [`@ConstantOperand`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/ConstantOperand.java).
 Unlike regular (dynamic) operands that are computed and then pushed/popped from the stack, constant operands are read directly from an array of constants, so their values are always PE constants.
@@ -52,3 +51,11 @@ public static final class IterateArray {
 
 In general, if your interpreter relies on a value being PE constant (e.g., to unroll a loop) it is a good idea to assert the value is `CompilerAsserts.partialEvaluationConstant` (see [`CompilerAsserts`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api/src/com/oracle/truffle/api/CompilerAsserts.java)).
 When these assertions fail, compilation bails out early with a helpful diagnostic message, rather than silently producing sub-optimal code (or failing with a less actionable error message).
+
+## Source information
+
+[Reparsing](UserGuide.md#reparsing) a root node changes its current `BytecodeNode`, and usually invalidates any compiled code for the node.
+However, to avoid costly invalidations, reparsing **does not** invalidate code for source-only updates (i.e., when bytecode is unchanged).
+
+Consequently, the current `BytecodeNode` can be out of date in compiled code if source information is lazily materialized.
+Any code that accesses source information through the current `BytecodeNode` or `BytecodeLocation` should **not be included** in compiled code, and should instead be guarded by a `@TruffleBoundary`.

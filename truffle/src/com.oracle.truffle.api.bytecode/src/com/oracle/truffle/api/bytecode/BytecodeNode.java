@@ -217,7 +217,7 @@ public abstract class BytecodeNode extends Node {
      * Finds the most concrete source location associated with the given bytecode index. The method
      * returns <code>null</code> if no source section could be found. Calling this method also
      * {@link BytecodeRootNodes#ensureSourceInformation() ensures source sections} are materialized.
-     * *
+     *
      * <p>
      * If source sections have not yet been materialized, then <code>null</code> is returned. Source
      * sections may be materialized by calling {@link #ensureSourceInformation()}.
@@ -464,8 +464,8 @@ public abstract class BytecodeNode extends Node {
      * should only be used for slow-path use cases (like frame introspection). Prefer regular local
      * load operations (via {@code LoadLocal} operations) when possible.
      * <p>
-     * An operation can use this method by binding the root node to a specialization parameter (via
-     * {@code @Bind("$root")}) and then invoking the method on the root node.
+     * An operation can use this method by binding the bytecode node to a specialization parameter
+     * (via {@code @Bind("$bytecodeNode")}) and then invoking the method on the bytecode node.
      * <p>
      * The order of the locals corresponds to the order in which they were created using one of the
      * {@code createLocal()} overloads. It is up to the language to track the creation order.

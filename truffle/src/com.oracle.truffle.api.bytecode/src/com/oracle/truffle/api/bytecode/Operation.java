@@ -60,14 +60,14 @@ import com.oracle.truffle.api.instrumentation.Tag;
  * <li>The class should not contain instance members.
  * <li>The class's specializations also have some differences:
  * <ul>
- * <li>Specializations must all have the same arity (with respect to non-special parameters). The
- * parameters of any {@link com.oracle.truffle.api.dsl.Fallback} specialization must be of type
- * {@link Object}.
- * <li>Specializations should be {@code public static}. Any members referenced in DSL expressions
- * (e.g., {@link com.oracle.truffle.api.dsl.Cached @Cached} parameters) should also be
- * {@code static} and visible to the bytecode root node class.
- * <li>Specializations can declare additional special parameters (e.g., {@link LocalSetter}). They
- * can also bind some special parameters (e.g., {@code @Bind("$root")}).
+ * <li>Specializations should be {@code static} and at least package-private visibility. Any members
+ * referenced in DSL expressions (e.g., {@link com.oracle.truffle.api.dsl.Cached @Cached}
+ * parameters) should also be {@code static} and visible to the bytecode root node class.
+ * <li>The parameters of any {@link com.oracle.truffle.api.dsl.Fallback} specialization must be of
+ * type {@link Object}. Unlike ASTs, which can define execute methods with specialized parameter
+ * types, operation arguments are consumed from the stack.
+ * <li>Specializations can bind some special parameters: {@code $rootNode}, {@code $bytecodeNode},
+ * and {@code $bytecodeIndex}.
  * </ul>
  * </ul>
  *

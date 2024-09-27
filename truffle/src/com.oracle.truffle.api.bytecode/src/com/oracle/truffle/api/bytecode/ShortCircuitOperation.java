@@ -127,7 +127,7 @@ public @interface ShortCircuitOperation {
         AND_RETURN_CONVERTED,
         /** OR operator that produces the operand value. */
         OR_RETURN_VALUE,
-        /** AND operator that produces the converted boolean value. */
+        /** OR operator that produces the converted boolean value. */
         OR_RETURN_CONVERTED;
     }
 
