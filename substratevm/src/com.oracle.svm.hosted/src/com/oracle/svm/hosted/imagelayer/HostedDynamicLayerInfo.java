@@ -68,20 +68,23 @@ public class HostedDynamicLayerInfo extends DynamicImageLayerInfo implements Lay
     private final ConcurrentHashMap<Integer, MethodNameInfo> methodIdToNameInfoMap;
     private final CGlobalData<PointerBase> cGlobalData;
     private final Set<String> priorLayerMethodSymbols = new HashSet<>();
+    private final List<String> libNames;
     private boolean persisted = false;
 
     HostedDynamicLayerInfo() {
-        this(0, null, new HashMap<>(), new ConcurrentHashMap<>());
+        this(0, null, new HashMap<>(), new ConcurrentHashMap<>(), new ArrayList<>());
     }
 
     public static HostedDynamicLayerInfo singleton() {
         return (HostedDynamicLayerInfo) ImageSingletons.lookup(DynamicImageLayerInfo.class);
     }
 
-    private HostedDynamicLayerInfo(int layerNumber, String codeSectionStartSymbol, Map<Integer, Integer> methodIdToOffsetMap, ConcurrentHashMap<Integer, MethodNameInfo> methodIdToNameInfoMap) {
+    private HostedDynamicLayerInfo(int layerNumber, String codeSectionStartSymbol, Map<Integer, Integer> methodIdToOffsetMap, ConcurrentHashMap<Integer, MethodNameInfo> methodIdToNameInfoMap,
+                    List<String> libNames) {
         super(layerNumber);
         this.methodIdToOffsetMap = methodIdToOffsetMap;
         this.methodIdToNameInfoMap = methodIdToNameInfoMap;
+        this.libNames = libNames;
         cGlobalData = codeSectionStartSymbol == null ? null : CGlobalDataFactory.forSymbol(codeSectionStartSymbol);
     }
 
@@ -139,6 +142,14 @@ public class HostedDynamicLayerInfo extends DynamicImageLayerInfo implements Lay
     public void defineSymbolsForPriorLayerMethods(ObjectFile objectFile) {
         assert BuildPhaseProvider.isHeapLayoutFinished();
         priorLayerMethodSymbols.forEach(symbol -> objectFile.createUndefinedSymbol(symbol, 0, true));
+    }
+
+    public void registerLibName(String lib) {
+        libNames.add(lib);
+    }
+
+    public boolean isImageLayerLib(String lib) {
+        return libNames.contains(lib);
     }
 
     @Override
@@ -207,6 +218,8 @@ public class HostedDynamicLayerInfo extends DynamicImageLayerInfo implements Lay
         writer.writeIntList("methodNameIDs", methodNameIds);
         writer.writeStringList("names", names);
 
+        writer.writeStringList("libNames", libNames);
+
         return PersistFlags.CREATE;
     }
 
@@ -248,7 +261,9 @@ public class HostedDynamicLayerInfo extends DynamicImageLayerInfo implements Lay
             assert prev == null;
         }
 
-        return new HostedDynamicLayerInfo(layerNumber, codeSectionStartSymbol, initialMethodIdToOffsetMap, initialMethodIdToMethodNameMap);
+        var libNames = loader.readStringList("libNames");
+
+        return new HostedDynamicLayerInfo(layerNumber, codeSectionStartSymbol, initialMethodIdToOffsetMap, initialMethodIdToMethodNameMap, libNames);
     }
 }
 
