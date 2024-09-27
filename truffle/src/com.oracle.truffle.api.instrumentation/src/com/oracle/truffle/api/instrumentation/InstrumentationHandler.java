@@ -2268,10 +2268,10 @@ final class InstrumentationHandler {
         }
 
         private boolean checkServices(String[] expectedServices) {
-            LOOP: for (String name : expectedServices) {
+            loop: for (String name : expectedServices) {
                 for (Object obj : services) {
                     if (findType(name, obj.getClass())) {
-                        continue LOOP;
+                        continue loop;
                     }
                 }
                 failInstrumentInitialization(env, String.format("%s declares service %s but doesn't register it", instrumentClassName, name), null);

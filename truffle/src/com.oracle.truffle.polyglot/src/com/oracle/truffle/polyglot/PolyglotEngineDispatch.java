@@ -150,7 +150,7 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
                     String tmpDir, ClassLoader hostClassLoader, boolean allowValueSharing, boolean useSystemExit) {
         PolyglotEngineImpl receiver = (PolyglotEngineImpl) oreceiver;
         PolyglotContextImpl context = receiver.createContext(sandboxPolicy, out, err, in, allowHostLookup, hostAccess, polyglotAccess,
-                        allowNativeAccess, allowCreateThread, allowHostClassLoading,
+                        allowNativeAccess, allowCreateThread, null, allowHostClassLoading,
                         allowInnerContextOptions,
                         allowExperimentalOptions,
                         classFilter, options, arguments, onlyLanguages, ioAccess, logHandler, allowCreateProcess, processHandler, environmentAccess, environment, zone, limitsImpl,
