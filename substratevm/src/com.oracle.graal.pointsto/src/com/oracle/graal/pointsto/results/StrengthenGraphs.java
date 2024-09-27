@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -114,6 +114,7 @@ import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase.CustomSimplification;
 import jdk.graal.compiler.phases.common.inlining.InliningUtil;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
+import jdk.graal.compiler.replacements.nodes.MacroNode;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -390,10 +391,11 @@ public abstract class StrengthenGraphs {
 
         @Override
         public void simplify(Node n, SimplifierTool tool) {
-            if (n instanceof ValueNode && !(n instanceof LimitedValueProxy) && !(n instanceof PhiNode)) {
+            if (n instanceof ValueNode && !(n instanceof LimitedValueProxy) && !(n instanceof PhiNode) && !(n instanceof MacroNode)) {
                 /*
                  * The stamp of proxy nodes and phi nodes is inferred automatically, so we do not
-                 * need to improve them.
+                 * need to improve them. Macro nodes prohibit changing their stamp because it is
+                 * derived from the macro's fallback invoke.
                  */
                 ValueNode node = (ValueNode) n;
                 /*
