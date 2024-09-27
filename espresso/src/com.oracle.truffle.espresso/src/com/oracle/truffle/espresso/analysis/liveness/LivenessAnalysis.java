@@ -164,11 +164,17 @@ public final class LivenessAnalysis {
                 graph = GraphBuilder.build(method);
             }
 
+            Klass declaringKlass = method.getDeclaringKlass();
+            // For cooperation with continuation serialization, we do not clear the "this" argument
+            // for hidden/anonymous classes.
+            // We implement that by simply having RETURN (and ATHROW) load local 0.
+            boolean doNotClearThis = !method.isStatic() && (declaringKlass.isHidden() || declaringKlass.isAnonymous());
+
             // Transform the graph into a more manageable graph consisting of only the history of
             // load/stores.
             LoadStoreFinder loadStoreClosure;
             try (DebugCloseable loadStore = LOADSTORE_TIMER.scope(scope)) {
-                loadStoreClosure = new LoadStoreFinder(graph, method);
+                loadStoreClosure = new LoadStoreFinder(graph, method, doNotClearThis);
                 loadStoreClosure.analyze();
             }
 
