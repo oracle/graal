@@ -29,15 +29,22 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_16;
 
 import org.graalvm.word.LocationIdentity;
 
+import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
+import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.DeoptimizingFixedWithNextNode;
+import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
 import jdk.graal.compiler.nodes.spi.Lowerable;
 
+/**
+ * Checks that the input {@link Class}'s hub is either null or has been fully initialized, or
+ * deoptimizes otherwise.
+ */
 @NodeInfo(allowedUsageTypes = {InputType.Memory}, cycles = CYCLES_4, size = SIZE_16)
 public class KlassFullyInitializedCheckNode extends DeoptimizingFixedWithNextNode implements Lowerable, SingleMemoryKill {
     public static final NodeClass<KlassFullyInitializedCheckNode> TYPE = NodeClass.create(KlassFullyInitializedCheckNode.class);
@@ -46,12 +53,18 @@ public class KlassFullyInitializedCheckNode extends DeoptimizingFixedWithNextNod
 
     public KlassFullyInitializedCheckNode(ValueNode klassNonNull) {
         super(TYPE, StampFactory.forVoid());
+        Stamp inputStamp = klassNonNull.stamp(NodeView.DEFAULT);
+        assert inputStamp instanceof AbstractPointerStamp : klassNonNull + " has wrong input stamp type for klass init state check: " + inputStamp;
+        assert ((AbstractPointerStamp) inputStamp).nonNull() : klassNonNull + " must have non-null stamp: " + inputStamp;
         this.klass = klassNonNull;
     }
 
     @Override
     public LocationIdentity getKilledLocationIdentity() {
-        // Reading the class init state requires an ACQUIRE barrier, which orders memory accesses
+        /*
+         * Since JDK-8338379, reading the class init state requires an ACQUIRE barrier, which orders
+         * memory accesses
+         */
         return LocationIdentity.ANY_LOCATION;
     }
 

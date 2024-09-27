@@ -180,7 +180,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
         KlassPointer hub = ClassGetHubNode.readClass(type);
         if (probability(FAST_PATH_PROBABILITY, !hub.isNull())) {
             KlassPointer nonNullHub = ClassGetHubNode.piCastNonNull(hub, SnippetAnchorNode.anchor());
-            // klass initialization check was already performed by KlassIsFullyInitializedNode
+            // klass initialization check was already performed by KlassFullyInitializedCheckNode
             int layoutHelper = readLayoutHelper(nonNullHub);
             /*
              * src/share/vm/oops/klass.hpp: For instances, layout helper is a positive number, the

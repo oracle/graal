@@ -51,7 +51,10 @@ public class KlassBeingInitializedCheckNode extends DeoptimizingFixedWithNextNod
 
     @Override
     public LocationIdentity getKilledLocationIdentity() {
-        // Reading the class init state requires an ACQUIRE barrier, which orders memory accesses
+        /*
+         * Since JDK-8338379, reading the class init state requires an ACQUIRE barrier, which orders
+         * memory accesses
+         */
         return LocationIdentity.ANY_LOCATION;
     }
 
