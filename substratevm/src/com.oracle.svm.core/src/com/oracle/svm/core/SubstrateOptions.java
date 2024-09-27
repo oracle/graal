@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1279,6 +1279,9 @@ public class SubstrateOptions {
 
     @Option(help = "Support for calls via the Java Foreign Function and Memory API", type = Expert) //
     public static final HostedOptionKey<Boolean> ForeignAPISupport = new HostedOptionKey<>(false);
+
+    @Option(help = "Support for intrinsics from the Java Vector API", type = Expert) //
+    public static final HostedOptionKey<Boolean> VectorAPISupport = new HostedOptionKey<>(false);
 
     @Option(help = "Assume new types cannot be added after analysis", type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> ClosedTypeWorld = new HostedOptionKey<>(true) {
