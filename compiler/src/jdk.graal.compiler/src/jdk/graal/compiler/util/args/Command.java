@@ -223,15 +223,33 @@ public class Command {
         }
     }
 
-    public void printUsage(PrintWriter writer) {
-        writer.append(getName());
-        if (!named.isEmpty()) {
+    protected void printOptionUsage(PrintWriter writer) {
+        boolean optionalFound = false;
+        var it = named.getEntries();
+        while (it.advance()) {
+            if (it.getValue().isRequired()) {
+                writer.append(String.format(" %s %s", it.getKey(), it.getValue().getUsage()));
+            } else {
+                optionalFound = true;
+            }
+        }
+        if (optionalFound) {
             writer.append(" [OPTIONS]");
         }
+
         for (OptionValue<?> option : positional) {
             writer.append(' ');
-            writer.append(option.getUsage());
+            if (option.isRequired()) {
+                writer.append(option.getUsage());
+            } else {
+                writer.append(String.format("[%s]", option.getUsage()));
+            }
         }
+    }
+
+    public void printUsage(PrintWriter writer) {
+        writer.append(getName());
+        printOptionUsage(writer);
     }
 
     public final void printHelp(PrintWriter writer) {

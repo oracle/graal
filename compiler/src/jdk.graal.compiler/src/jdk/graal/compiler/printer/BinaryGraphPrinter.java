@@ -106,10 +106,7 @@ public class BinaryGraphPrinter implements
 
     @SuppressWarnings("this-escape")
     public BinaryGraphPrinter(WritableByteChannel channel, SnippetReflectionProvider snippetReflection) throws IOException {
-        this.output = GraphOutput.newBuilder(this).
-                blocks(this).
-                elementsAndLocations(this, this).
-                types(this).build(channel);
+        this.output = GraphOutput.newBuilder(this).blocks(this).elementsAndLocations(this, this).types(this).build(channel);
         this.snippetReflection = snippetReflection;
     }
 
