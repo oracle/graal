@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,37 +25,17 @@
 package com.oracle.svm.core.jni.headers;
 
 import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.constant.CConstant;
-
-import com.oracle.svm.core.util.BasedOnJDKFile;
-
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
-
-final class JNIHeaderDirectivesJDKLatest extends JNIHeaderDirectives {
-    @Override
-    public boolean isInConfiguration() {
-        return JavaVersionUtil.JAVA_SPEC > 21;
-    }
-}
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.c.struct.CField;
+import org.graalvm.nativeimage.c.struct.CStruct;
 
 @CContext(JNIHeaderDirectivesJDKLatest.class)
-public final class JNIVersionJDKLatest {
+@CStruct(value = "JNINativeInterface_", addStructKeyword = true)
+public interface JNINativeInterfaceJDKLatest extends JNINativeInterface {
 
-    // Checkstyle: stop
+    @CField
+    CFunctionPointer getGetStringUTFLengthAsLong();
 
-    @CConstant
-    public static native int JNI_VERSION_24();
-
-    /*
-     * GR-50948: there is not yet a JNI_VERSION_XX constant defined for JDK latest. As soon as it
-     * gets available, the "value" property of the CConstant annotation below must be removed.
-     */
-    @CConstant(value = "JNI_VERSION_24")
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+16/src/java.base/share/native/include/jni.h#L1994-L2006")
-    public static native int JNI_VERSION_LATEST();
-
-    // Checkstyle: resume
-
-    private JNIVersionJDKLatest() {
-    }
+    @CField
+    void setGetStringUTFLengthAsLong(CFunctionPointer p);
 }

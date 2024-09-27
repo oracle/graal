@@ -10,6 +10,7 @@ At runtime, premain runtime options are set along with main class' arguments in 
 * (GR-48384) Added a GDB Python script (`gdb-debughelpers.py`) to improve the Native Image debugging experience.
 * (GR-49517) Add support for emitting Windows x64 unwind info. This enables stack walking in native tooling such as debuggers and profilers.
 * (GR-57384) Preserve the origin of a resource included in a native image. The information is included in the report produced by -H:+GenerateEmbeddedResourcesFile.
+* (GR-58000) Support for `GetStringUTFLengthAsLong` added in JNI_VERSION_24 ([JDK-8328877](https://bugs.openjdk.org/browse/JDK-8328877))
 
 ## GraalVM for JDK 23 (Internal Version 24.1.0)
 * (GR-51520) The old class initialization strategy, which was deprecated in GraalVM for JDK 22, is removed. The option `StrictImageHeap` no longer has any effect.
