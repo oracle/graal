@@ -69,6 +69,8 @@ public class HighTier extends BaseTier<HighTierContext> {
         CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
         appendPhase(canonicalizer);
 
+       
+
         if (Options.Inline.getValue(options)) {
             appendPhase(new InliningPhase(new GreedyInliningPolicy(null), canonicalizer));
             appendPhase(new DeadCodeEliminationPhase(Optional));
@@ -94,6 +96,7 @@ public class HighTier extends BaseTier<HighTierContext> {
             appendPhase(new LoopFullUnrollPhase(canonicalizer, loopPolicies));
         }
 
+
         if (GraalOptions.LoopPeeling.getValue(options)) {
             appendPhase(new LoopPeelingPhase(loopPolicies, canonicalizer));
         }
@@ -106,9 +109,12 @@ public class HighTier extends BaseTier<HighTierContext> {
         // PartialEscapePhase and BoxNodeOptimizationPhase).
         appendPhase(new BoxNodeIdentityPhase());
 
+
+
         if (GraalOptions.PartialEscapeAnalysis.getValue(options)) {
             appendPhase(new FinalPartialEscapePhase(true, canonicalizer, null, options));
         }
+
 
         if (GraalOptions.OptReadElimination.getValue(options)) {
             appendPhase(new ReadEliminationPhase(canonicalizer));
@@ -116,7 +122,6 @@ public class HighTier extends BaseTier<HighTierContext> {
 
         appendPhase(new BoxNodeOptimizationPhase(canonicalizer));
 
-        // Joonhwan TODO wrap this with a GraalOption
         if (GraalOptions.EnableProfiler.getValue(options)){
             appendPhase(new MethodInstrumentationPhase());    
         }

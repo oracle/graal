@@ -1,31 +1,51 @@
 package jdk.graal.compiler.hotspot.meta.joonhwan;
 
 import java.io.FileWriter;
-import java.io.IOException;
 
- public class BuboCache extends Thread {
+// public class BuboCache {
+//         // Define a suitable buffer size
+//         private static final int BUFFER_SIZE = 1024;
+    
+//         // Thread-local buffer to store timing data
+//         public static final ThreadLocal<long[]> threadLocalBuffer = ThreadLocal.withInitial(() -> new long[BUFFER_SIZE]);
+    
+//         // Thread-local pointer to keep track of buffer index
+//         public static final ThreadLocal<Integer> threadLocalPointer = ThreadLocal.withInitial(() -> 0);
+
+//         static {
+//                 System.out.println("Cache initialiation called");
+//         }
+
+//         public static void rotateBuffer() {
+//         }
+
+//         public static void add(long[] item){}
+
+//         public static void print(){
+//                 String fileName = "bubo_cache_output.csv";
+//                 try (FileWriter writer = new FileWriter(fileName)) {
+//                         writer.append("CompID,Start\n"); // CSV header
+//                         writer.append(String.format("pointer %d\n", threadLocalPointer.get()));
+//                         for (int i = 0; i < threadLocalPointer.get() ; i += 2) {
+//                                 writer.append(String.format("%d,%d\n", threadLocalBuffer.get()[i], threadLocalBuffer.get()[i + 1]));
+//                         }
+//                         System.out.println("CSV file '" + fileName + "' has been created successfully.");
+//                 } catch (Exception e) {
+//                         System.err.println("An error occurred while writing to the CSV file: " + e.getMessage());
+//                 }
+//         }
+// }
+
+    
+
+ public class BuboCache {
         
         public static long[] Buffer;
         public static int pointer;
         public static int BufferPointer;
         public static long[][] BufferArray;
 
-        public static long sampleCounter;
-
-        // public BuboCache() {
-        //         BufferArray = new long[2][250_000];
-        //         BufferPointer = 0;
-        //         pointer = 0;
-        //         Buffer = BufferArray[BufferPointer];
-        // }
-
-        // static {
-        //         System.out.println("CACHE INITIALIZATION");
-        //         BufferArray = new long[5][250_000];
-        //         BufferPointer = 0;
-        //         pointer = 0;
-        //         Buffer = BufferArray[BufferPointer];
-        // }
+        public static volatile long sampleCounter;
 
         static {
                 System.out.println("CACHE INITIALIZATION");
@@ -75,8 +95,9 @@ import java.io.IOException;
                 for (int i = 0; i < pointer; i += 2) {
                         writer.append(String.format("%d,%d\n", Buffer[i], Buffer[i + 1]));
                 }
+                System.out.println(String.format("samplecounter is: %d\n", sampleCounter));
                 System.out.println("CSV file '" + fileName + "' has been created successfully.");
-                } catch (IOException e) {
+                } catch (Exception e) {
                 System.err.println("An error occurred while writing to the CSV file: " + e.getMessage());
                 }
         }
