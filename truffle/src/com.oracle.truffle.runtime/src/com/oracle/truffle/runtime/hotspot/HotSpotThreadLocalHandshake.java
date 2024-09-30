@@ -55,7 +55,7 @@ final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
     static final HotSpotThreadLocalHandshake SINGLETON = new HotSpotThreadLocalHandshake();
     private static final ThreadLocal<TruffleSafepointImpl> STATE = new ThreadLocal<>();
 
-    private static final int PENDING_OFFSET = HotSpotTruffleRuntime.getRuntime().getJVMCIReservedLongOffset0();
+    private static final int PENDING_OFFSET = HotSpotTruffleRuntime.readJVMCIReservedLongOffset0();
     private static final long THREAD_EETOP_OFFSET;
     private static final long THREAD_CARRIER_THREAD_OFFSET;
     static {

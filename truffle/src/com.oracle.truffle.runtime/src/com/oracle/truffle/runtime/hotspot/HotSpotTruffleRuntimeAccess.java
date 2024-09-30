@@ -216,8 +216,8 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
          */
         try {
             Lookup lkp = MethodHandles.lookup();
-            lkp.accessClass(HotSpotThreadLocalHandshake.class);
-            lkp.accessClass(HotSpotFastThreadLocal.class);
+            lkp.ensureInitialized(HotSpotThreadLocalHandshake.class);
+            lkp.ensureInitialized(HotSpotFastThreadLocal.class);
         } catch (IllegalAccessException ia) {
             throw new AssertionError(ia);
         }

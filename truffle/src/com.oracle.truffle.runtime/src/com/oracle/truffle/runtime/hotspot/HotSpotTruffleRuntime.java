@@ -172,32 +172,12 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
     private volatile Throwable truffleCompilerInitializationException;
 
     private final HotSpotVMConfigAccess vmConfigAccess;
-    private final int jvmciReservedLongOffset0;
 
     public HotSpotTruffleRuntime(TruffleCompilationSupport compilationSupport) {
         super(compilationSupport, Arrays.asList(HotSpotOptimizedCallTarget.class, InstalledCode.class, HotSpotThreadLocalHandshake.class, HotSpotTruffleRuntime.class));
         installCallBoundaryMethods(null);
 
         this.vmConfigAccess = new HotSpotVMConfigAccess(HotSpotJVMCIRuntime.runtime().getConfigStore());
-
-        int longOffset;
-        try {
-            longOffset = vmConfigAccess.getFieldOffset("JavaThread::_jvmci_reserved0", Integer.class, "jlong", -1);
-        } catch (NoSuchMethodError error) {
-            throw CompilerDirectives.shouldNotReachHere("This JDK does not have JavaThread::_jvmci_reserved0", error);
-        } catch (JVMCIError error) {
-            try {
-                // the type of the jvmci reserved field might still be old.
-                longOffset = vmConfigAccess.getFieldOffset("JavaThread::_jvmci_reserved0", Integer.class, "intptr_t*", -1);
-            } catch (NoSuchMethodError e) {
-                e.initCause(error);
-                throw CompilerDirectives.shouldNotReachHere("This JDK does not have JavaThread::_jvmci_reserved0", e);
-            }
-        }
-        if (longOffset == -1) {
-            throw CompilerDirectives.shouldNotReachHere("This JDK does not have JavaThread::_jvmci_reserved0");
-        }
-        this.jvmciReservedLongOffset0 = longOffset;
 
         int jvmciReservedReference0Offset = vmConfigAccess.getFieldOffset("JavaThread::_jvmci_reserved_oop0", Integer.class, "oop", -1);
         if (jvmciReservedReference0Offset == -1) {
@@ -207,8 +187,26 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
         installReservedOopMethods(null);
     }
 
-    public int getJVMCIReservedLongOffset0() {
-        return jvmciReservedLongOffset0;
+    static int readJVMCIReservedLongOffset0() {
+        HotSpotVMConfigAccess access = new HotSpotVMConfigAccess(HotSpotJVMCIRuntime.runtime().getConfigStore());
+        int longOffset;
+        try {
+            longOffset = access.getFieldOffset("JavaThread::_jvmci_reserved0", Integer.class, "jlong", -1);
+        } catch (NoSuchMethodError error) {
+            throw CompilerDirectives.shouldNotReachHere("This JDK does not have JavaThread::_jvmci_reserved0", error);
+        } catch (JVMCIError error) {
+            try {
+                // the type of the jvmci reserved field might still be old.
+                longOffset = access.getFieldOffset("JavaThread::_jvmci_reserved0", Integer.class, "intptr_t*", -1);
+            } catch (NoSuchMethodError e) {
+                e.initCause(error);
+                throw CompilerDirectives.shouldNotReachHere("This JDK does not have JavaThread::_jvmci_reserved0", e);
+            }
+        }
+        if (longOffset == -1) {
+            throw CompilerDirectives.shouldNotReachHere("This JDK does not have JavaThread::_jvmci_reserved0");
+        }
+        return longOffset;
     }
 
     @Override

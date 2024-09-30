@@ -659,6 +659,12 @@ final class JDKSupport {
             private static final JavaLangAccessor INSTANCE = new JavaLangAccessorImpl();
 
             private JavaLangAccessorImpl() {
+                /*
+                 * Ensure the CURRENT_CARRIER_THREAD method handle is initialized by invoking it.
+                 * This prevents the interpreter from triggering class initialization during the
+                 * HotSpotThreadLocalHandshake's operation.
+                 */
+                currentCarrierThread();
             }
 
             @Override
