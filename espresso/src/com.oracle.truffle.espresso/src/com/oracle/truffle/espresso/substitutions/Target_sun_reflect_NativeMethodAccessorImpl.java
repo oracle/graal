@@ -36,10 +36,13 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
+import com.oracle.truffle.espresso.resolver.CallKind;
+import com.oracle.truffle.espresso.resolver.CallSiteType;
+import com.oracle.truffle.espresso.resolver.LinkResolver;
+import com.oracle.truffle.espresso.resolver.ResolvedCall;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
@@ -253,8 +256,11 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
         }
     }
 
-    static @JavaType(Object.class) StaticObject invoke0(@JavaType(java.lang.reflect.Method.class) StaticObject guestMethod, @JavaType(Object.class) StaticObject receiver,
-                    @JavaType(Object[].class) StaticObject args, @Inject EspressoLanguage language, @Inject Meta meta, ToEspressoNode.DynamicToEspresso toEspressoNode) {
+    static @JavaType(Object.class) StaticObject invoke0(
+                    @JavaType(java.lang.reflect.Method.class) StaticObject guestMethod, @JavaType(Object.class) StaticObject receiver,
+                    @JavaType(Object[].class) StaticObject args,
+                    EspressoLanguage language, Meta meta,
+                    ToEspressoNode.DynamicToEspresso toEspressoNode) {
         Method reflectedMethod = Method.getHostReflectiveMethodRoot(guestMethod, meta);
         Klass klass = meta.java_lang_reflect_Method_clazz.getObject(guestMethod).getMirrorKlass(meta);
 
@@ -268,8 +274,11 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
         return callMethodReflectively(language, meta, receiver, args, reflectedMethod, klass, parameterTypes, toEspressoNode);
     }
 
-    public static @JavaType(Object.class) StaticObject callMethodReflectively(EspressoLanguage language, Meta meta, @JavaType(Object.class) StaticObject receiver,
-                    @JavaType(Object[].class) StaticObject args, Method m,
+    public static @JavaType(Object.class) StaticObject callMethodReflectively(
+                    EspressoLanguage language, Meta meta,
+                    @JavaType(Object.class) StaticObject receiver,
+                    @JavaType(Object[].class) StaticObject args,
+                    Method m,
                     Klass klass, @JavaType(Class[].class) StaticObject parameterTypes, ToEspressoNode.DynamicToEspresso toEspressoNode) {
         // Klass should be initialized if method is static, and could be delayed until method
         // invocation, according to specs. However, JCK tests that it is indeed always initialized
@@ -287,12 +296,22 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
             }
         }
 
-        Method method;      // actual method to invoke
-
+        CallSiteType callSiteType;
         if (reflectedMethod.isStatic()) {
-            // Ignore receiver argument;.
-            method = reflectedMethod;
+            callSiteType = CallSiteType.Static;
+        } else if (reflectedMethod.getDeclaringKlass().isInterface()) {
+            callSiteType = CallSiteType.Interface;
+        } else if (reflectedMethod.isConstructor()) {
+            callSiteType = CallSiteType.Special;
         } else {
+            callSiteType = CallSiteType.Virtual;
+        }
+        ResolvedCall resolvedCall = LinkResolver.resolveCallSite(
+                        meta,
+                        null, // No current class.
+                        reflectedMethod, callSiteType, klass);
+
+        if (resolvedCall.getCallKind() != CallKind.STATIC) {
             if (StaticObject.isNull(receiver)) {
                 throw meta.throwNullPointerException();
             }
@@ -301,51 +320,31 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
             if (!klass.isAssignableFrom(receiver.getKlass())) {
                 throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "object is not an instance of declaring class");
             }
-
-            // target klass is receiver's klass
-            Klass targetKlass = receiver.getKlass();
-            // no need to resolve if method is private or <init>
-            if (reflectedMethod.isPrivate() || Name._init_.equals(reflectedMethod.getName())) {
-                method = reflectedMethod;
-            } else {
-                // resolve based on the receiver
-                if (reflectedMethod.getDeclaringKlass().isInterface()) {
-                    // resolve interface call
-                    // Match resolution errors with those thrown due to reflection inlining
-                    // Linktime resolution & IllegalAccessCheck already done by Class.getMethod()
-                    method = reflectedMethod;
-                    assert targetKlass instanceof ObjectKlass;
-                    method = ((ObjectKlass) targetKlass).itableLookup(method.getDeclaringKlass(), method.getITableIndex());
-                    if (method != null) {
-                        // Check for abstract methods as well
-                        if (!method.hasCode()) {
-                            // new default: 65315
-                            throw meta.throwExceptionWithCause(meta.java_lang_reflect_InvocationTargetException, Meta.initException(meta.java_lang_AbstractMethodError));
-                        }
-                    }
-                } else {
-                    // if the method can be overridden, we resolve using the vtable index.
-                    method = reflectedMethod;
-                    // VTable is live, use it
-                    method = targetKlass.vtableLookup(method.getVTableIndex());
-                    if (method != null) {
-                        // Check for abstract methods as well
-                        if (method.isAbstract()) {
-                            // new default: 65315
-                            throw meta.throwExceptionWithCause(meta.java_lang_reflect_InvocationTargetException, Meta.initException(meta.java_lang_AbstractMethodError));
-                        }
-                    }
-                }
-            }
         }
 
-        // Comment from HotSpot:
-        // I believe this is a ShouldNotGetHere case which requires
-        // an internal vtable bug. If you ever get this please let Karen know.
-        if (method == null) {
-            throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError, "please let Karen know");
+        Object[] adjustedArgs = makeArgs(resolvedCall, parameterTypes, receiver, args, language, meta, toEspressoNode);
+
+        Object result;
+        try {
+            result = resolvedCall.call(adjustedArgs);
+        } catch (EspressoException e) {
+            throw meta.throwExceptionWithCause(meta.java_lang_reflect_InvocationTargetException, e.getGuestException());
         }
 
+        if (reflectedMethod.getReturnKind() == JavaKind.Void) {
+            return StaticObject.NULL;
+        }
+        if (reflectedMethod.getReturnKind().isPrimitive()) {
+            return Meta.box(meta, result);
+        }
+
+        // Result is not void nor primitive, pass through.
+        return (StaticObject) result;
+    }
+
+    private static Object[] makeArgs(ResolvedCall resolvedCall, StaticObject parameterTypes,
+                    StaticObject receiver, StaticObject args,
+                    EspressoLanguage language, Meta meta, ToEspressoNode.DynamicToEspresso toEspressoNode) {
         boolean isForeignArray = args.isForeignObject();
         Object rawForeign = null;
         InteropLibrary interop = null;
@@ -363,7 +362,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
             argsLen = StaticObject.isNull(args) ? 0 : args.length(language);
         }
 
-        final Symbol<Type>[] signature = method.getParsedSignature();
+        final Symbol<Type>[] signature = resolvedCall.getResolvedMethod().getParsedSignature();
 
         // Check number of arguments.
         if (Signatures.parameterCount(signature) != argsLen) {
@@ -372,12 +371,12 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
 
         int argsOffset = 0;
         int adjustedArgsLen = argsLen;
-        if (!reflectedMethod.isStatic()) {
+        if (!resolvedCall.getCallKind().isStatic()) {
             adjustedArgsLen += 1;
             argsOffset = 1;
         }
         Object[] adjustedArgs = new Object[adjustedArgsLen];
-        if (!reflectedMethod.isStatic()) {
+        if (!resolvedCall.getCallKind().isStatic()) {
             adjustedArgs[0] = receiver;
         }
         for (int i = 0; i < argsLen; ++i) {
@@ -398,23 +397,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
                 adjustedArgs[i + argsOffset] = checkAndWiden(meta, (StaticObject) arg, paramKlass);
             }
         }
-
-        Object result;
-        try {
-            result = method.invokeDirect(adjustedArgs);
-        } catch (EspressoException e) {
-            throw meta.throwExceptionWithCause(meta.java_lang_reflect_InvocationTargetException, e.getGuestException());
-        }
-
-        if (reflectedMethod.getReturnKind() == JavaKind.Void) {
-            return StaticObject.NULL;
-        }
-        if (reflectedMethod.getReturnKind().isPrimitive()) {
-            return Meta.box(meta, result);
-        }
-
-        // Result is not void nor primitive, pass through.
-        return (StaticObject) result;
+        return adjustedArgs;
     }
 
     public static class SharedNativeMetohdAccessorImpl extends SubstitutionNamesProvider {

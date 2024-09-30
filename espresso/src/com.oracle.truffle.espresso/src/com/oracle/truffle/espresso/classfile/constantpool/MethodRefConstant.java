@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.classfile.constantpool;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.nodes.methodhandle.MHInvokeGenericNode;
 import com.oracle.truffle.espresso.perf.DebugCounter;
 
 public interface MethodRefConstant extends MemberRefConstant {
@@ -39,6 +40,10 @@ public interface MethodRefConstant extends MemberRefConstant {
     @SuppressWarnings("unchecked")
     default Symbol<Signature> getSignature(ConstantPool pool) {
         return (Symbol<Signature>) getDescriptor(pool);
+    }
+
+    default MHInvokeGenericNode.MethodHandleInvoker invoker() {
+        return null;
     }
 
     abstract class Indexes extends MemberRefConstant.Indexes implements MethodRefConstant {
