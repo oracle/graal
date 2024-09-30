@@ -25,8 +25,6 @@
 package jdk.graal.compiler.truffle.test;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import java.util.concurrent.TimeUnit;
 
@@ -405,65 +403,38 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
     @Test
     public void testBadFrameReuse() {
         BytecodeDSLOSRTestRootNodeWithYield root = BytecodeDSLOSRTestRootNodeWithYieldGen.create(LANGUAGE, BytecodeConfig.DEFAULT, badFrameParser).getNode(0);
-
-        // First, call it and make it yield, so the OSR compilation uses the continuation frame.
+        // First, call it with yield, so the OSR uses the continuation frame.
         ContinuationResult cont = (ContinuationResult) root.getCallTarget().call(true, OSR_THRESHOLD * 2);
+        // OSR_THRESHOLD (interpreter) + 2*OSR_THRESHOLD (compiled)
         assertEquals(OSR_THRESHOLD * 3, cont.continueWith(null));
-
-        // Then, call it again with yielding. The OSR compilation should not reuse the old frame.
+        // Then, call it again with yield. OSR should not reuse the old frame.
         cont = (ContinuationResult) root.getCallTarget().call(true, BytecodeOSRMetadata.OSR_POLL_INTERVAL * 2);
-        // One poll interval in interpreter + one poll interval in compiled
+        // OSR_POLL_INTERVAL (interpreter) + 2*OSR_POLL_INTERVAL (compiled)
         assertEquals(BytecodeOSRMetadata.OSR_POLL_INTERVAL * 3, cont.continueWith(null));
     }
 
     @Test
     public void testContinuationThenRegularFrame() {
         BytecodeDSLOSRTestRootNodeWithYield root = BytecodeDSLOSRTestRootNodeWithYieldGen.create(LANGUAGE, BytecodeConfig.DEFAULT, badFrameParser).getNode(0);
-
-        // First, call it and make it yield, so the OSR compilation uses the continuation frame.
+        // First, call it with yield, so OSR uses the continuation frame.
         ContinuationResult cont = (ContinuationResult) root.getCallTarget().call(true, OSR_THRESHOLD * 2);
+        // OSR_THRESHOLD (interpreter) + 2*OSR_THRESHOLD (compiled)
         assertEquals(OSR_THRESHOLD * 3, cont.continueWith(null));
-        /*
-         * Then, call it without yield. A separate OSR compilation should be performed using the
-         * regular frame.
-         *
-         * TODO: this deopts (expecting but not finding a continuation frame) and tries to
-         * recompile. The "interpreter state" used for the first compilation is never modified, so
-         * we cannot recompile a version that uses the regular frame instead. We need to encode the
-         * "isContinuation" state in the target itself. For now, just check that this code deopts
-         * and tries to recompile (failing because of the recompilation limit).
-         */
-        try {
-            root.getCallTarget().call(false, OSR_THRESHOLD * 3);
-            fail("Expected an assertion error");
-        } catch (AssertionError err) {
-            assertTrue("Unexpected error message: " + err.getMessage(), err.getMessage().contains("Max OSR compilation re-attempts reached"));
-        }
+        // Then, call it regularly. OSR should compile separately for the regular frame.
+        // OSR_THRESHOLD (interpreter) + 2*(OSR_THRESHOLD + 2) (compiled)
+        assertEquals(OSR_THRESHOLD * 3 + 2, root.getCallTarget().call(false, OSR_THRESHOLD * 2 + 1));
     }
 
     @Test
     public void testRegularThenContinuationFrame() {
         BytecodeDSLOSRTestRootNodeWithYield root = BytecodeDSLOSRTestRootNodeWithYieldGen.create(LANGUAGE, BytecodeConfig.DEFAULT, badFrameParser).getNode(0);
-
         // First, call it regularly, so OSR uses the regular frame.
+        // OSR_THRESHOLD (interpreter) + 2*OSR_THRESHOLD (compiled)
         assertEquals(OSR_THRESHOLD * 3, root.getCallTarget().call(false, OSR_THRESHOLD * 2));
-        /*
-         * Then, call it with yield. A separate OSR compilation should be performed using the
-         * continuation frame.
-         *
-         * TODO: this deopts (finding a continuation frame but not expecting one) and tries to
-         * recompile. The "interpreter state" used for the first compilation is never modified, so
-         * we cannot recompile a version that uses the continuation frame instead. We need to encode
-         * the "isContinuation" state in the target itself. For now, just check that this code
-         * deopts and tries to recompile (failing because of the recompilation limit).
-         */
-        ContinuationResult cont = (ContinuationResult) root.getCallTarget().call(true, OSR_THRESHOLD * 3);
-        try {
-            cont.continueWith(null);
-            fail("Expected an assertion error");
-        } catch (AssertionError err) {
-            assertTrue("Unexpected error message: " + err.getMessage(), err.getMessage().contains("Max OSR compilation re-attempts reached"));
-        }
+        // Then, call it with yield. OSR should compile separately for the continuation frame.
+        ContinuationResult cont = (ContinuationResult) root.getCallTarget().call(true, OSR_THRESHOLD * 2 + 1);
+        // OSR_THRESHOLD (interpreter) + 2*(OSR_THRESHOLD + 2) (compiled)
+        assertEquals(OSR_THRESHOLD * 3 + 2, cont.continueWith(null));
     }
 
     @TruffleLanguage.Registration(id = "BytecodeDSLOSRTestLanguage")

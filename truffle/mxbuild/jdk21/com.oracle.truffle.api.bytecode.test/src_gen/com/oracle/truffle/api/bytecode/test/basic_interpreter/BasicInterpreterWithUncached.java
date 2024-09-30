@@ -629,10 +629,10 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
 
     @SuppressWarnings("all")
     private Object continueAt(AbstractBytecodeNode bc, int bci, int sp, VirtualFrame frame, VirtualFrame localFrame, ContinuationRootNodeImpl continuationRootNode) {
-        long state = (((long) sp) << 32) | (bci & 0xFFFFFFFFL);
+        long state = ((sp & 0xFFFFL) << 32) | (bci & 0xFFFFFFFFL);
         while (true) {
             state = bc.continueAt(this, frame, localFrame, state);
-            if ((int) (state & 0xFFFFFFFFL) == 0xFFFFFFFF) {
+            if ((int) state == 0xFFFFFFFF) {
                 break;
             } else {
                 // Bytecode or tier changed
@@ -642,7 +642,7 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
                 state = oldBytecode.transitionState(bc, state, continuationRootNode);
             }
         }
-        return FRAMES.uncheckedGetObject(frame, (int) (state >>> 32));
+        return FRAMES.uncheckedGetObject(frame, (short) (state >>> 32));
     }
 
     private void transitionToCached(Frame frame, int bci) {
@@ -2576,7 +2576,7 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
 
         @Override
         protected int translateBytecodeIndex(BytecodeNode newNode, int bytecodeIndex) {
-            return (int) (transitionState((AbstractBytecodeNode) newNode, (bytecodeIndex & 0xFFFFFFFFL), null) & 0xFFFFFFFFL);
+            return (int) transitionState((AbstractBytecodeNode) newNode, (bytecodeIndex & 0xFFFFFFFFL), null);
         }
 
         final long transitionState(AbstractBytecodeNode newBytecode, long state, ContinuationRootNodeImpl continuationRootNode) {
@@ -2591,10 +2591,10 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
                 // No change in bytecodes.
                 return state;
             }
-            int oldBci = (int) (state & 0xFFFFFFFFL);
+            int oldBci = (int) state;
             int newBci = computeNewBci(oldBci, oldBc, newBc, this.getTagNodes(), newBytecode.getTagNodes());
             getRoot().onBytecodeStackTransition(new InstructionImpl(this, oldBci, BYTES.getShort(oldBc, oldBci)), new InstructionImpl(newBytecode, newBci, BYTES.getShort(newBc, newBci)));
-            return (state & 0xFFFFFFFF00000000L) | (newBci & 0xFFFFFFFFL);
+            return (state & 0xFFFF00000000L) | (newBci & 0xFFFFFFFFL);
         }
 
         public void adoptNodesAfterUpdate() {
@@ -3187,8 +3187,8 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
             byte[] bc = this.bytecodes;
             Node[] cachedNodes = this.cachedNodes_;
             int[] branchProfiles = this.branchProfiles_;
-            int bci = (int) (startState & 0xFFFFFFFFL);
-            int sp = (int) (startState >>> 32);
+            int bci = (int) startState;
+            int sp = (short) (startState >>> 32);
             int op;
             long temp;
             LoopCounter loopCounter = new LoopCounter();
@@ -3216,7 +3216,7 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
                             if (CompilerDirectives.hasNextTier() && loopCounter.value > 0) {
                                 LoopNode.reportLoopCount(this, loopCounter.value);
                             }
-                            return (((long) (sp - 1)) << 32) | 0xFFFFFFFFL;
+                            return (((sp - 1) & 0xFFFFL) << 32) | 0xFFFFFFFFL;
                         }
                         case Instructions.BRANCH :
                         {
@@ -3318,7 +3318,7 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
                                 LoopNode.reportLoopCount(this, loopCounter.value);
                             }
                             doYield(frame, localFrame, bc, bci, sp, $root);
-                            return (((long) (sp - 1)) << 32) | 0xFFFFFFFFL;
+                            return (((sp - 1) & 0xFFFFL) << 32) | 0xFFFFFFFFL;
                         }
                         case Instructions.TAG_ENTER :
                         {
@@ -3699,27 +3699,27 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
                         case Instructions.INVALIDATE0 :
                         {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
-                            return (((long) sp) << 32) | (bci & 0xFFFFFFFFL);
+                            return ((sp & 0xFFFFL) << 32) | (bci & 0xFFFFFFFFL);
                         }
                         case Instructions.INVALIDATE1 :
                         {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
-                            return (((long) sp) << 32) | (bci & 0xFFFFFFFFL);
+                            return ((sp & 0xFFFFL) << 32) | (bci & 0xFFFFFFFFL);
                         }
                         case Instructions.INVALIDATE2 :
                         {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
-                            return (((long) sp) << 32) | (bci & 0xFFFFFFFFL);
+                            return ((sp & 0xFFFFL) << 32) | (bci & 0xFFFFFFFFL);
                         }
                         case Instructions.INVALIDATE3 :
                         {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
-                            return (((long) sp) << 32) | (bci & 0xFFFFFFFFL);
+                            return ((sp & 0xFFFFL) << 32) | (bci & 0xFFFFFFFFL);
                         }
                         case Instructions.INVALIDATE4 :
                         {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
-                            return (((long) sp) << 32) | (bci & 0xFFFFFFFFL);
+                            return ((sp & 0xFFFFL) << 32) | (bci & 0xFFFFFFFFL);
                         }
                     }
                 } catch (Throwable throwable) {
@@ -3746,8 +3746,8 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
                             switch (this.handlers[op + EXCEPTION_HANDLER_OFFSET_KIND]) {
                                 case HANDLER_TAG_EXCEPTIONAL :
                                     long result = doTagExceptional($root, frame, bc, bci, throwable, this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI], this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_SP]);
-                                    temp = (int) (result >>> 32);
-                                    bci = (int) (result & 0xFFFFFFFFL);
+                                    temp = (short) (result >>> 32);
+                                    bci = (int) result;
                                     if (sp < (int) temp + $root.maxLocals) {
                                         // The instrumentation pushed a value on the stack.
                                         assert sp == (int) temp + $root.maxLocals - 1;
@@ -3790,7 +3790,7 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
             if (CompilerDirectives.inInterpreter() && BytecodeOSRNode.pollOSRBackEdge(this)) {
                 int branchProfileIndex = BYTES.getIntUnaligned(bc, bci + 6 /* imm loop_header_branch_profile */);
                 ensureFalseProfile(branchProfiles_, branchProfileIndex);
-                Object osrResult = BytecodeOSRNode.tryOSR(this, BYTES.getIntUnaligned(bc, bci + 2 /* imm branch_target */), new InterpreterState(frame != localFrame, sp), null, frame);
+                Object osrResult = BytecodeOSRNode.tryOSR(this, ((frame != localFrame ? 1L : 0L) << 48) | ((sp & 0xFFFFL) << 32) | (BYTES.getIntUnaligned(bc, bci + 2 /* imm branch_target */) & 0xFFFFFFFFL), null, null, frame);
                 if (osrResult != null) {
                     return (long) osrResult;
                 }
@@ -4085,26 +4085,24 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
         }
 
         @Override
-        public Object executeOSR(VirtualFrame frame, int target, Object interpreterStateObject) {
-            InterpreterState interpreterState = (InterpreterState) interpreterStateObject;
-            VirtualFrame continuationFrame = (MaterializedFrame) frame.getObject(COROUTINE_FRAME_INDEX);
+        public Object executeOSR(VirtualFrame frame, long target, Object unused) {
             VirtualFrame localFrame;
-            if (interpreterState.isContinuation) {
-                localFrame = continuationFrame;
-                if (continuationFrame == null) {
-                    // Regular invocation transitioned to continuation OSR target
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    localFrame = frame;
-                }
+            if ((target & (1L << 48)) != 0 /* use continuation frame */) {
+                localFrame = (MaterializedFrame) frame.getObject(COROUTINE_FRAME_INDEX);
             } else {
                 localFrame = frame;
-                if (continuationFrame != null) {
-                    // Resumed invocation transitioned to regular OSR target
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    localFrame = continuationFrame;
-                }
             }
-            return continueAt(getRoot(), frame, localFrame, (((long) interpreterState.sp) << 32) | (target & 0xFFFFFFFFL));
+            return continueAt(getRoot(), frame, localFrame, (target & ~(1L << 48)));
+        }
+
+        @Override
+        public void prepareOSR(long target) {
+            // do nothing
+        }
+
+        @Override
+        public void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, long target, Object targetMetadata) {
+            transferOSRFrame(osrFrame, parentFrame, target, targetMetadata);
         }
 
         @Override
@@ -4191,7 +4189,7 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
                 throw exception;
             } else if (result == ProbeNode.UNWIND_ACTION_REENTER) {
                 // Reenter by jumping to the begin bci.
-                return (((long) handlerSp) << 32) | (node.enterBci & 0xFFFFFFFFL);
+                return ((handlerSp & 0xFFFFL) << 32) | (node.enterBci & 0xFFFFFFFFL);
             } else {
                 // We jump to the return address which is at sp + 1.
                 int targetSp;
@@ -4211,7 +4209,7 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
                         throw CompilerDirectives.shouldNotReachHere();
                 }
                 assert targetBci < bc.length : "returnBci must be reachable";
-                return (((long) targetSp) << 32) | (targetBci & 0xFFFFFFFFL);
+                return ((targetSp & 0xFFFFL) << 32) | (targetBci & 0xFFFFFFFFL);
             }
         }
 
@@ -4219,7 +4217,7 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
             Object result = $root.interceptControlFlowException(cfe, frame, this, bci);
             FRAMES.setObject(frame, $root.maxLocals, result);
             int sp = $root.maxLocals + 1;
-            return (((long) (sp - 1)) << 32) | 0xFFFFFFFFL;
+            return (((sp - 1) & 0xFFFFL) << 32) | 0xFFFFFFFFL;
         }
 
         @Override
@@ -4619,17 +4617,6 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
             return copy;
         }
 
-        private static final class InterpreterState {
-
-            final boolean isContinuation;
-            final int sp;
-
-            InterpreterState(boolean isContinuation, int sp) {
-                this.isContinuation = isContinuation;
-                this.sp = sp;
-            }
-
-        }
     }
     @DenyReplace
     private static final class UncachedBytecodeNode extends AbstractBytecodeNode {
@@ -4657,8 +4644,8 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
                     return startState;
                 }
                 byte[] bc = this.bytecodes;
-                int bci = (int) (startState & 0xFFFFFFFFL);
-                int sp = (int) (startState >>> 32);
+                int bci = (int) startState;
+                int sp = (short) (startState >>> 32);
                 int op;
                 long temp;
                 loop: while (true) {
@@ -4691,7 +4678,7 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
                                     uncachedExecuteCount--;
                                     this.uncachedExecuteCount_ = uncachedExecuteCount;
                                 }
-                                return (((long) (sp - 1)) << 32) | 0xFFFFFFFFL;
+                                return (((sp - 1) & 0xFFFFL) << 32) | 0xFFFFFFFFL;
                             }
                             case Instructions.BRANCH :
                             {
@@ -4705,7 +4692,7 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
                                     if (uncachedExecuteCount != Integer.MIN_VALUE) {
                                         CompilerDirectives.transferToInterpreterAndInvalidate();
                                         $root.transitionToCached(frame, bci);
-                                        return (((long) sp) << 32) | (bci & 0xFFFFFFFFL);
+                                        return ((sp & 0xFFFFL) << 32) | (bci & 0xFFFFFFFFL);
                                     }
                                 } else {
                                     uncachedExecuteCount--;
@@ -4797,7 +4784,7 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
                                     this.uncachedExecuteCount_ = uncachedExecuteCount;
                                 }
                                 doYield(frame, localFrame, bc, bci, sp, $root);
-                                return (((long) (sp - 1)) << 32) | 0xFFFFFFFFL;
+                                return (((sp - 1) & 0xFFFFL) << 32) | 0xFFFFFFFFL;
                             }
                             case Instructions.TAG_ENTER :
                             {
@@ -5177,23 +5164,23 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
                             }
                             case Instructions.INVALIDATE0 :
                             {
-                                return (((long) sp) << 32) | (bci & 0xFFFFFFFFL);
+                                return ((sp & 0xFFFFL) << 32) | (bci & 0xFFFFFFFFL);
                             }
                             case Instructions.INVALIDATE1 :
                             {
-                                return (((long) sp) << 32) | (bci & 0xFFFFFFFFL);
+                                return ((sp & 0xFFFFL) << 32) | (bci & 0xFFFFFFFFL);
                             }
                             case Instructions.INVALIDATE2 :
                             {
-                                return (((long) sp) << 32) | (bci & 0xFFFFFFFFL);
+                                return ((sp & 0xFFFFL) << 32) | (bci & 0xFFFFFFFFL);
                             }
                             case Instructions.INVALIDATE3 :
                             {
-                                return (((long) sp) << 32) | (bci & 0xFFFFFFFFL);
+                                return ((sp & 0xFFFFL) << 32) | (bci & 0xFFFFFFFFL);
                             }
                             case Instructions.INVALIDATE4 :
                             {
-                                return (((long) sp) << 32) | (bci & 0xFFFFFFFFL);
+                                return ((sp & 0xFFFFL) << 32) | (bci & 0xFFFFFFFFL);
                             }
                         }
                     } catch (Throwable throwable) {
@@ -5227,8 +5214,8 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
                                 switch (this.handlers[op + EXCEPTION_HANDLER_OFFSET_KIND]) {
                                     case HANDLER_TAG_EXCEPTIONAL :
                                         long result = doTagExceptional($root, frame, bc, bci, throwable, this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI], this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_SP]);
-                                        temp = (int) (result >>> 32);
-                                        bci = (int) (result & 0xFFFFFFFFL);
+                                        temp = (short) (result >>> 32);
+                                        bci = (int) result;
                                         if (sp < (int) temp + $root.maxLocals) {
                                             // The instrumentation pushed a value on the stack.
                                             assert sp == (int) temp + $root.maxLocals - 1;
@@ -5586,7 +5573,7 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
                 throw exception;
             } else if (result == ProbeNode.UNWIND_ACTION_REENTER) {
                 // Reenter by jumping to the begin bci.
-                return (((long) handlerSp) << 32) | (node.enterBci & 0xFFFFFFFFL);
+                return ((handlerSp & 0xFFFFL) << 32) | (node.enterBci & 0xFFFFFFFFL);
             } else {
                 // We jump to the return address which is at sp + 1.
                 int targetSp;
@@ -5606,7 +5593,7 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
                         throw CompilerDirectives.shouldNotReachHere();
                 }
                 assert targetBci < bc.length : "returnBci must be reachable";
-                return (((long) targetSp) << 32) | (targetBci & 0xFFFFFFFFL);
+                return ((targetSp & 0xFFFFL) << 32) | (targetBci & 0xFFFFFFFFL);
             }
         }
 
@@ -5614,7 +5601,7 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
             Object result = $root.interceptControlFlowException(cfe, frame, this, bci);
             FRAMES.setObject(frame, $root.maxLocals, result);
             int sp = $root.maxLocals + 1;
-            return (((long) (sp - 1)) << 32) | 0xFFFFFFFFL;
+            return (((sp - 1) & 0xFFFFL) << 32) | 0xFFFFFFFFL;
         }
 
         @Override

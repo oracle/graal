@@ -559,31 +559,67 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         return ex;
     }
 
-    private static final String RETURN_BCI = "0xFFFFFFFF";
-
-    private static String encodeState(String bci, String sp) {
+    /**
+     * Encodes the state used to begin execution. This encoding is used on method entry, on OSR
+     * transition, and on continuation resumption (if enabled). The encoding is as follows:
+     *
+     * <pre>
+     * 00000000 0000000C SSSSSSSS SSSSSSSS BBBBBBBBB BBBBBBBBB BBBBBBBBB BBBBBBBBB
+     * </pre>
+     *
+     * Where {@code B} represents the bci and {@code S} represents the sp. If continuations are
+     * enabled, the {@code C} bit is used by OSR to indicate that the OSR compilation should use a
+     * materialized continuation frame for locals (this flag should not be used outside of OSR).
+     */
+    private String encodeState(String bci, String sp, String useContinuationFrame) {
         String result = "";
+        if (useContinuationFrame != null) {
+            if (!model.enableYield) {
+                throw new AssertionError();
+            }
+            result += String.format("((%s ? 1L : 0L) << 48) | ", useContinuationFrame);
+        }
         if (sp != null) {
-            result += String.format("(((long) %s) << 32) | ", sp);
+            result += String.format("((%s & 0xFFFFL) << 32) | ", sp);
         }
         result += String.format("(%s & 0xFFFFFFFFL)", bci);
         return result;
     }
 
+    private String encodeState(String bci, String sp) {
+        return encodeState(bci, sp, null);
+    }
+
+    private static final String RETURN_BCI = "0xFFFFFFFF";
+
     private static String encodeReturnState(String sp) {
-        return String.format("(((long) %s) << 32) | %sL", sp, RETURN_BCI);
+        return String.format("((%s & 0xFFFFL) << 32) | %sL", sp, RETURN_BCI);
     }
 
     private static String encodeNewBci(String bci, String state) {
-        return String.format("(%s & 0xFFFFFFFF00000000L) | (%s & 0xFFFFFFFFL)", state, bci);
+        return String.format("(%s & 0xFFFF00000000L) | (%s & 0xFFFFFFFFL)", state, bci);
     }
 
     private static String decodeBci(String state) {
-        return String.format("(int) (%s & 0xFFFFFFFFL)", state);
+        return String.format("(int) %s", state);
     }
 
     private static String decodeSp(String state) {
-        return String.format("(int) (%s >>> 32)", state);
+        return String.format("(short) (%s >>> 32)", state);
+    }
+
+    private String decodeUseContinuationFrame(String state) {
+        if (!model.enableYield) {
+            throw new AssertionError();
+        }
+        return String.format("(%s & (1L << 48)) != 0", state);
+    }
+
+    private String clearUseContinuationFrame(String target) {
+        if (!model.enableYield) {
+            throw new AssertionError();
+        }
+        return String.format("(%s & ~(1L << 48))", target);
     }
 
     private CodeExecutableElement createContinueAt() {
@@ -11541,12 +11577,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         private static final String FORCE_UNCACHED_THRESHOLD = "Integer.MIN_VALUE";
         private final InterpreterTier tier;
         private final Map<InstructionModel, CodeExecutableElement> doInstructionMethods = new LinkedHashMap<>();
-        private final CodeTypeElement interpreterStateElement;
 
         BytecodeNodeElement(InterpreterTier tier) {
             super(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, tier.bytecodeClassName());
             this.tier = tier;
-            this.interpreterStateElement = addOptional((tier.isCached() && model.enableYield) ? new InterpreterStateElement() : null);
             this.setSuperClass(abstractBytecodeNode.asType());
             this.addAll(createContinueAt());
             this.getAnnotationMirrors().add(new CodeAnnotationMirror(types.DenyReplace));
@@ -11573,6 +11607,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 // Define the members required to support OSR.
                 this.getImplements().add(types.BytecodeOSRNode);
                 this.add(createExecuteOSR());
+                this.add(createPrepareOSR());
+                this.add(createCopyIntoOSRFrame());
                 this.addAll(createMetadataMembers());
                 this.addAll(createStoreAndRestoreParentFrameMethods());
             } else if (tier.isUninitialized()) {
@@ -11625,36 +11661,19 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
         private CodeExecutableElement createExecuteOSR() {
             CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeOSRNode, "executeOSR",
-                            new String[]{"frame", "target", model.enableYield ? "interpreterStateObject" : "sp"},
-                            new TypeMirror[]{types.VirtualFrame, type(int.class), type(Object.class)});
+                            new String[]{"frame", "target", "unused"},
+                            new TypeMirror[]{types.VirtualFrame, type(long.class), type(Object.class)});
             CodeTreeBuilder b = ex.getBuilder();
 
             if (model.enableYield) {
-                b.startDeclaration(interpreterStateElement.asType(), "interpreterState");
-                b.cast(interpreterStateElement.asType()).string("interpreterStateObject");
-                b.end();
-
-                b.startDeclaration(types.VirtualFrame, "continuationFrame");
+                b.declaration(types.VirtualFrame, "localFrame");
+                b.startIf().string(decodeUseContinuationFrame("target")).string(" /* use continuation frame */").end().startBlock();
+                b.startAssign("localFrame");
                 b.cast(types.MaterializedFrame);
                 startGetFrame(b, "frame", type(Object.class), false).string(COROUTINE_FRAME_INDEX).end();
                 b.end();
-
-                b.declaration(types.VirtualFrame, "localFrame");
-
-                b.startIf().string("interpreterState.isContinuation").end().startBlock();
-                b.statement("localFrame = continuationFrame");
-                b.startIf().string("continuationFrame == null").end().startBlock();
-                b.lineComment("Regular invocation transitioned to continuation OSR target");
-                b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-                b.statement("localFrame = frame");
-                b.end();
                 b.end().startElseBlock();
                 b.statement("localFrame = frame");
-                b.startIf().string("continuationFrame != null").end().startBlock();
-                b.lineComment("Resumed invocation transitioned to regular OSR target");
-                b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-                b.statement("localFrame = continuationFrame");
-                b.end();
                 b.end();
             }
 
@@ -11663,12 +11682,36 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.string("frame");
             if (model.enableYield) {
                 b.string("localFrame");
-                b.string(encodeState("target", "interpreterState.sp"));
+                b.string(clearUseContinuationFrame("target"));
             } else {
-                b.string(encodeState("target", "(int) sp"));
+                b.string("target");
             }
             b.end(2);
 
+            return ex;
+        }
+
+        private CodeExecutableElement createPrepareOSR() {
+            CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeOSRNode, "prepareOSR",
+                            new String[]{"target"},
+                            new TypeMirror[]{type(long.class)});
+            CodeTreeBuilder b = ex.getBuilder();
+            b.lineComment("do nothing");
+            return ex;
+        }
+
+        private CodeExecutableElement createCopyIntoOSRFrame() {
+            CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeOSRNode, "copyIntoOSRFrame",
+                            new String[]{"osrFrame", "parentFrame", "target", "targetMetadata"},
+                            new TypeMirror[]{types.VirtualFrame, types.VirtualFrame, type(long.class), type(Object.class)});
+            CodeTreeBuilder b = ex.getBuilder();
+            // default behaviour. we just need to explicitly implement the long overload.
+            b.startStatement().startCall("transferOSRFrame");
+            b.string("osrFrame");
+            b.string("parentFrame");
+            b.string("target");
+            b.string("targetMetadata");
+            b.end(2);
             return ex;
         }
 
@@ -13573,28 +13616,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.startAssign("Object osrResult");
             b.startStaticCall(types.BytecodeOSRNode, "tryOSR");
             b.string("this");
-            b.tree(readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX))); // target
-
-            if (model.enableYield) {
-                b.startNew(interpreterStateElement.asType());
-                /**
-                 * We need to communicate to the compiler whether the local variables should be
-                 * taken from the continuation frame.
-                 *
-                 * TODO: We actually need to encode this boolean in the OSR "target". The first
-                 * interpreter state used gets reused for subsequent compilations, so we could
-                 * compile an OSR target that reads locals from the stack frame, then later call the
-                 * same target from a resumed continuation that uses a continuation frame instead.
-                 * executeOSR has guards that deopt if the other kind of frame is used, but we
-                 * currently cannot recompile a second OSR target for the other frame kind. Encoding
-                 * the flag in the "target" allows us to differentiate.
-                 */
-                b.string("frame != ", localFrame()); // isContinuation
-                b.string("sp");
-                b.end();
-            } else {
-                b.string("sp"); // interpreterState
-            }
+            String bci = readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX)).toString();
+            b.string(encodeState(bci, "sp", model.enableYield ? "frame != " + localFrame() : null));
+            b.string("null"); // interpreterState
             b.string("null"); // beforeTransfer
             b.string("frame"); // parentFrame
             b.end(2);
