@@ -6,34 +6,24 @@ import java.io.IOException;
  public class BuboCache extends Thread {
         
         public static long[] Buffer;
-        public static int pointer;
-        public static int BufferPointer;
-        public static long[][] BufferArray;
+        public static int bufferIndex;
 
         public static long sampleCounter;
 
-        // public BuboCache() {
-        //         BufferArray = new long[2][250_000];
-        //         BufferPointer = 0;
-        //         pointer = 0;
-        //         Buffer = BufferArray[BufferPointer];
-        // }
-
-        // static {
-        //         System.out.println("CACHE INITIALIZATION");
-        //         BufferArray = new long[5][250_000];
-        //         BufferPointer = 0;
-        //         pointer = 0;
-        //         Buffer = BufferArray[BufferPointer];
-        // }
+        public static final int SAMPLE_RATE = 100;
 
         static {
                 System.out.println("CACHE INITIALIZATION");
-                // BufferArray = new long[5][250_000];
-                BufferPointer = 0;
-                pointer = 0;
+                bufferIndex = 0;
                 Buffer = new long[9_000_000];
                 sampleCounter = 0;
+        }
+
+        public static void sampleTime(long id){
+                if(sampleCounter % SAMPLE_RATE == 0){
+                        Buffer[bufferIndex++] = id;
+                        Buffer[bufferIndex++] = System.currentTimeMillis();
+                }
         }
 
         public static void rotateBuffer() {

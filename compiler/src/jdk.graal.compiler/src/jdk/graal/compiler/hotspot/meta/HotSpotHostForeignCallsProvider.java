@@ -176,7 +176,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
 
     //Joonhwan adding HotSpotForeignCallDescriptors to be registered as a JavaCallStub
     public static final HotSpotForeignCallDescriptor ADD_TO_BUFFER = new  HotSpotForeignCallDescriptor(SAFEPOINT, NO_SIDE_EFFECT, NO_LOCATIONS, "add", void.class, long.class, long.class);
-    public static final HotSpotForeignCallDescriptor BUBU_CACHE_ROTATEBUFFER = new HotSpotForeignCallDescriptor(SAFEPOINT, NO_SIDE_EFFECT, NO_LOCATIONS, "rotateBuffer", Void.class, Object.class);
+    public static final HotSpotForeignCallDescriptor SAMPLE_METHOD = new HotSpotForeignCallDescriptor(SAFEPOINT, NO_SIDE_EFFECT, NO_LOCATIONS, "sampleTime", void.class, long.class);
  
     public static final HotSpotForeignCallDescriptor JAVA_TIME_MILLIS = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NO_SIDE_EFFECT, NO_LOCATIONS, "javaTimeMillis", long.class);
     public static final HotSpotForeignCallDescriptor JAVA_TIME_NANOS = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NO_SIDE_EFFECT, NO_LOCATIONS, "javaTimeNanos", long.class);
@@ -406,8 +406,8 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         invokeJavaMethodStub(options, providers, ADD_TO_BUFFER, invokeJavaMethodAddress, addToBufferMethod); 
         
         
-        ResolvedJavaMethod rotateBuffermethod = findMethod(providers.getMetaAccess(), BuboCache.class, BUBU_CACHE_ROTATEBUFFER.getName());
-        invokeJavaMethodStub(options, providers, BUBU_CACHE_ROTATEBUFFER, invokeJavaMethodAddress, rotateBuffermethod);
+        ResolvedJavaMethod rotateBuffermethod = findMethod(providers.getMetaAccess(), BuboCache.class, SAMPLE_METHOD.getName());
+        invokeJavaMethodStub(options, providers, SAMPLE_METHOD, invokeJavaMethodAddress, rotateBuffermethod);
     }
 
     private void registerArraycopyDescriptor(EconomicMap<Long, ForeignCallDescriptor> descMap, JavaKind kind, boolean aligned, boolean disjoint, boolean uninit, LocationIdentity killedLocation,
