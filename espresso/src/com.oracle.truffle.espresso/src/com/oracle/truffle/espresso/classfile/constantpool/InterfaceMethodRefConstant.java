@@ -35,8 +35,7 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.resolver.LinkResolver;
 
 public interface InterfaceMethodRefConstant extends MethodRefConstant {
 
@@ -110,30 +109,12 @@ public interface InterfaceMethodRefConstant extends MethodRefConstant {
         @Override
         public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, ObjectKlass accessingKlass) {
             METHODREF_RESOLVE_COUNT.inc();
-            EspressoContext context = pool.getContext();
-            Meta meta = context.getMeta();
 
             Klass holderInterface = getResolvedHolderKlass(accessingKlass, pool);
-
             Symbol<Name> name = getName(pool);
-
-            // 1. If C is not an interface, interface method resolution throws an
-            // IncompatibleClassChangeError.
-            if (!holderInterface.isInterface()) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "Found class " + holderInterface.getExternalName() + ", but interface was expected");
-            }
-
             Symbol<Signature> signature = getSignature(pool);
 
-            Method method = ((ObjectKlass) holderInterface).resolveInterfaceMethod(name, signature);
-
-            if (method == null) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError, meta.toGuestString(name));
-            }
-
-            MemberRefConstant.doAccessCheck(accessingKlass, holderInterface, method, meta);
-
-            method.checkLoadingConstraints(accessingKlass.getDefiningClassLoader(), method.getDeclaringKlass().getDefiningClassLoader());
+            Method method = LinkResolver.resolveSymbol(pool.getContext().getMeta(), accessingKlass, name, signature, holderInterface, true, true, true);
 
             return new Resolved(method);
         }

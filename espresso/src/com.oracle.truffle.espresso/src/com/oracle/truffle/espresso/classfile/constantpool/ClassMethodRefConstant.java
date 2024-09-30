@@ -37,6 +37,7 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.methodhandle.MHInvokeGenericNode;
+import com.oracle.truffle.espresso.resolver.LinkResolver;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 public interface ClassMethodRefConstant extends MethodRefConstant {
@@ -48,10 +49,6 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
     @Override
     default Tag tag() {
         return Tag.METHOD_REF;
-    }
-
-    default MHInvokeGenericNode.MethodHandleInvoker invoker() {
-        return null;
     }
 
     final class Indexes extends MethodRefConstant.Indexes implements ClassMethodRefConstant, Resolvable {
@@ -172,28 +169,16 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
         @Override
         public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, ObjectKlass accessingKlass) {
             METHODREF_RESOLVE_COUNT.inc();
-
             EspressoContext context = pool.getContext();
-            Klass holderKlass = getResolvedHolderKlass(accessingKlass, pool);
-
             Meta meta = context.getMeta();
-            if (holderKlass.isInterface()) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, meta.toGuestString(getName(pool)));
-            }
 
+            Klass holderKlass = getResolvedHolderKlass(accessingKlass, pool);
             Symbol<Name> name = getName(pool);
             Symbol<Signature> signature = getSignature(pool);
 
-            Method method = holderKlass.lookupMethod(name, signature);
-            if (method == null) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError, meta.toGuestString(holderKlass.getNameAsString() + "." + getName(pool) + signature));
-            }
+            Method method = LinkResolver.resolveSymbol(meta, accessingKlass, name, signature, holderKlass, false, true, true);
 
-            MemberRefConstant.doAccessCheck(accessingKlass, holderKlass, method, meta);
-
-            if (!method.isPolySignatureIntrinsic()) {
-                method.checkLoadingConstraints(accessingKlass.getDefiningClassLoader(), method.getDeclaringKlass().getDefiningClassLoader());
-            } else if (method.isInvokeIntrinsic()) {
+            if (method.isInvokeIntrinsic()) {
                 MHInvokeGenericNode.MethodHandleInvoker invoker = MHInvokeGenericNode.linkMethod(meta.getLanguage(), meta, accessingKlass, method, name, signature);
                 return new ResolvedWithInvoker(method, invoker);
             }
