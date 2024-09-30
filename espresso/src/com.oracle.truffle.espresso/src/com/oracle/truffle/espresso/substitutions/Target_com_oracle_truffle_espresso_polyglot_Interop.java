@@ -4284,27 +4284,30 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         "!unwrapArguments",
                         "arguments.isEspressoObject()"
         })
-        Object[] doEspressoNoUnwrap(
+        static Object[] doEspressoNoUnwrap(
                         @SuppressWarnings("unused") boolean unwrapArguments,
-                        @JavaType(Object[].class) StaticObject arguments) {
-            return arguments.<StaticObject[]> unwrap(getLanguage());
+                        @JavaType(Object[].class) StaticObject arguments,
+                        @Bind("$node") Node node) {
+            return arguments.<StaticObject[]> unwrap(EspressoLanguage.get(node));
         }
 
         @Specialization(guards = {
                         "unwrapArguments",
                         "arguments.isEspressoObject()",
         })
-        Object[] doEspressoUnwrap(
+        static Object[] doEspressoUnwrap(
                         @SuppressWarnings("unused") boolean unwrapArguments,
-                        @JavaType(Object[].class) StaticObject arguments) {
-            EspressoLanguage language = getLanguage();
+                        @JavaType(Object[].class) StaticObject arguments,
+                        @Bind("$node") Node node) {
+            EspressoLanguage language = EspressoLanguage.get(node);
             Object[] rawArgs = arguments.unwrap(language);
             if (rawArgs.length == 0) {
                 return EMPTY_ARRAY;
             }
             Object[] hostArgs = new Object[rawArgs.length];
+            Meta meta = EspressoContext.get(node).getMeta();
             for (int i = 0; i < rawArgs.length; ++i) {
-                hostArgs[i] = InteropUtils.unwrap(language, (StaticObject) rawArgs[i], getMeta());
+                hostArgs[i] = InteropUtils.unwrap(language, (StaticObject) rawArgs[i], meta);
             }
             return hostArgs;
         }
@@ -4312,20 +4315,22 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         @Specialization(guards = {
                         "arguments.isForeignObject()",
         })
-        Object[] doForeign(
+        static Object[] doForeign(
                         boolean unwrapArguments,
                         @JavaType(Object[].class) StaticObject arguments,
                         @Cached(inline = false) GetArraySize getArraySize,
-                        @Cached(inline = false) ReadArrayElement readArrayElement) {
-            EspressoLanguage language = getLanguage();
+                        @Cached(inline = false) ReadArrayElement readArrayElement,
+                        @Bind("$node") Node node) {
+            EspressoLanguage language = EspressoLanguage.get(node);
             int argsLength = Math.toIntExact(getArraySize.execute(arguments));
             if (argsLength == 0) {
                 return EMPTY_ARRAY;
             }
             Object[] hostArgs = new Object[argsLength];
+            Meta meta = EspressoContext.get(node).getMeta();
             for (int i = 0; i < argsLength; ++i) {
                 StaticObject elem = readArrayElement.execute(arguments, i);
-                hostArgs[i] = unwrapArguments ? InteropUtils.unwrap(language, elem, getMeta()) : elem;
+                hostArgs[i] = unwrapArguments ? InteropUtils.unwrap(language, elem, meta) : elem;
             }
             return hostArgs;
         }
