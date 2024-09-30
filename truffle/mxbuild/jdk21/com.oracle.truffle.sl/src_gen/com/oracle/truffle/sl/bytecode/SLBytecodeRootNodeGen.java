@@ -848,10 +848,10 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
 
     @SuppressWarnings("all")
     private Object continueAt(AbstractBytecodeNode bc, int bci, int sp, VirtualFrame frame) {
-        long state = (((long) sp) << 32) | (bci & 0xFFFFFFFFL);
+        long state = ((sp & 0xFFFFL) << 32) | (bci & 0xFFFFFFFFL);
         while (true) {
             state = bc.continueAt(this, frame, state);
-            if ((int) (state & 0xFFFFFFFFL) == 0xFFFFFFFF) {
+            if ((int) state == 0xFFFFFFFF) {
                 break;
             } else {
                 // Bytecode or tier changed
@@ -861,7 +861,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 state = oldBytecode.transitionState(bc, state);
             }
         }
-        return FRAMES.uncheckedGetObject(frame, (int) (state >>> 32));
+        return FRAMES.uncheckedGetObject(frame, (short) (state >>> 32));
     }
 
     private void transitionToCached(Frame frame, int bci) {
@@ -3813,7 +3813,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
 
         @Override
         protected int translateBytecodeIndex(BytecodeNode newNode, int bytecodeIndex) {
-            return (int) (transitionState((AbstractBytecodeNode) newNode, (bytecodeIndex & 0xFFFFFFFFL)) & 0xFFFFFFFFL);
+            return (int) transitionState((AbstractBytecodeNode) newNode, (bytecodeIndex & 0xFFFFFFFFL));
         }
 
         final long transitionState(AbstractBytecodeNode newBytecode, long state) {
@@ -3823,9 +3823,9 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 // No change in bytecodes.
                 return state;
             }
-            int oldBci = (int) (state & 0xFFFFFFFFL);
+            int oldBci = (int) state;
             int newBci = computeNewBci(oldBci, oldBc, newBc, this.getTagNodes(), newBytecode.getTagNodes());
-            return (state & 0xFFFFFFFF00000000L) | (newBci & 0xFFFFFFFFL);
+            return (state & 0xFFFF00000000L) | (newBci & 0xFFFFFFFFL);
         }
 
         public void adoptNodesAfterUpdate() {
@@ -4554,8 +4554,8 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             byte[] bc = this.bytecodes;
             Node[] cachedNodes = this.cachedNodes_;
             int[] branchProfiles = this.branchProfiles_;
-            int bci = (int) (startState & 0xFFFFFFFFL);
-            int sp = (int) (startState >>> 32);
+            int bci = (int) startState;
+            int sp = (short) (startState >>> 32);
             int op;
             long temp;
             LoopCounter loopCounter = new LoopCounter();
@@ -4605,7 +4605,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                             if (CompilerDirectives.hasNextTier() && loopCounter.value > 0) {
                                 LoopNode.reportLoopCount(this, loopCounter.value);
                             }
-                            return (((long) (sp - 1)) << 32) | 0xFFFFFFFFL;
+                            return (((sp - 1) & 0xFFFFL) << 32) | 0xFFFFFFFFL;
                         }
                         case Instructions.BRANCH :
                         {
@@ -5418,37 +5418,37 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                         case Instructions.INVALIDATE0 :
                         {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
-                            return (((long) sp) << 32) | (bci & 0xFFFFFFFFL);
+                            return ((sp & 0xFFFFL) << 32) | (bci & 0xFFFFFFFFL);
                         }
                         case Instructions.INVALIDATE1 :
                         {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
-                            return (((long) sp) << 32) | (bci & 0xFFFFFFFFL);
+                            return ((sp & 0xFFFFL) << 32) | (bci & 0xFFFFFFFFL);
                         }
                         case Instructions.INVALIDATE2 :
                         {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
-                            return (((long) sp) << 32) | (bci & 0xFFFFFFFFL);
+                            return ((sp & 0xFFFFL) << 32) | (bci & 0xFFFFFFFFL);
                         }
                         case Instructions.INVALIDATE3 :
                         {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
-                            return (((long) sp) << 32) | (bci & 0xFFFFFFFFL);
+                            return ((sp & 0xFFFFL) << 32) | (bci & 0xFFFFFFFFL);
                         }
                         case Instructions.INVALIDATE4 :
                         {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
-                            return (((long) sp) << 32) | (bci & 0xFFFFFFFFL);
+                            return ((sp & 0xFFFFL) << 32) | (bci & 0xFFFFFFFFL);
                         }
                         case Instructions.INVALIDATE5 :
                         {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
-                            return (((long) sp) << 32) | (bci & 0xFFFFFFFFL);
+                            return ((sp & 0xFFFFL) << 32) | (bci & 0xFFFFFFFFL);
                         }
                         case Instructions.INVALIDATE6 :
                         {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
-                            return (((long) sp) << 32) | (bci & 0xFFFFFFFFL);
+                            return ((sp & 0xFFFFL) << 32) | (bci & 0xFFFFFFFFL);
                         }
                     }
                 } catch (Throwable throwable) {
@@ -5459,8 +5459,8 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                             switch (this.handlers[op + EXCEPTION_HANDLER_OFFSET_KIND]) {
                                 case HANDLER_TAG_EXCEPTIONAL :
                                     long result = doTagExceptional($root, frame, bc, bci, throwable, this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI], this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_SP]);
-                                    temp = (int) (result >>> 32);
-                                    bci = (int) (result & 0xFFFFFFFFL);
+                                    temp = (short) (result >>> 32);
+                                    bci = (int) result;
                                     if (sp < (int) temp + $root.maxLocals) {
                                         // The instrumentation pushed a value on the stack.
                                         assert sp == (int) temp + $root.maxLocals - 1;
@@ -5503,7 +5503,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             if (CompilerDirectives.inInterpreter() && BytecodeOSRNode.pollOSRBackEdge(this)) {
                 int branchProfileIndex = BYTES.getIntUnaligned(bc, bci + 6 /* imm loop_header_branch_profile */);
                 ensureFalseProfile(branchProfiles_, branchProfileIndex);
-                Object osrResult = BytecodeOSRNode.tryOSR(this, BYTES.getIntUnaligned(bc, bci + 2 /* imm branch_target */), sp, null, frame);
+                Object osrResult = BytecodeOSRNode.tryOSR(this, ((sp & 0xFFFFL) << 32) | (BYTES.getIntUnaligned(bc, bci + 2 /* imm branch_target */) & 0xFFFFFFFFL), null, null, frame);
                 if (osrResult != null) {
                     return (long) osrResult;
                 }
@@ -6549,8 +6549,18 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         @Override
-        public Object executeOSR(VirtualFrame frame, int target, Object sp) {
-            return continueAt(getRoot(), frame, (((long) (int) sp) << 32) | (target & 0xFFFFFFFFL));
+        public Object executeOSR(VirtualFrame frame, long target, Object unused) {
+            return continueAt(getRoot(), frame, target);
+        }
+
+        @Override
+        public void prepareOSR(long target) {
+            // do nothing
+        }
+
+        @Override
+        public void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, long target, Object targetMetadata) {
+            transferOSRFrame(osrFrame, parentFrame, target, targetMetadata);
         }
 
         @Override
@@ -6644,7 +6654,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 throw exception;
             } else if (result == ProbeNode.UNWIND_ACTION_REENTER) {
                 // Reenter by jumping to the begin bci.
-                return (((long) handlerSp) << 32) | (node.enterBci & 0xFFFFFFFFL);
+                return ((handlerSp & 0xFFFFL) << 32) | (node.enterBci & 0xFFFFFFFFL);
             } else {
                 // We jump to the return address which is at sp + 1.
                 int targetSp;
@@ -6685,7 +6695,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                         throw CompilerDirectives.shouldNotReachHere();
                 }
                 assert targetBci < bc.length : "returnBci must be reachable";
-                return (((long) targetSp) << 32) | (targetBci & 0xFFFFFFFFL);
+                return ((targetSp & 0xFFFFL) << 32) | (targetBci & 0xFFFFFFFFL);
             }
         }
 
@@ -7520,8 +7530,8 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                     return startState;
                 }
                 byte[] bc = this.bytecodes;
-                int bci = (int) (startState & 0xFFFFFFFFL);
-                int sp = (int) (startState >>> 32);
+                int bci = (int) startState;
+                int sp = (short) (startState >>> 32);
                 int op;
                 long temp;
                 loop: while (true) {
@@ -7557,7 +7567,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                                     uncachedExecuteCount--;
                                     this.uncachedExecuteCount_ = uncachedExecuteCount;
                                 }
-                                return (((long) (sp - 1)) << 32) | 0xFFFFFFFFL;
+                                return (((sp - 1) & 0xFFFFL) << 32) | 0xFFFFFFFFL;
                             }
                             case Instructions.BRANCH :
                             {
@@ -7571,7 +7581,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                                     if (uncachedExecuteCount != Integer.MIN_VALUE) {
                                         CompilerDirectives.transferToInterpreterAndInvalidate();
                                         $root.transitionToCached(frame, bci);
-                                        return (((long) sp) << 32) | (bci & 0xFFFFFFFFL);
+                                        return ((sp & 0xFFFFL) << 32) | (bci & 0xFFFFFFFFL);
                                     }
                                 } else {
                                     uncachedExecuteCount--;
@@ -7963,31 +7973,31 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                             }
                             case Instructions.INVALIDATE0 :
                             {
-                                return (((long) sp) << 32) | (bci & 0xFFFFFFFFL);
+                                return ((sp & 0xFFFFL) << 32) | (bci & 0xFFFFFFFFL);
                             }
                             case Instructions.INVALIDATE1 :
                             {
-                                return (((long) sp) << 32) | (bci & 0xFFFFFFFFL);
+                                return ((sp & 0xFFFFL) << 32) | (bci & 0xFFFFFFFFL);
                             }
                             case Instructions.INVALIDATE2 :
                             {
-                                return (((long) sp) << 32) | (bci & 0xFFFFFFFFL);
+                                return ((sp & 0xFFFFL) << 32) | (bci & 0xFFFFFFFFL);
                             }
                             case Instructions.INVALIDATE3 :
                             {
-                                return (((long) sp) << 32) | (bci & 0xFFFFFFFFL);
+                                return ((sp & 0xFFFFL) << 32) | (bci & 0xFFFFFFFFL);
                             }
                             case Instructions.INVALIDATE4 :
                             {
-                                return (((long) sp) << 32) | (bci & 0xFFFFFFFFL);
+                                return ((sp & 0xFFFFL) << 32) | (bci & 0xFFFFFFFFL);
                             }
                             case Instructions.INVALIDATE5 :
                             {
-                                return (((long) sp) << 32) | (bci & 0xFFFFFFFFL);
+                                return ((sp & 0xFFFFL) << 32) | (bci & 0xFFFFFFFFL);
                             }
                             case Instructions.INVALIDATE6 :
                             {
-                                return (((long) sp) << 32) | (bci & 0xFFFFFFFFL);
+                                return ((sp & 0xFFFFL) << 32) | (bci & 0xFFFFFFFFL);
                             }
                         }
                     } catch (Throwable throwable) {
@@ -7999,8 +8009,8 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                                 switch (this.handlers[op + EXCEPTION_HANDLER_OFFSET_KIND]) {
                                     case HANDLER_TAG_EXCEPTIONAL :
                                         long result = doTagExceptional($root, frame, bc, bci, throwable, this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI], this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_SP]);
-                                        temp = (int) (result >>> 32);
-                                        bci = (int) (result & 0xFFFFFFFFL);
+                                        temp = (short) (result >>> 32);
+                                        bci = (int) result;
                                         if (sp < (int) temp + $root.maxLocals) {
                                             // The instrumentation pushed a value on the stack.
                                             assert sp == (int) temp + $root.maxLocals - 1;
@@ -8258,7 +8268,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 throw exception;
             } else if (result == ProbeNode.UNWIND_ACTION_REENTER) {
                 // Reenter by jumping to the begin bci.
-                return (((long) handlerSp) << 32) | (node.enterBci & 0xFFFFFFFFL);
+                return ((handlerSp & 0xFFFFL) << 32) | (node.enterBci & 0xFFFFFFFFL);
             } else {
                 // We jump to the return address which is at sp + 1.
                 int targetSp;
@@ -8299,7 +8309,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                         throw CompilerDirectives.shouldNotReachHere();
                 }
                 assert targetBci < bc.length : "returnBci must be reachable";
-                return (((long) targetSp) << 32) | (targetBci & 0xFFFFFFFFL);
+                return ((targetSp & 0xFFFFL) << 32) | (targetBci & 0xFFFFFFFFL);
             }
         }
 
