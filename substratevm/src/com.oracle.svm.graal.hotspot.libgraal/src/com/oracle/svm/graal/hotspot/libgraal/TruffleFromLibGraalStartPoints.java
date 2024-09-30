@@ -58,7 +58,6 @@ import static com.oracle.svm.graal.hotspot.libgraal.TruffleFromLibGraalStartPoin
 import static com.oracle.svm.graal.hotspot.libgraal.TruffleFromLibGraalStartPointsGen.callGetDebugProperties;
 import static com.oracle.svm.graal.hotspot.libgraal.TruffleFromLibGraalStartPointsGen.callGetDescription;
 import static com.oracle.svm.graal.hotspot.libgraal.TruffleFromLibGraalStartPointsGen.callGetFailedSpeculationsAddress;
-import static com.oracle.svm.graal.hotspot.libgraal.TruffleFromLibGraalStartPointsGen.callGetHostMethodInfo;
 import static com.oracle.svm.graal.hotspot.libgraal.TruffleFromLibGraalStartPointsGen.callGetKnownCallSiteCount;
 import static com.oracle.svm.graal.hotspot.libgraal.TruffleFromLibGraalStartPointsGen.callGetLanguage;
 import static com.oracle.svm.graal.hotspot.libgraal.TruffleFromLibGraalStartPointsGen.callGetLineNumber;
@@ -133,20 +132,6 @@ public final class TruffleFromLibGraalStartPoints {
                         (byte) (in.readBoolean() ? 1 : 0),
                         (byte) (in.readBoolean() ? 1 : 0),
         };
-    }
-
-    @TruffleFromLibGraal(Id.GetHostMethodInfo)
-    public static boolean[] getHostMethodInfo(Object hsHandle, long methodHandle) {
-        JNIEnv env = JNIMethodScope.env();
-        JByteArray hsByteArray = callGetHostMethodInfo(calls, env, ((HSObject) hsHandle).getHandle(), methodHandle);
-        CCharPointer buffer = StackValue.get(4);
-        JNIUtil.GetByteArrayRegion(env(), hsByteArray, 0, 4, buffer);
-        BinaryInput in = BinaryInput.create(buffer, 4);
-        boolean[] result = new boolean[4];
-        for (int i = 0; i < result.length; i++) {
-            result[i] = in.readBoolean();
-        }
-        return result;
     }
 
     @TruffleFromLibGraal(Id.OnCodeInstallation)
