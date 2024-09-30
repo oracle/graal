@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ package org.graalvm.wasm.predefined.wasi.types;
 
 import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.memory.WasmMemoryLibrary;
 
 /** File descriptor attributes. */
 public final class Fdstat {
@@ -59,49 +60,49 @@ public final class Fdstat {
     public static final int BYTES = 24;
 
     /** Reads file type. */
-    public static Filetype readFsFiletype(Node node, WasmMemory memory, int address) {
-        return Filetype.fromValue((byte) memory.load_i32_8u(node, address + 0));
+    public static Filetype readFsFiletype(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address) {
+        return Filetype.fromValue((byte) memoryLib.load_i32_8u(memory, node, address + 0));
     }
 
     /** Writes file type. */
-    public static void writeFsFiletype(Node node, WasmMemory memory, int address, Filetype value) {
-        memory.store_i32_8(node, address + 0, value.toValue());
+    public static void writeFsFiletype(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address, Filetype value) {
+        memoryLib.store_i32_8(memory, node, address + 0, value.toValue());
     }
 
     /** Reads file descriptor flags. */
-    public static short readFsFlags(Node node, WasmMemory memory, int address) {
-        return (short) memory.load_i32_16u(node, address + 2);
+    public static short readFsFlags(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address) {
+        return (short) memoryLib.load_i32_16u(memory, node, address + 2);
     }
 
     /** Writes file descriptor flags. */
-    public static void writeFsFlags(Node node, WasmMemory memory, int address, short value) {
-        memory.store_i32_16(node, address + 2, value);
+    public static void writeFsFlags(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address, short value) {
+        memoryLib.store_i32_16(memory, node, address + 2, value);
     }
 
     /** Reads rights that apply to this file descriptor. */
-    public static long readFsRightsBase(Node node, WasmMemory memory, int address) {
-        return memory.load_i64(node, address + 8);
+    public static long readFsRightsBase(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address) {
+        return memoryLib.load_i64(memory, node, address + 8);
     }
 
     /** Writes rights that apply to this file descriptor. */
-    public static void writeFsRightsBase(Node node, WasmMemory memory, int address, long value) {
-        memory.store_i64(node, address + 8, value);
+    public static void writeFsRightsBase(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address, long value) {
+        memoryLib.store_i64(memory, node, address + 8, value);
     }
 
     /**
      * Reads maximum set of rights that may be installed on new file descriptors that are created
      * through this file descriptor, e.g., through {@code path_open}.
      */
-    public static long readFsRightsInheriting(Node node, WasmMemory memory, int address) {
-        return memory.load_i64(node, address + 16);
+    public static long readFsRightsInheriting(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address) {
+        return memoryLib.load_i64(memory, node, address + 16);
     }
 
     /**
      * Writes maximum set of rights that may be installed on new file descriptors that are created
      * through this file descriptor, e.g., through {@code path_open}.
      */
-    public static void writeFsRightsInheriting(Node node, WasmMemory memory, int address, long value) {
-        memory.store_i64(node, address + 16, value);
+    public static void writeFsRightsInheriting(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address, long value) {
+        memoryLib.store_i64(memory, node, address + 16, value);
     }
 
 }
