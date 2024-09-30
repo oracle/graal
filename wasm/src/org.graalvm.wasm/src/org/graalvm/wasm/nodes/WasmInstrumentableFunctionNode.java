@@ -69,6 +69,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
+import org.graalvm.wasm.memory.WasmMemoryLibrary;
 
 /**
  * Represents an instrumentable Wasm function node. See {@link WasmFunctionNode} for a description
@@ -83,6 +84,8 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
 
     @Child private WasmFunctionNode functionNode;
     @Child private WasmInstrumentationSupportNode instrumentation;
+
+    @Child private WasmMemoryLibrary memoryLib = WasmMemoryLibrary.getFactory().createDispatched(2);
 
     public WasmInstrumentableFunctionNode(WasmModule module, WasmCodeEntry codeEntry, WasmFunctionNode functionNode, int functionSourceLocation) {
         this.module = module;
@@ -319,50 +322,50 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
     @Override
     public boolean isValidMemoryAddress(MaterializedFrame frame, long address, int length) {
         final WasmMemory memory = memory0(frame);
-        return address >= 0 && address + length < memory.byteSize();
+        return address >= 0 && address + length < memoryLib.byteSize(memory);
     }
 
     @TruffleBoundary
     public byte loadI8FromMemory(MaterializedFrame frame, long address) {
         final WasmMemory memory = memory0(frame);
-        return (byte) memory.load_i32_8s(this, address);
+        return (byte) memoryLib.load_i32_8s(memory, this, address);
     }
 
     @TruffleBoundary
     public short loadI16FromMemory(MaterializedFrame frame, long address) {
         final WasmMemory memory = memory0(frame);
-        return (short) memory.load_i32_16s(this, address);
+        return (short) memoryLib.load_i32_16s(memory, this, address);
     }
 
     @TruffleBoundary
     public int loadI32FromMemory(MaterializedFrame frame, long address) {
         final WasmMemory memory = memory0(frame);
-        return memory.load_i32(this, address);
+        return memoryLib.load_i32(memory, this, address);
     }
 
     @TruffleBoundary
     public long loadI64FromMemory(MaterializedFrame frame, long address) {
         final WasmMemory memory = memory0(frame);
-        return memory.load_i64(this, address);
+        return memoryLib.load_i64(memory, this, address);
     }
 
     @TruffleBoundary
     public float loadF32FromMemory(MaterializedFrame frame, long address) {
         final WasmMemory memory = memory0(frame);
-        return memory.load_f32(this, address);
+        return memoryLib.load_f32(memory, this, address);
     }
 
     @TruffleBoundary
     public double loadF64FromMemory(MaterializedFrame frame, long address) {
         final WasmMemory memory = memory0(frame);
-        return memory.load_f64(this, address);
+        return memoryLib.load_f64(memory, this, address);
     }
 
     private byte[] loadByteArrayFromMemory(MaterializedFrame frame, long address, int length) {
         final WasmMemory memory = memory0(frame);
         byte[] dataArray = new byte[length];
         for (int i = 0; i < length; i++) {
-            dataArray[i] = (byte) memory.load_i32_8s(this, address + i);
+            dataArray[i] = (byte) memoryLib.load_i32_8s(memory, this, address + i);
         }
         return dataArray;
     }

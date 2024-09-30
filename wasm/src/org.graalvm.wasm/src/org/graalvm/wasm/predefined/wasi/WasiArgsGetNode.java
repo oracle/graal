@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -70,10 +70,10 @@ public final class WasiArgsGetNode extends WasmBuiltinRootNode {
         int argvPointer = argvAddress;
         int argvBuffPointer = argvBuffAddress;
         for (final String argument : arguments) {
-            memory.store_i32(this, argvPointer, argvBuffPointer);
+            memoryLib.store_i32(memory, this, argvPointer, argvBuffPointer);
             argvPointer += 4;
             argvBuffPointer += memory.writeString(this, argument, argvBuffPointer);
-            memory.store_i32_8(this, argvBuffPointer, (byte) 0);
+            memoryLib.store_i32_8(memory, this, argvBuffPointer, (byte) 0);
             ++argvBuffPointer;
 
         }

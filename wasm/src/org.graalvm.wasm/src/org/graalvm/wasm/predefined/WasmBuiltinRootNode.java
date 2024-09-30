@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,10 +42,13 @@ package org.graalvm.wasm.predefined;
 
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.memory.WasmMemoryLibrary;
 import org.graalvm.wasm.nodes.WasmRootNode;
 
 public abstract class WasmBuiltinRootNode extends WasmRootNode {
     protected final WasmModule module;
+
+    @Child protected WasmMemoryLibrary memoryLib = WasmMemoryLibrary.getFactory().createDispatched(2);
 
     protected WasmBuiltinRootNode(WasmLanguage language, WasmModule module) {
         super(language, null, null);

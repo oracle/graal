@@ -78,6 +78,7 @@ import org.graalvm.wasm.exception.WasmJsApiException;
 import org.graalvm.wasm.globals.DefaultWasmGlobal;
 import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.memory.WasmMemoryLibrary;
 import org.graalvm.wasm.predefined.testutil.TestutilModule;
 import org.junit.Assert;
 import org.junit.Test;
@@ -163,6 +164,7 @@ public class WasmJsApiSuite {
         runMemoryTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
             final WasmMemory memory = WebAssembly.memAlloc(4, 8, false);
+            final WasmMemoryLibrary memoryLib = WasmMemoryLibrary.getUncached();
             final Dictionary importObject = Dictionary.create(new Object[]{
                             "host", Dictionary.create(new Object[]{
                                             "defaultMemory", memory
@@ -171,9 +173,9 @@ public class WasmJsApiSuite {
             final WasmInstance instance = moduleInstantiate(wasm, binaryWithMemoryImport, importObject);
             try {
                 final Object initZero = WebAssembly.instanceExport(instance, "initZero");
-                Assert.assertEquals("Must be zero initially.", 0, memory.load_i32(null, 0));
+                Assert.assertEquals("Must be zero initially.", 0, memoryLib.load_i32(memory, null, 0));
                 InteropLibrary.getUncached(initZero).execute(initZero);
-                Assert.assertEquals("Must be 174 after initialization.", 174, memory.load_i32(null, 0));
+                Assert.assertEquals("Must be 174 after initialization.", 174, memoryLib.load_i32(memory, null, 0));
             } catch (InteropException e) {
                 throw new RuntimeException(e);
             }
@@ -187,8 +189,9 @@ public class WasmJsApiSuite {
             WasmInstance instance = moduleInstantiate(wasm, binaryWithMemoryExport, null);
             try {
                 final WasmMemory memory = (WasmMemory) WebAssembly.instanceExport(instance, "memory");
+                final WasmMemoryLibrary memoryLib = WasmMemoryLibrary.getUncached();
                 final Object readZero = WebAssembly.instanceExport(instance, "readZero");
-                memory.store_i32(null, 0, 174);
+                memoryLib.store_i32(memory, null, 0, 174);
                 final Object result = InteropLibrary.getUncached(readZero).execute(readZero);
                 Assert.assertEquals("Must be 174.", 174, InteropLibrary.getUncached(result).asInt(result));
             } catch (InteropException e) {

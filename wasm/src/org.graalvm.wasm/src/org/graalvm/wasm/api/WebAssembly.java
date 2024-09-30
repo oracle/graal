@@ -83,6 +83,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
+import org.graalvm.wasm.memory.WasmMemoryLibrary;
 
 public class WebAssembly extends Dictionary {
     private final WasmContext currentContext;
@@ -737,10 +738,11 @@ public class WebAssembly extends Dictionary {
     }
 
     public static long memGrow(WasmMemory memory, int delta) {
-        final long previousSize = memory.grow(delta);
+        WasmMemoryLibrary memoryLib = WasmMemoryLibrary.getUncached();
+        final long previousSize = memoryLib.grow(memory, delta);
         if (previousSize == -1) {
             throw new WasmJsApiException(WasmJsApiException.Kind.RangeError,
-                            StrictMath.addExact(memory.size(), delta) <= memory.declaredMaxSize() ? "Cannot grow memory above implementation limit" : "Cannot grow memory above max limit");
+                            StrictMath.addExact(memoryLib.size(memory), delta) <= memory.declaredMaxSize() ? "Cannot grow memory above implementation limit" : "Cannot grow memory above max limit");
         }
         return previousSize;
     }
@@ -865,7 +867,7 @@ public class WebAssembly extends Dictionary {
         checkArgumentCount(args, 1);
         if (args[0] instanceof WasmMemory) {
             WasmMemory memory = (WasmMemory) args[0];
-            ByteBuffer buffer = memory.asByteBuffer();
+            ByteBuffer buffer = WasmMemoryLibrary.getUncached().asByteBuffer(memory);
             if (buffer != null) {
                 return WasmContext.get(null).environment().asGuestValue(buffer);
             }
