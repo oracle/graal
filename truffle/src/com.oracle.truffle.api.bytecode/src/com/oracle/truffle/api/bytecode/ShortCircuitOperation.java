@@ -55,7 +55,7 @@ import com.oracle.truffle.api.bytecode.ShortCircuitOperation.Repeat;
  * <p>
  * A short-circuiting operation {@link #booleanConverter converts} each operand to a {@code boolean}
  * to determine whether to continue execution. An OR operation continues until it encounters
- * {@code true}; an AND operation continue until it encounters {@code false}.
+ * {@code true}; an AND operation continues until it encounters {@code false}.
  * <p>
  * A short-circuiting operation produces either the last operand evaluated, or the {@code boolean}
  * it converted to. Both the boolean operator and the return semantics are specified by the
@@ -135,6 +135,12 @@ public @interface ShortCircuitOperation {
      * The short-circuit operator to use for this operation. The operator decides whether to perform
      * a boolean AND or OR. It also determines whether the operation produces the original operand
      * or the boolean that results from conversion.
+     * <p>
+     * An OR operation will execute children until a {@code true} value; an AND operation will
+     * execute children until a {@code false} value. Note that this means {@link #booleanConverter}
+     * can be negated by changing an OR to an AND (or vice-versa) and then inverting the result. For
+     * example, {@code !convert(A) OR !convert(B) OR ...} can be implemented using
+     * {@code !(convert(A) AND convert(B) AND ...)}.
      *
      * @since 24.2
      */

@@ -51,7 +51,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
- * Default implementation of a bytecode dsl stack trace element object. This implementation is used
+ * Default implementation of a Bytecode DSL stack trace element object. This implementation is used
  * for implementing {@link RootNode#translateStackTraceElement(TruffleStackTraceElement)} of
  * bytecode root nodes unless otherwise specified.
  */

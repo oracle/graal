@@ -29,7 +29,7 @@ Boxing elimination is implemented using quickening, which is described below.
 ## Quickening
 
 [Quickening](https://dl.acm.org/doi/10.1145/1869631.1869633) is a general technique to rewrite an instruction with a specialized version that (typically) requires less work.
-Bytecode DSL supports quickened operations, which handle a subset of the specializations defined by an operation.
+The Bytecode DSL supports quickened operations, which handle a subset of the specializations defined by an operation.
 
 Quickened operations can reduce the amount of work required to evaluate an operation.
 For example, a quickened operation that only accepts `int` inputs can avoid operand boxing and the additional type checks required by the general operation.
@@ -53,7 +53,7 @@ Superinstructions can be automatically derived using [tracing](#tracing).
 **Note: Tracing is not yet supported**.
 
 Determining which instructions are worth optimizing (via quickening or superinstructions) typically requires manual profiling and benchmarking.
-Bytecode DSL can automatically infer optimization opportunities using *tracing*.
+The Bytecode DSL can automatically infer optimization opportunities using *tracing*.
 
 <!--
 

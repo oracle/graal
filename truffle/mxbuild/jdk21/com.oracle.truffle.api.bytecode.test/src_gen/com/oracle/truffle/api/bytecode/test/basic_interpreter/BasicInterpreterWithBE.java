@@ -4102,7 +4102,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         final void setCachedLocalKindInternal(int frameIndex, FrameSlotKind kind, int localIndex) {
             byte[] localTags = getLocalTags();
             if (localTags == null) {
-                // bytecode node not yet cached.
+                // bytecode not yet cached.
                 return;
             } else {
                 localTags[localIndex] = kind.tag;

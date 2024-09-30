@@ -1,10 +1,10 @@
-# Introduction to Bytecode DSL
+# Introduction to the Bytecode DSL
 
-Bytecode DSL is a DSL for automatically generating bytecode interpreters in Truffle. Just as Truffle DSL abstracts away the tricky and tedious details of AST interpreters, the goal of Bytecode DSL is to abstract away the tricky and tedious details of a bytecode interpreter – the bytecode encoding, control flow, quickening, and so on – leaving only the language-specific semantics for the language to implement.
+The Bytecode DSL is a DSL for automatically generating bytecode interpreters in Truffle. Just as Truffle DSL abstracts away the tricky and tedious details of AST interpreters, the goal of the Bytecode DSL is to abstract away the tricky and tedious details of a bytecode interpreter – the bytecode encoding, control flow, quickening, and so on – leaving only the language-specific semantics for the language to implement.
 
-This document is the starting point for learning about Bytecode DSL. See the [resources](#resources) section below for more guides and tutorials.
+This document is the starting point for learning about the Bytecode DSL. See the [resources](#resources) section below for more guides and tutorials.
 
-Note: At the moment, Bytecode DSL is an **experimental feature**. We encourage you to give it a try, but be forewarned that its APIs are still susceptible to change a little bit between releases.
+Note: At the moment, the Bytecode DSL is an **experimental feature**. We encourage you to give it a try, but be forewarned that its APIs are still susceptible to change a little bit between releases.
 
 ## Why a bytecode interpreter?
 
@@ -16,11 +16,11 @@ Though Truffle AST interpreters enjoy excellent peak performance, they can strug
 Bytecode interpreters enjoy the same peak performance as ASTs, but they can be encoded with less memory.
 Moreover, there are several techniques available to improve the interpreted performance of bytecode interpreters, including quickening, superinstructions, [host compilation](../HostCompilation.md), and template compilation.
 
-The downside to bytecode interpreters is that they are more difficult to implement properly. Bytecode DSL reduces the implementation effort by generating a bytecode interpreter automatically from a set of AST node-like specifications called "operations".
+The downside to bytecode interpreters is that they are more difficult to implement properly. The Bytecode DSL reduces the implementation effort by generating a bytecode interpreter automatically from a set of AST node-like specifications called "operations".
 
 ## Sample interpreter
 
-Below is the complete Bytecode DSL specification for a small interpreter with a custom `Add` operation.
+Below is the complete the Bytecode DSL specification for a small interpreter with a custom `Add` operation.
 ```java
 @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
 public abstract static class SampleInterpreter extends RootNode implements BytecodeRootNode {
@@ -44,7 +44,7 @@ public abstract static class SampleInterpreter extends RootNode implements Bytec
 }
 ```
 
-From this specification, Bytecode DSL generates a bytecode interpreter in `SampleInterpreterGen`.
+From this specification, the Bytecode DSL generates a bytecode interpreter in `SampleInterpreterGen`.
 
 The generated code contains a builder class that automatically generates bytecode from a series of builder calls. We can build a bytecode program that adds two arguments as follows.
 
@@ -88,13 +88,13 @@ assertEquals("Hello, world!", callTarget.call("Hello, ", "world!"));
 
 ## Features
 
-Bytecode DSL supports a variety of features, including:
+The Bytecode DSL supports a variety of features, including:
 
-- **Expressive specifications**: Operations in Bytecode DSL are written using the same DSL as AST nodes, supporting many of the same expressive conveniences: specializations, inline caches, bind variables, and so on.
+- **Expressive specifications**: Operations in the Bytecode DSL are written using the same DSL as AST nodes, supporting many of the same expressive conveniences: specializations, inline caches, bind variables, and so on.
 
 - **Tiered interpretation**: To reduce start-up overhead and memory footprint, the Bytecode DSL can generate an uncached interpreter that automatically switches to a cached (specializing) interpreter when it gets hot, on a per-`RootNode` basis.
 
-- **Optimizations**: To improve interpreted performance, bytecode interpreters support boxing elimination, quickening, and more (see [Optimization](Optimization.md)). They also make use of Truffle's [host compilation](../HostCompilation.md). In the future, Bytecode DSL will support superintructions and automatic inference of quicken/superinstruction candidates.
+- **Optimizations**: To improve interpreted performance, bytecode interpreters support boxing elimination, quickening, and more (see [Optimization](Optimization.md)). They also make use of Truffle's [host compilation](../HostCompilation.md). In the future, the Bytecode DSL will support superintructions and automatic inference of quicken/superinstruction candidates.
 
 - **Continuations**: Bytecode DSL interpreters support single-method continuations, which allow a method to be suspended and resumed at a later time (see the [Continuations tutorial][continuations]).
 
@@ -106,8 +106,8 @@ Bytecode DSL supports a variety of features, including:
 
 ## Resources
 
-As a next step, we recommend reading the [Getting Started tutorial](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode.test/src/com/oracle/truffle/api/bytecode/test/examples/GettingStarted.java), which introduces Bytecode DSL by implementing a simple interpreter.
-Afterward, consult the [User guide](UserGuide.md) and [Javadoc](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/bytecode/package-summary.html) for more technical details about Bytecode DSL.
+As a next step, we recommend reading the [Getting Started tutorial](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode.test/src/com/oracle/truffle/api/bytecode/test/examples/GettingStarted.java), which introduces the Bytecode DSL by implementing a simple interpreter.
+Afterward, consult the [User guide](UserGuide.md) and [Javadoc](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/bytecode/package-summary.html) for more technical details about the Bytecode DSL.
 
 In addition, there are several guides and tutorials which may be helpful:
 - [Optimization guide](Optimization.md)

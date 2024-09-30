@@ -1040,7 +1040,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                         String name = ElementUtils.getAnnotationValue(String.class, forceQuickening, "value", false);
 
                         if (!model.enableQuickening) {
-                            model.addError(method, "Cannot use @%s if quickening node enabled for @%s. Enable quickening in @%s to resolve this.", ElementUtils.getSimpleName(types.ForceQuickening),
+                            model.addError(method, "Cannot use @%s if quickening is not enabled for @%s. Enable quickening in @%s to resolve this.", ElementUtils.getSimpleName(types.ForceQuickening),
                                             ElementUtils.getSimpleName(types.GenerateBytecode), ElementUtils.getSimpleName(types.ForceQuickening));
                             break;
                         }

@@ -1,4 +1,4 @@
-# Runtime compilation in Bytecode DSL
+# Runtime compilation in the Bytecode DSL
 
 Bytecode DSL interpreters, just like Truffle AST interpreters, use runtime compilation to optimize hot code.
 Runtime compilation leverages partial evaluation (PE) to specialize  the interpreter by aggressively constant folding interpreter code with respect to a given guest program.

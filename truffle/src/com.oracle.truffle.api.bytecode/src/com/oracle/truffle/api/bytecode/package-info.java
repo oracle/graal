@@ -40,8 +40,9 @@
  */
 
 /**
- * Bytecode DSL is a DSL and runtime support component of Truffle that makes it easier to implement
- * bytecode interpreters. Start {@link com.oracle.truffle.api.bytecode.GenerateBytecode here}.
+ * The Bytecode DSL is a DSL and runtime support component of Truffle that makes it easier to
+ * implement bytecode interpreters. Start {@link com.oracle.truffle.api.bytecode.GenerateBytecode
+ * here}.
  *
  * @since 24.2
  */

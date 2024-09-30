@@ -51,8 +51,9 @@ import com.oracle.truffle.api.nodes.RootNode;
  * These root nodes have a precise calling convention; see
  * {@link ContinuationResult#getContinuationCallTarget()}.
  * <p>
- * If a bytecode interpreter {@link GenerateBytecode#enableYield supports continuations}, the DSL
- * will generate a concrete implementation of this interface. It should not be subclassed manually.
+ * If a bytecode interpreter {@link GenerateBytecode#enableYield supports continuations}, the
+ * Bytecode DSL will generate a concrete implementation of this interface. It should not be
+ * subclassed manually.
  *
  * @since 24.2
  */

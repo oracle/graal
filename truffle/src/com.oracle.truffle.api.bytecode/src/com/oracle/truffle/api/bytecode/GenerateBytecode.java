@@ -80,8 +80,8 @@ import com.oracle.truffle.api.nodes.Node;
  * </pre>
  *
  * <p>
- * The DSL generates a node suffixed with {@code Gen} (e.g., {@code MyBytecodeRootNodeGen}) that
- * contains (among other things) a full bytecode encoding, an optimizing interpreter, and a
+ * The Bytecode DSL generates a node suffixed with {@code Gen} (e.g., {@code MyBytecodeRootNodeGen})
+ * that contains (among other things) a full bytecode encoding, an optimizing interpreter, and a
  * {@code Builder} class to generate and validate bytecode automatically.
  * <p>
  * A node can opt in to additional features, like an {@link #enableUncachedInterpreter uncached
@@ -123,8 +123,8 @@ public @interface GenerateBytecode {
     /**
      * Whether the generated interpreter should support serialization and deserialization.
      * <p>
-     * When serialization is enabled, Bytecode DSL generates code to convert bytecode nodes to and
-     * from a serialized byte array representation. The code effectively serializes the node's
+     * When serialization is enabled, the Bytecode DSL generates code to convert bytecode nodes to
+     * and from a serialized byte array representation. The code effectively serializes the node's
      * execution data (bytecode, constants, etc.) and all of its non-transient fields.
      * <p>
      * The serialization logic is defined in static {@code serialize} and {@code deserialize}
@@ -294,7 +294,7 @@ public @interface GenerateBytecode {
     boolean enableLocalScoping() default true;
 
     /**
-     * Whether quickened bytecodes should be emitted.
+     * Whether to generate quickened bytecodes for user-provided operations.
      * <p>
      * Quickened versions of instructions support a subset of the
      * {@link com.oracle.truffle.api.dsl.Specialization specializations} defined by an operation.

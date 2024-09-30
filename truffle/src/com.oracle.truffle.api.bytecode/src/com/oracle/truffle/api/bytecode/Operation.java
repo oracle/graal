@@ -50,27 +50,36 @@ import com.oracle.truffle.api.instrumentation.Tag;
 /**
  * Declares an operation. An operation serves as a specification for a bytecode instruction in the
  * generated interpreter.
- *
- * An operation class is declared the same way as a regular Truffle AST node, with a few
- * differences:
+ * <p>
+ * An operation class is declared the same way as a regular Truffle AST node. It declares a set of
+ * specializations that define the behaviour of the operation. The specializations should all have a
+ * specific number of operands (dynamic input parameters), and they should all be {@code void} or
+ * return a value. These properties make up the "signature" for an operation; for example, an
+ * operation may consume two input value and produce a value.
+ * <p>
+ * Operations have a few additional restrictions compared to Truffle AST nodes:
  * <ul>
- * <li>The class should be nested inside the bytecode root node class.
- * <li>The class should be declared {@code public static final}. It should not extend/implement any
- * other class/interface.
- * <li>The class should not contain instance members.
- * <li>The class's specializations also have some differences:
+ * <li>The operation class should be nested inside the bytecode root node class.
+ * <li>The operation class should be {@code static} {@code final}, and at least package-private
+ * visibility. It should not extend/implement any other class/interface.
+ * <li>The operation class should not contain instance members.
+ * <li>The specializations also have some differences:
  * <ul>
- * <li>Specializations should be {@code static} and at least package-private visibility. Any members
- * referenced in DSL expressions (e.g., {@link com.oracle.truffle.api.dsl.Cached @Cached}
- * parameters) should also be {@code static} and visible to the bytecode root node class.
+ * <li>Specializations should be {@code static} and at least package-private visibility. Members
+ * referenced in Truffle DSL expressions (e.g., {@link com.oracle.truffle.api.dsl.Cached @Cached}
+ * parameters) have the same restrictions.
  * <li>The parameters of any {@link com.oracle.truffle.api.dsl.Fallback} specialization must be of
  * type {@link Object}. Unlike ASTs, which can define execute methods with specialized parameter
- * types, operation arguments are consumed from the stack.
+ * types, operation arguments are consumed from the stack, where the type is not guaranteed.
  * <li>Specializations can bind some special parameters: {@code $rootNode}, {@code $bytecodeNode},
  * and {@code $bytecodeIndex}.
  * </ul>
  * </ul>
  *
+ * To aid migration, there is also the {@link OperationProxy} annotation that creates an operation
+ * from an existing AST node. This proxy can be defined outside of the root node, which may be
+ * convenient for code organization.
+ * <p>
  * Refer to the <a href=
  * "https://github.com/oracle/graal/blob/master/truffle/docs/bytecode_dsl/UserGuide.md">user
  * guide</a> for more details.

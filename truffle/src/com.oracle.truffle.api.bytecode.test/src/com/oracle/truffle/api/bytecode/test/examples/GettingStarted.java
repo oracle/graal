@@ -78,8 +78,8 @@ public class GettingStarted {
      * <p>
      * The specification for the interpreter consists of the {@link GenerateBytecode} annotation,
      * plus the operation specifications, which come in the form of {@link Operation} inner classes
-     * or {@link OperationProxy} and {@link ShortCircuitOperation} annotations. Bytecode DSL uses
-     * the specification to generate a bytecode interpreter with all supporting code.
+     * or {@link OperationProxy} and {@link ShortCircuitOperation} annotations. The Bytecode DSL
+     * uses the specification to generate a bytecode interpreter with all supporting code.
      * <p>
      * Your class should be annotated with {@link GenerateBytecode}. The annotated class must be
      * abstract, must be a subclass of {@link RootNode}, and must implement
@@ -154,7 +154,7 @@ public class GettingStarted {
         }
 
         /**
-         * This is an eager OR operation. It does not use Bytecode DSL's short-circuiting
+         * This is an eager OR operation. It does not use the Bytecode DSL's short-circuiting
          * capabilities.
          */
         @Operation
@@ -348,7 +348,7 @@ public class GettingStarted {
     }
 
     /**
-     * Of course, languages usually support non-linear control flow. Bytecode DSL has built-in
+     * Of course, languages usually support non-linear control flow. The Bytecode DSL has built-in
      * operations to support common control flow mechanisms like conditional branching, looping, and
      * exception handling.
      * <p>
@@ -437,7 +437,7 @@ public class GettingStarted {
     }
 
     /**
-     * Bytecode DSL has a {@code While} operation for implementing loops. Let's implement the
+     * The Bytecode DSL has a {@code While} operation for implementing loops. Let's implement the
      * following function:
      *
      * <pre>
@@ -507,9 +507,9 @@ public class GettingStarted {
     }
 
     /**
-     * For more advanced control flow, Bytecode DSL also allows you to define and branch to labels.
-     * Programs can branch forward to labels using the {@code Branch} operation. Let's use labels to
-     * implement {@code sumToN} using a {@code break}:
+     * For more advanced control flow, The Bytecode DSL also allows you to define and branch to
+     * labels. Programs can branch forward to labels using the {@code Branch} operation. Let's use
+     * labels to implement {@code sumToN} using a {@code break}:
      *
      * <pre>
      * def sumToN(n):
@@ -593,7 +593,7 @@ public class GettingStarted {
     }
 
     /*
-     * In addition to the condition and looping contructs, Bytecode DSL has other control flow
+     * In addition to the condition and looping contructs, The Bytecode DSL has other control flow
      * mechanisms for exception handling ({@code TryCatch}, {@code TryFinally}, and {@code
      * TryCatchOtherwise}) and continuations ({@code Yield}). We will not cover those here.
      */
