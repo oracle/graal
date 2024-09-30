@@ -46,8 +46,8 @@ Metadata can be provided to the `native-image` builder in the following ways:
 * [Resources](#resources)
 * [Resource Bundles](#resource-bundles)
 * [Serialization](#serialization)
-* [Predefined Classes](#predefined-classes)
 * [Sample Reachability Metadata](#sample-reachability-metadata)
+* [Defining Classes at Run Time](#defining-classes-at-run-time)
 
 ## Computing Metadata in Code
 
@@ -279,8 +279,8 @@ To reflectively invoke methods, the method signature must be added to the `type`
 {
   "type": "TypeWhoseMethodsAreInvoked",
   "methods": [
-    {"name": "<methodName1>", "parameterTypes": ["<param-type1>", "<param-typeI>, <param-typeN>"]},
-    {"name": "<methodName>", "parameterTypes": ["<param-type1>", "<param-typeI>, <param-typeN>"]}
+    {"name": "<methodName1>", "parameterTypes": ["<param-type1>", "<param-typeI>", "<param-typeN>"]},
+    {"name": "<methodName2>", "parameterTypes": ["<param-type1>", "<param-typeI>", "<param-typeN>"]}
   ]
 }
 ```
@@ -412,8 +412,8 @@ To call Java methods from JNI, we must provide metadata for the method signature
 {
   "type": "jni.accessed.Type",
   "methods": [
-    {"name": "<methodName1>", "parameterTypes": ["<param-type1>", "<param-typeI>, <param-typeN>"]},
-    {"name": "<methodName>", "parameterTypes": ["<param-type1>", "<param-typeI>, <param-typeN>"]}
+    {"name": "<methodName1>", "parameterTypes": ["<param-type1>", "<param-typeI>", "<param-typeN>"]},
+    {"name": "<methodName2>", "parameterTypes": ["<param-type1>", "<param-typeI>", "<param-typeN>"]}
   ]
 }
 ```
@@ -686,35 +686,9 @@ For example, to allow serialization of `org.apache.spark.SparkContext$$anonfun$h
 }
 ```
 
-## Defining Classes at Run Time
+## Sample Reachability Metadata
 
-Java has support for loading new classes from bytecode at run time, which is not possible in Native Image as all classes must be known at build time (the "closed-world assumption").
-
-To emulate class loading, the [Native Image Agent](AutomaticMetadataCollection.md) can trace dynamically loaded classes and save their bytecode for later use by the `native-image` builder.
-At runtime, if there is an attempt to load a class with the same name and bytecode as one of the classes encountered during tracing, the predefined class will be supplied to the application.
-
-> Note: Predefined classes metadata is not meant to be manually written.
-
-Predefined classes metadata should be specified in a _predefined-classes-config.json_ file and conform to the JSON schema defined in
-[predefined-classes-config-schema-v1.0.0.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/predefined-classes-config-schema-v1.0.0.json).
-The schema also includes further details and explanations how this configuration works. Here is the example of the predefined-classes-config.json:
-```json
-[
-  {
-    "type": "agent-extracted",
-    "classes": [
-      {
-        "hash": "<class-bytecodes-hash>",
-        "nameInfo": "<class-name"
-      }
-    ]
-  }
-]
-```
-
-## Sample ReachabilIty Metadata
-
-See below is a sample reachabilIty metadata configuration that you can use in _reachabilty-metadata.json_:
+See below is a sample reachability metadata configuration that you can use in _reachabilty-metadata.json_:
 
 ```json
 {
@@ -729,7 +703,7 @@ See below is a sample reachabilIty metadata configuration that you can use in _r
       "methods": [
         {
           "name": "method1",
-          "parameterTypes": ["<param-type1>", "<param-typeI>, <param-typeN>"] 
+          "parameterTypes": ["<param-type1>", "<param-typeI>", "<param-typeN>"] 
         }
       ],
       "allDeclaredConstructors": true,
@@ -752,7 +726,7 @@ See below is a sample reachabilIty metadata configuration that you can use in _r
       "methods": [
         {
           "name": "method1",
-          "parameterTypes": ["<param-type1>", "<param-typeI>, <param-typeN>"]
+          "parameterTypes": ["<param-type1>", "<param-typeI>", "<param-typeN>"]
         }
       ],
       "allDeclaredConstructors": true,
@@ -784,7 +758,37 @@ See below is a sample reachabilIty metadata configuration that you can use in _r
 }
 ```
 
-### Further Reading
+## Defining Classes at Run Time
+
+Java has support for loading new classes from bytecode at run time, which is not possible in Native Image as all classes must be known at build time (the "closed-world assumption").
+To overcome this issue there are the following options:
+1. Modify or reconfigure your application (or a third-party library) so that it does not generate classes at runtime or load them via non-built-in class loaders.
+2. If the classes must be generated, try to generate them at build time in a static initializer of a dedicated class.
+The generated java.lang.Class objects should be stored in static fields and the dedicated class initialized by passing `--initialize-at-build-time=<class_name>` as the build argument.
+3. If none of the above is applicable, use the [Native Image Agent](AutomaticMetadataCollection.md) to run the application and collect predefined classes with
+`java -agentlib:native-image-agent=config-output-dir=<config-dir>,experimental-class-define-support <application-arguments>`.
+At runtime, if there is an attempt to load a class with the same name and bytecode as one of the classes encountered during tracing, the predefined class will be supplied to the application.
+
+Predefined classes metadata is specified in a _predefined-classes-config.json_ file and conform to the JSON schema defined in
+[predefined-classes-config-schema-v1.0.0.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/predefined-classes-config-schema-v1.0.0.json).
+The schema also includes further details and explanations how this configuration works. Here is the example of the predefined-classes-config.json:
+```json
+[
+  {
+    "type": "agent-extracted",
+    "classes": [
+      {
+        "hash": "<class-bytecodes-hash>",
+        "nameInfo": "<class-name"
+      }
+    ]
+  }
+]
+```
+> Note: Predefined classes metadata is not meant to be manually written.
+> Note: Predefined classes are the best-effort approach for legacy projects, and they are not guaranteed to work.
+
+## Further Reading
 
 * [Metadata Collection with the Tracing Agent](AutomaticMetadataCollection.md)
 * [Native Image Compatibility Guide](Compatibility.md)
