@@ -24,8 +24,6 @@
  */
 package jdk.graal.compiler.core.phases;
 
-import static jdk.graal.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Optional;
-
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import jdk.graal.compiler.loop.phases.LoopFullUnrollPhase;
@@ -41,15 +39,19 @@ import jdk.graal.compiler.phases.common.BoxNodeIdentityPhase;
 import jdk.graal.compiler.phases.common.BoxNodeOptimizationPhase;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
+import static jdk.graal.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Optional;
 import jdk.graal.compiler.phases.common.DisableOverflownCountedLoopsPhase;
 import jdk.graal.compiler.phases.common.DominatorBasedGlobalValueNumberingPhase;
 import jdk.graal.compiler.phases.common.HighTierLoweringPhase;
 import jdk.graal.compiler.phases.common.IterativeConditionalEliminationPhase;
+import jdk.graal.compiler.phases.common.MethodInstrumentationPhase;
 import jdk.graal.compiler.phases.common.inlining.InliningPhase;
 import jdk.graal.compiler.phases.common.inlining.policy.GreedyInliningPolicy;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.virtual.phases.ea.FinalPartialEscapePhase;
 import jdk.graal.compiler.virtual.phases.ea.ReadEliminationPhase;
+
+
 
 public class HighTier extends BaseTier<HighTierContext> {
 
@@ -73,7 +75,7 @@ public class HighTier extends BaseTier<HighTierContext> {
         }
 
         appendPhase(new DisableOverflownCountedLoopsPhase());
-
+        
         if (GraalOptions.OptConvertDeoptsToGuards.getValue(options)) {
             appendPhase(new ConvertDeoptimizeToGuardPhase(canonicalizer));
         }
@@ -113,6 +115,12 @@ public class HighTier extends BaseTier<HighTierContext> {
         }
 
         appendPhase(new BoxNodeOptimizationPhase(canonicalizer));
+
+        // Joonhwan TODO wrap this with a GraalOption
+        if (GraalOptions.EnableProfiler.getValue(options)){
+            appendPhase(new MethodInstrumentationPhase());    
+        }
+
         appendPhase(new HighTierLoweringPhase(canonicalizer, true));
     }
 

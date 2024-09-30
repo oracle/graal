@@ -63,3 +63,6 @@ visualizer/IdealGraphVisualizer/nbplatform/
 *.interp
 *.tokens
 /vm/tests/gh_workflows/CDTInspectorTest/target/
+# Joonhwan - irrelevant
+/substratevm/src/native-image-module-tests/*
+/dacapo

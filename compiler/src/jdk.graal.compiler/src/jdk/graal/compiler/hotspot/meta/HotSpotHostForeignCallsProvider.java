@@ -164,11 +164,20 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+// Joonhwan including Instrumentation Buffer
+import jdk.graal.compiler.hotspot.meta.joonhwan.InstrumentationBuffer;
+import jdk.graal.compiler.hotspot.meta.joonhwan.BuboCache;
+
+
 /**
  * HotSpot implementation of {@link ForeignCallsProvider}.
  */
 public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCallsProviderImpl implements ArrayCopyForeignCalls {
 
+    //Joonhwan adding HotSpotForeignCallDescriptors to be registered as a JavaCallStub
+    public static final HotSpotForeignCallDescriptor ADD_TO_BUFFER = new  HotSpotForeignCallDescriptor(SAFEPOINT, NO_SIDE_EFFECT, NO_LOCATIONS, "add", void.class, long.class, long.class);
+    public static final HotSpotForeignCallDescriptor BUBU_CACHE_ROTATEBUFFER = new HotSpotForeignCallDescriptor(SAFEPOINT, NO_SIDE_EFFECT, NO_LOCATIONS, "rotateBuffer", Void.class, Object.class);
+ 
     public static final HotSpotForeignCallDescriptor JAVA_TIME_MILLIS = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NO_SIDE_EFFECT, NO_LOCATIONS, "javaTimeMillis", long.class);
     public static final HotSpotForeignCallDescriptor JAVA_TIME_NANOS = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NO_SIDE_EFFECT, NO_LOCATIONS, "javaTimeNanos", long.class);
 
@@ -391,6 +400,14 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
                 invokeJavaMethodStub(options, providers, desc, invokeJavaMethodAddress, method);
             }
         }
+        
+        //Joonhwan register java method stub
+        ResolvedJavaMethod addToBufferMethod = findMethod(providers.getMetaAccess(), InstrumentationBuffer.class, ADD_TO_BUFFER.getName());
+        invokeJavaMethodStub(options, providers, ADD_TO_BUFFER, invokeJavaMethodAddress, addToBufferMethod); 
+        
+        
+        ResolvedJavaMethod rotateBuffermethod = findMethod(providers.getMetaAccess(), BuboCache.class, BUBU_CACHE_ROTATEBUFFER.getName());
+        invokeJavaMethodStub(options, providers, BUBU_CACHE_ROTATEBUFFER, invokeJavaMethodAddress, rotateBuffermethod);
     }
 
     private void registerArraycopyDescriptor(EconomicMap<Long, ForeignCallDescriptor> descMap, JavaKind kind, boolean aligned, boolean disjoint, boolean uninit, LocationIdentity killedLocation,

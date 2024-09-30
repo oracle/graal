@@ -1,0 +1,5 @@
+Manifest-Version: 1.0
+Premain-Class: joonhwan.agent.AgentJoon
+Agent-Class: joonhwan.agent.AgentJoon
+Can-Redefine-Classes: true
+Can-Retransform-Classes: true
