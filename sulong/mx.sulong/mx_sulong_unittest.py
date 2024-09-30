@@ -94,7 +94,9 @@ class SulongUnittestConfigBase(mx_unittest.MxUnittestConfig):
         vmArgs += [f'-Dsulongtest.configRoot={cfg.configRoot}']
         vmArgs += [f'-Dsulongtest.config={cfg.name}']
         if '-p' in vmArgs or '--module-path' in vmArgs:
-            native_access_target_module = 'org.graalvm.truffle'
+            # ALL-UNNAMED for native methods in
+            # com.oracle.truffle.llvm.tests.pipe.CaptureNativeOutput
+            native_access_target_module = 'org.graalvm.truffle,ALL-UNNAMED'
         else:
             native_access_target_module = 'ALL-UNNAMED'
         vmArgs += [f'--enable-native-access={native_access_target_module}']

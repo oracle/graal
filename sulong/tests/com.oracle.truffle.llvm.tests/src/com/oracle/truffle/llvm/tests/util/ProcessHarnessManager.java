@@ -261,7 +261,11 @@ public class ProcessHarnessManager {
                         "-cp", classpath, "-p", modulepath, "--add-modules", "org.graalvm.polyglot");
 
         if (ModuleLayer.boot().findModule("org.graalvm.truffle").isPresent()) {
-            commandArgs.add("--enable-native-access=org.graalvm.truffle");
+            /*
+             * ALL-UNNAMED for native methods in
+             * com.oracle.truffle.llvm.tests.pipe.CaptureNativeOutput
+             */
+            commandArgs.add("--enable-native-access=org.graalvm.truffle,ALL-UNNAMED");
         } else {
             commandArgs.add("--enable-native-access=ALL-UNNAMED");
         }
