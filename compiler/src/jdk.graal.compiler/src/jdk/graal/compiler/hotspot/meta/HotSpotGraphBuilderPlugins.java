@@ -278,8 +278,7 @@ public class HotSpotGraphBuilderPlugins {
 
         });
         if (!inImageRuntimeCode()) {
-            // In libgraal, all NodeIntrinsics have been converted into special nodes so the plugins
-            // aren't needed.
+            // In libgraal, all NodeIntrinsics have already been converted into nodes.
             NodeIntrinsificationProvider nodeIntrinsificationProvider = new NodeIntrinsificationProvider(metaAccess, snippetReflection, foreignCalls, wordTypes, target);
             invocationPlugins.defer(() -> {
                 for (GeneratedPluginFactory factory : GraalServices.load(GeneratedPluginFactory.class)) {
