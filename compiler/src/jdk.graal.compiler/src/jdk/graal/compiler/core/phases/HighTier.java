@@ -69,9 +69,7 @@ public class HighTier extends BaseTier<HighTierContext> {
         CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
         appendPhase(canonicalizer);
 
-        // if (GraalOptions.EnableProfiler.getValue(options)){
-        //     appendPhase(new MethodInstrumentationPhase());    
-        // }
+       
 
         if (Options.Inline.getValue(options)) {
             appendPhase(new InliningPhase(new GreedyInliningPolicy(null), canonicalizer));
@@ -122,14 +120,11 @@ public class HighTier extends BaseTier<HighTierContext> {
             appendPhase(new ReadEliminationPhase(canonicalizer));
         }
 
-
-
         appendPhase(new BoxNodeOptimizationPhase(canonicalizer));
 
-
-        appendPhase(new MethodInstrumentationPhase());
-
-
+        if (GraalOptions.EnableProfiler.getValue(options)){
+            appendPhase(new MethodInstrumentationPhase());    
+        }
 
         appendPhase(new HighTierLoweringPhase(canonicalizer, true));
     }

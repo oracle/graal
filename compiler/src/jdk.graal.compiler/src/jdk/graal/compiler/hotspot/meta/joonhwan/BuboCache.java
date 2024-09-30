@@ -45,7 +45,7 @@ import java.io.FileWriter;
         public static int BufferPointer;
         public static long[][] BufferArray;
 
-        public static long sampleCounter;
+        public static volatile long sampleCounter;
 
         static {
                 System.out.println("CACHE INITIALIZATION");
@@ -95,7 +95,7 @@ import java.io.FileWriter;
                 for (int i = 0; i < pointer; i += 2) {
                         writer.append(String.format("%d,%d\n", Buffer[i], Buffer[i + 1]));
                 }
-                System.out.println(String.format("current samplecount: %d\n", sampleCounter));
+                System.out.println(String.format("samplecounter is: %d\n", sampleCounter));
                 System.out.println("CSV file '" + fileName + "' has been created successfully.");
                 } catch (Exception e) {
                 System.err.println("An error occurred while writing to the CSV file: " + e.getMessage());

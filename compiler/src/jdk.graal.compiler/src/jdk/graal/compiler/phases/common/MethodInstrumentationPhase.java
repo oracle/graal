@@ -35,7 +35,8 @@ public class MethodInstrumentationPhase extends BasePhase<HighTierContext> {
         "jfree",      // JFree
         "menalto",    // Menalto
         "sablecc",    // SableCC
-        "xalan"       // Xalan
+        "xalan",       // Xalan
+        "pmd"
         // Add other DaCapo benchmark names here
     );
 
@@ -84,12 +85,12 @@ public class MethodInstrumentationPhase extends BasePhase<HighTierContext> {
             graph.addAfterFixed(graph.start(), loadSampleCounter);
 
             ValueNode oneConstantNode = graph.addWithoutUnique(new ConstantNode(JavaConstant.forInt(1), StampFactory.forKind(JavaKind.Int)));
-            AddNode incSampleCount = graph.addWithoutUnique(new AddNode(loadSampleCounter, oneConstantNode));
-            StoreFieldNode writeIncCounter = graph.add(new StoreFieldNode(null, context.getMetaAccess().lookupJavaField(BuboCache.class.getField("sampleCounter")), incSampleCount));
-            graph.addAfterFixed(loadSampleCounter, writeIncCounter);
+            // AddNode incSampleCount = graph.addWithoutUnique(new AddNode(loadSampleCounter, oneConstantNode));
+            // StoreFieldNode writeIncCounter = graph.add(new StoreFieldNode(null, context.getMetaAccess().lookupJavaField(BuboCache.class.getField("sampleCounter")), incSampleCount));
+            // graph.addAfterFixed(loadSampleCounter, writeIncCounter);
 
             // Define the sampling rate (e.g., every 100 calls)
-            ValueNode sampleRateNode = graph.addWithoutUnique(new ConstantNode(JavaConstant.forInt(100), StampFactory.forKind(JavaKind.Int)));
+            ValueNode sampleRateNode = graph.addWithoutUnique(new ConstantNode(JavaConstant.forInt(1000), StampFactory.forKind(JavaKind.Int)));
 
             // Compare the incremented counter with the sampling rate
             LogicNode shouldSample = graph.addWithoutUnique(new IntegerEqualsNode(loadSampleCounter, sampleRateNode));
@@ -123,7 +124,7 @@ public class MethodInstrumentationPhase extends BasePhase<HighTierContext> {
             StoreFieldNode writePointerBack = graph.add(new StoreFieldNode(null, context.getMetaAccess().lookupJavaField(BuboCache.class.getField("pointer")), incrementPointer));
             graph.addAfterFixed(writeStartTime, writePointerBack);
 
-            writeIncCounter.setNext(ifNode);
+            loadSampleCounter.setNext(ifNode);
             merge.setNext(ogStartNext);
 
             for (ReturnNode returnNode : graph.getNodes(ReturnNode.TYPE)) {
@@ -186,7 +187,7 @@ public class MethodInstrumentationPhase extends BasePhase<HighTierContext> {
             graph.addAfterFixed(loadSampleCounter, writeIncCounter);
 
             // MAGIC NUMBER ALERT
-            ValueNode sampleRateNode = graph.addWithoutUnique(new ConstantNode(JavaConstant.forInt(101), StampFactory.forKind(JavaKind.Int)));
+            ValueNode sampleRateNode = graph.addWithoutUnique(new ConstantNode(JavaConstant.forInt(1000), StampFactory.forKind(JavaKind.Int)));
 
             // Compare the incremented counter with the sampling rate
             LogicNode shouldSample = graph.addWithoutUnique(new IntegerEqualsNode(loadSampleCounter, sampleRateNode));
@@ -208,18 +209,23 @@ public class MethodInstrumentationPhase extends BasePhase<HighTierContext> {
             //Read Pointer of Buffer index
             LoadFieldNode readPointer = graph.add(LoadFieldNode.create(null, null, context.getMetaAccess().lookupJavaField(BuboCache.class.getField("pointer"))));
             graph.addAfterFixed(readBuffer, readPointer);
-            //write compilationID to buffer at current ptr
+            //write compilationID to buffer at curGotrent ptr
             AddNode pointerIncrement = graph.addWithoutUnique(new AddNode(readPointer, oneConstantNode));
             StoreIndexedNode writeToBufferID = graph.add(new StoreIndexedNode(readBuffer, pointerIncrement, null, null, JavaKind.Long, idNode));
             graph.addAfterFixed(readPointer, writeToBufferID);
             //increment ptr
-            AddNode pointerIncrement2 = graph.addWithoutUnique(new AddNode(readPointer, oneConstantNode));
-            //write endtime to incremnted ptr
-            StoreIndexedNode writeEndTime = graph.add(new StoreIndexedNode(readBuffer, pointerIncrement, null, null, JavaKind.Long, endTime));
+            AddNode pointerIncrement2 = graph.addWithoutUnique(new AddNode(pointerIncrement, oneConstantNode));
+            StoreIndexedNode writeEndTime = graph.add(new StoreIndexedNode(readBuffer, pointerIncrement2, null, null, JavaKind.Long, endTime));
             graph.addAfterFixed(readPointer, writeEndTime);
             // Store incremented the pointer
-            StoreFieldNode writePointerBack = graph.add(new StoreFieldNode(null, context.getMetaAccess().lookupJavaField(BuboCache.class.getField("pointer")), pointerIncrement2));
+
+            AddNode pointerIncrement3 = graph.addWithoutUnique(new AddNode(pointerIncrement2, oneConstantNode));
+            StoreFieldNode writePointerBack = graph.add(new StoreFieldNode(null, context.getMetaAccess().lookupJavaField(BuboCache.class.getField("pointer")), pointerIncrement3));
             graph.addAfterFixed(writeEndTime, writePointerBack);
+            //reset counter
+            ValueNode zeroConstantNode = graph.addWithoutUnique(new ConstantNode(JavaConstant.forInt(0), StampFactory.forKind(JavaKind.Int)));
+            StoreFieldNode resetCounter = graph.add(new StoreFieldNode(null, context.getMetaAccess().lookupJavaField(BuboCache.class.getField("sampleCounter")), zeroConstantNode));
+            graph.addAfterFixed(writePointerBack, resetCounter);
 
             // =========================
             // Merge and Continue
@@ -228,20 +234,6 @@ public class MethodInstrumentationPhase extends BasePhase<HighTierContext> {
             merge.setNext(returnNode);
         } catch (Throwable e) {
             throw new RuntimeException("Instrumentation of return node failed: " + e.getMessage(), e);
-        }
-    }
-
-    /**
-     * Verifies the integrity of the graph at a specific point.
-     *
-     * @param graph the structured graph
-     * @param point the point in the graph to verify
-     */
-    private void verifyGraph(StructuredGraph graph, String point) {
-        try {
-            graph.verify();
-        } catch (AssertionError e) {
-            throw new RuntimeException("Graph verification failed at " + point + ": " + e.getMessage(), e);
         }
     }
 }
