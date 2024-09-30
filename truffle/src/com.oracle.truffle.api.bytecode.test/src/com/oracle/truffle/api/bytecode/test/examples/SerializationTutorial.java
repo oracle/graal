@@ -92,7 +92,7 @@ public class SerializationTutorial {
      * {@link GenerateBytecode} specification, set {@code enableSerialization = true}. Then, rebuild
      * your project to update the generated interpreter.
      * <p>
-     * When serialization is enabled, Bytecode DSL generates extra methods that you can use to
+     * When serialization is enabled, The Bytecode DSL generates extra methods that you can use to
      * serialize/deserialize your bytecode nodes. It also validates that all of the
      * non-{@code transient} fields (which will be serialized) are reachable.
      */
@@ -165,7 +165,7 @@ public class SerializationTutorial {
     }
 
     /**
-     * Bytecode DSL automatically generates a serialization encoding and the logic to
+     * The Bytecode DSL automatically generates a serialization encoding and the logic to
      * serialize/deserialize bytecode. This logic persists the execution data (bytecode, constants,
      * etc.) and the non-{@code transient} fields of each root node.
      * <p>
@@ -313,9 +313,9 @@ public class SerializationTutorial {
     }
 
     /**
-     * Let's check that the serializer works. Bytecode DSL defines a static {@code serialize} method
-     * on the generated {@code SerializableBytecodeNodeGen} class that we can call. The method takes
-     * a few arguments:
+     * Let's check that the serializer works. The Bytecode DSL defines a static {@code serialize}
+     * method on the generated {@code SerializableBytecodeNodeGen} class that we can call. The
+     * method takes a few arguments:
      * <ol>
      * <li>A {@link DataOutput} buffer to write the bytes to.</li>
      * <li>The {@link BytecodeSerializer} object.</li>
@@ -423,8 +423,8 @@ public class SerializationTutorial {
     /**
      * **Serializing existing {@link BytecodeRootNodes}**
      * <p>
-     * In addition to the static {@code serialize} method generated on the root class, Bytecode DSL
-     * also defines a {@link BytecodeRootNodes#serialize} method to serialize an existing
+     * In addition to the static {@code serialize} method generated on the root class, the Bytecode
+     * DSL also defines a {@link BytecodeRootNodes#serialize} method to serialize an existing
      * {@link BytecodeRootNodes} instance.
      * <p>
      * This method does the same thing as the static {@code serialize} method, with one subtle

@@ -3,7 +3,7 @@
 One limitation of regular operations is that they are *eager*: all of the child operations are evaluated before the operation itself evaluates.
 Many languages define *short-circuiting* operators (e.g., Java's `&&`) which can evaluate a subset of their operands, terminating early when an operand meets a particular condition (e.g., when it is `true`).
 
-Bytecode DSL allows you to define [`@ShortCircuitOperation`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode./src/com/oracle/truffle/api/bytecode/ShortCircuitOperation.java)s to implement short-circuiting behaviour.
+The Bytecode DSL allows you to define [`@ShortCircuitOperation`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode./src/com/oracle/truffle/api/bytecode/ShortCircuitOperation.java)s to implement short-circuiting behaviour.
 A short-circuit operation implements `AND` or `OR` semantics, executing each child operation until the first `false` or `true` value, respectively.
 Since operands will not necessarily be `boolean`s (an operation may have its own notion of "truthy" and "falsy" values), each short-circuit operation defines a boolean converter operation that first coerces each operand to `boolean` before it is compared to `true`/`false`.
 

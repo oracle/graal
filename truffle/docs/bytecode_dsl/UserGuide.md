@@ -4,10 +4,10 @@ This document explains what you can do in a Bytecode DSL interpreter and how to 
 It should be treated as a reference.
 If you haven't already, we recommend reading the [Introduction](BytecodeDSL.md) and [Getting Started guide](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode.test/src/com/oracle/truffle/api/bytecode/test/examples/GettingStarted.java) before this one.
 
-This guide presents the conceptual details of Bytecode DSL; for more concrete technical information, consult the DSL's [Javadoc](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/bytecode/package-summary.html), the generated Javadoc for your interpreter, and the provided [code tutorials](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode.test/src/com/oracle/truffle/api/bytecode/test/examples).
+This guide presents the conceptual details of the Bytecode DSL; for more concrete technical information, consult the DSL's [Javadoc](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/bytecode/package-summary.html), the generated Javadoc for your interpreter, and the provided [code tutorials](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode.test/src/com/oracle/truffle/api/bytecode/test/examples).
 
 
-- [Bytecode DSL from 10,000 feet](#bytecode-dsl-from-10000-feet)
+- [The Bytecode DSL from 10,000 feet](#the-bytecode-dsl-from-10000-feet)
   - [Phase 1: Generating the interpreter](#phase-1-generating-the-interpreter)
   - [Phase 2: Generating bytecode (parsing)](#phase-2-generating-bytecode-parsing)
   - [Phase 3: Executing the bytecode](#phase-3-executing-the-bytecode)
@@ -38,7 +38,7 @@ This guide presents the conceptual details of Bytecode DSL; for more concrete te
   - [Continuations](#continuations)
   - [Builtins](#builtins)
 
-## Bytecode DSL from 10,000 feet
+## The Bytecode DSL from 10,000 feet
 At a high level, there are three phases in the development lifecycle of a Bytecode DSL interpreter.
 As a developer, it is helpful to keep these phases separate in your mind.
 
@@ -111,7 +111,7 @@ Because the bytecode may change, a bytecode index (obtained using `@Bind("$bytec
 You can also instantiate a [`BytecodeLocation`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeLocation.java), which logically represents the bytecode node and index, using `BytecodeNode#getBytecodeLocation(int)` or `@Bind BytecodeLocation`.
 
 ## Operations
-Operations are the basic unit of language semantics in Bytecode DSL.
+Operations are the basic unit of language semantics in the Bytecode DSL.
 Each operation performs some computation and can produce a value.
 For example, the `LoadArgument` operation produces the value of a given argument.
 
@@ -192,7 +192,7 @@ Please refer to the Javadoc of the generated `Builder` methods (e.g., `Builder#b
 Custom operations are provided by the language.
 They model language-specific behaviour, such as arithmetic operations, value conversions, or function calls.
 Here, we discuss regular custom operations that eagerly evaluate their
-children; Bytecode DSL also supports [short circuit operations](ShortCircuitOperations.md).
+children; the Bytecode DSL also supports [short circuit operations](ShortCircuitOperations.md).
 
 Custom operations are defined using Java classes in one of two ways:
 
@@ -271,7 +271,7 @@ Regular operations eagerly execute their children. There are also [short circuit
 
 ## Locals
 
-Bytecode DSL supports local variables using its [`BytecodeLocal`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeLocal.java) abstraction.
+The Bytecode DSL supports local variables using its [`BytecodeLocal`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeLocal.java) abstraction.
 You can allocate a `BytecodeLocal` in the current frame using the builder's `createLocal` method.
 
 ### Accessing locals
@@ -534,7 +534,7 @@ For example, you can instrument your code to trace each guest language statement
 Instrumentations are specified during parsing, but disabled by default.
 They incur no overhead until they are enabled at a later time (see [Reparsing metadata](#reparsing)).
 
-Bytecode DSL supports two forms of instrumentation:
+The Bytecode DSL supports two forms of instrumentation:
 
 1. [`@Instrumentation`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/Instrumentation.java) operations, which are emitted and behave just like custom [`@Operation`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/Operation.java)s. These operations can perform special actions like logging or modifying the value produced by another operation. `@Instrumentation` operations must have no stack effects, so they can either have no children and produce no value, or have one child and produce a value (which allows you to modify the result of an instrumented operation).
 2. Tag-based instrumentation associates operations with particular instrumentation [`Tag`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.instrumentation/src/com/oracle/truffle/api/instrumentation/Tag.java)s using `Tag` operations. If these instrumentations are enabled and [`ExecutionEventNode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.instrumentation/src/com/oracle/truffle/api/instrumentation/ExecutionEventNode.java)s are attached, the bytecode interpreter will invoke the various event callbacks (e.g., `onEnter`, `onReturnValue`) when executing the enclosed operation. Tag-based instrumentation can be enabled using the `enableTagInstrumentation` flag in [`@GenerateBytecode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/GenerateBytecode.java).
@@ -573,10 +573,10 @@ Note that the bytecode encoding is an implementation detail, so the APIs and the
 
 
 ### Reachability analysis
-Bytecode DSL performs some basic reachability analysis to avoid emitting bytecode when it can guarantee a location is not reachable, for example, after an explicit `Return` operation. The reachability analysis is confounded by features like branching, exception handling, and instrumentation, so reachability cannot always be precisely determined; in such cases, the builder conservatively assumes a given point in the program is reachable.
+The Bytecode DSL performs some basic reachability analysis to avoid emitting bytecode when it can guarantee a location is not reachable, for example, after an explicit `Return` operation. The reachability analysis is confounded by features like branching, exception handling, and instrumentation, so reachability cannot always be precisely determined; in such cases, the builder conservatively assumes a given point in the program is reachable.
 
 ### Interpreter optimizations
-Bytecode DSL supports techniques like quickening and boxing elimination to improve interpreted (non-compiled) performance.
+The Bytecode DSL supports techniques like quickening and boxing elimination to improve interpreted (non-compiled) performance.
 Refer to the [Optimization guide](Optimization.md) for more details.
 
 ### Runtime compilation
@@ -589,9 +589,9 @@ See the [Runtime compilation guide](RuntimeCompilation.md) for more details.
 Bytecode DSL interpreters can support serialization, which allows a language to implement bytecode caching (like Python's `.pyc` files). See the [Serialization tutorial](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode.test/src/com/oracle/truffle/api/bytecode/test/examples/SerializationTutorial.java) for more details.
 
 ### Continuations
-Bytecode DSL supports single-method continuations, whereby a root node is suspended and can be resumed at a later point in time.
+The Bytecode DSL supports single-method continuations, whereby a root node is suspended and can be resumed at a later point in time.
 Continuations can be used to implement language features like coroutines and generators that suspend the state of the current method. See the [Continuations tutorial](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode.test/src/com/oracle/truffle/api/bytecode/test/examples/ContinuationsTutorial.java) for more details.
 
 
 ### Builtins
-Guest language builtins integrate easily with Bytecode DSL. The [Builtins tutorial](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode.test/src/com/oracle/truffle/api/bytecode/test/examples/BuiltinTutorial.java) describes a few different approaches you may wish to use to define your language builtins within Bytecode DSL.
+Guest language builtins integrate easily with the Bytecode DSL. The [Builtins tutorial](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode.test/src/com/oracle/truffle/api/bytecode/test/examples/BuiltinTutorial.java) describes a few different approaches you may wish to use to define your language builtins within the Bytecode DSL.

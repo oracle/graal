@@ -45,7 +45,7 @@ import java.util.Arrays;
 import java.util.function.Consumer;
 
 /**
- * Contains code to support Truffle operation interpreters. This code should not be used directly by
+ * Contains code to support Bytecode DSL interpreters. This code should not be used directly by
  * language implementations.
  *
  * @since 24.2

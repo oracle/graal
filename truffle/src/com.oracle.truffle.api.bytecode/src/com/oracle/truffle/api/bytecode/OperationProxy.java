@@ -52,12 +52,22 @@ import com.oracle.truffle.api.instrumentation.Tag;
 /**
  * Defines an operation using an existing {@link com.oracle.truffle.api.nodes.Node}. The node class
  * should be annotated {@link Proxyable} in order to validate the class for use as an operation.
- *
+ * <p>
+ * Operation proxies are useful for migrating AST interpreters to the Bytecode DSL. Additionally,
+ * they can be a code organization tool, separating operation classes from the bytecode root node
+ * class.
+ * <p>
+ * There are some extra restrictions on nodes that are used as proxies. In general, the node should
+ * be written using static specializations with at least package-private visibility. There may be
+ * additional restrictions; the Truffle annotation processor will report any problems and describe
+ * how to fix them.
+ * <p>
  * Refer to the <a href=
  * "https://github.com/oracle/graal/blob/master/truffle/docs/bytecode_dsl/UserGuide.md">user
  * guide</a> for more details.
  *
  * @since 24.2
+ * @see Operation
  */
 @Retention(RetentionPolicy.SOURCE)
 @Target(ElementType.TYPE)

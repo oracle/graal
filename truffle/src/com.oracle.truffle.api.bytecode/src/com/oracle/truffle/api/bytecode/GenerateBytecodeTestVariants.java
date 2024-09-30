@@ -55,7 +55,7 @@ import java.lang.annotation.Target;
  * In order for the variants and their Builders to be compatible, the configurations must agree on
  * specific fields. In particular, the {@link GenerateBytecode#languageClass} must match, and fields
  * that generate new builder methods (e.g. {@link GenerateBytecode#enableYield()}) must agree. These
- * properties are checked by the DSL.
+ * properties are checked by the Bytecode DSL.
  *
  * @since 24.2
  */

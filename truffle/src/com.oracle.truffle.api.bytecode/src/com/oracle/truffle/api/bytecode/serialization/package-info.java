@@ -40,7 +40,7 @@
  */
 
 /**
- * Serialization specific classes for the Bytecode DSL.
+ * Serialization-specific classes for the Bytecode DSL.
  *
  * @since 24.2
  */

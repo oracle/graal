@@ -95,16 +95,17 @@ import com.oracle.truffle.api.nodes.RootNode;
  * This tutorial demonstrates how to implement guest language builtin functions using a Bytecode DSL
  * interpreter. Builtins typically refer to functions that are shipped as part of the language to
  * access functionality not directly reachable with language syntax.
- *
+ * <p>
  * This tutorial explains three different ways to implement builtins. One by specifying a Truffle
  * node (JavaBuiltin), one using direct specification of builder calls (BuilderBuiltin) and another
  * one using guest language source code that is lazily parsed on first use or at native-image build
- * time (SerializedBuiltin).
- *
+ * time (SerializedBuiltin). It also demonstrates how these builtins can be used in the polyglot
+ * API.
+ * <p>
  * We recommend completing the {@link GettingStarted}, {@link ParsingTutorial} and the
  * {@link SerializationTutorial} before reading this tutorial.
- *
- * This tutorial is intended to be read top-to-bottom and also contains a runnable unit test.
+ * <p>
+ * This tutorial is intended to be read top-to-bottom and contains some runnable unit tests.
  */
 public class BuiltinTutorial {
 
@@ -252,7 +253,7 @@ public class BuiltinTutorial {
      *
      * We are also specifying {@link GenerateUncached} such that a
      * {@link ParseIntBuiltinNodeGen#getUncached()} method is generated. We will need that later in
-     * the {@link JavaBuiltin} instantiation (see {@link #createParseIntBuiltin()}).
+     * the {@link JavaBuiltin} instantiation (see {@link #createJavaBuiltin()}).
      */
     @GenerateUncached
     @GenerateCached
@@ -352,10 +353,10 @@ public class BuiltinTutorial {
     }
 
     /**
-     * Now let's put everything together and create our first {@link JavaBuiltin}. A real language
-     * would definitely need more than one, but we keep it simple for this example.
+     * Now let's put everything together and create our first {@link JavaBuiltin} with
+     * {@link ParseIntBuiltinNode}.
      */
-    static JavaBuiltin createParseIntBuiltin() {
+    static JavaBuiltin createJavaBuiltin() {
         return new JavaBuiltin("parseInt", 1, ParseIntBuiltinNodeGen.getUncached(), ParseIntBuiltinNodeGen::create);
     }
 
@@ -390,7 +391,7 @@ public class BuiltinTutorial {
         BuiltinLanguageRootNode root = parse(LanguageWithBuiltins.get(), b -> {
             b.beginRoot();
             b.beginReturn();
-            b.beginCallBuiltin(createParseIntBuiltin());
+            b.beginCallBuiltin(createJavaBuiltin());
             b.emitLoadArgument(0);
             b.endCallBuiltin();
             b.endReturn();
@@ -411,7 +412,7 @@ public class BuiltinTutorial {
         BuiltinLanguageRootNode root = parse(LanguageWithBuiltins.get(), b -> {
             b.beginRoot();
             b.beginReturn();
-            b.beginInlineBuiltin(createParseIntBuiltin());
+            b.beginInlineBuiltin(createJavaBuiltin());
             b.emitLoadArgument(0);
             b.endInlineBuiltin();
             b.endReturn();
@@ -422,12 +423,10 @@ public class BuiltinTutorial {
         assertEquals(42, root.getCallTarget().call(42));
         assertEquals(BytecodeTier.UNCACHED, root.getBytecodeNode().getTier());
         assertEquals(42, root.getCallTarget().call("42"));
-        assertEquals(BytecodeTier.CACHED, root.getBytecodeNode().getTier());
-
         // transitions to cached once the threshold is exceeded
+        assertEquals(BytecodeTier.CACHED, root.getBytecodeNode().getTier());
         assertEquals(42, root.getCallTarget().call(42));
         assertEquals(42, root.getCallTarget().call("42"));
-        assertEquals(BytecodeTier.CACHED, root.getBytecodeNode().getTier());
     }
 
     /**
@@ -474,6 +473,23 @@ public class BuiltinTutorial {
             b.endReturn();
             b.endRoot();
         });
+    }
+
+    /**
+     * Like {@link #testCallJavaBuiltin}, test that we can call a BuilderBuiltin.
+     */
+    @Test
+    public void testCallBuilderBuiltin() {
+        BuiltinLanguageRootNode root = parse(LanguageWithBuiltins.get(), b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.beginCallBuiltin(createBuilderBuiltin());
+            b.endCallBuiltin();
+            b.endReturn();
+            b.endRoot();
+        });
+
+        assertEquals(42, root.getCallTarget().call());
     }
 
     /**
@@ -571,9 +587,58 @@ public class BuiltinTutorial {
     }
 
     /**
-     * In order to make our builtins executable for testing purposes we also declare a simple
-     * truffle language that allows us to load builtins as functions by just specifying their name
-     * as source code characters.
+     * Like {@link #testCallJavaBuiltin}, test that we can call a SerializedBuiltin.
+     */
+    @Test
+    public void testCallSerializedBuiltin() {
+        BuiltinLanguageRootNode root = parse(LanguageWithBuiltins.get(), b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.beginCallBuiltin(createSerializedBuiltin());
+            b.endCallBuiltin();
+            b.endReturn();
+            b.endRoot();
+        });
+
+        assertEquals(42, root.getCallTarget().call());
+    }
+
+    /**
+     * We have demonstrated three ways to define builtins, and how to call/inline them in your
+     * Bytecode DSL interpreter. Lastly, we will demonstrate how these builtins can be used as
+     * interop values in the polyglot API.
+     * <p>
+     * We first define an interop object that wraps a builtin. It supports the {@code execute} and
+     * {@code isExecutable} messages. When executed, it simply calls the call target with the
+     * provided arguments.
+     */
+    @ExportLibrary(InteropLibrary.class)
+    static final class BuiltinExecutable implements TruffleObject {
+
+        final AbstractBuiltin builtin;
+
+        BuiltinExecutable(AbstractBuiltin builtin) {
+            this.builtin = builtin;
+        }
+
+        @ExportMessage
+        Object execute(Object[] args) {
+            return builtin.getOrCreateCallTarget().call(args);
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean isExecutable() {
+            return true;
+        }
+
+    }
+
+    /**
+     * We declare a TruffleLanguage for the root node.
+     * <p>
+     * For simplicity, builtins are registered by name, and parsing returns the builtin whose name
+     * matches the source content of the request.
      */
     @Registration(id = "language-with-builtins", name = "Language with Builtins Demo Language")
     static class LanguageWithBuiltins extends TruffleLanguage<Env> {
@@ -591,7 +656,7 @@ public class BuiltinTutorial {
          */
         private static Map<String, AbstractBuiltin> createBuiltins() {
             Map<String, AbstractBuiltin> builtins = new HashMap<>();
-            registerBuiltin(builtins, createParseIntBuiltin());
+            registerBuiltin(builtins, createJavaBuiltin());
             registerBuiltin(builtins, createBuilderBuiltin());
             registerBuiltin(builtins, createSerializedBuiltin());
             return builtins;
@@ -629,36 +694,8 @@ public class BuiltinTutorial {
     }
 
     /**
-     * In order to be able to pass parameters to our dummy language we wrap each call target into an
-     * interop executable that allows builtin objects to be executed through the polyglot API. A
-     * real language would not need this as it would have syntax to call builtin functions using
-     * source characters.
-     */
-    @ExportLibrary(InteropLibrary.class)
-    static final class BuiltinExecutable implements TruffleObject {
-
-        final AbstractBuiltin builtin;
-
-        BuiltinExecutable(AbstractBuiltin builtin) {
-            this.builtin = builtin;
-        }
-
-        @ExportMessage
-        Object execute(Object[] args) {
-            return builtin.getOrCreateCallTarget().call(args);
-        }
-
-        @SuppressWarnings("static-method")
-        @ExportMessage
-        boolean isExecutable() {
-            return true;
-        }
-
-    }
-
-    /**
-     * Finally we put everything together with a simple test that evaluates each builtin and tests
-     * it.
+     * Finally, put everything together. We obtain the builtins as interop objects using
+     * {@code eval} and then execute them using the polyglot API.
      */
     @Test
     public void testLanguageWithBuiltins() {

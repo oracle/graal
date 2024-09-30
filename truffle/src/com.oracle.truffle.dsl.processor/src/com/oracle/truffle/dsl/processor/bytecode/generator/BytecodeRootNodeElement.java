@@ -145,7 +145,7 @@ import com.oracle.truffle.dsl.processor.java.model.GeneratedTypeMirror;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 
 /**
- * Central code generation class for bytecode dsl root nodes.
+ * Central code generation class for Bytecode DSL root nodes.
  */
 final class BytecodeRootNodeElement extends CodeTypeElement {
 
@@ -10265,7 +10265,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
                 b.declaration(type(byte[].class), "localTags", "getLocalTags()");
                 b.startIf().string("localTags == null").end().startBlock();
-                b.lineComment("bytecode node not yet cached.");
+                b.lineComment("bytecode not yet cached.");
                 b.statement("return");
                 b.end().startElseBlock();
                 b.statement("localTags[localIndex] = kind.tag");

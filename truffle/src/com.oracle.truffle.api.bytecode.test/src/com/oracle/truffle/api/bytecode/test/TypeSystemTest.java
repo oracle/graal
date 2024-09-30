@@ -61,7 +61,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.RootNode;
 
 /**
- * Basic tests for type system usage. Just a smoke test for bytecode dsl specific behavior and
+ * Basic tests for type system usage. Just a smoke test for Bytecode DSL-specific behavior and
  * errors. Also see {@link BoxingEliminationTypeSystemTest} for boxing elimination specific tests.
  */
 public class TypeSystemTest extends AbstractInstructionTest {

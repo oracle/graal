@@ -96,8 +96,8 @@ public class ContinuationsTutorial {
     }
 
     /**
-     * When continuations are enabled, Bytecode DSL generates a special {@code Yield} operation that
-     * can be used to suspend the current execution.
+     * When continuations are enabled, the Bytecode DSL generates a special {@code Yield} operation
+     * that can be used to suspend the current execution.
      * <p>
      * The test below implements the following pseudocode:
      *
