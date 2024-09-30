@@ -70,13 +70,13 @@ public interface GraphBuilderTool extends CoreProviders {
 
     @SuppressWarnings("unused")
     default boolean canDeferPlugin(GeneratedInvocationPlugin plugin) {
-        // By default generated plugins must be completely processed during parsing.
+        // By default, generated plugins must be completely processed during parsing.
         return false;
     }
 
     @SuppressWarnings("unused")
     default boolean shouldDeferPlugin(GeneratedInvocationPlugin plugin) {
-        // By default generated plugins must be completely processed during parsing.
+        // By default, generated plugins must be completely processed during parsing.
         return false;
     }
 }

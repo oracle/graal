@@ -44,7 +44,6 @@ import jdk.graal.compiler.serviceprovider.GraalServices;
 import org.graalvm.collections.EconomicSet;
 
 import jdk.graal.compiler.core.common.Fields;
-import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.debug.Assertions;
@@ -200,14 +199,6 @@ public abstract class Node implements Cloneable, Formattable {
          * which the annotated method is declared.
          */
         Class<?> value() default NodeIntrinsic.class;
-
-        /**
-         * If {@code true}, the factory method or constructor selected by the annotation must have
-         * an {@linkplain InjectedNodeParameter injected} {@link Stamp} parameter. Calling
-         * {@link AbstractPointerStamp#nonNull()} on the injected stamp is guaranteed to return
-         * {@code true}.
-         */
-        boolean injectedStampIsNonNull() default false;
 
         /**
          * If {@code true} then this is lowered into a node that has side effects.

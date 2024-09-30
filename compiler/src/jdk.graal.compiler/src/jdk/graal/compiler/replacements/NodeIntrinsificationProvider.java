@@ -41,8 +41,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class NodeIntrinsificationProvider implements GeneratedPluginInjectionProvider {
 
-    public static final TargetDescription INJECTED_TARGET = null;
-
     private final MetaAccessProvider metaAccess;
     private final SnippetReflectionProvider snippetReflection;
     private final ForeignCallsProvider foreignCalls;
@@ -58,14 +56,14 @@ public class NodeIntrinsificationProvider implements GeneratedPluginInjectionPro
     }
 
     @Override
-    public Stamp getInjectedStamp(Class<?> type, boolean nonNull) {
+    public Stamp getInjectedStamp(Class<?> type) {
         JavaKind kind = JavaKind.fromJavaClass(type);
         if (kind == JavaKind.Object) {
             ResolvedJavaType returnType = metaAccess.lookupJavaType(type);
             if (wordTypes.isWord(returnType)) {
                 return wordTypes.getWordStamp(returnType);
             } else {
-                return StampFactory.object(TypeReference.createWithoutAssumptions(returnType), nonNull);
+                return StampFactory.object(TypeReference.createWithoutAssumptions(returnType));
             }
         } else {
             return StampFactory.forKind(kind);
