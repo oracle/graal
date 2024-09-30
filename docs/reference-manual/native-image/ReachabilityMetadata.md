@@ -279,8 +279,8 @@ To reflectively invoke methods, the method signature must be added to the `type`
 {
   "type": "TypeWhoseMethodsAreInvoked",
   "methods": [
-    {"name": "<methodName1>", "parameterTypes": ["<param-type1>", "<param-typeI>, <param-typeN>"]},
-    {"name": "<methodName>", "parameterTypes": ["<param-type1>", "<param-typeI>, <param-typeN>"]}
+    {"name": "<methodName1>", "parameterTypes": ["<param-type1>", "<param-typeI>", "<param-typeN>"]},
+    {"name": "<methodName>", "parameterTypes": ["<param-type1>", "<param-typeI>", "<param-typeN>"]}
   ]
 }
 ```
@@ -412,8 +412,8 @@ To call Java methods from JNI, we must provide metadata for the method signature
 {
   "type": "jni.accessed.Type",
   "methods": [
-    {"name": "<methodName1>", "parameterTypes": ["<param-type1>", "<param-typeI>, <param-typeN>"]},
-    {"name": "<methodName>", "parameterTypes": ["<param-type1>", "<param-typeI>, <param-typeN>"]}
+    {"name": "<methodName1>", "parameterTypes": ["<param-type1>", "<param-typeI>", "<param-typeN>"]},
+    {"name": "<methodName>", "parameterTypes": ["<param-type1>", "<param-typeI>", "<param-typeN>"]}
   ]
 }
 ```
@@ -729,7 +729,7 @@ See below is a sample reachabilIty metadata configuration that you can use in _r
       "methods": [
         {
           "name": "method1",
-          "parameterTypes": ["<param-type1>", "<param-typeI>, <param-typeN>"] 
+          "parameterTypes": ["<param-type1>", "<param-typeI>", "<param-typeN>"] 
         }
       ],
       "allDeclaredConstructors": true,
@@ -752,7 +752,7 @@ See below is a sample reachabilIty metadata configuration that you can use in _r
       "methods": [
         {
           "name": "method1",
-          "parameterTypes": ["<param-type1>", "<param-typeI>, <param-typeN>"]
+          "parameterTypes": ["<param-type1>", "<param-typeI>", "<param-typeN>"]
         }
       ],
       "allDeclaredConstructors": true,
