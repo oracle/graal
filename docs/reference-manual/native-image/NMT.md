@@ -76,7 +76,7 @@ jdk.NativeMemoryUsagePeak {
   eventThread = "JFR Shutdown Hook" (javaThreadId = 63)
 }
 ```
-To use these JFR events for NMT, JFR must be included as a feature at build time and started at runtime.(Learn more in [JDK Flight Recorder (JFR) with Native Image](JFR.md)).
+To use these JFR events for NMT, JFR must be enabled at build time and started at runtime. (Learn more in [JDK Flight Recorder (JFR) with Native Image](JFR.md)).
 
 ## Limitations
 
