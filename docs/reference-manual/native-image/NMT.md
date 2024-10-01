@@ -36,7 +36,8 @@ Adding `-XX:+PrintNMTStatistics` when starting your application from a native ex
 
 On HotSpot, NMT has two modes: summary and detailed. In Native Image, only NMT summary mode is currently supported. The detailed mode, which enables callsite tracking, is not available. Capturing baselines are also not yet possible. If you are interested in support for these additional features, file a request to the [GraalVM project on GitHub](https://github.com/oracle/graal). 
 
-Only malloc tracking is available in GraalVM for JDK 23. Virtual memory tracking is available in early access releases. 
+Only malloc tracking is available in GraalVM for JDK 23. 
+Virtual memory tracking is available in [Oracle GraalVM for JDK 24 early access builds](https://github.com/graalvm/oracle-graalvm-ea-builds).
 
 A limitation Native Image NMT shares with OpenJDK is that it can only track allocations at the VM-level and those made with `Unsafe#allocateMemory(long)`. For example, if library code or application code calls malloc directly, that call will bypass the NMT accounting and be untracked.
 
