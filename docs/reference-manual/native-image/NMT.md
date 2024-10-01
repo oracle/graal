@@ -10,7 +10,11 @@ redirect_from: /reference-manual/native-image/NMT/
 
 Native Memory Tracking (NMT) is a serviceability feature that records off-heap memory usage of your application. The terminology “off-heap memory” is sometimes used interchangeably with “native memory” or “unmanaged memory.” This essentially means any memory that is not managed by the garbage collector.
 
-Unlike traditional Java applications, Native Image executables use SubstrateVM instead of Hotspot to provide the runtime components of applications. Unlike Hotspot, SubstrateVM mostly uses memory on the collected heap managed by its garbage collector. However, there are still many places where native memory must be used by SubstrateVM to avoid allocating on the managed heap. Some examples include, JFR, the garbage collector, and heap dumping. Native memory can also be directly requested at the application level with `Unsafe#allocateMemory(long)`.
+Unlike traditional Java applications, Native Image uses Substrate VM instead of Java HotSpot VM to provide the runtime components.
+Unlike HotSpot, Substrate VM mostly uses memory on the collected heap managed by its garbage collector.
+However, there are still many places where native memory is used by Substrate VM to avoid allocations on the managed heap.
+Some examples include JFR, the garbage collector, and heap dumping.
+Native memory can also be directly requested at the application level with `Unsafe#allocateMemory(long)`.
 
 ## How to Use NMT
 
