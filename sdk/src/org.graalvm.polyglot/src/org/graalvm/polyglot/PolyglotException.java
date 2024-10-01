@@ -173,7 +173,7 @@ public final class PolyglotException extends RuntimeException {
     /**
      * Gets a user readable message for the polyglot exception. In case the exception is
      * {@link #isInternalError() internal} then the original java class name is included in the
-     * message. The message never returns <code>null</code>.
+     * message. The message may return <code>null</code> if no message is available.
      *
      * @since 19.0
      */
