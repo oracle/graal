@@ -52,7 +52,7 @@ There are also two Native Image specific JFR events that you can access: `jdk.Na
 
 Below is example of what the new events look like viewed using the `jfr` command line tool:
 ```
-$jfr print --events jdk.NativeMemoryUsagePeak recording.jfr 
+jfr print --events jdk.NativeMemoryUsagePeak recording.jfr 
 
 jdk.NativeMemoryUsagePeak {
   startTime = 13:18:50.605 (2024-04-30)
