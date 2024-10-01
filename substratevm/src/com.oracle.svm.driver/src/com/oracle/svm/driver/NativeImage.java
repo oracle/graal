@@ -46,6 +46,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -271,6 +272,7 @@ public class NativeImage {
 
     final Map<String, String> imageBuilderEnvironment = new HashMap<>();
     private final ArrayList<String> imageBuilderArgs = new ArrayList<>();
+    private final Set<String> imageBuilderUniqueLeftoverArgs = Collections.newSetFromMap(new IdentityHashMap<>());
     private final LinkedHashSet<Path> imageBuilderModulePath = new LinkedHashSet<>();
     private final LinkedHashSet<Path> imageBuilderClasspath = new LinkedHashSet<>();
     private final LinkedHashSet<Path> imageProvidedJars = new LinkedHashSet<>();
@@ -1233,8 +1235,8 @@ public class NativeImage {
             List<ArgumentEntry> extraImageArgs = new ArrayList<>();
             for (int i = 0, imageBuilderArgsSize = imageBuilderArgs.size(); i < imageBuilderArgsSize; i++) {
                 String builderArg = imageBuilderArgs.get(i);
-                if (builderArg.startsWith(NativeImageArgsProcessor.LEFTOVER_BUILDER_ARG_PREFIX)) {
-                    extraImageArgs.add(new ArgumentEntry(i, builderArg.substring(1)));
+                if (imageBuilderUniqueLeftoverArgs.contains(builderArg)) {
+                    extraImageArgs.add(new ArgumentEntry(i, builderArg));
                 }
             }
 
@@ -1299,13 +1301,8 @@ public class NativeImage {
             }
 
             /* Remove consumed extraImageArgs from imageBuilderArgs */
-            var imageBuilderArgIter = imageBuilderArgs.iterator();
-            while (imageBuilderArgIter.hasNext()) {
-                String builderArg = imageBuilderArgIter.next();
-                if (builderArg.startsWith(NativeImageArgsProcessor.LEFTOVER_BUILDER_ARG_PREFIX)) {
-                    imageBuilderArgIter.remove();
-                }
-            }
+            imageBuilderArgs.removeIf(imageBuilderUniqueLeftoverArgs::contains);
+            imageBuilderUniqueLeftoverArgs.clear();
         }
 
         ArgumentEntry imageNameEntry = getHostedOptionArgument(imageBuilderArgs, oHName).orElseThrow();
@@ -2040,7 +2037,6 @@ public class NativeImage {
     }
 
     class NativeImageArgsProcessor implements Consumer<String> {
-        private static final String LEFTOVER_BUILDER_ARG_PREFIX = "\t";
 
         private final ArgumentQueue args;
 
@@ -2081,7 +2077,12 @@ public class NativeImage {
                     if (strict) {
                         showError("Property 'Args' contains invalid entry '" + queue.peek() + "'");
                     } else {
-                        imageBuilderArgs.add(LEFTOVER_BUILDER_ARG_PREFIX + queue.poll());
+                        /* Ensure unique object identity for leftover arg */
+                        String uniqueLeftoverArg = new String(queue.poll());
+                        /* Remember this exact leftover by adding to IdentityHashSet */
+                        imageBuilderUniqueLeftoverArgs.add(uniqueLeftoverArg);
+                        /* Insert leftover into imageBuilderArgs for further processing */
+                        imageBuilderArgs.add(uniqueLeftoverArg);
                     }
                 }
             }
