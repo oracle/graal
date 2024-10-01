@@ -1,7 +1,7 @@
 ---
 layout: docs
 toc_group: espresso
-link_title: Java on Truffle
+link_title: Espresso
 permalink: /reference-manual/espresso/
 redirect_from: /reference-manual/java-on-truffle/
 ---
