@@ -32,7 +32,7 @@ Adding `-XX:+PrintNMTStatistics` when starting your application from a native ex
 
 ## Limitations
 
-In OpenJDK, NMT has two modes: summary and detailed. Currently in Native Image, only NMT summary mode is supported. Detailed mode, which enables callsite tracking, is not available. Capturing baselines are also not yet possible. If you are interested in support for these additional features, please make a request on the GraalVM Github project. 
+On HotSpot, NMT has two modes: summary and detailed. In Native Image, only NMT summary mode is currently supported. The detailed mode, which enables callsite tracking, is not available. Capturing baselines are also not yet possible. If you are interested in support for these additional features, file a request to the [GraalVM project on GitHub](https://github.com/oracle/graal). 
 
 Only malloc tracking is available in GraalVM for JDK 23. Virtual memory tracking is available in early access releases. 
 
