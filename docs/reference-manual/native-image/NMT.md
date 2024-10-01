@@ -52,7 +52,7 @@ The OpenJDK JFR events `jdk.NativeMemoryUsage` and `jdk.NativeMemoryUsageTotal` 
 There are also two Native Image specific JFR events that you can access: `jdk.NativeMemoryUsagePeak` and `jdk.NativeMemoryUsageTotalPeak`.
 These Native Image specific events have been created to expose peak usage data otherwise not exposed through the JFR events ported over from the OpenJDK.
 These new events are marked as experimental.
-You may need to enable experimental events in software like JDK Mission control in order to view them.
+You may need to enable experimental events in software like JDK Mission Control to view them.
 
 See below the example of what the new events look like when viewed using the `jfr` command line tool:
 ```
