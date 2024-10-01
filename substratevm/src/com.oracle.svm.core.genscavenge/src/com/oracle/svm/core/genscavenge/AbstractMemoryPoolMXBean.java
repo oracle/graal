@@ -66,6 +66,12 @@ public abstract class AbstractMemoryPoolMXBean extends AbstractMXBean implements
         return initialValue;
     }
 
+    public abstract UnsignedWord getUsedBytes();
+
+    public UnsignedWord getCommittedBytes() {
+        return getUsedBytes();
+    }
+
     abstract UnsignedWord computeInitialValue();
 
     abstract void beforeCollection();
@@ -73,11 +79,15 @@ public abstract class AbstractMemoryPoolMXBean extends AbstractMXBean implements
     abstract void afterCollection();
 
     MemoryUsage memoryUsage(UnsignedWord usedAndCommitted) {
-        return new MemoryUsage(getInitialValue().rawValue(), usedAndCommitted.rawValue(), usedAndCommitted.rawValue(), getMaximumValue().rawValue());
+        return memoryUsage(usedAndCommitted, usedAndCommitted);
     }
 
     MemoryUsage memoryUsage(UnsignedWord used, UnsignedWord committed) {
-        return new MemoryUsage(getInitialValue().rawValue(), used.rawValue(), committed.rawValue(), getMaximumValue().rawValue());
+        return memoryUsage(used.rawValue(), committed.rawValue());
+    }
+
+    public MemoryUsage memoryUsage(long used, long committed) {
+        return new MemoryUsage(getInitialValue().rawValue(), used, committed, getMaximumValue().rawValue());
     }
 
     @Override
