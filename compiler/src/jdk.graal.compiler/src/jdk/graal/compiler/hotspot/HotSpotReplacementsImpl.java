@@ -64,6 +64,8 @@ import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 /**
  * Filters certain method substitutions based on whether there is underlying hardware support for
@@ -274,6 +276,7 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
         return super.getInjectedArgument(capability);
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public ResolvedJavaMethod findSnippetMethod(ResolvedJavaMethod thisMethod) {
         if (snippetEncoder == null) {
             throw new GraalError("findSnippetMethod called before initialization of Replacements");

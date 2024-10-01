@@ -27,6 +27,8 @@ package jdk.graal.compiler.hotspot.libgraal.truffle;
 import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id;
 import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
 import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -45,6 +47,7 @@ import java.util.Set;
 /**
  * Class used to initialize the Truffle extensions to the Graal compiler in the image build time.
  */
+@Platforms(Platform.HOSTED_ONLY.class)
 public class BuildTime {
 
     private static Lookup hostLookup;
