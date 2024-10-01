@@ -123,13 +123,30 @@ public interface MethodRef {
     LineNumberTableRef getLineNumberTable();
 
     /**
-     * Invokes the method on the input callee object with input arguments.
+     * Invokes a non-private, non-constructor instance method on the input callee object with input
+     * arguments. The first argument must be the self object.
      *
-     * @param callee guest-language object on which to execute the method
      * @param args guest-language arguments used when calling the method
      * @return the guest-language return value
      */
-    Object invokeMethod(Object callee, Object[] args);
+    Object invokeMethodVirtual(Object... args);
+
+    /**
+     * Invokes a static method with input arguments.
+     *
+     * @param args guest-language arguments used when calling the method
+     * @return the guest-language return value
+     */
+    Object invokeMethodStatic(Object... args);
+
+    /**
+     * Invokes a constructor or private instance method with input arguments. The first argument
+     * must be the self object.
+     *
+     * @param args guest-language arguments used when calling the method
+     * @return the guest-language return value
+     */
+    Object invokeMethodSpecial(Object... args);
 
     /**
      * Determines if the declaring class has a source file attribute.
@@ -211,4 +228,18 @@ public interface MethodRef {
      * @return last bci
      */
     long getLastBCI();
+
+    /**
+     * Determines if the method is a constructor.
+     *
+     * @return true if the method is a constructor
+     */
+    boolean isConstructor();
+
+    /**
+     * Determines if the method is a static initializer.
+     *
+     * @return true if the method is a static initializer
+     */
+    boolean isClassInitializer();
 }
