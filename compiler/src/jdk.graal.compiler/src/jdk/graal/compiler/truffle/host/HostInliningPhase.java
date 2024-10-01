@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -179,7 +179,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
     }
 
     @Override
-    protected final void run(StructuredGraph graph, HighTierContext highTierContext) {
+    protected final void runInlining(StructuredGraph graph, HighTierContext highTierContext) {
         ResolvedJavaMethod method = graph.method();
         TruffleHostEnvironment env = TruffleHostEnvironment.get(method);
         if (env == null) {
