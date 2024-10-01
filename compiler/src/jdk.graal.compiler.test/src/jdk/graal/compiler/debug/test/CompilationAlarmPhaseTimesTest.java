@@ -87,7 +87,9 @@ public class CompilationAlarmPhaseTimesTest extends GraalCompilerTest {
         try {
             test(opt, "foo", 10000);
         } catch (Throwable t) {
-            assert t.getMessage().contains("Compilation exceeded 2.000 seconds");
+            if (!t.getMessage().contains("Compilation exceeded 2.000 seconds")) {
+                throw new AssertionError("Unexpected exception: " + t, t);
+            }
             StructuredGraph g = lastCompiledGraph;
             assert g != null;
             String message = t.getMessage();

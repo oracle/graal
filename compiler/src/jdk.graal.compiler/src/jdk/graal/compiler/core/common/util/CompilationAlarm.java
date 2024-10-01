@@ -76,17 +76,6 @@ public final class CompilationAlarm implements AutoCloseable {
     }
 
     /**
-     * Resets the compilation alarm with a new period for expiration. See
-     * {@link #trackCompilationPeriod} for details about tracking compilation periods.
-     */
-    public void reset(double newPeriod) {
-        if (this != NEVER_EXPIRES) {
-            this.period = newPeriod;
-            this.expiration = newPeriod == 0.0D ? 0L : System.currentTimeMillis() + (long) (newPeriod * 1000);
-        }
-    }
-
-    /**
      * Use the option value defined compilation expiration period and reset this alarm. See
      * {@link #reset(double)}.
      */
@@ -150,6 +139,17 @@ public final class CompilationAlarm implements AutoCloseable {
         return this == NEVER_EXPIRES ? -1 : expiration - (long) (period * 1000);
     }
 
+    /**
+     * Resets the compilation alarm with a new period for expiration. See
+     * {@link #trackCompilationPeriod} for details about tracking compilation periods.
+     */
+    public void reset(double newPeriod) {
+        if (this != NEVER_EXPIRES) {
+            this.period = newPeriod;
+            this.expiration = newPeriod == 0.0D ? 0L : System.currentTimeMillis() + (long) (newPeriod * 1000);
+        }
+    }
+
     public boolean isEnabled() {
         return this != NEVER_EXPIRES;
     }
@@ -159,10 +159,21 @@ public final class CompilationAlarm implements AutoCloseable {
      */
     public void checkExpiration() {
         if (hasExpired()) {
-            // update the timing of the current phase node to have exact information in the phase
-            // times
-            updateCurrentPhaseNodeTime();
-            throw new PermanentBailoutException("Compilation exceeded %.3f seconds. %n Phase timings %s", period, elapsedPhaseTreeAsString());
+
+            setCurrentNodeDuration(currentNode.name);
+
+            /*
+             * We clone the phase tree here for the sake of the error message. We want to fix up the
+             * root timings and also annotate in which phase(s) the timeout happens. We do not do
+             * this on the original tree because that one can still be in IGV dumps.
+             */
+            PhaseTreeNode cloneTree = cloneTree(root, null);
+            StringBuilder sb = new StringBuilder();
+            // also update the root time to be consistent for the error message
+            cloneTree.durationMS = elapsed();
+            printTree("", sb, cloneTree, true);
+
+            throw new PermanentBailoutException("Compilation exceeded %.3f seconds. %n Phase timings:%n %s <===== TIMEOUT HERE", period, sb.toString().trim());
         }
     }
 
@@ -191,7 +202,7 @@ public final class CompilationAlarm implements AutoCloseable {
         }
         PhaseTreeNode node = new PhaseTreeNode(name);
         node.parent = currentNode;
-        node.time = elapsed();
+        node.startTimeSystemMillis = System.currentTimeMillis();
         currentNode.addChild(node);
         currentNode = node;
     }
@@ -204,19 +215,20 @@ public final class CompilationAlarm implements AutoCloseable {
             return;
         }
         assert currentNode.name.equals(name) : Assertions.errorMessage("Must see the same phase that was opened in the close operation", name, elapsedPhaseTreeAsString());
-        updateCurrentPhaseNodeTime();
+        setCurrentNodeDuration(name);
+        currentNode.closed = true;
+        currentNode.parent.durationMS += currentNode.durationMS;
         currentNode = currentNode.parent;
     }
 
-    private void updateCurrentPhaseNodeTime() {
-        final long duration = elapsed() - currentNode.time;
-        currentNode.time = duration;
+    private void setCurrentNodeDuration(String name) {
+        assert currentNode.startTimeSystemMillis >= 0 : Assertions.errorMessage("Must have a positive start time", name, elapsedPhaseTreeAsString());
+        currentNode.durationMS = System.currentTimeMillis() - currentNode.startTimeSystemMillis;
     }
 
     /**
      * The phase tree root node during compilation. Special marker node to avoid null checking
-     * logic. Note that the {@link PhaseTreeNode#time} of the root is only set and calculated when
-     * the tree is printed from the root.
+     * logic.
      */
     private PhaseTreeNode root = new PhaseTreeNode("Root");
 
@@ -231,6 +243,7 @@ public final class CompilationAlarm implements AutoCloseable {
      * phase.
      */
     private class PhaseTreeNode {
+
         /**
          * Link to the parent node.
          */
@@ -252,10 +265,19 @@ public final class CompilationAlarm implements AutoCloseable {
         private final String name;
 
         /**
-         * The wall clock time spent in this phase. Note this value is only correct after a phase
-         * regularly finished.
+         * The time stamp in ms when this phase started running.
          */
-        private long time = -1L;
+        private long startTimeSystemMillis = -1L;
+
+        /**
+         * The wall clock time spent in milliseconds in this phase.
+         */
+        private long durationMS = 0;
+
+        /**
+         * Determines if this phase was already properly closed.
+         */
+        public boolean closed;
 
         PhaseTreeNode(String name) {
             this.name = name;
@@ -276,9 +298,26 @@ public final class CompilationAlarm implements AutoCloseable {
 
         @Override
         public String toString() {
-            return name + "->" + time + "ns";
+            return name + "->" + durationMS + "ms elapsed [startMS=" + startTimeSystemMillis + "]";
         }
 
+    }
+
+    private PhaseTreeNode cloneTree(PhaseTreeNode clonee, PhaseTreeNode parent) {
+        PhaseTreeNode clone = new PhaseTreeNode(clonee.name);
+        clone.parent = parent;
+        if (clone.parent != null) {
+            clone.parent.addChild(clone);
+        }
+        clone.durationMS = clonee.durationMS;
+        clone.startTimeSystemMillis = clonee.startTimeSystemMillis;
+        clone.closed = clonee.closed;
+        if (clonee.children != null) {
+            for (int i = 0; i < clonee.childIndex; i++) {
+                cloneTree(clonee.children[i], clone);
+            }
+        }
+        return clone;
     }
 
     /**
@@ -289,24 +328,24 @@ public final class CompilationAlarm implements AutoCloseable {
     /**
      * Recursively print the phase tree represented by {@code node}.
      */
-    private void printTree(String indent, StringBuilder sb, PhaseTreeNode node) {
+    private void printTree(String indent, StringBuilder sb, PhaseTreeNode node, boolean printRoot) {
         sb.append(indent);
-        if (node == root) {
-            // only update the root timing incrementally when needed
-            root.time = elapsed();
+        if (!printRoot && node == root) {
+            sb.append(node.name);
+        } else {
+            sb.append(node);
         }
-        sb.append(node);
         sb.append(System.lineSeparator());
         if (node.children != null) {
             for (int i = 0; i < node.childIndex; i++) {
-                printTree(indent + "\t", sb, node.children[i]);
+                printTree(indent + "\t", sb, node.children[i], printRoot);
             }
         }
     }
 
     public StringBuilder elapsedPhaseTreeAsString() {
         StringBuilder sb = new StringBuilder();
-        printTree("", sb, root);
+        printTree("", sb, root, false);
         return sb;
     }
 
