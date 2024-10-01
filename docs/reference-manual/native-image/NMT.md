@@ -16,7 +16,7 @@ However, there are still many places where native memory is used by Substrate VM
 Some examples include JFR, the garbage collector, and heap dumping.
 Native memory can also be directly requested at the application level with `Unsafe#allocateMemory(long)`.
 
-## How to Use NMT
+## Enabling Native Memory Tracking
 
 NMT support is disabled by default and must be explicitly enabled at build time.
  
