@@ -333,10 +333,10 @@ b.beginRoot(); // outer root
 b.endRoot();
 ```
 
-Materialized accesses should be used carefully.
-It is undefined behaviour to access an outer local that is not currently in scope.
-The bytecode builder endeavours to prevent such errors, but it is not always possible.
-It is also undefined behaviour to access a local using a materialized frame that does not contain the local (i.e., the frame of a different root node).
+If an inner root accesses an outer local using materialized loads/stores, you should be careful to only call the inner root when the outer local is live; otherwise, a local load could produce unexpected values.
+The bytecode builder statically checks that the local is in scope when emitting a materialized load/store, but the interpreter cannot easily check that the access occurs at that same point in execution.
+The interpreter _will_ validate the access when it is configured to store the bytecode index in the frame (see the `storeBytecodeIndexInFrame` flag in [`@GenerateBytecode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/GenerateBytecode.java)), but for performance reasons this flag is `false` by default.
+Consider enabling the flag temporarily if you encounter unexpected behaviour with materialized local values.
 
 
 ## Control flow

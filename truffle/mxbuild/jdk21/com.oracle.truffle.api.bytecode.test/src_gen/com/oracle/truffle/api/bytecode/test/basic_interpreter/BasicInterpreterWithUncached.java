@@ -282,11 +282,11 @@ import java.util.function.Supplier;
  *     signature: Object ()
  *   - Instruction load.local.mat
  *     kind: LOAD_LOCAL_MATERIALIZED
- *     encoding: [14 : short, local_offset : short]
+ *     encoding: [14 : short, local_offset : short, root_index (local_root) : short]
  *     signature: Object (Object)
  *   - Instruction store.local.mat
  *     kind: STORE_LOCAL_MATERIALIZED
- *     encoding: [15 : short, local_offset : short]
+ *     encoding: [15 : short, local_offset : short, root_index (local_root) : short]
  *     signature: void (Object, Object)
  *   - Instruction yield
  *     kind: YIELD
@@ -1024,13 +1024,13 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
                 case Instructions.LOAD_ARGUMENT :
                 case Instructions.LOAD_EXCEPTION :
                 case Instructions.LOAD_LOCAL :
-                case Instructions.LOAD_LOCAL_MAT :
-                case Instructions.STORE_LOCAL_MAT :
                 case Instructions.CLEAR_LOCAL :
                 case Instructions.INVALIDATE1 :
                     return 4;
                 case Instructions.BRANCH :
                 case Instructions.LOAD_CONSTANT :
+                case Instructions.LOAD_LOCAL_MAT :
+                case Instructions.STORE_LOCAL_MAT :
                 case Instructions.YIELD :
                 case Instructions.TAG_ENTER :
                 case Instructions.TAG_LEAVE :
@@ -1123,8 +1123,6 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
                         new BranchProfileArgument(bytecode, "branch_profile", bci + 6));
                 case Instructions.STORE_LOCAL :
                 case Instructions.LOAD_LOCAL :
-                case Instructions.LOAD_LOCAL_MAT :
-                case Instructions.STORE_LOCAL_MAT :
                 case Instructions.CLEAR_LOCAL :
                     return List.of(
                         new LocalOffsetArgument(bytecode, "local_offset", bci + 2));
@@ -1137,6 +1135,11 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
                 case Instructions.LOAD_EXCEPTION :
                     return List.of(
                         new IntegerArgument(bytecode, "exception_sp", bci + 2, 2));
+                case Instructions.LOAD_LOCAL_MAT :
+                case Instructions.STORE_LOCAL_MAT :
+                    return List.of(
+                        new LocalOffsetArgument(bytecode, "local_offset", bci + 2),
+                        new IntegerArgument(bytecode, "root_index", bci + 4, 2));
                 case Instructions.YIELD :
                     return List.of(
                         new ConstantArgument(bytecode, "location", bci + 2));
@@ -1472,7 +1475,7 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
             return new InstructionImpl(bytecode, nextBci, bytecode.readValidBytecode(bytecode.bytecodes, nextBci));
         }
 
-        private abstract static sealed class AbstractArgument extends Argument permits LocalOffsetArgument, IntegerArgument, BytecodeIndexArgument, ConstantArgument, NodeProfileArgument, TagNodeArgument, BranchProfileArgument {
+        private abstract static sealed class AbstractArgument extends Argument permits LocalOffsetArgument, LocalIndexArgument, IntegerArgument, BytecodeIndexArgument, ConstantArgument, NodeProfileArgument, TagNodeArgument, BranchProfileArgument {
 
             protected static final BytecodeDSLAccess SAFE_ACCESS = BytecodeDSLAccess.lookup(BytecodeRootNodesImpl.VISIBLE_TOKEN, false);
             protected static final ByteArraySupport SAFE_BYTES = SAFE_ACCESS.getByteArraySupport();
@@ -1509,6 +1512,24 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
             public int asLocalOffset() {
                 byte[] bc = this.bytecode.bytecodes;
                 return SAFE_BYTES.getShort(bc, bci) - USER_LOCALS_START_INDEX;
+            }
+
+        }
+        private static final class LocalIndexArgument extends AbstractArgument {
+
+            LocalIndexArgument(AbstractBytecodeNode bytecode, String name, int bci) {
+                super(bytecode, name, bci);
+            }
+
+            @Override
+            public Kind getKind() {
+                return Kind.LOCAL_INDEX;
+            }
+
+            @Override
+            public int asLocalIndex() {
+                byte[] bc = this.bytecode.bytecodes;
+                return SAFE_BYTES.getShort(bc, bci);
             }
 
         }
@@ -1900,8 +1921,6 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
                     case Instructions.LOAD_ARGUMENT :
                     case Instructions.LOAD_EXCEPTION :
                     case Instructions.LOAD_LOCAL :
-                    case Instructions.LOAD_LOCAL_MAT :
-                    case Instructions.STORE_LOCAL_MAT :
                     case Instructions.CLEAR_LOCAL :
                     case Instructions.INVALIDATE1 :
                         BYTES.putShort(bc, bci, Instructions.INVALIDATE1);
@@ -1910,6 +1929,8 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
                         break;
                     case Instructions.BRANCH :
                     case Instructions.LOAD_CONSTANT :
+                    case Instructions.LOAD_LOCAL_MAT :
+                    case Instructions.STORE_LOCAL_MAT :
                     case Instructions.YIELD :
                     case Instructions.TAG_ENTER :
                     case Instructions.TAG_LEAVE :
@@ -2095,7 +2116,6 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
                         }
                         case Instructions.LOAD_ARGUMENT :
                         {
-                            short index = BYTES.getShort(bc, bci + 2 /* imm index */);
                             bci = bci + 4;
                             break;
                         }
@@ -2114,10 +2134,11 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
                         case Instructions.STORE_LOCAL_MAT :
                         {
                             short local_offset = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
-                            if (local_offset < USER_LOCALS_START_INDEX) {
+                            root = this.getRoot().getBytecodeRootNodeImpl(BYTES.getShort(bc, bci + 4 /* imm root_index */));
+                            if (local_offset < USER_LOCALS_START_INDEX || local_offset >= root.maxLocals) {
                                 throw CompilerDirectives.shouldNotReachHere(String.format("Bytecode validation error at index: %s. local offset is out of bounds%n%s", bci, dumpInvalid(findLocation(bci))));
                             }
-                            bci = bci + 4;
+                            bci = bci + 6;
                             break;
                         }
                         case Instructions.YIELD :
@@ -2239,31 +2260,21 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
                         }
                         case Instructions.INVALIDATE1 :
                         {
-                            short invalidated0 = BYTES.getShort(bc, bci + 2 /* imm invalidated0 */);
                             bci = bci + 4;
                             break;
                         }
                         case Instructions.INVALIDATE2 :
                         {
-                            short invalidated0 = BYTES.getShort(bc, bci + 2 /* imm invalidated0 */);
-                            short invalidated1 = BYTES.getShort(bc, bci + 4 /* imm invalidated1 */);
                             bci = bci + 6;
                             break;
                         }
                         case Instructions.INVALIDATE3 :
                         {
-                            short invalidated0 = BYTES.getShort(bc, bci + 2 /* imm invalidated0 */);
-                            short invalidated1 = BYTES.getShort(bc, bci + 4 /* imm invalidated1 */);
-                            short invalidated2 = BYTES.getShort(bc, bci + 6 /* imm invalidated2 */);
                             bci = bci + 8;
                             break;
                         }
                         case Instructions.INVALIDATE4 :
                         {
-                            short invalidated0 = BYTES.getShort(bc, bci + 2 /* imm invalidated0 */);
-                            short invalidated1 = BYTES.getShort(bc, bci + 4 /* imm invalidated1 */);
-                            short invalidated2 = BYTES.getShort(bc, bci + 6 /* imm invalidated2 */);
-                            short invalidated3 = BYTES.getShort(bc, bci + 8 /* imm invalidated3 */);
                             bci = bci + 10;
                             break;
                         }
@@ -2646,8 +2657,6 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
                     case Instructions.LOAD_ARGUMENT :
                     case Instructions.LOAD_EXCEPTION :
                     case Instructions.LOAD_LOCAL :
-                    case Instructions.LOAD_LOCAL_MAT :
-                    case Instructions.STORE_LOCAL_MAT :
                     case Instructions.CLEAR_LOCAL :
                     case Instructions.INVALIDATE1 :
                         bci += 4;
@@ -2655,6 +2664,8 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
                         break;
                     case Instructions.BRANCH :
                     case Instructions.LOAD_CONSTANT :
+                    case Instructions.LOAD_LOCAL_MAT :
+                    case Instructions.STORE_LOCAL_MAT :
                     case Instructions.YIELD :
                     case Instructions.EARLY_RETURN_ :
                     case Instructions.ADD_OPERATION_ :
@@ -2754,8 +2765,6 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
                     case Instructions.LOAD_ARGUMENT :
                     case Instructions.LOAD_EXCEPTION :
                     case Instructions.LOAD_LOCAL :
-                    case Instructions.LOAD_LOCAL_MAT :
-                    case Instructions.STORE_LOCAL_MAT :
                     case Instructions.CLEAR_LOCAL :
                     case Instructions.INVALIDATE1 :
                         bci += 4;
@@ -2763,6 +2772,8 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
                         break;
                     case Instructions.BRANCH :
                     case Instructions.LOAD_CONSTANT :
+                    case Instructions.LOAD_LOCAL_MAT :
+                    case Instructions.STORE_LOCAL_MAT :
                     case Instructions.YIELD :
                     case Instructions.EARLY_RETURN_ :
                     case Instructions.ADD_OPERATION_ :
@@ -2986,14 +2997,14 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
                     case Instructions.LOAD_ARGUMENT :
                     case Instructions.LOAD_EXCEPTION :
                     case Instructions.LOAD_LOCAL :
-                    case Instructions.LOAD_LOCAL_MAT :
-                    case Instructions.STORE_LOCAL_MAT :
                     case Instructions.CLEAR_LOCAL :
                     case Instructions.INVALIDATE1 :
                         bci += 4;
                         break;
                     case Instructions.BRANCH :
                     case Instructions.LOAD_CONSTANT :
+                    case Instructions.LOAD_LOCAL_MAT :
+                    case Instructions.STORE_LOCAL_MAT :
                     case Instructions.YIELD :
                     case Instructions.TAG_ENTER :
                     case Instructions.TAG_LEAVE :
@@ -3302,14 +3313,14 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
                         case Instructions.LOAD_LOCAL_MAT :
                         {
                             doLoadLocalMat(this, frame, ((VirtualFrame) FRAMES.uncheckedGetObject(frame, sp - 1)), bc, bci, sp);
-                            bci += 4;
+                            bci += 6;
                             break;
                         }
                         case Instructions.STORE_LOCAL_MAT :
                         {
                             doStoreLocalMat(frame, ((VirtualFrame) FRAMES.uncheckedGetObject(frame, sp - 2)), bc, bci, sp);
                             sp -= 2;
-                            bci += 4;
+                            bci += 6;
                             break;
                         }
                         case Instructions.YIELD :
@@ -3809,12 +3820,24 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
         }
 
         private void doLoadLocalMat(AbstractBytecodeNode $this, Frame stackFrame, Frame frame, byte[] bc, int bci, int sp) {
-            FRAMES.setObject(stackFrame, sp - 1, FRAMES.requireObject(frame, BYTES.getShort(bc, bci + 2 /* imm local_offset */)));
+            int slot = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
+            int localRootIndex = BYTES.getShort(bc, bci + 4 /* imm root_index */);
+            BasicInterpreterWithUncached localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
+            if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
+                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+            }
+            FRAMES.setObject(stackFrame, sp - 1, FRAMES.requireObject(frame, slot));
         }
 
         private void doStoreLocalMat(Frame stackFrame, Frame frame, byte[] bc, int bci, int sp) {
             Object local = FRAMES.requireObject(stackFrame, sp - 1);
-            FRAMES.setObject(frame, BYTES.getShort(bc, bci + 2 /* imm local_offset */), local);
+            int slot = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
+            int localRootIndex = BYTES.getShort(bc, bci + 4 /* imm root_index */);
+            BasicInterpreterWithUncached localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
+            if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
+                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+            }
+            FRAMES.setObject(frame, slot, local);
             FRAMES.clear(stackFrame, sp - 1);
             FRAMES.clear(stackFrame, sp - 2);
         }
@@ -4336,6 +4359,8 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
                     }
                     case Instructions.BRANCH :
                     case Instructions.LOAD_CONSTANT :
+                    case Instructions.LOAD_LOCAL_MAT :
+                    case Instructions.STORE_LOCAL_MAT :
                     case Instructions.YIELD :
                     case Instructions.TAG_ENTER :
                     case Instructions.TAG_LEAVE :
@@ -4360,8 +4385,6 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
                     case Instructions.LOAD_ARGUMENT :
                     case Instructions.LOAD_EXCEPTION :
                     case Instructions.LOAD_LOCAL :
-                    case Instructions.LOAD_LOCAL_MAT :
-                    case Instructions.STORE_LOCAL_MAT :
                     case Instructions.CLEAR_LOCAL :
                     case Instructions.INVALIDATE1 :
                     {
@@ -4550,9 +4573,7 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
                     case Instructions.LOAD_ARGUMENT :
                     case Instructions.LOAD_EXCEPTION :
                     case Instructions.LOAD_LOCAL :
-                    case Instructions.LOAD_LOCAL_MAT :
                     case Instructions.STORE_LOCAL :
-                    case Instructions.STORE_LOCAL_MAT :
                         bci += 4;
                         break;
                     case Instructions.BRANCH :
@@ -4589,6 +4610,8 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
                     case Instructions.VOID_OPERATION_ :
                     case Instructions.INVALIDATE2 :
                     case Instructions.LOAD_CONSTANT :
+                    case Instructions.LOAD_LOCAL_MAT :
+                    case Instructions.STORE_LOCAL_MAT :
                     case Instructions.TAG_ENTER :
                     case Instructions.TAG_LEAVE :
                     case Instructions.TAG_LEAVE_VOID :
@@ -4761,14 +4784,14 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
                             case Instructions.LOAD_LOCAL_MAT :
                             {
                                 doLoadLocalMat(this, frame, ((VirtualFrame) FRAMES.uncheckedGetObject(frame, sp - 1)), bc, bci, sp);
-                                bci += 4;
+                                bci += 6;
                                 break;
                             }
                             case Instructions.STORE_LOCAL_MAT :
                             {
                                 doStoreLocalMat(frame, ((VirtualFrame) FRAMES.uncheckedGetObject(frame, sp - 2)), bc, bci, sp);
                                 sp -= 2;
-                                bci += 4;
+                                bci += 6;
                                 break;
                             }
                             case Instructions.YIELD :
@@ -5274,12 +5297,24 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
         }
 
         private void doLoadLocalMat(AbstractBytecodeNode $this, Frame stackFrame, Frame frame, byte[] bc, int bci, int sp) {
-            FRAMES.setObject(stackFrame, sp - 1, FRAMES.requireObject(frame, BYTES.getShort(bc, bci + 2 /* imm local_offset */)));
+            int slot = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
+            int localRootIndex = BYTES.getShort(bc, bci + 4 /* imm root_index */);
+            BasicInterpreterWithUncached localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
+            if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
+                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+            }
+            FRAMES.setObject(stackFrame, sp - 1, FRAMES.requireObject(frame, slot));
         }
 
         private void doStoreLocalMat(Frame stackFrame, Frame frame, byte[] bc, int bci, int sp) {
             Object local = FRAMES.requireObject(stackFrame, sp - 1);
-            FRAMES.setObject(frame, BYTES.getShort(bc, bci + 2 /* imm local_offset */), local);
+            int slot = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
+            int localRootIndex = BYTES.getShort(bc, bci + 4 /* imm root_index */);
+            BasicInterpreterWithUncached localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
+            if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
+                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+            }
+            FRAMES.setObject(frame, slot, local);
             FRAMES.clear(stackFrame, sp - 1);
             FRAMES.clear(stackFrame, sp - 2);
         }
@@ -5834,7 +5869,7 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
             short frameIndex = safeCastShort(USER_LOCALS_START_INDEX + scope.frameOffset + scope.numLocals) /* location in frame */;
             int tableIndex = doEmitLocal(localIndex, frameIndex, name, info) /* index in global table */;
             scope.registerLocal(tableIndex);
-            BytecodeLocalImpl local = new BytecodeLocalImpl(frameIndex, localIndex, scope);
+            BytecodeLocalImpl local = new BytecodeLocalImpl(frameIndex, localIndex, ((RootData) operationStack[this.rootOperationSp].data).index, scope);
             return local;
         }
 
@@ -6945,6 +6980,8 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
          * <p>
          * LoadLocalMaterialized reads {@code local} from the frame produced by {@code frame}.
          * This operation can be used to read locals from materialized frames. The materialized frame must belong to the same root node or an enclosing root node.
+         * The given local must be in scope at the point that LoadLocalMaterialized executes, otherwise it may produce unexpected values.
+         * The interpreter will validate the scope if the interpreter is configured to store the bytecode index in the frame (see {@code @GenerateBytecode}).
          * <p>
          * A corresponding call to {@link #endLoadLocalMaterialized} is required to end the operation.
          *
@@ -6993,8 +7030,8 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
             if (!(operation.data instanceof BytecodeLocalImpl operationData)) {
                 throw assertionFailed("Data class BytecodeLocalImpl expected, but was " + operation.data);
             }
-            doEmitInstructionS(Instructions.LOAD_LOCAL_MAT, 0, operationData.frameIndex);
-            afterChild(true, bci - 4);
+            doEmitInstructionSS(Instructions.LOAD_LOCAL_MAT, 0, operationData.frameIndex, operationData.rootIndex);
+            afterChild(true, bci - 6);
         }
 
         /**
@@ -7062,6 +7099,8 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
          * <p>
          * StoreLocalMaterialized writes the value produced by {@code value} into the {@code local} in the frame produced by {@code frame}.
          * This operation can be used to store locals into materialized frames. The materialized frame must belong to the same root node or an enclosing root node.
+         * The given local must be in scope at the point that StoreLocalMaterialized executes, otherwise it may produce unexpected values.
+         * The interpreter will validate the scope if the interpreter is configured to store the bytecode index in the frame (see {@code @GenerateBytecode}).
          * <p>
          * A corresponding call to {@link #endStoreLocalMaterialized} is required to end the operation.
          *
@@ -7110,8 +7149,8 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
             if (!(operation.data instanceof BytecodeLocalImpl operationData)) {
                 throw assertionFailed("Data class BytecodeLocalImpl expected, but was " + operation.data);
             }
-            doEmitInstructionS(Instructions.STORE_LOCAL_MAT, -2, operationData.frameIndex);
-            afterChild(false, bci - 4);
+            doEmitInstructionSS(Instructions.STORE_LOCAL_MAT, -2, operationData.frameIndex, operationData.rootIndex);
+            afterChild(false, bci - 6);
         }
 
         /**
@@ -11457,6 +11496,28 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
             return true;
         }
 
+        private boolean doEmitInstructionSS(short instruction, int stackEffect, short data0, short data1) {
+            if (stackEffect != 0) {
+                currentStackHeight += stackEffect;
+                assert currentStackHeight >= 0;
+            }
+            if (stackEffect > 0) {
+                updateMaxStackHeight(currentStackHeight);
+            }
+            if (!reachable) {
+                return false;
+            }
+            int newBci = checkBci(bci + 6);
+            if (newBci > bc.length) {
+                ensureBytecodeCapacity(newBci);
+            }
+            BYTES.putShort(bc, bci + 0, instruction);
+            BYTES.putShort(bc, bci + 2 /* imm local_offset */, data0);
+            BYTES.putShort(bc, bci + 4 /* imm root_index */, data1);
+            bci = newBci;
+            return true;
+        }
+
         private boolean doEmitInstructionII(short instruction, int stackEffect, int data0, int data1) {
             if (stackEffect != 0) {
                 currentStackHeight += stackEffect;
@@ -11697,12 +11758,14 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
 
             private final short frameIndex;
             private final short localIndex;
+            private final short rootIndex;
             private final ScopeData scope;
 
-            BytecodeLocalImpl(short frameIndex, short localIndex, ScopeData scope) {
+            BytecodeLocalImpl(short frameIndex, short localIndex, short rootIndex, ScopeData scope) {
                 super(BytecodeRootNodesImpl.VISIBLE_TOKEN);
                 this.frameIndex = frameIndex;
                 this.localIndex = localIndex;
+                this.rootIndex = rootIndex;
                 this.scope = scope;
             }
 
@@ -12623,14 +12686,14 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
         /*
          * Instruction load.local.mat
          * kind: LOAD_LOCAL_MATERIALIZED
-         * encoding: [14 : short, local_offset : short]
+         * encoding: [14 : short, local_offset : short, root_index (local_root) : short]
          * signature: Object (Object)
          */
         private static final short LOAD_LOCAL_MAT = 14;
         /*
          * Instruction store.local.mat
          * kind: STORE_LOCAL_MATERIALIZED
-         * encoding: [15 : short, local_offset : short]
+         * encoding: [15 : short, local_offset : short, root_index (local_root) : short]
          * signature: void (Object, Object)
          */
         private static final short STORE_LOCAL_MAT = 15;

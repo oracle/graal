@@ -325,6 +325,12 @@ public @interface GenerateBytecode {
      * bci access outside of the current operation (e.g., for closures or frame introspection).
      * Storing the bci in the frame increases frame size and requires additional frame writes, so it
      * can negatively affect performance.
+     * <p>
+     * When the bytecode index is stored in the frame, the interpreter includes extra Java
+     * assertions to validate materialized local accesses. Each access dynamically checks whether
+     * the local is in scope at the current bytecode index in the local's frame, throwing an
+     * exception if it is out of scope. Thus, enabling this flag (and Java assertions) may be
+     * helpful for debugging issues with materialized local accesses.
      *
      * @since 24.2
      */

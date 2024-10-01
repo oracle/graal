@@ -499,6 +499,12 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         return enableUncachedInterpreter || storeBciInFrame;
     }
 
+    public boolean materializedAccessesNeedLocalIndex() {
+        // We need the local index to validate accesses at run time. We can only do this when the
+        // bci is stored in the frame.
+        return enableLocalScoping && storeBciInFrame;
+    }
+
     @Override
     public void pp(PrettyPrinter printer) {
         printer.field("operations", operations.values());

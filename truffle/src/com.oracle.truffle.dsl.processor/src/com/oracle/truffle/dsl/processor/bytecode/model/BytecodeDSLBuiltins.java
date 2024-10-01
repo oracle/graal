@@ -251,14 +251,18 @@ public class BytecodeDSLBuiltins {
                         .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "local", "the local to load")) //
                         .setInstruction(m.instruction(InstructionKind.LOAD_LOCAL, "load.local", m.signature(Object.class)) //
                                         .addImmediate(ImmediateKind.LOCAL_OFFSET, "local_offset"));
-        m.loadLocalMaterializedOperation = m.operation(OperationKind.LOAD_LOCAL_MATERIALIZED, "LoadLocalMaterialized", """
-                        LoadLocalMaterialized reads {@code local} from the frame produced by {@code frame}.
-                        This operation can be used to read locals from materialized frames. The materialized frame must belong to the same root node or an enclosing root node.
-                        """) //
+        m.loadLocalMaterializedOperation = m.operation(OperationKind.LOAD_LOCAL_MATERIALIZED, "LoadLocalMaterialized",
+                        """
+                                        LoadLocalMaterialized reads {@code local} from the frame produced by {@code frame}.
+                                        This operation can be used to read locals from materialized frames. The materialized frame must belong to the same root node or an enclosing root node.
+                                        The given local must be in scope at the point that LoadLocalMaterialized executes, otherwise it may produce unexpected values.
+                                        The interpreter will validate the scope if the interpreter is configured to store the bytecode index in the frame (see {@code @GenerateBytecode}).
+                                        """) //
                         .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "local", "the local to load")) //
                         .setDynamicOperands(child("frame")) //
                         .setInstruction(m.instruction(InstructionKind.LOAD_LOCAL_MATERIALIZED, "load.local.mat", m.signature(Object.class, Object.class)) //
-                                        .addImmediate(ImmediateKind.LOCAL_OFFSET, "local_offset"));
+                                        .addImmediate(ImmediateKind.LOCAL_OFFSET, "local_offset") //
+                                        .addImmediate(ImmediateKind.LOCAL_ROOT, "root_index"));
         m.storeLocalOperation = m.operation(OperationKind.STORE_LOCAL, "StoreLocal", """
                         StoreLocal writes the value produced by {@code value} into the {@code local} in the current frame.
                         """) //
@@ -266,16 +270,20 @@ public class BytecodeDSLBuiltins {
                         .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "local", "the local to store to")) //
                         .setDynamicOperands(child("value")) //
                         .setInstruction(m.storeLocalInstruction);
-        m.storeLocalMaterializedOperation = m.operation(OperationKind.STORE_LOCAL_MATERIALIZED, "StoreLocalMaterialized", """
-                        StoreLocalMaterialized writes the value produced by {@code value} into the {@code local} in the frame produced by {@code frame}.
-                        This operation can be used to store locals into materialized frames. The materialized frame must belong to the same root node or an enclosing root node.
-                        """) //
+        m.storeLocalMaterializedOperation = m.operation(OperationKind.STORE_LOCAL_MATERIALIZED, "StoreLocalMaterialized",
+                        """
+                                        StoreLocalMaterialized writes the value produced by {@code value} into the {@code local} in the frame produced by {@code frame}.
+                                        This operation can be used to store locals into materialized frames. The materialized frame must belong to the same root node or an enclosing root node.
+                                        The given local must be in scope at the point that StoreLocalMaterialized executes, otherwise it may produce unexpected values.
+                                        The interpreter will validate the scope if the interpreter is configured to store the bytecode index in the frame (see {@code @GenerateBytecode}).
+                                        """) //
                         .setVoid(true) //
                         .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "local", "the local to store to")) //
                         .setDynamicOperands(child("frame"), child("value")) //
                         .setInstruction(m.instruction(InstructionKind.STORE_LOCAL_MATERIALIZED, "store.local.mat",
                                         m.signature(void.class, Object.class, Object.class)) //
-                                        .addImmediate(ImmediateKind.LOCAL_OFFSET, "local_offset"));
+                                        .addImmediate(ImmediateKind.LOCAL_OFFSET, "local_offset") //
+                                        .addImmediate(ImmediateKind.LOCAL_ROOT, "root_index"));
         m.returnOperation = m.operation(OperationKind.RETURN, "Return", "Return returns the value produced by {@code result}.") //
                         .setVoid(true) //
                         .setDynamicOperands(child("result")) //
