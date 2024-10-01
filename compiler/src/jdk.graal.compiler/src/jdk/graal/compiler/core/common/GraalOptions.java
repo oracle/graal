@@ -36,9 +36,12 @@ import jdk.graal.compiler.options.OptionType;
 public final class GraalOptions {
 
     //Joonhwan
-    @Option(help = "Enable Energy Profiler", type = OptionType.Debug)
-    public static final OptionKey<Boolean> EnableProfiler = new OptionKey<>(false);
+    @Option(help = "Enable Energy via ForeignCall", type = OptionType.Debug)
+    public static final OptionKey<Boolean> EnableForeignCallProfiler = new OptionKey<>(false);
 
+    //Joonhwan
+    @Option(help = "Enable Energy Profiler", type = OptionType.Debug)
+    public static final OptionKey<Boolean> EnableCustomIRProfiler = new OptionKey<>(false);
 
     @Option(help = "Uses compiler intrinsifications.", type = OptionType.Expert)
     public static final OptionKey<Boolean> Intrinsify = new OptionKey<>(true);

@@ -44,6 +44,7 @@ import jdk.graal.compiler.phases.common.DisableOverflownCountedLoopsPhase;
 import jdk.graal.compiler.phases.common.DominatorBasedGlobalValueNumberingPhase;
 import jdk.graal.compiler.phases.common.HighTierLoweringPhase;
 import jdk.graal.compiler.phases.common.IterativeConditionalEliminationPhase;
+import jdk.graal.compiler.phases.common.MethodInstrumentationPhase;
 import jdk.graal.compiler.phases.common.SamplingForeignCallPhase;
 import jdk.graal.compiler.phases.common.inlining.InliningPhase;
 import jdk.graal.compiler.phases.common.inlining.policy.GreedyInliningPolicy;
@@ -116,7 +117,12 @@ public class HighTier extends BaseTier<HighTierContext> {
 
         appendPhase(new BoxNodeOptimizationPhase(canonicalizer));
 
-        if (GraalOptions.EnableProfiler.getValue(options)){
+        if (GraalOptions.EnableCustomIRProfiler.getValue(options)){
+            // appendPhase(new MethodInstrumentationPhase());  
+            appendPhase(new MethodInstrumentationPhase());  
+        }
+
+        if (GraalOptions.EnableForeignCallProfiler.getValue(options)){
             // appendPhase(new MethodInstrumentationPhase());  
             appendPhase(new SamplingForeignCallPhase());  
         }

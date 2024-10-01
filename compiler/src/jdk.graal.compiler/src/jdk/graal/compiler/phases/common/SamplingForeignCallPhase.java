@@ -1,42 +1,20 @@
 package jdk.graal.compiler.phases.common;
 
-import static jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider.JAVA_TIME_NANOS;
-
-import static jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider.SAMPLE_METHOD;
-// import static jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider.BUBU_CACHE_ROTATEBUFFER;
-
 import java.util.Optional;
-
-
 import java.util.Arrays;
 import java.util.List;
 
+import static jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider.SAMPLE_METHOD;
 import jdk.graal.compiler.core.common.CompilationIdentifier.Verbosity;
 import jdk.graal.compiler.core.common.type.StampFactory;
-import jdk.graal.compiler.debug.DebugCloseable;
-import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.hotspot.meta.joonhwan.BuboCache;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.calc.SubNode;
-import jdk.graal.compiler.nodes.calc.AddNode;
-import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
-import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.nodes.ConstantNode;
-import jdk.graal.compiler.nodes.IfNode;
-import jdk.graal.compiler.nodes.MergeNode;
-import jdk.graal.compiler.nodes.BeginNode;
-import jdk.graal.compiler.nodes.EndNode;
-import jdk.graal.compiler.nodes.FixedNode;
-import jdk.graal.compiler.nodes.java.LoadFieldNode;
-import jdk.graal.compiler.nodes.java.LoadIndexedNode;
-import jdk.graal.compiler.nodes.java.StoreFieldNode;
-import jdk.graal.compiler.nodes.java.StoreIndexedNode;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaConstant;
@@ -45,7 +23,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 
 public class SamplingForeignCallPhase extends BasePhase<HighTierContext> {
 
-
+    //TODO: make this an argument..?
     private static final List<String> BENCHMARK_NAMES = Arrays.asList(
         "sunflow",    // Sunflow
         "batik",      // Batik
@@ -94,7 +72,6 @@ public class SamplingForeignCallPhase extends BasePhase<HighTierContext> {
         Long id = Long.parseLong(graph.compilationId().toString(Verbosity.ID).split("-")[1]);
         ValueNode ID = graph.addWithoutUnique(new ConstantNode(JavaConstant.forLong(id), StampFactory.forKind(JavaKind.Long)));
         
-        ForeignCallNode[] returnNodesTime =  new ForeignCallNode[graph.getNodes(ReturnNode.TYPE).count()];
         ForeignCallNode startTime = graph.add(new ForeignCallNode(SAMPLE_METHOD, ID));
         graph.addAfterFixed(graph.start(), startTime);
 
