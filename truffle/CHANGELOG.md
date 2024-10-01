@@ -18,6 +18,11 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * Added `ThreadLocalAction#notifyBlocked(Access)` and `ThreadLocalAction#notifyUnblocked(Access)` to notify thread local actions that their processing has been blocked/unblocked due to a blocked call (see `ThreadLocalAction` documentation).
     * `TruffleSafepoint#poll(Node)` does not require a non-null location anymore. However, it is still recommended to always pass a location node, if available.  
 * GR-59565 Added `RootNode.prepareForCompilation` which allows root nodes to offload expensive computation to the compiler thread and to delay compilation if they are not yet fully profiled.
+* GR-58550 Added `FrameDescriptor.Builder.illegalDefaultValue()` which enables sets all frame slots as illegal before they were written. Before by default frame slots were initialized with the default value or `null`.
+GR-58550 Added `FrameDescriptor.Builder.illegalDefaultValue()` which initializes all frame slots as `FrameSlotKind.Illegal` for newly created frames. This is different from the default behavior, which initializes all frame slot kinds as `FrameSlotKind.Object`. This means that frame slots, when they are read before they were written, throw a `FrameSlotTypeException`, consistent with the behavior after clearing a frame slot.
+* GR-58550 Added `FrameDescriptor.Builder.addSlots(int)` which allows to allocate slots without reserving space for the tags. This is useful if a language manages its own cached tags, so no tag space is wasted.
+* GR-58550 Deprecated the default constructor for `FrameSlotTypeException` and replaced it with `FrameSlotTypeException.create(...)`. Exceptions of this kind thrown by the `Frame` now contain the slot index and the expected and the actual frame slot kind which are accessible with the respective instance methods.
+* GR-58550 Fixed invalid `PolyglotExcetion.getMessage()` javadoc. A polyglot exception may in fact return a `null` message.
 
 
 * GR-54760 `RootNode.translateStackTraceElement()` is now always consulted for polyglot and debugger stack traces. Stack traces now use the source section, the executable name, and the name of the declared meta-object to build `StackTraceElement` instances.
