@@ -3,6 +3,9 @@
 This changelog summarizes newly introduced optimizations and other compiler related changes.
 
 ## GraalVM for JDK 24 (Internal Version 24.2.0)
+* (GR-57209): The default number of JVMCI threads is now the same as the number of C2 threads (`-XX:JVMCINativeLibraryThreadFraction=0.66`).
+  This benefits the program warmup but could increase the maximum RSS.
+  Setting `-XX:JVMCINativeLibraryThreadFraction` to a smaller value will result in smaller maximum RSS but potentially longer warmup. (See [JDK-8337493](https://bugs.openjdk.org/browse/JDK-8337493)).
 * (GR-54476): Issue a deprecation warning on first use of a legacy `graal.` prefix (see GR-49960 below).
   The warning is planned to be replaced by an error in GraalVM for JDK 25.
 
