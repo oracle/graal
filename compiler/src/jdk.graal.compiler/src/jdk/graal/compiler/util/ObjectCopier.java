@@ -24,9 +24,10 @@
  */
 package jdk.graal.compiler.util;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.PrintStream;
+import java.io.IOException;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -66,35 +67,18 @@ import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.internal.misc.Unsafe;
 
 /**
- * Support for deep copying an object across processes by {@linkplain #encode encoding} it to a
- * String in the first process and {@linkplain #decode decoding} it back into an object in the
- * second process. This copying requires that the classes of the copied objects are the same in both
+ * Support for deep copying an object across processes by {@linkplain #encode encoding} it to bytes
+ * in the first process and {@linkplain #decode decoding} it back into an object in the second
+ * process. This copying requires that the classes of the copied objects are the same in both
  * processes with respect to fields.
  *
- * Encoded format in EBNF:
- *
- * <pre>
- *  enc = line "\n" { line "\n" }
- *  line = header | objectField
- *  header = id ":" ( builtin | object | array | fieldRef )
- *  object = "{" className ":" fieldCount "}"
- *  objectField = "  " fieldName ":" id " = " fieldValue
- *  fieldValue = ( primitive | id )
- *  id = int
- *  array = "[" className "] = " elements
- *  elements = [ fieldValue { " " fieldValue } ]
- *  fieldRef = "@" className "." fieldName
- *  builtin = "<"  className [ ":" encodingName ] "> = " builtinValue
- * </pre>
- *
- * See the {@link Builtin} subclasses for the EBNF of builtinValue.
+ * See the {@link Builtin} subclasses for encoding of specific types.
  */
 public class ObjectCopier {
 
-    private static final Pattern BUILTIN_LINE = Pattern.compile("<(?<class>[^:}]+)(?::(?<encodingName>\\w+))?> = (?<value>.*)");
     private static final Pattern OBJECT_LINE = Pattern.compile("\\{(?<class>[\\w.$]+):(?<fieldCount>\\d+)}");
     private static final Pattern ARRAY_LINE = Pattern.compile("\\[(?<componentType>[^]]+)] = (?<elements>.*)");
-    private static final Pattern FIELD_LINE = Pattern.compile("\\s*(?<desc>[^:]+):(?<typeId>[^ ]+) = (?<value>.*)");
+    private static final Pattern FIELD_LINE = Pattern.compile("(?<desc>[^:]+):(?<typeId>[^ ]+) = (?<value>.*)");
 
     /**
      * A builtin is specialized support for encoded and decoding values of specific types.
@@ -134,16 +118,6 @@ public class ObjectCopier {
         }
 
         /**
-         * Gets the name of a non-default encoded used by this builtin for {@code obj}.
-         *
-         * @return null if the default encoded is used for {@code obj}
-         */
-        @SuppressWarnings("unused")
-        String encodingName(Object obj) {
-            return null;
-        }
-
-        /**
          * Ensures object ids have are created for the values referenced by {@code obj} that will be
          * handled by this builtin when {@code obj} is encoded. For example, the values in a map.
          */
@@ -155,15 +129,12 @@ public class ObjectCopier {
          * Encodes the value of {@code obj} to a String that does not contain {@code '\n'} or
          * {@code '\r'}.
          */
-        protected abstract String encode(Encoder encoder, Object obj);
+        protected abstract void encode(Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException;
 
         /**
          * Decodes {@code encoded} to an object of a type handled by this builtin.
-         *
-         * @param encoding the non-default encoded used when encoded the object or null if the
-         *            default encoded was used
          */
-        protected abstract Object decode(Decoder decoder, Class<?> concreteType, String encoding, String encoded);
+        protected abstract Object decode(Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException;
 
         @Override
         public String toString() {
@@ -172,15 +143,8 @@ public class ObjectCopier {
     }
 
     /**
-     * Builtin for handling {@link Class} values.
-     *
-     * EBNF:
-     *
-     * <pre>
-     * builtinValue = className
-     * </pre>
-     *
-     * The className is in {@link Class#getName()} format.
+     * Builtin for handling {@link Class} values. The className is in {@link Class#getName()}
+     * format.
      */
     static final class ClassBuiltin extends Builtin {
 
@@ -189,12 +153,13 @@ public class ObjectCopier {
         }
 
         @Override
-        protected String encode(Encoder encoder, Object obj) {
-            return ((Class<?>) obj).getName();
+        protected void encode(Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
+            stream.writeUTF(((Class<?>) obj).getName());
         }
 
         @Override
-        protected Object decode(Decoder decoder, Class<?> concreteType, String encoding, String encoded) {
+        protected Object decode(Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
+            String encoded = stream.readUTF();
             return switch (encoded) {
                 case "boolean" -> boolean.class;
                 case "byte" -> byte.class;
@@ -212,14 +177,6 @@ public class ObjectCopier {
 
     /**
      * Builtin for handling {@link String} values.
-     *
-     * EBNF:
-     *
-     * <pre>
-     * builtinValue = string
-     * </pre>
-     *
-     * The string has no embedded \r or \n characters.
      */
     static final class StringBuiltin extends Builtin {
 
@@ -228,30 +185,14 @@ public class ObjectCopier {
         }
 
         @Override
-        String encodingName(Object obj) {
+        protected void encode(Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
             String s = obj instanceof String ? (String) obj : new String((char[]) obj);
-            if (s.indexOf('\n') != -1 || s.indexOf('\r') != -1) {
-                return "escaped";
-            }
-            return super.encodingName(obj);
+            stream.writeUTF(s);
         }
 
         @Override
-        protected String encode(Encoder encoder, Object obj) {
-            String s = obj instanceof String ? (String) obj : new String((char[]) obj);
-            if ("escaped".equals(encodingName(s))) {
-                return s.replace("\\", "\\\\").replace("\n", "\\n").replace("\r", "\\r");
-            }
-            return s;
-        }
-
-        @Override
-        protected Object decode(Decoder decoder, Class<?> concreteType, String encoding, String encoded) {
-            String s = encoded;
-            if (encoding != null) {
-                GraalError.guarantee(encoding.equals("escaped"), "Unknown encoded: %s", encoding);
-                s = encoded.replace("\\r", "\r").replace("\\n", "\n").replace("\\\\", "\\");
-            }
+        protected Object decode(Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
+            String s = stream.readUTF();
             if (concreteType == char[].class) {
                 return s.toCharArray();
             }
@@ -260,15 +201,8 @@ public class ObjectCopier {
     }
 
     /**
-     * Builtin for handling {@link Enum} values.
-     *
-     * EBNF:
-     *
-     * <pre>
-     * builtinValue = enumName
-     * </pre>
-     *
-     * The enumName is given by {@link Enum#name()}.
+     * Builtin for handling {@link Enum} values. The value is described by its
+     * {@link Enum#ordinal()}.
      */
     static final class EnumBuiltin extends Builtin {
 
@@ -277,14 +211,15 @@ public class ObjectCopier {
         }
 
         @Override
-        protected String encode(Encoder encoder, Object obj) {
-            return ((Enum<?>) obj).name();
+        protected void encode(Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
+            stream.writeInt(((Enum<?>) obj).ordinal());
         }
 
-        @SuppressWarnings({"unchecked", "rawtypes"})
         @Override
-        protected Object decode(Decoder decoder, Class<?> concreteType, String encoding, String encoded) {
-            return Enum.valueOf((Class) concreteType, encoded);
+        protected Object decode(Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
+            int ord = stream.readInt();
+            Object[] constants = concreteType.getEnumConstants();
+            return constants[ord];
         }
     }
 
@@ -320,15 +255,17 @@ public class ObjectCopier {
         }
 
         @Override
-        protected String encode(Encoder encoder, Object obj) {
+        protected void encode(Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
             Map<?, ?> map = (Map<?, ?>) obj;
-            return encoder.encodeMap(new EconomicMapWrap<>(map));
+            String encoded = encoder.encodeMap(new EconomicMapWrap<>(map));
+            stream.writeUTF(encoded);
         }
 
         @SuppressWarnings("unchecked")
         @Override
-        protected Object decode(Decoder decoder, Class<?> concreteType, String encoding, String encoded) {
+        protected Object decode(Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
             Map<Object, Object> map = (Map<Object, Object>) factories.get(concreteType).get();
+            String encoded = stream.readUTF();
             decoder.decodeMap(encoded, map::put);
             return map;
         }
@@ -359,14 +296,16 @@ public class ObjectCopier {
         }
 
         @Override
-        protected String encode(Encoder encoder, Object obj) {
-            return encoder.encodeMap((UnmodifiableEconomicMap<?, ?>) obj);
+        protected void encode(Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
+            String encoded = encoder.encodeMap((UnmodifiableEconomicMap<?, ?>) obj);
+            stream.writeUTF(encoded);
         }
 
         @Override
-        protected Object decode(Decoder decoder, Class<?> concreteType, String encoding, String encoded) {
+        protected Object decode(Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
             if (EconomicMap.class.isAssignableFrom(concreteType)) {
                 EconomicMap<Object, Object> map = EconomicMap.create();
+                String encoded = stream.readUTF();
                 decoder.decodeMap(encoded, map::put);
                 return map;
             } else {
@@ -447,22 +386,24 @@ public class ObjectCopier {
     /**
      * Encodes {@code root} to a String using {@code encoder}.
      */
-    public static String encode(Encoder encoder, Object root) {
+    public static byte[] encode(Encoder encoder, Object root) {
         int rootId = encoder.makeId(root, ObjectPath.of("[root:" + root.getClass().getName() + "]")).id();
         GraalError.guarantee(rootId == 1, "The root object should have id of 1, not %d", rootId);
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        try (PrintStream ps = new PrintStream(baos)) {
-            encoder.encode(ps);
+        try (ObjectCopierOutputStream cos = new ObjectCopierOutputStream(baos)) {
+            encoder.encode(cos);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
-        return baos.toString();
+        return baos.toByteArray();
     }
 
-    public static Object decode(String encoded, ClassLoader loader) {
+    public static Object decode(byte[] encoded, ClassLoader loader) {
         Decoder decoder = new Decoder(loader);
         return decode(decoder, encoded);
     }
 
-    public static Object decode(Decoder decoder, String encoded) {
+    public static Object decode(Decoder decoder, byte[] encoded) {
         return decoder.decode(encoded);
     }
 
@@ -513,41 +454,40 @@ public class ObjectCopier {
         /**
          * Action deferred due to unresolved object id.
          */
-        record Deferred(Runnable runnable, int lineNum) {
+        record Deferred(Runnable runnable, int recordNum, int fieldNum) {
         }
 
         List<Deferred> deferred;
-        int lineNum = -1;
+        int recordNum = -1;
+        int fieldNum = -1;
 
-        private Object decode(String encoded) {
+        private Object decode(byte[] encoded) {
             deferred = new ArrayList<>();
-            lineNum = 0;
+            recordNum = 0;
 
-            Iterator<String> iter = encoded.lines().iterator();
-            try {
-                while (iter.hasNext()) {
-                    String line = iter.next();
-                    lineNum++;
-                    int colon = line.indexOf(':');
-                    GraalError.guarantee(colon != -1, "Missing ':' in line: %s", line);
-                    int id = Integer.parseInt(line.substring(0, colon));
-                    switch (line.charAt(colon + 1)) {
+            try (ObjectCopierInputStream stream = new ObjectCopierInputStream(new ByteArrayInputStream(encoded))) {
+                for (;;) {
+                    recordNum++;
+                    fieldNum = -1;
+                    int c = stream.read();
+                    if (c == -1) {
+                        break;
+                    }
+                    int id = stream.readInt();
+                    switch (c) {
                         case '<': {
-                            Matcher matcher = BUILTIN_LINE.matcher(line.substring(colon + 1));
-                            GraalError.guarantee(matcher.matches(), "Invalid builtin line: %s", line);
-                            String className = matcher.group("class");
-                            String encodingName = matcher.group("encodingName");
-                            String value = matcher.group("value");
+                            String className = stream.readUTF();
                             Class<?> clazz = loadClass(className);
                             Builtin builtin = getBuiltin(clazz);
-                            GraalError.guarantee(builtin != null, "No builtin for %s: %s", className, line);
+                            GraalError.guarantee(builtin != null, "No builtin for %s in record %d", className, recordNum);
                             builtin.checkClass(clazz);
-                            addDecodedObject(id, builtin.decode(this, clazz, encodingName, value));
+                            addDecodedObject(id, builtin.decode(this, clazz, stream));
                             break;
                         }
                         case '[': {
-                            Matcher matcher = ARRAY_LINE.matcher(line.substring(colon + 1));
-                            GraalError.guarantee(matcher.matches(), "Invalid array line: %s", line);
+                            String legacy = stream.readUTF();
+                            Matcher matcher = ARRAY_LINE.matcher(legacy);
+                            GraalError.guarantee(matcher.matches(), "Invalid array record: %s", legacy);
                             String componentTypeName = matcher.group("componentType");
                             String[] elements = splitSpaceSeparatedElements(matcher.group("elements"));
                             switch (componentTypeName) {
@@ -625,19 +565,17 @@ public class ObjectCopier {
                             break;
                         }
                         case '@': {
-                            String fieldDesc = line.substring(colon + 2);
-                            int lastDot = fieldDesc.lastIndexOf('.');
-                            GraalError.guarantee(lastDot != -1, "Invalid field name: %s", fieldDesc);
-                            String className = fieldDesc.substring(0, lastDot);
-                            String fieldName = fieldDesc.substring(lastDot + 1);
+                            String className = stream.readUTF();
+                            String fieldName = stream.readUTF();
                             Class<?> declaringClass = loadClass(className);
                             Field field = getField(declaringClass, fieldName);
                             addDecodedObject(id, readField(field, null));
                             break;
                         }
                         case '{': {
-                            Matcher matcher = OBJECT_LINE.matcher(line.substring(colon + 1));
-                            GraalError.guarantee(matcher.matches(), "Invalid object line: %s", line);
+                            String legacy = stream.readUTF();
+                            Matcher matcher = OBJECT_LINE.matcher(legacy);
+                            GraalError.guarantee(matcher.matches(), "Invalid object record: %s", legacy);
                             String className = matcher.group("class");
                             int fieldCount = Integer.parseInt(matcher.group("fieldCount"));
                             Class<?> clazz = loadClass(className);
@@ -645,9 +583,8 @@ public class ObjectCopier {
                             addDecodedObject(id, obj);
                             ClassInfo classInfo = classInfos.computeIfAbsent(clazz, ClassInfo::of);
                             for (int i = 0; i < fieldCount; i++) {
-                                GraalError.guarantee(iter.hasNext(), "Truncated input");
-                                String fieldLine = iter.next();
-                                lineNum++;
+                                fieldNum = i;
+                                String fieldLine = stream.readUTF();
                                 Matcher fieldMatcher = FIELD_LINE.matcher(fieldLine);
                                 GraalError.guarantee(fieldMatcher.matches(), "Invalid field line: %s", fieldLine);
                                 String fieldDesc = fieldMatcher.group("desc");
@@ -704,20 +641,21 @@ public class ObjectCopier {
                             break;
                         }
                         default: {
-                            throw new GraalError("Invalid char after ':' in line: %s", line);
+                            throw new GraalError("Invalid char '%c' for kind in record %d", c, recordNum);
                         }
                     }
                 }
                 for (Deferred d : deferred) {
-                    lineNum = d.lineNum();
+                    recordNum = d.recordNum();
+                    fieldNum = d.fieldNum;
                     d.runnable().run();
                 }
             } catch (Throwable e) {
-                String line = encoded.lines().skip(lineNum - 1).findFirst().get();
-                throw new GraalError(e, "Error on line %d: %s", lineNum, line);
+                throw new GraalError(e, "Error in record %d (field %d)", recordNum, fieldNum);
             } finally {
                 deferred = null;
-                lineNum = -1;
+                recordNum = -1;
+                fieldNum = -1;
             }
             return getObject(1, true);
         }
@@ -736,7 +674,7 @@ public class ObjectCopier {
                 if (objValue != null) {
                     c.accept(objValue);
                 } else {
-                    deferred.add(new Deferred(() -> c.accept(getObject(id, true)), lineNum));
+                    deferred.add(new Deferred(() -> c.accept(getObject(id, true)), recordNum, fieldNum));
                 }
             } else {
                 c.accept(null);
@@ -945,35 +883,47 @@ public class ObjectCopier {
             }
         }
 
-        private void encode(PrintStream out) {
+        private void encode(ObjectCopierOutputStream out) throws IOException {
             for (int id = 1; id < objects.size(); id++) {
                 Object obj = objects.get(id);
                 Class<?> clazz = obj.getClass();
                 Builtin builtin = getBuiltin(clazz);
                 if (builtin != null) {
-                    String encodingName = builtin.encodingName(obj);
-                    String encoding = encodingName == null ? "" : ":" + encodingName;
-                    out.printf("%d:<%s%s> = %s%n", id, clazz.getName(), encoding, builtin.encode(this, obj));
+                    out.writeByte('<');
+                    out.writeInt(id);
+                    out.writeUTF(clazz.getName());
+                    try {
+                        builtin.encode(this, out, obj);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
                 } else if (clazz.isArray()) {
+                    out.writeByte('[');
+                    out.writeInt(id);
                     Class<?> componentType = clazz.getComponentType();
                     if (!componentType.isPrimitive()) {
                         String elements = Stream.of((Object[]) obj).map(this::getIdString).collect(Collectors.joining(" "));
-                        out.printf("%d:[%s] = %s%n", id, componentType.getName(), elements);
+                        out.writeUTF(String.format("[%s] = %s", componentType.getName(), elements));
                     } else {
                         int length = Array.getLength(obj);
                         StringBuilder elements = new StringBuilder(length * 5);
                         for (int i = 0; i < length; i++) {
                             elements.append(' ').append(Array.get(obj, i));
                         }
-                        out.printf("%d:[%s] =%s%n", id, componentType.getName(), elements);
+                        out.writeUTF(String.format("[%s] =%s", componentType.getName(), elements));
                     }
                 } else {
                     if (clazz == Field.class) {
                         Field field = (Field) obj;
-                        out.printf("%d:@%s.%s%n", id, field.getDeclaringClass().getName(), field.getName());
+                        out.writeByte('@');
+                        out.writeInt(id);
+                        out.writeUTF(field.getDeclaringClass().getName());
+                        out.writeUTF(field.getName());
                     } else {
                         ClassInfo classInfo = classInfos.get(clazz);
-                        out.printf("%d:{%s:%d}%n", id, clazz.getName(), classInfo.fields().size());
+                        out.writeByte('{');
+                        out.writeInt(id);
+                        out.writeUTF(String.format("{%s:%d}", clazz.getName(), classInfo.fields().size()));
                         for (var e : classInfo.fields().entrySet()) {
                             Field f = e.getValue();
                             Object fValue = readField(f, obj);
@@ -984,7 +934,7 @@ public class ObjectCopier {
                             } else if (fieldType == char.class) {
                                 fValue = (int) (Character) fValue;
                             }
-                            out.printf("  %s:%d = %s%n", e.getKey(), fieldTypeId, fValue);
+                            out.writeUTF(String.format("%s:%d = %s", e.getKey(), fieldTypeId, fValue));
                         }
                     }
                 }

@@ -27,6 +27,7 @@ package jdk.graal.compiler.util.test;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
@@ -175,20 +176,20 @@ public class ObjectCopierTest extends SubprocessTest {
         List<Field> externalValueFields = List.of(ObjectCopier.getField(BaseClass.class, "BASE_SINGLETON"),
                         ObjectCopier.getField(TestObject.class, "TEST_OBJECT_SINGLETON"));
 
-        String encoded = ObjectCopier.encode(new ObjectCopier.Encoder(externalValueFields), root);
+        byte[] encoded = ObjectCopier.encode(new ObjectCopier.Encoder(externalValueFields), root);
         if (DEBUG) {
-            System.out.printf("encoded:%n%s%n", encoded);
+            System.out.printf("encoded:%n%s%n", Base64.getEncoder().encodeToString(encoded));
         }
         Object decoded = ObjectCopier.decode(encoded, loader);
         if (DEBUG) {
             System.out.printf("root:%n%s%n", root);
             System.out.printf("decoded:%n%s%n", decoded);
         }
-        String reencoded = ObjectCopier.encode(new ObjectCopier.Encoder(externalValueFields), decoded);
+        byte[] reencoded = ObjectCopier.encode(new ObjectCopier.Encoder(externalValueFields), decoded);
         if (DEBUG) {
-            System.out.printf("reencoded:%n%s%n", reencoded);
+            System.out.printf("reencoded:%n%s%n", Base64.getEncoder().encodeToString(reencoded));
         }
-        Assert.assertEquals(encoded, reencoded);
+        Assert.assertArrayEquals(encoded, reencoded);
 
         Map<String, Object> root2 = (Map<String, Object>) ObjectCopier.decode(reencoded, loader);
 

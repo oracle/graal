@@ -46,6 +46,8 @@ import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.nodes.EncodedGraph;
 import jdk.graal.compiler.nodes.FieldLocationIdentity;
 import jdk.graal.compiler.util.ObjectCopier;
+import jdk.graal.compiler.util.ObjectCopierInputStream;
+import jdk.graal.compiler.util.ObjectCopierOutputStream;
 
 public class ImageLayerSnapshotUtil {
     public static final String FILE_NAME_PREFIX = "layer-snapshot-";
@@ -275,15 +277,16 @@ public class ImageLayerSnapshotUtil {
         }
 
         @Override
-        public String encode(ObjectCopier.Encoder encoder, Object obj) {
+        public void encode(ObjectCopier.Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
             ImageHeapConstant imageHeapConstant = (ImageHeapConstant) obj;
             imageLayerWriter.elementsToPersist.add(new AnalysisFuture<>(() -> imageLayerWriter.persistConstant(UNDEFINED_CONSTANT_ID, UNDEFINED_FIELD_INDEX, imageHeapConstant)));
-            return String.valueOf(imageHeapConstant.getConstantData().id);
+            stream.writeInt(imageHeapConstant.getConstantData().id);
         }
 
         @Override
-        protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, String encoding, String encoded) {
-            return imageLayerLoader.getOrCreateConstant(Integer.parseInt(encoded));
+        protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
+            int id = stream.readInt();
+            return imageLayerLoader.getOrCreateConstant(id);
         }
     }
 
@@ -298,15 +301,16 @@ public class ImageLayerSnapshotUtil {
         }
 
         @Override
-        public String encode(ObjectCopier.Encoder encoder, Object obj) {
+        public void encode(ObjectCopier.Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
             AnalysisType type = (AnalysisType) obj;
             imageLayerWriter.persistType(type);
-            return String.valueOf(type.getId());
+            stream.writeInt(type.getId());
         }
 
         @Override
-        protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, String encoding, String encoded) {
-            return imageLayerLoader.getAnalysisType(Integer.parseInt(encoded));
+        protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
+            int id = stream.readInt();
+            return imageLayerLoader.getAnalysisType(id);
         }
     }
 
@@ -323,7 +327,7 @@ public class ImageLayerSnapshotUtil {
         }
 
         @Override
-        public String encode(ObjectCopier.Encoder encoder, Object obj) {
+        public void encode(ObjectCopier.Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
             AnalysisMethod method = (AnalysisMethod) obj;
             AnalysisType declaringClass = method.getDeclaringClass();
             imageLayerWriter.elementsToPersist.add(new AnalysisFuture<>(() -> {
@@ -334,12 +338,12 @@ public class ImageLayerSnapshotUtil {
                 imageLayerWriter.persistType(parameter);
             }
             imageLayerWriter.persistType(declaringClass);
-            return String.valueOf(method.getId());
+            stream.writeInt(method.getId());
         }
 
         @Override
-        protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, String encoding, String encoded) {
-            int id = Integer.parseInt(encoded);
+        protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
+            int id = stream.readInt();
             if (id == analysisMethod.getId()) {
                 return analysisMethod;
             }
@@ -358,14 +362,16 @@ public class ImageLayerSnapshotUtil {
         }
 
         @Override
-        public String encode(ObjectCopier.Encoder encoder, Object obj) {
+        public void encode(ObjectCopier.Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
             AnalysisField field = (AnalysisField) obj;
-            return encodeField(field, imageLayerWriter);
+            int id = encodeField(field, imageLayerWriter);
+            stream.writeInt(id);
         }
 
         @Override
-        protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, String encoding, String encoded) {
-            return decodeField(imageLayerLoader, encoded);
+        protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
+            int id = stream.readInt();
+            return decodeField(imageLayerLoader, id);
         }
     }
 
@@ -380,27 +386,29 @@ public class ImageLayerSnapshotUtil {
         }
 
         @Override
-        public String encode(ObjectCopier.Encoder encoder, Object obj) {
+        public void encode(ObjectCopier.Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
             FieldLocationIdentity fieldLocationIdentity = (FieldLocationIdentity) obj;
             AnalysisField field = (AnalysisField) fieldLocationIdentity.getField();
-            return encodeField(field, imageLayerWriter);
+            int id = encodeField(field, imageLayerWriter);
+            stream.writeInt(id);
         }
 
         @Override
-        protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, String encoding, String encoded) {
-            return new FieldLocationIdentity(decodeField(imageLayerLoader, encoded));
+        protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
+            int id = stream.readInt();
+            return new FieldLocationIdentity(decodeField(imageLayerLoader, id));
         }
     }
 
-    private static String encodeField(AnalysisField field, ImageLayerWriter imageLayerWriter) {
+    private static int encodeField(AnalysisField field, ImageLayerWriter imageLayerWriter) {
         String declaringClassId = String.valueOf(field.getDeclaringClass().getId());
         if (!imageLayerWriter.fieldsMap.containsKey(declaringClassId) || !imageLayerWriter.fieldsMap.get(declaringClassId).containsKey(field.getName())) {
             imageLayerWriter.persistField(field);
         }
-        return String.valueOf(field.getId());
+        return field.getId();
     }
 
-    private static AnalysisField decodeField(ImageLayerLoader imageLayerLoader, String encoded) {
-        return imageLayerLoader.getAnalysisField(Integer.parseInt(encoded));
+    private static AnalysisField decodeField(ImageLayerLoader imageLayerLoader, int id) {
+        return imageLayerLoader.getAnalysisField(id);
     }
 }

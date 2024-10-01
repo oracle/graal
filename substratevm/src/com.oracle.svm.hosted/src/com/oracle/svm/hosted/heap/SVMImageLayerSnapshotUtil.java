@@ -29,6 +29,7 @@ import static com.oracle.svm.hosted.methodhandles.MethodHandleInvokerRenamingSub
 import static com.oracle.svm.hosted.reflect.proxy.ProxyRenamingSubstitutionProcessor.isProxyType;
 import static jdk.graal.compiler.java.LambdaUtils.isLambdaType;
 
+import java.io.IOException;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.net.URI;
@@ -71,6 +72,8 @@ import com.oracle.svm.util.ReflectionUtil;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.nodes.EncodedGraph;
 import jdk.graal.compiler.util.ObjectCopier;
+import jdk.graal.compiler.util.ObjectCopierInputStream;
+import jdk.graal.compiler.util.ObjectCopierOutputStream;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -269,13 +272,15 @@ public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
         }
 
         @Override
-        protected String encode(ObjectCopier.Encoder encoder, Object obj) {
-            return String.valueOf(((HostedType) obj).getWrapped().getId());
+        protected void encode(ObjectCopier.Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
+            int id = ((HostedType) obj).getWrapped().getId();
+            stream.writeInt(id);
         }
 
         @Override
-        protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, String encoding, String encoded) {
-            AnalysisType type = svmImageLayerLoader.getAnalysisType(Integer.parseInt(encoded));
+        protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
+            int id = stream.readInt();
+            AnalysisType type = svmImageLayerLoader.getAnalysisType(id);
             return svmImageLayerLoader.getHostedUniverse().lookup(type);
         }
     }
@@ -289,13 +294,14 @@ public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
         }
 
         @Override
-        protected String encode(ObjectCopier.Encoder encoder, Object obj) {
-            return String.valueOf(((HostedMethod) obj).getWrapped().getId());
+        protected void encode(ObjectCopier.Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
+            stream.writeInt(((HostedMethod) obj).getWrapped().getId());
         }
 
         @Override
-        protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, String encoding, String encoded) {
-            AnalysisMethod method = svmImageLayerLoader.getAnalysisMethod(Integer.parseInt(encoded));
+        protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
+            int id = stream.readInt();
+            AnalysisMethod method = svmImageLayerLoader.getAnalysisMethod(id);
             return svmImageLayerLoader.getHostedUniverse().lookup(method);
         }
     }
@@ -306,12 +312,11 @@ public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
         }
 
         @Override
-        protected String encode(ObjectCopier.Encoder encoder, Object obj) {
-            return "";
+        protected void encode(ObjectCopier.Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
         }
 
         @Override
-        protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, String encoding, String encoded) {
+        protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
             return HostedOptionValues.singleton();
         }
     }
@@ -325,12 +330,11 @@ public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
         }
 
         @Override
-        protected String encode(ObjectCopier.Encoder encoder, Object obj) {
-            return "";
+        protected void encode(ObjectCopier.Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
         }
 
         @Override
-        protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, String encoding, String encoded) {
+        protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
             return snippetReflectionProvider;
         }
     }
@@ -341,13 +345,14 @@ public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
         }
 
         @Override
-        protected String encode(ObjectCopier.Encoder encoder, Object obj) {
+        protected void encode(ObjectCopier.Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
             CInterfaceLocationIdentity cInterfaceLocationIdentity = (CInterfaceLocationIdentity) obj;
-            return cInterfaceLocationIdentity.toString();
+            stream.writeUTF(cInterfaceLocationIdentity.toString());
         }
 
         @Override
-        protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, String encoding, String encoded) {
+        protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
+            String encoded = stream.readUTF();
             return new CInterfaceLocationIdentity(encoded);
         }
     }
@@ -358,15 +363,15 @@ public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
         }
 
         @Override
-        protected String encode(ObjectCopier.Encoder encoder, Object obj) {
+        protected void encode(ObjectCopier.Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
             FastThreadLocal.FastThreadLocalLocationIdentity fastThreadLocalLocationIdentity = (FastThreadLocal.FastThreadLocalLocationIdentity) obj;
             FastThreadLocal fastThreadLocal = ReflectionUtil.readField(FastThreadLocal.FastThreadLocalLocationIdentity.class, "this$0", fastThreadLocalLocationIdentity);
-            return encodeStaticField(encoder, fastThreadLocal);
+            writeStaticField(encoder, stream, fastThreadLocal);
         }
 
         @Override
-        protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, String encoding, String encoded) {
-            FastThreadLocal fastThreadLocal = getObjectFromStaticField(encoded);
+        protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
+            FastThreadLocal fastThreadLocal = readStaticFieldAndGetObject(stream);
             return fastThreadLocal.getLocationIdentity();
         }
     }
@@ -377,29 +382,29 @@ public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
         }
 
         @Override
-        protected String encode(ObjectCopier.Encoder encoder, Object obj) {
+        protected void encode(ObjectCopier.Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
             VMThreadLocalInfo vmThreadLocalInfo = (VMThreadLocalInfo) obj;
             VMThreadLocalCollector vmThreadLocalCollector = ImageSingletons.lookup(VMThreadLocalCollector.class);
             FastThreadLocal fastThreadLocal = vmThreadLocalCollector.getThreadLocal(vmThreadLocalInfo);
-            return encodeStaticField(encoder, fastThreadLocal);
+            writeStaticField(encoder, stream, fastThreadLocal);
         }
 
         @Override
-        protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, String encoding, String encoded) {
-            FastThreadLocal fastThreadLocal = getObjectFromStaticField(encoded);
+        protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
+            FastThreadLocal fastThreadLocal = readStaticFieldAndGetObject(stream);
             return ImageSingletons.lookup(VMThreadLocalCollector.class).forFastThreadLocal(fastThreadLocal);
         }
     }
 
-    private static String encodeStaticField(ObjectCopier.Encoder encoder, Object object) {
+    private static void writeStaticField(ObjectCopier.Encoder encoder, ObjectCopierOutputStream stream, Object object) throws IOException {
         Field staticField = encoder.getExternalValues().get(object);
-        return staticField.getDeclaringClass().getName() + ":" + staticField.getName();
+        stream.writeUTF(staticField.getDeclaringClass().getName());
+        stream.writeUTF(staticField.getName());
     }
 
-    private static <T> T getObjectFromStaticField(String staticField) {
-        String[] fieldParts = staticField.split(":");
-        String className = fieldParts[0];
-        String fieldName = fieldParts[1];
+    private static <T> T readStaticFieldAndGetObject(ObjectCopierInputStream stream) throws IOException {
+        String className = stream.readUTF();
+        String fieldName = stream.readUTF();
         Class<?> declaringClass = ReflectionUtil.lookupClass(false, className);
         return ReflectionUtil.readStaticField(declaringClass, fieldName);
     }

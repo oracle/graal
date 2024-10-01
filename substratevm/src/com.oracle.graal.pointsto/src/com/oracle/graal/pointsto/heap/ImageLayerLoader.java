@@ -811,7 +811,7 @@ public class ImageLayerLoader {
 
     public AnalysisParsedGraph getAnalysisParsedGraph(AnalysisMethod analysisMethod) {
         EconomicMap<String, Object> methodData = getMethodData(analysisMethod);
-        String encodedAnalyzedGraph = readEncodedGraph(methodData, ANALYSIS_PARSED_GRAPH_TAG);
+        byte[] encodedAnalyzedGraph = readEncodedGraph(methodData, ANALYSIS_PARSED_GRAPH_TAG);
         Boolean intrinsic = get(methodData, INTRINSIC_TAG);
         EncodedGraph analyzedGraph = (EncodedGraph) ObjectCopier.decode(imageLayerSnapshotUtil.getGraphDecoder(this, analysisMethod, universe.getSnippetReflection()), encodedAnalyzedGraph);
         if (hasStrengthenedGraph(analysisMethod)) {
@@ -821,7 +821,7 @@ public class ImageLayerLoader {
         return new AnalysisParsedGraph(analyzedGraph, intrinsic);
     }
 
-    private String readEncodedGraph(EconomicMap<String, Object> methodData, String elementIdentifier) {
+    private byte[] readEncodedGraph(EconomicMap<String, Object> methodData, String elementIdentifier) {
         String location = get(methodData, elementIdentifier);
         int closingBracketAt = location.length() - 1;
         AnalysisError.guarantee(location.charAt(0) == '@' && location.charAt(closingBracketAt) == ']', "Location must start with '@' and end with ']': %s", location);
@@ -841,7 +841,7 @@ public class ImageLayerLoader {
         } catch (IOException e) {
             throw AnalysisError.shouldNotReachHere("Failed reading a graph from location: " + location, e);
         }
-        return new String(bb.array(), ImageLayerWriter.GRAPHS_CHARSET);
+        return bb.array();
     }
 
     public boolean hasStrengthenedGraph(AnalysisMethod analysisMethod) {
@@ -851,7 +851,7 @@ public class ImageLayerLoader {
 
     public void setStrengthenedGraph(AnalysisMethod analysisMethod) {
         EconomicMap<String, Object> methodData = getMethodData(analysisMethod);
-        String encodedAnalyzedGraph = readEncodedGraph(methodData, STRENGTHENED_GRAPH_TAG);
+        byte[] encodedAnalyzedGraph = readEncodedGraph(methodData, STRENGTHENED_GRAPH_TAG);
         EncodedGraph analyzedGraph = (EncodedGraph) ObjectCopier.decode(imageLayerSnapshotUtil.getGraphDecoder(this, analysisMethod, universe.getSnippetReflection()), encodedAnalyzedGraph);
         afterGraphDecodeHook(analyzedGraph);
         analysisMethod.setAnalyzedGraph(analyzedGraph);
