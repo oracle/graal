@@ -19,7 +19,7 @@ You can install and use Oracle GraalVM in DevOps Build Pipelines using the YUM p
 ### Prerequisites
 
 - [DevOps project](https://docs.oracle.com/en-us/iaas/Content/devops/using/create_project.htm#create_a_project)
-- [OCI Notification Topic](https://docs.oracle.com/en-us/iaas/Content/Notification/Tasks/managingtopicsandsubscriptions.htm#createTopic)
+- [OCI Notification Topic](https://docs.oracle.com/en-us/iaas/Content/Notification/Tasks/create-topic.htm#top)
 - [OCI DevOps Build Pipeline](https://docs.oracle.com/en-us/iaas/Content/devops/using/create_buildpipeline.htm)
 
 To work with a Build Pipeline, add statements to a [build specification file](https://docs.oracle.com/en-us/iaas/Content/devops/using/build_specs.htm), _build-spec.yml_. 
