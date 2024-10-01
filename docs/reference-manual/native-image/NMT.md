@@ -20,7 +20,9 @@ Native memory can also be directly requested at the application level with `Unsa
 
 NMT support is disabled by default and must be explicitly enabled at build time.
  
-To build a native executable with NMT, use the `--enable-monitoring=nmt` option. If NMT is included at build time, it will always be enabled at runtime. This is different than OpenJDK which allows for enabling/disabling at runtime.
+To build a native executable with NMT, use the `--enable-monitoring=nmt` option.
+If NMT is included at build time, it will always be enabled at runtime.
+This is different than on HotSpot which allows for enabling/disabling NMT at runtime.
 ```shell
 native-image --enable-monitoring=nmt YourApplication
 ```
