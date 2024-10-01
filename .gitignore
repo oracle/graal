@@ -66,3 +66,4 @@ visualizer/IdealGraphVisualizer/nbplatform/
 # Joonhwan - irrelevant
 /substratevm/src/native-image-module-tests/*
 /dacapo
+!/data/*.csv  

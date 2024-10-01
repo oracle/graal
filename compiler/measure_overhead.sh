@@ -26,11 +26,10 @@ CSV_PATH="$DATA_DIR/$CSV_FILE"
 # Initialize the CSV file with headers
 echo "iteration,time(ms)" > $CSV_PATH
 total_time=0
-total_iterations=$((DACAPO_ITERATIONS + 1))  # Including final iteration
 
 # Run the DaCapo benchmark with multiple iterations
 output=$(mx -J-Djava.library.path=/workspace/graal/vincent vm \
-    -Dgraal.EnableForeignCallProfiler=true \
+    -Dgraal.EnableForeignCallProfiler=true -Dgraal.EnableCustomIRProfiler=false \
     -Xmx10g \
     --add-opens jdk.graal.compiler/jdk.graal.compiler.hotspot.meta.joonhwan=ALL-UNNAMED \
     -javaagent:../joonhwan/agent-joon.jar \
