@@ -36,7 +36,7 @@ Adding `-XX:+PrintNMTStatistics` when starting your application from a native ex
 ## Performance
 In most cases, both the CPU and memory overhead of NMT will be quite minimal.
 There is an overhead of 16B per C dynamic memory allocation (malloc), to accommodate malloc headers, that is reclaimed once the memory is freed.
-In practice, this does not amount to very much since SubstrateVM does not make many allocations.
+In practice, this does not amount to very much since Substrate VM does not make many allocations.
 One can usually expect less than a thousand allocations at any point in time.
 This overhead scales with allocation count, not size, so if `Unsafe#allocateMemory(long)` is frequently used at the application level, the overhead may become noticeable.
 However, this case is unlikely.
