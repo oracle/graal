@@ -25,7 +25,7 @@ To build a native executable with NMT, use the `--enable-monitoring=nmt` option.
 native-image --enable-monitoring=nmt YourApplication
 ```
 
-Adding `-XX:+PrintNMTStatistics` when starting your application at runtime will tell NMT to write a report to standard output when your application finishes.
+Adding `-XX:+PrintNMTStatistics` when starting your application from a native executable tells NMT to write a report to standard output when the application completes.
 ```shell
 ./yourapplication -XX:+PrintNMTStatistics"
 ```
