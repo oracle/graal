@@ -155,13 +155,14 @@ public interface JDWPContext {
     int getArrayLength(Object array);
 
     /**
-     * Returns the TypeTag constant for the input object. The TypeTag will be determined based on
-     * the declaring class of the object.
+     * Returns the tag constant for the component type of the input array. Note that all sub
+     * variants of the OBJECT tag constant is not used, e.g. if the component class of the array is
+     * j.l.String the generic OBJECT tag is returned and not the STRING tag.
      *
      * @param array must be a guest language array object
-     * @return TypeTag for the object
+     * @return the TypeTag for the component type of the array
      */
-    byte getTypeTag(Object array);
+    byte getArrayComponentTag(Object array);
 
     /**
      * Returns an unboxed host primitive type array of the array.
@@ -265,14 +266,6 @@ public interface JDWPContext {
      * @return true if the object is a valid class loader, false otherwise
      */
     boolean isValidClassLoader(Object object);
-
-    /**
-     * Converts an arbitrary host object to the corresponding guest object.
-     *
-     * @param object the host object to convert
-     * @return the guest object
-     */
-    Object toGuest(Object object);
 
     // temporarily needed until we get better exception-type based filtering in the Debug API
     Object getGuestException(Throwable exception);
@@ -510,4 +503,6 @@ public interface JDWPContext {
      * being reported via stepping).
      */
     boolean isSingleSteppingDisabled();
+
+    Object allocateInstance(KlassRef klass);
 }
