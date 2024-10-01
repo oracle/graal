@@ -2486,7 +2486,7 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
             return new InstructionImpl(bytecode, nextBci, bytecode.readValidBytecode(bytecode.bytecodes, nextBci));
         }
 
-        private abstract static sealed class AbstractArgument extends Argument permits LocalOffsetArgument, IntegerArgument, BytecodeIndexArgument, ConstantArgument, NodeProfileArgument, TagNodeArgument, BranchProfileArgument {
+        private abstract static sealed class AbstractArgument extends Argument permits LocalOffsetArgument, LocalIndexArgument, IntegerArgument, BytecodeIndexArgument, ConstantArgument, NodeProfileArgument, TagNodeArgument, BranchProfileArgument {
 
             protected static final BytecodeDSLAccess SAFE_ACCESS = BytecodeDSLAccess.lookup(BytecodeRootNodesImpl.VISIBLE_TOKEN, false);
             protected static final ByteArraySupport SAFE_BYTES = SAFE_ACCESS.getByteArraySupport();
@@ -2523,6 +2523,24 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
             public int asLocalOffset() {
                 byte[] bc = this.bytecode.bytecodes;
                 return SAFE_BYTES.getShort(bc, bci) - USER_LOCALS_START_INDEX;
+            }
+
+        }
+        private static final class LocalIndexArgument extends AbstractArgument {
+
+            LocalIndexArgument(AbstractBytecodeNode bytecode, String name, int bci) {
+                super(bytecode, name, bci);
+            }
+
+            @Override
+            public Kind getKind() {
+                return Kind.LOCAL_INDEX;
+            }
+
+            @Override
+            public int asLocalIndex() {
+                byte[] bc = this.bytecode.bytecodes;
+                return SAFE_BYTES.getShort(bc, bci);
             }
 
         }
@@ -3242,7 +3260,6 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
                         case Instructions.LOAD_ARGUMENT$BOOLEAN :
                         case Instructions.LOAD_ARGUMENT$LONG :
                         {
-                            short index = BYTES.getShort(bc, bci + 2 /* imm index */);
                             bci = bci + 4;
                             break;
                         }
@@ -3285,7 +3302,6 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
                             if (local_offset < USER_LOCALS_START_INDEX || local_offset >= root.maxLocals) {
                                 throw CompilerDirectives.shouldNotReachHere(String.format("Bytecode validation error at index: %s. local offset is out of bounds%n%s", bci, dumpInvalid(findLocation(bci))));
                             }
-                            short root_index = BYTES.getShort(bc, bci + 4 /* imm root_index */);
                             bci = bci + 6;
                             break;
                         }
@@ -3301,7 +3317,6 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
                             if (local_offset < USER_LOCALS_START_INDEX || local_offset >= root.maxLocals) {
                                 throw CompilerDirectives.shouldNotReachHere(String.format("Bytecode validation error at index: %s. local offset is out of bounds%n%s", bci, dumpInvalid(findLocation(bci))));
                             }
-                            short root_index = BYTES.getShort(bc, bci + 4 /* imm root_index */);
                             int child0 = BYTES.getIntUnaligned(bc, bci + 6 /* imm child0 */);
                             if (child0 < 0 || child0 >= bc.length) {
                                 throw CompilerDirectives.shouldNotReachHere(String.format("Bytecode validation error at index: %s. bytecode index is out of bounds%n%s", bci, dumpInvalid(findLocation(bci))));
@@ -3592,52 +3607,31 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
                         }
                         case Instructions.INVALIDATE1 :
                         {
-                            short invalidated0 = BYTES.getShort(bc, bci + 2 /* imm invalidated0 */);
                             bci = bci + 4;
                             break;
                         }
                         case Instructions.INVALIDATE2 :
                         {
-                            short invalidated0 = BYTES.getShort(bc, bci + 2 /* imm invalidated0 */);
-                            short invalidated1 = BYTES.getShort(bc, bci + 4 /* imm invalidated1 */);
                             bci = bci + 6;
                             break;
                         }
                         case Instructions.INVALIDATE3 :
                         {
-                            short invalidated0 = BYTES.getShort(bc, bci + 2 /* imm invalidated0 */);
-                            short invalidated1 = BYTES.getShort(bc, bci + 4 /* imm invalidated1 */);
-                            short invalidated2 = BYTES.getShort(bc, bci + 6 /* imm invalidated2 */);
                             bci = bci + 8;
                             break;
                         }
                         case Instructions.INVALIDATE4 :
                         {
-                            short invalidated0 = BYTES.getShort(bc, bci + 2 /* imm invalidated0 */);
-                            short invalidated1 = BYTES.getShort(bc, bci + 4 /* imm invalidated1 */);
-                            short invalidated2 = BYTES.getShort(bc, bci + 6 /* imm invalidated2 */);
-                            short invalidated3 = BYTES.getShort(bc, bci + 8 /* imm invalidated3 */);
                             bci = bci + 10;
                             break;
                         }
                         case Instructions.INVALIDATE5 :
                         {
-                            short invalidated0 = BYTES.getShort(bc, bci + 2 /* imm invalidated0 */);
-                            short invalidated1 = BYTES.getShort(bc, bci + 4 /* imm invalidated1 */);
-                            short invalidated2 = BYTES.getShort(bc, bci + 6 /* imm invalidated2 */);
-                            short invalidated3 = BYTES.getShort(bc, bci + 8 /* imm invalidated3 */);
-                            short invalidated4 = BYTES.getShort(bc, bci + 10 /* imm invalidated4 */);
                             bci = bci + 12;
                             break;
                         }
                         case Instructions.INVALIDATE6 :
                         {
-                            short invalidated0 = BYTES.getShort(bc, bci + 2 /* imm invalidated0 */);
-                            short invalidated1 = BYTES.getShort(bc, bci + 4 /* imm invalidated1 */);
-                            short invalidated2 = BYTES.getShort(bc, bci + 6 /* imm invalidated2 */);
-                            short invalidated3 = BYTES.getShort(bc, bci + 8 /* imm invalidated3 */);
-                            short invalidated4 = BYTES.getShort(bc, bci + 10 /* imm invalidated4 */);
-                            short invalidated5 = BYTES.getShort(bc, bci + 12 /* imm invalidated5 */);
                             bci = bci + 14;
                             break;
                         }
@@ -6427,7 +6421,12 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
 
         private void doLoadLocalMat(AbstractBytecodeNode $this, Frame stackFrame, Frame frame, byte[] bc, int bci, int sp) {
             int slot = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
-            AbstractBytecodeNode bytecodeNode = this.getRoot().getBytecodeRootNodeImpl(BYTES.getShort(bc, bci + 4 /* imm root_index */)).getBytecodeNodeImpl();
+            int localRootIndex = BYTES.getShort(bc, bci + 4 /* imm root_index */);
+            BasicInterpreterProductionGlobalScopes localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
+            if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
+                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+            }
+            AbstractBytecodeNode bytecodeNode = localRoot.getBytecodeNodeImpl();
             FrameSlotKind kind = bytecodeNode.getCachedLocalKindInternal(slot);
             Object value;
             short newInstruction;
@@ -6466,46 +6465,81 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
         }
 
         private void doLoadLocalMat$Boolean(AbstractBytecodeNode $this, Frame stackFrame, Frame frame, byte[] bc, int bci, int sp) {
+            int slot = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
+            int localRootIndex = BYTES.getShort(bc, bci + 4 /* imm root_index */);
+            BasicInterpreterProductionGlobalScopes localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
+            if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
+                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+            }
             try {
-                FRAMES.setObject(stackFrame, sp - 1, FRAMES.expectBoolean(frame, BYTES.getShort(bc, bci + 2 /* imm local_offset */)));
+                FRAMES.setObject(stackFrame, sp - 1, FRAMES.expectBoolean(frame, slot));
             } catch (UnexpectedResultException ex) {
                 doLoadLocalMat($this, stackFrame, frame, bc, bci, sp);
             }
         }
 
         private void doLoadLocalMat$Boolean$unboxed(AbstractBytecodeNode $this, Frame stackFrame, Frame frame, byte[] bc, int bci, int sp) {
+            int slot = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
+            int localRootIndex = BYTES.getShort(bc, bci + 4 /* imm root_index */);
+            BasicInterpreterProductionGlobalScopes localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
+            if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
+                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+            }
             try {
-                FRAMES.setBoolean(stackFrame, sp - 1, FRAMES.expectBoolean(frame, BYTES.getShort(bc, bci + 2 /* imm local_offset */)));
+                FRAMES.setBoolean(stackFrame, sp - 1, FRAMES.expectBoolean(frame, slot));
             } catch (UnexpectedResultException ex) {
                 doLoadLocalMat($this, stackFrame, frame, bc, bci, sp);
             }
         }
 
         private void doLoadLocalMat$Long(AbstractBytecodeNode $this, Frame stackFrame, Frame frame, byte[] bc, int bci, int sp) {
+            int slot = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
+            int localRootIndex = BYTES.getShort(bc, bci + 4 /* imm root_index */);
+            BasicInterpreterProductionGlobalScopes localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
+            if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
+                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+            }
             try {
-                FRAMES.setObject(stackFrame, sp - 1, FRAMES.expectLong(frame, BYTES.getShort(bc, bci + 2 /* imm local_offset */)));
+                FRAMES.setObject(stackFrame, sp - 1, FRAMES.expectLong(frame, slot));
             } catch (UnexpectedResultException ex) {
                 doLoadLocalMat($this, stackFrame, frame, bc, bci, sp);
             }
         }
 
         private void doLoadLocalMat$Long$unboxed(AbstractBytecodeNode $this, Frame stackFrame, Frame frame, byte[] bc, int bci, int sp) {
+            int slot = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
+            int localRootIndex = BYTES.getShort(bc, bci + 4 /* imm root_index */);
+            BasicInterpreterProductionGlobalScopes localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
+            if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
+                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+            }
             try {
-                FRAMES.setLong(stackFrame, sp - 1, FRAMES.expectLong(frame, BYTES.getShort(bc, bci + 2 /* imm local_offset */)));
+                FRAMES.setLong(stackFrame, sp - 1, FRAMES.expectLong(frame, slot));
             } catch (UnexpectedResultException ex) {
                 doLoadLocalMat($this, stackFrame, frame, bc, bci, sp);
             }
         }
 
         private void doLoadLocalMat$generic(AbstractBytecodeNode $this, Frame stackFrame, Frame frame, byte[] bc, int bci, int sp) {
-            FRAMES.setObject(stackFrame, sp - 1, FRAMES.requireObject(frame, BYTES.getShort(bc, bci + 2 /* imm local_offset */)));
+            int slot = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
+            int localRootIndex = BYTES.getShort(bc, bci + 4 /* imm root_index */);
+            BasicInterpreterProductionGlobalScopes localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
+            if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
+                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+            }
+            FRAMES.setObject(stackFrame, sp - 1, FRAMES.requireObject(frame, slot));
         }
 
         private void doStoreLocalMat(Frame stackFrame, Frame frame, byte[] bc, int bci, int sp, Object local) {
             short newInstruction;
             int slot = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
+            int localRootIndex = BYTES.getShort(bc, bci + 4 /* imm root_index */);
             int operandIndex = BYTES.getIntUnaligned(bc, bci + 6 /* imm child0 */);
-            AbstractBytecodeNode bytecodeNode = this.getRoot().getBytecodeRootNodeImpl(BYTES.getShort(bc, bci + 4 /* imm root_index */)).getBytecodeNodeImpl();
+            BasicInterpreterProductionGlobalScopes localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
+            if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
+                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+            }
+            AbstractBytecodeNode bytecodeNode = localRoot.getBytecodeNodeImpl();
             if (operandIndex != -1) {
                 short newOperand;
                 short operand = BYTES.getShort(bc, operandIndex);
@@ -6594,7 +6628,12 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
                 return;
             }
             int slot = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
-            AbstractBytecodeNode bytecodeNode = getRoot().getBytecodeRootNodeImpl(BYTES.getShort(bc, bci + 4 /* imm root_index */)).getBytecodeNodeImpl();
+            int localRootIndex = BYTES.getShort(bc, bci + 4 /* imm root_index */);
+            BasicInterpreterProductionGlobalScopes localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
+            if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
+                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+            }
+            AbstractBytecodeNode bytecodeNode = localRoot.getBytecodeNodeImpl();
             FrameSlotKind kind = bytecodeNode.getCachedLocalKindInternal(slot);
             if (kind == FrameSlotKind.Boolean) {
                 try {
@@ -6623,7 +6662,12 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
                 return;
             }
             int slot = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
-            AbstractBytecodeNode bytecodeNode = getRoot().getBytecodeRootNodeImpl(BYTES.getShort(bc, bci + 4 /* imm root_index */)).getBytecodeNodeImpl();
+            int localRootIndex = BYTES.getShort(bc, bci + 4 /* imm root_index */);
+            BasicInterpreterProductionGlobalScopes localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
+            if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
+                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+            }
+            AbstractBytecodeNode bytecodeNode = localRoot.getBytecodeNodeImpl();
             FrameSlotKind kind = bytecodeNode.getCachedLocalKindInternal(slot);
             if (kind == FrameSlotKind.Boolean) {
                 FRAMES.setBoolean(frame, slot, local);
@@ -6647,7 +6691,12 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
                 return;
             }
             int slot = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
-            AbstractBytecodeNode bytecodeNode = getRoot().getBytecodeRootNodeImpl(BYTES.getShort(bc, bci + 4 /* imm root_index */)).getBytecodeNodeImpl();
+            int localRootIndex = BYTES.getShort(bc, bci + 4 /* imm root_index */);
+            BasicInterpreterProductionGlobalScopes localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
+            if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
+                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+            }
+            AbstractBytecodeNode bytecodeNode = localRoot.getBytecodeNodeImpl();
             FrameSlotKind kind = bytecodeNode.getCachedLocalKindInternal(slot);
             if (kind == FrameSlotKind.Long) {
                 try {
@@ -6676,7 +6725,12 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
                 return;
             }
             int slot = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
-            AbstractBytecodeNode bytecodeNode = getRoot().getBytecodeRootNodeImpl(BYTES.getShort(bc, bci + 4 /* imm root_index */)).getBytecodeNodeImpl();
+            int localRootIndex = BYTES.getShort(bc, bci + 4 /* imm root_index */);
+            BasicInterpreterProductionGlobalScopes localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
+            if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
+                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+            }
+            AbstractBytecodeNode bytecodeNode = localRoot.getBytecodeNodeImpl();
             FrameSlotKind kind = bytecodeNode.getCachedLocalKindInternal(slot);
             if (kind == FrameSlotKind.Long) {
                 FRAMES.setLong(frame, slot, local);
@@ -6699,7 +6753,13 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
                 doStoreLocalMat(stackFrame, frame, bc, bci, sp, ex.getResult());
                 return;
             }
-            FRAMES.setObject(frame, BYTES.getShort(bc, bci + 2 /* imm local_offset */), local);
+            int slot = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
+            int localRootIndex = BYTES.getShort(bc, bci + 4 /* imm root_index */);
+            BasicInterpreterProductionGlobalScopes localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
+            if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
+                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+            }
+            FRAMES.setObject(frame, slot, local);
             FRAMES.clear(stackFrame, sp - 1);
             FRAMES.clear(stackFrame, sp - 2);
         }
@@ -9090,12 +9150,24 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
         }
 
         private void doLoadLocalMat(AbstractBytecodeNode $this, Frame stackFrame, Frame frame, byte[] bc, int bci, int sp) {
-            FRAMES.setObject(stackFrame, sp - 1, FRAMES.requireObject(frame, BYTES.getShort(bc, bci + 2 /* imm local_offset */)));
+            int slot = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
+            int localRootIndex = BYTES.getShort(bc, bci + 4 /* imm root_index */);
+            BasicInterpreterProductionGlobalScopes localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
+            if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
+                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+            }
+            FRAMES.setObject(stackFrame, sp - 1, FRAMES.requireObject(frame, slot));
         }
 
         private void doStoreLocalMat(Frame stackFrame, Frame frame, byte[] bc, int bci, int sp) {
             Object local = FRAMES.requireObject(stackFrame, sp - 1);
-            FRAMES.setObject(frame, BYTES.getShort(bc, bci + 2 /* imm local_offset */), local);
+            int slot = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
+            int localRootIndex = BYTES.getShort(bc, bci + 4 /* imm root_index */);
+            BasicInterpreterProductionGlobalScopes localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
+            if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
+                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+            }
+            FRAMES.setObject(frame, slot, local);
             FRAMES.clear(stackFrame, sp - 1);
             FRAMES.clear(stackFrame, sp - 2);
         }
@@ -10770,6 +10842,8 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
          * <p>
          * LoadLocalMaterialized reads {@code local} from the frame produced by {@code frame}.
          * This operation can be used to read locals from materialized frames. The materialized frame must belong to the same root node or an enclosing root node.
+         * The given local must be in scope at the point that LoadLocalMaterialized executes, otherwise it may produce unexpected values.
+         * The interpreter will validate the scope if the interpreter is configured to store the bytecode index in the frame (see {@code @GenerateBytecode}).
          * <p>
          * A corresponding call to {@link #endLoadLocalMaterialized} is required to end the operation.
          *
@@ -10885,6 +10959,8 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
          * <p>
          * StoreLocalMaterialized writes the value produced by {@code value} into the {@code local} in the frame produced by {@code frame}.
          * This operation can be used to store locals into materialized frames. The materialized frame must belong to the same root node or an enclosing root node.
+         * The given local must be in scope at the point that StoreLocalMaterialized executes, otherwise it may produce unexpected values.
+         * The interpreter will validate the scope if the interpreter is configured to store the bytecode index in the frame (see {@code @GenerateBytecode}).
          * <p>
          * A corresponding call to {@link #endStoreLocalMaterialized} is required to end the operation.
          *

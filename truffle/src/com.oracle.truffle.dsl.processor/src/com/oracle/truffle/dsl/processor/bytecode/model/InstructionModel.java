@@ -467,6 +467,10 @@ public final class InstructionModel implements PrettyPrintable {
         return immediates.stream().filter(imm -> imm.kind == immediateKind).toList();
     }
 
+    public boolean hasImmediate(ImmediateKind immediateKind) {
+        return !getImmediates(immediateKind).isEmpty();
+    }
+
     public InstructionImmediate getImmediate(ImmediateKind immediateKind) {
         List<InstructionImmediate> filteredImmediates = getImmediates(immediateKind);
         if (filteredImmediates.isEmpty()) {

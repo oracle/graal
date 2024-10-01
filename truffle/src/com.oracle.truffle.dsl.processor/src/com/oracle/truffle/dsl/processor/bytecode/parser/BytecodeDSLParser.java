@@ -512,6 +512,15 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         // TODO GR-57220
 
         /*
+         * Materialized accesses need a local index if using BE (for tag tracking) or if storing the
+         * bci in the frame (for dynamic scope validation)
+         */
+        if (model.enableLocalScoping && (model.usesBoxingElimination() || model.storeBciInFrame)) {
+            model.loadLocalMaterializedOperation.instruction.addImmediate(ImmediateKind.LOCAL_INDEX, "local_index");
+            model.storeLocalMaterializedOperation.instruction.addImmediate(ImmediateKind.LOCAL_INDEX, "local_index");
+        }
+
+        /*
          * If boxing elimination is enabled and the language uses operations with statically known
          * types we generate quickening decisions for each operation and specialization in order to
          * enable boxing elimination.
@@ -523,13 +532,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                 // clearLocal does never lookup the type so not needed.
                 model.loadLocalOperation.instruction.addImmediate(ImmediateKind.LOCAL_INDEX, "local_index");
                 model.storeLocalOperation.instruction.addImmediate(ImmediateKind.LOCAL_INDEX, "local_index");
-
-                model.loadLocalMaterializedOperation.instruction.addImmediate(ImmediateKind.LOCAL_INDEX, "local_index");
-                model.storeLocalMaterializedOperation.instruction.addImmediate(ImmediateKind.LOCAL_INDEX, "local_index");
             }
-
-            model.loadLocalMaterializedOperation.instruction.addImmediate(ImmediateKind.LOCAL_ROOT, "root_index");
-            model.storeLocalMaterializedOperation.instruction.addImmediate(ImmediateKind.LOCAL_ROOT, "root_index");
 
             for (OperationModel operation : model.getOperations()) {
                 if (operation.kind != OperationKind.CUSTOM && operation.kind != OperationKind.CUSTOM_INSTRUMENTATION) {

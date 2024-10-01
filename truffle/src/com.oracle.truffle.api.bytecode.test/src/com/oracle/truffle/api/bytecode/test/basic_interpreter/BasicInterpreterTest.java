@@ -79,6 +79,7 @@ import com.oracle.truffle.api.bytecode.SourceInformationTree;
 import com.oracle.truffle.api.bytecode.test.AbstractInstructionTest;
 import com.oracle.truffle.api.dsl.Introspection.SpecializationInfo;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.nodes.Node;
@@ -1142,8 +1143,8 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     }
 
     /*
-     * In this test we test that access to outer locals work and the validation code is triggered
-     * for the outer frame.
+     * In this test we check that access to outer locals works and the liveness validation code is
+     * triggered (if available).
      */
     @Test
     public void testMaterializedFrameAccesses2() {
@@ -1157,7 +1158,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         // }
         // f(materialize());
 
-        BasicInterpreter node = parseNode("materializedFrameAccesses", b -> {
+        BasicInterpreter node = parseNode("materializedFrameAccesses2", b -> {
             b.beginRoot();
 
             BytecodeLocal z = b.createLocal();
@@ -1222,11 +1223,239 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.endRoot();
         });
 
+        assertEquals(42L, node.getCallTarget().call());
+        // Force interpreter to cached and run again (in case it has uncached).
         for (BytecodeRootNode i : node.getRootNodes().getNodes()) {
             i.getBytecodeNode().setUncachedThreshold(0);
         }
-
         assertEquals(42L, node.getCallTarget().call());
+        // Run again, in case the interpreter quickened to BE instructions.
+        assertEquals(42L, node.getCallTarget().call());
+    }
+
+    /*
+     * In this test we check that accessing a dead local throws an assertion.
+     */
+    @Test
+    public void testMaterializedFrameAccessesDeadVariable() {
+        // @formatter:off
+        // {
+        //   x = 41;
+        //   function storeX() {
+        //     x = 42;
+        //   }
+        //   function readX() {
+        //     return x;
+        //   }
+        //   yield materialize(); // x is live here
+        // }
+        // {
+        //   y = -1;
+        //   yield materialize(); // x is dead here
+        // }
+
+        // @formatter:on
+
+        // The interpreter can only check liveness if it stores the bci in the frame and it uses
+        // local scoping.
+        assumeTrue(run.interpreterClass() == BasicInterpreterWithStoreBytecodeIndexInFrame.class);
+
+        BytecodeRootNodes<BasicInterpreter> nodes = createNodes(BytecodeConfig.DEFAULT, b -> {
+            b.beginRoot();
+
+            b.beginBlock();
+            // x = 41
+            BytecodeLocal x = b.createLocal();
+            b.beginStoreLocal(x);
+            b.emitLoadConstant(41L);
+            b.endStoreLocal();
+
+            // function storeX
+            b.beginRoot();
+            // x = 42L;
+            b.beginStoreLocalMaterialized(x);
+            b.emitLoadArgument(0); // materializedFrame
+            b.emitLoadConstant(42L);
+            b.endStoreLocalMaterialized();
+            b.endRoot();
+
+            // function readX
+            b.beginRoot();
+            // return x;
+            b.beginReturn();
+            b.beginLoadLocalMaterialized(x);
+            b.emitLoadArgument(0); // materializedFrame
+            b.endLoadLocalMaterialized();
+            b.endReturn();
+            b.endRoot();
+
+            b.beginYield();
+            b.emitMaterializeFrame();
+            b.endYield();
+            b.endBlock();
+
+            b.beginBlock();
+            // y = -1
+            BytecodeLocal y = b.createLocal();
+            b.beginStoreLocal(y);
+            b.emitLoadConstant(-1L);
+            b.endStoreLocal();
+            b.beginYield();
+            b.emitMaterializeFrame();
+            b.endYield();
+            b.endBlock();
+
+            b.endRoot();
+        });
+
+        BasicInterpreter outer = nodes.getNode(0);
+        BasicInterpreter storeX = nodes.getNode(1);
+        BasicInterpreter readX = nodes.getNode(2);
+
+        // Run in a loop three times: once uncached, once cached, and once quickened.
+        for (int i = 0; i < 3; i++) {
+            ContinuationResult cont = (ContinuationResult) outer.getCallTarget().call();
+            MaterializedFrame materializedFrame = (MaterializedFrame) cont.getResult();
+            storeX.getCallTarget().call(materializedFrame);
+            assertEquals(42L, readX.getCallTarget().call(materializedFrame));
+
+            cont = (ContinuationResult) cont.continueWith(null);
+            materializedFrame = (MaterializedFrame) cont.getResult();
+            boolean threw = false;
+            try {
+                storeX.getCallTarget().call(materializedFrame);
+            } catch (AssertionError err) {
+                // expected
+                threw = true;
+            }
+            assertTrue("Expected an assertion error, but none was thrown.", threw);
+            threw = false;
+            try {
+                readX.getCallTarget().call(materializedFrame);
+            } catch (AssertionError err) {
+                // expected
+                threw = true;
+            }
+            assertTrue("Expected an assertion error, but none was thrown.", threw);
+
+            // Ensure next iteration is cached.
+            outer.getBytecodeNode().setUncachedThreshold(0);
+            storeX.getBytecodeNode().setUncachedThreshold(0);
+            readX.getBytecodeNode().setUncachedThreshold(0);
+        }
+    }
+
+    /*
+     * In this test we check that accessing a local from the wrong frame throws an assertion.
+     */
+    @Test
+    public void testMaterializedFrameAccessesBadFrame() {
+        // @formatter:off
+        // function f() {
+        //   x = 41;
+        //   yield materialize();
+        //   function storeX() {
+        //     x = 42;
+        //   }
+        //   function readX() {
+        //     return x;
+        //   }
+        // }
+        // function g() {
+        //   y = -1;
+        //   yield materialize();
+        // }
+        // @formatter:on
+
+        BytecodeRootNodes<BasicInterpreter> nodes = createNodes(BytecodeConfig.DEFAULT, b -> {
+            // function f
+            b.beginRoot();
+            b.beginBlock();
+            // x = 41
+            BytecodeLocal x = b.createLocal();
+            b.beginStoreLocal(x);
+            b.emitLoadConstant(41L);
+            b.endStoreLocal();
+
+            // function storeX
+            b.beginRoot();
+            // x = 42L;
+            b.beginStoreLocalMaterialized(x);
+            b.emitLoadArgument(0); // materializedFrame
+            b.emitLoadConstant(42L);
+            b.endStoreLocalMaterialized();
+            b.endRoot();
+
+            // function readX
+            b.beginRoot();
+            // return x;
+            b.beginReturn();
+            b.beginLoadLocalMaterialized(x);
+            b.emitLoadArgument(0); // materializedFrame
+            b.endLoadLocalMaterialized();
+            b.endReturn();
+            b.endRoot();
+
+            b.beginYield();
+            b.emitMaterializeFrame();
+            b.endYield();
+            b.endBlock();
+            b.endRoot();
+
+            // function g
+            b.beginRoot();
+            b.beginBlock();
+            // y = -1
+            BytecodeLocal y = b.createLocal();
+            b.beginStoreLocal(y);
+            b.emitLoadConstant(-1L);
+            b.endStoreLocal();
+            b.beginYield();
+            b.emitMaterializeFrame();
+            b.endYield();
+            b.endBlock();
+            b.endRoot();
+        });
+
+        BasicInterpreter f = nodes.getNode(0);
+        BasicInterpreter storeX = nodes.getNode(1);
+        BasicInterpreter readX = nodes.getNode(2);
+        BasicInterpreter g = nodes.getNode(3);
+
+        // Run in a loop three times: once uncached, once cached, and once quickened (if available).
+        for (int i = 0; i < 3; i++) {
+            // Using f's frame
+            ContinuationResult cont = (ContinuationResult) f.getCallTarget().call();
+            MaterializedFrame materializedFrame = (MaterializedFrame) cont.getResult();
+            storeX.getCallTarget().call(materializedFrame);
+            assertEquals(42L, readX.getCallTarget().call(materializedFrame));
+
+            // Using g's frame
+            cont = (ContinuationResult) g.getCallTarget().call();
+            materializedFrame = (MaterializedFrame) cont.getResult();
+            boolean threw = false;
+            try {
+                storeX.getCallTarget().call(materializedFrame);
+            } catch (AssertionError err) {
+                // expected
+                threw = true;
+            }
+            assertTrue("Expected an assertion error, but none was thrown.", threw);
+            threw = false;
+            try {
+                readX.getCallTarget().call(materializedFrame);
+            } catch (AssertionError err) {
+                // expected
+                threw = true;
+            }
+            assertTrue("Expected an assertion error, but none was thrown.", threw);
+
+            // Ensure next iteration is cached.
+            f.getBytecodeNode().setUncachedThreshold(0);
+            storeX.getBytecodeNode().setUncachedThreshold(0);
+            readX.getBytecodeNode().setUncachedThreshold(0);
+            g.getBytecodeNode().setUncachedThreshold(0);
+        }
     }
 
     @Test
