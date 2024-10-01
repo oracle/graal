@@ -10,22 +10,14 @@ import java.util.concurrent.atomic.AtomicLong;
         public static long[] Buffer = new long[9_000_000];
         public static AtomicLong bufferIndex = new AtomicLong(0);
         public static AtomicLong sampleCounter = new AtomicLong(0);
-        public static final int SAMPLE_RATE = 10000;
+        public static final int SAMPLE_RATE = 100;
 
-        // private static final ThreadLocal<List<Long>> timeBuffer = ThreadLocal.withInitial(ArrayList::new);
-        // //ThreadLocalBuffer Impl
-        // public static void sampleTime(long ID) {
-        //         if(sampleCounter.getAndIncrement() % SAMPLE_RATE == 0){
-        //                 timeBuffer.get().add(ID);
-        //                 timeBuffer.get().add(System.nanoTime());
-        //         }
-        // }
 
         static {
                 System.out.println("CACHE INITIALIZATION");
         }
 
-        // ThreadLocalFields impl
+        //ThreadLocalFields impl
         public static void sampleTime(long id){
                 if(sampleCounter.getAndIncrement() % SAMPLE_RATE == 0){
                         long index = bufferIndex.getAndAdd(2);
