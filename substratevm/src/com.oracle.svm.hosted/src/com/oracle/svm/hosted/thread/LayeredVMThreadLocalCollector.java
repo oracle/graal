@@ -29,9 +29,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Stream;
 
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
@@ -62,15 +59,6 @@ public class LayeredVMThreadLocalCollector extends VMThreadLocalCollector implem
     }
 
     final Map<String, ThreadInfo> threadLocalAssignmentMap;
-
-    /**
-     * With the inlining of prior layer methods, it is possible for VMThreadLocalsInfos from prior
-     * layers to exist in graphs. We must record these instances so that they can have offsets
-     * assigned. In addition, now it is possible for MultipleThreadLocals to exist which are
-     * assigned to the same offset; however, this does not affect correctness, as all offsets are
-     * assigned in the initial layer and during lowering this discrepancy disappears.
-     */
-    final Set<VMThreadLocalInfo> priorLayerThreadLocals;
     private final boolean initialLayer;
     private int nextOffset;
 
@@ -83,12 +71,7 @@ public class LayeredVMThreadLocalCollector extends VMThreadLocalCollector implem
 
         this.threadLocalAssignmentMap = threadLocalAssignmentMap;
         initialLayer = ImageLayerBuildingSupport.buildingInitialLayer();
-        this.priorLayerThreadLocals = initialLayer ? null : ConcurrentHashMap.newKeySet();
         this.nextOffset = nextOffset;
-    }
-
-    public void registerPriorThreadLocalInfo(VMThreadLocalInfo info) {
-        priorLayerThreadLocals.add(info);
     }
 
     @Override
@@ -114,12 +97,12 @@ public class LayeredVMThreadLocalCollector extends VMThreadLocalCollector implem
         } else {
             assert nextOffset != -1;
 
-            Stream.concat(priorLayerThreadLocals.stream(), threadLocals.values().stream()).forEach(info -> {
+            for (VMThreadLocalInfo info : threadLocals.values()) {
                 var assignment = threadLocalAssignmentMap.get(info.name);
                 info.offset = assignment.offset();
                 assert assignment.size() == calculateSize(info) : Assertions.errorMessage("Mismatch in computed size: ", assignment.size(), calculateSize(info), info.name);
                 info.sizeInBytes = assignment.size();
-            });
+            }
         }
 
         return nextOffset;

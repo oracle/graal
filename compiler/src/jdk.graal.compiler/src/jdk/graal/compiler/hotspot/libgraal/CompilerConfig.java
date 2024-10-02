@@ -24,37 +24,29 @@
  */
 package jdk.graal.compiler.hotspot.libgraal;
 
-import java.io.IOException;
 import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-import java.net.URI;
-import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
-import java.util.stream.Stream;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.MapCursor;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
 import jdk.graal.compiler.core.target.Backend;
-import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage;
-import jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
-import jdk.graal.compiler.truffle.hotspot.HotSpotTruffleCompilerImpl;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.MapCursor;
-import org.graalvm.word.LocationIdentity;
-
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.EncodedSnippets;
+import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage;
 import jdk.graal.compiler.hotspot.HotSpotGraalCompiler;
 import jdk.graal.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import jdk.graal.compiler.hotspot.HotSpotReplacementsImpl;
 import jdk.graal.compiler.hotspot.SymbolicSnippetEncoder;
+import jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.truffle.hotspot.HotSpotTruffleCompilerImpl;
 import jdk.graal.compiler.util.ObjectCopier;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 
@@ -84,13 +76,13 @@ public class CompilerConfig {
 
         List<ForeignCallSignature> foreignCallSignatures = getForeignCallSignatures(replacements, options, graalRuntime);
         EncodedSnippets encodedSnippets = getEncodedSnippets(replacements, options);
-        List<Field> externalValues = getExternalValues();
+        List<Field> externalValueFields = ObjectCopier.getExternalValueFields();
 
         EconomicMap<String, Object> encodedObjects = EconomicMap.create();
         encodedObjects.put("encodedSnippets", encodedSnippets);
         encodedObjects.put("foreignCallSignatures", foreignCallSignatures);
 
-        ObjectCopier.Encoder encoder = new ObjectCopier.Encoder(externalValues) {
+        ObjectCopier.Encoder encoder = new ObjectCopier.Encoder(externalValueFields) {
             @Override
             protected ClassInfo makeClassInfo(Class<?> declaringClass) {
                 ClassInfo ci = ClassInfo.of(declaringClass);
@@ -151,78 +143,5 @@ public class CompilerConfig {
                 }
             }
         });
-    }
-
-    private static List<Field> getExternalValues() throws IOException {
-        List<Field> externalValues = new ArrayList<>();
-        addImmutableCollectionsFields(externalValues);
-        addStaticFinalObjectFields(LocationIdentity.class, externalValues);
-
-        try (FileSystem fs = FileSystems.newFileSystem(URI.create("jrt:/"), Collections.emptyMap())) {
-            for (String module : List.of("jdk.internal.vm.ci", "jdk.graal.compiler", "com.oracle.graal.graal_enterprise")) {
-                Path top = fs.getPath("/modules/" + module);
-                try (Stream<Path> files = Files.find(top, Integer.MAX_VALUE, (path, attrs) -> attrs.isRegularFile())) {
-                    files.forEach(p -> {
-                        String fileName = p.getFileName().toString();
-                        if (fileName.endsWith(".class") && !fileName.equals("module-info.class")) {
-                            // Strip module prefix and convert to dotted form
-                            int nameCount = p.getNameCount();
-                            String className = p.subpath(2, nameCount).toString().replace('/', '.');
-                            // Strip ".class" suffix
-                            className = className.replace('/', '.').substring(0, className.length() - ".class".length());
-                            try {
-                                Class<?> graalClass = Class.forName(className);
-                                addStaticFinalObjectFields(graalClass, externalValues);
-                            } catch (ClassNotFoundException e) {
-                                throw new GraalError(e);
-                            }
-                        }
-                    });
-                }
-            }
-        }
-        return externalValues;
-    }
-
-    /**
-     * Adds the static, final, non-primitive fields of non-enum {@code declaringClass} to
-     * {@code fields}. In the process, the fields are made {@linkplain Field#setAccessible
-     * accessible}.
-     */
-    private static void addStaticFinalObjectFields(Class<?> declaringClass, List<Field> fields) {
-        if (Enum.class.isAssignableFrom(declaringClass)) {
-            return;
-        }
-        for (Field field : declaringClass.getDeclaredFields()) {
-            int fieldModifiers = field.getModifiers();
-            int fieldMask = Modifier.STATIC | Modifier.FINAL;
-            if ((fieldModifiers & fieldMask) != fieldMask) {
-                continue;
-            }
-            if (field.getType().isPrimitive()) {
-                continue;
-            }
-            field.setAccessible(true);
-            fields.add(field);
-        }
-    }
-
-    /**
-     * Adds the EMPTY* fields from {@code java.util.ImmutableCollections} to {@code fields}, making
-     * them {@linkplain Field#setAccessible accessible} in the process.
-     */
-    private static void addImmutableCollectionsFields(List<Field> fields) {
-        Class<?> c = List.of().getClass().getDeclaringClass();
-        GraalError.guarantee(c.getName().equals("java.util.ImmutableCollections"), "Incompatible ImmutableCollections class");
-        for (Field f : c.getDeclaredFields()) {
-            if (f.getName().startsWith("EMPTY")) {
-                int modifiers = f.getModifiers();
-                GraalError.guarantee(Modifier.isStatic(modifiers), "Expect %s to be static", f);
-                GraalError.guarantee(Modifier.isFinal(modifiers), "Expect %s to be final", f);
-                GraalError.guarantee(!f.getType().isPrimitive(), "Expect %s to be non-primitive", f);
-                f.setAccessible(true);
-                fields.add(f);
-            }
-        }
     }
 }
