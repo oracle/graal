@@ -105,7 +105,6 @@ public class AArch64HotSpotNodeLIRBuilder extends AArch64NodeLIRBuilder implemen
             assert stub.getLinkage().getDescriptor().getTransition() != HotSpotForeignCallDescriptor.Transition.SAFEPOINT : stub;
             Register[] savedRegisters = getGen().getRegisterConfig().getAllocatableRegisters().toArray();
             AArch64SaveRegistersOp saveOp = getGen().emitSaveAllRegisters(savedRegisters);
-            append(saveOp);
             result.setSaveOnEntry(saveOp);
         }
 
