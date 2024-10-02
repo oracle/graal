@@ -100,14 +100,21 @@ public abstract class LookupProxyKlassNode extends EspressoNode {
 
         Symbol<Symbol.Type> proxyName = context.getTypes().fromClassGetName(proxyBytes.name);
         Klass proxyKlass = registry.findLoadedKlass(context.getClassLoadingEnv(), proxyName);
-        if (proxyKlass == null) {
-            try {
-                proxyKlass = registry.defineKlass(context, proxyName, proxyBytes.bytes);
-            } catch (EspressoClassLoadingException e) {
-                throw EspressoError.shouldNotReachHere(e);
-            }
+        if (proxyKlass != null) {
+            return proxyKlass;
         }
-        return proxyKlass;
+        // double-checked locking on the proxy name
+        synchronized (proxyName) {
+            proxyKlass = registry.findLoadedKlass(context.getClassLoadingEnv(), proxyName);
+            if (proxyKlass == null) {
+                try {
+                    proxyKlass = registry.defineKlass(context, proxyName, proxyBytes.bytes);
+                } catch (EspressoClassLoadingException e) {
+                    throw EspressoError.shouldNotReachHere(e);
+                }
+            }
+            return proxyKlass;
+        }
     }
 
     private static ObjectKlass fillParents(Object metaObject, InteropLibrary interop, PolyglotTypeMappings mappings, Set<ObjectKlass> parents, EspressoContext context) throws ClassCastException {
