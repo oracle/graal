@@ -51,7 +51,6 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.graalvm.collections.EconomicMap;
@@ -77,7 +76,6 @@ import jdk.internal.misc.Unsafe;
 public class ObjectCopier {
 
     private static final Pattern OBJECT_LINE = Pattern.compile("\\{(?<class>[\\w.$]+):(?<fieldCount>\\d+)}");
-    private static final Pattern ARRAY_LINE = Pattern.compile("\\[(?<componentType>[^]]+)] = (?<elements>.*)");
     private static final Pattern FIELD_LINE = Pattern.compile("(?<desc>[^:]+):(?<typeId>[^ ]+) = (?<value>.*)");
 
     /**
@@ -484,83 +482,20 @@ public class ObjectCopier {
                             addDecodedObject(id, builtin.decode(this, clazz, stream));
                             break;
                         }
-                        case '[': {
-                            String legacy = stream.readUTF();
-                            Matcher matcher = ARRAY_LINE.matcher(legacy);
-                            GraalError.guarantee(matcher.matches(), "Invalid array record: %s", legacy);
-                            String componentTypeName = matcher.group("componentType");
-                            String[] elements = splitSpaceSeparatedElements(matcher.group("elements"));
-                            switch (componentTypeName) {
-                                case "boolean": {
-                                    boolean[] arr = new boolean[elements.length];
-                                    for (int i = 0; i < elements.length; i++) {
-                                        arr[i] = Boolean.parseBoolean(elements[i]);
-                                    }
-                                    addDecodedObject(id, arr);
-                                    break;
-                                }
-                                case "byte": {
-                                    byte[] arr = new byte[elements.length];
-                                    for (int i = 0; i < elements.length; i++) {
-                                        arr[i] = Byte.parseByte(elements[i]);
-                                    }
-                                    addDecodedObject(id, arr);
-                                    break;
-                                }
-                                case "char": {
-                                    throw GraalError.shouldNotReachHere("char[] should be handled by " + StringBuiltin.class);
-                                }
-                                case "short": {
-                                    short[] arr = new short[elements.length];
-                                    for (int i = 0; i < elements.length; i++) {
-                                        arr[i] = Short.parseShort(elements[i]);
-                                    }
-                                    addDecodedObject(id, arr);
-                                    break;
-                                }
-                                case "int": {
-                                    int[] arr = new int[elements.length];
-                                    for (int i = 0; i < elements.length; i++) {
-                                        arr[i] = Integer.parseInt(elements[i]);
-                                    }
-                                    addDecodedObject(id, arr);
-                                    break;
-                                }
-                                case "float": {
-                                    float[] arr = new float[elements.length];
-                                    for (int i = 0; i < elements.length; i++) {
-                                        arr[i] = Float.parseFloat(elements[i]);
-                                    }
-                                    addDecodedObject(id, arr);
-                                    break;
-                                }
-                                case "long": {
-                                    long[] arr = new long[elements.length];
-                                    for (int i = 0; i < elements.length; i++) {
-                                        arr[i] = Long.parseLong(elements[i]);
-                                    }
-                                    addDecodedObject(id, arr);
-                                    break;
-                                }
-                                case "double": {
-                                    double[] arr = new double[elements.length];
-                                    for (int i = 0; i < elements.length; i++) {
-                                        arr[i] = Double.parseDouble(elements[i]);
-                                    }
-                                    addDecodedObject(id, arr);
-                                    break;
-                                }
-                                default: {
-                                    Class<?> componentType = loadClass(componentTypeName);
-                                    Object[] arr = (Object[]) Array.newInstance(componentType, elements.length);
-                                    addDecodedObject(id, arr);
-                                    for (int i = 0; i < elements.length; i++) {
-                                        int elementId = Integer.parseInt(elements[i]);
-                                        int index = i;
-                                        resolveId(elementId, o -> arr[index] = o);
-                                    }
-                                    break;
-                                }
+                        case '[': { // primitive array
+                            Object arr = stream.readTypedPrimitiveArray();
+                            addDecodedObject(id, arr);
+                            break;
+                        }
+                        case ']': { // object array
+                            String componentTypeName = stream.readUTF();
+                            Class<?> componentType = loadClass(componentTypeName);
+                            int[] elements = (int[]) stream.readTypedPrimitiveArray();
+                            Object[] arr = (Object[]) Array.newInstance(componentType, elements.length);
+                            addDecodedObject(id, arr);
+                            for (int i = 0; i < elements.length; i++) {
+                                int index = i;
+                                resolveId(elements[i], o -> arr[index] = o);
                             }
                             break;
                         }
@@ -898,19 +833,17 @@ public class ObjectCopier {
                         throw new RuntimeException(e);
                     }
                 } else if (clazz.isArray()) {
-                    out.writeByte('[');
-                    out.writeInt(id);
                     Class<?> componentType = clazz.getComponentType();
                     if (!componentType.isPrimitive()) {
-                        String elements = Stream.of((Object[]) obj).map(this::getIdString).collect(Collectors.joining(" "));
-                        out.writeUTF(String.format("[%s] = %s", componentType.getName(), elements));
+                        out.writeByte(']');
+                        out.writeInt(id);
+                        out.writeUTF(componentType.getName());
+                        int[] ids = Stream.of((Object[]) obj).mapToInt(this::getId).toArray();
+                        out.writeTypedPrimitiveArray(ids);
                     } else {
-                        int length = Array.getLength(obj);
-                        StringBuilder elements = new StringBuilder(length * 5);
-                        for (int i = 0; i < length; i++) {
-                            elements.append(' ').append(Array.get(obj, i));
-                        }
-                        out.writeUTF(String.format("[%s] =%s", componentType.getName(), elements));
+                        out.writeByte('[');
+                        out.writeInt(id);
+                        out.writeTypedPrimitiveArray(obj);
                     }
                 } else {
                     if (clazz == Field.class) {
@@ -941,9 +874,13 @@ public class ObjectCopier {
             }
         }
 
-        private String getIdString(Object o) {
+        private int getId(Object o) {
             GraalError.guarantee(objectToId.containsKey(o), "Unknown object: %s", o);
-            return String.valueOf(objectToId.get(o).id());
+            return objectToId.get(o).id();
+        }
+
+        private String getIdString(Object o) {
+            return String.valueOf(getId(o));
         }
     }
 

@@ -25,10 +25,76 @@
 package jdk.graal.compiler.util;
 
 import java.io.DataInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 
 public class ObjectCopierInputStream extends DataInputStream {
     public ObjectCopierInputStream(InputStream in) {
         super(in);
+    }
+
+    public Object readTypedPrimitiveArray() throws IOException {
+        final int length = readInt();
+        final byte type = readByte();
+        switch (type) {
+            case 'Z': {
+                boolean[] a = new boolean[length];
+                for (int i = 0; i < length; i++) {
+                    a[i] = readBoolean();
+                }
+                return a;
+            }
+            case 'B': {
+                byte[] a = new byte[length];
+                for (int i = 0; i < length; i++) {
+                    a[i] = readByte();
+                }
+                return a;
+            }
+            case 'S': {
+                short[] a = new short[length];
+                for (int i = 0; i < length; i++) {
+                    a[i] = readShort();
+                }
+                return a;
+            }
+            case 'C': {
+                char[] a = new char[length];
+                for (int i = 0; i < length; i++) {
+                    a[i] = readChar();
+                }
+                return a;
+            }
+            case 'I': {
+                int[] a = new int[length];
+                for (int i = 0; i < length; i++) {
+                    a[i] = readInt();
+                }
+                return a;
+            }
+            case 'J': {
+                long[] a = new long[length];
+                for (int i = 0; i < length; i++) {
+                    a[i] = readLong();
+                }
+                return a;
+            }
+            case 'F': {
+                float[] a = new float[length];
+                for (int i = 0; i < length; i++) {
+                    a[i] = readFloat();
+                }
+                return a;
+            }
+            case 'D': {
+                double[] a = new double[length];
+                for (int i = 0; i < length; i++) {
+                    a[i] = readDouble();
+                }
+                return a;
+            }
+            default:
+                throw new IOException("Unsupported type: " + Integer.toHexString(type));
+        }
     }
 }
