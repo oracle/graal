@@ -78,8 +78,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public final TypeElement templateType;
     // The generated class.
     public final String modelName;
-    // The abstract class of the builder (different from builderType if GenerateBytecodeTestVariants
-    // used)
+    // The abstract builder class (different from builderType if GenerateBytecodeTestVariants used)
     public final TypeMirror abstractBuilderType;
 
     public BytecodeDSLModel(ProcessorContext context, TypeElement templateType, AnnotationMirror mirror, String name,

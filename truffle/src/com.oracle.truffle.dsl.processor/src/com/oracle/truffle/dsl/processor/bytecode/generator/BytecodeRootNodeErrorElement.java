@@ -79,6 +79,7 @@ final class BytecodeRootNodeErrorElement extends CodeTypeElement {
     private final TruffleTypes types = context.getTypes();
 
     private final BytecodeDSLModel model;
+    private final DeclaredType languageClass;
     private final BuilderElement builder;
     private final DeclaredType builderType;
     private final TypeMirror parserType;
@@ -86,6 +87,7 @@ final class BytecodeRootNodeErrorElement extends CodeTypeElement {
     BytecodeRootNodeErrorElement(BytecodeDSLModel model) {
         super(Set.of(PUBLIC, FINAL), ElementKind.CLASS, ElementUtils.findPackageElement(model.getTemplateType()), model.getName());
         this.model = model;
+        this.languageClass = model.languageClass == null ? generic(types.TruffleLanguage) : model.languageClass;
         this.setSuperClass(model.templateType.asType());
         GeneratorUtils.addGeneratedBy(context, this, model.templateType);
         this.builder = this.add(new BuilderElement());
@@ -112,7 +114,7 @@ final class BytecodeRootNodeErrorElement extends CodeTypeElement {
 
     private CodeExecutableElement createConstructor() {
         CodeExecutableElement ctor = new CodeExecutableElement(Set.of(PRIVATE), null, this.getSimpleName().toString());
-        ctor.addParameter(new CodeVariableElement(model.languageClass, "language"));
+        ctor.addParameter(new CodeVariableElement(languageClass, "language"));
         ctor.addParameter(new CodeVariableElement(types.FrameDescriptor_Builder, "builder"));
         CodeTreeBuilder b = ctor.getBuilder();
         b.startStatement().startCall("super");
@@ -129,7 +131,7 @@ final class BytecodeRootNodeErrorElement extends CodeTypeElement {
 
     private CodeExecutableElement createCreate() {
         CodeExecutableElement method = new CodeExecutableElement(Set.of(PUBLIC, STATIC), generic(types.BytecodeRootNodes, model.templateType.asType()), "create");
-        method.addParameter(new CodeVariableElement(model.languageClass, "language"));
+        method.addParameter(new CodeVariableElement(languageClass, "language"));
         method.addParameter(new CodeVariableElement(types.BytecodeConfig, "config"));
         method.addParameter(new CodeVariableElement(generic(types.BytecodeParser, builder.asType()), "generator"));
         CodeTreeBuilder b = method.getBuilder();
@@ -151,7 +153,7 @@ final class BytecodeRootNodeErrorElement extends CodeTypeElement {
     private CodeExecutableElement createDeserialize() {
         CodeExecutableElement method = new CodeExecutableElement(Set.of(PUBLIC, STATIC),
                         generic(types.BytecodeRootNodes, model.getTemplateType().asType()), "deserialize");
-        method.addParameter(new CodeVariableElement(model.languageClass, "language"));
+        method.addParameter(new CodeVariableElement(languageClass, "language"));
         method.addParameter(new CodeVariableElement(types.BytecodeConfig, "config"));
         method.addParameter(new CodeVariableElement(generic(Supplier.class, DataInput.class), "input"));
         method.addParameter(new CodeVariableElement(types.BytecodeDeserializer, "callback"));

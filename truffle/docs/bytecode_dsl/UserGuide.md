@@ -260,6 +260,9 @@ These values are partial evaluation constants.
 
 #### Advanced use cases
 
+This section discussed regular operations. There are also [short circuit operations](ShortCircuitOperations.md) to implement short-circuit behaviour, and special [`@Prolog`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/Prolog.java), [`@EpilogReturn`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/EpilogReturn.java), and [`@EpilogExceptional`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/EpilogExceptional.java) operations to guarantee certain behaviour happens on entry/exit.
+
+
 An operation can take zero or more values for its last dynamic operand by declaring the last dynamic operand [`@Variadic`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/Variadic.java).
 The builder will emit code to collect these values into an `Object[]`.
 
@@ -267,7 +270,6 @@ An operation can also define _constant operands_, which are embedded in the byte
 
 An operation may need to produce more than one result, or to modify local variables. For either case, the operation can use [`LocalSetter`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/LocalSetter.java) or [`LocalSetterRange`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/LocalSetterRange.java).
 
-Regular operations eagerly execute their children. There are also [short circuit operations](ShortCircuitOperations.md) to implement short-circuit behaviour.
 
 ## Locals
 
@@ -485,13 +487,11 @@ The `LoadException` operation can be used within the `catch` operation of a `Try
 
 ### Intercepting exceptions
 
-Before an exception handler executes, you may wish to intercept the exception for a variety of reasons, like:
-- adding metadata to the exception
-- handling control flow exceptions
-- converting an internal host exception (e.g., stack overflow) to a guest exception
+Before an exception handler executes, you may wish to intercept the exception for a variety of reasons, like handling control flow exceptions, converting internal host exceptions (e.g., stack overflows) to guest exceptions, or adding metadata to exceptions.
 
-[`BytecodeRootNode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeRootNode.java) defines a set of hooks (`interceptTruffleException`, `interceptControlFlowException`, and `interceptInternalException`) that you can override.
-These hooks will be invoked before the exception is dispatched to a handler.
+[`BytecodeRootNode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeRootNode.java) defines `interceptControlFlowException`, `interceptInternalException`, and `interceptTruffleException` hooks that can be overridden.
+When an exception is thrown, the interpreter will invoke the appropriate hook(s) before dispatching to a bytecode exception handler.
+The hooks are invoked at most once for each throw, and may be invoked sequentially (in the order listed above); for example a control flow exception gets intercepted by `interceptControlFlowException`, which could produce an internal exception that gets intercepted by `interceptInternalException`, which could  produce a Truffle exception that gets intercepted by `interceptTruffleException`.
 
 ## Advanced features
 
@@ -510,8 +510,7 @@ After a certain number of calls or loop iterations, an uncached interpreter will
 
 It is strongly recommended to enable uncached execution, because it can reduce the footprint of your language and improve start-up times.
 
-Most interpreters support uncached execution without any extra development effort.
-However, if your interpreter uses [`@OperationProxy`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/OperationProxy.java), any proxied nodes must be made compatible with uncached execution.
+To support uncached execution, interpreters must make all operations compatible with uncached execution.
 The Bytecode DSL processor will inform you of any changes that need to be made.
 
 
@@ -537,9 +536,9 @@ They incur no overhead until they are enabled at a later time (see [Reparsing me
 The Bytecode DSL supports two forms of instrumentation:
 
 1. [`@Instrumentation`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/Instrumentation.java) operations, which are emitted and behave just like custom [`@Operation`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/Operation.java)s. These operations can perform special actions like logging or modifying the value produced by another operation. `@Instrumentation` operations must have no stack effects, so they can either have no children and produce no value, or have one child and produce a value (which allows you to modify the result of an instrumented operation).
-2. Tag-based instrumentation associates operations with particular instrumentation [`Tag`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.instrumentation/src/com/oracle/truffle/api/instrumentation/Tag.java)s using `Tag` operations. If these instrumentations are enabled and [`ExecutionEventNode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.instrumentation/src/com/oracle/truffle/api/instrumentation/ExecutionEventNode.java)s are attached, the bytecode interpreter will invoke the various event callbacks (e.g., `onEnter`, `onReturnValue`) when executing the enclosed operation. Tag-based instrumentation can be enabled using the `enableTagInstrumentation` flag in [`@GenerateBytecode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/GenerateBytecode.java).
+2. Tag-based instrumentation associates operations with particular instrumentation [`Tag`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.instrumentation/src/com/oracle/truffle/api/instrumentation/Tag.java)s using `Tag` operations. If these instrumentations are enabled, the bytecode will include instructions that invoke the various event callbacks on any attached [`ExecutionEventNode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.instrumentation/src/com/oracle/truffle/api/instrumentation/ExecutionEventNode.java)s (e.g., `onEnter`, `onReturnValue`) when executing the enclosed operation. Tag-based instrumentation can be enabled using the `enableTagInstrumentation` flag in [`@GenerateBytecode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/GenerateBytecode.java).
 
-Note: once instrumentations are enabled, they cannot be disabled.
+Note: once instrumentation instructions are added, they cannot be removed from the bytecode. However, in tag-based instrumentation you can still disable the instruments so that the instrumentation instructions have no effect.
 
 ### Reparsing
 
@@ -594,4 +593,4 @@ Continuations can be used to implement language features like coroutines and gen
 
 
 ### Builtins
-Guest language builtins integrate easily with the Bytecode DSL. The [Builtins tutorial](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode.test/src/com/oracle/truffle/api/bytecode/test/examples/BuiltinTutorial.java) describes a few different approaches you may wish to use to define your language builtins within the Bytecode DSL.
+Guest language builtins integrate easily with the Bytecode DSL. The [Builtins tutorial](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode.test/src/com/oracle/truffle/api/bytecode/test/examples/BuiltinsTutorial.java) describes a few different approaches you may wish to use to define your language builtins within the Bytecode DSL.

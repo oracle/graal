@@ -82,9 +82,10 @@ import com.oracle.truffle.api.source.SourceSection;
  * bytes. These bytes can be deserialized to produce the original bytecode nodes. This technique can
  * be useful to avoid re-parsing a source program multiple times (similar to CPython's .pyc files).
  * <p>
- * Serialization logic is generated automatically for Bytecode DSL interpreters. A language only
- * needs to specify how to encode/decode its constants, and the generated code handles the rest.
- * This tutorial will explain how to integrate serialization with your Bytecode DSL interpreter.
+ * When serialization is enabled, the Bytecode DSL generates most of the serialization logic
+ * automatically. A language only needs to specify how to encode/decode its constants, and the
+ * generated code handles the rest. This tutorial will explain how to integrate serialization with
+ * your Bytecode DSL interpreter.
  */
 public class SerializationTutorial {
     /**

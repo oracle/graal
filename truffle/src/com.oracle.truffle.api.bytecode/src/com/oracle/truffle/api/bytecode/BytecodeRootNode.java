@@ -54,6 +54,10 @@ import com.oracle.truffle.api.source.SourceSection;
  * <p>
  * The current bytecode root node can be bound using <code>@Bind MyBytecodeRootNode root</code> from
  * {@link Operation operations}.
+ * <p>
+ * Bytecode root nodes can declare a {@link com.oracle.truffle.api.dsl.TypeSystemReference} that
+ * will be inherited by all declared operations. Operations can also declare their own type system
+ * references to override the root type system.
  *
  * @see GenerateBytecode
  * @since 24.2

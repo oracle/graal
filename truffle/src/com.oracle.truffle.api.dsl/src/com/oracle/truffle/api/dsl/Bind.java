@@ -86,6 +86,10 @@ import java.lang.annotation.Target;
  * }
  * </pre>
  *
+ * The special variable {@code $node} can be used to bind the current node. Bytecode DSL
+ * interpreters can also bind the special variables {@code $rootNode}, {@code $bytecodeNode}, and
+ * {@code $bytecodeIndex}.
+ *
  *
  * @see Cached
  * @see Specialization

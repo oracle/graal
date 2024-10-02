@@ -52,12 +52,14 @@ import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
+import com.oracle.truffle.api.bytecode.OperationProxy;
 import com.oracle.truffle.api.bytecode.test.error_tests.ExpectError;
 import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystem;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
 /**
@@ -93,6 +95,25 @@ public class TypeSystemTest extends AbstractInstructionTest {
     }
 
     @Test
+    public void testIntToLongCastTypeSystemProxy() {
+        TypeSystemTestRootNode root = parse(b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.beginLongConsumerProxy();
+            b.emitIntProducer();
+            b.endLongConsumerProxy();
+            b.endReturn();
+            b.endRoot();
+        });
+
+        Object result = root.getCallTarget().call();
+        assertEquals(TypeSystemTestTypeSystem.INT_AS_LONG_VALUE, result);
+
+        result = root.getCallTarget().call();
+        assertEquals(TypeSystemTestTypeSystem.INT_AS_LONG_VALUE, result);
+    }
+
+    @Test
     public void testIntToLongCastNoTypeSystem() {
         TypeSystemTestRootNode root = parse(b -> {
             b.beginRoot();
@@ -100,6 +121,26 @@ public class TypeSystemTest extends AbstractInstructionTest {
             b.beginLongConsumerNoTypeSystem();
             b.emitIntProducer();
             b.endLongConsumerNoTypeSystem();
+            b.endReturn();
+            b.endRoot();
+        });
+
+        Object result = root.getCallTarget().call();
+        assertEquals(1L, result);
+
+        result = root.getCallTarget().call();
+        assertEquals(1L, result);
+
+    }
+
+    @Test
+    public void testIntToLongCastNoTypeSystemProxy() {
+        TypeSystemTestRootNode root = parse(b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.beginLongConsumerNoTypeSystemProxy();
+            b.emitIntProducer();
+            b.endLongConsumerNoTypeSystemProxy();
             b.endReturn();
             b.endRoot();
         });
@@ -132,6 +173,25 @@ public class TypeSystemTest extends AbstractInstructionTest {
     }
 
     @Test
+    public void testStringToLongCastTypeSystemProxy() {
+        TypeSystemTestRootNode root = parse(b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.beginLongConsumerProxy();
+            b.emitStringProducer();
+            b.endLongConsumerProxy();
+            b.endReturn();
+            b.endRoot();
+        });
+
+        Object result = root.getCallTarget().call();
+        assertEquals(TypeSystemTestTypeSystem.INT_AS_LONG_VALUE, result);
+
+        result = root.getCallTarget().call();
+        assertEquals(TypeSystemTestTypeSystem.INT_AS_LONG_VALUE, result);
+    }
+
+    @Test
     public void testStringToLongCastNoTypeSystem() {
         TypeSystemTestRootNode root = parse(b -> {
             b.beginRoot();
@@ -139,6 +199,26 @@ public class TypeSystemTest extends AbstractInstructionTest {
             b.beginLongConsumerNoTypeSystem();
             b.emitStringProducer();
             b.endLongConsumerNoTypeSystem();
+            b.endReturn();
+            b.endRoot();
+        });
+
+        Object result = root.getCallTarget().call();
+        assertEquals(1L, result);
+
+        result = root.getCallTarget().call();
+        assertEquals(1L, result);
+
+    }
+
+    @Test
+    public void testStringToLongCastNoTypeSystemProxy() {
+        TypeSystemTestRootNode root = parse(b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.beginLongConsumerNoTypeSystemProxy();
+            b.emitStringProducer();
+            b.endLongConsumerNoTypeSystemProxy();
             b.endReturn();
             b.endRoot();
         });
@@ -173,6 +253,8 @@ public class TypeSystemTest extends AbstractInstructionTest {
                     languageClass = BytecodeDSLTestLanguage.class)
     @TypeSystemReference(TypeSystemTestTypeSystem.class)
     @SuppressWarnings("unused")
+    @OperationProxy(LongConsumerProxy.class)
+    @OperationProxy(LongConsumerNoTypeSystemProxy.class)
     abstract static class TypeSystemTestRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
         private static final boolean LOG = false;
@@ -237,6 +319,40 @@ public class TypeSystemTest extends AbstractInstructionTest {
             }
         }
 
+    }
+
+    @OperationProxy.Proxyable
+    @SuppressWarnings("truffle-inlining")
+    public abstract static class LongConsumerProxy extends Node {
+        public abstract long execute(Object o);
+
+        @Specialization
+        public static long produce(long v) {
+            return v;
+        }
+    }
+
+    @OperationProxy.Proxyable
+    @TypeSystemReference(EmptyTypeSystem.class)
+    @SuppressWarnings("truffle-inlining")
+    public abstract static class LongConsumerNoTypeSystemProxy extends Node {
+        public abstract long execute(Object o);
+
+        @Specialization
+        public static long produce(long v) {
+            return v;
+        }
+
+        @Specialization
+        public static long produce(int v) {
+            return v;
+        }
+
+        @Specialization
+        @TruffleBoundary
+        public static long produce(String v) {
+            return Long.parseLong(v);
+        }
     }
 
     @TypeSystem
