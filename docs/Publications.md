@@ -4,70 +4,121 @@ link_title: Publications
 permalink: /community/publications/
 toc_group: community
 ---
+
 # Academic Publications
 
-This page describes various presentations and publications related to the GraalVM compiler and Truffle that were published by Oracle Labs and its academic collaborators.
+This page describes various presentations and publications related to the Graal compiler and Truffle that were published by Oracle Labs and its academic collaborators.
 
-## Truffle Tutorial
+## Truffle
 
-Forget "this language is fast", "this language has the libraries I need", and "this language has the tool support I need".
-The Truffle framework for implementing managed languages in Java gives you native performance, multi-language integration with all other Truffle languages, and tool support -- all of that by just implementing an abstract syntax tree (AST) interpreter in Java.
+GraalVM provides the [Truffle framework](../truffle/README.md) for implementing a managed language in Java, giving a language native performance, integration with all other Truffle languages, and tooling support -- all of that by just implementing an abstract syntax tree (AST) interpreter in Java.
 Truffle applies AST specialization during interpretation, which enables partial evaluation to create highly optimized native code without the need to write a compiler specifically for a language.
 The Java VM contributes high-performance garbage collection, threads, and parallelism support.
 
-This tutorial is both for newcomers who want to learn the basic principles of Truffle, and for people with Truffle experience who want to learn about recently added features.
-It presents the basic principles of the partial evaluation used by Truffle and the Truffle DSL used for type specializations, as well as features that were added recently such as the language-agnostic object model, language integration, and debugging support.
+Oracle Labs and external research groups have implemented a variety of programming languages on top of Truffle, including JavaScript,Python, Ruby, R, Smalltalk, and others. 
+Several of them already exceed the best implementation of that language that existed before.
 
-Oracle Labs and external research groups have implemented a variety of programming languages on top of Truffle, including JavaScript, Ruby, R, Python, and Smalltalk. Several of them already exceed the best implementation of that language that existed before.
+We recommend watching a presentation on [Dynamic Metacompilation with Truffle](https://www.youtube.com/watch?v=pksRrON5XfU) by Christian Humer, and checking academic publications on Truffle, of your interest, listed on this page.
+You can also find the extensive [Truffle documentation on the website](https://www.graalvm.org/graalvm-as-a-platform/language-implementation-framework/). 
 
-PLDI 2016, June 13, 2016, Santa Barbara, CA
-[Video recording](https://youtu.be/FJY96_6Y3a4)
-[Slides](https://lafo.ssw.uni-linz.ac.at/pub/papers/2016_PLDI_Truffle.pdf)
+## Graal Compiler
 
-## GraalVM Compiler Tutorial
+The Graal compiler is an optimizing dynamic compiler written in Java.
+Because it is highly configurable and extensible, it delivers excellent peak performance for a diverse set of managed languages including Java (beating the Java HotSpot server compiler) and JavaScript (beating the V8 Crankshaft compiler).
+This brings compiler research to a new level: researchers can evaluate new compiler optimizations immediately on many languages.
+If you are a language implementer who is curious how modern VMs like the Java HotSpot VM or the V8 JavaScript VM optimize your code, you can find answers to that in the presentation by Doug Simon [Looking at the GraalVM compiler](https://www.youtube.com/watch?v=3Gh0cz3vjG8).
 
-This tutorial presents the GraalVM compiler, a high-performance dynamic compiler written in Java. Because it is highly configurable and extensible, it delivers excellent peak performance for a diverse set of managed languages including Java (beating the Java HotSpot server compiler), JavaScript (beating the V8 Crankshaft compiler), Ruby, and R. This lifts compiler research to a new level: researchers can evaluate new compiler optimizations immediately on many languages. If you are a language implementer who is curious how modern VMs like the Java HotSpot VM or the V8 JavaScript VM optimize your code, you will get all your questions answered too.
+The presentation covers the following topics:
+- How to build a GraalVM distribution from the sources
+- Ways the compiler uses Java language features to simplify the development: annotations, unit tests, and benchmarks for individual compiler optimizations
+- What main classes one should look at the GraalVM project
+- Compilation wrappers and so on
 
-In detail, the tutorial covers the following topics:
+Find below also the academic publications on the compiler of your interest, or see the [Graal compiler documentation on the website](https://www.graalvm.org/reference-manual/java/compiler/).
 
-* Key distinguishing features of the GraalVM compiler,
-* Introduction to the compiler IR: basic properties, instructions, and optimization phases
-* Speculative optimizations: first-class support for optimistic optimizations and deoptimization
-* JVMCI API: separation of the compiler from the VM
-* Snippets: expressing high-level semantics in low-level Java code
-* Compiler intrinsics: use all your hardware instructions
-* Using the compiler for static analysis
-* Custom compilations: integration of the compiler with an application or library
-* GraalVM compiler as a compiler for dynamic programming languages
+## Academic Publications
 
-PLDI 2017, June 18-23, Barcelona, Spain
-[Video recording](https://www.youtube.com/watch?v=5_Y3kc--eTI)
-[Download Slides](http://lafo.ssw.uni-linz.ac.at/papers/2017_PLDI_GraalTutorial.pdf)
+### 2024
 
-## Truffle Presentations
+- Matteo Oldani, William Blair, Lukas Stadler, Zbynek Slajchrt, Matthias Neugschwandtner
+[**Binsweep: Reliably Restricting Untrusted Instruction Streams with Static Binary Analysis and Control-Flow Integrity**](https://www.graalvm.org/resources/articles/binsweep.pdf)
+In _Proceedings of the ACM Cloud Computing Security Workshop (CCSW'24)_
 
-**Debugging at Full Speed: Instrumenting Truffle-implemented Programs**
-JVM Language Summit 2014, July 28-30, Santa Clara, CA
-[Video recording](http://medianetwork.oracle.com/video/player/3731019771001)
-[Download slides](http://www.oracle.com/technetwork/java/jvmls2014vandevanter-2265212.pdf)
+- Florian Huemer, David Leopoldseder, Aleksandar Prokopec, Raphael Mosaner, Hanspeter Mössenböck
+[**Taking a Closer Look: An Outlier-Driven Approach to Compilation-Time Optimization**](https://2024.ecoop.org/details/ecoop-2024-papers/24/Taking-a-Closer-Look-An-Outlier-Driven-Approach-to-Compilation-Time-Optimization)
+In _Proceedings of the ECOOP 2024 Doctoral Symposium_
 
-**One VM to Rule Them All**
-JVM Language Summit 2013, July 29-31, Santa Clara, CA
-[Video recording](http://medianetwork.oracle.com/video/player/2623645003001)
-[Download slides](http://lafo.ssw.uni-linz.ac.at/papers/2013_JVMLanguageSummit_OneVMToRuleThemAll.pdf)
+- Andrej Pecimuth, David Leopoldseder, Petr Tuma
+[**Accurate Compilation Replay via Remote JIT Compilation**](https://labs.oracle.com/pls/apex/f?p=94065:10:129133207909118:11009)
+_Poster presented at the 21st International Conference on Managed Programming Languages and Runtimes (MPLR 2024)_
 
-**Truffle: A Self-Optimizing Runtime System**
-SPLASH 2012, October 19-26, Tucson, AZ
-[Download slides](http://lafo.ssw.uni-linz.ac.at/papers/2012_SPLASH_Truffle_Slides.pdf)
-[Download abstract](http://lafo.ssw.uni-linz.ac.at/papers/2012_SPLASH_Truffle.pdf)
+- Christoph Blumschein, Fabio Niephaus, Codrut Stancu, Christian Wimmer, Jens Lincke, Robert Hirschfeld 
+[**Finding Cuts in Static Analysis Graphs to Debloat Software**](https://labs.oracle.com/pls/apex/f?p=94065:10:129133207909118:10909)
+In _Proceedings of the ACM SIGSOFT International Symposium on Software Testing and Analysis_
 
-## Truffle Papers
+- Ivan Ristovic, Milan Cugurovic, Strahinja Stanojevic, Marko Spasic, Vesna Marinkovic, Milena Vujosevic Janicic
+[**Efficient control-flow graph traversal**](https://labs.oracle.com/pls/apex/f?p=94065:10:129133207909118:10929)
+In _Proceedings of YU INFO 2024s_
 
-### 2022 
+- Christian Wimmer, Codrut Stancu, David Kozak, Thomas Wuerthinger
+[**Scaling Type-Based Points-to Analysis with Saturation**](https://labs.oracle.com/pls/apex/f?p=94065:10:129133207909118:10749)
+In _Proceedings of PLDI 2024_
 
-- Daniele Bonetta, Lukas Stadler, David Leopoldseder, Hanspeter Moessenboeck, Jacob Kreindl
+- Milan Cugurovic, Milena Vujosevic Janicic, Vojin Jovanovic, Thomas Wuerthinger
+[**GraalSP: Polyglot, Efficient, and Robust Machine Learning-Based Static Profiler**](https://www.sciencedirect.com/science/article/abs/pii/S0164121224001031)
+_Journal of Systems and Software_
+
+### 2023
+
+- Maja Vukasovic, Aleksandar Prokopec
+[**Exploiting Partially Context-sensitive Profiles to Improve Performance of Hot Code**](https://dl.acm.org/doi/10.1145/3612937)
+In _Proceedings of the ACM Transactions on Programming Languages and Systems_
+
+- Matt D'Souza, James You, Ondrej Lhoták, Aleksandar Prokopec
+[**TASTyTruffle: Just-in-Time Specialization of Parametric Polymorphism**](https://dl.acm.org/doi/10.1145/3622853)
+In _Proceedings of the ACM on Programming Languages_
+
+- Matteo Basso, Aleksandar Prokopec, Andrea Rosà, Walter Binder
+[**Optimization-Aware Compiler-Level Event Profiling**](https://dl.acm.org/doi/10.1145/3591473)
+In _Proceedings of the ACM Transactions on Programming Languages and Systems_
+
+- Andrej Pecimuth
+[**Remote Just-in-Time Compilation for Dynamic Languages**](https://labs.oracle.com/pls/apex/f?p=94065:10:129133207909118:10709)
+In _Proceedings of the SPLASH 2023 Doctoral Symposium_
+
+- Andrej Pecimuth, David Leopoldseder, Petr Tuma
+[**Diagnosing Compiler Performance by Comparing Optimization Decisions**](https://labs.oracle.com/pls/apex/f?p=94065:10:129133207909118:10449)
+In _Proceedings of the 20st International Conference on Managed Programming Languages and Runtimes (MPLR 2023)_
+
+- Julian Garn, Florian Angerer, Hanspeter Mössenböck
+[**Generating Java Interfaces for Accessing Foreign Objects**](https://labs.oracle.com/pls/apex/f?p=94065:10:129133207909118:10769)
+In _Proceedings of the 20st International Conference on Managed Programming Languages and Runtimes (MPLR 2023)_
+
+- David Kozak, Vojin Jovanovic, Codrut Stancu, Tomas Vojnar, Christian Wimmer
+[**Comparing Rapid Type Analysis with Points-To Analysis in GraalVM Native Image**](https://labs.oracle.com/pls/apex/f?p=94065:10:129133207909118:10930)
+In _Proceedings of the 20st International Conference on Managed Programming Languages and Runtimes (MPLR 2023)_
+
+### 2022
+
+- Jacob Kreindl, Daniele Bonetta, Lukas Stadler, David Leopoldseder, Hanspeter Mössenböck
 [**TruffleTaint: Polyglot Dynamic Taint Analysis on GraalVM**](https://apexapps.oracle.com/pls/apex/f?p=94065:10:116444111260916:8758)
 In _Proceedings of the 19th International Conference on Managed Programming Languages and Runtimes (MPLR'22)_
+
+- Raphael Mosaner, David Leopoldseder, Wolfgang Kisling, Lukas Stadler, Hanspeter Mössenböck
+[**ML-SOCO: Machine Learning-Based Self-Optimizing Compiler Optimizations**](https://labs.oracle.com/pls/apex/f?p=94065:10:129133207909118:8733)
+In _Proceedings of the 19th International Conference on Managed Programming Languages & Runtimes (MPLR'22)_
+
+- Lukas Makor, Sebastian Kloibhofer, David Leopoldseder, Daniele Bonetta, Lukas Stadler, Hanspeter Mössenböck
+[**Automatic Array Transformation to Columnar Storage at Run Time**](https://labs.oracle.com/pls/apex/f?p=94065:10:129133207909118:8733)
+In _Proceedings of the 19th International Conference on Managed Programming Languages & Runtimes (MPLR'22)_
+
+- Felix Berlakovich, Gergo Barany, Matthias Neugschwandtner
+[**Constant Blinding on GraalVM**](https://labs.oracle.com/pls/apex/f?p=94065:10:129133207909118:8269)
+In _Proceedings of the 15th EUROPEAN WORKSHOP ON SYSTEMS SECURITY_
+
+- Stefan Reschke, Toni Mattis, Fabio Niephaus, Robert Hirschfeld
+[**Toward Just-in-time and Language-agnostic Mutation Testing**](https://labs.oracle.com/pls/apex/f?p=94065:10:129133207909118:8730)
+In _Proceedings of the MoreVMs’22 workshop at ‹Programming› 2022_
 
 ### 2021 
 
@@ -127,11 +178,11 @@ In _Proceedings of the 15th ACM SIGPLAN International Symposium on Dynamic Langu
 [**Practical Second Futamura Projection**](https://dl.acm.org/citation.cfm?id=3361077)
 In _Proceedings Companion of the 2019 ACM SIGPLAN International Conference on Systems, Programming, Languages, and Applications: Software for Humanity_
 
-- Jacob Kreindl, Hanspeter Moessenboeck, Daniele Bonetta
+- Jacob Kreindl, Hanspeter Mössenböck, Daniele Bonetta
 [**Towards Efficient, Multi-Language Dynamic Taint Analysis**](https://dl.acm.org/citation.cfm?id=3361028)
 In _Proceedings of the 16th ACM SIGPLAN International Conference on Managed Programming Languages and Runtimes_
 
-- Raphael Mosaner, Hanspeter Moessenboeck, Manuel Rigger, Roland Schatz, David Leopoldseder
+- Raphael Mosaner, Hanspeter Mössenböck, Manuel Rigger, Roland Schatz, David Leopoldseder
 [**Supporting On-Stack Replacement in Unstructured Languages by Loop Reconstruction and Extraction**](https://dl.acm.org/citation.cfm?id=3361030)
 In _Proceedings of the 16th ACM SIGPLAN International Conference on Managed Programming Languages and Runtimes_
 
@@ -139,7 +190,7 @@ In _Proceedings of the 16th ACM SIGPLAN International Conference on Managed Prog
 [**Language-independent Development Environment Support For Dynamic Runtimes**](https://dl.acm.org/citation.cfm?id=3359746)
 In _Proceedings of the 15th ACM SIGPLAN International Symposium on Dynamic Languages_
 
-- Stefan Marr, Manuel Rigger, Bram Adams, Hanspeter Moessenboeck
+- Stefan Marr, Manuel Rigger, Bram Adams, Hanspeter Mössenböck
 [**Understanding GCC Builtins to Develop Better Tools**](https://dl.acm.org/citation.cfm?id=3338907)
 In _Proceedings of the 2019 27th ACM Joint Meeting on European Software Engineering Conference and Symposium on the Foundations of Software Engineering_
 
@@ -166,7 +217,7 @@ In _Proceedings of the 15th International Conference on Managed Languages & Runt
 - B. Daloze, A. Tal, S. Marr, H. Mössenböck, E. Petrank [**Parallelization of Dynamic Languages: Synchronizing Built-in Collections**](http://ssw.jku.at/General/Staff/Daloze/thread-safe-collections.pdf)
 In _Proceedings of the Conference on Object-Oriented Programming, Systems, Languages, and Applications (OOPSLA 2018)_
 
-- David Leopoldseder, Roland Schatz, Lukas Stadler, Manuel Rigger, Thomas Wuerthinger, Hanspeter Moessenboeck [**Fast-Path Loop Unrolling of Non-Counted Loops to Enable Subsequent Compiler Optimizations**](https://dl.acm.org/citation.cfm?id=3237013)
+- David Leopoldseder, Roland Schatz, Lukas Stadler, Manuel Rigger, Thomas Wuerthinger, Hanspeter Mössenböck [**Fast-Path Loop Unrolling of Non-Counted Loops to Enable Subsequent Compiler Optimizations**](https://dl.acm.org/citation.cfm?id=3237013)
 In _Proceedings of the 15th International Conference on Managed Languages & Runtimes, Article No. 2 (ManLang'18)_
 
 - David Leopoldseder, Lukas Stadler, Thomas Würthinger,	Josef Eisl, Doug Simon, Hanspeter Mössenböck [**Dominance-based duplication simulation (DBDS): code duplication to enable compiler optimizations**](https://dl.acm.org/citation.cfm?id=3168811)
@@ -178,7 +229,7 @@ In _ACM Transactions on Programming Languages and Systems (TOPLAS), Vol. 40, No.
 - Fabio Niephaus, Tim Felgentreff, and Robert Hirschfeld [**GraalSqueak: A Fast Smalltalk Bytecode Interpreter Written in an AST Interpreter Framework**](https://doi.org/10.1145/3242947.3242948)
 In _Proceedings of the Workshop on Implementation, Compilation, Optimization of Object-Oriented Languages, Programs, and Systems (ICOOOLPS) 2018_
 
-- Manuel Rigger, Roland Schatz, Jacob Kreindl, Christian Haeubl, Hanspeter Moessenboeck [**Sulong, and Thanks for All the Fish**](http://ssw.jku.at/General/Staff/ManuelRigger/MoreVMs18.pdf)
+- Manuel Rigger, Roland Schatz, Jacob Kreindl, Christian Haeubl, Hanspeter Mössenböck [**Sulong, and Thanks for All the Fish**](http://ssw.jku.at/General/Staff/ManuelRigger/MoreVMs18.pdf)
 _MoreVMs Workshop on Modern Language Runtimes, Ecosystems, and VMs (MoreVMs 2018)_
 
 - Michael Van De Vanter, Chris Seaton, Michael Haupt, Christian Humer, and Thomas Würthinger
@@ -300,7 +351,7 @@ Describes the design of self-optimizing and self-specializing interpreter, and t
 
 ### 2023
 
-- David Leopoldseder, Daniele Bonetta, Lukas Stadler, Hanspeter Moessenboeck, Sebastian Kloibhofer, Lukas Makor
+- David Leopoldseder, Daniele Bonetta, Lukas Stadler, Hanspeter Mössenböck, Sebastian Kloibhofer, Lukas Makor
 [**Control Flow Duplication for Columnar Arrays in a Dynamic Compiler**](https://doi.org/10.22152/programming-journal.org/2023/7/9)
 In _Proceedings of the <Programming> 2023 Journal and Conference_
 
@@ -310,7 +361,7 @@ In _Proceedings of the <Programming> 2023 Journal and Conference_
 [**Look Ma, no constants: practical constant blinding in GraalVM**](https://dl.acm.org/doi/10.1145/3517208.3523751)
 In _Proceedings of the 15th European Workshop on Systems Security (EuroSec '22)_
 
-- Gergo Barany, David Leopoldseder, Hanspeter Moessenboeck, Raphael Mosaner
+- Gergo Barany, David Leopoldseder, Hanspeter Mössenböck, Raphael Mosaner
 [**Improving Vectorization Heuristics in a Dynamic Compiler with Learned Models**](https://doi.org/10.1145/3563838.3567679)
 In _Proceedings of the Virtual Machines and Language Implementations Workshop Co-located with SPLASH 2022_
 
@@ -318,11 +369,11 @@ In _Proceedings of the Virtual Machines and Language Implementations Workshop Co
 [**Execution vs. Parse-Based Language Servers: Tradeoffs and Opportunities for Language-Agnostic Tooling for Dynamic Languages**](https://doi.org/10.1145/3563834.3567537)
 In _Proceedings of the 18th Dynamic Languages Symposium (DLS) at SPLASH 2022_
 
-- David Leopoldseder, Daniele Bonetta, Lukas Stadler, Hanspeter Moessenboeck, Lukas Makor, Sebastian Kloibhofer
+- David Leopoldseder, Daniele Bonetta, Lukas Stadler, Hanspeter Mössenböck, Lukas Makor, Sebastian Kloibhofer
 [**Automatic Array Transformation to Columnar Storage at Run Time**](https://doi.org/10.1145/3546918.3546919)
 In _Proceedings of the 19th International Conference on Managed Programming Languages and Runtimes (MPLR'22)_
 
-- David Leopoldseder, Lukas Stadler, Hanspeter Moessenboeck, Raphael Mosaner, Wolfgang Kisling
+- David Leopoldseder, Lukas Stadler, Hanspeter Mössenböck, Raphael Mosaner, Wolfgang Kisling
 [**Machine-Learning-Based Self-Optimizing Compiler Heuristics**](https://doi.org/10.1145/3546918.3546921)
 In _Proceedings of the 19th International Conference on Managed Programming Languages and Runtimes (MPLR'22)_
 
@@ -336,14 +387,14 @@ In _Proceedings of the MoreVMs’22 workshop at ‹Programming› 2022_
 [**Compiler-Assisted Object Inlining with Value Fields**](https://dl.acm.org/doi/10.1145/3453483.3454034)
 In _Proceedings of the 42nd ACM SIGPLAN International Conference on Programming Language Design and Implementation (PLDI 2021)_
 
-- Raphael Mosaner, David Leopoldseder, Lukas Stadler, Hanspeter Moessenboeck 
+- Raphael Mosaner, David Leopoldseder, Lukas Stadler, Hanspeter Mössenböck 
 [**Using Machine Learning to Predict the Code Size Impact of Duplication Heuristics in a Dynamic Compiler**](https://doi.org/10.1145/3475738.3480943)
 In _Proceedings of the 18th ACM SIGPLAN International Conference on Managed Programming Languages and Runtimes (MPLR 2021)_
 
-- Jacob Kreindl, Daniele Bonetta, Lukas Stadler, David Leopoldseder, Hanspeter Moessenboeck [**Low-Overhead Multi-Language Dynamic Taint Analysis through Speculative Optimization and Dynamic Compilation**](https://doi.org/10.1145/3475738.3480939)
+- Jacob Kreindl, Daniele Bonetta, Lukas Stadler, David Leopoldseder, Hanspeter Mössenböck [**Low-Overhead Multi-Language Dynamic Taint Analysis through Speculative Optimization and Dynamic Compilation**](https://doi.org/10.1145/3475738.3480939)
 In _Proceedings of the 18th ACM SIGPLAN International Conference on Managed Programming Languages and Runtimes (MPLR 2021)_
 
-- Florian Latifi, David Leopoldseder, Christian Wimmer, Hanspeter Moessenboeck [**CompGen: Generation of Fast Compilers in a Multi-Language VM**](https://doi.org/10.1145/3486602.3486930)
+- Florian Latifi, David Leopoldseder, Christian Wimmer, Hanspeter Mössenböck [**CompGen: Generation of Fast Compilers in a Multi-Language VM**](https://doi.org/10.1145/3486602.3486930)
 In _Proceedings Dynamic Language Symposium, DLS co-located with SPLASH conference 2021_
 
 - Matt D'Souzam, Gilles Duboscq, [**Lightweight On-Stack Replacement in Languages with Unstructured Loops**](https://dl.acm.org/doi/10.1145/3486606.3486782)
@@ -584,6 +635,10 @@ In _Proceedings of the 2013 companion publication for conference on Systems, pro
 In _Proceedings of the 2013 International Conference on Principles and Practices of Programming on the Java Platform: Virtual Machines, Languages, and Tools (PPPJ '13)_
 
 ### 2012
+
+- Lukas Stadler, Gilles Duboscq, Hanspeter Mössenböck, Thomas Würthinger
+[**Compilation Queuing and Graph Caching for Dynamic Compilers**](https://lafo.ssw.uni-linz.ac.at/pub/papers/2012_VMIL_Graal.pdf)
+In _Proceedings of the Workshop on Virtual Machines and Intermediate Languages (VMIL) 2012_
 
 - Thomas Würthinger, Andreas Wöß, Lukas Stadler, Gilles Duboscq, Doug Simon, Christian Wimmer
 [**Self-optimizing AST interpreters**](http://dl.acm.org/citation.cfm?doid=2384577.2384587)
