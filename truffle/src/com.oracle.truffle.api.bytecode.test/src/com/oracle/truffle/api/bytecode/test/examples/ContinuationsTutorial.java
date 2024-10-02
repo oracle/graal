@@ -65,14 +65,14 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
 
 /**
- * Bytecode DSL interpreters support suspending and resuming execution using continuations. With
- * continuations, a guest method can suspend itself (using a {@code Yield} operation), persisting
- * its execution state in a continuation object. Later, a caller can resume the continuation to
- * continue execution of the guest method. Both yield and resume pass a value, allowing the caller
- * and callee to communicate.
+ * Bytecode DSL interpreters can suspend and resume execution of single methods using continuations.
+ * With continuations, a guest method can suspend itself (using a {@code Yield} operation),
+ * persisting its execution state in a continuation object. Later, a caller can resume the
+ * continuation to continue execution of the guest method. Both yield and resume pass a value,
+ * allowing the caller and callee to communicate.
  * <p>
- * Continuations can be used to implement generators and coroutines. This tutorial will explain how
- * to use continuations in your Bytecode DSL interpreter.
+ * Continuations can be used to implement generators and stackless coroutines. This tutorial will
+ * explain how to use continuations in your Bytecode DSL interpreter.
  */
 public class ContinuationsTutorial {
     /**

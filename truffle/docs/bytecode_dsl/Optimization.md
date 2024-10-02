@@ -31,11 +31,12 @@ Boxing elimination is implemented using quickening, which is described below.
 [Quickening](https://dl.acm.org/doi/10.1145/1869631.1869633) is a general technique to rewrite an instruction with a specialized version that (typically) requires less work.
 The Bytecode DSL supports quickened operations, which handle a subset of the specializations defined by an operation.
 
-Quickened operations can reduce the amount of work required to evaluate an operation.
-For example, a quickened operation that only accepts `int` inputs can avoid operand boxing and the additional type checks required by the general operation.
-Additionally, a custom operation that has only one active specialization can be quickened to an operation that only supports that single specialization, avoiding extra specialization state checks.
+Quickened operations can be introduced to reduce the work required to evaluate an operation.
+For example, a quickened operation that only accepts `int` inputs might avoid operand boxing and the additional type checks required by the general operation.
+Additionally, a custom operation that has only one active specialization could be quickened to an operation that only supports that single specialization, avoiding extra specialization state checks.
 
-Quickened instructions can be automatically derived using [tracing](#tracing), or specified manually using [`@ForceQuickening`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode./src/com/oracle/truffle/api/bytecode/ForceQuickening.java).
+At the moment, quickened instructions can only be specified manually using [`@ForceQuickening`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode./src/com/oracle/truffle/api/bytecode/ForceQuickening.java).
+In the future, [tracing](#tracing) will be able to automatically infer useful quickenings.
 
 
 ## Superinstructions
@@ -45,7 +46,7 @@ Quickened instructions can be automatically derived using [tracing](#tracing), o
 [Superinstructions](https://dl.acm.org/doi/abs/10.1145/1059579.1059583) combine common sequences of instructions together into single instructions.
 Using superinstructions can reduce the overhead of instruction dispatch, and it can enable the host compiler to perform optimizations across the instructions (e.g., eliding a stack push for a value that is subsequently popped).
 
-Superinstructions can be automatically derived using [tracing](#tracing).
+In the future, [tracing](#tracing) will be able to automatically infer useful superinstructions.
 
 
 ## Tracing
@@ -53,7 +54,7 @@ Superinstructions can be automatically derived using [tracing](#tracing).
 **Note: Tracing is not yet supported**.
 
 Determining which instructions are worth optimizing (via quickening or superinstructions) typically requires manual profiling and benchmarking.
-The Bytecode DSL can automatically infer optimization opportunities using *tracing*.
+In the future, the Bytecode DSL will automatically infer optimization opportunities by tracing the execution of a representative corpus of code.
 
 <!--
 

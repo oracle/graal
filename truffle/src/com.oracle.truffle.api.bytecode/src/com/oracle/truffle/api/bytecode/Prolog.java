@@ -45,6 +45,10 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
+import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
+
 /**
  * Defines a prolog operation that executes before the body of a Root operation.
  * <p>
@@ -55,6 +59,9 @@ import java.lang.annotation.Target;
  * The prolog is guarded by exception intercept methods (e.g.,
  * {@link BytecodeRootNode#interceptInternalException(Throwable, BytecodeNode, int)}) as well as the
  * {@link EpilogExceptional exceptional epilog}, if present.
+ * <p>
+ * When {@link Tag} instrumentation is enabled, the prolog will execute after {@link RootTag root}
+ * probes and before {@link RootBodyTag root body} probes.
  *
  * @since 24.2
  * @see EpilogReturn

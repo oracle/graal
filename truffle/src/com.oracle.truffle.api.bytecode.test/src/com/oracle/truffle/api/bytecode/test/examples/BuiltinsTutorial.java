@@ -76,7 +76,7 @@ import com.oracle.truffle.api.bytecode.Prolog;
 import com.oracle.truffle.api.bytecode.Variadic;
 import com.oracle.truffle.api.bytecode.serialization.SerializationUtils;
 import com.oracle.truffle.api.bytecode.test.DebugBytecodeRootNode;
-import com.oracle.truffle.api.bytecode.test.examples.BuiltinTutorialFactory.ParseIntBuiltinNodeGen;
+import com.oracle.truffle.api.bytecode.test.examples.BuiltinsTutorialFactory.ParseIntBuiltinNodeGen;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.GenerateInline;
@@ -107,7 +107,7 @@ import com.oracle.truffle.api.nodes.RootNode;
  * <p>
  * This tutorial is intended to be read top-to-bottom and contains some runnable unit tests.
  */
-public class BuiltinTutorial {
+public class BuiltinsTutorial {
 
     /**
      * We start by specifying a sealed base class for all of our different kinds of builtins. Every
@@ -302,7 +302,7 @@ public class BuiltinTutorial {
          * to minimize memory footprint we lazily create the call target on first access.
          *
          * This root node is a simple bytecode node that executes the {@link JavaBuiltin} using the
-         * {@link LanguageWithBuiltins#InlineBuiltin} operation. It will automatically transition
+         * {@link BuiltinLanguageRootNode#InlineBuiltin} operation. It will automatically transition
          * the interpreter (and hence, the builtin node) from uncached to cached.
          *
          * One advantage of using the Bytecode DSL to implement the builtin root node is that we
@@ -313,8 +313,8 @@ public class BuiltinTutorial {
          *
          * Another advantage of using bytecode to inline builtins is that they can also be used
          * directly in the code without call semantics (i.e., instead of a builtin being a call
-         * target, as it is here, the parser could use {@link LanguageWithBuiltins#InlineBuiltin} to
-         * directly inline a builtin node into a guest bytecode method).
+         * target, as it is here, the parser could use {@link BuiltinLanguageRootNode#InlineBuiltin}
+         * to directly inline a builtin node into a guest bytecode method).
          */
         @Override
         CallTarget getOrCreateCallTarget() {

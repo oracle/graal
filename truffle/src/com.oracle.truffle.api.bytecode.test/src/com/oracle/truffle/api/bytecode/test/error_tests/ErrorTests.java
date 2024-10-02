@@ -713,10 +713,12 @@ public class ErrorTests {
     @GenerateBytecode(languageClass = ErrorLanguage.class)
     @ExpectError({
                     "Specializations for boolean converter ToBooleanBadReturn must only take one dynamic operand and return boolean.",
-                    "Encountered errors using ToBooleanBadOperation as a boolean converter. These errors must be resolved before the DSL can proceed."
+                    "Encountered errors using ToBooleanBadOperation as a boolean converter. These errors must be resolved before the DSL can proceed.",
+                    "Could not use class as boolean converter: the converter type must be a declared type, not int."
     })
     @ShortCircuitOperation(name = "Foo", operator = Operator.AND_RETURN_VALUE, booleanConverter = BadBooleanConverterTest.ToBooleanBadReturn.class)
     @ShortCircuitOperation(name = "Bar", operator = Operator.AND_RETURN_VALUE, booleanConverter = BadBooleanConverterTest.ToBooleanBadOperation.class)
+    @ShortCircuitOperation(name = "Baz", operator = Operator.AND_RETURN_VALUE, booleanConverter = int.class)
     public abstract static class BadBooleanConverterTest extends RootNode implements BytecodeRootNode {
         protected BadBooleanConverterTest(ErrorLanguage language, FrameDescriptor builder) {
             super(language, builder);

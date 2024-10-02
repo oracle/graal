@@ -161,7 +161,7 @@ public @interface ShortCircuitOperation {
      *
      * @since 24.2
      */
-    Class<?> booleanConverter() default void.class;
+    Class<?> booleanConverter();
 
     /**
      * Optional documentation for the short circuit operation. This documentation is included in the

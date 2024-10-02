@@ -484,9 +484,10 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
 
         for (AnnotationMirror mir : ElementUtils.getRepeatedAnnotation(typeElement.getAnnotationMirrors(), types.ShortCircuitOperation)) {
             customOperationDeclared = true;
+            AnnotationValue mirrorValue = ElementUtils.getAnnotationValue(mir, "booleanConverter");
             TypeMirror proxiedType = getTypeMirror(ElementUtils.getAnnotationValue(mir, "booleanConverter"));
             if (proxiedType.getKind() != TypeKind.DECLARED) {
-                model.addError("Could not proxy operation: the proxied type must be a class, not %s", proxiedType);
+                model.addError(mir, mirrorValue, "Could not use class as boolean converter: the converter type must be a declared type, not %s.", proxiedType);
                 continue;
             }
 
