@@ -1147,7 +1147,7 @@ suite = {
       # tests in the project (difference in behavior between O0 and
       # O1). This issue is related to the vstore.ll.ignored test in
       # that we should fix it once we have a solution for the general
-      # issue in exeuction mistmatches. Until then the Sulong behavior
+      # issue in execution mismatches. Until then the Sulong behavior
       # is the more accurate one.
       "variants" : ["bitcode-O0"],
       "fileExts" : [".ll"],

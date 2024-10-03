@@ -72,7 +72,7 @@ public class LoopsData {
     /**
      * Take the given control flow graph and compute all loop data from it.
      *
-     * Note: assumes that the control flow graph reflects the current shape of tha graph. If the CFG
+     * Note: assumes that the control flow graph reflects the current shape of that graph. If the CFG
      * was computed and aftwards the fixed nodes in the graph have been altered it must not be used
      * to compute loops data.
      */

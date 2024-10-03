@@ -1503,7 +1503,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     /**
      * C6.2.211 Pointer Authentication Code (PAC) for Instruction Address, using key A.
      *
-     * This variant will compute the pointer authentification code for lr using sp as the modifier.
+     * This variant will compute the pointer authentication code for lr using sp as the modifier.
      * On machines where the instruction is not supported it will be a no-op.
      */
     public void paciasp() {

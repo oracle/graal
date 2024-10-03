@@ -556,7 +556,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
     public void testEvalInnerContextEvalErrors() {
         setupEnv();
 
-        // regualar context must not be used
+        // regular context must not be used
         TruffleContext currentContext = languageEnv.getContext();
         assertFails(() -> currentContext.evalInternal(null, newTruffleSource()), IllegalStateException.class, (e) -> {
             assertEquals("Only created inner contexts can be used to evaluate sources. " +

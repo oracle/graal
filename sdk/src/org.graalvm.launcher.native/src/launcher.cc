@@ -197,7 +197,7 @@ static int setenv(std::string key, std::string value) {
         }
     #else
         if (value.empty()) {
-            /* on posix, unsetenv cleares the env variable */
+            /* on posix, unsetenv clears the env variable */
             if (unsetenv(key.c_str()) == -1) {
                 perror("unsetenv failed");
                 return -1;

@@ -600,7 +600,7 @@ public final class Bytecodes {
         def(ARETURN             , "areturn"         , "b"    , -1, TRAP | STOP);
         def(RETURN              , "return"          , "b"    ,  0, TRAP | STOP);
 
-        // The stack effect of put/get bytecodes encodes the the number of slots that are guarantee to be pusehd/popped by a full push/pop operation.
+        // The stack effect of put/get bytecodes encodes the the number of slots that are guarantee to be pushed/popped by a full push/pop operation.
         // e.g. getField pops the receiver (-1), but the result size depends on the field, so it's not included in the effect.
         def(GETSTATIC           , "getstatic"       , "bjj"  ,  0, TRAP | FIELD_READ | PRODUCE_FOREIGN);
         def(PUTSTATIC           , "putstatic"       , "bjj"  ,  0, TRAP | FIELD_WRITE);
