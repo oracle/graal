@@ -169,7 +169,7 @@ import com.oracle.truffle.api.source.Source;
  *  L: number of installed languages
  *  I: number of installed instruments
  *
- *  - 1 : Host VM Processs
+ *  - 1 : Host VM Processes
  *   - N : {@linkplain org.graalvm.polyglot.Engine Engine}
  *     - N : {@linkplain org.graalvm.polyglot.Context Context}
  *       - L : Language Context
@@ -2776,7 +2776,7 @@ public abstract class TruffleLanguage<C> {
         /**
          * Returns an additional service provided by the given language, specified by type. For
          * services registered by {@link Registration#services()} the service lookup will ensure
-         * that the language is loaded and services are registered. The provided langauge and type
+         * that the language is loaded and services are registered. The provided language and type
          * must not be <code>null</code>.
          *
          * @param <S> the requested type
@@ -2860,7 +2860,7 @@ public abstract class TruffleLanguage<C> {
          * Using the language instance additional services can be
          * {@link #lookup(LanguageInfo, Class) looked up}. {@link #parsePublic(Source, String...)}
          * is allowed for all languages returned by this method. This list of languages may be
-         * exposed ot the guest language program.
+         * exposed to the guest language program.
          *
          * @see #parsePublic(Source, String...)
          * @since 19.2
@@ -4087,7 +4087,7 @@ public abstract class TruffleLanguage<C> {
         public abstract L get(Node node);
 
         /**
-         * Creates a new instance of a langauge reference for an registered language. Throws
+         * Creates a new instance of a language reference for an registered language. Throws
          * {@link IllegalArgumentException} if the provided language class is not
          * {@link Registration registered}. Guaranteed to always return the same context reference
          * for a given language class.
@@ -4553,7 +4553,7 @@ class TruffleLanguageSnippets {
         @Override
         protected void initializeContext(Context context) throws Exception {
             // create and start a Thread for the asynchronous task
-            // remeber the Thread reference to stop and join it in
+            // remember the Thread reference to stop and join it in
             // the finalizeContext
             Thread t = context.env.newTruffleThreadBuilder(new Runnable() {
                 @Override
