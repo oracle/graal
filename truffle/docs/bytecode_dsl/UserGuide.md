@@ -152,9 +152,9 @@ They model common language primitives, such as constant accesses (`LoadConstant`
 The built-in operations are:
 
 
-- `Root`: defines a root node
-- `Return`: returns a value from the root node
-- `Block`: sequences multiple operations; produces the value of the last operation
+- `Root`: Defines a root node.
+- `Return`: Returns a value from the root node.
+- `Block`: Sequences multiple operations, producing the value of the last operation. `Block` operations are a build-time construct (unlike Truffle `BlockNode`s, they do not affect run time behaviour).
 - Value producers
   - `LoadConstant`: produces a non-`null` constant value
   - `LoadNull`: produces `null`
@@ -371,8 +371,8 @@ b.endIfThenElse();
 
 A limited form of unstructured control flow is also possible in Bytecode DSL interpreters using labels and forward branches.
 
-Parsers can allocate a `BytecodeLabel` using the builder's `createLabel` method.
-The label should be emitted using `emitLabel` at some location in the same block, and can be branched to using `emitBranch`.
+Parsers can allocate a `BytecodeLabel` using the builder's `createLabel` method when inside a `Root` or `Block` operation.
+The label should be emitted at some location in the same operation using `emitLabel`, and can be branched to using `emitBranch`.
 
 The following code allocates a label, emits a branch to it, and then emits the label at the location to branch to:
 ```java
@@ -389,7 +389,7 @@ When executed, control will jump from the branch location to the label location.
 
 There are some restrictions on the kinds of branches allowed:
 
-1. Any branch must be (directly or indirectly) nested in the label's creating operation (a `Root` or `Block`). That is, you cannot branch into an operation, only across or out of it.
+1. Any branch must be (directly or indirectly) nested in the `Root` or `Block` where `createLabel` was called. That is, you cannot branch into an operation, only across or out of it.
 2. Only forward branches are supported. For backward branches, use `While` operations.
 
 Unstructured control flow is useful for implementing loop breaks, continues, and other more advanced control flow (like `switch`).

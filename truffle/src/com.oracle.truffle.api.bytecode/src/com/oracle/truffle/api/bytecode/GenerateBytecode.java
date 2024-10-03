@@ -375,8 +375,9 @@ public @interface GenerateBytecode {
     // boolean forceTracing() default false;
 
     /**
-     * Primitive types for which the interpreter should attempt to avoid boxing.
-     *
+     * Primitive types the interpreter should attempt to avoid boxing up. Each type should be
+     * primitive class literal (e.g., {@code int.class}).
+     * <p>
      * If boxing elimination types are provided, the cached interpreter will generate instruction
      * variants that load/store primitive values when possible. It will automatically use these
      * instructions in a best-effort manner (falling back on boxed representations when necessary).
