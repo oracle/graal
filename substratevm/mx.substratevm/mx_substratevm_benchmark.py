@@ -623,9 +623,6 @@ class SpecJVM2008NativeImageBenchmarkSuite(mx_sdk_benchmark.SpecJvm2008Benchmark
     def name(self):
         return 'specjvm2008-native-image'
 
-    def benchSuiteName(self, bmSuiteArgs=None):
-        return 'specjvm2008'
-
     def run(self, benchmarks, bmSuiteArgs) -> mx_benchmark.DataPoints:
         return self.intercept_run(super(), benchmarks, bmSuiteArgs)
 
