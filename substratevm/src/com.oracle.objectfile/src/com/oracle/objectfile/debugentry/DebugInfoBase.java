@@ -64,7 +64,7 @@ import com.oracle.objectfile.debuginfo.DebugInfoProvider;
  * n.b. methods of a given class do not always appear in a single continuous address range. The
  * compiler choose to interleave intervening code from other classes or data values in order to get
  * better cache locality. It may also choose to generate deoptimized variants of methods in a
- * separate range from normal, optimized compiled code. This out of (code addess) order sorting may
+ * separate range from normal, optimized compiled code. This out of (code address) order sorting may
  * make it difficult to use a class by class traversal to generate debug info in separate per-class
  * units.
  */

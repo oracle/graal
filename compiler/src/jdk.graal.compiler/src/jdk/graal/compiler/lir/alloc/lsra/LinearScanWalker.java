@@ -361,7 +361,7 @@ class LinearScanWalker extends IntervalWalker {
                     optimalSplitPos = maxSplitPos;
 
                 } else {
-                    // seach optimal block boundary between minSplitPos and maxSplitPos
+                    // search optimal block boundary between minSplitPos and maxSplitPos
                     if (debug.isLogEnabled()) {
                         debug.log("moving split pos to optimal block boundary between block B%d and B%d", minBlock.getId(), maxBlock.getId());
                     }
@@ -753,7 +753,7 @@ class LinearScanWalker extends IntervalWalker {
 
             // usePos contains the start of the next interval that has this register assigned
             // (either as a fixed register or a normal allocated register in the past)
-            // only intervals overlapping with cur are processed, non-overlapping invervals can be
+            // only intervals overlapping with cur are processed, non-overlapping intervals can be
             // ignored safely
             if (debug.isLogEnabled()) {
                 // Enable this logging to see all register states
@@ -1036,7 +1036,7 @@ class LinearScanWalker extends IntervalWalker {
 
         if (interval.spillState() != SpillState.NoOptimization || registerHint.spillState() != SpillState.NoOptimization) {
             // combining the stack slots for intervals where spill move optimization is applied
-            // is not benefitial and would cause problems
+            // is not beneficial and would cause problems
             return;
         }
 
@@ -1065,7 +1065,7 @@ class LinearScanWalker extends IntervalWalker {
         assert endHint.firstUsage(RegisterPriority.MustHaveRegister) == endPos : "must have use position at begin of interval because of move";
 
         if (isRegister(beginHint.location())) {
-            // registerHint is not spilled at beginPos : so it would not be benefitial to
+            // registerHint is not spilled at beginPos : so it would not be beneficial to
             // immediately spill cur
             return;
         }

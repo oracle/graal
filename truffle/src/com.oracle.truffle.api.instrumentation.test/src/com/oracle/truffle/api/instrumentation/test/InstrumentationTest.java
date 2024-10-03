@@ -1206,7 +1206,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
             assureEnabled(engine.getInstruments().get("testOutputConsumerPiped"));
             context.eval(lines("PRINT(OUT, CONSTANT(\"OutputToStdOut\"))"));
             context.eval(lines("PRINT(ERR, CONSTANT(\"OutputToStdErr\"))"));
-            // test that the output goes eveywhere
+            // test that the output goes everywhere
             Assert.assertEquals("OutputToStdOut", getOut());
             Assert.assertEquals("OutputToStdOut", TestOutputConsumerArray.getOut());
             Assert.assertEquals("OutputToStdErr", getErr());
@@ -1372,7 +1372,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     }
 
     /*
-     * Use tags that are not declarded as required.
+     * Use tags that are not declared as required.
      */
     @Test
     @Ignore // InstrumentClientInstrumenter.verifyFilter() is empty
@@ -1711,7 +1711,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         assertNull(access.env.lookup(other, Object.class));
         assertEquals(0, TestAccessInstrumentsOther.initializedCount);
 
-        // valide service, should trigger onCreate
+        // valid service, should trigger onCreate
         assertNotNull(access.env.lookup(other, TestAccessInstrumentsOther.class));
         assertEquals(1, TestAccessInstrumentsOther.initializedCount);
 
@@ -1930,7 +1930,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         @TruffleBoundary
         private void doOnEnter(EventContext context) {
             if (!initializationEvents && !context.isLanguageContextInitialized()) {
-                // Skipt language context initialization if initializationEvents is false
+                // Skip language context initialization if initializationEvents is false
                 return;
             }
             enteredNodes.add(context.getInstrumentedNode().getClass().getSimpleName());

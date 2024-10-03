@@ -218,7 +218,7 @@ final class HostMethodScope {
         volatile HostMethodScope scope; // null if pinned
         /*
          * Index in the scope to remove it from the scope list when pinned. Negative index indicate
-         * a position in the dynamic scope and positive indices a postion in the static scope.
+         * a position in the dynamic scope and positive indices a position in the static scope.
          */
         private final int index;
 

@@ -509,7 +509,7 @@ final class BacktraceVisitor extends JavaStackFrameVisitor {
             long sourceClassOop = assertNonZero(ReferenceAccess.singleton().getCompressedRepresentation(sourceClass).rawValue());
             long sourceMethodNameOop = assertNonZero(ReferenceAccess.singleton().getCompressedRepresentation(sourceMethodName).rawValue());
             VMError.guarantee((0xffffffff_00000000L & sourceClassOop) == 0L, "Compressed source class reference with high bits");
-            VMError.guarantee((0xffffffff_00000000L & sourceMethodNameOop) == 0L, "Compressed source methode name reference with high bits");
+            VMError.guarantee((0xffffffff_00000000L & sourceMethodNameOop) == 0L, "Compressed source method name reference with high bits");
             backtrace[pos + 1] = (sourceClassOop << 32) | sourceMethodNameOop;
         } else {
             backtrace[pos + 1] = assertNonZero(Word.objectToUntrackedPointer(sourceClass).rawValue());

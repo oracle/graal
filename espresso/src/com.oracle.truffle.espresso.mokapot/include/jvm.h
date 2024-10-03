@@ -1687,7 +1687,7 @@ JNIEXPORT jint JNICALL // Removed in 11
 JVM_Close(jint fd);
 
 /*
- * Read data from a file decriptor into a char array.
+ * Read data from a file descriptor into a char array.
  *
  * fd        the file descriptor to read from.
  * buf       the buffer where to put the read data.
@@ -1699,7 +1699,7 @@ JNIEXPORT jint JNICALL // Removed in 11
 JVM_Read(jint fd, char *buf, jint nbytes);
 
 /*
- * Write data from a char array to a file decriptor.
+ * Write data from a char array to a file descriptor.
  *
  * fd        the file descriptor to read from.
  * buf       the buffer from which to fetch the data.
@@ -1981,7 +1981,7 @@ JVM_GetResourceLookupCache(JNIEnv *env, jobject loader, const char *resource_nam
  *    HS:   JVM_GetVersionInfo and Abstract_VM_Version class
  *    SDK:  Version class
  *
- * Similary, a private JDK interface JDK_GetVersionInfo0 is defined for
+ * Similarly, a private JDK interface JDK_GetVersionInfo0 is defined for
  * JVM to query for the JDK version and capabilities.
  *
  * When a new bit is added, the following should be updated to provide

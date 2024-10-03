@@ -754,7 +754,7 @@ import jdk.graal.compiler.debug.DebugContext;
  * type is typed (via a later level 1 DIE) as a DWARF array, i.e. it is a data block embedded
  * directly in the layout, with a nominal element count of 0. The elements of this DWARF array are
  * typed using the DWARF type corresponding to the Java array's element type. It is either a Java
- * primitive type or a Java reference type (i.e. the pointer type ot the underlying layout type). A
+ * primitive type or a Java reference type (i.e. the pointer type of the underlying layout type). A
  * nominal array length of zero means that this second data field does not actually add any extra
  * size to the array layout. So, all array types have the same length.
  * <p>

@@ -138,7 +138,7 @@ public class LazyGroupTest extends BinaryDataTestBase {
 
     public void testGroupAppearsEarly() throws Exception {
         loadGroupStart();
-        // assert that the group appeared eearly
+        // assert that the group appeared early
         assertNotNull(parent);
         assertFalse(lazyParent.isComplete());
     }

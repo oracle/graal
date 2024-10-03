@@ -83,7 +83,7 @@ import com.oracle.truffle.api.nodes.RootNode;
  * capabilities of the {@link TruffleRuntime runtime system}. If the runtime returns
  * <code>true</code> in {@link TruffleRuntime#isProfilingEnabled()} then runtime information will
  * get collected. This comes at at the cost of additional overhead and footprint in interpreted
- * mode. Thats why the factory methods of profiles can return implementations where profiling is
+ * mode. That's why the factory methods of profiles can return implementations where profiling is
  * disabled. Using disabled profiles makes sense for runtimes that are unable to use the collected
  * profiling information. Even runtime implementations that are able to use this information might
  * decide to turn off profiling for benchmarking purposes.
