@@ -136,7 +136,7 @@ gu -L install /path/to/sl-component.jar
 A language built with Truffle can be AOT compiled using [Native Image](../reference-manual/native-image/README.md).
 Running `mvn package` in the SimpleLanguage directory also builds a `slnative` executable in the `native` directory.
 This executable is the full SimpleLanguage implementation as a single native application, and has no need for GraalVM in order to execute SimpleLanguage code.
-Besides this, a big advantage of using the native executable when compared to running on GraalVM is the greatly faster startup time as shown bellow:
+Besides this, a big advantage of using the native executable when compared to running on GraalVM is the greatly faster startup time as shown below:
 ```shell
 time ./sl language/tests/HelloWorld.sl
 == running on org.graalvm.polyglot.Engine@2db0f6b2
