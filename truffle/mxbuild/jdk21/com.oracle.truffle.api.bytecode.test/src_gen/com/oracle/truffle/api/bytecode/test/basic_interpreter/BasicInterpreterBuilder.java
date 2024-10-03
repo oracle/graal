@@ -180,6 +180,10 @@ public abstract class BasicInterpreterBuilder extends BytecodeBuilder {
 
     public abstract void emitGetSourcePosition();
 
+    public abstract void beginEnsureAndGetSourcePosition();
+
+    public abstract void endEnsureAndGetSourcePosition();
+
     public abstract void emitGetSourcePositions();
 
     public abstract void beginCopyLocalsToFrame();

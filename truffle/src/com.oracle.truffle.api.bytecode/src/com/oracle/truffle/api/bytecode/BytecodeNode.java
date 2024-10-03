@@ -218,11 +218,9 @@ public abstract class BytecodeNode extends Node {
      * Finds the most concrete source location associated with the given bytecode index. The method
      * returns <code>null</code> if no source section could be found. Calling this method also
      * {@link BytecodeRootNodes#ensureSourceInformation() ensures source sections} are materialized.
-     *
      * <p>
      * If source sections have not yet been materialized, then <code>null</code> is returned. Source
-     * sections may be materialized by calling {@link #ensureSourceInformation()}.
-     *
+     * sections can be materialized by calling {@link #ensureSourceInformation()}.
      *
      * @param bytecodeIndex the bytecode index, used to determine liveness of source sections. A
      *            valid bytecode index can be obtained by calling
@@ -240,8 +238,7 @@ public abstract class BytecodeNode extends Node {
      * {@link BytecodeRootNodes#ensureSourceInformation() ensures source sections} are materialized.
      * <p>
      * If source sections have not yet been materialized, then <code>null</code> is returned. Source
-     * sections may be materialized by calling {@link BytecodeRootNodes#update(BytecodeConfig)
-     * update} with {@link BytecodeConfig#WITH_SOURCE}.
+     * sections can be materialized by calling {@link #ensureSourceInformation()}.
      *
      * @param bytecodeIndex the bytecode index, used to determine liveness of source sections. A
      *            valid bytecode index can be obtained by calling
@@ -281,9 +278,7 @@ public abstract class BytecodeNode extends Node {
      * Gets the source location associated with a particular {@link FrameInstance frameInstance}. *
      * <p>
      * If source sections have not yet been materialized, then <code>null</code> is returned. Source
-     * sections may be materialized by calling {@link BytecodeRootNodes#update(BytecodeConfig)
-     * update} with {@link BytecodeConfig#WITH_SOURCE}.
-     *
+     * sections can be materialized by calling {@link #ensureSourceInformation()}.
      *
      * @param frameInstance the frame instance
      * @return the source location, or null if a location could not be found
@@ -301,9 +296,7 @@ public abstract class BytecodeNode extends Node {
      * Gets all source locations associated with a particular {@link FrameInstance frameInstance}. *
      * <p>
      * If source sections have not yet been materialized, then <code>null</code> is returned. Source
-     * sections may be materialized by calling {@link BytecodeRootNodes#update(BytecodeConfig)
-     * update} with {@link BytecodeConfig#WITH_SOURCE}.
-     *
+     * sections can be materialized by calling {@link #ensureSourceInformation()}.
      *
      * @param frameInstance the frame instance
      * @return the source locations, or null if they could not be found

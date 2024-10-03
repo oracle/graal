@@ -491,6 +491,22 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
     }
 
     @Operation
+    public static final class EnsureAndGetSourcePosition {
+        @Specialization
+        public static SourceSection doOperation(VirtualFrame frame, boolean ensure,
+                        @Bind Node node,
+                        @Bind BytecodeNode bytecode) {
+            // Put this branch in the operation itself so that the bytecode branch profile doesn't
+            // mark this path unreached during compilation.
+            if (ensure) {
+                return bytecode.ensureSourceInformation().getSourceLocation(frame, node);
+            } else {
+                return bytecode.getSourceLocation(frame, node);
+            }
+        }
+    }
+
+    @Operation
     public static final class GetSourcePositions {
         @Specialization
         public static SourceSection[] doOperation(VirtualFrame frame,

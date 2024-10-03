@@ -556,7 +556,8 @@ When a reparse is requested, the parser is invoked again and is expected to perf
 The [`BytecodeRootNodes`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeRootNodes.java) result from the parse retains a reference to the parser, so keep in mind that any strong references the parser holds may keep some objects (e.g., source file contents or ASTs) alive in the heap.
 
 Reparsing updates the [`BytecodeNode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeNode.java) for a given root node.
-When the bytecode changes, any compiled code for the root node is invalidated, and the old bytecode is invalidated in order to transition active (on-stack) invocations to the new bytecode.
+When the bytecode instructions change, any compiled code for the root node is invalidated, and the old bytecode is invalidated in order to transition active (on-stack) invocations to the new bytecode.
+Note that source information updates [do _not_ invalidate compiled code](RuntimeCompilation.md#source-information).
 
 
 ### Bytecode introspection
