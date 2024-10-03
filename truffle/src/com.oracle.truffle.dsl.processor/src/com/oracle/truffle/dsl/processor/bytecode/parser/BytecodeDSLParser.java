@@ -83,6 +83,8 @@ import com.oracle.truffle.dsl.processor.bytecode.model.OptimizationDecisionsMode
 import com.oracle.truffle.dsl.processor.bytecode.model.OptimizationDecisionsModel.ResolvedQuickenDecision;
 import com.oracle.truffle.dsl.processor.bytecode.model.Signature;
 import com.oracle.truffle.dsl.processor.bytecode.parser.SpecializationSignatureParser.SpecializationSignature;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression;
+import com.oracle.truffle.dsl.processor.expression.DSLExpressionResolver;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.library.ExportsData;
 import com.oracle.truffle.dsl.processor.library.ExportsLibrary;
@@ -228,6 +230,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         model.enableRootTagging = model.enableTagInstrumentation && ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableRootTagging");
         model.enableRootBodyTagging = model.enableTagInstrumentation && ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableRootBodyTagging");
         model.enableLocalScoping = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableLocalScoping");
+        model.defaultLocalValue = ElementUtils.getAnnotationValue(String.class, generateBytecodeMirror, "defaultLocalValue", false);
 
         BytecodeDSLBuiltins.addBuiltins(model, types, context);
 
@@ -387,6 +390,28 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
 
         if (model.hasErrors()) {
             return;
+        }
+
+        if (model.defaultLocalValue != null) {
+            model.defaultLocalValueExpression = DSLExpression.parse(model, "defaultLocalValue", model.defaultLocalValue);
+            if (model.defaultLocalValueExpression != null) {
+                List<Element> elements = new ArrayList<>();
+                for (VariableElement te : ElementFilter.fieldsIn(typeElement.getEnclosedElements())) {
+                    if (!te.getModifiers().contains(Modifier.STATIC)) {
+                        continue;
+                    }
+                    elements.add(te);
+                }
+                for (Element te : ElementFilter.methodsIn(typeElement.getEnclosedElements())) {
+                    if (!te.getModifiers().contains(Modifier.STATIC)) {
+                        continue;
+                    }
+                    elements.add(te);
+                }
+
+                DSLExpressionResolver resolver = new DSLExpressionResolver(context, typeElement, elements);
+                model.defaultLocalValueExpression = DSLExpression.resolve(resolver, model, "defaultLocalValue", model.defaultLocalValueExpression, model.defaultLocalValue);
+            }
         }
 
         // find and bind type system

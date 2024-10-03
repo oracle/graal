@@ -48,6 +48,7 @@ import java.lang.annotation.Target;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
@@ -393,5 +394,32 @@ public @interface GenerateBytecode {
      * @since 24.2
      */
     boolean enableSpecializationIntrospection() default false;
+
+    /**
+     * Sets the default value that {@link BytecodeLocal locals} return when they are read without
+     * ever being written. By default {@link BytecodeLocal locals} that were never stored throw an
+     * {@link FrameSlotTypeException} internal error when they are read, unless a default local
+     * value is specified.
+     * <p>
+     * The default local value expression is recommended to be referring to a static and final
+     * constant in the bytecode root node. For example:
+     *
+     * <pre>
+     * &#64;GenerateBytecode(..., defaultLocalValue = "DEFAULT_VALUE")
+     * abstract class MyBytecodeRootNode extends RootNode implements BytecodeRootNode {
+     *
+     *     static final DefaultValue DEFAULT_VALUE = DefaultValue.INSTANCE;
+     *
+     *     // ...
+     * }
+     * </pre>
+     *
+     * Other expressions like <code>null</code> or invoking a static method are possible as well.
+     * Note that instance methods of the root node cannot be bound with the default local value
+     * expression for efficiency reasons.
+     *
+     * @since 24.2
+     */
+    String defaultLocalValue() default "";
 
 }

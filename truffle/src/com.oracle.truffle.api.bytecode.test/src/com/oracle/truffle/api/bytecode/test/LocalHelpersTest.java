@@ -43,8 +43,8 @@ package com.oracle.truffle.api.bytecode.test;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
-import static com.oracle.truffle.api.bytecode.test.BytecodeNodeWithLocalIntrospection.GetLocalTagged;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -58,6 +58,7 @@ import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
@@ -75,6 +76,7 @@ import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants.Variant;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.Variadic;
+import com.oracle.truffle.api.bytecode.test.BytecodeNodeWithLocalIntrospection.GetLocalTagged;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -92,8 +94,10 @@ public class LocalHelpersTest {
     @Parameters(name = "{0}")
     public static List<Class<? extends BytecodeNodeWithLocalIntrospection>> getInterpreterClasses() {
         return List.of(BytecodeNodeWithLocalIntrospectionBase.class,
-                        BytecodeNodeWithLocalIntrospectionWithBoxingElimination.class,
-                        BytecodeNodeWithLocalIntrospectionWithUncached.class);
+                        BytecodeNodeWithLocalIntrospectionBaseDefault.class,
+                        BytecodeNodeWithLocalIntrospectionWithBEObjectDefault.class,
+                        BytecodeNodeWithLocalIntrospectionWithBENullDefault.class,
+                        BytecodeNodeWithLocalIntrospectionWithBEIllegal.class);
     }
 
     @Parameter(0) public Class<? extends BytecodeNodeWithLocalIntrospection> interpreterClass;
@@ -107,6 +111,21 @@ public class LocalHelpersTest {
         BytecodeRootNodes<BytecodeNodeWithLocalIntrospection> nodes = BytecodeNodeWithLocalIntrospectionBuilder.invokeCreate((Class<? extends BytecodeNodeWithLocalIntrospection>) interpreterClass,
                         null, BytecodeConfig.DEFAULT, builder);
         return nodes.getNode(0);
+    }
+
+    private Object getLocalDefaultValue() {
+        if (interpreterClass == BytecodeNodeWithLocalIntrospectionBaseDefault.class || interpreterClass == BytecodeNodeWithLocalIntrospectionWithBEObjectDefault.class) {
+            return BytecodeNodeWithLocalIntrospection.DEFAULT;
+        }
+        if (interpreterClass == BytecodeNodeWithLocalIntrospectionWithBENullDefault.class) {
+            return null;
+        }
+        throw new AssertionError();
+    }
+
+    private boolean hasLocalDefaultValue() {
+        return interpreterClass == BytecodeNodeWithLocalIntrospectionBaseDefault.class || interpreterClass == BytecodeNodeWithLocalIntrospectionWithBEObjectDefault.class ||
+                        interpreterClass == BytecodeNodeWithLocalIntrospectionWithBENullDefault.class;
     }
 
     public <T extends BytecodeNodeWithLocalIntrospectionBuilder> BytecodeNodeWithLocalIntrospection parseNode(BytecodeParser<T> builder) {
@@ -138,11 +157,19 @@ public class LocalHelpersTest {
             b.emitLoadArgument(0);
             b.endStoreLocal();
 
-            b.beginReturn();
-            b.beginGetLocal();
+            b.beginIfThenElse();
+
+            b.beginSame();
             b.emitLoadArgument(1);
-            b.endGetLocal();
+            b.emitLoadConstant(0);
+            b.endSame();
+            b.beginReturn();
+            b.emitGetLocal(foo.getLocalOffset());
             b.endReturn();
+            b.beginReturn();
+            b.emitLoadArgument(0);
+            b.endReturn();
+            b.endIfThenElse();
 
             b.endBlock();
 
@@ -781,16 +808,110 @@ public class LocalHelpersTest {
         assertArrayEquals(new Object[]{"foo", "bar", null}, root.getBytecodeNode().getLocalNames(0));
         assertArrayEquals(new Object[]{fooInfo, null, bazInfo}, root.getBytecodeNode().getLocalInfos(0));
     }
+
+    @Test
+    public void getGetDefaultOrIllegal() {
+        // @formatter:off
+        // // B0
+        // result;
+        // {
+        //   var l0;
+        //   if (arg0) {
+        //     result = getLocal(l0)
+        //   } else {
+        //     l0 = 42L
+        //   }
+        // }
+        // {
+        //   var l1;
+        //   result = getLocal(l1);
+        // }
+        // return result
+        // @formatter:on
+
+        BytecodeNodeWithLocalIntrospection root = parseNode(b -> {
+            b.beginRoot();
+
+            BytecodeLocal result = makeLocal(b, "result");
+            b.beginBlock();
+            BytecodeLocal l = makeLocal(b, "l0");
+            b.beginIfThenElse();
+            b.emitLoadArgument(0);
+            b.beginStoreLocal(result);
+            b.emitGetLocal(l.getLocalOffset());
+            b.endStoreLocal();
+            b.beginStoreLocal(l);
+            b.emitLoadConstant(42);
+            b.endStoreLocal();
+            b.endIfThenElse();
+            b.endBlock();
+
+            b.beginBlock();
+            l = makeLocal(b, "l1");
+            b.beginStoreLocal(result);
+            b.emitGetLocal(l.getLocalOffset());
+            b.endStoreLocal();
+            b.endBlock();
+
+            b.beginReturn();
+            b.emitLoadLocal(result);
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        if (hasLocalDefaultValue()) {
+            Object defaultLocal = getLocalDefaultValue();
+            assertSame(defaultLocal, root.getCallTarget().call(true));
+            assertSame(defaultLocal, root.getCallTarget().call(false));
+            root.getBytecodeNode().setUncachedThreshold(0);
+            assertSame(defaultLocal, root.getCallTarget().call(true));
+            assertSame(defaultLocal, root.getCallTarget().call(false));
+        } else {
+            // Illegal returns null for getLocal
+            assertNull(root.getCallTarget().call(true));
+            assertNull(root.getCallTarget().call(false));
+            root.getBytecodeNode().setUncachedThreshold(0);
+            assertNull(root.getCallTarget().call(true));
+            assertNull(root.getCallTarget().call(false));
+        }
+    }
+
 }
 
 @GenerateBytecodeTestVariants({
-                @Variant(suffix = "Base", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true)),
-                @Variant(suffix = "WithBoxingElimination", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true, boxingEliminationTypes = {
-                                boolean.class, long.class}, enableYield = true)),
-                @Variant(suffix = "WithUncached", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableUncachedInterpreter = true))
+                @Variant(suffix = "Base", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                                enableYield = true)),
+                @Variant(suffix = "BaseDefault", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                                enableYield = true, //
+                                defaultLocalValue = "DEFAULT")),
+                @Variant(suffix = "WithBEIllegal", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                                enableQuickening = true, //
+                                enableUncachedInterpreter = true, //
+                                boxingEliminationTypes = {boolean.class, long.class}, //
+                                enableYield = true)),
+                @Variant(suffix = "WithBEObjectDefault", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                                enableQuickening = true, //
+                                boxingEliminationTypes = {boolean.class, long.class}, //
+                                enableUncachedInterpreter = true, //
+                                defaultLocalValue = "resolveDefault()", //
+                                enableYield = true)),
+                @Variant(suffix = "WithBENullDefault", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                                enableQuickening = true, //
+                                boxingEliminationTypes = {boolean.class, long.class}, //
+                                enableUncachedInterpreter = true, //
+                                defaultLocalValue = "null", //
+                                enableYield = true))
 })
 abstract class BytecodeNodeWithLocalIntrospection extends DebugBytecodeRootNode implements BytecodeRootNode {
     public int reservedLocalIndex = -1;
+
+    static final Object DEFAULT = new Object();
+
+    static Object resolveDefault() {
+        CompilerAsserts.neverPartOfCompilation("Must be cached and not triggered during compilation.");
+        return DEFAULT;
+    }
 
     protected BytecodeNodeWithLocalIntrospection(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
@@ -818,6 +939,7 @@ abstract class BytecodeNodeWithLocalIntrospection extends DebugBytecodeRootNode 
     }
 
     @Operation
+    @ConstantOperand(type = int.class)
     public static final class GetLocal {
         @Specialization
         public static Object perform(VirtualFrame frame, int i,
@@ -894,6 +1016,14 @@ abstract class BytecodeNodeWithLocalIntrospection extends DebugBytecodeRootNode 
                         @Bind BytecodeNode node,
                         @Bind("$bytecodeIndex") int bci) {
             node.setLocalValue(bci, frame, i, value);
+        }
+    }
+
+    @Operation
+    public static final class Same {
+        @Specialization
+        public static boolean doDefault(int a, int b) {
+            return a == b;
         }
     }
 

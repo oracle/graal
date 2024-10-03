@@ -96,7 +96,8 @@ import com.oracle.truffle.api.source.SourceSection;
                                 enableYield = true, //
                                 enableSerialization = true, //
                                 enableTagInstrumentation = true, //
-                                enableSpecializationIntrospection = true, allowUnsafe = false)),
+                                enableSpecializationIntrospection = true, //
+                                allowUnsafe = false)),
                 @Variant(suffix = "Unsafe", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                                 enableYield = true, //
                                 enableSerialization = true, //
@@ -118,13 +119,15 @@ import com.oracle.truffle.api.source.SourceSection;
                                 enableYield = true, //
                                 enableSerialization = true, //
                                 enableSpecializationIntrospection = true, //
-                                enableTagInstrumentation = true)),
+                                enableTagInstrumentation = true, //
+                                defaultLocalValue = "LOCAL_DEFAULT_VALUE")),
                 @Variant(suffix = "WithGlobalScopes", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                                 enableYield = true, //
                                 enableSerialization = true, //
                                 enableLocalScoping = false, //
                                 enableTagInstrumentation = true, //
-                                enableSpecializationIntrospection = true)),
+                                enableSpecializationIntrospection = true, //
+                                defaultLocalValue = "LOCAL_DEFAULT_VALUE")),
                 @Variant(suffix = "WithStoreBytecodeIndexInFrame", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                                 enableYield = true, //
                                 enableSerialization = true, //
@@ -155,6 +158,11 @@ import com.oracle.truffle.api.source.SourceSection;
 @ShortCircuitOperation(booleanConverter = BasicInterpreter.ToBoolean.class, name = "ScAnd", operator = Operator.AND_RETURN_VALUE)
 @ShortCircuitOperation(booleanConverter = BasicInterpreter.ToBoolean.class, name = "ScOr", operator = Operator.OR_RETURN_VALUE, javadoc = "ScOr returns the first truthy operand value.")
 public abstract class BasicInterpreter extends DebugBytecodeRootNode implements BytecodeRootNode {
+
+    static final Object LOCAL_DEFAULT_VALUE = new LocalDefaultValue();
+
+    static final class LocalDefaultValue {
+    }
 
     protected BasicInterpreter(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);

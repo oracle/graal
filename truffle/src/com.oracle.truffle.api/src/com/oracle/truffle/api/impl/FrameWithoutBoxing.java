@@ -294,6 +294,8 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
                 return getFloat(slot);
             case OBJECT_TAG:
                 return getObject(slot);
+            case ILLEGAL_TAG:
+                throw new FrameSlotTypeException();
             default:
                 throw CompilerDirectives.shouldNotReachHere();
         }
