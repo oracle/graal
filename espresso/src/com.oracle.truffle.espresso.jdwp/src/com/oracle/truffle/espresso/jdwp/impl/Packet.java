@@ -97,7 +97,7 @@ public final class Packet {
             if (Thread.currentThread().isInterrupted()) {
                 throw new ConnectionClosedException();
             }
-            throw new IOException("length size mis-match");
+            throw new IOException("length size mismatch");
         }
 
         int b4 = b[4] & 0xff;

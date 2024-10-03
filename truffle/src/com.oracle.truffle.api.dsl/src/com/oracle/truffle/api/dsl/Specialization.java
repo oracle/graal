@@ -157,7 +157,7 @@ public @interface Specialization {
      *
      * <p>
      * If an event guard exception is triggered then all instantiations of this specialization are
-     * removed. If one of theses exceptions is thrown once then no further instantiations of this
+     * removed. If one of these exceptions is thrown once then no further instantiations of this
      * specialization are going to be created for this node.
      *
      * In case of explicitly declared {@link UnexpectedResultException}s, the result from the

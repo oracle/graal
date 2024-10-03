@@ -2618,7 +2618,7 @@ final class HostObject implements TruffleObject {
     /**
      * Returns <code>true</code> if this date object can be reliably converted to an instant.
      * Weirdly, despite the contract of the base class the two subclasses {@link Time} and
-     * {@link java.sql.Date} are not supported to be convertable to an instant.
+     * {@link java.sql.Date} are not supported to be convertible to an instant.
      */
     private static boolean isInstantDate(Object v) {
         return v instanceof Date && !(v instanceof Time) && !(v instanceof java.sql.Date);

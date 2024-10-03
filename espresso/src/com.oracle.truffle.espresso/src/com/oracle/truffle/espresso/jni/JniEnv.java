@@ -2262,7 +2262,7 @@ public final class JniEnv extends NativeEnv {
         }
 
         Substitutions.EspressoRootNodeFactory factory = null;
-        // Lookup known VM methods to shortcut native boudaries.
+        // Lookup known VM methods to shortcut native boundaries.
         factory = lookupKnownVmMethods(closure, targetMethod);
 
         if (factory == null) {
