@@ -993,6 +993,7 @@ class NativeImageVM(GraalVm):
         rules = []
         for i in range(0, len(metric_objects)):
             rules += self._get_image_build_stats_rules({
+                "bench-suite": self.config.benchmark_suite_name,
                 "benchmark": benchmarks[0],
                 "metric.name": "image-build-stats",
                 "metric.type": "numeric",
@@ -1013,6 +1014,7 @@ class NativeImageVM(GraalVm):
             phase = measured_phases[i]
             value_name = phase + "_time"
             rules += self._get_image_build_stats_rules({
+                "bench-suite": self.config.benchmark_suite_name,
                 "benchmark": benchmarks[0],
                 "metric.name": "compile-time",
                 "metric.type": "numeric",
@@ -1025,6 +1027,7 @@ class NativeImageVM(GraalVm):
             }, [value_name])
             value_name = phase + "_memory"
             rules += self._get_image_build_stats_rules({
+                "bench-suite": self.config.benchmark_suite_name,
                 "benchmark": benchmarks[0],
                 "metric.name": "compile-time",
                 "metric.type": "numeric",
@@ -1411,7 +1414,7 @@ class AgentScriptJsBenchmarkSuite(mx_benchmark.VmBenchmarkSuite, mx_benchmark.Av
         assert len(benchmarks) == 1
         return [
             mx_benchmark.StdOutRule(r'^Hundred thousand prime numbers in (?P<time>[0-9]+) ms$', {
-                "bench-suite": self.name(),
+                "bench-suite": self.benchSuiteName(),
                 "benchmark": (benchmarks[0], str),
                 "metric.name": "warmup",
                 "metric.type": "numeric",
@@ -1695,7 +1698,7 @@ class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
             mx_benchmark.StdOutRule(
                 FileSizeBenchmarkSuite.SZ_RGX_PATTERN,
                 {
-                    "bench-suite": self.name(),
+                    "bench-suite": self.benchSuiteName(),
                     "benchmark": ("<image_name>", str),
                     "benchmark-configuration": ("<path>", str),
                     "vm": "svm",
