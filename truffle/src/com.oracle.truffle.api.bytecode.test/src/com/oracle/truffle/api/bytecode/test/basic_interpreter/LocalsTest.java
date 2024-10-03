@@ -43,6 +43,8 @@ package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -53,10 +55,11 @@ import org.junit.Test;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.Instruction;
-import com.oracle.truffle.api.bytecode.LocalVariable;
 import com.oracle.truffle.api.bytecode.Instruction.Argument;
 import com.oracle.truffle.api.bytecode.Instruction.Argument.Kind;
+import com.oracle.truffle.api.bytecode.LocalVariable;
 import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.frame.FrameSlotTypeException;
 
 public class LocalsTest extends AbstractBasicInterpreterTest {
 
@@ -645,6 +648,81 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
             assertNull(l1b.getTypeProfile());
             assertNull(l2b.getTypeProfile());
         }
+    }
+
+    @Test
+    public void testIllegalOrDefault() {
+        // @formatter:off
+        // // B0
+        // result;
+        // {
+        //   var l0;
+        //   if (arg0) {
+        //     result = l0
+        //   } else {
+        //     l0 = 42L
+        //   }
+        // }
+        // {
+        //   var l1;
+        //   result = l1;
+        // }
+        // return result
+        // @formatter:on
+        BasicInterpreter root = parseNode("illegalDefaults", b -> {
+            b.beginRoot();
+
+            BytecodeLocal result = b.createLocal("result", null);
+            b.beginBlock();
+            BytecodeLocal l = b.createLocal("l0", null);
+            b.beginIfThenElse();
+            b.emitLoadArgument(0);
+            b.beginStoreLocal(result);
+            b.emitLoadLocal(l);
+            b.endStoreLocal();
+            b.beginStoreLocal(l);
+            b.emitLoadConstant(42L);
+            b.endStoreLocal();
+            b.endIfThenElse();
+            b.endBlock();
+
+            b.beginBlock();
+            l = b.createLocal("l1", null);
+            b.beginStoreLocal(result);
+            b.emitLoadLocal(l);
+            b.endStoreLocal();
+            b.endBlock();
+
+            b.beginReturn();
+            b.emitLoadLocal(result);
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        Object defaultLocal = this.run.getDefaultLocalValue();
+        if (defaultLocal == null) {
+            assertThrows(FrameSlotTypeException.class, () -> {
+                root.getCallTarget().call(false);
+            });
+            assertThrows(FrameSlotTypeException.class, () -> {
+                root.getCallTarget().call(true);
+            });
+            root.getBytecodeNode().setUncachedThreshold(0);
+            assertThrows(FrameSlotTypeException.class, () -> {
+                root.getCallTarget().call(false);
+            });
+            assertThrows(FrameSlotTypeException.class, () -> {
+                root.getCallTarget().call(true);
+            });
+        } else {
+            assertSame(defaultLocal, root.getCallTarget().call(true));
+            assertSame(defaultLocal, root.getCallTarget().call(false));
+            root.getBytecodeNode().setUncachedThreshold(0);
+            assertSame(defaultLocal, root.getCallTarget().call(true));
+            assertSame(defaultLocal, root.getCallTarget().call(false));
+        }
+
     }
 
 }

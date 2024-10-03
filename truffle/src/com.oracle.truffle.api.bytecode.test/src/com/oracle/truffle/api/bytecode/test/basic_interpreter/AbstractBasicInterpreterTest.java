@@ -126,6 +126,13 @@ public abstract class AbstractBasicInterpreterTest {
             return interpreterClass.getSimpleName() + "[serialize=" + testSerialize + "]";
         }
 
+        public Object getDefaultLocalValue() {
+            if (interpreterClass == BasicInterpreterWithOptimizations.class || interpreterClass == BasicInterpreterWithGlobalScopes.class) {
+                return BasicInterpreter.LOCAL_DEFAULT_VALUE;
+            }
+            return null;
+        }
+
     }
 
     public static <T extends Throwable> T assertThrowsWithMessage(String message, Class<T> expectedThrowable,

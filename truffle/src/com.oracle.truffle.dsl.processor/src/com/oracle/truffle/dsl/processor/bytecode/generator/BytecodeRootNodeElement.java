@@ -122,6 +122,7 @@ import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationArgument;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.ShortCircuitInstructionModel;
+import com.oracle.truffle.dsl.processor.generator.DSLExpressionGenerator;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.GeneratorMode;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
@@ -354,6 +355,11 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             this.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "HANDLER_TAG_EXCEPTIONAL")).createInitBuilder().string(String.valueOf(numHandlerKinds++));
         }
 
+        if (model.defaultLocalValueExpression != null) {
+            CodeVariableElement var = this.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(Object.class), "DEFAULT_LOCAL_VALUE"));
+            var.createInitBuilder().tree(DSLExpressionGenerator.write(model.defaultLocalValueExpression, null, Map.of()));
+        }
+
         // Define the generated node's constructor.
         this.add(createConstructor(initialBytecodeNode));
 
@@ -543,6 +549,15 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         CodeExecutableElement ex = overrideImplementRootNodeMethod(model, "execute", new String[]{"frame"});
 
         CodeTreeBuilder b = ex.createBuilder();
+
+        if (model.defaultLocalValueExpression == null) {
+            ex.getAnnotationMirrors().add(new CodeAnnotationMirror(types.ExplodeLoop));
+            b.lineComment("Temporary until we can use FrameDescriptor.newBuilder().illegalDefaultValue().");
+            b.startFor().string("int slot = 0; slot < maxLocals; slot++").end();
+            b.startBlock();
+            b.statement(clearFrame("frame", "slot"));
+            b.end();
+        }
 
         b.startReturn().startCall("continueAt");
         b.string("bytecode");
@@ -4890,6 +4905,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.end().startElseBlock(); // } {
 
             b.startDeclaration(types.FrameDescriptor_Builder, "frameDescriptorBuilder").startStaticCall(types.FrameDescriptor, "newBuilder").end().end();
+
+            if (model.defaultLocalValueExpression != null) {
+                b.statement("frameDescriptorBuilder.defaultValue(DEFAULT_LOCAL_VALUE)");
+            }
 
             b.startStatement().startCall("frameDescriptorBuilder.addSlots");
             b.startGroup();
@@ -10031,7 +10050,11 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     b.startCase().string("Illegal").end();
                     b.startCaseBlock();
                     b.startReturn();
-                    b.string("frame.getFrameDescriptor().getDefaultValue()");
+                    if (model.defaultLocalValueExpression != null) {
+                        b.string("DEFAULT_LOCAL_VALUE");
+                    } else {
+                        b.string("null");
+                    }
                     b.end();
                     b.end(); // case block
 
@@ -10049,7 +10072,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     b.end();
                 }
             } else {
+                b.startIf().string("frame.isObject(frameIndex)").end().startBlock();
                 b.startReturn().string("frame.getObject(frameIndex)").end();
+                b.end();
+                b.statement("return null");
             }
 
             return ex;
@@ -11796,13 +11822,17 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                      * which is stored in slot COROUTINE_FRAME_INDEX.
                      */
                     b.declaration(types.Frame, "frame", getFrame);
-                    b.startDeclaration(types.Frame, "coroutineFrame");
-                    b.cast(types.Frame).startCall("frame.getObject").string(COROUTINE_FRAME_INDEX).end();
-                    b.end();
 
-                    b.startIf().string("coroutineFrame != null").end().startBlock();
-                    b.startAssign("frame").string("coroutineFrame").end();
-                    b.end();
+                    if (model.defaultLocalValueExpression == null) {
+                        b.startIf().string("frame.isObject(" + COROUTINE_FRAME_INDEX + ")").end().end().startBlock();
+                        b.startAssign("frame").cast(types.Frame).string("frame.getObject(" + COROUTINE_FRAME_INDEX + ")").end();
+                        b.end();
+                    } else {
+                        b.declaration(type(Object.class), "coroutineFrame", "frame.getObject(" + COROUTINE_FRAME_INDEX + ")");
+                        b.startIf().string("coroutineFrame != DEFAULT_LOCAL_VALUE").end().end().startBlock();
+                        b.startAssign("frame").cast(types.Frame).string("coroutineFrame").end();
+                        b.end();
+                    }
 
                     b.startReturn();
                     b.startCall("frame", "getInt");
@@ -13128,7 +13158,12 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     b.statement("sp += 1");
                     break;
                 case CLEAR_LOCAL:
-                    b.statement(clearFrame("frame", readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.LOCAL_OFFSET)).toString()));
+                    String index = readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.LOCAL_OFFSET)).toString();
+                    if (model.defaultLocalValueExpression != null) {
+                        b.statement(setFrameObject("frame", index, "DEFAULT_LOCAL_VALUE"));
+                    } else {
+                        b.statement(clearFrame("frame", index));
+                    }
                     break;
                 case LOAD_VARIADIC:
                     int effect = -instr.variadicPopCount + 1;

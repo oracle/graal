@@ -66,6 +66,7 @@ import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.Immediat
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionImmediate;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.library.ExportsData;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
@@ -121,6 +122,8 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public boolean enableRootTagging;
     public boolean enableRootBodyTagging;
     public boolean enableLocalScoping;
+    public String defaultLocalValue;
+    public DSLExpression defaultLocalValueExpression;
 
     public ExecutableElement fdConstructor;
     public ExecutableElement fdBuilderConstructor;

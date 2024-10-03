@@ -145,6 +145,6 @@ public class CopyLocalsTest extends AbstractBasicInterpreterTest {
         BytecodeNode bytecode = foo.getBytecodeNode();
         Instruction instr = bytecode.getInstructionsAsList().get(6);
         Object[] locals = bytecode.getLocalValues(instr.getBytecodeIndex(), frame);
-        assertArrayEquals(new Object[]{42L, "abcd", null}, locals);
+        assertArrayEquals(new Object[]{42L, "abcd", run.getDefaultLocalValue()}, locals);
     }
 }

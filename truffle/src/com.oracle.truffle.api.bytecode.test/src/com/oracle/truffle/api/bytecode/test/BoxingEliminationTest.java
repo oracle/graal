@@ -65,6 +65,7 @@ import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
@@ -659,10 +660,12 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
         /**
          * After the first call, the local frame slot is set to Int. During this second call, the
          * "false" branch will run the unquickened load.local, which sees the frame slot and tries
-         * to read an int. Since the local is undefined, the int read should fail gracefully, and
-         * the load.local should quicken to load.local$generic.
+         * to read an int. Since the local is undefined, the int read should read throw a
+         * FrameSlotTypeException and the load.local should quicken to load.local$generic.
          */
-        assertEquals(123, node.getCallTarget().call(false));
+        assertFails(() -> {
+            node.getCallTarget().call(false);
+        }, FrameSlotTypeException.class);
 
         assertInstructions(node,
                         "load.argument$Boolean",
@@ -670,14 +673,13 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
                         "load.constant$Int",
                         "store.local$Int$Int",
                         "branch",
-                        "load.local$generic",
-                        "pop$generic",
+                        "load.local",
+                        "pop",
                         "load.constant",
                         "return");
 
-        var quickenings = assertQuickenings(node, 7, 4);
+        var quickenings = assertQuickenings(node, 4, 3);
         assertStable(quickenings, node, true);
-        assertStable(quickenings, node, false);
     }
 
     @Test
