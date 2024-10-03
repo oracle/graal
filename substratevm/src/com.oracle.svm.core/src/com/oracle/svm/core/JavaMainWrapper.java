@@ -200,7 +200,7 @@ public class JavaMainWrapper {
     }
 
     /**
-     * Determines whether instance main methodes are enabled. See JDK-8306112: Implementation of JEP
+     * Determines whether instance main methods are enabled. See JDK-8306112: Implementation of JEP
      * 445: Unnamed Classes and Instance Main Methods (Preview).
      */
     @Platforms(Platform.HOSTED_ONLY.class)

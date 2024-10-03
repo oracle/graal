@@ -538,7 +538,7 @@ def chain_test(n):
     In case 1, the added constraint is stronger than the stay
     constraint and values must propagate down the entire length of the
     chain. In case 2, the added constraint is weaker than the stay
-    constraint so it cannot be accomodated. The cost in this case is,
+    constraint so it cannot be accommodated. The cost in this case is,
     of course, very low. Typical situations lie somewhere between these
     two extremes.
     """

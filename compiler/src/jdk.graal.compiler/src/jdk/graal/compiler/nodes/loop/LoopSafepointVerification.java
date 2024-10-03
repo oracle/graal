@@ -321,7 +321,7 @@ public class LoopSafepointVerification {
          */
         for (LoopBeginNode lb : loopsToVisit) {
             assert lb.isDeleted() : Assertions.errorMessage("This loop must be deleted since it was not found during iteration", lb);
-            // lets remove it from the map, either we cant verify and fail or its good and we
+            // lets remove it from the map, either we can't verify and fail or its good and we
             // verified correctly, both ways the loop should be removed from the map
             SafepointData sd = safepointVerificationData.removeKey(lb);
             if (sd.canHaveSafepoints) {

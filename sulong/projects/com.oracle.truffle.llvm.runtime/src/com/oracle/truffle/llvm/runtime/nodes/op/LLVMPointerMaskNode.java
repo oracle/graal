@@ -50,7 +50,7 @@ public abstract class LLVMPointerMaskNode extends LLVMExpressionNode {
     @Specialization
     LLVMManagedPointer doManaged(LLVMManagedPointer ptr, long mask) {
         /*
-         * Managed pointer are assumed to be "inifinitely aligned", so we only mask the offset part
+         * Managed pointer are assumed to be "infinitely aligned", so we only mask the offset part
          * of the pointer.
          */
         return LLVMManagedPointer.create(ptr.getObject(), ptr.getOffset() & mask);
