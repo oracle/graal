@@ -66,7 +66,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * semantics. Covariant return types are not allowed when overriding a method, i.e., the base method
  * and the override must have the exact same declared return type. Covariant return types require a
  * synthetic bridge method that is generated automatically by the Java compiler, and not all Java
- * compilers put the {@link Uninterruptible} annotation on the bridge metod too (for example ECJ).
+ * compilers put the {@link Uninterruptible} annotation on the bridge method too (for example ECJ).
  * For consistency reasons, synthetic methods are therefore never treated as uninterruptible.
  * <p>
  * Annotated methods give a terse {@link #reason} why they are annotated. Often the reason is that

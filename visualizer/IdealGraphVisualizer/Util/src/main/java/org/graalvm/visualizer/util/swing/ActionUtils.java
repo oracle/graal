@@ -111,7 +111,7 @@ public class ActionUtils {
         if (a instanceof ContextAwareAction) {
             a = ((ContextAwareAction) a).createContextAwareInstance(context);
             if (a instanceof PropertyChangeListener) {
-                // Bug in action intialization; see NETBEANS-1985. The event will cause the context-bound action
+                // Bug in action initialization; see NETBEANS-1985. The event will cause the context-bound action
                 // to re-evaluate the status.
                 ((PropertyChangeListener) a).propertyChange(new PropertyChangeEvent(a, Action.SELECTED_KEY, null, Boolean.TRUE));
             }
@@ -132,7 +132,7 @@ public class ActionUtils {
             if (a instanceof ContextAwareAction) {
                 a = ((ContextAwareAction) a).createContextAwareInstance(context);
                 if (a instanceof PropertyChangeListener) {
-                    // Bug in action intialization; see NETBEANS-1985. The event will cause the context-bound action
+                    // Bug in action initialization; see NETBEANS-1985. The event will cause the context-bound action
                     // to re-evaluate the status.
                     ((PropertyChangeListener) a).propertyChange(new PropertyChangeEvent(a, Action.SELECTED_KEY, null, Boolean.TRUE));
                 }
@@ -164,7 +164,7 @@ public class ActionUtils {
         if (a instanceof ContextAwareAction) {
             a = ((ContextAwareAction) a).createContextAwareInstance(context);
             if (a instanceof PropertyChangeListener) {
-                // Bug in action intialization; see NETBEANS-1985. The event will cause the context-bound action
+                // Bug in action initialization; see NETBEANS-1985. The event will cause the context-bound action
                 // to re-evaluate the status.
                 ((PropertyChangeListener) a).propertyChange(new PropertyChangeEvent(a, Action.SELECTED_KEY, null, Boolean.TRUE));
             }
@@ -211,7 +211,7 @@ public class ActionUtils {
             if (a instanceof ContextAwareAction) {
                 a = ((ContextAwareAction) a).createContextAwareInstance(context);
                 if (a instanceof PropertyChangeListener) {
-                    // Bug in action intialization; see NETBEANS-1985. The event will cause the context-bound action
+                    // Bug in action initialization; see NETBEANS-1985. The event will cause the context-bound action
                     // to re-evaluate the status.
                     ((PropertyChangeListener) a).propertyChange(new PropertyChangeEvent(a, Action.SELECTED_KEY, null, Boolean.TRUE));
                 }
