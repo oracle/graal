@@ -75,6 +75,6 @@ public class ToStringOfEvalTest extends AbstractSLTest {
         assertFalse("Symbol is not null", value1.isNull());
         assertFalse("Symbol is not null either", value2.isNull());
 
-        assertTrue("Contans checkName text: " + value2, value2.toString().contains("checkName"));
+        assertTrue("Contains checkName text: " + value2, value2.toString().contains("checkName"));
     }
 }
