@@ -2051,7 +2051,7 @@ final class FileSystems {
     }
 
     /**
-     * FileSystem implementation allowing only path resolution and comparison. The read ot write
+     * FileSystem implementation allowing only path resolution and comparison. The read or write
      * operations throw {@link SecurityException}.
      */
     private static final class PathOperationsOnlyFileSystem extends DeniedIOFileSystem {

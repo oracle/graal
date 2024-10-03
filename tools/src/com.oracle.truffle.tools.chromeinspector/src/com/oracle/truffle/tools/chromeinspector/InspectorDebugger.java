@@ -1112,7 +1112,7 @@ public final class InspectorDebugger extends DebuggerDomain {
                     if (se.hasSourceElement(SourceElement.ROOT) && se.getBreakpoints().isEmpty()) {
                         if ((!se.hasSourceElement(SourceElement.STATEMENT) && se.getSuspendAnchor() == SuspendAnchor.BEFORE) ||
                                         (se.getSuspendAnchor() == SuspendAnchor.AFTER && returnValue == null)) {
-                            // We're at the begining of a `RootTag` node, or
+                            // We're at the beginning of a `RootTag` node, or
                             // we're at the end of `RootTag` node and have no return value.
                             // We use `RootTag` to intercept return values of functions during
                             // stepping.

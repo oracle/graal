@@ -52,7 +52,7 @@ import com.oracle.truffle.api.nodes.Node;
  * parameters of {@link Specialization specializations}. Inlining nodes significantly reduces the
  * footprint of cached nodes as node allocations are avoided.
  *
- * A node subclass must fullfill the following requirements in order to be inlinable:
+ * A node subclass must fulfill the following requirements in order to be inlinable:
  * <ul>
  * <li>All execute methods of a the node must have a {@link Node node} as first parameter type.
  * <li>The node has no instance fields and must not use {@link NodeChild} or {@link NodeField}.

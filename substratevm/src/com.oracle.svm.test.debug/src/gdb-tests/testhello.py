@@ -46,6 +46,7 @@
 # PYTHON_PATH which gdb needs to use to locate any imported code.
 #
 
+import re
 import sys
 import os
 
@@ -60,7 +61,7 @@ configure_gdb()
 
 def test():
     # define some useful constants
-    main_start = 237
+    main_start = 216
     main_noinline = main_start + 17
     main_inlinefrom = main_start + 18
     match = match_gdb_version()
@@ -72,8 +73,6 @@ def test():
     musl = os.environ.get('debuginfotest_musl', 'no') == 'yes'
 
     isolates = os.environ.get('debuginfotest_isolates', 'no') == 'yes'
-
-    layered = os.environ.get('debuginfotest_layered', 'no') == 'yes'
 
     arch = os.environ.get('debuginfotest_arch', 'amd64')
 
@@ -89,7 +88,7 @@ def test():
     execute("set print symbol off")
 
     exec_string = execute("ptype _objhdr")
-    has_reserved_field = "reserved;" in exec_string
+    fixed_idhash_field = "int idHash;" in exec_string
 
     # Print DefaultGreeter and check the modifiers of its methods and fields
     exec_string = execute("ptype 'hello.Hello$DefaultGreeter'")
@@ -117,7 +116,7 @@ def test():
     rexp = fr"{digits_pattern}:{spaces_pattern}int com.oracle.svm.core.code.IsolateEnterStub::(JavaMainWrapper_run_{wildcard_pattern})\({wildcard_pattern}\);"
     checker = Checker('info func JavaMainWrapper_run_', rexp)
     matches = checker.check(exec_string)
-    # n.b can ony get here with one match
+    # n.b can only get here with one match
     match = matches[0]
     method_name = match.group(1)
     print(f"method_name = {method_name}")
@@ -128,7 +127,7 @@ def test():
     rexp = fr"{wildcard_pattern}0x({hex_digits_pattern}){wildcard_pattern}com.oracle.svm.core.code.IsolateEnterStub::JavaMainWrapper_run_{wildcard_pattern}"
     checker = Checker(f'x/i IsolateEnterStub::{method_name}', rexp)
     matches = checker.check(exec_string)
-    # n.b can ony get here with one match
+    # n.b can only get here with one match
     match = matches[0]
 
     bp_address = int(match.group(1), 16)
@@ -224,7 +223,7 @@ def test():
             fr"{spaces_pattern}<java.lang.Object> = {{",
             fr"{spaces_pattern}<_objhdr> = {{",
             fr"{spaces_pattern}hub = {address_pattern}",
-            fr"{spaces_pattern}reserved = {address_pattern}" if has_reserved_field else None,
+            fr"{spaces_pattern}idHash = {address_pattern}" if fixed_idhash_field else None,
             fr"{spaces_pattern}}}, <No data fields>}}, ",
             fr"{spaces_pattern}members of java\.lang\.String\[\]:",
             fr"{spaces_pattern}len = 0x0,",
@@ -238,15 +237,15 @@ def test():
     # print the hub of the array and check it has a name field
     exec_string = execute("print /x *args->hub")
     rexp = [fr"{wildcard_pattern} = {{",
-            fr"{spaces_pattern}<java.lang.Class> = {{",
+            fr"{spaces_pattern}<java.lang.Class> = {{" if isolates else None,
             fr"{spaces_pattern}<java.lang.Object> = {{",
             fr"{spaces_pattern}<_objhdr> = {{",
             fr"{spaces_pattern}hub = {address_pattern}",
-            fr"{spaces_pattern}reserved = {address_pattern}" if has_reserved_field else None,
+            fr"{spaces_pattern}idHash = {address_pattern}" if fixed_idhash_field else None,
             fr"{spaces_pattern}}}, <No data fields>}},",
             fr"{spaces_pattern}members of java\.lang\.Class:",
             fr"{spaces_pattern}name = {address_pattern},",
-            fr"{spaces_pattern}}}, <No data fields>}}"]
+            fr"{spaces_pattern}}}, <No data fields>}}" if isolates else "}"]
 
     checker = Checker("print String[] hub", rexp)
 
@@ -279,7 +278,7 @@ def test():
             fr"{spaces_pattern}<java.lang.Object> = {{",
             fr"{spaces_pattern}<_objhdr> = {{",
             fr"{spaces_pattern}hub = {address_pattern}",
-            fr"{spaces_pattern}reserved = {address_pattern}" if has_reserved_field else None,
+            fr"{spaces_pattern}idHash = {address_pattern}" if fixed_idhash_field else None,
             fr"{spaces_pattern}}}, <No data fields>}},",
             fr"{spaces_pattern}members of java\.lang\.Class:",
             fr"{spaces_pattern}name = {address_pattern},",
@@ -382,8 +381,8 @@ def test():
 
     exec_string = execute("ptype _objhdr")
     rexp = [r"type = struct _objhdr {",
-            fr"{spaces_pattern}Encoded\$Dynamic\$Hub \*hub;",
-            fr"{spaces_pattern}(int|long) reserved;" if has_reserved_field else None,
+            fr"{spaces_pattern}{compressed_pattern if isolates else ''}java\.lang\.Class \*hub;",
+            fr"{spaces_pattern}int idHash;" if fixed_idhash_field else None,
             r"}"]
 
     checker = Checker('ptype _objhdr', rexp)
@@ -522,7 +521,7 @@ def test():
     checker = Checker('ptype hello.Hello', rexp)
     checker.check(exec_string, skip_fails=True)
 
-    # list methods matching regular expression "nline", inline methods are not listed because they lack a definition
+    # list methods matching regural expression "nline", inline methods are not listed because they lack a definition
     # (this is true for C/C++ as well)
     exec_string = execute("info func nline")
     rexp = [r"All functions matching regular expression \"nline\":",
@@ -536,59 +535,59 @@ def test():
 
     # list inlineIs and inlineA and check that the listing maps to the inlined code instead of the actual code,
     # although not ideal this is how GDB treats inlined code in C/C++ as well
-    rexp = [fr"{digits_pattern + spaces_pattern}inlineA\(\);"]
+    rexp = [fr"103{spaces_pattern}inlineA\(\);"]
     checker = Checker('list inlineIs', rexp)
     checker.check(execute("list inlineIs"))
-    # List inlineA may actually return more locations dependent on inlining decisions, but noInlineTest
+    # List inlineA may actually return more locations depending on inlining decisions, but noInlineTest
     # always needs to be listed
-    rexp = [fr"{digits_pattern + spaces_pattern}noInlineTest\(\);"]
+    rexp = [fr"108{spaces_pattern}noInlineTest\(\);"]
     checker = Checker('list inlineA', rexp)
     checker.check(execute("list inlineA"))
 
     execute("delete breakpoints")
     # Set breakpoint at inlined method and step through its nested inline methods
     exec_string = execute("break hello.Hello::inlineIs")
-    # Dependent on inlining decisions, there are either two or one locations
-    rexp = fr"Breakpoint {digits_pattern} at {address_pattern}: (hello\.Hello::inlineIs\. \(2 locations\)|file hello/Hello\.java, line {digits_pattern}\.)"
+    # Depending on inlining decisions, there are either two or one locations
+    rexp = fr"Breakpoint {digits_pattern} at {address_pattern}: (hello\.Hello::inlineIs\. \(2 locations\)|file hello/Hello\.java, line 103\.)"
     checker = Checker('break inlineIs', rexp)
     checker.check(exec_string, skip_fails=False)
 
     execute("continue")
     exec_string = execute("list")
-    rexp = [fr"{digits_pattern + spaces_pattern}inlineA\(\);"]
+    rexp = [fr"103{spaces_pattern}inlineA\(\);"]
     checker = Checker('hit break at inlineIs', rexp)
     checker.check(exec_string, skip_fails=False)
     execute("step")
     exec_string = execute("list")
-    rexp = [fr"{digits_pattern + spaces_pattern}noInlineTest\(\);"]
+    rexp = [fr"108{spaces_pattern}noInlineTest\(\);"]
     checker = Checker('step in inlineA', rexp)
     checker.check(exec_string, skip_fails=False)
     exec_string = execute("backtrace 4")
     rexp = [
-        fr"#0{spaces_pattern}hello\.Hello::inlineA{no_param_types_pattern} {no_arg_values_pattern} at hello/Hello\.java:120",
-        fr"#1{spaces_pattern}hello\.Hello::inlineIs{no_param_types_pattern} {no_arg_values_pattern} at hello/Hello\.java:115",
-        fr"#2{spaces_pattern}hello\.Hello::noInlineThis{no_param_types_pattern} {no_arg_values_pattern} at hello/Hello\.java:110",
+        fr"#0{spaces_pattern}hello\.Hello::inlineA{no_param_types_pattern} {no_arg_values_pattern} at hello/Hello\.java:108",
+        fr"#1{spaces_pattern}hello\.Hello::inlineIs{no_param_types_pattern} {no_arg_values_pattern} at hello/Hello\.java:103",
+        fr"#2{spaces_pattern}hello\.Hello::noInlineThis{no_param_types_pattern} {no_arg_values_pattern} at hello/Hello\.java:98",
         fr"#3{spaces_pattern}{address_pattern} in hello\.Hello::main{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:{main_noinline:d}"]
     checker = Checker('backtrace inlineMee', rexp)
     checker.check(exec_string, skip_fails=False)
 
     execute("delete breakpoints")
     exec_string = execute("break hello.Hello::noInlineTest")
-    rexp = fr"Breakpoint {digits_pattern} at {address_pattern}: file hello/Hello\.java, line {digits_pattern}\."
+    rexp = fr"Breakpoint {digits_pattern} at {address_pattern}: file hello/Hello\.java, line 113\."
     checker = Checker('break noInlineTest', rexp)
     checker.check(exec_string, skip_fails=False)
 
     execute("continue")
     exec_string = execute("list")
-    rexp = fr"{digits_pattern + spaces_pattern}System.out.println\(\"This is a test\"\);"
+    rexp = fr"113{spaces_pattern}System.out.println\(\"This is a test\"\);"
     checker = Checker('hit breakpoint in noInlineTest', rexp)
     checker.check(exec_string, skip_fails=False)
     exec_string = execute("backtrace 5")
     rexp = [
-        fr"#0{spaces_pattern}hello\.Hello::noInlineTest{no_param_types_pattern} {no_arg_values_pattern} at hello/Hello\.java:125",
-        fr"#1{spaces_pattern}{address_pattern} in hello\.Hello::inlineA{no_param_types_pattern} {no_arg_values_pattern} at hello/Hello\.java:120",
-        fr"#2{spaces_pattern}hello\.Hello::inlineIs{no_param_types_pattern} {no_arg_values_pattern} at hello/Hello\.java:115",
-        fr"#3{spaces_pattern}hello\.Hello::noInlineThis{no_param_types_pattern} {no_arg_values_pattern} at hello/Hello\.java:110",
+        fr"#0{spaces_pattern}hello\.Hello::noInlineTest{no_param_types_pattern} {no_arg_values_pattern} at hello/Hello\.java:113",
+        fr"#1{spaces_pattern}{address_pattern} in hello\.Hello::inlineA{no_param_types_pattern} {no_arg_values_pattern} at hello/Hello\.java:108",
+        fr"#2{spaces_pattern}hello\.Hello::inlineIs{no_param_types_pattern} {no_arg_values_pattern} at hello/Hello\.java:103",
+        fr"#3{spaces_pattern}hello\.Hello::noInlineThis{no_param_types_pattern} {no_arg_values_pattern} at hello/Hello\.java:98",
         fr"#4{spaces_pattern}{address_pattern} in hello\.Hello::main{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:{main_noinline:d}"]
     checker = Checker('backtrace in inlineMethod', rexp)
     checker.check(exec_string, skip_fails=False)
@@ -596,53 +595,48 @@ def test():
     execute("delete breakpoints")
     # Set breakpoint at method with inline and not-inlined invocation in same line
     exec_string = execute("break hello.Hello::inlineFrom")
-    if layered:
-        rexp = fr"Breakpoint {digits_pattern} at {address_pattern}: hello\.Hello::inlineFrom\. \({digits_pattern} locations\)"
-    else:
-        rexp = fr"Breakpoint {digits_pattern} at {address_pattern}: file hello/Hello\.java, line {digits_pattern}."
+    rexp = fr"Breakpoint {digits_pattern} at {address_pattern}: file hello/Hello\.java, line 119."
     checker = Checker('break inlineFrom', rexp)
     checker.check(exec_string, skip_fails=False)
 
     exec_string = execute("info break")
-    if layered:
-        rexp = [fr"{wildcard_pattern}y{spaces_pattern}{address_pattern} in hello\.Hello::inlineFrom\(\) at hello/Hello\.java:131"]
-    else:
-        rexp = [fr"{digits_pattern}{spaces_pattern}breakpoint{spaces_pattern}keep{spaces_pattern}y{spaces_pattern}{address_pattern} in hello\.Hello::inlineFrom\(\) at hello/Hello\.java:131"]
+    rexp = [
+        fr"{digits_pattern}{spaces_pattern}breakpoint{spaces_pattern}keep{spaces_pattern}y{spaces_pattern}{address_pattern} in hello\.Hello::inlineFrom\(\) at hello/Hello\.java:119"]
     checker = Checker('info break inlineFrom', rexp)
     checker.check(exec_string)
 
     execute("delete breakpoints")
-    exec_string = execute("break Hello.java:147")
-    rexp = fr"Breakpoint {digits_pattern} at {address_pattern}: (Hello\.java:147\. \({digits_pattern} locations\)|file hello/Hello\.java, line {digits_pattern}\.)"
-    checker = Checker('break Hello.java:147', rexp)
+    exec_string = execute("break Hello.java:135")
+    rexp = fr"Breakpoint {digits_pattern} at {address_pattern}: (Hello\.java:135\. \(2 locations\)|file hello/Hello\.java, line 135\.)"
+    checker = Checker('break Hello.java:135', rexp)
     checker.check(exec_string)
 
     execute("continue 5")
     exec_string = execute("backtrace 14")
     rexp = [
-        fr"#0{spaces_pattern}hello\.Hello::inlineMixTo{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:147",
-        fr"#1{spaces_pattern}hello\.Hello::noInlineHere{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:139",
-        fr"#2{spaces_pattern}({address_pattern} in)? hello\.Hello::inlineMixTo{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:145",
-        fr"#3{spaces_pattern}hello\.Hello::noInlineHere{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:139",
-        fr"#4{spaces_pattern}({address_pattern} in)? hello\.Hello::inlineMixTo{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:145",
-        fr"#5{spaces_pattern}hello\.Hello::noInlineHere{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:139",
-        fr"#6{spaces_pattern}({address_pattern} in)? hello\.Hello::inlineMixTo{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:145",
-        fr"#7{spaces_pattern}hello\.Hello::noInlineHere{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:139",
-        fr"#8{spaces_pattern}({address_pattern} in)? hello\.Hello::inlineMixTo{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:145",
-        fr"#9{spaces_pattern}hello\.Hello::noInlineHere{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:139",
-        fr"#10{spaces_pattern}({address_pattern} in)? hello\.Hello::inlineMixTo{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:145",
-        fr"#11{spaces_pattern}hello\.Hello::noInlineHere{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:139",
-        fr"#12{spaces_pattern}({address_pattern} in)? hello\.Hello::inlineFrom{no_param_types_pattern} {no_arg_values_pattern} at hello/Hello\.java:131",
+        fr"#0{spaces_pattern}hello\.Hello::inlineMixTo{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:135",
+        fr"#1{spaces_pattern}hello\.Hello::noInlineHere{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:127",
+        fr"#2{spaces_pattern}({address_pattern} in)? hello\.Hello::inlineMixTo{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:133",
+        fr"#3{spaces_pattern}hello\.Hello::noInlineHere{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:127",
+        fr"#4{spaces_pattern}({address_pattern} in)? hello\.Hello::inlineMixTo{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:133",
+        fr"#5{spaces_pattern}hello\.Hello::noInlineHere{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:127",
+        fr"#6{spaces_pattern}({address_pattern} in)? hello\.Hello::inlineMixTo{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:133",
+        fr"#7{spaces_pattern}hello\.Hello::noInlineHere{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:127",
+        fr"#8{spaces_pattern}({address_pattern} in)? hello\.Hello::inlineMixTo{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:133",
+        fr"#9{spaces_pattern}hello\.Hello::noInlineHere{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:127",
+        fr"#10{spaces_pattern}({address_pattern} in)? hello\.Hello::inlineMixTo{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:133",
+        fr"#11{spaces_pattern}hello\.Hello::noInlineHere{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:127",
+        fr"#12{spaces_pattern}({address_pattern} in)? hello\.Hello::inlineFrom{no_param_types_pattern} {no_arg_values_pattern} at hello/Hello\.java:119",
         fr"#13{spaces_pattern}hello\.Hello::main{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:{main_inlinefrom:d}"]
     checker = Checker('backtrace in recursive inlineMixTo', rexp)
     checker.check(exec_string, skip_fails=False)
 
     execute("delete breakpoints")
-    exec_string = execute("break Hello.java:160")
+    exec_string = execute("break Hello.java:148")
     # we cannot be sure how much inlining will happen so we
     # specify a pattern for the number of locations
-    rexp = fr"Breakpoint {digits_pattern} at {address_pattern}: Hello\.java:160\. \({digits_pattern} locations\)"
-    checker = Checker('break Hello.java:160', rexp)
+    rexp = fr"Breakpoint {digits_pattern} at {address_pattern}: Hello\.java:148\. \({digits_pattern} locations\)"
+    checker = Checker('break Hello.java:148', rexp)
     checker.check(exec_string)
 
     execute("continue")
@@ -652,34 +646,29 @@ def test():
     # one build to the next. so we use a generic match after the
     # first pair.
     rexp = [
-        fr"#0{spaces_pattern}hello\.Hello::inlineTo{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:160",
-        fr"#1{spaces_pattern}({address_pattern} in)? hello\.Hello::inlineHere{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:152",
-        fr"#2{wildcard_pattern}hello\.Hello::inlineTo{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:158",
-        fr"#3{wildcard_pattern}hello\.Hello::inlineHere{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:152",
-        fr"#4{wildcard_pattern}hello\.Hello::inlineTo{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:158",
-        fr"#5{wildcard_pattern}hello\.Hello::inlineHere{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:152",
-        fr"#6{wildcard_pattern}hello\.Hello::inlineTo{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:158",
-        fr"#7{wildcard_pattern}hello\.Hello::inlineHere{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:152",
-        fr"#8{wildcard_pattern}hello\.Hello::inlineTo{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:158",
-        fr"#9{wildcard_pattern}hello\.Hello::inlineHere{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:152",
-        fr"#10{wildcard_pattern}hello\.Hello::inlineTo{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:158",
-        fr"#11{wildcard_pattern}hello\.Hello::inlineHere{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:152",
-        fr"#12{spaces_pattern}hello\.Hello::inlineFrom{no_param_types_pattern} {no_arg_values_pattern} at hello/Hello\.java:133",
+        fr"#0{spaces_pattern}hello\.Hello::inlineTo{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:148",
+        fr"#1{spaces_pattern}({address_pattern} in)? hello\.Hello::inlineHere{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:140",
+        fr"#2{wildcard_pattern}hello\.Hello::inlineTo{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:146",
+        fr"#3{wildcard_pattern}hello\.Hello::inlineHere{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:140",
+        fr"#4{wildcard_pattern}hello\.Hello::inlineTo{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:146",
+        fr"#5{wildcard_pattern}hello\.Hello::inlineHere{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:140",
+        fr"#6{wildcard_pattern}hello\.Hello::inlineTo{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:146",
+        fr"#7{wildcard_pattern}hello\.Hello::inlineHere{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:140",
+        fr"#8{wildcard_pattern}hello\.Hello::inlineTo{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:146",
+        fr"#9{wildcard_pattern}hello\.Hello::inlineHere{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:140",
+        fr"#10{wildcard_pattern}hello\.Hello::inlineTo{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:146",
+        fr"#11{wildcard_pattern}hello\.Hello::inlineHere{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:140",
+        fr"#12{spaces_pattern}hello\.Hello::inlineFrom{no_param_types_pattern} {no_arg_values_pattern} at hello/Hello\.java:121",
         fr"#13{spaces_pattern}hello\.Hello::main{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:{main_inlinefrom:d}"]
     checker = Checker('backtrace in recursive inlineTo', rexp)
-    # This test does not work with -O0 in graal-enterprise
-    # This is because the compilation for inlineTo contains the same source line (160) twice in what GDB figures to be the same lexical context.
-    # GDB has an "optimization" that if it finds the same line twice in the same lexical context, it just takes the first as breakpoint and drops all other occasions of this line.
-    # To make this work, we would need to create an artificial lexical context that splits occasions of the same source line into different lexical contexts in GDB while still having the same symbols.
-    #
     checker.check(exec_string, skip_fails=False)
 
     execute("delete breakpoints")
-    exec_string = execute("break Hello.java:166")
+    exec_string = execute("break Hello.java:154")
     # we cannot be sure how much inlining will happen so we
     # specify a pattern for the number of locations
-    rexp = fr"Breakpoint {digits_pattern} at {address_pattern}: Hello\.java:166\. \({digits_pattern} locations\)"
-    checker = Checker('break Hello.java:166', rexp)
+    rexp = fr"Breakpoint {digits_pattern} at {address_pattern}: Hello\.java:154\. \({digits_pattern} locations\)"
+    checker = Checker('break Hello.java:154', rexp)
     checker.check(exec_string)
 
     execute("continue 5")
@@ -689,13 +678,13 @@ def test():
     # one build to the next. so we use a generic match after the
     # first one.
     rexp = [
-        fr"#0{spaces_pattern}hello\.Hello::inlineTailRecursion{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:166",
-        fr"#1{wildcard_pattern}hello\.Hello::inlineTailRecursion{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:169",
-        fr"#2{wildcard_pattern}hello\.Hello::inlineTailRecursion{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:169",
-        fr"#3{wildcard_pattern}hello\.Hello::inlineTailRecursion{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:169",
-        fr"#4{wildcard_pattern}hello\.Hello::inlineTailRecursion{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:169",
-        fr"#5{wildcard_pattern}hello\.Hello::inlineTailRecursion{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:169",
-        fr"#6{spaces_pattern}hello\.Hello::inlineFrom{no_param_types_pattern} {no_arg_values_pattern} at hello/Hello\.java:134",
+        fr"#0{spaces_pattern}hello\.Hello::inlineTailRecursion{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:154",
+        fr"#1{wildcard_pattern}hello\.Hello::inlineTailRecursion{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:157",
+        fr"#2{wildcard_pattern}hello\.Hello::inlineTailRecursion{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:157",
+        fr"#3{wildcard_pattern}hello\.Hello::inlineTailRecursion{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:157",
+        fr"#4{wildcard_pattern}hello\.Hello::inlineTailRecursion{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:157",
+        fr"#5{wildcard_pattern}hello\.Hello::inlineTailRecursion{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:157",
+        fr"#6{spaces_pattern}hello\.Hello::inlineFrom{no_param_types_pattern} {no_arg_values_pattern} at hello/Hello\.java:122",
         fr"#7{spaces_pattern}hello\.Hello::main{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:{main_inlinefrom:d}"]
     checker = Checker('backtrace in recursive inlineTailRecursion', rexp)
     checker.check(exec_string, skip_fails=False)
@@ -709,14 +698,14 @@ def test():
     rexp = fr"{spaces_pattern}0x({hex_digits_pattern}){wildcard_pattern}hello.Hello::noInlineManyArgs{wildcard_pattern}"
     checker = Checker('x/i hello.Hello::noInlineManyArgs', rexp)
     matches = checker.check(exec_string)
-    # n.b can ony get here with one match
+    # n.b can only get here with one match
     match = matches[0]
     bp_address = int(match.group(1), 16)
     print(f"bp = {match.group(1)} {bp_address:x}")
 
     # exec_string = execute("break hello.Hello::noInlineManyArgs")
     exec_string = execute(f"break *0x{bp_address:x}")
-    rexp = fr"Breakpoint {digits_pattern} at {address_pattern}: file hello/Hello\.java, line {digits_pattern}\."
+    rexp = fr"Breakpoint {digits_pattern} at {address_pattern}: file hello/Hello\.java, line 163\."
     checker = Checker(fr"break *0x{bp_address:x}", rexp)
     checker.check(exec_string)
     # rexp = r"Breakpoint %s at %s: file hello/Hello\.java, line 163\."%(digits_pattern, address_pattern)
@@ -858,120 +847,35 @@ def test():
     execute("delete breakpoints")
 
     exec_string = execute("break " + lambda_name)
-    rexp = fr"Breakpoint {digits_pattern} at {address_pattern}: (file hello/Hello\.java, line 221|hello\.Hello::lambda(\$static)?\${digits_pattern}. \({digits_pattern} locations\))"
+    rexp = fr"Breakpoint {digits_pattern} at {address_pattern}: (file hello/Hello.java, line 209|hello.Hello::lambda($static)?${digits_pattern}. \({digits_pattern} locations\))"
     checker = Checker('break ' + lambda_name, rexp)
     checker.check(exec_string)
 
     execute("continue")
     exec_string = execute("list")
-    rexp = fr"{digits_pattern + spaces_pattern}StringBuilder sb = new StringBuilder\(\"lambda\"\);"
+    rexp = fr"209{spaces_pattern}StringBuilder sb = new StringBuilder\(\"lambda\"\);"
     checker = Checker('hit breakpoint in lambda', rexp)
     checker.check(exec_string, skip_fails=False)
 
     execute("delete breakpoints")
 
-    exec_string = execute("break Hello.java:222")
-    rexp = fr"Breakpoint {digits_pattern} at {address_pattern}: (file hello/Hello\.java, line 222|Hello\.java:222\. \({digits_pattern} locations\))"
-    checker = Checker('break Hello.java:222', rexp)
+    exec_string = execute("break Hello.java:210")
+    rexp = fr"Breakpoint {digits_pattern} at {address_pattern}: file hello/Hello.java, line 210"
+    checker = Checker('break Hello.java:210', rexp)
     checker.check(exec_string)
 
     execute("continue")
     exec_string = execute("list")
-    rexp = fr"{digits_pattern + spaces_pattern}sb\.append\(System\.getProperty\(\"never_optimize_away\", \"Text\"\)\);"
+    rexp = fr"210{spaces_pattern}sb\.append\(System\.getProperty\(\"never_optimize_away\", \"Text\"\)\);"
     checker = Checker('hit breakpoint 2 in lambda', rexp)
     checker.check(exec_string, skip_fails=False)
     exec_string = execute("backtrace 3")
     rexp = [
-        fr"#0{spaces_pattern}hello\.Hello::lambda\$(static\$)?0{no_param_types_pattern} {no_arg_values_pattern} at hello/Hello\.java:222",
-        fr"#1{spaces_pattern}{address_pattern} in hello\.Hello\$\$Lambda((\${digits_pattern}/0x)|(\$)|(\.0x|/0x))?{hex_digits_pattern}::get{wildcard_pattern}",
-        fr"#2{spaces_pattern} hello\.Hello::main{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:259"]
+        fr"#0{spaces_pattern}hello\.Hello::lambda\$(static\$)?0{no_param_types_pattern} {no_arg_values_pattern} at hello/Hello\.java:210",
+        fr"#1{spaces_pattern}{address_pattern} in hello\.Hello\$\$Lambda((\${digits_pattern}/0x)|(\$)|(\.0x|/0x))?{hex_digits_pattern}::get{wildcard_pattern} at hello/Hello\.java:238",
+        fr"#2{spaces_pattern}hello\.Hello::main{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:238"]
     checker = Checker('backtrace in lambda', rexp)
     checker.check(exec_string, skip_fails=False)
-
-    execute("delete breakpoints")
-
-    # check if java.lang.Class and the hub field is resolved correctly
-    exec_string = execute(f"break hello.Hello::checkClassType")
-    rexp = fr"Breakpoint {digits_pattern} at {address_pattern}: file hello/Hello\.java, line {digits_pattern}\."
-    checker = Checker(fr"break hello.Hello::checkClassType", rexp)
-    checker.check(exec_string)
-
-    execute("continue")
-    exec_string = execute("print *clazz.name.value")
-    rexp = [fr"{wildcard_pattern} = {{",
-            fr"{spaces_pattern}<java\.lang\.Object> = {{",
-            fr"{spaces_pattern}<_objhdr> = {{",
-            fr"{spaces_pattern}hub = {address_pattern}",
-            fr"{spaces_pattern}}}, <No data fields>}},",
-            fr"{spaces_pattern}members of byte \[\]",
-            fr"{spaces_pattern}len = 16,",
-            fr"{spaces_pattern}data = {address_pattern}"]
-    checker = Checker('print *clazz.name.value', rexp)
-    checker.check(exec_string)
-
-    exec_string = execute("ptype clazz")
-    rexp = [r"type = class java\.lang\.Class : public java\.lang\.Object {"]
-    checker = Checker('ptype clazz', rexp)
-    checker.check(exec_string)
-
-    exec_string = execute("print *clazz.hub.name.value")
-    rexp = [fr"{wildcard_pattern} = {{",
-            fr"{spaces_pattern}<java\.lang\.Object> = {{",
-            fr"{spaces_pattern}<_objhdr> = {{",
-            fr"{spaces_pattern}hub = {address_pattern}",
-            fr"{spaces_pattern}}}, <No data fields>}},",
-            fr"{spaces_pattern}members of byte \[\]",
-            fr"{spaces_pattern}len = 15,",
-            fr"{spaces_pattern}data = {address_pattern}"]
-    checker = Checker('print *clazz.hub.name.value', rexp)
-    checker.check(exec_string)
-
-    exec_string = execute("ptype clazz.hub")
-    rexp = [r"type = class Encoded\$Dynamic\$Hub : public java\.lang\.Class {"]
-    checker = Checker('ptype clazz.hub', rexp)
-    checker.check(exec_string)
-
-    # check object on heap and static object (must be the same as the field 'clazz')
-    for obj in ['dyn.c', "'hello.Hello::staticHolder'.c",
-                f"(('{'_z_.' if isolates else ''}java.lang.Class' *)dyn.o)",
-                f"(('{'_z_.' if isolates else ''}java.lang.Class' *)'hello.Hello::staticHolder'.o)"]:
-        command = f"print *{obj}.name.value"
-        exec_string = execute(command)
-        rexp = [fr"{wildcard_pattern} = {{",
-                fr"{spaces_pattern}<java\.lang\.Object> = {{",
-                fr"{spaces_pattern}<_objhdr> = {{",
-                fr"{spaces_pattern}hub = {address_pattern}",
-                fr"{spaces_pattern}}}, <No data fields>}},",
-                fr"{spaces_pattern}members of byte \[\]",
-                fr"{spaces_pattern}len = 16,",
-                fr"{spaces_pattern}data = {address_pattern}"]
-        checker = Checker(command, rexp)
-        checker.check(exec_string)
-
-        execute(f"print *{obj}")
-        exec_string = execute("ptype $")
-        rexp = [r"type = class _z_\.java\.lang\.Class : public java\.lang\.Class {" if isolates else r"type = class java\.lang\.Class : public java\.lang\.Object {"]
-        checker = Checker(f'ptype {obj}', rexp)
-        checker.check(exec_string)
-
-        command = f"print *{obj}.hub.name.value"
-        exec_string = execute(command)
-        rexp = [fr"{wildcard_pattern} = {{",
-                fr"{spaces_pattern}<java\.lang\.Object> = {{",
-                fr"{spaces_pattern}<_objhdr> = {{",
-                fr"{spaces_pattern}hub = {address_pattern}",
-                fr"{spaces_pattern}}}, <No data fields>}},",
-                fr"{spaces_pattern}members of byte \[\]",
-                fr"{spaces_pattern}len = 15,",
-                fr"{spaces_pattern}data = {address_pattern}"]
-        checker = Checker(command, rexp)
-        checker.check(exec_string)
-
-        execute(f"print {obj}.hub")
-        exec_string = execute("ptype $")
-        rexp = [r"type = class Encoded\$Dynamic\$Hub : public java\.lang\.Class {"]
-        checker = Checker(f'ptype {obj}.hub', rexp)
-        checker.check(exec_string)
 
     execute("delete breakpoints")
 
@@ -1083,7 +987,7 @@ def test():
     rexp = fr"{spaces_pattern}0x({hex_digits_pattern}){wildcard_pattern}com.oracle.svm.test.debug.CStructTests::testMixedArguments{wildcard_pattern}"
     checker = Checker('x/i CStructTests::testMixedArguments', rexp)
     matches = checker.check(exec_string)
-    # n.b can ony get here with one match
+    # n.b can only get here with one match
     match = matches[0]
     bp_address = int(match.group(1), 16)
     print(f"bp = {match.group(1)} {bp_address:x}")
