@@ -83,7 +83,7 @@ public final class Insight {
      * {@snippet file = "org/graalvm/tools/insight/test/MeaningOfWorldInstrument.java" region =
      * "org.graalvm.tools.insight.test.MeaningOfWorldInstrument"}
      * <p>
-     * The previous instrument makes variable {@code meanining} with value {@code 42} available to
+     * The previous instrument makes variable {@code meaning} with value {@code 42} available to
      * every {@link #ID Insight script} when properly registered into the virtual machine. A typical
      * way is to register your custom instrument is to use property
      * {@code truffle.class.path.append} when launching the virtual machine:
