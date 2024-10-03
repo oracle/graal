@@ -235,12 +235,7 @@ class RenaissanceNativeImageBenchmarkSuite(mx_sdk_benchmark.RenaissanceBenchmark
 
     def build_assertions(self, benchmark, is_gate):
         build_assertions = super(RenaissanceNativeImageBenchmarkSuite, self).build_assertions(benchmark, is_gate)
-        if benchmark == 'db-shootout' and is_gate:
-            # We are skipping build assertions in this package due to a problem with reflective access to a fields
-            # annotated with InjectAccessors (GR-36056).
-            return build_assertions + ['-J-da:com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider']
-        else:
-            return build_assertions
+        return build_assertions
 
     def extra_image_build_argument(self, benchmark, args):
         default_args = _RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS[benchmark] if benchmark in _RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS else []
