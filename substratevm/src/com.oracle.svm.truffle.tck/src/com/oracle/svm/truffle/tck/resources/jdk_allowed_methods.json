@@ -72,7 +72,7 @@
     "name" : "java.util.concurrent.FutureTask",
     "methods" : [
         { "name" : "cancel" ,
-          "justification" : "Interrups the executor threads to cancel execution of FutureTask.",
+          "justification" : "Interrupts the executor threads to cancel execution of FutureTask.",
           "parameterTypes" : [
             "boolean"
         ]}

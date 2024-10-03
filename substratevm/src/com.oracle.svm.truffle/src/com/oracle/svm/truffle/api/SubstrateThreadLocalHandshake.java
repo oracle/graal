@@ -121,7 +121,7 @@ public final class SubstrateThreadLocalHandshake extends ThreadLocalHandshake {
         }
     }
 
-    @Uninterruptible(reason = "Used both from uninterruptable stub.", calleeMustBe = false)
+    @Uninterruptible(reason = "Used both from uninterruptible stub.", calleeMustBe = false)
     @RestrictHeapAccess(reason = "Callee may allocate", access = RestrictHeapAccess.Access.UNRESTRICTED)
     private static void invokeProcessHandshake(Object enclosingNode) {
         SINGLETON.processHandshake((Node) enclosingNode);

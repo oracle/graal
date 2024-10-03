@@ -31,7 +31,7 @@ QUIETLY$(MX_VERBOSE)  = @
 
 default: dynLink/cycle/ref.bc
 
-# fake libB without dependecy to produce a cycle
+# fake libB without dependency to produce a cycle
 fake/libB$(SO_EXT): dynLink/cycle/b.c dynLink/cycle/Makefile
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -fPIC -shared -o $@ $<
