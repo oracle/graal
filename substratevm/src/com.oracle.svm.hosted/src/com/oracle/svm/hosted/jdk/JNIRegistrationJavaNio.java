@@ -152,6 +152,9 @@ public class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Inter
         }
         if (isLinux()) {
             RuntimeJNIAccess.register(fields(a, "sun.nio.fs.UnixFileAttributes", "st_birthtime_nsec"));
+            if (JavaVersionUtil.JAVA_SPEC > 21) {
+                RuntimeJNIAccess.register(fields(a, "sun.nio.fs.UnixFileAttributes", "birthtime_available"));
+            }
         }
 
         RuntimeJNIAccess.register(clazz(a, "sun.nio.fs.UnixFileStoreAttributes"));
