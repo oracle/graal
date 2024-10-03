@@ -81,7 +81,7 @@ Currently the action will be performed on the next safepoint location when the n
 
 There are several debug options available:
 
-### Excercise safepoints with SafepointALot
+### Exercise safepoints with SafepointALot
 
 SafepointALot is a tool to exercise every safepoint of an application and collect statistics.
 

@@ -48,7 +48,7 @@ The natural exit occurs during a normal context close triggered by `Context.clos
    * Guest code runs normally during exit notifications.
 
 3. All initialized languages are finalized.
-   * `TruffleLanguage.finalizeContext(C)` is called for all initalized languages.
+   * `TruffleLanguage.finalizeContext(C)` is called for all initialized languages.
    * Guest code runs normally during finalization.
 
 4. All languages are disposed.
@@ -81,7 +81,7 @@ a special `ThreadDeath` cancel exception depending on whether the hard exit or t
      and the `PolyglotException` thrown to the host has `PolyglotException.isCancelled() == true` instead of `PolyglotException.isExit() == true`.
 
 4. All initialized languages are finalized.
-   * `TruffleLanguage.finalizeContext(C)` is called for all initalized languages.
+   * `TruffleLanguage.finalizeContext(C)` is called for all initialized languages.
    * Running any guest code in `TruffleLanguage.finalizeContext(C)` will throw the special `ThreadDeath` exit exception from the first Truffle safepoint.
    * Languages should skip any finalization that would require running guest code. A language can find out if it can run guest code in `TruffleLanguage.finalizeContext(C)` by checking if `TruffleLanguage.exitContext(C,ExitMode,int)` was previously called with ExitMode.NATURAL,
    or by checking that `TruffleContext.isClosed()` returns `false`.
