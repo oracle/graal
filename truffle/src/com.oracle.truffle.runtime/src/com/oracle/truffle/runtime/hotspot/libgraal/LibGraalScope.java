@@ -150,18 +150,15 @@ public final class LibGraalScope implements AutoCloseable {
 
     /**
      * Enters a scope for making calls into libgraal. If there is no existing libgraal scope for the
-     * current thread, the current thread is attached to libgraal. When the outer most scope is
+     * current thread, the current thread is attached to libgraal. When the outermost scope is
      * closed, the current thread is detached from libgraal.
      *
      * This must be used in a try-with-resources statement.
      *
-     * This cannot be called from {@linkplain LibGraal#inLibGraal() within} libgraal.
-     *
      * @throws IllegalStateException if libgraal is {@linkplain LibGraal#isAvailable() unavailable}
-     *             or {@link LibGraal#inLibGraal()} returns true
      */
     public LibGraalScope(DetachAction detachAction) {
-        if (LibGraal.inLibGraal() || !LibGraal.isAvailable()) {
+        if (!LibGraal.isAvailable()) {
             throw new IllegalStateException();
         }
         id = nextId.getAndIncrement();
