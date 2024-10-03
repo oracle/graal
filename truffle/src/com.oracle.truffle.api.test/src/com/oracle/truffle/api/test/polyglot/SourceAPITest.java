@@ -336,13 +336,13 @@ public class SourceAPITest {
             File file = File.createTempFile("Hello", ".bin").getCanonicalFile();
             file.deleteOnExit();
 
-            // mime-type not specified + invalid langauge -> characters
+            // mime-type not specified + invalid language -> characters
             source = Source.newBuilder(BuildBinarySourcesLanguage.ID, file).build();
             assertFalse(source.hasBytes());
             assertTrue(source.hasCharacters());
             AbstractExecutableTestLanguage.parseTestLanguage(context, BuildBinarySourcesLanguage.class, source, false, true);
 
-            // mime-type not specified + invalid langauge -> characters
+            // mime-type not specified + invalid language -> characters
             source = Source.newBuilder(BuildBinarySourcesLanguage.ID, file).content(bytes).mimeType(BuildBinarySourcesLanguage.MIME_BINARY).build();
             assertTrue(source.hasBytes());
             assertFalse(source.hasCharacters());

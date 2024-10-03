@@ -43,7 +43,7 @@ package com.oracle.truffle.api.memory;
 
 /**
  * Proxies another {@link ByteArraySupport} implementation, reversing the order of accessed bytes.
- * In other terms, if the proxied implemention has little-endian order, wrapping it with
+ * In other terms, if the proxied implementation has little-endian order, wrapping it with
  * {@link ReversedByteArraySupport} allows reading and writing in big-endian order, and vice versa.
  */
 final class ReversedByteArraySupport extends ByteArraySupport {

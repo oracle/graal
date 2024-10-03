@@ -1058,7 +1058,7 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
     public final boolean isFinalFlagSet() {
         /*
          * HotSpot's Class Hierarchy Analysis does not allow inlining invoke interface pointing to
-         * never overriden default interface methods. We cirumvent this CHA limitation here by using
+         * never overridden default interface methods. We circumvent this CHA limitation here by using
          * an invokespecial, which is inlinable.
          */
         return TypeAccess.super.isFinalFlagSet() /* || isLeafAssumption() */;

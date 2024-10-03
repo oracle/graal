@@ -32,7 +32,7 @@ import com.oracle.truffle.espresso.classfile.attributes.LocalVariableTableRef;
 public interface MethodRef {
 
     /**
-     * Returnes the first code index for a given line within the method.
+     * Returns the first code index for a given line within the method.
      *
      * @param line the line number in the source code of the method
      * @return the first bci for the line

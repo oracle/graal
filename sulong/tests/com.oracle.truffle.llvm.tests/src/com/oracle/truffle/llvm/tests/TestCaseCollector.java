@@ -83,7 +83,7 @@ public final class TestCaseCollector {
      * {@link TestOptions#CONFIG_ROOT}) is used as the exclude reason.
      *
      * The {@code os_arch} subdirectory is handled specially. It can be used to implement platform
-     * specific excludes. This method recursivly looks for exclude files in
+     * specific excludes. This method recursively looks for exclude files in
      * {@code os_arch/<os>/<arch>} directory ({@link Platform#getOS()},
      * {@link Platform#getArchitecture()}). If the {@code <os>} or {@code <arch>} directory does not
      * exist, the method looks for an {@code others} directory, which serves as an {@code else}
