@@ -161,6 +161,7 @@ public class ImageLayerWriter {
     private FileInfo fileInfo;
     private GraphsOutput graphsOutput;
     private final boolean useSharedLayerGraphs;
+    private final boolean useSharedLayerStrengthenedGraphs;
 
     protected final Set<AnalysisFuture<Void>> elementsToPersist = ConcurrentHashMap.newKeySet();
 
@@ -213,6 +214,7 @@ public class ImageLayerWriter {
     @SuppressWarnings({"this-escape", "unused"})
     public ImageLayerWriter(boolean useSharedLayerGraphs) {
         this.useSharedLayerGraphs = useSharedLayerGraphs;
+        this.useSharedLayerStrengthenedGraphs = false;
         this.jsonMap = EconomicMap.create();
         this.constantsToRelink = new ArrayList<>();
         this.persistedTypeIds = ConcurrentHashMap.newKeySet();
@@ -469,6 +471,10 @@ public class ImageLayerWriter {
     }
 
     public void persistMethodStrengthenedGraph(AnalysisMethod method) {
+        if (!useSharedLayerStrengthenedGraphs) {
+            return;
+        }
+
         EconomicMap<String, Object> methodMap = getMethodMap(method);
 
         if (!methodMap.containsKey(STRENGTHENED_GRAPH_TAG)) {

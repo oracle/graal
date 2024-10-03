@@ -77,12 +77,6 @@ import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.imagelayer.HostedDynamicLayerInfo;
-import com.oracle.svm.hosted.meta.HostedArrayClass;
-import com.oracle.svm.hosted.meta.HostedField;
-import com.oracle.svm.hosted.meta.HostedInstanceClass;
-import com.oracle.svm.hosted.meta.HostedInterface;
-import com.oracle.svm.hosted.meta.HostedMethod;
-import com.oracle.svm.hosted.meta.HostedPrimitiveType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.RelocatableConstant;
 import com.oracle.svm.hosted.util.IdentityHashCodeUtil;
@@ -198,20 +192,6 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             if (encodedGraph.getObject(i) instanceof CGlobalDataInfo cGlobalDataInfo) {
                 encodedGraph.setObject(i, CGlobalDataFeature.singleton().registerAsAccessedOrGet(cGlobalDataInfo.getData()));
             }
-        }
-    }
-
-    @Override
-    protected void loadEncodedGraphLineAnalysisElements(String line) {
-        if (line.contains(HostedInstanceClass.class.getName()) || line.contains(HostedPrimitiveType.class.getName()) || line.contains(HostedArrayClass.class.getName()) ||
-                        line.contains(HostedInterface.class.getName())) {
-            getAnalysisType(getId(line));
-        } else if (line.contains(HostedMethod.class.getName())) {
-            getAnalysisMethod(getId(line));
-        } else if (line.contains(HostedField.class.getName())) {
-            getAnalysisField(getId(line));
-        } else {
-            super.loadEncodedGraphLineAnalysisElements(line);
         }
     }
 
