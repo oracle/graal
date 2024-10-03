@@ -480,7 +480,7 @@ public abstract class AbstractPolyglotTest {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            // does nothing node is supposed to be exectued
+            // does nothing node is supposed to be executed
             // externally.
             return null;
         }

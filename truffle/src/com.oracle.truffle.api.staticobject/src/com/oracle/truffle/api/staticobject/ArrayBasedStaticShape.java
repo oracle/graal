@@ -478,7 +478,7 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
                             int misalignment = newEnd % byteCount;
                             int aligned = newEnd - misalignment;
                             if (aligned < holeStart) {
-                                // re-aligning the store makes it overlap with somethig else: abort.
+                                // re-aligning the store makes it overlap with something else: abort.
                                 i++;
                                 continue mainloop;
                             }

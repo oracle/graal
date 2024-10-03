@@ -32,7 +32,7 @@ import sun.misc.Unsafe;
 /**
  * Class to enable support for compare and swap/exchange for sub-word fields.
  * <p>
- * This class will be overlayed, in favor of overlay classes: one for version &lt=8 and &gt= 9. This
+ * This class will be overlaid, in favor of overlay classes: one for version &lt=8 and &gt= 9. This
  * class implements the &lt=8 version, which works for 9+, but is far from optimal.
  * <p>
  * The version for &gt=9 should be able to call directly into host internal Unsafe methods to get

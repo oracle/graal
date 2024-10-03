@@ -74,7 +74,7 @@ public class NodeQuickSearch implements SearchProvider {
 
     /**
      * Method is called by infrastructure when search operation was requested. Implementors should
-     * evaluate given request and fill response object with apropriate results
+     * evaluate given request and fill response object with appropriate results
      *
      * @param request  Search request object that contains information what to search for
      * @param response Search response object that stores search results. Note that it's important

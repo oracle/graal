@@ -852,7 +852,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
      * inner loop blocks because the granularity of loop ends and exits are not on block boundaries:
      * a loop exit block can also be a loop end to an outer loop, which makes verification that the
      * inner loop is fully processed before we process the rest of the outer loop tricky (since we
-     * already visit a loop end to an outer loop while we should first stricly process all loop
+     * already visit a loop end to an outer loop while we should first strictly process all loop
      * ends/exits of inner loops).
      */
     private static boolean predecessorBlockSequentialLoopExit(HIRBlock b) {
@@ -1230,7 +1230,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
             }
             /*
              * "Endless" looking loops, i.e., loops without exit nodes (only deopt exits) look like
-             * inifinite loops if we take an exit frequency of "0", which results in max frequency
+             * infinite loops if we take an exit frequency of "0", which results in max frequency
              */
             final boolean hasLoopExits = lb.loopExits().count() > 0;
             if (Math.abs(endBasedFrequency - loopFrequency) > CFGOptions.LoopExitVsLoopEndFrequencyDiff.getValue(lb.getOptions()) && hasLoopExits) {

@@ -409,7 +409,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
             if (HotSpotGraalCompiler.Options.CrashAtThrowsOOME.getValue(options)) {
                 if (OOME_CRASH_DONE.compareAndSet(0L, 1L)) {
                     // The -Djdk.libgraal.Xmx option should also be employed to make
-                    // this allocation fail quicky
+                    // this allocation fail quickly
                     String largeString = Arrays.toString(new int[Integer.MAX_VALUE - 1]);
                     throw new InternalError("Failed to trigger OOME: largeString.length=" + largeString.length());
                 } else {

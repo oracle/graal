@@ -2252,7 +2252,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
     }
 
     /**
-     * Parses a lookahead assertion, assuming that the opening parantheses and special characters
+     * Parses a lookahead assertion, assuming that the opening parentheses and special characters
      * (either '(?=' or '(?!') have already been parsed.
      *
      * @param negate {@code true} if the assertion to be pushed is a negative lookahead assertion
@@ -2286,7 +2286,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
     }
 
     /**
-     * Parses an atomic group, assuming that the opening parantheses and '(?>' prefix have already
+     * Parses an atomic group, assuming that the opening parentheses and '(?>' prefix have already
      * been parsed.
      */
     private void atomicGroup() {

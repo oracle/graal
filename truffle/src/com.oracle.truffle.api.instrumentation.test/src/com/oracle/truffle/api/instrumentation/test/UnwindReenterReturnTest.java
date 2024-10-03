@@ -440,8 +440,8 @@ public class UnwindReenterReturnTest extends AbstractInstrumentationTest {
         UnwindMultiple unwindMultiple = engine.getInstruments().get("testUnwindMultiple").lookup(UnwindMultiple.class);
         // Unwind on enter: g -> a, e -> d (up to b due to second unwind below), l -> i
         unwindMultiple.submit(true, "CALL(g)", "CALL(a)", "CALL(e)", "CALL(d)", "CALL(l)", "CALL(i)");
-        // Unwind on return: g -> c (runs in parralel with g -> a above,
-        // e -> c (runs in parralel with e -> d (up to b)) above
+        // Unwind on return: g -> c (runs in parallel with g -> a above,
+        // e -> c (runs in parallel with e -> d (up to b)) above
         // k -> i (runs right after early return from k below
         unwindMultiple.submit(false, "CALL(g)", "CALL(c)", "CALL(e)", "CALL(c)", "CALL(k)", "CALL(i)");
         List<CodeAction> actionsUnwindE = new ArrayList<>();

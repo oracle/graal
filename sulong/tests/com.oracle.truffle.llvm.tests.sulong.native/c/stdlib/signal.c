@@ -72,7 +72,7 @@ int main(void) {
         /* second signal() failed */
         return 5;
     } else if (handler_p == NULL) {
-        /* second signal() returnd NULL instead of the old handler */
+        /* second signal() returned NULL instead of the old handler */
         return 6;
     } else if (handler_p != old_handler) {
         /* second signal() did not return the old handler */
