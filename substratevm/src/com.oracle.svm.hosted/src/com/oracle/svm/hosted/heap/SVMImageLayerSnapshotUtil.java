@@ -344,15 +344,25 @@ public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
             super(CInterfaceLocationIdentity.class);
         }
 
+        private static String asString(Object obj) {
+            var cInterfaceLocationIdentity = (CInterfaceLocationIdentity) obj;
+            return cInterfaceLocationIdentity.toString();
+        }
+
+        @Override
+        protected void makeChildIds(ObjectCopier.Encoder encoder, Object obj, ObjectCopier.ObjectPath objectPath) {
+            encoder.makeStringId(asString(obj), objectPath);
+        }
+
         @Override
         protected void encode(ObjectCopier.Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
-            CInterfaceLocationIdentity cInterfaceLocationIdentity = (CInterfaceLocationIdentity) obj;
-            stream.writeUTF(cInterfaceLocationIdentity.toString());
+            String string = asString(obj);
+            encoder.writeString(stream, string);
         }
 
         @Override
         protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
-            String encoded = stream.readUTF();
+            String encoded = decoder.readString(stream);
             return new CInterfaceLocationIdentity(encoded);
         }
     }
@@ -362,16 +372,24 @@ public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
             super(FastThreadLocal.FastThreadLocalLocationIdentity.class);
         }
 
+        private static FastThreadLocal getFastThreadLocal(Object obj) {
+            var fastThreadLocalLocationIdentity = (FastThreadLocal.FastThreadLocalLocationIdentity) obj;
+            return ReflectionUtil.readField(FastThreadLocal.FastThreadLocalLocationIdentity.class, "this$0", fastThreadLocalLocationIdentity);
+        }
+
+        @Override
+        protected void makeChildIds(ObjectCopier.Encoder encoder, Object obj, ObjectCopier.ObjectPath objectPath) {
+            makeStaticFieldIds(encoder, objectPath, getFastThreadLocal(obj));
+        }
+
         @Override
         protected void encode(ObjectCopier.Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
-            FastThreadLocal.FastThreadLocalLocationIdentity fastThreadLocalLocationIdentity = (FastThreadLocal.FastThreadLocalLocationIdentity) obj;
-            FastThreadLocal fastThreadLocal = ReflectionUtil.readField(FastThreadLocal.FastThreadLocalLocationIdentity.class, "this$0", fastThreadLocalLocationIdentity);
-            writeStaticField(encoder, stream, fastThreadLocal);
+            writeStaticField(encoder, stream, getFastThreadLocal(obj));
         }
 
         @Override
         protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
-            FastThreadLocal fastThreadLocal = readStaticFieldAndGetObject(stream);
+            FastThreadLocal fastThreadLocal = readStaticFieldAndGetObject(decoder, stream);
             return fastThreadLocal.getLocationIdentity();
         }
     }
@@ -381,30 +399,43 @@ public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
             super(VMThreadLocalInfo.class);
         }
 
+        private static FastThreadLocal getThreadLocal(Object obj) {
+            VMThreadLocalCollector vmThreadLocalCollector = ImageSingletons.lookup(VMThreadLocalCollector.class);
+            return vmThreadLocalCollector.getThreadLocal((VMThreadLocalInfo) obj);
+        }
+
+        @Override
+        protected void makeChildIds(ObjectCopier.Encoder encoder, Object obj, ObjectCopier.ObjectPath objectPath) {
+            makeStaticFieldIds(encoder, objectPath, getThreadLocal(obj));
+        }
+
         @Override
         protected void encode(ObjectCopier.Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
-            VMThreadLocalInfo vmThreadLocalInfo = (VMThreadLocalInfo) obj;
-            VMThreadLocalCollector vmThreadLocalCollector = ImageSingletons.lookup(VMThreadLocalCollector.class);
-            FastThreadLocal fastThreadLocal = vmThreadLocalCollector.getThreadLocal(vmThreadLocalInfo);
-            writeStaticField(encoder, stream, fastThreadLocal);
+            writeStaticField(encoder, stream, getThreadLocal(obj));
         }
 
         @Override
         protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
-            FastThreadLocal fastThreadLocal = readStaticFieldAndGetObject(stream);
+            FastThreadLocal fastThreadLocal = readStaticFieldAndGetObject(decoder, stream);
             return ImageSingletons.lookup(VMThreadLocalCollector.class).forFastThreadLocal(fastThreadLocal);
         }
     }
 
-    private static void writeStaticField(ObjectCopier.Encoder encoder, ObjectCopierOutputStream stream, Object object) throws IOException {
+    private static void makeStaticFieldIds(ObjectCopier.Encoder encoder, ObjectCopier.ObjectPath objectPath, Object object) {
         Field staticField = encoder.getExternalValues().get(object);
-        stream.writeUTF(staticField.getDeclaringClass().getName());
-        stream.writeUTF(staticField.getName());
+        encoder.makeStringId(staticField.getDeclaringClass().getName(), objectPath);
+        encoder.makeStringId(staticField.getName(), objectPath);
     }
 
-    private static <T> T readStaticFieldAndGetObject(ObjectCopierInputStream stream) throws IOException {
-        String className = stream.readUTF();
-        String fieldName = stream.readUTF();
+    private static void writeStaticField(ObjectCopier.Encoder encoder, ObjectCopierOutputStream stream, Object object) throws IOException {
+        Field staticField = encoder.getExternalValues().get(object);
+        encoder.writeString(stream, staticField.getDeclaringClass().getName());
+        encoder.writeString(stream, staticField.getName());
+    }
+
+    private static <T> T readStaticFieldAndGetObject(ObjectCopier.Decoder decoder, ObjectCopierInputStream stream) throws IOException {
+        String className = decoder.readString(stream);
+        String fieldName = decoder.readString(stream);
         Class<?> declaringClass = ReflectionUtil.lookupClass(false, className);
         return ReflectionUtil.readStaticField(declaringClass, fieldName);
     }
