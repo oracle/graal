@@ -56,7 +56,7 @@
                 (i32.const 8)       ;; path length
                 (i32.const 0)       ;; oflags
                 (i64.const 2097152) ;; rights base (only fd_fdstat_get set)
-                (i64.const 2097152) ;; rights inherting (only fd_fdstat_get set)
+                (i64.const 2097152) ;; rights inheriting (only fd_fdstat_get set)
                 (i32.const 1)       ;; fdflags (append flag set)
                 (i32.const 8)       ;; fd address
             )

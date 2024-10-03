@@ -57,7 +57,7 @@ public interface LSPCommand {
     default Object onTimeout(List<Object> arguments) {
         String argumentString = String.join(", ", arguments.toArray(new String[0]));
         if (getTimeoutMillis() > 0) {
-            throw new RuntimeException("onTimeout not overriden. Arguments: " + argumentString);
+            throw new RuntimeException("onTimeout not overridden. Arguments: " + argumentString);
         } else {
             throw new AssertionError("onTimeout triggered on negative or zero timeout. Arguments: " + argumentString);
         }

@@ -54,7 +54,7 @@ import java.util.function.BiConsumer;
 import com.oracle.truffle.api.source.Source;
 
 /*
- * Lists of sources (executed or loaded, this description further mentions ony loaded sources,
+ * Lists of sources (executed or loaded, this description further mentions only loaded sources,
  * the same holds for executed) are initialized lazily, and, to prevent deadlocks, new sources
  * can be loaded during this lazy initialization and also new bindings can be added at any time.
  * In order to guarantee that each binding is notified about each source at most once without

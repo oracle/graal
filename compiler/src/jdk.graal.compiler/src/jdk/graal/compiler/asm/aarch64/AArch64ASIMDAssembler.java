@@ -3644,7 +3644,7 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
-     * C7.2.360 Unigned maximum.<br>
+     * C7.2.360 Unsigned maximum.<br>
      *
      * <code>for i in 0..n-1 do dst[i] = uint_max(src1[i], src2[i])</code>
      *

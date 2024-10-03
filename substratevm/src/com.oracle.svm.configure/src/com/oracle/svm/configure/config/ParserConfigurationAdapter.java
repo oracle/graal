@@ -46,7 +46,7 @@ public class ParserConfigurationAdapter implements ReflectionConfigurationParser
         ConfigurationType type = configuration.get(condition, typeDescriptor);
         /*
          * The type is not immediately set with all elements included. These are added afterwards
-         * when parsing the correspondind fields to check for overriding values
+         * when parsing the corresponding fields to check for overriding values
          */
         ConfigurationType result = type != null ? type : new ConfigurationType(condition, typeDescriptor, false);
         return TypeResult.forType(typeDescriptor.toString(), result);

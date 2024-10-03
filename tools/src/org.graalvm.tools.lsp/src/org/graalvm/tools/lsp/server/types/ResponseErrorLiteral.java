@@ -46,7 +46,7 @@ public class ResponseErrorLiteral extends JSONBase {
     }
 
     /**
-     * A string providing a short decription of the error.
+     * A string providing a short description of the error.
      */
     public String getMessage() {
         return jsonData.getString("message");

@@ -45,7 +45,7 @@ public interface ReachabilityAnalysis {
      * Marks given class and all its superclasses as reachable.
      *
      * @param clazz class to be marked
-     * @param addFields if true, all instance fiels are marked as accessed
+     * @param addFields if true, all instance fields are marked as accessed
      * @param addArrayClass if true, the array class is registered as well
      */
     AnalysisType addRootClass(Class<?> clazz, boolean addFields, boolean addArrayClass);

@@ -39,7 +39,7 @@ import sun.util.calendar.CalendarSystem;
 /*
  * The JDK performs dynamic lookup of calendar systems by name, which leads to dynamic class
  * loading. We cannot do that, because we need to know all classes ahead of time to perform our
- * static analysis. Therefore, we limited ourselfs to the basic calendars for now, and create them
+ * static analysis. Therefore, we limited ourselves to the basic calendars for now, and create them
  * statically.
  */
 

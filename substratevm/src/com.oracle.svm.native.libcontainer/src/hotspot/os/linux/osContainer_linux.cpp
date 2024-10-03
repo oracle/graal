@@ -65,7 +65,7 @@ void OSContainer::init() {
   /*
    * In order to avoid a false positive on is_containerized() on
    * Linux systems outside a container *and* to ensure compatibility
-   * with in-container usage, we detemine is_containerized() by two
+   * with in-container usage, we determine is_containerized() by two
    * steps:
    * 1.) Determine if all the cgroup controllers are mounted read only.
    *     If yes, is_containerized() == true. Otherwise, do the fallback

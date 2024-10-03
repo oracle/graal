@@ -38,7 +38,7 @@ public class ColorInformation extends JSONBase {
     }
 
     /**
-     * The range in the document where this color appers.
+     * The range in the document where this color appears.
      */
     public Range getRange() {
         return new Range(jsonData.getJSONObject("range"));

@@ -51,7 +51,7 @@ final class BreakpointListener implements Consumer<Breakpoint> {
     static BreakpointListener register(boolean[] notified, Debugger debugger, Breakpoint globalBreakpoint) {
         BreakpointListener newBPListener = new BreakpointListener(notified, debugger, globalBreakpoint);
         debugger.addBreakpointAddedListener(newBPListener);
-        Consumer<Breakpoint> removedListener = (breakpoint) -> Assert.fail("No breakpoint is excpected to be removed. Breakpoint = " + breakpoint);
+        Consumer<Breakpoint> removedListener = (breakpoint) -> Assert.fail("No breakpoint is expected to be removed. Breakpoint = " + breakpoint);
         newBPListener.removedListener = removedListener;
         debugger.addBreakpointRemovedListener(removedListener);
         return newBPListener;

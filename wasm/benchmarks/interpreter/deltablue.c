@@ -986,7 +986,7 @@ Constraint ScaleOffsetC(Variable src, Variable scale, Variable offset,
 * constraint satisfaction plan. There are two cases. In case 1, the added
 * constraint is stronger than the stay constraint and values must propagate
 * down the entire length of the chain. In case 2, the added constraint is
-* weaker than the stay constraint so it cannot be accomodated. The cost in
+* weaker than the stay constraint so it cannot be accommodated. The cost in
 * this case is, of course, very low. Typical situations lie somewhere between
 * these two extremes.
 *

@@ -492,7 +492,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                 int modifiers = original.getModifiers();
                 if (Modifier.isProtected(modifiers) || Modifier.isPublic(modifiers)) {
                     String format = "Detected a public or protected method annotated with @Delete: %s. " +
-                                    "Such usages of @Delete are not permited since these methods can be called " +
+                                    "Such usages of @Delete are not permitted since these methods can be called " +
                                     "from third party code and can lead to unsupported features. " +
                                     "Instead the method should be replaced with a @Substitute method and `throw VMError.unsupportedFeature()`.";
                     throw UserError.abort(format, annotatedMethod);

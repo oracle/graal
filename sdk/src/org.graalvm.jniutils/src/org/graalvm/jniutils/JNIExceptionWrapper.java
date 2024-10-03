@@ -600,7 +600,7 @@ public final class JNIExceptionWrapper extends RuntimeException {
             }
             if (entryPoints.isNull()) {
                 // Here we cannot use JNIExceptionWrapper.
-                // We failed to load HostSpot entry points for it.
+                // We failed to load HotSpot entry points for it.
                 ExceptionClear(env);
                 throw new InternalError("Failed to load " + HS_ENTRYPOINTS_CLASS);
             }

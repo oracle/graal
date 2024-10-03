@@ -1927,7 +1927,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         @Specialization
         static Object doInt(Node node, int arg,
-                        @ExpectError("Redundant specification of @GenerateInline(... inline=true). Cached values of nodes with @Cached are implicitely inlined.") //
+                        @ExpectError("Redundant specification of @GenerateInline(... inline=true). Cached values of nodes with @Cached are implicitly inlined.") //
                         @Cached(inline = true) InnerNode innerNode) {
             return innerNode.execute(node, arg);
         }

@@ -865,7 +865,7 @@ public class AutomaticUnsafeTransformationSupport {
             /*
              * Passing the value as a parameter to certain methods, like Unsafe methods that read
              * and write memory based on it, is allowed. Passing an unsafe value as a parameter is
-             * sound as long as the called method doesn't propagate the value to a dissalowed usage,
+             * sound as long as the called method doesn't propagate the value to a disallowed usage,
              * e.g., like a store to a field that we would then miss.
              */
             MethodCallTargetNode methodCallTarget = (MethodCallTargetNode) valueNodeUsage;

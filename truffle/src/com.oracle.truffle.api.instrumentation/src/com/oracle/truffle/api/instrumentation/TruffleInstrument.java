@@ -690,7 +690,7 @@ public abstract class TruffleInstrument {
             try {
                 Object vm = InstrumentAccessor.langAccess().getPolyglotInstrument(instrument);
                 if (vm == this.polyglotInstrument) {
-                    throw new IllegalArgumentException("Not allowed to lookup services from the currrent instrument.");
+                    throw new IllegalArgumentException("Not allowed to lookup services from the current instrument.");
                 }
                 return InstrumentAccessor.engineAccess().lookup(instrument, type);
             } catch (Throwable t) {

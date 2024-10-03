@@ -887,7 +887,7 @@ public class SLInspectDebugTest {
         tester.eval(internSource);
         assertTrue(tester.compareReceivedMessages(
                         "{\"method\":\"Debugger.scriptParsed\",\"params\":{\"endLine\":0,\"scriptId\":\"0\",\"endColumn\":0,\"startColumn\":0,\"startLine\":0,\"length\":0,\"executionContextId\":" + id + ",\"url\":\"" + SL_BUILTIN_URI + "\",\"hash\":\"ffffffffffffffffffffffffffffffffffffffff\"}}\n"));
-        // No scriptParsed message for the interanl source
+        // No scriptParsed message for the internal source
         tester.eval(publicSource);
         assertTrue(tester.compareReceivedMessages(
                         "{\"method\":\"Debugger.scriptParsed\",\"params\":{\"endLine\":10,\"scriptId\":\"1\",\"endColumn\":1,\"startColumn\":0,\"startLine\":0,\"length\":166,\"executionContextId\":" + id + ",\"url\":\"" + publicSourceURI + "\",\"hash\":\"f16f032ee222dcfdfc01da4bfd731e49fc671217\"}}\n"));

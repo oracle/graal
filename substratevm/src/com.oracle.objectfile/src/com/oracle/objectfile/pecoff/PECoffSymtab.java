@@ -192,7 +192,7 @@ public class PECoffSymtab extends ObjectFile.Element implements SymbolTable {
     private PECoffSymtabStruct symtabStruct;
 
     /**
-     * PECoffSymtab Element encompases the Symbol table array and the String table. The String table
+     * PECoffSymtab Element encompasses the Symbol table array and the String table. The String table
      * immediately follows the Symbol table.
      */
     public PECoffSymtab(PECoffObjectFile owner, String name) {

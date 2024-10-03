@@ -85,7 +85,7 @@ import com.oracle.truffle.api.utilities.FinalBitSet;
  * Library instances are either <i>cached</i> or <i>uncached</i>. Cached instances are library
  * instances designed to be used in ASTs. Cached instances are typically {@link Node#isAdoptable()
  * adoptable} and store additional profiling information for the cached export. This allows to
- * generate call-site specific profiling information for libray calls. Before a cached instance can
+ * generate call-site specific profiling information for library calls. Before a cached instance can
  * be used it must be {@link Node#insert(Node) adopted} by a parent node.
  * <p>
  * Uncached versions are designed to be used from slow-path runtime methods or whenever call-site

@@ -875,7 +875,7 @@ public final class NativeImageHeap implements ImageHeap {
         boolean patched = false;
         for (int idx = 0; idx < length; idx++) {
             JavaConstant value = hConstantReflection.readArrayElement(array, idx);
-            /* Object replacement is done as part as constant refection. */
+            /* Object replacement is done as part as constant reflection. */
             if (spawnIsolates()) {
                 relocatable = relocatable || isRelocatableConstant(value);
             }

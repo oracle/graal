@@ -70,7 +70,7 @@ char **getEnviron() {
        numChars++;
     }
 
-    // Duplcate the env strings
+    // Duplicate the env strings
     p = envptr = malloc((numStrings+1)*sizeof(char *));
     env = malloc(numChars);
     memcpy(env, lpvEnv, numChars);

@@ -1434,7 +1434,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
     /**
      * Converts the receiver to a human readable {@link InteropLibrary#isString(Object) string}.
-     * Each language may have special formating conventions - even primitive values may not follow
+     * Each language may have special formatting conventions - even primitive values may not follow
      * the traditional Java rules. The format of the returned string is intended to be interpreted
      * by humans not machines and should therefore not be relied upon by machines. By default the
      * receiver class name and its {@link System#identityHashCode(Object) identity hash code} is
@@ -2449,7 +2449,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
     /**
      * Returns <code>true</code> if the receiver represents an <code>instantiable</code> value, else
-     * <code>false</code>. Contructors or {@link InteropLibrary#isMetaObject(Object) metaobjects}
+     * <code>false</code>. Constructors or {@link InteropLibrary#isMetaObject(Object) metaobjects}
      * are typical examples of instantiable values. Invoking this message does not cause any
      * observable side-effects. Note that receiver values which are
      * {@link InteropLibrary#isExecutable(Object) executable} might also be

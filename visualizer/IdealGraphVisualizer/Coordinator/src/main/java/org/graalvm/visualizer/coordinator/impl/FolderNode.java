@@ -253,7 +253,7 @@ public class FolderNode extends AbstractOutlineNode {
                     handle.progress(Math.min(lastTotal, workDone));
                 }
                 if (indeterminate) {
-                    // cancel indeterminate (for unfinished entries) progress after some time, so it does not obscur
+                    // cancel indeterminate (for unfinished entries) progress after some time, so it does not obscure
                     cancelIndeterminate.schedule(PROGRESS_TIMEOUT);
                 }
             }

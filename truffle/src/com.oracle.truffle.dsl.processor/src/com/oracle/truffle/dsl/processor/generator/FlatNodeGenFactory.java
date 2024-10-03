@@ -5566,7 +5566,7 @@ public class FlatNodeGenFactory {
                             // encoded enums do not need to be cleared
                             continue;
                         } else if (cache.getInlinedNode() != null) {
-                            // inlined nodes do not need to be clared
+                            // inlined nodes do not need to be cleared
                             continue;
                         } else if (cache.isAlwaysInitialized()) {
                             continue;
@@ -5779,7 +5779,7 @@ public class FlatNodeGenFactory {
                 CodeTreeBuilder builder = new CodeTreeBuilder(null);
                 builder.startStatement();
                 if (frameState.get(localName) == null) {
-                    // not yet declared
+                    // not yet decleared
                     builder.string(typeName);
                     builder.string(" ");
                 }

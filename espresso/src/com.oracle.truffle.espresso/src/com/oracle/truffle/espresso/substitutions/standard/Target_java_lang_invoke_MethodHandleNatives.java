@@ -92,7 +92,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
      * Plants an already resolved target into a memberName.
      *
      * @param self the memberName
-     * @param ref the target. Can be either a mathod or a field.
+     * @param ref the target. Can be either a method or a field.
      */
     @Substitution
     public static void init(@JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject self, @JavaType(Object.class) StaticObject ref,

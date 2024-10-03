@@ -400,7 +400,7 @@ public abstract class AbstractSearchResultsPanelBase extends javax.swing.JPanel
     }
 
     /**
-     * Start finding for next or previous occurance, from a node or its previous
+     * Start finding for next or previous occurrence, from a node or its previous
      * or next sibling of node {@code node}
      *
      * @param node   reference node

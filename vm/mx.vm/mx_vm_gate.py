@@ -548,7 +548,7 @@ def gate_body(args, tasks):
 
 def graalvm_svm():
     """
-    Gives access to image building withing the GraalVM release. Requires dynamic import of substratevm.
+    Gives access to image building within the GraalVM release. Requires dynamic import of substratevm.
     """
     native_image_cmd = join(mx_sdk_vm_impl.graalvm_output(), 'bin', 'native-image') + ('.cmd' if mx.get_os() == 'windows' else '')
     svm = mx.suite('substratevm')

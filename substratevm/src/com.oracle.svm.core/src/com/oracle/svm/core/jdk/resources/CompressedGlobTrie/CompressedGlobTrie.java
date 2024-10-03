@@ -291,7 +291,7 @@ public class CompressedGlobTrie {
                      * means either we have same words with different numbers of * (we are favouring
                      * pattern with more *) or same/different words with stars on different places
                      * (we don't care because they will end up in separate branches, but we will
-                     * favour shorter patters)
+                     * favour shorter patterns)
                      */
                     if (len1 == len2) {
                         /* patterns have same number of letters */

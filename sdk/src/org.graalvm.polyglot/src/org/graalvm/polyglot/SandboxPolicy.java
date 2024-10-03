@@ -135,7 +135,7 @@ public enum SandboxPolicy {
      * {@link org.graalvm.polyglot.io.IOAccess.Builder#fileSystem(FileSystem) custom file
      * system}.</li>
      * <li>If a custom filesystem is used, it must not be the
-     * {@link FileSystem#newDefaultFileSystem() default filesystem} or a filesytem wrapping the
+     * {@link FileSystem#newDefaultFileSystem() default filesystem} or a filesytsem wrapping the
      * default file system.</li>
      * <li>Only languages with a sandbox policy of at least {@code CONSTRAINED} can be used.</li>
      * <li>Only instruments with a sandbox policy of at least {@code CONSTRAINED} can be used.</li>

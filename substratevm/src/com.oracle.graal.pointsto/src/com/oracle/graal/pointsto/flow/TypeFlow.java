@@ -950,7 +950,7 @@ public abstract class TypeFlow<T> {
          * work correctly. When the receiver object of an array load/store operation is saturated,
          * i.e., it will stop sending updates, the load/store needs to subscribe for updates
          * directly to the type flow of the receiver object declared type. However, the declared
-         * type cannot always be statically infered from the graphs, thus a conservative
+         * type cannot always be statically inferred from the graphs, thus a conservative
          * approximation such as the Object type can be used. Therefore, all array type flows need
          * to be modeled using a unique elements type flow abstraction.
          */

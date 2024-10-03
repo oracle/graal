@@ -36,7 +36,7 @@
 # - `setupCompiler()`: This is called before `enableLanguage`. It should be used perform compiler setup like
 #   setting `CMAKE_C_COMPILER` or check whether required tools are available.
 # - `setupOptions()`: This is called after `enableLanguage`. It is supposed to set flags that might conflict with
-#   `enableLanguage` (e.g. because the linked executable is not an exectable but a bitcode file).
+#   `enableLanguage` (e.g. because the linked executable is not an executable but a bitcode file).
 #
 # In addition, a variant configuration might define the following:
 # - `targetPostProcess(SOURCE TARGET OUTPUT_DIR OUTPUT)`: this can be used to post-process the build or to set source
@@ -58,14 +58,14 @@ set(SULONG_MODULE_PATH "" CACHE STRING "Path for looking up cmake modules")
 set(CMAKE_C_FLAGS "${SULONG_C_FLAGS} ${CMAKE_C_FLAGS}")
 set(CMAKE_CXX_FLAGS "${SULONG_CXX_FLAGS} ${CMAKE_CXX_FLAGS}")
 
-# ensure that LDFLAGS environement variable is respected
+# ensure that LDFLAGS environment variable is respected
 if(DEFINED CMAKE_EXE_LINKER_FLAGS AND DEFINED ENV{LDFLAGS})
     # If CMAKE_EXE_LINKER_FLAGS are set in the suite.py, the LDFLAGS environment variable is no longer used automatically.
     # Thus, we add it manually.
     string(APPEND CMAKE_EXE_LINKER_FLAGS " $ENV{LDFLAGS}")
 endif()
 
-# ensure that CPPFLAGS environement variable is respected
+# ensure that CPPFLAGS environment variable is respected
 if(DEFINED ENV{CPPFLAGS})
     string(APPEND CMAKE_C_FLAGS " $ENV{CPPFLAGS}")
     string(APPEND CMAKE_CXX_FLAGS " $ENV{CPPFLAGS}")

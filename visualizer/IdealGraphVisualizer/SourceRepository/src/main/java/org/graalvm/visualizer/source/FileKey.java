@@ -28,7 +28,7 @@ import org.openide.filesystems.FileObject;
 import java.util.Objects;
 
 /**
- * Overridable key which identifies a file. Subclasses may add addditional information,
+ * Overridable key which identifies a file. Subclasses may add additional information,
  * like module (a filename is relative to it). equals() and hashCode() must be properly
  * defined. It is OK to have multiple FileKeys identify a single FileObject
  */

@@ -124,7 +124,7 @@ setCompilerFromEnv(CLANGXX CMAKE_CXX_FLAGS CLANG_CXX)
 # Given on the current variant, the test and the dependency might be linked via different tools,
 # e.g., `llvm-link` for the bitcode variant or the toolchain linker for the toolchain variant.
 # Not all combinations of test and dependency types will work. Known to work combinations are
-# *.ll tests linked with *.c files. For non-standard file extentions, the languange of the
+# *.ll tests linked with *.c files. For non-standard file extensions, the language of the
 # dependency might need to be set manually:
 #   set_source_files_properties(mytests/common.cmain PROPERTIES LANGUAGE C)
 #

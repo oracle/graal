@@ -314,7 +314,7 @@ public final class LoadModulesNode extends LLVMRootNode {
 
                     if (LLVMLoadingPhase.ALL.isActive(phase)) {
                         while (!que.isEmpty()) {
-                            // Foward the tail scope chain to the latest scope chain.
+                            // Forward the tail scope chain to the latest scope chain.
                             while (tailLocalScopeChain != null && tailLocalScopeChain.getNext() != null) {
                                 tailLocalScopeChain = tailLocalScopeChain.getNext();
                             }

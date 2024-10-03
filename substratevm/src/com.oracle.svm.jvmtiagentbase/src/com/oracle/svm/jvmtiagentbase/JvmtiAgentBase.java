@@ -83,7 +83,7 @@ import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEventCallbacks;
  *
  * Only one agent can be created in a single native image.
  *
- * @param <T> The class or subclass of {@link JNIHandleSet} containg the JNI handles this agent
+ * @param <T> The class or subclass of {@link JNIHandleSet} containing the JNI handles this agent
  *            requires.
  */
 @SuppressWarnings({"JavadocReference", "try"})
@@ -235,7 +235,7 @@ public abstract class JvmtiAgentBase<T extends JNIHandleSet> {
     }
 
     /**
-     * Releases all global JNI references and resources aquired by the framework.
+     * Releases all global JNI references and resources acquired by the framework.
      *
      * This function may only be called once and must be called from the {@link #onUnloadCallback}.
      * During the call to unload some JVMTI event handlers may still be running. As such, it is

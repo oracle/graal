@@ -72,7 +72,7 @@ public class DeletedMethod extends CustomSubstitutionMethod {
     @Override
     public int getModifiers() {
         /*
-         * We remove the synchonized modifier because our manually constructed graph does not need
+         * We remove the synchronized modifier because our manually constructed graph does not need
          * to do synchronization (since it is reporting a fatal error anyway).
          */
         return original.getModifiers() & ~Modifier.SYNCHRONIZED;

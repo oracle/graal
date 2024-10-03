@@ -137,7 +137,7 @@ public class PolymorphicSignatureWrapperMethod implements ResolvedJavaMethod, Gr
                  * bits of the Integer are not guaranteed to be zero.
                  *
                  * The only return types worth considering are Short, Int and Long. A Long return
-                 * type will always be wide enough to accomodate the full original value. In the
+                 * type will always be wide enough to accommodate the full original value. In the
                  * case of a Byte return type, there is no need to worry about this since the result
                  * can only be truncated. In the Char case, the method handle invocation will return
                  * a WrongMethodTypeException when trying to call a method handle with a boolean or
