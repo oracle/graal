@@ -58,7 +58,7 @@ public final class AMD64PrefetchOp extends AMD64LIRInstruction {
                 masm.prefetchw(address.toAddress(masm));
                 break;
             default:
-                throw GraalError.shouldNotReachHere("unspported prefetch op " + instr); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHere("unsupported prefetch op " + instr); // ExcludeFromJacocoGeneratedReport
 
         }
     }

@@ -112,7 +112,7 @@ public abstract class TypeEntry {
      * properties of the java type. This also allows them to be decorated with properties that
      * record details of the generated debug info. When it comes to encoding the model type as DWARF
      * or PECOFF method {@link #isForeign()} may need to be called in order to allow foreign types
-     * ot be special cased.
+     * to be special cased.
      *
      * @return true if this entry is a class type otherwise false.
      */

@@ -120,7 +120,7 @@ public abstract class SLAddNode extends SLBinaryNode {
      * <p>
      * This specialization is automatically selected by the Truffle DSL if both the left and the
      * right operand {@link InteropLibrary#fitsInBigInteger(Object) fit} into
-     * {@link java.math.BigInteger}, but at least one of them cannot be coverted to
+     * {@link java.math.BigInteger}, but at least one of them cannot be converted to
      * {@link SLBigInteger} by {@link ImplicitCast implicit conversion}. Once this specialization
      * has been selected, it replaces the {@link #doSLBigInteger(SLBigInteger, SLBigInteger)}
      * specialization which is then never used again.

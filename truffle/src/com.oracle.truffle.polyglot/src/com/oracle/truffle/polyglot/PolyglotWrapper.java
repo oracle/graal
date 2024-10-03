@@ -122,7 +122,7 @@ interface PolyglotWrapper {
         try {
             prev = PolyglotValueDispatch.hostEnter(languageContext);
         } catch (Throwable t) {
-            // enter might fail if context was closed asynchonously.
+            // enter might fail if context was closed asynchronously.
             // Can no longer call interop.
             return false;
         }

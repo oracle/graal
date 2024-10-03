@@ -116,7 +116,7 @@ def test():
     rexp = fr"{digits_pattern}:{spaces_pattern}int com.oracle.svm.core.code.IsolateEnterStub::(JavaMainWrapper_run_{wildcard_pattern})\({wildcard_pattern}\);"
     checker = Checker('info func JavaMainWrapper_run_', rexp)
     matches = checker.check(exec_string)
-    # n.b can ony get here with one match
+    # n.b can only get here with one match
     match = matches[0]
     method_name = match.group(1)
     print(f"method_name = {method_name}")
@@ -127,7 +127,7 @@ def test():
     rexp = fr"{wildcard_pattern}0x({hex_digits_pattern}){wildcard_pattern}com.oracle.svm.core.code.IsolateEnterStub::JavaMainWrapper_run_{wildcard_pattern}"
     checker = Checker(f'x/i IsolateEnterStub::{method_name}', rexp)
     matches = checker.check(exec_string)
-    # n.b can ony get here with one match
+    # n.b can only get here with one match
     match = matches[0]
 
     bp_address = int(match.group(1), 16)
@@ -481,8 +481,13 @@ def test():
     checker = Checker("info args println", rexp)
     checker.check(exec_string)
 
+<<<<<<< HEAD
     exec_string = execute("ptype this")
     # the debugger shoudl still know the type of "this"
+=======
+    exec_string = execute("ptype this");
+    # the debugger should still know the type of "this"
+>>>>>>> 1735e2b8ca9 (Fix typos)
     rexp = [r"type = class java\.io\.PrintStream : public java\.io\.FilterOutputStream {"]
     checker = Checker("ptype this", rexp)
     checker.check(exec_string)
@@ -538,7 +543,7 @@ def test():
     rexp = [fr"103{spaces_pattern}inlineA\(\);"]
     checker = Checker('list inlineIs', rexp)
     checker.check(execute("list inlineIs"))
-    # List inlineA may actually return more locations dependening on inlining decisions, but noInlineTest
+    # List inlineA may actually return more locations depending on inlining decisions, but noInlineTest
     # always needs to be listed
     rexp = [fr"108{spaces_pattern}noInlineTest\(\);"]
     checker = Checker('list inlineA', rexp)
@@ -547,8 +552,13 @@ def test():
     execute("delete breakpoints")
     # Set breakpoint at inlined method and step through its nested inline methods
     exec_string = execute("break hello.Hello::inlineIs")
+<<<<<<< HEAD
     # Dependening on inlining decisions, there are either two or one locations
     rexp = fr"Breakpoint {digits_pattern} at {address_pattern}: (hello\.Hello::inlineIs\. \(2 locations\)|file hello/Hello\.java, line 103\.)"
+=======
+    # Depending on inlining decisions, there are either two or one locations
+    rexp = r"Breakpoint %s at %s: (hello\.Hello::inlineIs\. \(2 locations\)|file hello/Hello\.java, line 103\.)"%(digits_pattern, address_pattern)
+>>>>>>> 1735e2b8ca9 (Fix typos)
     checker = Checker('break inlineIs', rexp)
     checker.check(exec_string, skip_fails=False)
 
@@ -698,7 +708,7 @@ def test():
     rexp = fr"{spaces_pattern}0x({hex_digits_pattern}){wildcard_pattern}hello.Hello::noInlineManyArgs{wildcard_pattern}"
     checker = Checker('x/i hello.Hello::noInlineManyArgs', rexp)
     matches = checker.check(exec_string)
-    # n.b can ony get here with one match
+    # n.b can only get here with one match
     match = matches[0]
     bp_address = int(match.group(1), 16)
     print(f"bp = {match.group(1)} {bp_address:x}")
@@ -987,7 +997,7 @@ def test():
     rexp = fr"{spaces_pattern}0x({hex_digits_pattern}){wildcard_pattern}com.oracle.svm.test.debug.CStructTests::testMixedArguments{wildcard_pattern}"
     checker = Checker('x/i CStructTests::testMixedArguments', rexp)
     matches = checker.check(exec_string)
-    # n.b can ony get here with one match
+    # n.b can only get here with one match
     match = matches[0]
     bp_address = int(match.group(1), 16)
     print(f"bp = {match.group(1)} {bp_address:x}")
