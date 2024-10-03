@@ -383,7 +383,7 @@ public abstract class SettingsStore<S extends SettingsStore<S, B>, B extends Set
             Class<? extends SettingsStore> type = store.getClass();
             WeakReference<? extends SettingsStore> wk = hold.get(type);
             if (wk != null && wk.get() != null) {
-                throw new IllegalStateException("Can't instanciate more than one " + store.getClass());
+                throw new IllegalStateException("Can't instantiate more than one " + store.getClass());
             }
             hold.put(type, new WeakReference<>(store));
         }

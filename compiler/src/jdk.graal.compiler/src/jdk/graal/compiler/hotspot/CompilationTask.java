@@ -163,7 +163,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
             /*
              * Treat random exceptions from the compiler as indicating a problem compiling this
              * method. Report the result of toString instead of getMessage to ensure that the
-             * exception type is included in the output in case there's no detail mesage.
+             * exception type is included in the output in case there's no detail message.
              */
             return HotSpotCompilationRequestResult.failure(t.toString(), false);
         }
