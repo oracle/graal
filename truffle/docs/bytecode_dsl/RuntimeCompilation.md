@@ -54,8 +54,10 @@ When these assertions fail, compilation bails out early with a helpful diagnosti
 
 ## Source information
 
-[Reparsing](UserGuide.md#reparsing) a root node changes its current `BytecodeNode`, and usually invalidates any compiled code for the node.
-However, to avoid costly invalidations, reparsing **does not** invalidate code for source-only updates (i.e., when bytecode is unchanged).
+[Reparsing](UserGuide.md#reparsing) a root node changes its current `BytecodeNode`. If the bytecode changes (i.e., an instrumentation is added), any compiled code for the node will be invalidated.
+To avoid unnecessary invalidations, reparsing **does not** invalidate code for source-only updates.
 
 Consequently, the current `BytecodeNode` can be out of date in compiled code if source information is lazily materialized.
-Any code that accesses source information through the current `BytecodeNode` or `BytecodeLocation` should **not be included** in compiled code, and should instead be guarded by a `@TruffleBoundary`.
+You can use `BytecodeNode#ensureSourceInformation` in compiled code to obtain an up-to-date bytecode node with source information.
+This method will return the current node, if sources are available, or deoptimize and reparse.
+Since most computations involving sources are not PE friendly, you may also wish to put them behind a `@TruffleBoundary` and use `BytecodeRootNode#getBytecodeNode` to obtain an up-to-date bytecode node.

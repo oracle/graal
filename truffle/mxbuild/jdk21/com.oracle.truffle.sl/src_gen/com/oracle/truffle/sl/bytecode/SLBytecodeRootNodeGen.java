@@ -14209,7 +14209,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
 
         private static final Object VISIBLE_TOKEN = TOKEN;
 
-        private volatile long encoding;
+        @CompilationFinal private volatile long encoding;
 
         BytecodeRootNodesImpl(BytecodeParser<com.oracle.truffle.sl.bytecode.SLBytecodeRootNodeGen.Builder> generator, BytecodeConfig config) {
             super(VISIBLE_TOKEN, generator);
@@ -14230,6 +14230,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         private synchronized boolean performUpdate(long maskedEncoding) {
+            CompilerAsserts.neverPartOfCompilation();
             long oldEncoding = this.encoding;
             long newEncoding = maskedEncoding | oldEncoding;
             if ((oldEncoding | newEncoding) == oldEncoding) {

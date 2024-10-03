@@ -26,6 +26,7 @@ package jdk.graal.compiler.truffle.test;
 
 import static com.oracle.truffle.api.bytecode.test.basic_interpreter.AbstractBasicInterpreterTest.parseNode;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
 import java.util.List;
@@ -44,6 +45,8 @@ import com.oracle.truffle.api.bytecode.test.BytecodeDSLTestLanguage;
 import com.oracle.truffle.api.bytecode.test.basic_interpreter.AbstractBasicInterpreterTest;
 import com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter;
 import com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreterBuilder;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 @RunWith(Parameterized.class)
@@ -490,6 +493,55 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
         assertEquals(43L, ((ContinuationResult) target.call()).continueWith(22L));
         assertCompiled(target);
         assertCompiled(continuationCallTarget);
+    }
+
+    @Test
+    public void testCompiledSourceInfo() {
+        Source s = Source.newBuilder("test", "return sourcePosition", "compiledSourceInfo").build();
+        BasicInterpreter root = parseNodeForCompilation(interpreterClass, "compiledSourceInfo", b -> {
+            b.beginSource(s);
+            b.beginSourceSection(0, 21);
+            b.beginRoot();
+
+            b.beginReturn();
+            b.beginSourceSection(7, 14);
+            b.beginEnsureAndGetSourcePosition();
+            b.emitLoadArgument(0);
+            b.endEnsureAndGetSourcePosition();
+            b.endSourceSection();
+            b.endReturn();
+
+            b.endRoot();
+            b.endSourceSection();
+            b.endSource();
+        });
+        OptimizedCallTarget target = (OptimizedCallTarget) root.getCallTarget();
+
+        assertNull(target.call(false));
+        target.compile(true);
+        assertCompiled(target);
+
+        // Reparse with sources. The compiled code should not invalidate.
+        root.getBytecodeNode().ensureSourceInformation();
+        assertCompiled(target);
+
+        // Calling the compiled code won't update the sources.
+        assertNull(target.call(false));
+        assertCompiled(target);
+
+        // Calling ensureSourceInformation from compiled code should deopt and update the sources.
+        assertEquals("sourcePosition", ((SourceSection) target.call(true)).getCharacters().toString());
+        assertNotCompiled(target);
+
+        // If we recompile, source information should be available.
+        target.compile(true);
+        assertCompiled(target);
+        assertEquals("sourcePosition", ((SourceSection) target.call(false)).getCharacters().toString());
+        assertCompiled(target);
+
+        // Calling ensureSourceInformation when sources are available should not deopt.
+        assertEquals("sourcePosition", ((SourceSection) target.call(true)).getCharacters().toString());
+        assertCompiled(target);
     }
 
     private static <T extends BasicInterpreterBuilder> BasicInterpreter parseNodeForCompilation(Class<? extends BasicInterpreter> interpreterClass, String rootName, BytecodeParser<T> builder) {

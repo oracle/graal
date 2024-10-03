@@ -188,6 +188,8 @@ import java.util.function.Supplier;
  *     kind: CUSTOM
  *   - Operation GetSourcePosition
  *     kind: CUSTOM
+ *   - Operation EnsureAndGetSourcePosition
+ *     kind: CUSTOM
  *   - Operation GetSourcePositions
  *     kind: CUSTOM
  *   - Operation CopyLocalsToFrame
@@ -677,235 +679,245 @@ import java.util.function.Supplier;
  *     encoding: [103 : short, node : int]
  *     nodeType: GetSourcePosition
  *     signature: SourceSection ()
+ *   - Instruction c.EnsureAndGetSourcePosition
+ *     kind: CUSTOM
+ *     encoding: [104 : short, node : int, child0 (bci) : int]
+ *     nodeType: EnsureAndGetSourcePosition
+ *     signature: SourceSection (boolean)
+ *   - Instruction c.EnsureAndGetSourcePosition$Operation
+ *     kind: CUSTOM
+ *     encoding: [105 : short, node : int, child0 (bci) : int]
+ *     nodeType: EnsureAndGetSourcePosition
+ *     signature: SourceSection (boolean)
  *   - Instruction c.GetSourcePositions
  *     kind: CUSTOM
- *     encoding: [104 : short, node : int]
+ *     encoding: [106 : short, node : int]
  *     nodeType: GetSourcePositions
  *     signature: SourceSection[] ()
  *   - Instruction c.CopyLocalsToFrame
  *     kind: CUSTOM
- *     encoding: [105 : short, node : int, child0 (bci) : int]
+ *     encoding: [107 : short, node : int, child0 (bci) : int]
  *     nodeType: CopyLocalsToFrame
  *     signature: Frame (Object)
  *   - Instruction c.CopyLocalsToFrame$SomeLocals
  *     kind: CUSTOM
- *     encoding: [106 : short, node : int, child0 (bci) : int]
+ *     encoding: [108 : short, node : int, child0 (bci) : int]
  *     nodeType: CopyLocalsToFrame
  *     signature: Frame (long)
  *   - Instruction c.GetBytecodeLocation
  *     kind: CUSTOM
- *     encoding: [107 : short, node : int]
+ *     encoding: [109 : short, node : int]
  *     nodeType: GetBytecodeLocation
  *     signature: BytecodeLocation ()
  *   - Instruction c.CollectBytecodeLocations
  *     kind: CUSTOM
- *     encoding: [108 : short, node : int]
+ *     encoding: [110 : short, node : int]
  *     nodeType: CollectBytecodeLocations
  *     signature: List<BytecodeLocation> ()
  *   - Instruction c.CollectSourceLocations
  *     kind: CUSTOM
- *     encoding: [109 : short, node : int]
+ *     encoding: [111 : short, node : int]
  *     nodeType: CollectSourceLocations
  *     signature: List<SourceSection> ()
  *   - Instruction c.CollectAllSourceLocations
  *     kind: CUSTOM
- *     encoding: [110 : short, node : int]
+ *     encoding: [112 : short, node : int]
  *     nodeType: CollectAllSourceLocations
  *     signature: List<SourceSection[]> ()
  *   - Instruction c.Continue
  *     kind: CUSTOM
- *     encoding: [111 : short, node : int]
+ *     encoding: [113 : short, node : int]
  *     nodeType: ContinueNode
  *     signature: Object (ContinuationResult, Object)
  *   - Instruction c.CurrentLocation
  *     kind: CUSTOM
- *     encoding: [112 : short, node : int]
+ *     encoding: [114 : short, node : int]
  *     nodeType: CurrentLocation
  *     signature: BytecodeLocation ()
  *   - Instruction c.PrintHere
  *     kind: CUSTOM
- *     encoding: [113 : short, node : int]
+ *     encoding: [115 : short, node : int]
  *     nodeType: PrintHere
  *     signature: void ()
  *   - Instruction c.IncrementValue
  *     kind: CUSTOM
- *     encoding: [114 : short, node : int, child0 (bci) : int]
+ *     encoding: [116 : short, node : int, child0 (bci) : int]
  *     nodeType: IncrementValue
  *     signature: long (long)
  *   - Instruction c.IncrementValue$Increment
  *     kind: CUSTOM
- *     encoding: [115 : short, node : int, child0 (bci) : int]
+ *     encoding: [117 : short, node : int, child0 (bci) : int]
  *     nodeType: IncrementValue
  *     signature: long (long)
  *   - Instruction c.IncrementValue$Increment$unboxed
  *     kind: CUSTOM
- *     encoding: [116 : short, node : int, child0 (bci) : int]
+ *     encoding: [118 : short, node : int, child0 (bci) : int]
  *     nodeType: IncrementValue
  *     signature: long (long)
  *   - Instruction c.IncrementValue$unboxed
  *     kind: CUSTOM
- *     encoding: [117 : short, node : int, child0 (bci) : int]
+ *     encoding: [119 : short, node : int, child0 (bci) : int]
  *     nodeType: IncrementValue
  *     signature: long (long)
  *   - Instruction c.DoubleValue
  *     kind: CUSTOM
- *     encoding: [118 : short, node : int, child0 (bci) : int]
+ *     encoding: [120 : short, node : int, child0 (bci) : int]
  *     nodeType: DoubleValue
  *     signature: long (long)
  *   - Instruction c.DoubleValue$Double
  *     kind: CUSTOM
- *     encoding: [119 : short, node : int, child0 (bci) : int]
+ *     encoding: [121 : short, node : int, child0 (bci) : int]
  *     nodeType: DoubleValue
  *     signature: long (long)
  *   - Instruction c.DoubleValue$Double$unboxed
  *     kind: CUSTOM
- *     encoding: [120 : short, node : int, child0 (bci) : int]
+ *     encoding: [122 : short, node : int, child0 (bci) : int]
  *     nodeType: DoubleValue
  *     signature: long (long)
  *   - Instruction c.DoubleValue$unboxed
  *     kind: CUSTOM
- *     encoding: [121 : short, node : int, child0 (bci) : int]
+ *     encoding: [123 : short, node : int, child0 (bci) : int]
  *     nodeType: DoubleValue
  *     signature: long (long)
  *   - Instruction c.EnableIncrementValueInstrumentation
  *     kind: CUSTOM
- *     encoding: [122 : short, node : int]
+ *     encoding: [124 : short, node : int]
  *     nodeType: EnableIncrementValueInstrumentation
  *     signature: void ()
  *   - Instruction c.Add
  *     kind: CUSTOM
- *     encoding: [123 : short, node : int, child0 (bci) : int, child1 (bci) : int]
+ *     encoding: [125 : short, node : int, child0 (bci) : int, child1 (bci) : int]
  *     nodeType: Add
  *     signature: long (long, long)
  *   - Instruction c.Add$Ints
  *     kind: CUSTOM
- *     encoding: [124 : short, node : int, child0 (bci) : int, child1 (bci) : int]
+ *     encoding: [126 : short, node : int, child0 (bci) : int, child1 (bci) : int]
  *     nodeType: Add
  *     signature: long (long, long)
  *   - Instruction c.Add$Ints$unboxed
  *     kind: CUSTOM
- *     encoding: [125 : short, node : int, child0 (bci) : int, child1 (bci) : int]
+ *     encoding: [127 : short, node : int, child0 (bci) : int, child1 (bci) : int]
  *     nodeType: Add
  *     signature: long (long, long)
  *   - Instruction c.Add$unboxed
  *     kind: CUSTOM
- *     encoding: [126 : short, node : int, child0 (bci) : int, child1 (bci) : int]
+ *     encoding: [128 : short, node : int, child0 (bci) : int, child1 (bci) : int]
  *     nodeType: Add
  *     signature: long (long, long)
  *   - Instruction c.Mod
  *     kind: CUSTOM
- *     encoding: [127 : short, node : int, child0 (bci) : int, child1 (bci) : int]
+ *     encoding: [129 : short, node : int, child0 (bci) : int, child1 (bci) : int]
  *     nodeType: Mod
  *     signature: long (long, long)
  *   - Instruction c.Mod$Ints
  *     kind: CUSTOM
- *     encoding: [128 : short, node : int, child0 (bci) : int, child1 (bci) : int]
+ *     encoding: [130 : short, node : int, child0 (bci) : int, child1 (bci) : int]
  *     nodeType: Mod
  *     signature: long (long, long)
  *   - Instruction c.Mod$Ints$unboxed
  *     kind: CUSTOM
- *     encoding: [129 : short, node : int, child0 (bci) : int, child1 (bci) : int]
+ *     encoding: [131 : short, node : int, child0 (bci) : int, child1 (bci) : int]
  *     nodeType: Mod
  *     signature: long (long, long)
  *   - Instruction c.Mod$unboxed
  *     kind: CUSTOM
- *     encoding: [130 : short, node : int, child0 (bci) : int, child1 (bci) : int]
+ *     encoding: [132 : short, node : int, child0 (bci) : int, child1 (bci) : int]
  *     nodeType: Mod
  *     signature: long (long, long)
  *   - Instruction c.Less
  *     kind: CUSTOM
- *     encoding: [131 : short, node : int, child0 (bci) : int, child1 (bci) : int]
+ *     encoding: [133 : short, node : int, child0 (bci) : int, child1 (bci) : int]
  *     nodeType: Less
  *     signature: boolean (long, long)
  *   - Instruction c.Less$Ints
  *     kind: CUSTOM
- *     encoding: [132 : short, node : int, child0 (bci) : int, child1 (bci) : int]
+ *     encoding: [134 : short, node : int, child0 (bci) : int, child1 (bci) : int]
  *     nodeType: Less
  *     signature: boolean (long, long)
  *   - Instruction c.Less$Ints$unboxed
  *     kind: CUSTOM
- *     encoding: [133 : short, node : int, child0 (bci) : int, child1 (bci) : int]
+ *     encoding: [135 : short, node : int, child0 (bci) : int, child1 (bci) : int]
  *     nodeType: Less
  *     signature: boolean (long, long)
  *   - Instruction c.Less$unboxed
  *     kind: CUSTOM
- *     encoding: [134 : short, node : int, child0 (bci) : int, child1 (bci) : int]
+ *     encoding: [136 : short, node : int, child0 (bci) : int, child1 (bci) : int]
  *     nodeType: Less
  *     signature: boolean (long, long)
  *   - Instruction c.EnableDoubleValueInstrumentation
  *     kind: CUSTOM
- *     encoding: [135 : short, node : int]
+ *     encoding: [137 : short, node : int]
  *     nodeType: EnableDoubleValueInstrumentation
  *     signature: void ()
  *   - Instruction c.ExplicitBindingsTest
  *     kind: CUSTOM
- *     encoding: [136 : short, node : int]
+ *     encoding: [138 : short, node : int]
  *     nodeType: ExplicitBindingsTest
  *     signature: Bindings ()
  *   - Instruction c.ImplicitBindingsTest
  *     kind: CUSTOM
- *     encoding: [137 : short, node : int]
+ *     encoding: [139 : short, node : int]
  *     nodeType: ImplicitBindingsTest
  *     signature: Bindings ()
  *   - Instruction sc.ScAnd
  *     kind: CUSTOM_SHORT_CIRCUIT
- *     encoding: [138 : short, branch_target (bci) : int, branch_profile : int]
+ *     encoding: [140 : short, branch_target (bci) : int, branch_profile : int]
  *     signature: boolean (boolean, boolean)
  *   - Instruction sc.ScOr
  *     kind: CUSTOM_SHORT_CIRCUIT
- *     encoding: [139 : short, branch_target (bci) : int, branch_profile : int]
+ *     encoding: [141 : short, branch_target (bci) : int, branch_profile : int]
  *     signature: boolean (boolean, boolean)
  *   - Instruction merge.conditional
  *     kind: MERGE_CONDITIONAL
- *     encoding: [140 : short, child0 (bci) : int, child1 (bci) : int]
+ *     encoding: [142 : short, child0 (bci) : int, child1 (bci) : int]
  *     signature: Object (boolean, Object)
  *   - Instruction merge.conditional$Boolean
  *     kind: MERGE_CONDITIONAL
- *     encoding: [141 : short, child0 (bci) : int, child1 (bci) : int]
+ *     encoding: [143 : short, child0 (bci) : int, child1 (bci) : int]
  *     signature: Object (boolean, boolean)
  *   - Instruction merge.conditional$Boolean$unboxed
  *     kind: MERGE_CONDITIONAL
- *     encoding: [142 : short, child0 (bci) : int, child1 (bci) : int]
+ *     encoding: [144 : short, child0 (bci) : int, child1 (bci) : int]
  *     signature: boolean (boolean, boolean)
  *   - Instruction merge.conditional$Long
  *     kind: MERGE_CONDITIONAL
- *     encoding: [143 : short, child0 (bci) : int, child1 (bci) : int]
+ *     encoding: [145 : short, child0 (bci) : int, child1 (bci) : int]
  *     signature: Object (boolean, long)
  *   - Instruction merge.conditional$Long$unboxed
  *     kind: MERGE_CONDITIONAL
- *     encoding: [144 : short, child0 (bci) : int, child1 (bci) : int]
+ *     encoding: [146 : short, child0 (bci) : int, child1 (bci) : int]
  *     signature: long (boolean, long)
  *   - Instruction merge.conditional$generic
  *     kind: MERGE_CONDITIONAL
- *     encoding: [145 : short, child0 (bci) : int, child1 (bci) : int]
+ *     encoding: [147 : short, child0 (bci) : int, child1 (bci) : int]
  *     signature: Object (boolean, Object)
  *   - Instruction invalidate0
  *     kind: INVALIDATE
- *     encoding: [146 : short]
+ *     encoding: [148 : short]
  *     signature: void ()
  *   - Instruction invalidate1
  *     kind: INVALIDATE
- *     encoding: [147 : short, invalidated0 (short) : short]
+ *     encoding: [149 : short, invalidated0 (short) : short]
  *     signature: void ()
  *   - Instruction invalidate2
  *     kind: INVALIDATE
- *     encoding: [148 : short, invalidated0 (short) : short, invalidated1 (short) : short]
+ *     encoding: [150 : short, invalidated0 (short) : short, invalidated1 (short) : short]
  *     signature: void ()
  *   - Instruction invalidate3
  *     kind: INVALIDATE
- *     encoding: [149 : short, invalidated0 (short) : short, invalidated1 (short) : short, invalidated2 (short) : short]
+ *     encoding: [151 : short, invalidated0 (short) : short, invalidated1 (short) : short, invalidated2 (short) : short]
  *     signature: void ()
  *   - Instruction invalidate4
  *     kind: INVALIDATE
- *     encoding: [150 : short, invalidated0 (short) : short, invalidated1 (short) : short, invalidated2 (short) : short, invalidated3 (short) : short]
+ *     encoding: [152 : short, invalidated0 (short) : short, invalidated1 (short) : short, invalidated2 (short) : short, invalidated3 (short) : short]
  *     signature: void ()
  *   - Instruction invalidate5
  *     kind: INVALIDATE
- *     encoding: [151 : short, invalidated0 (short) : short, invalidated1 (short) : short, invalidated2 (short) : short, invalidated3 (short) : short, invalidated4 (short) : short]
+ *     encoding: [153 : short, invalidated0 (short) : short, invalidated1 (short) : short, invalidated2 (short) : short, invalidated3 (short) : short, invalidated4 (short) : short]
  *     signature: void ()
  *   - Instruction invalidate6
  *     kind: INVALIDATE
- *     encoding: [152 : short, invalidated0 (short) : short, invalidated1 (short) : short, invalidated2 (short) : short, invalidated3 (short) : short, invalidated4 (short) : short, invalidated5 (short) : short]
+ *     encoding: [154 : short, invalidated0 (short) : short, invalidated1 (short) : short, invalidated2 (short) : short, invalidated3 (short) : short, invalidated4 (short) : short, invalidated5 (short) : short]
  *     signature: void ()
  */
 @SuppressWarnings({"javadoc", "unused", "deprecation", "static-method"})
@@ -1687,6 +1699,8 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                 case Instructions.TO_BOOLEAN$BOOLEAN_ :
                 case Instructions.TO_BOOLEAN$BOOLEAN$UNBOXED_ :
                 case Instructions.TO_BOOLEAN$UNBOXED_ :
+                case Instructions.ENSURE_AND_GET_SOURCE_POSITION_ :
+                case Instructions.ENSURE_AND_GET_SOURCE_POSITION$OPERATION_ :
                 case Instructions.COPY_LOCALS_TO_FRAME_ :
                 case Instructions.COPY_LOCALS_TO_FRAME$SOME_LOCALS_ :
                 case Instructions.INCREMENT_VALUE_ :
@@ -1935,6 +1949,8 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                 case Instructions.TO_BOOLEAN$BOOLEAN_ :
                 case Instructions.TO_BOOLEAN$BOOLEAN$UNBOXED_ :
                 case Instructions.TO_BOOLEAN$UNBOXED_ :
+                case Instructions.ENSURE_AND_GET_SOURCE_POSITION_ :
+                case Instructions.ENSURE_AND_GET_SOURCE_POSITION$OPERATION_ :
                 case Instructions.COPY_LOCALS_TO_FRAME_ :
                 case Instructions.COPY_LOCALS_TO_FRAME$SOME_LOCALS_ :
                 case Instructions.INCREMENT_VALUE_ :
@@ -2219,6 +2235,10 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                     return "c.ToBoolean$unboxed";
                 case Instructions.GET_SOURCE_POSITION_ :
                     return "c.GetSourcePosition";
+                case Instructions.ENSURE_AND_GET_SOURCE_POSITION_ :
+                    return "c.EnsureAndGetSourcePosition";
+                case Instructions.ENSURE_AND_GET_SOURCE_POSITION$OPERATION_ :
+                    return "c.EnsureAndGetSourcePosition$Operation";
                 case Instructions.GET_SOURCE_POSITIONS_ :
                     return "c.GetSourcePositions";
                 case Instructions.COPY_LOCALS_TO_FRAME_ :
@@ -2417,6 +2437,8 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                 case Instructions.TO_BOOLEAN$BOOLEAN$UNBOXED_ :
                 case Instructions.TO_BOOLEAN$UNBOXED_ :
                 case Instructions.GET_SOURCE_POSITION_ :
+                case Instructions.ENSURE_AND_GET_SOURCE_POSITION_ :
+                case Instructions.ENSURE_AND_GET_SOURCE_POSITION$OPERATION_ :
                 case Instructions.GET_SOURCE_POSITIONS_ :
                 case Instructions.COPY_LOCALS_TO_FRAME_ :
                 case Instructions.COPY_LOCALS_TO_FRAME$SOME_LOCALS_ :
@@ -3028,6 +3050,8 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                     case Instructions.TO_BOOLEAN$BOOLEAN_ :
                     case Instructions.TO_BOOLEAN$BOOLEAN$UNBOXED_ :
                     case Instructions.TO_BOOLEAN$UNBOXED_ :
+                    case Instructions.ENSURE_AND_GET_SOURCE_POSITION_ :
+                    case Instructions.ENSURE_AND_GET_SOURCE_POSITION$OPERATION_ :
                     case Instructions.COPY_LOCALS_TO_FRAME_ :
                     case Instructions.COPY_LOCALS_TO_FRAME$SOME_LOCALS_ :
                     case Instructions.INCREMENT_VALUE_ :
@@ -3526,6 +3550,8 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                         case Instructions.TO_BOOLEAN$BOOLEAN_ :
                         case Instructions.TO_BOOLEAN$BOOLEAN$UNBOXED_ :
                         case Instructions.TO_BOOLEAN$UNBOXED_ :
+                        case Instructions.ENSURE_AND_GET_SOURCE_POSITION_ :
+                        case Instructions.ENSURE_AND_GET_SOURCE_POSITION$OPERATION_ :
                         case Instructions.COPY_LOCALS_TO_FRAME_ :
                         case Instructions.COPY_LOCALS_TO_FRAME$SOME_LOCALS_ :
                         case Instructions.INCREMENT_VALUE_ :
@@ -3824,7 +3850,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                 throw new IllegalArgumentException("Bytecode index out of range " + bci);
             }
             int op = readValidBytecode(bc, bci);
-            if (op < 0 || op > 152) {
+            if (op < 0 || op > 154) {
                 throw new IllegalArgumentException("Invalid op at bytecode index " + op);
             }
             return true;
@@ -4333,6 +4359,8 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                     case Instructions.TO_BOOLEAN$BOOLEAN_ :
                     case Instructions.TO_BOOLEAN$BOOLEAN$UNBOXED_ :
                     case Instructions.TO_BOOLEAN$UNBOXED_ :
+                    case Instructions.ENSURE_AND_GET_SOURCE_POSITION_ :
+                    case Instructions.ENSURE_AND_GET_SOURCE_POSITION$OPERATION_ :
                     case Instructions.COPY_LOCALS_TO_FRAME_ :
                     case Instructions.COPY_LOCALS_TO_FRAME$SOME_LOCALS_ :
                     case Instructions.SC_AND_ :
@@ -4525,6 +4553,8 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                     case Instructions.TO_BOOLEAN$BOOLEAN_ :
                     case Instructions.TO_BOOLEAN$BOOLEAN$UNBOXED_ :
                     case Instructions.TO_BOOLEAN$UNBOXED_ :
+                    case Instructions.ENSURE_AND_GET_SOURCE_POSITION_ :
+                    case Instructions.ENSURE_AND_GET_SOURCE_POSITION$OPERATION_ :
                     case Instructions.COPY_LOCALS_TO_FRAME_ :
                     case Instructions.COPY_LOCALS_TO_FRAME$SOME_LOCALS_ :
                     case Instructions.SC_AND_ :
@@ -5016,6 +5046,11 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                     case Instructions.TO_BOOLEAN$BOOLEAN$UNBOXED_ :
                     case Instructions.TO_BOOLEAN$UNBOXED_ :
                         result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new ToBoolean_Node());
+                        bci += 10;
+                        break;
+                    case Instructions.ENSURE_AND_GET_SOURCE_POSITION_ :
+                    case Instructions.ENSURE_AND_GET_SOURCE_POSITION$OPERATION_ :
+                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new EnsureAndGetSourcePosition_Node());
                         bci += 10;
                         break;
                     case Instructions.COPY_LOCALS_TO_FRAME_ :
@@ -5844,6 +5879,18 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                             doGetSourcePosition_(frame, localFrame, cachedNodes, bc, bci, sp);
                             sp += 1;
                             bci += 6;
+                            break;
+                        }
+                        case Instructions.ENSURE_AND_GET_SOURCE_POSITION_ :
+                        {
+                            doEnsureAndGetSourcePosition_(frame, localFrame, cachedNodes, bc, bci, sp);
+                            bci += 10;
+                            break;
+                        }
+                        case Instructions.ENSURE_AND_GET_SOURCE_POSITION$OPERATION_ :
+                        {
+                            doEnsureAndGetSourcePosition$Operation_(frame, localFrame, cachedNodes, bc, bci, sp);
+                            bci += 10;
                             break;
                         }
                         case Instructions.GET_SOURCE_POSITIONS_ :
@@ -7318,6 +7365,20 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
             FRAMES.setObject(frame, sp, result);
         }
 
+        private void doEnsureAndGetSourcePosition_(VirtualFrame frame, VirtualFrame localFrame, Node[] cachedNodes, byte[] bc, int bci, int sp) {
+            FRAMES.setInt(localFrame, BCI_INDEX, bci);
+            EnsureAndGetSourcePosition_Node node = ACCESS.uncheckedCast(ACCESS.readObject(cachedNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)), EnsureAndGetSourcePosition_Node.class);
+            SourceSection result = node.execute(localFrame, frame, this, bc, bci, sp);
+            FRAMES.setObject(frame, sp - 1, result);
+        }
+
+        private void doEnsureAndGetSourcePosition$Operation_(VirtualFrame frame, VirtualFrame localFrame, Node[] cachedNodes, byte[] bc, int bci, int sp) {
+            FRAMES.setInt(localFrame, BCI_INDEX, bci);
+            EnsureAndGetSourcePosition_Node node = ACCESS.uncheckedCast(ACCESS.readObject(cachedNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)), EnsureAndGetSourcePosition_Node.class);
+            SourceSection result = node.executeOperation(localFrame, frame, this, bc, bci, sp);
+            FRAMES.setObject(frame, sp - 1, result);
+        }
+
         private void doGetSourcePositions_(VirtualFrame frame, VirtualFrame localFrame, Node[] cachedNodes, byte[] bc, int bci, int sp) {
             FRAMES.setInt(localFrame, BCI_INDEX, bci);
             GetSourcePositions_Node node = ACCESS.uncheckedCast(ACCESS.readObject(cachedNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)), GetSourcePositions_Node.class);
@@ -8002,6 +8063,8 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                     case Instructions.TO_BOOLEAN$BOOLEAN_ :
                     case Instructions.TO_BOOLEAN$BOOLEAN$UNBOXED_ :
                     case Instructions.TO_BOOLEAN$UNBOXED_ :
+                    case Instructions.ENSURE_AND_GET_SOURCE_POSITION_ :
+                    case Instructions.ENSURE_AND_GET_SOURCE_POSITION$OPERATION_ :
                     case Instructions.COPY_LOCALS_TO_FRAME_ :
                     case Instructions.COPY_LOCALS_TO_FRAME$SOME_LOCALS_ :
                     case Instructions.INCREMENT_VALUE_ :
@@ -8435,6 +8498,10 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                         BYTES.putShort(copy, bci, Instructions.DOUBLE_VALUE_);
                         bci += 10;
                         break;
+                    case Instructions.ENSURE_AND_GET_SOURCE_POSITION$OPERATION_ :
+                        BYTES.putShort(copy, bci, Instructions.ENSURE_AND_GET_SOURCE_POSITION_);
+                        bci += 10;
+                        break;
                     case Instructions.INCREMENT_VALUE$INCREMENT_ :
                     case Instructions.INCREMENT_VALUE$INCREMENT$UNBOXED_ :
                     case Instructions.INCREMENT_VALUE$UNBOXED_ :
@@ -8562,6 +8629,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                     case Instructions.CALL_ :
                     case Instructions.COPY_LOCALS_TO_FRAME_ :
                     case Instructions.DOUBLE_VALUE_ :
+                    case Instructions.ENSURE_AND_GET_SOURCE_POSITION_ :
                     case Instructions.INCREMENT_VALUE_ :
                     case Instructions.TEE_LOCAL_RANGE_ :
                     case Instructions.THROW_OPERATION_ :
@@ -9042,6 +9110,13 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                                 bci += 6;
                                 break;
                             }
+                            case Instructions.ENSURE_AND_GET_SOURCE_POSITION_ :
+                            case Instructions.ENSURE_AND_GET_SOURCE_POSITION$OPERATION_ :
+                            {
+                                doEnsureAndGetSourcePosition_(frame, localFrame, bc, bci, sp);
+                                bci += 10;
+                                break;
+                            }
                             case Instructions.GET_SOURCE_POSITIONS_ :
                             {
                                 doGetSourcePositions_(frame, localFrame, bc, bci, sp);
@@ -9510,6 +9585,12 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
             FRAMES.setObject(frame, sp, result);
         }
 
+        private void doEnsureAndGetSourcePosition_(VirtualFrame frame, VirtualFrame localFrame, byte[] bc, int bci, int sp) {
+            FRAMES.setInt(localFrame, BCI_INDEX, bci);
+            SourceSection result = EnsureAndGetSourcePosition_Node.UNCACHED.executeUncached(localFrame, FRAMES.uncheckedGetObject(frame, sp - 1), frame, this, bc, bci, sp);
+            FRAMES.setObject(frame, sp - 1, result);
+        }
+
         private void doGetSourcePositions_(VirtualFrame frame, VirtualFrame localFrame, byte[] bc, int bci, int sp) {
             FRAMES.setInt(localFrame, BCI_INDEX, bci);
             SourceSection[] result = GetSourcePositions_Node.UNCACHED.executeUncached(localFrame, frame, this, bc, bci, sp);
@@ -9841,7 +9922,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
     public static final class Builder extends BasicInterpreterBuilder {
 
         private static final byte UNINITIALIZED = -1;
-        private static final String[] OPERATION_NAMES = new String[] {null, "Block", "Root", "IfThen", "IfThenElse", "Conditional", "While", "TryCatch", "TryFinally", "TryCatchOtherwise", "FinallyHandler", "Label", "Branch", "LoadConstant", "LoadNull", "LoadArgument", "LoadException", "LoadLocal", "LoadLocalMaterialized", "StoreLocal", "StoreLocalMaterialized", "Return", "Yield", "Source", "SourceSection", "Tag", "EarlyReturn", "AddOperation", "Call", "AddConstantOperation", "AddConstantOperationAtEnd", "VeryComplexOperation", "ThrowOperation", "ReadExceptionOperation", "AlwaysBoxOperation", "AppenderOperation", "TeeLocal", "TeeLocalRange", "Invoke", "MaterializeFrame", "CreateClosure", "VoidOperation", "ToBoolean", "GetSourcePosition", "GetSourcePositions", "CopyLocalsToFrame", "GetBytecodeLocation", "CollectBytecodeLocations", "CollectSourceLocations", "CollectAllSourceLocations", "Continue", "CurrentLocation", "PrintHere", "IncrementValue", "DoubleValue", "EnableIncrementValueInstrumentation", "Add", "Mod", "Less", "EnableDoubleValueInstrumentation", "ExplicitBindingsTest", "ImplicitBindingsTest", "ScAnd", "ScOr"};
+        private static final String[] OPERATION_NAMES = new String[] {null, "Block", "Root", "IfThen", "IfThenElse", "Conditional", "While", "TryCatch", "TryFinally", "TryCatchOtherwise", "FinallyHandler", "Label", "Branch", "LoadConstant", "LoadNull", "LoadArgument", "LoadException", "LoadLocal", "LoadLocalMaterialized", "StoreLocal", "StoreLocalMaterialized", "Return", "Yield", "Source", "SourceSection", "Tag", "EarlyReturn", "AddOperation", "Call", "AddConstantOperation", "AddConstantOperationAtEnd", "VeryComplexOperation", "ThrowOperation", "ReadExceptionOperation", "AlwaysBoxOperation", "AppenderOperation", "TeeLocal", "TeeLocalRange", "Invoke", "MaterializeFrame", "CreateClosure", "VoidOperation", "ToBoolean", "GetSourcePosition", "EnsureAndGetSourcePosition", "GetSourcePositions", "CopyLocalsToFrame", "GetBytecodeLocation", "CollectBytecodeLocations", "CollectSourceLocations", "CollectAllSourceLocations", "Continue", "CurrentLocation", "PrintHere", "IncrementValue", "DoubleValue", "EnableIncrementValueInstrumentation", "Add", "Mod", "Less", "EnableDoubleValueInstrumentation", "ExplicitBindingsTest", "ImplicitBindingsTest", "ScAnd", "ScOr"};
         private static final Class<?>[] TAGS_ROOT_TAG_ROOT_BODY_TAG = new Class<?>[]{RootTag.class, RootBodyTag.class};
 
         private int operationSequenceNumber;
@@ -12538,6 +12619,58 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
         }
 
         /**
+         * Begins a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.EnsureAndGetSourcePosition EnsureAndGetSourcePosition} operation.
+         * <p>
+         * Signature: EnsureAndGetSourcePosition(ensure) -> SourceSection
+         * <p>
+         * A corresponding call to {@link #endEnsureAndGetSourcePosition} is required to end the operation.
+         */
+        @Override
+        public void beginEnsureAndGetSourcePosition() {
+            if (serialization != null) {
+                try {
+                    serialization.buffer.writeShort(SerializationState.CODE_BEGIN_ENSURE_AND_GET_SOURCE_POSITION);
+                } catch (IOException ex) {
+                    throw new IOError(ex);
+                }
+                return;
+            }
+            validateRootOperationBegin();
+            beforeChild();
+            CustomOperationData operationData = new CustomOperationData(new int[] {UNINITIALIZED}, EMPTY_INT_ARRAY);
+            beginOperation(Operations.ENSUREANDGETSOURCEPOSITION, operationData);
+        }
+
+        /**
+         * Ends a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.EnsureAndGetSourcePosition EnsureAndGetSourcePosition} operation.
+         * <p>
+         * Signature: EnsureAndGetSourcePosition(ensure) -> SourceSection
+         *
+         * @see #beginEnsureAndGetSourcePosition
+         */
+        @Override
+        public void endEnsureAndGetSourcePosition() {
+            if (serialization != null) {
+                try {
+                    serialization.buffer.writeShort(SerializationState.CODE_END_ENSURE_AND_GET_SOURCE_POSITION);
+                } catch (IOException ex) {
+                    throw new IOError(ex);
+                }
+                return;
+            }
+            OperationStackEntry operation = endOperation(Operations.ENSUREANDGETSOURCEPOSITION);
+            if (operation.childCount != 1) {
+                throw failState("Operation EnsureAndGetSourcePosition expected exactly 1 child, but " + operation.childCount + " provided. This is probably a bug in the parser.");
+            }
+            if (!(operation.data instanceof CustomOperationData operationData)) {
+                throw assertionFailed("Data class CustomOperationData expected, but was " + operation.data);
+            }
+            int childBci0 = operationData.childBcis[0];
+            doEmitInstructionII(Instructions.ENSURE_AND_GET_SOURCE_POSITION_, 0, allocateNode(), childBci0);
+            afterChild(true, bci - 10);
+        }
+
+        /**
          * Emits a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.GetSourcePositions GetSourcePositions} operation.
          * <p>
          * Signature: GetSourcePositions() -> SourceSection[]
@@ -13693,6 +13826,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                 case Operations.INVOKE :
                 case Operations.CREATECLOSURE :
                 case Operations.TOBOOLEAN :
+                case Operations.ENSUREANDGETSOURCEPOSITION :
                 case Operations.COPYLOCALSTOFRAME :
                 case Operations.CONTINUE :
                 case Operations.INCREMENTVALUE :
@@ -14141,6 +14275,19 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                 {
                     if (!producedValue) {
                         throw failState("Operation ToBoolean expected a value-producing child at position " + childIndex + ", but a void one was provided.");
+                    }
+                    if (!(operationStack[operationSp - 1].data instanceof CustomOperationData operationData)) {
+                        throw assertionFailed("Data class CustomOperationData expected, but was " + operationStack[operationSp - 1].data);
+                    }
+                    if (childIndex == 0) {
+                        operationData.childBcis[0] = childBci;
+                    }
+                    break;
+                }
+                case Operations.ENSUREANDGETSOURCEPOSITION :
+                {
+                    if (!producedValue) {
+                        throw failState("Operation EnsureAndGetSourcePosition expected a value-producing child at position " + childIndex + ", but a void one was provided.");
                     }
                     if (!(operationStack[operationSp - 1].data instanceof CustomOperationData operationData)) {
                         throw assertionFailed("Data class CustomOperationData expected, but was " + operationStack[operationSp - 1].data);
@@ -15398,6 +15545,16 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                             emitGetSourcePosition();
                             break;
                         }
+                        case SerializationState.CODE_BEGIN_ENSURE_AND_GET_SOURCE_POSITION :
+                        {
+                            beginEnsureAndGetSourcePosition();
+                            break;
+                        }
+                        case SerializationState.CODE_END_ENSURE_AND_GET_SOURCE_POSITION :
+                        {
+                            endEnsureAndGetSourcePosition();
+                            break;
+                        }
                         case SerializationState.CODE_EMIT_GET_SOURCE_POSITIONS :
                         {
                             emitGetSourcePositions();
@@ -16573,35 +16730,37 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
             private static final short CODE_BEGIN_TO_BOOLEAN = 42 << 1;
             private static final short CODE_END_TO_BOOLEAN = (42 << 1) | 0b1;
             private static final short CODE_EMIT_GET_SOURCE_POSITION = 43 << 1;
-            private static final short CODE_EMIT_GET_SOURCE_POSITIONS = 44 << 1;
-            private static final short CODE_BEGIN_COPY_LOCALS_TO_FRAME = 45 << 1;
-            private static final short CODE_END_COPY_LOCALS_TO_FRAME = (45 << 1) | 0b1;
-            private static final short CODE_EMIT_GET_BYTECODE_LOCATION = 46 << 1;
-            private static final short CODE_EMIT_COLLECT_BYTECODE_LOCATIONS = 47 << 1;
-            private static final short CODE_EMIT_COLLECT_SOURCE_LOCATIONS = 48 << 1;
-            private static final short CODE_EMIT_COLLECT_ALL_SOURCE_LOCATIONS = 49 << 1;
-            private static final short CODE_BEGIN_CONTINUE = 50 << 1;
-            private static final short CODE_END_CONTINUE = (50 << 1) | 0b1;
-            private static final short CODE_EMIT_CURRENT_LOCATION = 51 << 1;
-            private static final short CODE_EMIT_PRINT_HERE = 52 << 1;
-            private static final short CODE_BEGIN_INCREMENT_VALUE = 53 << 1;
-            private static final short CODE_END_INCREMENT_VALUE = (53 << 1) | 0b1;
-            private static final short CODE_BEGIN_DOUBLE_VALUE = 54 << 1;
-            private static final short CODE_END_DOUBLE_VALUE = (54 << 1) | 0b1;
-            private static final short CODE_EMIT_ENABLE_INCREMENT_VALUE_INSTRUMENTATION = 55 << 1;
-            private static final short CODE_BEGIN_ADD = 56 << 1;
-            private static final short CODE_END_ADD = (56 << 1) | 0b1;
-            private static final short CODE_BEGIN_MOD = 57 << 1;
-            private static final short CODE_END_MOD = (57 << 1) | 0b1;
-            private static final short CODE_BEGIN_LESS = 58 << 1;
-            private static final short CODE_END_LESS = (58 << 1) | 0b1;
-            private static final short CODE_EMIT_ENABLE_DOUBLE_VALUE_INSTRUMENTATION = 59 << 1;
-            private static final short CODE_EMIT_EXPLICIT_BINDINGS_TEST = 60 << 1;
-            private static final short CODE_EMIT_IMPLICIT_BINDINGS_TEST = 61 << 1;
-            private static final short CODE_BEGIN_SC_AND = 62 << 1;
-            private static final short CODE_END_SC_AND = (62 << 1) | 0b1;
-            private static final short CODE_BEGIN_SC_OR = 63 << 1;
-            private static final short CODE_END_SC_OR = (63 << 1) | 0b1;
+            private static final short CODE_BEGIN_ENSURE_AND_GET_SOURCE_POSITION = 44 << 1;
+            private static final short CODE_END_ENSURE_AND_GET_SOURCE_POSITION = (44 << 1) | 0b1;
+            private static final short CODE_EMIT_GET_SOURCE_POSITIONS = 45 << 1;
+            private static final short CODE_BEGIN_COPY_LOCALS_TO_FRAME = 46 << 1;
+            private static final short CODE_END_COPY_LOCALS_TO_FRAME = (46 << 1) | 0b1;
+            private static final short CODE_EMIT_GET_BYTECODE_LOCATION = 47 << 1;
+            private static final short CODE_EMIT_COLLECT_BYTECODE_LOCATIONS = 48 << 1;
+            private static final short CODE_EMIT_COLLECT_SOURCE_LOCATIONS = 49 << 1;
+            private static final short CODE_EMIT_COLLECT_ALL_SOURCE_LOCATIONS = 50 << 1;
+            private static final short CODE_BEGIN_CONTINUE = 51 << 1;
+            private static final short CODE_END_CONTINUE = (51 << 1) | 0b1;
+            private static final short CODE_EMIT_CURRENT_LOCATION = 52 << 1;
+            private static final short CODE_EMIT_PRINT_HERE = 53 << 1;
+            private static final short CODE_BEGIN_INCREMENT_VALUE = 54 << 1;
+            private static final short CODE_END_INCREMENT_VALUE = (54 << 1) | 0b1;
+            private static final short CODE_BEGIN_DOUBLE_VALUE = 55 << 1;
+            private static final short CODE_END_DOUBLE_VALUE = (55 << 1) | 0b1;
+            private static final short CODE_EMIT_ENABLE_INCREMENT_VALUE_INSTRUMENTATION = 56 << 1;
+            private static final short CODE_BEGIN_ADD = 57 << 1;
+            private static final short CODE_END_ADD = (57 << 1) | 0b1;
+            private static final short CODE_BEGIN_MOD = 58 << 1;
+            private static final short CODE_END_MOD = (58 << 1) | 0b1;
+            private static final short CODE_BEGIN_LESS = 59 << 1;
+            private static final short CODE_END_LESS = (59 << 1) | 0b1;
+            private static final short CODE_EMIT_ENABLE_DOUBLE_VALUE_INSTRUMENTATION = 60 << 1;
+            private static final short CODE_EMIT_EXPLICIT_BINDINGS_TEST = 61 << 1;
+            private static final short CODE_EMIT_IMPLICIT_BINDINGS_TEST = 62 << 1;
+            private static final short CODE_BEGIN_SC_AND = 63 << 1;
+            private static final short CODE_END_SC_AND = (63 << 1) | 0b1;
+            private static final short CODE_BEGIN_SC_OR = 64 << 1;
+            private static final short CODE_END_SC_OR = (64 << 1) | 0b1;
 
             private final DataOutput buffer;
             private final BytecodeSerializer callback;
@@ -16729,7 +16888,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
 
         private static final Object VISIBLE_TOKEN = TOKEN;
 
-        private volatile long encoding;
+        @CompilationFinal private volatile long encoding;
 
         BytecodeRootNodesImpl(BytecodeParser<com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreterWithStoreBytecodeIndexInFrame.Builder> generator, BytecodeConfig config) {
             super(VISIBLE_TOKEN, generator);
@@ -16750,6 +16909,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
         }
 
         private synchronized boolean performUpdate(long maskedEncoding) {
+            CompilerAsserts.neverPartOfCompilation();
             long oldEncoding = this.encoding;
             long newEncoding = maskedEncoding | oldEncoding;
             if ((oldEncoding | newEncoding) == oldEncoding) {
@@ -17673,382 +17833,398 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
          */
         private static final short GET_SOURCE_POSITION_ = 103;
         /*
+         * Instruction c.EnsureAndGetSourcePosition
+         * kind: CUSTOM
+         * encoding: [104 : short, node : int, child0 (bci) : int]
+         * nodeType: EnsureAndGetSourcePosition
+         * signature: SourceSection (boolean)
+         */
+        private static final short ENSURE_AND_GET_SOURCE_POSITION_ = 104;
+        /*
+         * Instruction c.EnsureAndGetSourcePosition$Operation
+         * kind: CUSTOM
+         * encoding: [105 : short, node : int, child0 (bci) : int]
+         * nodeType: EnsureAndGetSourcePosition
+         * signature: SourceSection (boolean)
+         */
+        private static final short ENSURE_AND_GET_SOURCE_POSITION$OPERATION_ = 105;
+        /*
          * Instruction c.GetSourcePositions
          * kind: CUSTOM
-         * encoding: [104 : short, node : int]
+         * encoding: [106 : short, node : int]
          * nodeType: GetSourcePositions
          * signature: SourceSection[] ()
          */
-        private static final short GET_SOURCE_POSITIONS_ = 104;
+        private static final short GET_SOURCE_POSITIONS_ = 106;
         /*
          * Instruction c.CopyLocalsToFrame
          * kind: CUSTOM
-         * encoding: [105 : short, node : int, child0 (bci) : int]
+         * encoding: [107 : short, node : int, child0 (bci) : int]
          * nodeType: CopyLocalsToFrame
          * signature: Frame (Object)
          */
-        private static final short COPY_LOCALS_TO_FRAME_ = 105;
+        private static final short COPY_LOCALS_TO_FRAME_ = 107;
         /*
          * Instruction c.CopyLocalsToFrame$SomeLocals
          * kind: CUSTOM
-         * encoding: [106 : short, node : int, child0 (bci) : int]
+         * encoding: [108 : short, node : int, child0 (bci) : int]
          * nodeType: CopyLocalsToFrame
          * signature: Frame (long)
          */
-        private static final short COPY_LOCALS_TO_FRAME$SOME_LOCALS_ = 106;
+        private static final short COPY_LOCALS_TO_FRAME$SOME_LOCALS_ = 108;
         /*
          * Instruction c.GetBytecodeLocation
          * kind: CUSTOM
-         * encoding: [107 : short, node : int]
+         * encoding: [109 : short, node : int]
          * nodeType: GetBytecodeLocation
          * signature: BytecodeLocation ()
          */
-        private static final short GET_BYTECODE_LOCATION_ = 107;
+        private static final short GET_BYTECODE_LOCATION_ = 109;
         /*
          * Instruction c.CollectBytecodeLocations
          * kind: CUSTOM
-         * encoding: [108 : short, node : int]
+         * encoding: [110 : short, node : int]
          * nodeType: CollectBytecodeLocations
          * signature: List<BytecodeLocation> ()
          */
-        private static final short COLLECT_BYTECODE_LOCATIONS_ = 108;
+        private static final short COLLECT_BYTECODE_LOCATIONS_ = 110;
         /*
          * Instruction c.CollectSourceLocations
          * kind: CUSTOM
-         * encoding: [109 : short, node : int]
+         * encoding: [111 : short, node : int]
          * nodeType: CollectSourceLocations
          * signature: List<SourceSection> ()
          */
-        private static final short COLLECT_SOURCE_LOCATIONS_ = 109;
+        private static final short COLLECT_SOURCE_LOCATIONS_ = 111;
         /*
          * Instruction c.CollectAllSourceLocations
          * kind: CUSTOM
-         * encoding: [110 : short, node : int]
+         * encoding: [112 : short, node : int]
          * nodeType: CollectAllSourceLocations
          * signature: List<SourceSection[]> ()
          */
-        private static final short COLLECT_ALL_SOURCE_LOCATIONS_ = 110;
+        private static final short COLLECT_ALL_SOURCE_LOCATIONS_ = 112;
         /*
          * Instruction c.Continue
          * kind: CUSTOM
-         * encoding: [111 : short, node : int]
+         * encoding: [113 : short, node : int]
          * nodeType: ContinueNode
          * signature: Object (ContinuationResult, Object)
          */
-        private static final short CONTINUE_ = 111;
+        private static final short CONTINUE_ = 113;
         /*
          * Instruction c.CurrentLocation
          * kind: CUSTOM
-         * encoding: [112 : short, node : int]
+         * encoding: [114 : short, node : int]
          * nodeType: CurrentLocation
          * signature: BytecodeLocation ()
          */
-        private static final short CURRENT_LOCATION_ = 112;
+        private static final short CURRENT_LOCATION_ = 114;
         /*
          * Instruction c.PrintHere
          * kind: CUSTOM
-         * encoding: [113 : short, node : int]
+         * encoding: [115 : short, node : int]
          * nodeType: PrintHere
          * signature: void ()
          */
-        private static final short PRINT_HERE_ = 113;
+        private static final short PRINT_HERE_ = 115;
         /*
          * Instruction c.IncrementValue
-         * kind: CUSTOM
-         * encoding: [114 : short, node : int, child0 (bci) : int]
-         * nodeType: IncrementValue
-         * signature: long (long)
-         */
-        private static final short INCREMENT_VALUE_ = 114;
-        /*
-         * Instruction c.IncrementValue$Increment
-         * kind: CUSTOM
-         * encoding: [115 : short, node : int, child0 (bci) : int]
-         * nodeType: IncrementValue
-         * signature: long (long)
-         */
-        private static final short INCREMENT_VALUE$INCREMENT_ = 115;
-        /*
-         * Instruction c.IncrementValue$Increment$unboxed
          * kind: CUSTOM
          * encoding: [116 : short, node : int, child0 (bci) : int]
          * nodeType: IncrementValue
          * signature: long (long)
          */
-        private static final short INCREMENT_VALUE$INCREMENT$UNBOXED_ = 116;
+        private static final short INCREMENT_VALUE_ = 116;
         /*
-         * Instruction c.IncrementValue$unboxed
+         * Instruction c.IncrementValue$Increment
          * kind: CUSTOM
          * encoding: [117 : short, node : int, child0 (bci) : int]
          * nodeType: IncrementValue
          * signature: long (long)
          */
-        private static final short INCREMENT_VALUE$UNBOXED_ = 117;
+        private static final short INCREMENT_VALUE$INCREMENT_ = 117;
         /*
-         * Instruction c.DoubleValue
+         * Instruction c.IncrementValue$Increment$unboxed
          * kind: CUSTOM
          * encoding: [118 : short, node : int, child0 (bci) : int]
-         * nodeType: DoubleValue
+         * nodeType: IncrementValue
          * signature: long (long)
          */
-        private static final short DOUBLE_VALUE_ = 118;
+        private static final short INCREMENT_VALUE$INCREMENT$UNBOXED_ = 118;
         /*
-         * Instruction c.DoubleValue$Double
+         * Instruction c.IncrementValue$unboxed
          * kind: CUSTOM
          * encoding: [119 : short, node : int, child0 (bci) : int]
-         * nodeType: DoubleValue
+         * nodeType: IncrementValue
          * signature: long (long)
          */
-        private static final short DOUBLE_VALUE$DOUBLE_ = 119;
+        private static final short INCREMENT_VALUE$UNBOXED_ = 119;
         /*
-         * Instruction c.DoubleValue$Double$unboxed
+         * Instruction c.DoubleValue
          * kind: CUSTOM
          * encoding: [120 : short, node : int, child0 (bci) : int]
          * nodeType: DoubleValue
          * signature: long (long)
          */
-        private static final short DOUBLE_VALUE$DOUBLE$UNBOXED_ = 120;
+        private static final short DOUBLE_VALUE_ = 120;
         /*
-         * Instruction c.DoubleValue$unboxed
+         * Instruction c.DoubleValue$Double
          * kind: CUSTOM
          * encoding: [121 : short, node : int, child0 (bci) : int]
          * nodeType: DoubleValue
          * signature: long (long)
          */
-        private static final short DOUBLE_VALUE$UNBOXED_ = 121;
+        private static final short DOUBLE_VALUE$DOUBLE_ = 121;
+        /*
+         * Instruction c.DoubleValue$Double$unboxed
+         * kind: CUSTOM
+         * encoding: [122 : short, node : int, child0 (bci) : int]
+         * nodeType: DoubleValue
+         * signature: long (long)
+         */
+        private static final short DOUBLE_VALUE$DOUBLE$UNBOXED_ = 122;
+        /*
+         * Instruction c.DoubleValue$unboxed
+         * kind: CUSTOM
+         * encoding: [123 : short, node : int, child0 (bci) : int]
+         * nodeType: DoubleValue
+         * signature: long (long)
+         */
+        private static final short DOUBLE_VALUE$UNBOXED_ = 123;
         /*
          * Instruction c.EnableIncrementValueInstrumentation
          * kind: CUSTOM
-         * encoding: [122 : short, node : int]
+         * encoding: [124 : short, node : int]
          * nodeType: EnableIncrementValueInstrumentation
          * signature: void ()
          */
-        private static final short ENABLE_INCREMENT_VALUE_INSTRUMENTATION_ = 122;
+        private static final short ENABLE_INCREMENT_VALUE_INSTRUMENTATION_ = 124;
         /*
          * Instruction c.Add
-         * kind: CUSTOM
-         * encoding: [123 : short, node : int, child0 (bci) : int, child1 (bci) : int]
-         * nodeType: Add
-         * signature: long (long, long)
-         */
-        private static final short ADD_ = 123;
-        /*
-         * Instruction c.Add$Ints
-         * kind: CUSTOM
-         * encoding: [124 : short, node : int, child0 (bci) : int, child1 (bci) : int]
-         * nodeType: Add
-         * signature: long (long, long)
-         */
-        private static final short ADD$INTS_ = 124;
-        /*
-         * Instruction c.Add$Ints$unboxed
          * kind: CUSTOM
          * encoding: [125 : short, node : int, child0 (bci) : int, child1 (bci) : int]
          * nodeType: Add
          * signature: long (long, long)
          */
-        private static final short ADD$INTS$UNBOXED_ = 125;
+        private static final short ADD_ = 125;
         /*
-         * Instruction c.Add$unboxed
+         * Instruction c.Add$Ints
          * kind: CUSTOM
          * encoding: [126 : short, node : int, child0 (bci) : int, child1 (bci) : int]
          * nodeType: Add
          * signature: long (long, long)
          */
-        private static final short ADD$UNBOXED_ = 126;
+        private static final short ADD$INTS_ = 126;
         /*
-         * Instruction c.Mod
+         * Instruction c.Add$Ints$unboxed
          * kind: CUSTOM
          * encoding: [127 : short, node : int, child0 (bci) : int, child1 (bci) : int]
-         * nodeType: Mod
+         * nodeType: Add
          * signature: long (long, long)
          */
-        private static final short MOD_ = 127;
+        private static final short ADD$INTS$UNBOXED_ = 127;
         /*
-         * Instruction c.Mod$Ints
+         * Instruction c.Add$unboxed
          * kind: CUSTOM
          * encoding: [128 : short, node : int, child0 (bci) : int, child1 (bci) : int]
-         * nodeType: Mod
+         * nodeType: Add
          * signature: long (long, long)
          */
-        private static final short MOD$INTS_ = 128;
+        private static final short ADD$UNBOXED_ = 128;
         /*
-         * Instruction c.Mod$Ints$unboxed
+         * Instruction c.Mod
          * kind: CUSTOM
          * encoding: [129 : short, node : int, child0 (bci) : int, child1 (bci) : int]
          * nodeType: Mod
          * signature: long (long, long)
          */
-        private static final short MOD$INTS$UNBOXED_ = 129;
+        private static final short MOD_ = 129;
         /*
-         * Instruction c.Mod$unboxed
+         * Instruction c.Mod$Ints
          * kind: CUSTOM
          * encoding: [130 : short, node : int, child0 (bci) : int, child1 (bci) : int]
          * nodeType: Mod
          * signature: long (long, long)
          */
-        private static final short MOD$UNBOXED_ = 130;
+        private static final short MOD$INTS_ = 130;
         /*
-         * Instruction c.Less
+         * Instruction c.Mod$Ints$unboxed
          * kind: CUSTOM
          * encoding: [131 : short, node : int, child0 (bci) : int, child1 (bci) : int]
-         * nodeType: Less
-         * signature: boolean (long, long)
+         * nodeType: Mod
+         * signature: long (long, long)
          */
-        private static final short LESS_ = 131;
+        private static final short MOD$INTS$UNBOXED_ = 131;
         /*
-         * Instruction c.Less$Ints
+         * Instruction c.Mod$unboxed
          * kind: CUSTOM
          * encoding: [132 : short, node : int, child0 (bci) : int, child1 (bci) : int]
-         * nodeType: Less
-         * signature: boolean (long, long)
+         * nodeType: Mod
+         * signature: long (long, long)
          */
-        private static final short LESS$INTS_ = 132;
+        private static final short MOD$UNBOXED_ = 132;
         /*
-         * Instruction c.Less$Ints$unboxed
+         * Instruction c.Less
          * kind: CUSTOM
          * encoding: [133 : short, node : int, child0 (bci) : int, child1 (bci) : int]
          * nodeType: Less
          * signature: boolean (long, long)
          */
-        private static final short LESS$INTS$UNBOXED_ = 133;
+        private static final short LESS_ = 133;
         /*
-         * Instruction c.Less$unboxed
+         * Instruction c.Less$Ints
          * kind: CUSTOM
          * encoding: [134 : short, node : int, child0 (bci) : int, child1 (bci) : int]
          * nodeType: Less
          * signature: boolean (long, long)
          */
-        private static final short LESS$UNBOXED_ = 134;
+        private static final short LESS$INTS_ = 134;
+        /*
+         * Instruction c.Less$Ints$unboxed
+         * kind: CUSTOM
+         * encoding: [135 : short, node : int, child0 (bci) : int, child1 (bci) : int]
+         * nodeType: Less
+         * signature: boolean (long, long)
+         */
+        private static final short LESS$INTS$UNBOXED_ = 135;
+        /*
+         * Instruction c.Less$unboxed
+         * kind: CUSTOM
+         * encoding: [136 : short, node : int, child0 (bci) : int, child1 (bci) : int]
+         * nodeType: Less
+         * signature: boolean (long, long)
+         */
+        private static final short LESS$UNBOXED_ = 136;
         /*
          * Instruction c.EnableDoubleValueInstrumentation
          * kind: CUSTOM
-         * encoding: [135 : short, node : int]
+         * encoding: [137 : short, node : int]
          * nodeType: EnableDoubleValueInstrumentation
          * signature: void ()
          */
-        private static final short ENABLE_DOUBLE_VALUE_INSTRUMENTATION_ = 135;
+        private static final short ENABLE_DOUBLE_VALUE_INSTRUMENTATION_ = 137;
         /*
          * Instruction c.ExplicitBindingsTest
          * kind: CUSTOM
-         * encoding: [136 : short, node : int]
+         * encoding: [138 : short, node : int]
          * nodeType: ExplicitBindingsTest
          * signature: Bindings ()
          */
-        private static final short EXPLICIT_BINDINGS_TEST_ = 136;
+        private static final short EXPLICIT_BINDINGS_TEST_ = 138;
         /*
          * Instruction c.ImplicitBindingsTest
          * kind: CUSTOM
-         * encoding: [137 : short, node : int]
+         * encoding: [139 : short, node : int]
          * nodeType: ImplicitBindingsTest
          * signature: Bindings ()
          */
-        private static final short IMPLICIT_BINDINGS_TEST_ = 137;
+        private static final short IMPLICIT_BINDINGS_TEST_ = 139;
         /*
          * Instruction sc.ScAnd
          * kind: CUSTOM_SHORT_CIRCUIT
-         * encoding: [138 : short, branch_target (bci) : int, branch_profile : int]
+         * encoding: [140 : short, branch_target (bci) : int, branch_profile : int]
          * signature: boolean (boolean, boolean)
          */
-        private static final short SC_AND_ = 138;
+        private static final short SC_AND_ = 140;
         /*
          * Instruction sc.ScOr
          * kind: CUSTOM_SHORT_CIRCUIT
-         * encoding: [139 : short, branch_target (bci) : int, branch_profile : int]
+         * encoding: [141 : short, branch_target (bci) : int, branch_profile : int]
          * signature: boolean (boolean, boolean)
          */
-        private static final short SC_OR_ = 139;
+        private static final short SC_OR_ = 141;
         /*
          * Instruction merge.conditional
          * kind: MERGE_CONDITIONAL
-         * encoding: [140 : short, child0 (bci) : int, child1 (bci) : int]
+         * encoding: [142 : short, child0 (bci) : int, child1 (bci) : int]
          * signature: Object (boolean, Object)
          */
-        private static final short MERGE_CONDITIONAL = 140;
+        private static final short MERGE_CONDITIONAL = 142;
         /*
          * Instruction merge.conditional$Boolean
          * kind: MERGE_CONDITIONAL
-         * encoding: [141 : short, child0 (bci) : int, child1 (bci) : int]
+         * encoding: [143 : short, child0 (bci) : int, child1 (bci) : int]
          * signature: Object (boolean, boolean)
          */
-        private static final short MERGE_CONDITIONAL$BOOLEAN = 141;
+        private static final short MERGE_CONDITIONAL$BOOLEAN = 143;
         /*
          * Instruction merge.conditional$Boolean$unboxed
          * kind: MERGE_CONDITIONAL
-         * encoding: [142 : short, child0 (bci) : int, child1 (bci) : int]
+         * encoding: [144 : short, child0 (bci) : int, child1 (bci) : int]
          * signature: boolean (boolean, boolean)
          */
-        private static final short MERGE_CONDITIONAL$BOOLEAN$UNBOXED = 142;
+        private static final short MERGE_CONDITIONAL$BOOLEAN$UNBOXED = 144;
         /*
          * Instruction merge.conditional$Long
          * kind: MERGE_CONDITIONAL
-         * encoding: [143 : short, child0 (bci) : int, child1 (bci) : int]
+         * encoding: [145 : short, child0 (bci) : int, child1 (bci) : int]
          * signature: Object (boolean, long)
          */
-        private static final short MERGE_CONDITIONAL$LONG = 143;
+        private static final short MERGE_CONDITIONAL$LONG = 145;
         /*
          * Instruction merge.conditional$Long$unboxed
          * kind: MERGE_CONDITIONAL
-         * encoding: [144 : short, child0 (bci) : int, child1 (bci) : int]
+         * encoding: [146 : short, child0 (bci) : int, child1 (bci) : int]
          * signature: long (boolean, long)
          */
-        private static final short MERGE_CONDITIONAL$LONG$UNBOXED = 144;
+        private static final short MERGE_CONDITIONAL$LONG$UNBOXED = 146;
         /*
          * Instruction merge.conditional$generic
          * kind: MERGE_CONDITIONAL
-         * encoding: [145 : short, child0 (bci) : int, child1 (bci) : int]
+         * encoding: [147 : short, child0 (bci) : int, child1 (bci) : int]
          * signature: Object (boolean, Object)
          */
-        private static final short MERGE_CONDITIONAL$GENERIC = 145;
+        private static final short MERGE_CONDITIONAL$GENERIC = 147;
         /*
          * Instruction invalidate0
          * kind: INVALIDATE
-         * encoding: [146 : short]
+         * encoding: [148 : short]
          * signature: void ()
          */
-        private static final short INVALIDATE0 = 146;
+        private static final short INVALIDATE0 = 148;
         /*
          * Instruction invalidate1
          * kind: INVALIDATE
-         * encoding: [147 : short, invalidated0 (short) : short]
+         * encoding: [149 : short, invalidated0 (short) : short]
          * signature: void ()
          */
-        private static final short INVALIDATE1 = 147;
+        private static final short INVALIDATE1 = 149;
         /*
          * Instruction invalidate2
          * kind: INVALIDATE
-         * encoding: [148 : short, invalidated0 (short) : short, invalidated1 (short) : short]
+         * encoding: [150 : short, invalidated0 (short) : short, invalidated1 (short) : short]
          * signature: void ()
          */
-        private static final short INVALIDATE2 = 148;
+        private static final short INVALIDATE2 = 150;
         /*
          * Instruction invalidate3
          * kind: INVALIDATE
-         * encoding: [149 : short, invalidated0 (short) : short, invalidated1 (short) : short, invalidated2 (short) : short]
+         * encoding: [151 : short, invalidated0 (short) : short, invalidated1 (short) : short, invalidated2 (short) : short]
          * signature: void ()
          */
-        private static final short INVALIDATE3 = 149;
+        private static final short INVALIDATE3 = 151;
         /*
          * Instruction invalidate4
          * kind: INVALIDATE
-         * encoding: [150 : short, invalidated0 (short) : short, invalidated1 (short) : short, invalidated2 (short) : short, invalidated3 (short) : short]
+         * encoding: [152 : short, invalidated0 (short) : short, invalidated1 (short) : short, invalidated2 (short) : short, invalidated3 (short) : short]
          * signature: void ()
          */
-        private static final short INVALIDATE4 = 150;
+        private static final short INVALIDATE4 = 152;
         /*
          * Instruction invalidate5
          * kind: INVALIDATE
-         * encoding: [151 : short, invalidated0 (short) : short, invalidated1 (short) : short, invalidated2 (short) : short, invalidated3 (short) : short, invalidated4 (short) : short]
+         * encoding: [153 : short, invalidated0 (short) : short, invalidated1 (short) : short, invalidated2 (short) : short, invalidated3 (short) : short, invalidated4 (short) : short]
          * signature: void ()
          */
-        private static final short INVALIDATE5 = 151;
+        private static final short INVALIDATE5 = 153;
         /*
          * Instruction invalidate6
          * kind: INVALIDATE
-         * encoding: [152 : short, invalidated0 (short) : short, invalidated1 (short) : short, invalidated2 (short) : short, invalidated3 (short) : short, invalidated4 (short) : short, invalidated5 (short) : short]
+         * encoding: [154 : short, invalidated0 (short) : short, invalidated1 (short) : short, invalidated2 (short) : short, invalidated3 (short) : short, invalidated4 (short) : short, invalidated5 (short) : short]
          * signature: void ()
          */
-        private static final short INVALIDATE6 = 152;
+        private static final short INVALIDATE6 = 154;
 
     }
     private static final class Operations {
@@ -18096,26 +18272,27 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
         private static final int VOIDOPERATION = 41;
         private static final int TOBOOLEAN = 42;
         private static final int GETSOURCEPOSITION = 43;
-        private static final int GETSOURCEPOSITIONS = 44;
-        private static final int COPYLOCALSTOFRAME = 45;
-        private static final int GETBYTECODELOCATION = 46;
-        private static final int COLLECTBYTECODELOCATIONS = 47;
-        private static final int COLLECTSOURCELOCATIONS = 48;
-        private static final int COLLECTALLSOURCELOCATIONS = 49;
-        private static final int CONTINUE = 50;
-        private static final int CURRENTLOCATION = 51;
-        private static final int PRINTHERE = 52;
-        private static final int INCREMENTVALUE = 53;
-        private static final int DOUBLEVALUE = 54;
-        private static final int ENABLEINCREMENTVALUEINSTRUMENTATION = 55;
-        private static final int ADD = 56;
-        private static final int MOD = 57;
-        private static final int LESS = 58;
-        private static final int ENABLEDOUBLEVALUEINSTRUMENTATION = 59;
-        private static final int EXPLICITBINDINGSTEST = 60;
-        private static final int IMPLICITBINDINGSTEST = 61;
-        private static final int SCAND = 62;
-        private static final int SCOR = 63;
+        private static final int ENSUREANDGETSOURCEPOSITION = 44;
+        private static final int GETSOURCEPOSITIONS = 45;
+        private static final int COPYLOCALSTOFRAME = 46;
+        private static final int GETBYTECODELOCATION = 47;
+        private static final int COLLECTBYTECODELOCATIONS = 48;
+        private static final int COLLECTSOURCELOCATIONS = 49;
+        private static final int COLLECTALLSOURCELOCATIONS = 50;
+        private static final int CONTINUE = 51;
+        private static final int CURRENTLOCATION = 52;
+        private static final int PRINTHERE = 53;
+        private static final int INCREMENTVALUE = 54;
+        private static final int DOUBLEVALUE = 55;
+        private static final int ENABLEINCREMENTVALUEINSTRUMENTATION = 56;
+        private static final int ADD = 57;
+        private static final int MOD = 58;
+        private static final int LESS = 59;
+        private static final int ENABLEDOUBLEVALUEINSTRUMENTATION = 60;
+        private static final int EXPLICITBINDINGSTEST = 61;
+        private static final int IMPLICITBINDINGSTEST = 62;
+        private static final int SCAND = 63;
+        private static final int SCOR = 64;
 
     }
     private static final class ExceptionHandlerImpl extends ExceptionHandler {
@@ -20784,6 +20961,139 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
             public SourceSection executeUncached(VirtualFrame frameValue, VirtualFrame $stackFrame, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 return GetSourcePosition.doOperation(frameValue, ($bytecode), ($bytecode));
+            }
+
+        }
+    }
+    /**
+     * Debug Info: <pre>
+     *   Specialization {@link EnsureAndGetSourcePosition#doOperation}
+     *     Activation probability: 1.00000
+     *     With/without class size: 16/0 bytes
+     * </pre> */
+    @SuppressWarnings("javadoc")
+    private static final class EnsureAndGetSourcePosition_Node extends Node implements Introspection.Provider {
+
+        private static final Uncached UNCACHED = new Uncached();
+
+        /**
+         * State Info: <pre>
+         *   0: SpecializationActive {@link EnsureAndGetSourcePosition#doOperation}
+         * </pre> */
+        @CompilationFinal private int state_0_;
+
+        private SourceSection execute(VirtualFrame frameValue, VirtualFrame $stackFrame, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
+            int state_0 = this.state_0_;
+            boolean child0Value_;
+            try {
+                child0Value_ = BasicInterpreterWithStoreBytecodeIndexInFrame.expectBoolean(FRAMES.expectObject($stackFrame, $sp - 1));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                return executeAndSpecialize(frameValue, ex.getResult(), $stackFrame, $bytecode, $bc, $bci, $sp);
+            }
+            if (state_0 != 0 /* is SpecializationActive[BasicInterpreter.EnsureAndGetSourcePosition.doOperation(VirtualFrame, boolean, Node, BytecodeNode)] */) {
+                {
+                    Node node__ = (this);
+                    BytecodeNode bytecode__ = ($bytecode);
+                    return EnsureAndGetSourcePosition.doOperation(frameValue, child0Value_, node__, bytecode__);
+                }
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            return executeAndSpecialize(frameValue, child0Value_, $stackFrame, $bytecode, $bc, $bci, $sp);
+        }
+
+        private SourceSection executeOperation(VirtualFrame frameValue, VirtualFrame $stackFrame, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
+            boolean child0Value_;
+            try {
+                child0Value_ = FRAMES.expectBoolean($stackFrame, $sp - 1);
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                return executeAndSpecialize(frameValue, ex.getResult(), $stackFrame, $bytecode, $bc, $bci, $sp);
+            }
+            {
+                Node node__ = (this);
+                BytecodeNode bytecode__ = ($bytecode);
+                return EnsureAndGetSourcePosition.doOperation(frameValue, child0Value_, node__, bytecode__);
+            }
+        }
+
+        private SourceSection executeAndSpecialize(VirtualFrame frameValue, Object child0Value, VirtualFrame $stackFrame, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
+            int state_0 = this.state_0_;
+            {
+                BytecodeNode bytecode__ = null;
+                Node node__ = null;
+                if (child0Value instanceof Boolean) {
+                    boolean child0Value_ = (boolean) child0Value;
+                    node__ = (this);
+                    bytecode__ = ($bytecode);
+                    state_0 = state_0 | 0b1 /* add SpecializationActive[BasicInterpreter.EnsureAndGetSourcePosition.doOperation(VirtualFrame, boolean, Node, BytecodeNode)] */;
+                    this.state_0_ = state_0;
+                    $bytecode.getRoot().onSpecialize(new InstructionImpl($bytecode, $bci, BYTES.getShort($bc, $bci)), "EnsureAndGetSourcePosition$Operation");
+                    quicken(state_0, $bytecode, $bc, $bci);
+                    return EnsureAndGetSourcePosition.doOperation(frameValue, child0Value_, node__, bytecode__);
+                }
+            }
+            throw new UnsupportedSpecializationException(this, null, child0Value);
+        }
+
+        @Override
+        public Introspection getIntrospectionData() {
+            Object[] data = new Object[2];
+            Object[] s;
+            data[0] = 0;
+            int state_0 = this.state_0_;
+            s = new Object[3];
+            s[0] = "doOperation";
+            if (state_0 != 0 /* is SpecializationActive[BasicInterpreter.EnsureAndGetSourcePosition.doOperation(VirtualFrame, boolean, Node, BytecodeNode)] */) {
+                s[1] = (byte)0b01 /* active */;
+                ArrayList<Object> cached = new ArrayList<>();
+                cached.add(Arrays.<Object>asList());
+                s[2] = cached;
+            }
+            if (s[1] == null) {
+                s[1] = (byte)0b00 /* inactive */;
+            }
+            data[1] = s;
+            return Provider.create(data);
+        }
+
+        private static void quicken(int state_0, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci) {
+            short newInstruction;
+            int oldOperandIndex0 = BYTES.getIntUnaligned($bc, $bci + 6 /* imm child0 */);
+            short oldOperand0 = BYTES.getShort($bc, oldOperandIndex0);
+            short newOperand0;
+            if (
+              (newOperand0 = applyQuickeningBoolean(oldOperand0)) != -1) {
+                newInstruction = Instructions.ENSURE_AND_GET_SOURCE_POSITION$OPERATION_;
+            } else {
+                newOperand0 = undoQuickening(oldOperand0);
+                newInstruction = Instructions.ENSURE_AND_GET_SOURCE_POSITION_;
+            }
+            BYTES.putShort($bc, oldOperandIndex0, newOperand0);
+            $bytecode.getRoot().onQuickenOperand(new InstructionImpl($bytecode, $bci, BYTES.getShort($bc, $bci)), 0, new InstructionImpl($bytecode, oldOperandIndex0, oldOperand0), new InstructionImpl($bytecode, oldOperandIndex0, newOperand0));
+            {
+                InstructionImpl oldInstruction = new InstructionImpl($bytecode, $bci, BYTES.getShort($bc, $bci));
+                BYTES.putShort($bc, $bci, newInstruction);
+                $bytecode.getRoot().onQuicken(oldInstruction, new InstructionImpl($bytecode, $bci, newInstruction));
+            }
+        }
+
+        @TruffleBoundary
+        private static UnsupportedSpecializationException newUnsupportedSpecializationException1(Node thisNode_, Object child0Value) {
+            return new UnsupportedSpecializationException(thisNode_, null, child0Value);
+        }
+
+        @GeneratedBy(BasicInterpreter.class)
+        @DenyReplace
+        private static final class Uncached extends Node implements UnadoptableNode {
+
+            public SourceSection executeUncached(VirtualFrame frameValue, Object child0Value, VirtualFrame $stackFrame, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                if (child0Value instanceof Boolean) {
+                    boolean child0Value_ = (boolean) child0Value;
+                    return EnsureAndGetSourcePosition.doOperation(frameValue, child0Value_, ($bytecode), ($bytecode));
+                }
+                throw newUnsupportedSpecializationException1(this, child0Value);
             }
 
         }

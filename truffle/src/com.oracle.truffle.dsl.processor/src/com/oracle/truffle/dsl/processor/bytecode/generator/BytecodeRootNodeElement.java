@@ -8224,7 +8224,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             this.setSuperClass(generic(types.BytecodeRootNodes, model.templateType.asType()));
             this.setEnclosingElement(BytecodeRootNodeElement.this);
             this.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(Object.class), "VISIBLE_TOKEN")).createInitBuilder().string("TOKEN");
-            this.add(new CodeVariableElement(Set.of(PRIVATE, VOLATILE), type(long.class), "encoding"));
+            this.add(compFinal(new CodeVariableElement(Set.of(PRIVATE, VOLATILE), type(long.class), "encoding")));
 
             this.updateReason = this.add(createUpdateReason());
             this.add(createConstructor());
@@ -8346,6 +8346,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             ex.getModifiers().add(Modifier.SYNCHRONIZED);
             CodeTreeBuilder b = ex.createBuilder();
 
+            b.tree(createNeverPartOfCompilation());
             b.declaration(type(long.class), "oldEncoding", "this.encoding");
             b.declaration(type(long.class), "newEncoding", "maskedEncoding | oldEncoding");
             b.startIf().string("(oldEncoding | newEncoding) == oldEncoding").end().startBlock();

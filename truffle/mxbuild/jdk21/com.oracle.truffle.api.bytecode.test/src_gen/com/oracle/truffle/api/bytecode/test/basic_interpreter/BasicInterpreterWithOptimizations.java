@@ -184,6 +184,8 @@ import java.util.function.Supplier;
  *     kind: CUSTOM
  *   - Operation GetSourcePosition
  *     kind: CUSTOM
+ *   - Operation EnsureAndGetSourcePosition
+ *     kind: CUSTOM
  *   - Operation GetSourcePositions
  *     kind: CUSTOM
  *   - Operation CopyLocalsToFrame
@@ -447,123 +449,128 @@ import java.util.function.Supplier;
  *     encoding: [51 : short, node : int]
  *     nodeType: GetSourcePosition
  *     signature: SourceSection ()
- *   - Instruction c.GetSourcePositions
+ *   - Instruction c.EnsureAndGetSourcePosition
  *     kind: CUSTOM
  *     encoding: [52 : short, node : int]
+ *     nodeType: EnsureAndGetSourcePosition
+ *     signature: SourceSection (boolean)
+ *   - Instruction c.GetSourcePositions
+ *     kind: CUSTOM
+ *     encoding: [53 : short, node : int]
  *     nodeType: GetSourcePositions
  *     signature: SourceSection[] ()
  *   - Instruction c.CopyLocalsToFrame
  *     kind: CUSTOM
- *     encoding: [53 : short, node : int]
+ *     encoding: [54 : short, node : int]
  *     nodeType: CopyLocalsToFrame
  *     signature: Frame (Object)
  *   - Instruction c.GetBytecodeLocation
  *     kind: CUSTOM
- *     encoding: [54 : short, node : int]
+ *     encoding: [55 : short, node : int]
  *     nodeType: GetBytecodeLocation
  *     signature: BytecodeLocation ()
  *   - Instruction c.CollectBytecodeLocations
  *     kind: CUSTOM
- *     encoding: [55 : short, node : int]
+ *     encoding: [56 : short, node : int]
  *     nodeType: CollectBytecodeLocations
  *     signature: List<BytecodeLocation> ()
  *   - Instruction c.CollectSourceLocations
  *     kind: CUSTOM
- *     encoding: [56 : short, node : int]
+ *     encoding: [57 : short, node : int]
  *     nodeType: CollectSourceLocations
  *     signature: List<SourceSection> ()
  *   - Instruction c.CollectAllSourceLocations
  *     kind: CUSTOM
- *     encoding: [57 : short, node : int]
+ *     encoding: [58 : short, node : int]
  *     nodeType: CollectAllSourceLocations
  *     signature: List<SourceSection[]> ()
  *   - Instruction c.Continue
  *     kind: CUSTOM
- *     encoding: [58 : short, node : int]
+ *     encoding: [59 : short, node : int]
  *     nodeType: ContinueNode
  *     signature: Object (ContinuationResult, Object)
  *   - Instruction c.CurrentLocation
  *     kind: CUSTOM
- *     encoding: [59 : short, node : int]
+ *     encoding: [60 : short, node : int]
  *     nodeType: CurrentLocation
  *     signature: BytecodeLocation ()
  *   - Instruction c.PrintHere
  *     kind: CUSTOM
- *     encoding: [60 : short, node : int]
+ *     encoding: [61 : short, node : int]
  *     nodeType: PrintHere
  *     signature: void ()
  *   - Instruction c.IncrementValue
  *     kind: CUSTOM
- *     encoding: [61 : short, node : int]
+ *     encoding: [62 : short, node : int]
  *     nodeType: IncrementValue
  *     signature: long (long)
  *   - Instruction c.DoubleValue
  *     kind: CUSTOM
- *     encoding: [62 : short, node : int]
+ *     encoding: [63 : short, node : int]
  *     nodeType: DoubleValue
  *     signature: long (long)
  *   - Instruction c.EnableIncrementValueInstrumentation
  *     kind: CUSTOM
- *     encoding: [63 : short, node : int]
+ *     encoding: [64 : short, node : int]
  *     nodeType: EnableIncrementValueInstrumentation
  *     signature: void ()
  *   - Instruction c.Add
  *     kind: CUSTOM
- *     encoding: [64 : short, node : int]
+ *     encoding: [65 : short, node : int]
  *     nodeType: Add
  *     signature: long (long, long)
  *   - Instruction c.Mod
  *     kind: CUSTOM
- *     encoding: [65 : short, node : int]
+ *     encoding: [66 : short, node : int]
  *     nodeType: Mod
  *     signature: long (long, long)
  *   - Instruction c.Less
  *     kind: CUSTOM
- *     encoding: [66 : short, node : int]
+ *     encoding: [67 : short, node : int]
  *     nodeType: Less
  *     signature: boolean (long, long)
  *   - Instruction c.EnableDoubleValueInstrumentation
  *     kind: CUSTOM
- *     encoding: [67 : short, node : int]
+ *     encoding: [68 : short, node : int]
  *     nodeType: EnableDoubleValueInstrumentation
  *     signature: void ()
  *   - Instruction c.ExplicitBindingsTest
  *     kind: CUSTOM
- *     encoding: [68 : short, node : int]
+ *     encoding: [69 : short, node : int]
  *     nodeType: ExplicitBindingsTest
  *     signature: Bindings ()
  *   - Instruction c.ImplicitBindingsTest
  *     kind: CUSTOM
- *     encoding: [69 : short, node : int]
+ *     encoding: [70 : short, node : int]
  *     nodeType: ImplicitBindingsTest
  *     signature: Bindings ()
  *   - Instruction sc.ScAnd
  *     kind: CUSTOM_SHORT_CIRCUIT
- *     encoding: [70 : short, branch_target (bci) : int, branch_profile : int]
+ *     encoding: [71 : short, branch_target (bci) : int, branch_profile : int]
  *     signature: boolean (boolean, boolean)
  *   - Instruction sc.ScOr
  *     kind: CUSTOM_SHORT_CIRCUIT
- *     encoding: [71 : short, branch_target (bci) : int, branch_profile : int]
+ *     encoding: [72 : short, branch_target (bci) : int, branch_profile : int]
  *     signature: boolean (boolean, boolean)
  *   - Instruction invalidate0
  *     kind: INVALIDATE
- *     encoding: [72 : short]
+ *     encoding: [73 : short]
  *     signature: void ()
  *   - Instruction invalidate1
  *     kind: INVALIDATE
- *     encoding: [73 : short, invalidated0 (short) : short]
+ *     encoding: [74 : short, invalidated0 (short) : short]
  *     signature: void ()
  *   - Instruction invalidate2
  *     kind: INVALIDATE
- *     encoding: [74 : short, invalidated0 (short) : short, invalidated1 (short) : short]
+ *     encoding: [75 : short, invalidated0 (short) : short, invalidated1 (short) : short]
  *     signature: void ()
  *   - Instruction invalidate3
  *     kind: INVALIDATE
- *     encoding: [75 : short, invalidated0 (short) : short, invalidated1 (short) : short, invalidated2 (short) : short]
+ *     encoding: [76 : short, invalidated0 (short) : short, invalidated1 (short) : short, invalidated2 (short) : short]
  *     signature: void ()
  *   - Instruction invalidate4
  *     kind: INVALIDATE
- *     encoding: [76 : short, invalidated0 (short) : short, invalidated1 (short) : short, invalidated2 (short) : short, invalidated3 (short) : short]
+ *     encoding: [77 : short, invalidated0 (short) : short, invalidated1 (short) : short, invalidated2 (short) : short, invalidated3 (short) : short]
  *     signature: void ()
  */
 @SuppressWarnings({"javadoc", "unused", "deprecation", "static-method"})
@@ -1039,6 +1046,7 @@ public final class BasicInterpreterWithOptimizations extends BasicInterpreter {
                 case Instructions.VOID_OPERATION_ :
                 case Instructions.TO_BOOLEAN_ :
                 case Instructions.GET_SOURCE_POSITION_ :
+                case Instructions.ENSURE_AND_GET_SOURCE_POSITION_ :
                 case Instructions.GET_SOURCE_POSITIONS_ :
                 case Instructions.COPY_LOCALS_TO_FRAME_ :
                 case Instructions.GET_BYTECODE_LOCATION_ :
@@ -1152,6 +1160,7 @@ public final class BasicInterpreterWithOptimizations extends BasicInterpreter {
                 case Instructions.VOID_OPERATION_ :
                 case Instructions.TO_BOOLEAN_ :
                 case Instructions.GET_SOURCE_POSITION_ :
+                case Instructions.ENSURE_AND_GET_SOURCE_POSITION_ :
                 case Instructions.GET_SOURCE_POSITIONS_ :
                 case Instructions.COPY_LOCALS_TO_FRAME_ :
                 case Instructions.GET_BYTECODE_LOCATION_ :
@@ -1316,6 +1325,8 @@ public final class BasicInterpreterWithOptimizations extends BasicInterpreter {
                     return "c.ToBoolean";
                 case Instructions.GET_SOURCE_POSITION_ :
                     return "c.GetSourcePosition";
+                case Instructions.ENSURE_AND_GET_SOURCE_POSITION_ :
+                    return "c.EnsureAndGetSourcePosition";
                 case Instructions.GET_SOURCE_POSITIONS_ :
                     return "c.GetSourcePositions";
                 case Instructions.COPY_LOCALS_TO_FRAME_ :
@@ -1419,6 +1430,7 @@ public final class BasicInterpreterWithOptimizations extends BasicInterpreter {
                 case Instructions.VOID_OPERATION_ :
                 case Instructions.TO_BOOLEAN_ :
                 case Instructions.GET_SOURCE_POSITION_ :
+                case Instructions.ENSURE_AND_GET_SOURCE_POSITION_ :
                 case Instructions.GET_SOURCE_POSITIONS_ :
                 case Instructions.COPY_LOCALS_TO_FRAME_ :
                 case Instructions.GET_BYTECODE_LOCATION_ :
@@ -1939,6 +1951,7 @@ public final class BasicInterpreterWithOptimizations extends BasicInterpreter {
                     case Instructions.VOID_OPERATION_ :
                     case Instructions.TO_BOOLEAN_ :
                     case Instructions.GET_SOURCE_POSITION_ :
+                    case Instructions.ENSURE_AND_GET_SOURCE_POSITION_ :
                     case Instructions.GET_SOURCE_POSITIONS_ :
                     case Instructions.COPY_LOCALS_TO_FRAME_ :
                     case Instructions.GET_BYTECODE_LOCATION_ :
@@ -2168,6 +2181,7 @@ public final class BasicInterpreterWithOptimizations extends BasicInterpreter {
                         case Instructions.VOID_OPERATION_ :
                         case Instructions.TO_BOOLEAN_ :
                         case Instructions.GET_SOURCE_POSITION_ :
+                        case Instructions.ENSURE_AND_GET_SOURCE_POSITION_ :
                         case Instructions.GET_SOURCE_POSITIONS_ :
                         case Instructions.COPY_LOCALS_TO_FRAME_ :
                         case Instructions.GET_BYTECODE_LOCATION_ :
@@ -2420,7 +2434,7 @@ public final class BasicInterpreterWithOptimizations extends BasicInterpreter {
                 throw new IllegalArgumentException("Bytecode index out of range " + bci);
             }
             int op = readValidBytecode(bc, bci);
-            if (op < 0 || op > 76) {
+            if (op < 0 || op > 77) {
                 throw new IllegalArgumentException("Invalid op at bytecode index " + op);
             }
             return true;
@@ -2669,6 +2683,7 @@ public final class BasicInterpreterWithOptimizations extends BasicInterpreter {
                     case Instructions.VOID_OPERATION_ :
                     case Instructions.TO_BOOLEAN_ :
                     case Instructions.GET_SOURCE_POSITION_ :
+                    case Instructions.ENSURE_AND_GET_SOURCE_POSITION_ :
                     case Instructions.GET_SOURCE_POSITIONS_ :
                     case Instructions.COPY_LOCALS_TO_FRAME_ :
                     case Instructions.GET_BYTECODE_LOCATION_ :
@@ -2777,6 +2792,7 @@ public final class BasicInterpreterWithOptimizations extends BasicInterpreter {
                     case Instructions.VOID_OPERATION_ :
                     case Instructions.TO_BOOLEAN_ :
                     case Instructions.GET_SOURCE_POSITION_ :
+                    case Instructions.ENSURE_AND_GET_SOURCE_POSITION_ :
                     case Instructions.GET_SOURCE_POSITIONS_ :
                     case Instructions.COPY_LOCALS_TO_FRAME_ :
                     case Instructions.GET_BYTECODE_LOCATION_ :
@@ -3060,6 +3076,10 @@ public final class BasicInterpreterWithOptimizations extends BasicInterpreter {
                         break;
                     case Instructions.GET_SOURCE_POSITION_ :
                         result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new GetSourcePosition_Node());
+                        bci += 6;
+                        break;
+                    case Instructions.ENSURE_AND_GET_SOURCE_POSITION_ :
+                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new EnsureAndGetSourcePosition_Node());
                         bci += 6;
                         break;
                     case Instructions.GET_SOURCE_POSITIONS_ :
@@ -3545,6 +3565,12 @@ public final class BasicInterpreterWithOptimizations extends BasicInterpreter {
                             bci += 6;
                             break;
                         }
+                        case Instructions.ENSURE_AND_GET_SOURCE_POSITION_ :
+                        {
+                            doEnsureAndGetSourcePosition_(frame, localFrame, cachedNodes, bc, bci, sp);
+                            bci += 6;
+                            break;
+                        }
                         case Instructions.GET_SOURCE_POSITIONS_ :
                         {
                             doGetSourcePositions_(frame, localFrame, cachedNodes, bc, bci, sp);
@@ -3981,6 +4007,12 @@ public final class BasicInterpreterWithOptimizations extends BasicInterpreter {
             FRAMES.setObject(frame, sp, result);
         }
 
+        private void doEnsureAndGetSourcePosition_(VirtualFrame frame, VirtualFrame localFrame, Node[] cachedNodes, byte[] bc, int bci, int sp) {
+            EnsureAndGetSourcePosition_Node node = ACCESS.uncheckedCast(ACCESS.readObject(cachedNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)), EnsureAndGetSourcePosition_Node.class);
+            SourceSection result = node.execute(localFrame, frame, this, bc, bci, sp);
+            FRAMES.setObject(frame, sp - 1, result);
+        }
+
         private void doGetSourcePositions_(VirtualFrame frame, VirtualFrame localFrame, Node[] cachedNodes, byte[] bc, int bci, int sp) {
             GetSourcePositions_Node node = ACCESS.uncheckedCast(ACCESS.readObject(cachedNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)), GetSourcePositions_Node.class);
             SourceSection[] result = node.execute(localFrame, frame, this, bc, bci, sp);
@@ -4397,6 +4429,7 @@ public final class BasicInterpreterWithOptimizations extends BasicInterpreter {
                     case Instructions.VOID_OPERATION_ :
                     case Instructions.TO_BOOLEAN_ :
                     case Instructions.GET_SOURCE_POSITION_ :
+                    case Instructions.ENSURE_AND_GET_SOURCE_POSITION_ :
                     case Instructions.GET_SOURCE_POSITIONS_ :
                     case Instructions.COPY_LOCALS_TO_FRAME_ :
                     case Instructions.GET_BYTECODE_LOCATION_ :
@@ -4580,6 +4613,7 @@ public final class BasicInterpreterWithOptimizations extends BasicInterpreter {
                     case Instructions.EARLY_RETURN_ :
                     case Instructions.ENABLE_DOUBLE_VALUE_INSTRUMENTATION_ :
                     case Instructions.ENABLE_INCREMENT_VALUE_INSTRUMENTATION_ :
+                    case Instructions.ENSURE_AND_GET_SOURCE_POSITION_ :
                     case Instructions.EXPLICIT_BINDINGS_TEST_ :
                     case Instructions.GET_BYTECODE_LOCATION_ :
                     case Instructions.GET_SOURCE_POSITION_ :
@@ -4736,7 +4770,7 @@ public final class BasicInterpreterWithOptimizations extends BasicInterpreter {
     public static final class Builder extends BasicInterpreterBuilder {
 
         private static final byte UNINITIALIZED = -1;
-        private static final String[] OPERATION_NAMES = new String[] {null, "Block", "Root", "IfThen", "IfThenElse", "Conditional", "While", "TryCatch", "TryFinally", "TryCatchOtherwise", "FinallyHandler", "Label", "Branch", "LoadConstant", "LoadNull", "LoadArgument", "LoadException", "LoadLocal", "LoadLocalMaterialized", "StoreLocal", "StoreLocalMaterialized", "Return", "Yield", "Source", "SourceSection", "Tag", "EarlyReturn", "AddOperation", "Call", "AddConstantOperation", "AddConstantOperationAtEnd", "VeryComplexOperation", "ThrowOperation", "ReadExceptionOperation", "AlwaysBoxOperation", "AppenderOperation", "TeeLocal", "TeeLocalRange", "Invoke", "MaterializeFrame", "CreateClosure", "VoidOperation", "ToBoolean", "GetSourcePosition", "GetSourcePositions", "CopyLocalsToFrame", "GetBytecodeLocation", "CollectBytecodeLocations", "CollectSourceLocations", "CollectAllSourceLocations", "Continue", "CurrentLocation", "PrintHere", "IncrementValue", "DoubleValue", "EnableIncrementValueInstrumentation", "Add", "Mod", "Less", "EnableDoubleValueInstrumentation", "ExplicitBindingsTest", "ImplicitBindingsTest", "ScAnd", "ScOr"};
+        private static final String[] OPERATION_NAMES = new String[] {null, "Block", "Root", "IfThen", "IfThenElse", "Conditional", "While", "TryCatch", "TryFinally", "TryCatchOtherwise", "FinallyHandler", "Label", "Branch", "LoadConstant", "LoadNull", "LoadArgument", "LoadException", "LoadLocal", "LoadLocalMaterialized", "StoreLocal", "StoreLocalMaterialized", "Return", "Yield", "Source", "SourceSection", "Tag", "EarlyReturn", "AddOperation", "Call", "AddConstantOperation", "AddConstantOperationAtEnd", "VeryComplexOperation", "ThrowOperation", "ReadExceptionOperation", "AlwaysBoxOperation", "AppenderOperation", "TeeLocal", "TeeLocalRange", "Invoke", "MaterializeFrame", "CreateClosure", "VoidOperation", "ToBoolean", "GetSourcePosition", "EnsureAndGetSourcePosition", "GetSourcePositions", "CopyLocalsToFrame", "GetBytecodeLocation", "CollectBytecodeLocations", "CollectSourceLocations", "CollectAllSourceLocations", "Continue", "CurrentLocation", "PrintHere", "IncrementValue", "DoubleValue", "EnableIncrementValueInstrumentation", "Add", "Mod", "Less", "EnableDoubleValueInstrumentation", "ExplicitBindingsTest", "ImplicitBindingsTest", "ScAnd", "ScOr"};
         private static final Class<?>[] TAGS_ROOT_TAG_ROOT_BODY_TAG = new Class<?>[]{RootTag.class, RootBodyTag.class};
 
         private int operationSequenceNumber;
@@ -7424,6 +7458,57 @@ public final class BasicInterpreterWithOptimizations extends BasicInterpreter {
         }
 
         /**
+         * Begins a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.EnsureAndGetSourcePosition EnsureAndGetSourcePosition} operation.
+         * <p>
+         * Signature: EnsureAndGetSourcePosition(ensure) -> SourceSection
+         * <p>
+         * A corresponding call to {@link #endEnsureAndGetSourcePosition} is required to end the operation.
+         */
+        @Override
+        public void beginEnsureAndGetSourcePosition() {
+            if (serialization != null) {
+                try {
+                    serialization.buffer.writeShort(SerializationState.CODE_BEGIN_ENSURE_AND_GET_SOURCE_POSITION);
+                } catch (IOException ex) {
+                    throw new IOError(ex);
+                }
+                return;
+            }
+            validateRootOperationBegin();
+            beforeChild();
+            CustomOperationData operationData = new CustomOperationData(EMPTY_INT_ARRAY, EMPTY_INT_ARRAY);
+            beginOperation(Operations.ENSUREANDGETSOURCEPOSITION, operationData);
+        }
+
+        /**
+         * Ends a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.EnsureAndGetSourcePosition EnsureAndGetSourcePosition} operation.
+         * <p>
+         * Signature: EnsureAndGetSourcePosition(ensure) -> SourceSection
+         *
+         * @see #beginEnsureAndGetSourcePosition
+         */
+        @Override
+        public void endEnsureAndGetSourcePosition() {
+            if (serialization != null) {
+                try {
+                    serialization.buffer.writeShort(SerializationState.CODE_END_ENSURE_AND_GET_SOURCE_POSITION);
+                } catch (IOException ex) {
+                    throw new IOError(ex);
+                }
+                return;
+            }
+            OperationStackEntry operation = endOperation(Operations.ENSUREANDGETSOURCEPOSITION);
+            if (operation.childCount != 1) {
+                throw failState("Operation EnsureAndGetSourcePosition expected exactly 1 child, but " + operation.childCount + " provided. This is probably a bug in the parser.");
+            }
+            if (!(operation.data instanceof CustomOperationData operationData)) {
+                throw assertionFailed("Data class CustomOperationData expected, but was " + operation.data);
+            }
+            doEmitInstructionI(Instructions.ENSURE_AND_GET_SOURCE_POSITION_, 0, allocateNode());
+            afterChild(true, bci - 6);
+        }
+
+        /**
          * Emits a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.GetSourcePositions GetSourcePositions} operation.
          * <p>
          * Signature: GetSourcePositions() -> SourceSection[]
@@ -8566,6 +8651,7 @@ public final class BasicInterpreterWithOptimizations extends BasicInterpreter {
                 case Operations.INVOKE :
                 case Operations.CREATECLOSURE :
                 case Operations.TOBOOLEAN :
+                case Operations.ENSUREANDGETSOURCEPOSITION :
                 case Operations.COPYLOCALSTOFRAME :
                 case Operations.CONTINUE :
                 case Operations.INCREMENTVALUE :
@@ -8965,6 +9051,13 @@ public final class BasicInterpreterWithOptimizations extends BasicInterpreter {
                 {
                     if (!producedValue) {
                         throw failState("Operation ToBoolean expected a value-producing child at position " + childIndex + ", but a void one was provided.");
+                    }
+                    break;
+                }
+                case Operations.ENSUREANDGETSOURCEPOSITION :
+                {
+                    if (!producedValue) {
+                        throw failState("Operation EnsureAndGetSourcePosition expected a value-producing child at position " + childIndex + ", but a void one was provided.");
                     }
                     break;
                 }
@@ -10174,6 +10267,16 @@ public final class BasicInterpreterWithOptimizations extends BasicInterpreter {
                             emitGetSourcePosition();
                             break;
                         }
+                        case SerializationState.CODE_BEGIN_ENSURE_AND_GET_SOURCE_POSITION :
+                        {
+                            beginEnsureAndGetSourcePosition();
+                            break;
+                        }
+                        case SerializationState.CODE_END_ENSURE_AND_GET_SOURCE_POSITION :
+                        {
+                            endEnsureAndGetSourcePosition();
+                            break;
+                        }
                         case SerializationState.CODE_EMIT_GET_SOURCE_POSITIONS :
                         {
                             emitGetSourcePositions();
@@ -11241,35 +11344,37 @@ public final class BasicInterpreterWithOptimizations extends BasicInterpreter {
             private static final short CODE_BEGIN_TO_BOOLEAN = 42 << 1;
             private static final short CODE_END_TO_BOOLEAN = (42 << 1) | 0b1;
             private static final short CODE_EMIT_GET_SOURCE_POSITION = 43 << 1;
-            private static final short CODE_EMIT_GET_SOURCE_POSITIONS = 44 << 1;
-            private static final short CODE_BEGIN_COPY_LOCALS_TO_FRAME = 45 << 1;
-            private static final short CODE_END_COPY_LOCALS_TO_FRAME = (45 << 1) | 0b1;
-            private static final short CODE_EMIT_GET_BYTECODE_LOCATION = 46 << 1;
-            private static final short CODE_EMIT_COLLECT_BYTECODE_LOCATIONS = 47 << 1;
-            private static final short CODE_EMIT_COLLECT_SOURCE_LOCATIONS = 48 << 1;
-            private static final short CODE_EMIT_COLLECT_ALL_SOURCE_LOCATIONS = 49 << 1;
-            private static final short CODE_BEGIN_CONTINUE = 50 << 1;
-            private static final short CODE_END_CONTINUE = (50 << 1) | 0b1;
-            private static final short CODE_EMIT_CURRENT_LOCATION = 51 << 1;
-            private static final short CODE_EMIT_PRINT_HERE = 52 << 1;
-            private static final short CODE_BEGIN_INCREMENT_VALUE = 53 << 1;
-            private static final short CODE_END_INCREMENT_VALUE = (53 << 1) | 0b1;
-            private static final short CODE_BEGIN_DOUBLE_VALUE = 54 << 1;
-            private static final short CODE_END_DOUBLE_VALUE = (54 << 1) | 0b1;
-            private static final short CODE_EMIT_ENABLE_INCREMENT_VALUE_INSTRUMENTATION = 55 << 1;
-            private static final short CODE_BEGIN_ADD = 56 << 1;
-            private static final short CODE_END_ADD = (56 << 1) | 0b1;
-            private static final short CODE_BEGIN_MOD = 57 << 1;
-            private static final short CODE_END_MOD = (57 << 1) | 0b1;
-            private static final short CODE_BEGIN_LESS = 58 << 1;
-            private static final short CODE_END_LESS = (58 << 1) | 0b1;
-            private static final short CODE_EMIT_ENABLE_DOUBLE_VALUE_INSTRUMENTATION = 59 << 1;
-            private static final short CODE_EMIT_EXPLICIT_BINDINGS_TEST = 60 << 1;
-            private static final short CODE_EMIT_IMPLICIT_BINDINGS_TEST = 61 << 1;
-            private static final short CODE_BEGIN_SC_AND = 62 << 1;
-            private static final short CODE_END_SC_AND = (62 << 1) | 0b1;
-            private static final short CODE_BEGIN_SC_OR = 63 << 1;
-            private static final short CODE_END_SC_OR = (63 << 1) | 0b1;
+            private static final short CODE_BEGIN_ENSURE_AND_GET_SOURCE_POSITION = 44 << 1;
+            private static final short CODE_END_ENSURE_AND_GET_SOURCE_POSITION = (44 << 1) | 0b1;
+            private static final short CODE_EMIT_GET_SOURCE_POSITIONS = 45 << 1;
+            private static final short CODE_BEGIN_COPY_LOCALS_TO_FRAME = 46 << 1;
+            private static final short CODE_END_COPY_LOCALS_TO_FRAME = (46 << 1) | 0b1;
+            private static final short CODE_EMIT_GET_BYTECODE_LOCATION = 47 << 1;
+            private static final short CODE_EMIT_COLLECT_BYTECODE_LOCATIONS = 48 << 1;
+            private static final short CODE_EMIT_COLLECT_SOURCE_LOCATIONS = 49 << 1;
+            private static final short CODE_EMIT_COLLECT_ALL_SOURCE_LOCATIONS = 50 << 1;
+            private static final short CODE_BEGIN_CONTINUE = 51 << 1;
+            private static final short CODE_END_CONTINUE = (51 << 1) | 0b1;
+            private static final short CODE_EMIT_CURRENT_LOCATION = 52 << 1;
+            private static final short CODE_EMIT_PRINT_HERE = 53 << 1;
+            private static final short CODE_BEGIN_INCREMENT_VALUE = 54 << 1;
+            private static final short CODE_END_INCREMENT_VALUE = (54 << 1) | 0b1;
+            private static final short CODE_BEGIN_DOUBLE_VALUE = 55 << 1;
+            private static final short CODE_END_DOUBLE_VALUE = (55 << 1) | 0b1;
+            private static final short CODE_EMIT_ENABLE_INCREMENT_VALUE_INSTRUMENTATION = 56 << 1;
+            private static final short CODE_BEGIN_ADD = 57 << 1;
+            private static final short CODE_END_ADD = (57 << 1) | 0b1;
+            private static final short CODE_BEGIN_MOD = 58 << 1;
+            private static final short CODE_END_MOD = (58 << 1) | 0b1;
+            private static final short CODE_BEGIN_LESS = 59 << 1;
+            private static final short CODE_END_LESS = (59 << 1) | 0b1;
+            private static final short CODE_EMIT_ENABLE_DOUBLE_VALUE_INSTRUMENTATION = 60 << 1;
+            private static final short CODE_EMIT_EXPLICIT_BINDINGS_TEST = 61 << 1;
+            private static final short CODE_EMIT_IMPLICIT_BINDINGS_TEST = 62 << 1;
+            private static final short CODE_BEGIN_SC_AND = 63 << 1;
+            private static final short CODE_END_SC_AND = (63 << 1) | 0b1;
+            private static final short CODE_BEGIN_SC_OR = 64 << 1;
+            private static final short CODE_END_SC_OR = (64 << 1) | 0b1;
 
             private final DataOutput buffer;
             private final BytecodeSerializer callback;
@@ -11397,7 +11502,7 @@ public final class BasicInterpreterWithOptimizations extends BasicInterpreter {
 
         private static final Object VISIBLE_TOKEN = TOKEN;
 
-        private volatile long encoding;
+        @CompilationFinal private volatile long encoding;
 
         BytecodeRootNodesImpl(BytecodeParser<com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreterWithOptimizations.Builder> generator, BytecodeConfig config) {
             super(VISIBLE_TOKEN, generator);
@@ -11418,6 +11523,7 @@ public final class BasicInterpreterWithOptimizations extends BasicInterpreter {
         }
 
         private synchronized boolean performUpdate(long maskedEncoding) {
+            CompilerAsserts.neverPartOfCompilation();
             long oldEncoding = this.encoding;
             long newEncoding = maskedEncoding | oldEncoding;
             if ((oldEncoding | newEncoding) == oldEncoding) {
@@ -11959,198 +12065,206 @@ public final class BasicInterpreterWithOptimizations extends BasicInterpreter {
          */
         private static final short GET_SOURCE_POSITION_ = 51;
         /*
-         * Instruction c.GetSourcePositions
+         * Instruction c.EnsureAndGetSourcePosition
          * kind: CUSTOM
          * encoding: [52 : short, node : int]
+         * nodeType: EnsureAndGetSourcePosition
+         * signature: SourceSection (boolean)
+         */
+        private static final short ENSURE_AND_GET_SOURCE_POSITION_ = 52;
+        /*
+         * Instruction c.GetSourcePositions
+         * kind: CUSTOM
+         * encoding: [53 : short, node : int]
          * nodeType: GetSourcePositions
          * signature: SourceSection[] ()
          */
-        private static final short GET_SOURCE_POSITIONS_ = 52;
+        private static final short GET_SOURCE_POSITIONS_ = 53;
         /*
          * Instruction c.CopyLocalsToFrame
          * kind: CUSTOM
-         * encoding: [53 : short, node : int]
+         * encoding: [54 : short, node : int]
          * nodeType: CopyLocalsToFrame
          * signature: Frame (Object)
          */
-        private static final short COPY_LOCALS_TO_FRAME_ = 53;
+        private static final short COPY_LOCALS_TO_FRAME_ = 54;
         /*
          * Instruction c.GetBytecodeLocation
          * kind: CUSTOM
-         * encoding: [54 : short, node : int]
+         * encoding: [55 : short, node : int]
          * nodeType: GetBytecodeLocation
          * signature: BytecodeLocation ()
          */
-        private static final short GET_BYTECODE_LOCATION_ = 54;
+        private static final short GET_BYTECODE_LOCATION_ = 55;
         /*
          * Instruction c.CollectBytecodeLocations
          * kind: CUSTOM
-         * encoding: [55 : short, node : int]
+         * encoding: [56 : short, node : int]
          * nodeType: CollectBytecodeLocations
          * signature: List<BytecodeLocation> ()
          */
-        private static final short COLLECT_BYTECODE_LOCATIONS_ = 55;
+        private static final short COLLECT_BYTECODE_LOCATIONS_ = 56;
         /*
          * Instruction c.CollectSourceLocations
          * kind: CUSTOM
-         * encoding: [56 : short, node : int]
+         * encoding: [57 : short, node : int]
          * nodeType: CollectSourceLocations
          * signature: List<SourceSection> ()
          */
-        private static final short COLLECT_SOURCE_LOCATIONS_ = 56;
+        private static final short COLLECT_SOURCE_LOCATIONS_ = 57;
         /*
          * Instruction c.CollectAllSourceLocations
          * kind: CUSTOM
-         * encoding: [57 : short, node : int]
+         * encoding: [58 : short, node : int]
          * nodeType: CollectAllSourceLocations
          * signature: List<SourceSection[]> ()
          */
-        private static final short COLLECT_ALL_SOURCE_LOCATIONS_ = 57;
+        private static final short COLLECT_ALL_SOURCE_LOCATIONS_ = 58;
         /*
          * Instruction c.Continue
          * kind: CUSTOM
-         * encoding: [58 : short, node : int]
+         * encoding: [59 : short, node : int]
          * nodeType: ContinueNode
          * signature: Object (ContinuationResult, Object)
          */
-        private static final short CONTINUE_ = 58;
+        private static final short CONTINUE_ = 59;
         /*
          * Instruction c.CurrentLocation
          * kind: CUSTOM
-         * encoding: [59 : short, node : int]
+         * encoding: [60 : short, node : int]
          * nodeType: CurrentLocation
          * signature: BytecodeLocation ()
          */
-        private static final short CURRENT_LOCATION_ = 59;
+        private static final short CURRENT_LOCATION_ = 60;
         /*
          * Instruction c.PrintHere
          * kind: CUSTOM
-         * encoding: [60 : short, node : int]
+         * encoding: [61 : short, node : int]
          * nodeType: PrintHere
          * signature: void ()
          */
-        private static final short PRINT_HERE_ = 60;
+        private static final short PRINT_HERE_ = 61;
         /*
          * Instruction c.IncrementValue
          * kind: CUSTOM
-         * encoding: [61 : short, node : int]
+         * encoding: [62 : short, node : int]
          * nodeType: IncrementValue
          * signature: long (long)
          */
-        private static final short INCREMENT_VALUE_ = 61;
+        private static final short INCREMENT_VALUE_ = 62;
         /*
          * Instruction c.DoubleValue
          * kind: CUSTOM
-         * encoding: [62 : short, node : int]
+         * encoding: [63 : short, node : int]
          * nodeType: DoubleValue
          * signature: long (long)
          */
-        private static final short DOUBLE_VALUE_ = 62;
+        private static final short DOUBLE_VALUE_ = 63;
         /*
          * Instruction c.EnableIncrementValueInstrumentation
          * kind: CUSTOM
-         * encoding: [63 : short, node : int]
+         * encoding: [64 : short, node : int]
          * nodeType: EnableIncrementValueInstrumentation
          * signature: void ()
          */
-        private static final short ENABLE_INCREMENT_VALUE_INSTRUMENTATION_ = 63;
+        private static final short ENABLE_INCREMENT_VALUE_INSTRUMENTATION_ = 64;
         /*
          * Instruction c.Add
          * kind: CUSTOM
-         * encoding: [64 : short, node : int]
+         * encoding: [65 : short, node : int]
          * nodeType: Add
          * signature: long (long, long)
          */
-        private static final short ADD_ = 64;
+        private static final short ADD_ = 65;
         /*
          * Instruction c.Mod
          * kind: CUSTOM
-         * encoding: [65 : short, node : int]
+         * encoding: [66 : short, node : int]
          * nodeType: Mod
          * signature: long (long, long)
          */
-        private static final short MOD_ = 65;
+        private static final short MOD_ = 66;
         /*
          * Instruction c.Less
          * kind: CUSTOM
-         * encoding: [66 : short, node : int]
+         * encoding: [67 : short, node : int]
          * nodeType: Less
          * signature: boolean (long, long)
          */
-        private static final short LESS_ = 66;
+        private static final short LESS_ = 67;
         /*
          * Instruction c.EnableDoubleValueInstrumentation
          * kind: CUSTOM
-         * encoding: [67 : short, node : int]
+         * encoding: [68 : short, node : int]
          * nodeType: EnableDoubleValueInstrumentation
          * signature: void ()
          */
-        private static final short ENABLE_DOUBLE_VALUE_INSTRUMENTATION_ = 67;
+        private static final short ENABLE_DOUBLE_VALUE_INSTRUMENTATION_ = 68;
         /*
          * Instruction c.ExplicitBindingsTest
          * kind: CUSTOM
-         * encoding: [68 : short, node : int]
+         * encoding: [69 : short, node : int]
          * nodeType: ExplicitBindingsTest
          * signature: Bindings ()
          */
-        private static final short EXPLICIT_BINDINGS_TEST_ = 68;
+        private static final short EXPLICIT_BINDINGS_TEST_ = 69;
         /*
          * Instruction c.ImplicitBindingsTest
          * kind: CUSTOM
-         * encoding: [69 : short, node : int]
+         * encoding: [70 : short, node : int]
          * nodeType: ImplicitBindingsTest
          * signature: Bindings ()
          */
-        private static final short IMPLICIT_BINDINGS_TEST_ = 69;
+        private static final short IMPLICIT_BINDINGS_TEST_ = 70;
         /*
          * Instruction sc.ScAnd
-         * kind: CUSTOM_SHORT_CIRCUIT
-         * encoding: [70 : short, branch_target (bci) : int, branch_profile : int]
-         * signature: boolean (boolean, boolean)
-         */
-        private static final short SC_AND_ = 70;
-        /*
-         * Instruction sc.ScOr
          * kind: CUSTOM_SHORT_CIRCUIT
          * encoding: [71 : short, branch_target (bci) : int, branch_profile : int]
          * signature: boolean (boolean, boolean)
          */
-        private static final short SC_OR_ = 71;
+        private static final short SC_AND_ = 71;
+        /*
+         * Instruction sc.ScOr
+         * kind: CUSTOM_SHORT_CIRCUIT
+         * encoding: [72 : short, branch_target (bci) : int, branch_profile : int]
+         * signature: boolean (boolean, boolean)
+         */
+        private static final short SC_OR_ = 72;
         /*
          * Instruction invalidate0
          * kind: INVALIDATE
-         * encoding: [72 : short]
+         * encoding: [73 : short]
          * signature: void ()
          */
-        private static final short INVALIDATE0 = 72;
+        private static final short INVALIDATE0 = 73;
         /*
          * Instruction invalidate1
          * kind: INVALIDATE
-         * encoding: [73 : short, invalidated0 (short) : short]
+         * encoding: [74 : short, invalidated0 (short) : short]
          * signature: void ()
          */
-        private static final short INVALIDATE1 = 73;
+        private static final short INVALIDATE1 = 74;
         /*
          * Instruction invalidate2
          * kind: INVALIDATE
-         * encoding: [74 : short, invalidated0 (short) : short, invalidated1 (short) : short]
+         * encoding: [75 : short, invalidated0 (short) : short, invalidated1 (short) : short]
          * signature: void ()
          */
-        private static final short INVALIDATE2 = 74;
+        private static final short INVALIDATE2 = 75;
         /*
          * Instruction invalidate3
          * kind: INVALIDATE
-         * encoding: [75 : short, invalidated0 (short) : short, invalidated1 (short) : short, invalidated2 (short) : short]
+         * encoding: [76 : short, invalidated0 (short) : short, invalidated1 (short) : short, invalidated2 (short) : short]
          * signature: void ()
          */
-        private static final short INVALIDATE3 = 75;
+        private static final short INVALIDATE3 = 76;
         /*
          * Instruction invalidate4
          * kind: INVALIDATE
-         * encoding: [76 : short, invalidated0 (short) : short, invalidated1 (short) : short, invalidated2 (short) : short, invalidated3 (short) : short]
+         * encoding: [77 : short, invalidated0 (short) : short, invalidated1 (short) : short, invalidated2 (short) : short, invalidated3 (short) : short]
          * signature: void ()
          */
-        private static final short INVALIDATE4 = 76;
+        private static final short INVALIDATE4 = 77;
 
     }
     private static final class Operations {
@@ -12198,26 +12312,27 @@ public final class BasicInterpreterWithOptimizations extends BasicInterpreter {
         private static final int VOIDOPERATION = 41;
         private static final int TOBOOLEAN = 42;
         private static final int GETSOURCEPOSITION = 43;
-        private static final int GETSOURCEPOSITIONS = 44;
-        private static final int COPYLOCALSTOFRAME = 45;
-        private static final int GETBYTECODELOCATION = 46;
-        private static final int COLLECTBYTECODELOCATIONS = 47;
-        private static final int COLLECTSOURCELOCATIONS = 48;
-        private static final int COLLECTALLSOURCELOCATIONS = 49;
-        private static final int CONTINUE = 50;
-        private static final int CURRENTLOCATION = 51;
-        private static final int PRINTHERE = 52;
-        private static final int INCREMENTVALUE = 53;
-        private static final int DOUBLEVALUE = 54;
-        private static final int ENABLEINCREMENTVALUEINSTRUMENTATION = 55;
-        private static final int ADD = 56;
-        private static final int MOD = 57;
-        private static final int LESS = 58;
-        private static final int ENABLEDOUBLEVALUEINSTRUMENTATION = 59;
-        private static final int EXPLICITBINDINGSTEST = 60;
-        private static final int IMPLICITBINDINGSTEST = 61;
-        private static final int SCAND = 62;
-        private static final int SCOR = 63;
+        private static final int ENSUREANDGETSOURCEPOSITION = 44;
+        private static final int GETSOURCEPOSITIONS = 45;
+        private static final int COPYLOCALSTOFRAME = 46;
+        private static final int GETBYTECODELOCATION = 47;
+        private static final int COLLECTBYTECODELOCATIONS = 48;
+        private static final int COLLECTSOURCELOCATIONS = 49;
+        private static final int COLLECTALLSOURCELOCATIONS = 50;
+        private static final int CONTINUE = 51;
+        private static final int CURRENTLOCATION = 52;
+        private static final int PRINTHERE = 53;
+        private static final int INCREMENTVALUE = 54;
+        private static final int DOUBLEVALUE = 55;
+        private static final int ENABLEINCREMENTVALUEINSTRUMENTATION = 56;
+        private static final int ADD = 57;
+        private static final int MOD = 58;
+        private static final int LESS = 59;
+        private static final int ENABLEDOUBLEVALUEINSTRUMENTATION = 60;
+        private static final int EXPLICITBINDINGSTEST = 61;
+        private static final int IMPLICITBINDINGSTEST = 62;
+        private static final int SCAND = 63;
+        private static final int SCOR = 64;
 
     }
     private static final class ExceptionHandlerImpl extends ExceptionHandler {
@@ -13993,6 +14108,76 @@ public final class BasicInterpreterWithOptimizations extends BasicInterpreter {
             ArrayList<Object> cached = new ArrayList<>();
             cached.add(Arrays.<Object>asList());
             s[2] = cached;
+            data[1] = s;
+            return Provider.create(data);
+        }
+
+    }
+    /**
+     * Debug Info: <pre>
+     *   Specialization {@link EnsureAndGetSourcePosition#doOperation}
+     *     Activation probability: 1.00000
+     *     With/without class size: 16/0 bytes
+     * </pre> */
+    @SuppressWarnings("javadoc")
+    private static final class EnsureAndGetSourcePosition_Node extends Node implements Introspection.Provider {
+
+        /**
+         * State Info: <pre>
+         *   0: SpecializationActive {@link EnsureAndGetSourcePosition#doOperation}
+         * </pre> */
+        @CompilationFinal private int state_0_;
+
+        private SourceSection execute(VirtualFrame frameValue, VirtualFrame $stackFrame, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
+            int state_0 = this.state_0_;
+            Object child0Value_ = FRAMES.uncheckedGetObject($stackFrame, $sp - 1);
+            if (state_0 != 0 /* is SpecializationActive[BasicInterpreter.EnsureAndGetSourcePosition.doOperation(VirtualFrame, boolean, Node, BytecodeNode)] */ && child0Value_ instanceof Boolean) {
+                boolean child0Value__ = (boolean) child0Value_;
+                {
+                    Node node__ = (this);
+                    BytecodeNode bytecode__ = ($bytecode);
+                    return EnsureAndGetSourcePosition.doOperation(frameValue, child0Value__, node__, bytecode__);
+                }
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            return executeAndSpecialize(frameValue, child0Value_, $stackFrame, $bytecode, $bc, $bci, $sp);
+        }
+
+        private SourceSection executeAndSpecialize(VirtualFrame frameValue, Object child0Value, VirtualFrame $stackFrame, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
+            int state_0 = this.state_0_;
+            {
+                BytecodeNode bytecode__ = null;
+                Node node__ = null;
+                if (child0Value instanceof Boolean) {
+                    boolean child0Value_ = (boolean) child0Value;
+                    node__ = (this);
+                    bytecode__ = ($bytecode);
+                    state_0 = state_0 | 0b1 /* add SpecializationActive[BasicInterpreter.EnsureAndGetSourcePosition.doOperation(VirtualFrame, boolean, Node, BytecodeNode)] */;
+                    this.state_0_ = state_0;
+                    $bytecode.getRoot().onSpecialize(new InstructionImpl($bytecode, $bci, BYTES.getShort($bc, $bci)), "EnsureAndGetSourcePosition$Operation");
+                    return EnsureAndGetSourcePosition.doOperation(frameValue, child0Value_, node__, bytecode__);
+                }
+            }
+            throw new UnsupportedSpecializationException(this, null, child0Value);
+        }
+
+        @Override
+        public Introspection getIntrospectionData() {
+            Object[] data = new Object[2];
+            Object[] s;
+            data[0] = 0;
+            int state_0 = this.state_0_;
+            s = new Object[3];
+            s[0] = "doOperation";
+            if (state_0 != 0 /* is SpecializationActive[BasicInterpreter.EnsureAndGetSourcePosition.doOperation(VirtualFrame, boolean, Node, BytecodeNode)] */) {
+                s[1] = (byte)0b01 /* active */;
+                ArrayList<Object> cached = new ArrayList<>();
+                cached.add(Arrays.<Object>asList());
+                s[2] = cached;
+            }
+            if (s[1] == null) {
+                s[1] = (byte)0b00 /* inactive */;
+            }
             data[1] = s;
             return Provider.create(data);
         }
