@@ -29,7 +29,15 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.reflect.Array;
 
+import jdk.graal.compiler.core.common.calc.UnsignedMath;
+
 public class ObjectCopierOutputStream extends DataOutputStream {
+    // Constants for UNSIGNED5 coding of Pack200
+    protected static final long HIGH_WORD_SHIFT = 6;
+    protected static final long NUM_HIGH_CODES = 1 << HIGH_WORD_SHIFT; // number of high codes (64)
+    protected static final long NUM_LOW_CODES = (1 << Byte.SIZE) - NUM_HIGH_CODES;
+    protected static final long MAX_BYTES = 11;
+
     public ObjectCopierOutputStream(OutputStream out) {
         super(out);
     }
@@ -81,5 +89,36 @@ public class ObjectCopierOutputStream extends DataOutputStream {
         } else {
             throw new IllegalArgumentException(String.format("Unsupported array: Value: %s, Value type: %s", value, value.getClass()));
         }
+    }
+
+    static long encodeSign(long value) {
+        return (value << 1) ^ (value >> 63);
+    }
+
+    public void writePackedSigned(long value) throws IOException {
+        // this is a modified version of the SIGNED5 encoding from Pack200
+        writePacked(encodeSign(value));
+    }
+
+    public void writePackedUnsigned(long value) throws IOException {
+        // this is a modified version of the UNSIGNED5 encoding from Pack200
+        writePacked(value);
+    }
+
+    private void writePacked(long value) throws IOException {
+        if (UnsignedMath.belowThan(value, NUM_LOW_CODES)) {
+            writeByte((int) value);
+            return;
+        }
+        long sum = value;
+        for (int i = 1; UnsignedMath.aboveOrEqual(sum, NUM_LOW_CODES) && i < MAX_BYTES; i++) {
+            sum -= NUM_LOW_CODES;
+            long u1 = NUM_LOW_CODES + (sum & (NUM_HIGH_CODES - 1)); // this is a "high code"
+            sum >>>= HIGH_WORD_SHIFT; // extracted 6 bits
+            writeByte((int) u1);
+        }
+        // remainder is either a "low code" or the last byte
+        assert sum == (sum & 0xFF) : "not a byte";
+        writeByte((int) (sum & 0xFF));
     }
 }

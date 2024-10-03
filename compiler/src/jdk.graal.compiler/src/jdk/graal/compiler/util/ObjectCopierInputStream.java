@@ -97,4 +97,34 @@ public class ObjectCopierInputStream extends DataInputStream {
                 throw new IOException("Unsupported type: " + Integer.toHexString(type));
         }
     }
+
+    public long readPackedSigned() throws IOException {
+        return decodeSign(readPacked());
+    }
+
+    public long readPackedUnsigned() throws IOException {
+        return readPacked();
+    }
+
+    private static long decodeSign(long value) {
+        return (value >>> 1) ^ -(value & 1);
+    }
+
+    private long readPacked() throws IOException {
+        int b0 = readUnsignedByte();
+        if (b0 < ObjectCopierOutputStream.NUM_LOW_CODES) {
+            return b0;
+        }
+        assert b0 >= ObjectCopierOutputStream.NUM_LOW_CODES : b0;
+        long sum = b0;
+        long shift = ObjectCopierOutputStream.HIGH_WORD_SHIFT;
+        for (int i = 2;; i++) {
+            long b = readUnsignedByte();
+            sum += b << shift;
+            if (b < ObjectCopierOutputStream.NUM_LOW_CODES || i == ObjectCopierOutputStream.MAX_BYTES) {
+                return sum;
+            }
+            shift += ObjectCopierOutputStream.HIGH_WORD_SHIFT;
+        }
+    }
 }

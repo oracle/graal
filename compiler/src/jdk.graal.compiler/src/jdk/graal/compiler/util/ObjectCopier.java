@@ -61,6 +61,7 @@ import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.FieldIntrospection;
+import jdk.graal.compiler.core.common.util.FrequencyEncoder;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.internal.misc.Unsafe;
@@ -385,11 +386,10 @@ public class ObjectCopier {
      * Encodes {@code root} to a String using {@code encoder}.
      */
     public static byte[] encode(Encoder encoder, Object root) {
-        int rootId = encoder.makeId(root, ObjectPath.of("[root:" + root.getClass().getName() + "]")).id();
-        GraalError.guarantee(rootId == 1, "The root object should have id of 1, not %d", rootId);
+        encoder.makeId(root, ObjectPath.of("[root:" + root.getClass().getName() + "]"));
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try (ObjectCopierOutputStream cos = new ObjectCopierOutputStream(baos)) {
-            encoder.encode(cos);
+            encoder.encode(cos, root);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -460,10 +460,12 @@ public class ObjectCopier {
         int fieldNum = -1;
 
         private Object decode(byte[] encoded) {
+            int rootId;
             deferred = new ArrayList<>();
             recordNum = 0;
 
             try (ObjectCopierInputStream stream = new ObjectCopierInputStream(new ByteArrayInputStream(encoded))) {
+                rootId = readId(stream);
                 for (;;) {
                     recordNum++;
                     fieldNum = -1;
@@ -471,7 +473,7 @@ public class ObjectCopier {
                     if (c == -1) {
                         break;
                     }
-                    int id = stream.readInt();
+                    int id = readId(stream);
                     switch (c) {
                         case '<': {
                             String className = stream.readUTF();
@@ -592,7 +594,11 @@ public class ObjectCopier {
                 recordNum = -1;
                 fieldNum = -1;
             }
-            return getObject(1, true);
+            return getObject(rootId, true);
+        }
+
+        private static int readId(ObjectCopierInputStream stream) throws IOException {
+            return (int) stream.readPackedUnsigned();
         }
 
         void resolveId(String id, Consumer<Object> c) {
@@ -660,8 +666,7 @@ public class ObjectCopier {
 
     public static class Encoder extends ObjectCopier {
 
-        final Map<Object, ObjectID> objectToId = new IdentityHashMap<>();
-        final List<Object> objects = new ArrayList<>();
+        final FrequencyEncoder<Object> objects = FrequencyEncoder.createIdentityEncoder();
 
         /**
          * Map from values to static final fields. In a serialized object graph, references to such
@@ -678,8 +683,7 @@ public class ObjectCopier {
          * Use precomputed {@code externalValues} to avoid recomputing them.
          */
         public Encoder(Map<Object, Field> externalValues) {
-            objects.add(null);
-            objectToId.put(null, new ObjectID(0, null));
+            objects.addObject(null);
             this.externalValues = externalValues;
         }
 
@@ -729,7 +733,7 @@ public class ObjectCopier {
                 if (!value.isEmpty()) {
                     value.append(" ");
                 }
-                value.append(makeId(cursor.getKey(), null).id()).append(":").append(makeId(cursor.getValue(), null).id());
+                value.append(getId(cursor.getKey())).append(":").append(getId(cursor.getValue()));
             }
             return value.toString();
         }
@@ -756,58 +760,52 @@ public class ObjectCopier {
             }
         }
 
-        ObjectID makeId(Object obj, ObjectPath objectPath) {
-            if (!objectToId.containsKey(obj)) {
-                ObjectID id = new ObjectID(objects.size(), objectPath);
-                Field field = externalValues.get(obj);
-                if (field != null) {
-                    objects.add(field);
-                    objectToId.put(obj, id);
-                    objectToId.put(field, id);
-                    return id;
-                }
-
-                objects.add(obj);
-                objectToId.put(obj, id);
-
-                Class<?> clazz = obj.getClass();
-                Builtin builtin = getBuiltin(clazz);
-                if (builtin != null) {
-                    builtin.checkObject(obj);
-                    builtin.makeChildIds(this, obj, objectPath);
-                    return id;
-                }
-
-                checkIllegalValue(Field.class, obj, objectPath, "Field type is used in object copying implementation");
-                checkIllegalValue(FieldIntrospection.class, obj, objectPath, "Graal metadata type cannot be copied");
-
-                if (clazz.isArray()) {
-                    Class<?> componentType = clazz.getComponentType();
-                    if (!componentType.isPrimitive()) {
-                        Object[] objArray = (Object[]) obj;
-                        int index = 0;
-                        for (Object element : objArray) {
-                            makeId(element, objectPath.add(index));
-                            index++;
-                        }
-                    }
-                } else {
-                    checkIllegalValue(LocationIdentity.class, obj, objectPath, "must come from a static field");
-                    checkIllegalValue(HashSet.class, obj, objectPath, "hashes are typically not stable across VM executions");
-
-                    ClassInfo classInfo = makeClassInfo(clazz, objectPath);
-                    for (Field f : classInfo.fields().values()) {
-                        String fieldName = f.getDeclaringClass().getSimpleName() + "#" + f.getName();
-                        makeId(f.getType(), objectPath.add(fieldName + ":type"));
-                        if (!f.getType().isPrimitive()) {
-                            Object fieldValue = readField(f, obj);
-                            makeId(fieldValue, objectPath.add(fieldName));
-                        }
-                    }
-                }
-
+        void makeId(Object obj, ObjectPath objectPath) {
+            Field field = externalValues.get(obj);
+            if (field != null) {
+                objects.addObject(field);
+                return;
             }
-            return objectToId.get(obj);
+
+            if (!objects.addObject(obj)) {
+                return; // already known
+            }
+
+            Class<?> clazz = obj.getClass();
+            Builtin builtin = getBuiltin(clazz);
+            if (builtin != null) {
+                builtin.checkObject(obj);
+                builtin.makeChildIds(this, obj, objectPath);
+                return;
+            }
+
+            checkIllegalValue(Field.class, obj, objectPath, "Field type is used in object copying implementation");
+            checkIllegalValue(FieldIntrospection.class, obj, objectPath, "Graal metadata type cannot be copied");
+
+            if (clazz.isArray()) {
+                Class<?> componentType = clazz.getComponentType();
+                if (!componentType.isPrimitive()) {
+                    Object[] objArray = (Object[]) obj;
+                    int index = 0;
+                    for (Object element : objArray) {
+                        makeId(element, objectPath.add(index));
+                        index++;
+                    }
+                }
+            } else {
+                checkIllegalValue(LocationIdentity.class, obj, objectPath, "must come from a static field");
+                checkIllegalValue(HashSet.class, obj, objectPath, "hashes are typically not stable across VM executions");
+
+                ClassInfo classInfo = makeClassInfo(clazz, objectPath);
+                for (Field f : classInfo.fields().values()) {
+                    String fieldName = f.getDeclaringClass().getSimpleName() + "#" + f.getName();
+                    makeId(f.getType(), objectPath.add(fieldName + ":type"));
+                    if (!f.getType().isPrimitive()) {
+                        Object fieldValue = readField(f, obj);
+                        makeId(fieldValue, objectPath.add(fieldName));
+                    }
+                }
+            }
         }
 
         private ClassInfo makeClassInfo(Class<?> clazz, ObjectPath objectPath) {
@@ -818,14 +816,16 @@ public class ObjectCopier {
             }
         }
 
-        private void encode(ObjectCopierOutputStream out) throws IOException {
-            for (int id = 1; id < objects.size(); id++) {
-                Object obj = objects.get(id);
+        private void encode(ObjectCopierOutputStream out, Object root) throws IOException {
+            Object[] encodedObjects = objects.encodeAll(new Object[objects.getLength()]);
+            writeId(out, getId(root));
+            for (int id = 1; id < encodedObjects.length; id++) {
+                Object obj = encodedObjects[id];
                 Class<?> clazz = obj.getClass();
                 Builtin builtin = getBuiltin(clazz);
                 if (builtin != null) {
                     out.writeByte('<');
-                    out.writeInt(id);
+                    writeId(out, id);
                     out.writeUTF(clazz.getName());
                     try {
                         builtin.encode(this, out, obj);
@@ -836,34 +836,34 @@ public class ObjectCopier {
                     Class<?> componentType = clazz.getComponentType();
                     if (!componentType.isPrimitive()) {
                         out.writeByte(']');
-                        out.writeInt(id);
+                        writeId(out, id);
                         out.writeUTF(componentType.getName());
                         int[] ids = Stream.of((Object[]) obj).mapToInt(this::getId).toArray();
                         out.writeTypedPrimitiveArray(ids);
                     } else {
                         out.writeByte('[');
-                        out.writeInt(id);
+                        writeId(out, id);
                         out.writeTypedPrimitiveArray(obj);
                     }
                 } else {
                     if (clazz == Field.class) {
                         Field field = (Field) obj;
                         out.writeByte('@');
-                        out.writeInt(id);
+                        writeId(out, id);
                         out.writeUTF(field.getDeclaringClass().getName());
                         out.writeUTF(field.getName());
                     } else {
                         ClassInfo classInfo = classInfos.get(clazz);
                         out.writeByte('{');
-                        out.writeInt(id);
+                        writeId(out, id);
                         out.writeUTF(String.format("{%s:%d}", clazz.getName(), classInfo.fields().size()));
                         for (var e : classInfo.fields().entrySet()) {
                             Field f = e.getValue();
                             Object fValue = readField(f, obj);
                             Class<?> fieldType = f.getType();
-                            int fieldTypeId = makeId(fieldType, null).id();
+                            int fieldTypeId = getId(fieldType);
                             if (!fieldType.isPrimitive()) {
-                                fValue = getIdString(fValue);
+                                fValue = String.valueOf(getId(fValue));
                             } else if (fieldType == char.class) {
                                 fValue = (int) (Character) fValue;
                             }
@@ -874,13 +874,16 @@ public class ObjectCopier {
             }
         }
 
-        private int getId(Object o) {
-            GraalError.guarantee(objectToId.containsKey(o), "Unknown object: %s", o);
-            return objectToId.get(o).id();
+        private static void writeId(ObjectCopierOutputStream out, int id) throws IOException {
+            out.writePackedUnsigned(id);
         }
 
-        private String getIdString(Object o) {
-            return String.valueOf(getId(o));
+        private int getId(Object o) {
+            Field field = externalValues.get(o);
+            if (field != null) {
+                return objects.getIndex(field);
+            }
+            return objects.getIndex(o);
         }
     }
 
@@ -1039,11 +1042,5 @@ public class ObjectCopier {
             }
             return String.join(".", components.reversed());
         }
-    }
-
-    /**
-     * A unique int id for an object as well as the path by which it was (first) reached.
-     */
-    record ObjectID(int id, ObjectPath path) {
     }
 }
