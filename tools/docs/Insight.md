@@ -52,7 +52,7 @@ That provides ultimate insights into execution and behavior of one's application
 
 Consult the [Insight Manual](../../docs/tools/insight/Insight-Manual.md) to get started with an obligatory HelloWorld example and other challenging tasks.
 
-## Embeddeding Insight into Applications
+## Embedding Insight into Applications
 
 GraalVM languages (languages implemented with the Truffle framework) can be embedded into custom applications via [Polyglot Context API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.html). GraalVM Insight can also be controlled via the same API.
 
