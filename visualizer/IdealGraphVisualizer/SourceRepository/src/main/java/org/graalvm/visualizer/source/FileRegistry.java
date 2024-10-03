@@ -98,14 +98,14 @@ public final class FileRegistry {
 
     /**
      * Registers a new file key. Returns an existing matching instance if already
-     * known. Use the method to cannonicalize references before the key is used
+     * known. Use the method to canonicalize references before the key is used
      * in other structures.
      * <p/>
      * If the already known key is unresolved, and the newly registered key is resolved,
      * the existing key is updated and returned. Change event fires in that case.
      *
      * @param k the key to enter.
-     * @return cannonical key
+     * @return canonical key
      */
     public FileKey enter(FileKey k, InputGraph usedIn) {
 //        initResolvers();

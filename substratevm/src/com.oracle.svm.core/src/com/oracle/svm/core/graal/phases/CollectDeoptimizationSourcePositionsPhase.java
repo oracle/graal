@@ -38,7 +38,7 @@ import com.oracle.svm.core.graal.nodes.DeoptSourcePositionInfoNode;
 
 /**
  * This phase collects {@link NodeSourcePosition} for deoptimizations. The source information is
- * printed during deoptimization to help indentifying deoptimization issues like repeated
+ * printed during deoptimization to help identifying deoptimization issues like repeated
  * deoptimizations.
  * <p>
  * The program counter of the call to the deoptimization in the compiled code is not unique to
