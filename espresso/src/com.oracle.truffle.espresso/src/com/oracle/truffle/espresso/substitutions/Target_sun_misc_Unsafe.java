@@ -60,7 +60,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
-import com.oracle.truffle.espresso.nodes.EspressoNode;
+import com.oracle.truffle.espresso.nodes.EspressoInlineNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.GuestAllocator;
@@ -905,7 +905,7 @@ public final class Target_sun_misc_Unsafe {
 
     @GenerateInline
     @GenerateCached(false)
-    abstract static class GetFieldFromIndexNode extends EspressoNode {
+    abstract static class GetFieldFromIndexNode extends EspressoInlineNode {
         static final int LIMIT = 3;
 
         abstract Field execute(Node node, StaticObject holder, long slot);
