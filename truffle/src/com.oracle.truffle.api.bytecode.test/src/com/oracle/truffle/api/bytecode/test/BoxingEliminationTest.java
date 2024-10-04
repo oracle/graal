@@ -660,8 +660,8 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
         /**
          * After the first call, the local frame slot is set to Int. During this second call, the
          * "false" branch will run the unquickened load.local, which sees the frame slot and tries
-         * to read an int. Since the local is undefined, the int read should read throw a
-         * FrameSlotTypeException and the load.local should quicken to load.local$generic.
+         * to read an int. Since the local is undefined, the int read should throw a
+         * FrameSlotTypeException.
          */
         assertFails(() -> {
             node.getCallTarget().call(false);

@@ -216,7 +216,7 @@ public class ConstantOperandTest {
     }
 
     @Test
-    public void testLocalSetter() {
+    public void testLocalAccessor() {
         ConstantOperandTestRootNode root = parse(b -> {
             b.beginRoot();
             BytecodeLocal local = b.createLocal();

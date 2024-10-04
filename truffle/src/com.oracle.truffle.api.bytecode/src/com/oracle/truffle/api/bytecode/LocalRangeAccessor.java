@@ -105,7 +105,7 @@ public final class LocalRangeAccessor {
     @Override
     public String toString() {
         if (length == 0) {
-            return "LocalSetterRange[]";
+            return "LocalRangeAccessor[]";
         }
         return String.format("LocalRangeAccessor[%d...%d]", startOffset, startOffset + length - 1);
     }
@@ -309,7 +309,7 @@ public final class LocalRangeAccessor {
         int startIndex = locals[0].getLocalIndex();
         for (int i = 1; i < locals.length; i++) {
             if (startOffset + i != locals[i].getLocalOffset() || startIndex + i != locals[i].getLocalIndex()) {
-                throw new IllegalArgumentException("Invalid locals provided. Only contigous locals must be provided for LocalSetterRange.");
+                throw new IllegalArgumentException("Invalid locals provided. Only contigous locals must be provided for LocalRangeAccessor.");
             }
         }
         int length = locals.length;

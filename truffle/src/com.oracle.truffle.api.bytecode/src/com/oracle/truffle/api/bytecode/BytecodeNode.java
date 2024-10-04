@@ -108,8 +108,8 @@ public abstract class BytecodeNode extends Node {
      *
      * @param frame the current frame
      * @param location the current location
-     * @return the bytecode location, or null if the frame and node does not originate from a
-     *         Bytecode DSL root node.
+     * @return the bytecode location, or null if the frame and node do not originate from a Bytecode
+     *         DSL root node.
      * @since 24.2
      */
     public final BytecodeLocation getBytecodeLocation(Frame frame, Node location) {
@@ -125,8 +125,8 @@ public abstract class BytecodeNode extends Node {
      * obtained from a stack walk.
      *
      * @param frameInstance the frame instance
-     * @return the bytecode location, or null if the frame does not originate from a Bytecode DSL
-     *         root node.
+     * @return the bytecode location, or null if the frame instance does not originate from a
+     *         Bytecode DSL root node.
      * @since 24.2
      */
     public final BytecodeLocation getBytecodeLocation(FrameInstance frameInstance) {
@@ -196,7 +196,7 @@ public abstract class BytecodeNode extends Node {
      * Gets all {@link SourceSection source locations} associated with a particular location.
      * Returns {@code null} if the node was not parsed {@link BytecodeConfig#WITH_SOURCE with
      * sources} or if there is no associated source section for the given location. A location must
-     * always be provided to get a source location otherwise <code>null</code> will be returned. *
+     * always be provided to get a source location otherwise <code>null</code> will be returned.
      * <p>
      * If source sections have not yet been materialized, then <code>null</code> is returned. Source
      * sections may be materialized by calling {@link #ensureSourceInformation()}.
@@ -216,8 +216,7 @@ public abstract class BytecodeNode extends Node {
 
     /**
      * Finds the most concrete source location associated with the given bytecode index. The method
-     * returns <code>null</code> if no source section could be found. Calling this method also
-     * {@link BytecodeRootNodes#ensureSourceInformation() ensures source sections} are materialized.
+     * returns <code>null</code> if no source section could be found.
      * <p>
      * If source sections have not yet been materialized, then <code>null</code> is returned. Source
      * sections can be materialized by calling {@link #ensureSourceInformation()}.
@@ -234,8 +233,7 @@ public abstract class BytecodeNode extends Node {
     /**
      * Finds all source locations associated with the given bytecode index. More concrete source
      * sections appear earlier in the array. Typically, a given section will contain the previous
-     * source section, but there is no guarantee that this the case. Calling this method also
-     * {@link BytecodeRootNodes#ensureSourceInformation() ensures source sections} are materialized.
+     * source section, but there is no guarantee that this the case.
      * <p>
      * If source sections have not yet been materialized, then <code>null</code> is returned. Source
      * sections can be materialized by calling {@link #ensureSourceInformation()}.
@@ -503,7 +501,8 @@ public abstract class BytecodeNode extends Node {
      * @param frame the frame to read locals from
      * @param localOffset the logical offset of the local (as obtained by
      *            {@link BytecodeLocal#getLocalOffset()} or {@link LocalVariable#getLocalOffset()}).
-     * @return the current local value
+     * @return the current local value, or null if the local never written to (and there is no
+     *         {@link GenerateBytecode#defaultLocalValue() default local value}).
      * @see GenerateBytecode#enableLocalScoping
      * @since 24.2
      */

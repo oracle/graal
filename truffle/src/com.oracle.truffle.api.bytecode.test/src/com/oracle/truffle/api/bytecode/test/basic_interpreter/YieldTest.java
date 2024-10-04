@@ -149,7 +149,7 @@ public class YieldTest extends AbstractBasicInterpreterTest {
         // yield tee(local, local + 1);
         // return local + 1;
 
-        // Unlike with testYieldLocal, the local here is set using a LocalSetter in a custom
+        // Unlike with testYieldLocal, the local here is set using a LocalAccessor in a custom
         // operation. The localFrame should be passed to the custom operation (as opposed to the
         // frame containing the stack locals).
 
