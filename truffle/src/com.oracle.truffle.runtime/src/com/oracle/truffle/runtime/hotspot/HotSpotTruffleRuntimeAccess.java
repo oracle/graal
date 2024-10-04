@@ -45,8 +45,6 @@ import static com.oracle.truffle.runtime.OptimizedTruffleRuntime.MIN_COMPILER_VE
 import static com.oracle.truffle.runtime.OptimizedTruffleRuntime.MIN_JDK_VERSION;
 import static com.oracle.truffle.runtime.OptimizedTruffleRuntime.NEXT_VERSION_UPDATE;
 
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Set;
@@ -212,15 +210,11 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
     private static void registerVirtualThreadSupport() {
         /*
          * Ensure that HotSpotThreadLocalHandshake and HotSpotFastThreadLocal are loaded before the
-         * hooks are called
+         * hooks are called. This prevents class initialization during the virtual thread hooks
+         * which must not trigger class loading or suspend the VirtualThread.
          */
-        try {
-            Lookup lkp = MethodHandles.lookup();
-            lkp.ensureInitialized(HotSpotThreadLocalHandshake.class);
-            lkp.ensureInitialized(HotSpotFastThreadLocal.class);
-        } catch (IllegalAccessException ia) {
-            throw new AssertionError(ia);
-        }
+        HotSpotThreadLocalHandshake.initializePendingOffset();
+        HotSpotFastThreadLocal.ensureLoaded();
         Consumer<Thread> onMount = (t) -> {
             HotSpotFastThreadLocal.mount();
             HotSpotThreadLocalHandshake.setPendingFlagForVirtualThread();

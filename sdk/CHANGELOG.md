@@ -5,6 +5,7 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 ## Version 24.2.0
 * GR-54905 When using Truffle NFI with the Panama backend, native access must now be granted to the Truffle module instead of the NFI Panama module. Use the `--enable-native-access=org.graalvm.truffle` Java command line option to enable the native access for the NFI Panama backend.
 * GR-57681 Added the ability to use `Value#as(byte[].class)` to copy the contents of a guest language byte buffer (`Value#hasBufferElements()`) to a new byte array. The new functionality has precedence over accessing the guest object as array (`Value#hasArrayElements()`) if both ways are available. 
+* GR-57817 Starting with JDK 24 users now need to pass `--enable-native-access=org.graalvm.truffle` or `--enable-native-access=ALL-UNNAMED` to grant Truffle the ability to compile to optimized native code. If native access is denied by the JDK using `--illegal-native-access=deny` then loading the optimizing runtime will fail and the fallback runtime will be used.
 
 ## Version 24.1.0
 * GR-51177 Enable random offsets of runtime compiled function entry points for the UNTRUSTED polyglot sandbox policy.

@@ -46,6 +46,9 @@ import com.oracle.truffle.api.impl.Accessor.JavaLangAccessor;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.runtime.ModulesSupport;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 
 final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
 
@@ -55,7 +58,7 @@ final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
     static final HotSpotThreadLocalHandshake SINGLETON = new HotSpotThreadLocalHandshake();
     private static final ThreadLocal<TruffleSafepointImpl> STATE = new ThreadLocal<>();
 
-    private static final int PENDING_OFFSET = HotSpotTruffleRuntime.readJVMCIReservedLongOffset0();
+    private static final int PENDING_OFFSET = resolveJVMCIReservedLongOffset0();
     private static final long THREAD_EETOP_OFFSET;
     private static final long THREAD_CARRIER_THREAD_OFFSET;
     static {
@@ -187,6 +190,30 @@ final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
                 UNSAFE.putIntVolatile(null, eetop + PENDING_OFFSET, 1);
             }
         }
+    }
+
+    static void initializePendingOffset() {
+        if (PENDING_OFFSET == -1) {
+            throw CompilerDirectives.shouldNotReachHere("This JDK does not have JavaThread::_jvmci_reserved0");
+        }
+    }
+
+    private static int resolveJVMCIReservedLongOffset0() {
+        HotSpotVMConfigAccess access = new HotSpotVMConfigAccess(HotSpotJVMCIRuntime.runtime().getConfigStore());
+        int longOffset;
+        try {
+            longOffset = access.getFieldOffset("JavaThread::_jvmci_reserved0", Integer.class, "jlong", -1);
+        } catch (NoSuchMethodError error) {
+            return -1;
+        } catch (JVMCIError error) {
+            try {
+                // the type of the jvmci reserved field might still be old.
+                longOffset = access.getFieldOffset("JavaThread::_jvmci_reserved0", Integer.class, "intptr_t*", -1);
+            } catch (NoSuchMethodError e) {
+                return -1;
+            }
+        }
+        return longOffset;
     }
 
 }

@@ -187,28 +187,6 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
         installReservedOopMethods(null);
     }
 
-    static int readJVMCIReservedLongOffset0() {
-        HotSpotVMConfigAccess access = new HotSpotVMConfigAccess(HotSpotJVMCIRuntime.runtime().getConfigStore());
-        int longOffset;
-        try {
-            longOffset = access.getFieldOffset("JavaThread::_jvmci_reserved0", Integer.class, "jlong", -1);
-        } catch (NoSuchMethodError error) {
-            throw CompilerDirectives.shouldNotReachHere("This JDK does not have JavaThread::_jvmci_reserved0", error);
-        } catch (JVMCIError error) {
-            try {
-                // the type of the jvmci reserved field might still be old.
-                longOffset = access.getFieldOffset("JavaThread::_jvmci_reserved0", Integer.class, "intptr_t*", -1);
-            } catch (NoSuchMethodError e) {
-                e.initCause(error);
-                throw CompilerDirectives.shouldNotReachHere("This JDK does not have JavaThread::_jvmci_reserved0", e);
-            }
-        }
-        if (longOffset == -1) {
-            throw CompilerDirectives.shouldNotReachHere("This JDK does not have JavaThread::_jvmci_reserved0");
-        }
-        return longOffset;
-    }
-
     @Override
     public ThreadLocalHandshake getThreadLocalHandshake() {
         return HotSpotThreadLocalHandshake.SINGLETON;

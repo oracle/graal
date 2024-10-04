@@ -54,7 +54,7 @@ import com.oracle.truffle.api.impl.Accessor.ModulesAccessor;
 
 public final class ModulesSupport {
 
-    private static final ModulesAccessor ACCESSOR = getModulesAccessor();
+    private static final ModulesAccessor ACCESSOR = initializeModulesAccessor();
 
     private ModulesSupport() {
     }
@@ -95,7 +95,8 @@ public final class ModulesSupport {
             return "JVMCI is not enabled for this JVM. Enable JVMCI using -XX:+EnableJVMCI.";
         }
         if (ACCESSOR == null) {
-            return "The Truffle attach library is not available or cannot be loaded.";
+            return "The Truffle attach library is not available or cannot be loaded. " +
+                            "This can happen if the Truffle jar files are invalid or if Truffle is loaded multiple times in separate class loaders.";
         }
         addExportsRecursive(layer, jvmciModule, module, seenModules);
         return null;
@@ -166,7 +167,8 @@ public final class ModulesSupport {
      * we cannot use {@link Accessor.EngineSupport#getModulesAccessor()}.
      * </p>
      */
-    private static ModulesAccessor getModulesAccessor() {
+    private static ModulesAccessor initializeModulesAccessor() {
+        // TODO: GR-58671 Make Accessor usable before TruffleRuntime is created.
         try {
             Class<?> resourceCacheClass = Class.forName("com.oracle.truffle.polyglot.JDKSupport", false, ModulesSupport.class.getClassLoader());
             Method getModulesAccessor = resourceCacheClass.getDeclaredMethod("getModulesAccessor");

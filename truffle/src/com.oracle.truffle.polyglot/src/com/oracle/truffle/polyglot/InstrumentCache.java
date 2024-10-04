@@ -66,8 +66,6 @@ import com.oracle.truffle.polyglot.EngineAccessor.AbstractClassLoaderSupplier;
 import com.oracle.truffle.polyglot.EngineAccessor.StrongClassLoaderSupplier;
 import org.graalvm.polyglot.SandboxPolicy;
 
-import static com.oracle.truffle.polyglot.LanguageCache.isEnableNativeAccess;
-
 final class InstrumentCache {
     private static final List<InstrumentCache> nativeImageCache = TruffleOptions.AOT ? new ArrayList<>() : null;
     private static Map<List<AbstractClassLoaderSupplier>, List<InstrumentCache>> runtimeCaches = new HashMap<>();
@@ -169,7 +167,6 @@ final class InstrumentCache {
         Set<String> classNamesUsed = new HashSet<>();
         ClassLoader truffleClassLoader = InstrumentCache.class.getClassLoader();
         boolean usesTruffleClassLoader = false;
-        boolean enableNativeAccess = isEnableNativeAccess();
         Map<String, Map<String, Supplier<InternalResourceCache>>> optionalResources = InternalResourceCache.loadOptionalInternalResources(suppliers);
         for (AbstractClassLoaderSupplier supplier : suppliers) {
             ClassLoader loader = supplier.get();
@@ -177,9 +174,9 @@ final class InstrumentCache {
                 continue;
             }
             usesTruffleClassLoader |= truffleClassLoader == loader;
-            loadProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed, optionalResources, enableNativeAccess));
+            loadProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed, optionalResources));
             if (supplier.supportsLegacyProviders()) {
-                loadLegacyProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed, optionalResources, enableNativeAccess));
+                loadLegacyProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed, optionalResources));
             }
         }
         /*
@@ -192,7 +189,7 @@ final class InstrumentCache {
             Module truffleModule = InstrumentCache.class.getModule();
             loadProviders(truffleClassLoader).//
                             filter((p) -> p.getProviderClass().getModule().equals(truffleModule)).//
-                            forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed, optionalResources, enableNativeAccess));
+                            forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed, optionalResources));
         }
         list.sort(Comparator.comparing(InstrumentCache::getId));
         return list;
@@ -209,13 +206,11 @@ final class InstrumentCache {
     }
 
     private static void loadInstrumentImpl(ProviderAdapter providerAdapter, List<? super InstrumentCache> list, Set<? super String> classNamesUsed,
-                    Map<String, Map<String, Supplier<InternalResourceCache>>> optionalResources, boolean enableNativeAccess) {
+                    Map<String, Map<String, Supplier<InternalResourceCache>>> optionalResources) {
         Class<?> providerClass = providerAdapter.getProviderClass();
         Module providerModule = providerClass.getModule();
         JDKSupport.exportTransitivelyTo(providerModule);
-        if (enableNativeAccess) {
-            JDKSupport.enableNativeAccess(providerModule);
-        }
+        JDKSupport.enableNativeAccess(providerModule);
         Registration reg = providerClass.getAnnotation(Registration.class);
         if (reg == null) {
             emitWarning("Warning Truffle instrument ignored: Provider %s is missing @Registration annotation.", providerClass);

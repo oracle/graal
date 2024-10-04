@@ -41,6 +41,7 @@
 package com.oracle.truffle.polyglot;
 
 import java.io.IOException;
+import java.io.PrintStream;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -103,9 +104,78 @@ final class JDKSupport {
             ADD_ENABLE_NATIVE_ACCESS_TO_ALL_UNNAMED = null;
         }
     }
-    private static final Object INVALID_MODULES_ACCESSOR = new Object();
 
-    private static volatile Object modulesAccessor;
+    private static final ModulesAccessor MODULES_ACCESSOR = initializeModuleAccessor();
+
+    @SuppressWarnings("restricted")
+    private static ModulesAccessor initializeModuleAccessor() {
+        String attachLibPath = System.getProperty("truffle.attach.library");
+        if (attachLibPath == null) {
+            try {
+                Path truffleAttachRoot = InternalResourceCache.installRuntimeResource(new LibTruffleAttachResource());
+                Path libAttach = truffleAttachRoot.resolve("bin").resolve(System.mapLibraryName("truffleattach"));
+                attachLibPath = libAttach.toString();
+            } catch (IOException ioe) {
+                warnTruffleAttachLoadFailure("The Truffle API JAR is missing the 'truffleattach' resource, likely due to issues when repackaged into a fat JAR.", ioe);
+                return null;
+            }
+        }
+        try {
+            try {
+                System.load(attachLibPath);
+            } catch (UnsatisfiedLinkError | IllegalCallerException failedToLoad) {
+                warnTruffleAttachLoadFailure("Unable to load the TruffleAttach library.", failedToLoad);
+                return null;
+            }
+            ModulesAccessor accessor;
+            if (ModulesAccessor.class.getModule().isNamed()) {
+                accessor = new DirectImpl(Accessor.ModulesAccessor.class);
+            } else {
+                accessor = new IsolatedImpl(Accessor.ModulesAccessor.class);
+            }
+            Module javaBase = ModuleLayer.boot().findModule("java.base").orElseThrow();
+            addExports0(javaBase, "jdk.internal.module", accessor.getTargetModule());
+            addExports0(javaBase, "jdk.internal.access", accessor.getTargetModule());
+            return accessor;
+        } catch (ReflectiveOperationException re) {
+            throw new InternalError(re);
+        }
+    }
+
+    private static native void addExports0(Module m1, String pn, Module m2);
+
+    private static void warnTruffleAttachLoadFailure(String reason, Throwable t) {
+        String action = System.getProperty("polyglotimpl.AttachLibraryFailureAction", "warn");
+        switch (action) {
+            case "ignore" -> {
+            }
+            case "warn" -> {
+                PrintStream err = System.err;
+                err.println(formatErrorMessage(reason));
+            }
+            case "diagnose" -> {
+                PrintStream err = System.err;
+                err.println(formatErrorMessage(reason));
+                t.printStackTrace(err);
+            }
+            case "throw" -> throw new InternalError(formatErrorMessage(reason), t);
+            default -> throw new IllegalArgumentException("Invalid polyglotimpl.AttachLibraryFailureAction system property value. Supported values are ignore, warn, diagnose, throw");
+        }
+    }
+
+    private static String formatErrorMessage(String reason) {
+        return String.format(
+                        """
+                                        [engine] WARNING: %s
+                                        As a result, the optimized Truffle runtime is unavailable, and Truffle cannot provide native access to languages and tools.
+                                        To customize the behavior of this warning, use the 'polyglotimpl.AttachLibraryFailureAction' system property.
+                                        Allowed values are:
+                                          - ignore:    Do not print this warning.
+                                          - warn:      Print this warning (default value).
+                                          - diagnose:  Print this warning along with the exception cause.
+                                          - throw:     Throw an exception instead of printing this warning.
+                                        """, reason);
+    }
 
     private JDKSupport() {
     }
@@ -148,45 +218,8 @@ final class JDKSupport {
 
     @SuppressWarnings("restricted")
     static ModulesAccessor getModulesAccessor() {
-        Object result = modulesAccessor;
-        if (result == null) {
-            synchronized (JDKSupport.class) {
-                result = modulesAccessor;
-                if (result == null) {
-                    String attachLibPath = System.getProperty("truffle.attach.library");
-                    if (attachLibPath == null) {
-                        try {
-                            Path truffleAttachRoot = InternalResourceCache.installRuntimeResource(new LibTruffleAttachResource());
-                            Path libAttach = truffleAttachRoot.resolve("bin").resolve(System.mapLibraryName("truffleattach"));
-                            attachLibPath = libAttach.toString();
-                        } catch (IOException ioe) {
-                            throw new InternalError(ioe);
-                        }
-                    }
-                    try {
-                        System.load(attachLibPath);
-                        ModulesAccessor accessor;
-                        if (ModulesAccessor.class.getModule().isNamed()) {
-                            accessor = new DirectImpl(Accessor.ModulesAccessor.class);
-                        } else {
-                            accessor = new IsolatedImpl(Accessor.ModulesAccessor.class);
-                        }
-                        Module javaBase = ModuleLayer.boot().findModule("java.base").orElseThrow();
-                        addExports0(javaBase, "jdk.internal.module", accessor.getTargetModule());
-                        addExports0(javaBase, "jdk.internal.access", accessor.getTargetModule());
-                        modulesAccessor = result = accessor;
-                    } catch (UnsatisfiedLinkError failedToLoad) {
-                        modulesAccessor = result = INVALID_MODULES_ACCESSOR;
-                    } catch (ReflectiveOperationException re) {
-                        throw new InternalError(re);
-                    }
-                }
-            }
-        }
-        return result == INVALID_MODULES_ACCESSOR ? null : (ModulesAccessor) result;
+        return MODULES_ACCESSOR;
     }
-
-    private static native void addExports0(Module m1, String pn, Module m2);
 
     private static void forEach(Module rootModule, Set<Edge> edges, Predicate<? super Module> filter, Consumer<? super Module> action) {
         ModuleLayer layer = rootModule.getLayer();
@@ -647,12 +680,12 @@ final class JDKSupport {
              */
             private static final MethodHandle CURRENT_CARRIER_THREAD;
             static {
-                if (JDKSupport.modulesAccessor == null) {
-                    throw new IllegalStateException("JavaLangAccessorImpl initialized before JDKSupport.modulesAccessor was set");
-                } else if (!(JDKSupport.modulesAccessor instanceof IsolatedImpl)) {
-                    throw new IllegalStateException("JDKSupport.modulesAccessor initialized with wrong type " + JDKSupport.modulesAccessor.getClass());
+                if (JDKSupport.MODULES_ACCESSOR == null) {
+                    throw new IllegalStateException("JavaLangAccessorImpl initialized before JDKSupport.");
+                } else if (!(JDKSupport.MODULES_ACCESSOR instanceof IsolatedImpl)) {
+                    throw new IllegalStateException("JDKSupport.MODULES_ACCESSOR initialized with wrong type " + JDKSupport.MODULES_ACCESSOR.getClass());
                 } else {
-                    CURRENT_CARRIER_THREAD = ((IsolatedImpl) JDKSupport.modulesAccessor).currentCarrierThread;
+                    CURRENT_CARRIER_THREAD = ((IsolatedImpl) JDKSupport.MODULES_ACCESSOR).currentCarrierThread;
                 }
             }
 
@@ -662,7 +695,8 @@ final class JDKSupport {
                 /*
                  * Ensure the CURRENT_CARRIER_THREAD method handle is initialized by invoking it.
                  * This prevents the interpreter from triggering class initialization during the
-                 * HotSpotThreadLocalHandshake's operation.
+                 * virtual thread hooks which must not trigger class loading or suspend the
+                 * VirtualThread.
                  */
                 currentCarrierThread();
             }
