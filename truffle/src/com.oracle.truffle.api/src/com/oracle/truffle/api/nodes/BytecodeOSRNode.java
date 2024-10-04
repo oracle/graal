@@ -292,7 +292,7 @@ public interface BytecodeOSRNode extends NodeInterface {
     default void prepareOSR(long target) {
         int intTarget = (int) target;
         if (intTarget != target) {
-            throw CompilerDirectives.shouldNotReachHere("long target used without implementing long overload of executeOSR");
+            throw CompilerDirectives.shouldNotReachHere("long target used without implementing long overload of prepareOSR");
         }
         prepareOSR(intTarget);
     }
