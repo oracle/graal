@@ -22,17 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.igvutil.test.args;
+package jdk.graal.compiler.util.args.test;
 
-import org.graalvm.igvutil.args.Command;
-import org.graalvm.igvutil.args.CommandGroup;
-import org.graalvm.igvutil.args.CommandParsingException;
-import org.graalvm.igvutil.args.HelpRequestedException;
-import org.graalvm.igvutil.args.InvalidArgumentException;
-import org.graalvm.igvutil.args.OptionValue;
-import org.graalvm.igvutil.args.StringValue;
 import org.junit.Assert;
 import org.junit.Test;
+
+import jdk.graal.compiler.util.args.Command;
+import jdk.graal.compiler.util.args.CommandGroup;
+import jdk.graal.compiler.util.args.CommandParsingException;
+import jdk.graal.compiler.util.args.HelpRequestedException;
+import jdk.graal.compiler.util.args.InvalidArgumentException;
+import jdk.graal.compiler.util.args.OptionValue;
+import jdk.graal.compiler.util.args.StringValue;
 
 public class CommandGroupTest {
 

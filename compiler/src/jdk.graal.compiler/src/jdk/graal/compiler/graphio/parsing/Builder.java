@@ -183,7 +183,7 @@ public interface Builder {
     }
 
     final class TypedPort extends Port {
-        final EnumValue type;
+        public final EnumValue type;
 
         TypedPort(boolean isList, String name, EnumValue type) {
             super(isList, name);

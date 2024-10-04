@@ -22,14 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.igvutil.args;
+package jdk.graal.compiler.util.args;
 
 /**
- * Indicates that a value of a program argument is invalid.
+ * Indicates that a value was not provided for a required program option.
  */
 @SuppressWarnings("serial")
-public class InvalidArgumentException extends Exception {
-    InvalidArgumentException(String name, String reason) {
-        super("The argument '" + name + "' could not be parsed: " + reason);
+public class MissingArgumentException extends Exception {
+    MissingArgumentException(String argumentName) {
+        super("The argument '" + argumentName + "' is required.");
     }
 }
