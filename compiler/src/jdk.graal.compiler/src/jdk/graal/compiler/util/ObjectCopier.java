@@ -47,8 +47,6 @@ import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import org.graalvm.collections.EconomicMap;
@@ -73,9 +71,6 @@ import jdk.internal.misc.Unsafe;
  * See the {@link Builtin} subclasses for encoding of specific types.
  */
 public class ObjectCopier {
-
-    private static final Pattern OBJECT_LINE = Pattern.compile("\\{(?<class>[\\w.$]+):(?<fieldCount>\\d+)}");
-    private static final Pattern FIELD_LINE = Pattern.compile("(?<desc>[^:]+):(?<typeId>[^ ]+) = (?<value>.*)");
 
     /**
      * A builtin is specialized support for encoded and decoding values of specific types.
@@ -500,68 +495,29 @@ public class ObjectCopier {
                             break;
                         }
                         case '{': {
-                            String legacy = stream.readUTF();
-                            Matcher matcher = OBJECT_LINE.matcher(legacy);
-                            GraalError.guarantee(matcher.matches(), "Invalid object record: %s", legacy);
-                            String className = matcher.group("class");
-                            int fieldCount = Integer.parseInt(matcher.group("fieldCount"));
+                            String className = readString(stream);
+                            int fieldCount = Math.toIntExact(stream.readPackedUnsigned());
                             Class<?> clazz = loadClass(className);
                             Object obj = allocateInstance(clazz);
                             addDecodedObject(id, obj);
                             ClassInfo classInfo = classInfos.computeIfAbsent(clazz, ClassInfo::of);
                             for (int i = 0; i < fieldCount; i++) {
                                 fieldNum = i;
-                                String fieldLine = stream.readUTF();
-                                Matcher fieldMatcher = FIELD_LINE.matcher(fieldLine);
-                                GraalError.guarantee(fieldMatcher.matches(), "Invalid field line: %s", fieldLine);
-                                String fieldDesc = fieldMatcher.group("desc");
-                                String value = fieldMatcher.group("value");
+                                String fieldDesc = readString(stream);
                                 Field field = classInfo.fields().get(fieldDesc);
                                 GraalError.guarantee(field != null, "Unknown field: %s", fieldDesc);
                                 Class<?> type = field.getType();
 
-                                int expectTypeId = Integer.parseInt(fieldMatcher.group("typeId"));
-                                resolveId(expectTypeId, o -> checkFieldType(expectTypeId, field));
-
                                 if (type.isPrimitive()) {
-                                    switch (type.getName()) {
-                                        case "boolean": {
-                                            writeField(field, obj, Boolean.parseBoolean(value));
-                                            break;
-                                        }
-                                        case "byte": {
-                                            writeField(field, obj, Byte.parseByte(value));
-                                            break;
-                                        }
-                                        case "char": {
-                                            writeField(field, obj, (char) Integer.parseInt(value));
-                                            break;
-                                        }
-                                        case "short": {
-                                            writeField(field, obj, Short.parseShort(value));
-                                            break;
-                                        }
-                                        case "int": {
-                                            writeField(field, obj, Integer.parseInt(value));
-                                            break;
-                                        }
-                                        case "float": {
-                                            writeField(field, obj, Float.parseFloat(value));
-                                            break;
-                                        }
-                                        case "long": {
-                                            writeField(field, obj, Long.parseLong(value));
-                                            break;
-                                        }
-                                        case "double": {
-                                            writeField(field, obj, Double.parseDouble(value));
-                                            break;
-                                        }
-                                        default: {
-                                            throw new GraalError("Unexpected primitive type: %s", type.getName());
-                                        }
-                                    }
+                                    Object value = stream.readTypedValue();
+                                    GraalError.guarantee(type == value.getClass().getDeclaredField("TYPE").get(null),
+                                                    "Different primitive type: %s, expected %s", value.getClass(), type.getName());
+                                    writeField(field, obj, value);
                                 } else {
+                                    GraalError.guarantee(stream.readByte() == 'L', "Expecting object type");
+                                    int expectTypeId = readId(stream);
+                                    int value = readId(stream);
+                                    resolveId(expectTypeId, o -> checkFieldType(expectTypeId, field));
                                     resolveId(value, o -> writeField(field, obj, o));
                                 }
                             }
@@ -589,14 +545,6 @@ public class ObjectCopier {
 
         private static int readId(ObjectCopierInputStream stream) throws IOException {
             return (int) stream.readPackedUnsigned();
-        }
-
-        void resolveId(String id, Consumer<Object> c) {
-            try {
-                resolveId(Integer.parseInt(id), c);
-            } catch (NumberFormatException e) {
-                throw new GraalError(e, "Invalid object id: %s", id);
-            }
         }
 
         void resolveId(int id, Consumer<Object> c) {
@@ -811,15 +759,17 @@ public class ObjectCopier {
                 checkIllegalValue(LocationIdentity.class, obj, objectPath, "must come from a static field");
                 checkIllegalValue(HashSet.class, obj, objectPath, "hashes are typically not stable across VM executions");
 
+                makeStringId(clazz.getName(), objectPath);
                 ClassInfo classInfo = makeClassInfo(clazz, objectPath);
-                for (Field f : classInfo.fields().values()) {
+                classInfo.fields().forEach((fieldDesc, f) -> {
                     String fieldName = f.getDeclaringClass().getSimpleName() + "#" + f.getName();
-                    makeId(f.getType(), objectPath.add(fieldName + ":type"));
+                    makeStringId(fieldDesc, objectPath.add(fieldName + ":name"));
                     if (!f.getType().isPrimitive()) {
+                        makeId(f.getType(), objectPath.add(fieldName + ":type"));
                         Object fieldValue = readField(f, obj);
                         makeId(fieldValue, objectPath.add(fieldName));
                     }
-                }
+                });
             }
         }
 
@@ -875,18 +825,21 @@ public class ObjectCopier {
                     ClassInfo classInfo = classInfos.get(clazz);
                     out.writeByte('{');
                     writeId(out, id);
-                    out.writeUTF(String.format("{%s:%d}", clazz.getName(), classInfo.fields().size()));
+                    writeString(out, clazz.getName());
+                    out.writePackedUnsigned(classInfo.fields.size());
                     for (var e : classInfo.fields().entrySet()) {
                         Field f = e.getValue();
-                        Object fValue = readField(f, obj);
                         Class<?> fieldType = f.getType();
-                        int fieldTypeId = getId(fieldType);
-                        if (!fieldType.isPrimitive()) {
-                            fValue = String.valueOf(getId(fValue));
-                        } else if (fieldType == char.class) {
-                            fValue = (int) (Character) fValue;
+                        Object fValue = readField(f, obj);
+                        writeString(out, e.getKey());
+                        if (fieldType.isPrimitive()) {
+                            out.writeTypedValue(fValue);
+                        } else {
+                            int fieldTypeId = getId(fieldType);
+                            out.writeByte('L');
+                            writeId(out, fieldTypeId);
+                            writeId(out, getId(fValue));
                         }
-                        out.writeUTF(String.format("%s:%d = %s", e.getKey(), fieldTypeId, fValue));
                     }
                 }
             }

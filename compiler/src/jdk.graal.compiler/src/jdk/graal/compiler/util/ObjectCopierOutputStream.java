@@ -24,14 +24,13 @@
  */
 package jdk.graal.compiler.util;
 
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.reflect.Array;
 
 import jdk.graal.compiler.core.common.calc.UnsignedMath;
 
-public class ObjectCopierOutputStream extends DataOutputStream {
+public class ObjectCopierOutputStream extends TypedDataOutputStream {
     // Constants for UNSIGNED5 coding of Pack200
     protected static final long HIGH_WORD_SHIFT = 6;
     protected static final long NUM_HIGH_CODES = 1 << HIGH_WORD_SHIFT; // number of high codes (64)

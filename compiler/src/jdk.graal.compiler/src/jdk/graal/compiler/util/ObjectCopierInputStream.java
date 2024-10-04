@@ -24,11 +24,10 @@
  */
 package jdk.graal.compiler.util;
 
-import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
-public class ObjectCopierInputStream extends DataInputStream {
+public class ObjectCopierInputStream extends TypedDataInputStream {
     public ObjectCopierInputStream(InputStream in) {
         super(in);
     }
