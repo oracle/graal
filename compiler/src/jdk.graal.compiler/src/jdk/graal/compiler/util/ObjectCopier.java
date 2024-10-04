@@ -238,17 +238,6 @@ public class ObjectCopier {
         }
     }
 
-    /**
-     * Builtin for handling {@link HashMap} or {@link IdentityHashMap} values.
-     *
-     * EBNF:
-     *
-     * <pre>
-     *  builtinValue = [ key ":" value { " " } key ":" value ]
-     *  key = fieldValue
-     *  value = fieldValue
-     * </pre>
-     */
     static final class HashMapBuiltin extends Builtin {
 
         final Map<Class<?>, Supplier<?>> factories;
@@ -272,31 +261,18 @@ public class ObjectCopier {
         @Override
         protected void encode(Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
             Map<?, ?> map = (Map<?, ?>) obj;
-            String encoded = encoder.encodeMap(new EconomicMapWrap<>(map));
-            stream.writeUTF(encoded);
+            encoder.encodeMap(stream, new EconomicMapWrap<>(map));
         }
 
         @SuppressWarnings("unchecked")
         @Override
         protected Object decode(Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
             Map<Object, Object> map = (Map<Object, Object>) factories.get(concreteType).get();
-            String encoded = stream.readUTF();
-            decoder.decodeMap(encoded, map::put);
+            decoder.decodeMap(stream, map::put);
             return map;
         }
     }
 
-    /**
-     * Builtin for handling {@link EconomicMap} values.
-     *
-     * EBNF:
-     *
-     * <pre>
-     *  builtinValue = [ key ":" value { " " } key ":" value ]
-     *  key = fieldValue
-     *  value = fieldValue
-     * </pre>
-     */
     static final class EconomicMapBuiltin extends Builtin {
         EconomicMapBuiltin() {
             super(EconomicMap.class, EconomicMap.create().getClass());
@@ -312,16 +288,14 @@ public class ObjectCopier {
 
         @Override
         protected void encode(Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
-            String encoded = encoder.encodeMap((UnmodifiableEconomicMap<?, ?>) obj);
-            stream.writeUTF(encoded);
+            encoder.encodeMap(stream, (UnmodifiableEconomicMap<?, ?>) obj);
         }
 
         @Override
         protected Object decode(Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
             if (EconomicMap.class.isAssignableFrom(concreteType)) {
                 EconomicMap<Object, Object> map = EconomicMap.create();
-                String encoded = stream.readUTF();
-                decoder.decodeMap(encoded, map::put);
+                decoder.decodeMap(stream, map::put);
                 return map;
             } else {
                 throw new GraalError("Unexpected concrete Map type: ", concreteType);
@@ -391,13 +365,6 @@ public class ObjectCopier {
         addBuiltin(stringBuiltin, char[].class);
     }
 
-    static String[] splitSpaceSeparatedElements(String elements) {
-        if (elements.isEmpty()) {
-            return new String[0];
-        }
-        return elements.split(" ");
-    }
-
     /**
      * Encodes {@code root} to a String using {@code encoder}.
      */
@@ -444,11 +411,12 @@ public class ObjectCopier {
             return obj;
         }
 
-        void decodeMap(String encoded, BiConsumer<Object, Object> putMethod) {
-            for (String e : splitSpaceSeparatedElements(encoded)) {
-                String[] keyValue = e.split(":");
-                GraalError.guarantee(keyValue.length == 2, "Invalid encoded key:value: %s", e);
-                resolveId(keyValue[0], k -> resolveId(keyValue[1], v -> putMethod.accept(k, v)));
+        void decodeMap(ObjectCopierInputStream stream, BiConsumer<Object, Object> putMethod) throws IOException {
+            int size = Math.toIntExact(stream.readPackedUnsigned());
+            for (int i = 0; i < size; i++) {
+                int keyId = readId(stream);
+                int valueId = readId(stream);
+                resolveId(keyId, k -> resolveId(valueId, v -> putMethod.accept(k, v)));
             }
         }
 
@@ -760,16 +728,14 @@ public class ObjectCopier {
             return Collections.unmodifiableMap(externalValues);
         }
 
-        private String encodeMap(UnmodifiableEconomicMap<?, ?> map) {
+        private void encodeMap(ObjectCopierOutputStream stream, UnmodifiableEconomicMap<?, ?> map) throws IOException {
+            stream.writePackedUnsigned(map.size());
+
             UnmodifiableMapCursor<?, ?> cursor = map.getEntries();
-            StringBuilder value = new StringBuilder();
             while (cursor.advance()) {
-                if (!value.isEmpty()) {
-                    value.append(" ");
-                }
-                value.append(getId(cursor.getKey())).append(":").append(getId(cursor.getValue()));
+                writeId(stream, getId(cursor.getKey()));
+                writeId(stream, getId(cursor.getValue()));
             }
-            return value.toString();
         }
 
         void makeMapChildIds(EconomicMap<?, ?> map, ObjectPath objectPath) {
