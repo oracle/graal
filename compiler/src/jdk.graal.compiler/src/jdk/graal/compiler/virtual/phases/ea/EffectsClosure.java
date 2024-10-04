@@ -210,7 +210,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
             effects.apply(graph, obsoleteNodes, true);
         }
         debug.dump(DebugContext.DETAILED_LEVEL, graph, "After applying effects");
-        assert VirtualUtil.assertNonReachable(graph, obsoleteNodes);
+        assert VirtualUtil.assertNonReachable(graph, obsoleteNodes) : Assertions.errorMessage("obsolete nodes should not be reachable: ", obsoleteNodes);
         for (Node node : obsoleteNodes) {
             if (node.isAlive() && node.hasNoUsages()) {
                 if (node instanceof FixedWithNextNode) {
