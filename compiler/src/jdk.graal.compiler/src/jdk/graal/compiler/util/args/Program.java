@@ -22,9 +22,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.igvutil.args;
+package jdk.graal.compiler.util.args;
 
-import static org.graalvm.igvutil.args.OptionValue.INDENT;
+import static jdk.graal.compiler.util.args.OptionValue.INDENT;
 
 import java.io.PrintWriter;
 

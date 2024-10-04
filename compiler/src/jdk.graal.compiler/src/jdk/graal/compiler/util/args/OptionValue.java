@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.igvutil.args;
+package jdk.graal.compiler.util.args;
 
 import java.io.PrintWriter;
 import java.util.List;
@@ -42,7 +42,7 @@ public abstract class OptionValue<T> {
     /**
      * Default value to return if no value was parsed. Can be null.
      */
-    private final T defaultValue;
+    protected final T defaultValue;
 
     /**
      * Explanatory name for the option.

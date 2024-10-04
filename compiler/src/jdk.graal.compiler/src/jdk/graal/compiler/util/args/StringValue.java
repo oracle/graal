@@ -22,50 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.igvutil.args;
-
-import java.util.ArrayList;
-import java.util.List;
+package jdk.graal.compiler.util.args;
 
 /**
- * Repeated option value which parses an underlying option multiple times, and collects the results
- * into a list. When parsing, this will try to consume all subsequent positional arguments. To avoid
- * ambiguities when using a list argument followed by another positional argument of the same type,
- * you can use an argument separator (`--`) as a terminator, marking the end of a list.
+ * "Parses" (effectively returns unaltered) a {@link String} from command line arguments.
  */
-public class ListValue<T> extends OptionValue<List<T>> {
-    private final OptionValue<T> inner;
-
-    public ListValue(String name, String help, OptionValue<T> inner) {
+public class StringValue extends OptionValue<String> {
+    public StringValue(String name, String help) {
         super(name, help);
-        this.inner = inner;
     }
 
-    public ListValue(String name, List<T> defaultValue, String help, OptionValue<T> inner) {
+    public StringValue(String name, String defaultValue, String help) {
         super(name, defaultValue, help);
-        this.inner = inner;
     }
 
     @Override
-    public boolean parseValue(String arg) {
+    public boolean parseValue(String arg) throws InvalidArgumentException {
         if (arg == null) {
-            return false;
+            throw new InvalidArgumentException(getName(), "no value provided");
         }
-        try {
-            inner.parseValue(arg);
-        } catch (InvalidArgumentException e) {
-            // Terminate list if option fails to parse
-            return false;
-        }
-        if (value == null) {
-            value = new ArrayList<>();
-        }
-        value.add(inner.value);
+        value = arg;
         return true;
-    }
-
-    @Override
-    public String getUsage() {
-        return String.format("[%s ...]", getName());
     }
 }

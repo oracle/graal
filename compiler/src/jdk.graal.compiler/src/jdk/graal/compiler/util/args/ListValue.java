@@ -22,31 +22,50 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.igvutil.args;
+package jdk.graal.compiler.util.args;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * A boolean flag option value that is {@code false} when not present in the program arguments and
- * {@code true} when it is present.
+ * Repeated option value which parses an underlying option multiple times, and collects the results
+ * into a list. When parsing, this will try to consume all subsequent positional arguments. To avoid
+ * ambiguities when using a list argument followed by another positional argument of the same type,
+ * you can use an argument separator (`--`) as a terminator, marking the end of a list.
  */
-public class Flag extends OptionValue<Boolean> {
-    public Flag(String help) {
-        super("", false, help);
+public class ListValue<T> extends OptionValue<List<T>> {
+    private final OptionValue<T> inner;
+
+    public ListValue(String name, String help, OptionValue<T> inner) {
+        super(name, help);
+        this.inner = inner;
     }
 
-    @Override
-    public void clear() {
-        value = false;
+    public ListValue(String name, List<T> defaultValue, String help, OptionValue<T> inner) {
+        super(name, defaultValue, help);
+        this.inner = inner;
     }
 
     @Override
     public boolean parseValue(String arg) {
-        value = true;
-        return false;
+        if (arg == null) {
+            return false;
+        }
+        try {
+            inner.parseValue(arg);
+        } catch (InvalidArgumentException e) {
+            // Terminate list if option fails to parse
+            return false;
+        }
+        if (value == null) {
+            value = new ArrayList<>();
+        }
+        value.add(inner.value);
+        return true;
     }
 
     @Override
     public String getUsage() {
-        // No value, usage is only determined by flag name
-        return "";
+        return String.format("[%s ...]", getName());
     }
 }

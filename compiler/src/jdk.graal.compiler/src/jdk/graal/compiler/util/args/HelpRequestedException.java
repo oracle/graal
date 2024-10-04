@@ -22,26 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.igvutil.args;
+package jdk.graal.compiler.util.args;
 
 /**
- * "Parses" (effectively returns unaltered) a {@link String} from command line arguments.
+ * Thrown when a {@code --help} flag is encountered when parsing command-line arguments.
  */
-public class StringValue extends OptionValue<String> {
-    public StringValue(String name, String help) {
-        super(name, help);
+@SuppressWarnings("serial")
+public class HelpRequestedException extends Exception {
+    /**
+     * The command that the user requested help for.
+     */
+    private final Command command;
+
+    HelpRequestedException(Command command) {
+        super();
+        this.command = command;
     }
 
-    public StringValue(String name, String defaultValue, String help) {
-        super(name, defaultValue, help);
-    }
-
-    @Override
-    public boolean parseValue(String arg) throws InvalidArgumentException {
-        if (arg == null) {
-            throw new InvalidArgumentException(getName(), "no value provided");
-        }
-        value = arg;
-        return true;
+    public Command getCommand() {
+        return command;
     }
 }

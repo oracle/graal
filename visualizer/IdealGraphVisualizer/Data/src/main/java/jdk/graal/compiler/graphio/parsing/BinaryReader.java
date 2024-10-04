@@ -240,10 +240,10 @@ public class BinaryReader implements GraphParser, ModelControl {
 
     private final ErrorReporter reporter;
 
-    private abstract static class Member implements LengthToString {
-        final Klass holder;
-        final int accessFlags;
-        final String name;
+    public abstract static class Member implements LengthToString {
+        public final Klass holder;
+        public final int accessFlags;
+        public final String name;
 
         private Member(Klass holder, String name, int accessFlags) {
             this.holder = holder;
@@ -279,10 +279,11 @@ public class BinaryReader implements GraphParser, ModelControl {
     }
 
     public static final class Method extends Member {
-        final Signature signature;
+        public final Signature signature;
         public final byte[] code;
 
-        /* package-private */ Method(String name, Signature signature, byte[] code, Klass holder, int accessFlags) {
+        /* package-private */
+        public Method(String name, Signature signature, byte[] code, Klass holder, int accessFlags) {
             super(holder, name, accessFlags);
             this.signature = signature;
             this.code = code;
@@ -340,12 +341,12 @@ public class BinaryReader implements GraphParser, ModelControl {
         }
     }
 
-    /* package-private */ static final class Signature {
+    public static final class Signature {
         public final String returnType;
         public final String[] argTypes;
         private final int hash;
 
-        Signature(String returnType, String[] argTypes) {
+        public Signature(String returnType, String[] argTypes) {
             this.returnType = returnType;
             this.argTypes = argTypes;
             this.hash = toString().hashCode();
@@ -380,10 +381,10 @@ public class BinaryReader implements GraphParser, ModelControl {
         }
     }
 
-    /* package-private */ static final class Field extends Member {
+    public static final class Field extends Member {
         public final String type;
 
-        Field(String type, Klass holder, String name, int accessFlags) {
+        public Field(String type, Klass holder, String name, int accessFlags) {
             super(holder, name, accessFlags);
             this.type = type;
         }
@@ -413,7 +414,7 @@ public class BinaryReader implements GraphParser, ModelControl {
         public final String simpleName;
         private final int hash;
 
-        Klass(String name) {
+        public Klass(String name) {
             this.name = name;
             String simple;
             try {
@@ -467,10 +468,10 @@ public class BinaryReader implements GraphParser, ModelControl {
 
     }
 
-    /* package-private */ static final class EnumKlass extends Klass {
+    public static final class EnumKlass extends Klass {
         public final String[] values;
 
-        EnumKlass(String name, String[] values) {
+        public EnumKlass(String name, String[] values) {
             super(name);
             this.values = values;
         }
@@ -490,9 +491,9 @@ public class BinaryReader implements GraphParser, ModelControl {
         }
     }
 
-    /* package-private */ static final class EnumValue implements LengthToString {
-        EnumKlass enumKlass;
-        int ordinal;
+    public static final class EnumValue implements LengthToString {
+        public EnumKlass enumKlass;
+        public int ordinal;
 
         EnumValue(EnumKlass enumKlass, int ordinal) {
             this.enumKlass = enumKlass;

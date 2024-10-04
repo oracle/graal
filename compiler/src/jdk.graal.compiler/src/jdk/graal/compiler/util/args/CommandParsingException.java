@@ -22,30 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.igvutil.args;
+package jdk.graal.compiler.util.args;
 
 /**
- * Parses a {@link Double} from command line arguments.
+ * Wraps an exception thrown during parsing of a command.
  */
-public class DoubleValue extends OptionValue<Double> {
-    public DoubleValue(String name, String help) {
-        super(name, help);
-    }
+@SuppressWarnings("serial")
+public class CommandParsingException extends Exception {
+    private final Command command;
 
-    public DoubleValue(String name, Double defaultValue, String help) {
-        super(name, defaultValue, help);
+    CommandParsingException(Exception cause, Command command) {
+        super(cause);
+        this.command = command;
     }
 
     @Override
-    public boolean parseValue(String arg) throws InvalidArgumentException {
-        if (arg == null) {
-            throw new InvalidArgumentException(getName(), "no value provided");
-        }
-        try {
-            value = Double.valueOf(arg);
-            return true;
-        } catch (NumberFormatException e) {
-            throw new InvalidArgumentException(getName(), String.format("invalid double value: \"%s\"", arg));
-        }
+    public String getMessage() {
+        return "Argument parsing error: " + getCause().getMessage();
+    }
+
+    public Command getCommand() {
+        return command;
     }
 }
