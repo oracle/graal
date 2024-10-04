@@ -151,6 +151,13 @@ public final class UnimplementedGraalIntrinsics {
                         // @formatter:on
         );
 
+        if (jdk >= 24) {
+            add(toBeInvestigated, // @formatter:off
+                        "jdk/internal/vm/vector/VectorSupport.selectFromOp(Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$VectorMask;Ljdk/internal/vm/vector/VectorSupport$VectorSelectFromOp;)Ljdk/internal/vm/vector/VectorSupport$Vector;",
+                        "jdk/internal/vm/vector/VectorSupport.wrapShuffleIndexes(Ljava/lang/Class;Ljava/lang/Class;Ljdk/internal/vm/vector/VectorSupport$VectorShuffle;ILjdk/internal/vm/vector/VectorSupport$WrapShuffleIndexesOperation;)Ljdk/internal/vm/vector/VectorSupport$VectorShuffle;");
+                        // @formatter:on
+        }
+
         // These are known to be implemented down stream
         add(enterprise, // @formatter:off
                         "java/lang/Integer.toString(I)Ljava/lang/String;",
