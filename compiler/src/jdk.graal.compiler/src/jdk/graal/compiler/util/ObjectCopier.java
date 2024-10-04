@@ -451,14 +451,13 @@ public class ObjectCopier {
                     strings[i] = stream.readUTF();
                 }
                 rootId = readId(stream);
-                for (;;) {
-                    recordNum++;
+                for (int id = 1;; id++) {
+                    recordNum = id;
                     fieldNum = -1;
                     int c = stream.read();
                     if (c == -1) {
                         break;
                     }
-                    int id = readId(stream);
                     switch (c) {
                         case '<': {
                             String className = readString(stream);
@@ -795,7 +794,6 @@ public class ObjectCopier {
                 Builtin builtin = getBuiltin(clazz);
                 if (builtin != null) {
                     out.writeByte('<');
-                    writeId(out, id);
                     writeString(out, clazz.getName());
                     try {
                         builtin.encode(this, out, obj);
@@ -806,25 +804,21 @@ public class ObjectCopier {
                     Class<?> componentType = clazz.getComponentType();
                     if (!componentType.isPrimitive()) {
                         out.writeByte(']');
-                        writeId(out, id);
                         writeString(out, componentType.getName());
                         int[] ids = Stream.of((Object[]) obj).mapToInt(this::getId).toArray();
                         out.writeTypedPrimitiveArray(ids);
                     } else {
                         out.writeByte('[');
-                        writeId(out, id);
                         out.writeTypedPrimitiveArray(obj);
                     }
                 } else if (clazz == Field.class) {
                     Field field = (Field) obj;
                     out.writeByte('@');
-                    writeId(out, id);
                     writeString(out, field.getDeclaringClass().getName());
                     writeString(out, field.getName());
                 } else {
                     ClassInfo classInfo = classInfos.get(clazz);
                     out.writeByte('{');
-                    writeId(out, id);
                     writeString(out, clazz.getName());
                     out.writePackedUnsigned(classInfo.fields.size());
                     for (var e : classInfo.fields().entrySet()) {
