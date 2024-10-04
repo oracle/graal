@@ -60,8 +60,8 @@ import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants.Variant;
 import com.oracle.truffle.api.bytecode.Instruction;
 import com.oracle.truffle.api.bytecode.Instrumentation;
-import com.oracle.truffle.api.bytecode.LocalSetter;
-import com.oracle.truffle.api.bytecode.LocalSetterRange;
+import com.oracle.truffle.api.bytecode.LocalAccessor;
+import com.oracle.truffle.api.bytecode.LocalRangeAccessor;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation.Operator;
@@ -327,90 +327,82 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
     }
 
     @Operation
-    @ConstantOperand(type = LocalSetter.class)
+    @ConstantOperand(type = LocalAccessor.class)
     static final class TeeLocal {
         @Specialization
         public static long doLong(VirtualFrame frame,
-                        LocalSetter setter,
+                        LocalAccessor setter,
                         long value,
-                        @Bind BytecodeNode bytecode,
-                        @Bind("$bytecodeIndex") int bci) {
-            setter.setLong(bytecode, bci, frame, value);
+                        @Bind BytecodeNode bytecode) {
+            setter.setLong(bytecode, frame, value);
             return value;
         }
 
         @Specialization(replaces = "doLong")
         public static Object doGeneric(VirtualFrame frame,
-                        LocalSetter setter,
+                        LocalAccessor setter,
                         Object value,
-                        @Bind BytecodeNode bytecode,
-                        @Bind("$bytecodeIndex") int bci) {
+                        @Bind BytecodeNode bytecode) {
             if (value instanceof Long l) {
-                setter.setLong(bytecode, bci, frame, l);
+                setter.setLong(bytecode, frame, l);
             } else if (value instanceof Integer i) {
-                setter.setInt(bytecode, bci, frame, i);
-            } else if (value instanceof Short s) {
-                setter.setShort(bytecode, bci, frame, s);
+                setter.setInt(bytecode, frame, i);
             } else if (value instanceof Byte b) {
-                setter.setByte(bytecode, bci, frame, b);
+                setter.setByte(bytecode, frame, b);
             } else if (value instanceof Boolean b) {
-                setter.setBoolean(bytecode, bci, frame, b);
+                setter.setBoolean(bytecode, frame, b);
             } else if (value instanceof Float f) {
-                setter.setFloat(bytecode, bci, frame, f);
+                setter.setFloat(bytecode, frame, f);
             } else if (value instanceof Double d) {
-                setter.setDouble(bytecode, bci, frame, d);
+                setter.setDouble(bytecode, frame, d);
             } else {
-                setter.setObject(bytecode, bci, frame, value);
+                setter.setObject(bytecode, frame, value);
             }
             return value;
         }
     }
 
     @Operation
-    @ConstantOperand(type = LocalSetterRange.class)
+    @ConstantOperand(type = LocalRangeAccessor.class)
     static final class TeeLocalRange {
         @Specialization
         @ExplodeLoop
         public static Object doLong(VirtualFrame frame,
-                        LocalSetterRange setter,
+                        LocalRangeAccessor setter,
                         long[] value,
-                        @Bind BytecodeNode bytecode,
-                        @Bind("$bytecodeIndex") int bci) {
+                        @Bind BytecodeNode bytecode) {
             if (value.length != setter.getLength()) {
                 throw new IllegalArgumentException("TeeLocalRange length mismatch");
             }
             for (int i = 0; i < value.length; i++) {
-                setter.setLong(bytecode, bci, frame, i, value[i]);
+                setter.setLong(bytecode, frame, i, value[i]);
             }
             return value;
         }
 
         @Specialization
         public static Object doGeneric(VirtualFrame frame,
-                        LocalSetterRange setter,
+                        LocalRangeAccessor setter,
                         Object[] value,
-                        @Bind BytecodeNode bytecode,
-                        @Bind("$bytecodeIndex") int bci) {
+                        @Bind BytecodeNode bytecode) {
             if (value.length != setter.getLength()) {
                 throw new IllegalArgumentException("TeeLocalRange length mismatch");
             }
             for (int i = 0; i < value.length; i++) {
                 if (value[i] instanceof Long l) {
-                    setter.setLong(bytecode, bci, frame, i, l);
+                    setter.setLong(bytecode, frame, i, l);
                 } else if (value[i] instanceof Integer n) {
-                    setter.setInt(bytecode, bci, frame, i, n);
-                } else if (value[i] instanceof Short s) {
-                    setter.setShort(bytecode, bci, frame, i, s);
+                    setter.setInt(bytecode, frame, i, n);
                 } else if (value[i] instanceof Byte b) {
-                    setter.setByte(bytecode, bci, frame, i, b);
+                    setter.setByte(bytecode, frame, i, b);
                 } else if (value[i] instanceof Boolean b) {
-                    setter.setBoolean(bytecode, bci, frame, i, b);
+                    setter.setBoolean(bytecode, frame, i, b);
                 } else if (value[i] instanceof Float f) {
-                    setter.setFloat(bytecode, bci, frame, i, f);
+                    setter.setFloat(bytecode, frame, i, f);
                 } else if (value[i] instanceof Double d) {
-                    setter.setDouble(bytecode, bci, frame, i, d);
+                    setter.setDouble(bytecode, frame, i, d);
                 } else {
-                    setter.setObject(bytecode, bci, frame, i, value[i]);
+                    setter.setObject(bytecode, frame, i, value[i]);
                 }
             }
             return value;

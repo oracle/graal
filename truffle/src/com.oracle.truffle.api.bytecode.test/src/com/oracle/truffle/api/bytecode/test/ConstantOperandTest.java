@@ -68,7 +68,7 @@ import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants.Variant;
 import com.oracle.truffle.api.bytecode.Instrumentation;
-import com.oracle.truffle.api.bytecode.LocalSetter;
+import com.oracle.truffle.api.bytecode.LocalAccessor;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.Prolog;
 import com.oracle.truffle.api.bytecode.test.ConstantOperandTestRootNode.ReplaceValue;
@@ -373,21 +373,21 @@ abstract class ConstantOperandTestRootNode extends RootNode implements BytecodeR
 
     @Operation
     @ConstantOperand(type = int.class)
-    @ConstantOperand(type = LocalSetter.class)
+    @ConstantOperand(type = LocalAccessor.class)
     @SuppressWarnings("unused")
     public static final class SetCheckValue {
         @Specialization(guards = "arg == constantOperand")
-        public static void doMatch(VirtualFrame frame, int constantOperand, LocalSetter setter, int arg,
+        public static void doMatch(VirtualFrame frame, int constantOperand, LocalAccessor setter, int arg,
                         @Bind BytecodeNode bytecode,
                         @Bind("$bytecodeIndex") int bci) {
-            setter.setBoolean(bytecode, bci, frame, true);
+            setter.setBoolean(bytecode, frame, true);
         }
 
         @Fallback
-        public static void doNoMatch(VirtualFrame frame, int constantOperand, LocalSetter setter, Object arg,
+        public static void doNoMatch(VirtualFrame frame, int constantOperand, LocalAccessor setter, Object arg,
                         @Bind BytecodeNode bytecode,
                         @Bind("$bytecodeIndex") int bci) {
-            setter.setBoolean(bytecode, bci, frame, false);
+            setter.setBoolean(bytecode, frame, false);
         }
     }
 

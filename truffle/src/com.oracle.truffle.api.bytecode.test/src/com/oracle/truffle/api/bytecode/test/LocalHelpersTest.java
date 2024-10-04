@@ -44,6 +44,7 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
@@ -74,15 +75,18 @@ import com.oracle.truffle.api.bytecode.ContinuationRootNode;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants.Variant;
+import com.oracle.truffle.api.bytecode.LocalAccessor;
+import com.oracle.truffle.api.bytecode.LocalRangeAccessor;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.Variadic;
-import com.oracle.truffle.api.bytecode.test.BytecodeNodeWithLocalIntrospection.GetLocalTagged;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
@@ -181,7 +185,125 @@ public class LocalHelpersTest {
     }
 
     @Test
-    public void testGetLocalTagged() {
+    public void testGetLocalRangeAccessor() {
+
+        BytecodeNodeWithLocalIntrospection root = parseNode(b -> {
+            b.beginRoot();
+
+            b.beginBlock();
+            BytecodeLocal v0 = makeLocal(b, "v0");
+            BytecodeLocal v1 = makeLocal(b, "v1");
+            BytecodeLocal[] locals = new BytecodeLocal[]{v0, v1};
+
+            for (int offset = 0; offset < 2; offset++) {
+                b.beginStoreLocal(locals[offset]);
+                b.emitLoadConstant(true);
+                b.endStoreLocal();
+                b.emitGetLocalRangeAccessor(locals, FrameSlotKind.Boolean, offset);
+
+                b.beginStoreLocal(locals[offset]);
+                b.emitLoadConstant((byte) 2);
+                b.endStoreLocal();
+                b.emitGetLocalRangeAccessor(locals, FrameSlotKind.Byte, offset);
+
+                b.beginStoreLocal(locals[offset]);
+                b.emitLoadConstant(42);
+                b.endStoreLocal();
+                b.emitGetLocalRangeAccessor(locals, FrameSlotKind.Int, offset);
+
+                b.beginStoreLocal(locals[offset]);
+                b.emitLoadConstant(42L);
+                b.endStoreLocal();
+                b.emitGetLocalRangeAccessor(locals, FrameSlotKind.Long, offset);
+
+                b.beginStoreLocal(locals[offset]);
+                b.emitLoadConstant(3.14f);
+                b.endStoreLocal();
+                b.emitGetLocalRangeAccessor(locals, FrameSlotKind.Float, offset);
+
+                b.beginStoreLocal(locals[offset]);
+                b.emitLoadConstant(4.0d);
+                b.endStoreLocal();
+                b.emitGetLocalRangeAccessor(locals, FrameSlotKind.Double, offset);
+            }
+
+            b.endBlock();
+
+            b.endRoot();
+        });
+
+        root.getCallTarget().call();
+    }
+
+    @Test
+    public void testSetLocalRangeAccessor() {
+        /* @formatter:off
+         *
+         * foo = true
+         * getLocalTagged(BOOLEAN, 0)
+         * foo = (byte) 2
+         * getLocalTagged(BYTE, 0)
+         * ...
+         * foo = "hello"
+         * return getLocalTagged(OBJECT, 0)
+         *
+         * @formatter:on
+         */
+        BytecodeNodeWithLocalIntrospection root = parseNode(b -> {
+            b.beginRoot();
+
+            b.beginBlock();
+            BytecodeLocal v0 = makeLocal(b, "v0");
+            BytecodeLocal v1 = makeLocal(b, "v1");
+            BytecodeLocal[] locals = new BytecodeLocal[]{v0, v1};
+
+            for (int offset = 0; offset < 2; offset++) {
+
+                b.beginSetLocalRangeAccessor(locals, FrameSlotKind.Boolean, offset);
+                b.emitLoadConstant(true);
+                b.endSetLocalRangeAccessor();
+                b.emitGetLocalRangeAccessor(locals, FrameSlotKind.Boolean, offset);
+
+                b.beginSetLocalRangeAccessor(locals, FrameSlotKind.Byte, offset);
+                b.emitLoadConstant((byte) 2);
+                b.endSetLocalRangeAccessor();
+                b.emitGetLocalRangeAccessor(locals, FrameSlotKind.Byte, offset);
+
+                b.beginSetLocalRangeAccessor(locals, FrameSlotKind.Int, offset);
+                b.emitLoadConstant(42);
+                b.endSetLocalRangeAccessor();
+                b.emitGetLocalRangeAccessor(locals, FrameSlotKind.Int, offset);
+
+                b.beginSetLocalRangeAccessor(locals, FrameSlotKind.Long, offset);
+                b.emitLoadConstant(42L);
+                b.endSetLocalRangeAccessor();
+                b.emitGetLocalRangeAccessor(locals, FrameSlotKind.Long, offset);
+
+                b.beginSetLocalRangeAccessor(locals, FrameSlotKind.Float, offset);
+                b.emitLoadConstant(3.14f);
+                b.endSetLocalRangeAccessor();
+                b.emitGetLocalRangeAccessor(locals, FrameSlotKind.Float, offset);
+
+                b.beginSetLocalRangeAccessor(locals, FrameSlotKind.Double, offset);
+                b.emitLoadConstant(4.0d);
+                b.endSetLocalRangeAccessor();
+                b.emitGetLocalRangeAccessor(locals, FrameSlotKind.Double, offset);
+
+                b.beginSetLocalRangeAccessor(locals, FrameSlotKind.Object, offset);
+                b.emitLoadConstant("hello");
+                b.endSetLocalRangeAccessor();
+
+            }
+            b.endBlock();
+
+            b.endRoot();
+        });
+
+        root.getCallTarget().call();
+    }
+
+    @Test
+    public void testGetLocalAccessor() {
         /* @formatter:off
          *
          * foo = true
@@ -203,44 +325,105 @@ public class LocalHelpersTest {
             b.beginStoreLocal(foo);
             b.emitLoadConstant(true);
             b.endStoreLocal();
-            b.emitGetLocalTagged(GetLocalTagged.BOOLEAN, 0);
+            b.emitGetLocalAccessor(foo, FrameSlotKind.Boolean);
 
             b.beginStoreLocal(foo);
             b.emitLoadConstant((byte) 2);
             b.endStoreLocal();
-            b.emitGetLocalTagged(GetLocalTagged.BYTE, 0);
-
-            b.beginStoreLocal(foo);
-            b.emitLoadConstant((short) 42);
-            b.endStoreLocal();
-            b.emitGetLocalTagged(GetLocalTagged.SHORT, 0);
+            b.emitGetLocalAccessor(foo, FrameSlotKind.Byte);
 
             b.beginStoreLocal(foo);
             b.emitLoadConstant(42);
             b.endStoreLocal();
-            b.emitGetLocalTagged(GetLocalTagged.INT, 0);
+            b.emitGetLocalAccessor(foo, FrameSlotKind.Int);
 
             b.beginStoreLocal(foo);
             b.emitLoadConstant(42L);
             b.endStoreLocal();
-            b.emitGetLocalTagged(GetLocalTagged.LONG, 0);
+            b.emitGetLocalAccessor(foo, FrameSlotKind.Long);
 
             b.beginStoreLocal(foo);
             b.emitLoadConstant(3.14f);
             b.endStoreLocal();
-            b.emitGetLocalTagged(GetLocalTagged.FLOAT, 0);
+            b.emitGetLocalAccessor(foo, FrameSlotKind.Float);
 
             b.beginStoreLocal(foo);
             b.emitLoadConstant(4.0d);
             b.endStoreLocal();
-            b.emitGetLocalTagged(GetLocalTagged.DOUBLE, 0);
+            b.emitGetLocalAccessor(foo, FrameSlotKind.Double);
 
             b.beginStoreLocal(foo);
             b.emitLoadConstant("hello");
             b.endStoreLocal();
 
             b.beginReturn();
-            b.emitGetLocalTagged(GetLocalTagged.OBJECT, 0);
+            b.emitGetLocalAccessor(foo, FrameSlotKind.Object);
+            b.endReturn();
+
+            b.endBlock();
+
+            b.endRoot();
+        });
+
+        assertEquals("hello", root.getCallTarget().call());
+    }
+
+    @Test
+    public void testSetLocalAccessor() {
+        /* @formatter:off
+         *
+         * foo = true
+         * getLocalTagged(BOOLEAN, 0)
+         * foo = (byte) 2
+         * getLocalTagged(BYTE, 0)
+         * ...
+         * foo = "hello"
+         * return getLocalTagged(OBJECT, 0)
+         *
+         * @formatter:on
+         */
+        BytecodeNodeWithLocalIntrospection root = parseNode(b -> {
+            b.beginRoot();
+
+            b.beginBlock();
+            BytecodeLocal foo = makeLocal(b, "foo");
+
+            b.beginSetLocalAccessor(foo, FrameSlotKind.Boolean);
+            b.emitLoadConstant(true);
+            b.endSetLocalAccessor();
+            b.emitGetLocalAccessor(foo, FrameSlotKind.Boolean);
+
+            b.beginSetLocalAccessor(foo, FrameSlotKind.Byte);
+            b.emitLoadConstant((byte) 2);
+            b.endSetLocalAccessor();
+            b.emitGetLocalAccessor(foo, FrameSlotKind.Byte);
+
+            b.beginSetLocalAccessor(foo, FrameSlotKind.Int);
+            b.emitLoadConstant(42);
+            b.endSetLocalAccessor();
+            b.emitGetLocalAccessor(foo, FrameSlotKind.Int);
+
+            b.beginSetLocalAccessor(foo, FrameSlotKind.Long);
+            b.emitLoadConstant(42L);
+            b.endSetLocalAccessor();
+            b.emitGetLocalAccessor(foo, FrameSlotKind.Long);
+
+            b.beginSetLocalAccessor(foo, FrameSlotKind.Float);
+            b.emitLoadConstant(3.14f);
+            b.endSetLocalAccessor();
+            b.emitGetLocalAccessor(foo, FrameSlotKind.Float);
+
+            b.beginSetLocalAccessor(foo, FrameSlotKind.Double);
+            b.emitLoadConstant(4.0d);
+            b.endSetLocalAccessor();
+            b.emitGetLocalAccessor(foo, FrameSlotKind.Double);
+
+            b.beginSetLocalAccessor(foo, FrameSlotKind.Object);
+            b.emitLoadConstant("hello");
+            b.endSetLocalAccessor();
+
+            b.beginReturn();
+            b.emitGetLocalAccessor(foo, FrameSlotKind.Object);
             b.endReturn();
 
             b.endBlock();
@@ -810,7 +993,7 @@ public class LocalHelpersTest {
     }
 
     @Test
-    public void getGetDefaultOrIllegal() {
+    public void testGetLocalDefaultOrIllegalGetLocal() {
         // @formatter:off
         // // B0
         // result;
@@ -874,6 +1057,83 @@ public class LocalHelpersTest {
             root.getBytecodeNode().setUncachedThreshold(0);
             assertNull(root.getCallTarget().call(true));
             assertNull(root.getCallTarget().call(false));
+        }
+    }
+
+    @Test
+    public void testGetAccessorDefaultOrIllegal() {
+        // @formatter:off
+        // // B0
+        // result;
+        // {
+        //   var l0;
+        //   if (arg0) {
+        //     result = getLocal(l0)
+        //   } else {
+        //     l0 = 42L
+        //   }
+        // }
+        // {
+        //   var l1;
+        //   result = getLocal(l1);
+        // }
+        // return result
+        // @formatter:on
+
+        BytecodeNodeWithLocalIntrospection root = parseNode(b -> {
+            b.beginRoot();
+
+            BytecodeLocal result = makeLocal(b, "result");
+            b.beginBlock();
+            BytecodeLocal l = makeLocal(b, "l0");
+            b.beginIfThenElse();
+            b.emitLoadArgument(0);
+            b.beginStoreLocal(result);
+            b.emitGetLocalAccessor(l, FrameSlotKind.Object);
+            b.endStoreLocal();
+            b.beginStoreLocal(l);
+            b.emitLoadConstant(42);
+            b.endStoreLocal();
+            b.endIfThenElse();
+            b.endBlock();
+
+            b.beginBlock();
+            l = makeLocal(b, "l1");
+            b.beginStoreLocal(result);
+            b.emitGetLocalAccessor(l, FrameSlotKind.Object);
+            b.endStoreLocal();
+            b.endBlock();
+
+            b.beginReturn();
+            b.emitLoadLocal(result);
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        if (hasLocalDefaultValue()) {
+            Object defaultLocal = getLocalDefaultValue();
+            assertSame(defaultLocal, root.getCallTarget().call(true));
+            assertSame(defaultLocal, root.getCallTarget().call(false));
+            root.getBytecodeNode().setUncachedThreshold(0);
+            assertSame(defaultLocal, root.getCallTarget().call(true));
+            assertSame(defaultLocal, root.getCallTarget().call(false));
+        } else {
+            // Illegal returns FrameSlotTypeException
+
+            assertThrows(FrameSlotTypeException.class, () -> {
+                root.getCallTarget().call(false);
+            });
+            assertThrows(FrameSlotTypeException.class, () -> {
+                root.getCallTarget().call(true);
+            });
+            root.getBytecodeNode().setUncachedThreshold(0);
+            assertThrows(FrameSlotTypeException.class, () -> {
+                root.getCallTarget().call(false);
+            });
+            assertThrows(FrameSlotTypeException.class, () -> {
+                root.getCallTarget().call(true);
+            });
         }
     }
 
@@ -950,50 +1210,140 @@ abstract class BytecodeNodeWithLocalIntrospection extends DebugBytecodeRootNode 
     }
 
     @Operation
-    @ConstantOperand(name = "kind", type = int.class)
-    @ConstantOperand(name = "i", type = int.class)
-    public static final class GetLocalTagged {
-        public static final int BOOLEAN = 0;
-        public static final int BYTE = 1;
-        public static final int SHORT = 2;
-        public static final int INT = 3;
-        public static final int LONG = 4;
-        public static final int FLOAT = 5;
-        public static final int DOUBLE = 6;
-        public static final int OBJECT = 7;
-
+    @ConstantOperand(type = LocalRangeAccessor.class)
+    @ConstantOperand(type = FrameSlotKind.class)
+    @ConstantOperand(type = int.class)
+    public static final class GetLocalRangeAccessor {
         @Specialization
-        public static Object perform(VirtualFrame frame, int kind, int i,
-                        @Bind BytecodeNode node,
-                        @Bind("$bytecodeIndex") int bci) {
-            if (kind == OBJECT) {
-                return node.getLocalValue(bci, frame, i);
-            }
-
+        public static Object perform(VirtualFrame frame, LocalRangeAccessor accessor, FrameSlotKind kind, int offset,
+                        @Bind BytecodeNode node) {
             try {
                 switch (kind) {
-                    case BOOLEAN:
-                        return node.getLocalValueBoolean(bci, frame, i);
-                    case BYTE:
-                        return node.getLocalValueByte(bci, frame, i);
-                    case SHORT:
-                        return node.getLocalValueShort(bci, frame, i);
-                    case INT:
-                        return node.getLocalValueInt(bci, frame, i);
-                    case LONG:
-                        return node.getLocalValueLong(bci, frame, i);
-                    case DOUBLE:
-                        return node.getLocalValueDouble(bci, frame, i);
-                    case FLOAT:
-                        return node.getLocalValueFloat(bci, frame, i);
+                    case Boolean:
+                        return accessor.getBoolean(node, frame, offset);
+                    case Byte:
+                        return accessor.getByte(node, frame, offset);
+                    case Int:
+                        return accessor.getInt(node, frame, offset);
+                    case Long:
+                        return accessor.getLong(node, frame, offset);
+                    case Double:
+                        return accessor.getDouble(node, frame, offset);
+                    case Float:
+                        return accessor.getFloat(node, frame, offset);
+                    case Object:
+                        return accessor.getObject(node, frame, offset);
                     default:
                         throw CompilerDirectives.shouldNotReachHere();
-
                 }
-            } catch (UnexpectedResultException ex) {
-                return node.getLocalValue(bci, frame, i);
+            } catch (UnexpectedResultException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
             }
+        }
+    }
 
+    @Operation
+    @ConstantOperand(type = LocalAccessor.class)
+    @ConstantOperand(type = FrameSlotKind.class)
+    public static final class GetLocalAccessor {
+        @Specialization
+        public static Object perform(VirtualFrame frame, LocalAccessor accessor, FrameSlotKind kind,
+                        @Bind BytecodeNode node) {
+            try {
+                switch (kind) {
+                    case Boolean:
+                        return accessor.getBoolean(node, frame);
+                    case Byte:
+                        return accessor.getByte(node, frame);
+                    case Int:
+                        return accessor.getInt(node, frame);
+                    case Long:
+                        return accessor.getLong(node, frame);
+                    case Double:
+                        return accessor.getDouble(node, frame);
+                    case Float:
+                        return accessor.getFloat(node, frame);
+                    case Object:
+                        return accessor.getObject(node, frame);
+                    default:
+                        throw CompilerDirectives.shouldNotReachHere();
+                }
+            } catch (UnexpectedResultException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
+        }
+    }
+
+    @Operation
+    @ConstantOperand(type = LocalRangeAccessor.class)
+    @ConstantOperand(type = FrameSlotKind.class)
+    @ConstantOperand(type = int.class)
+    public static final class SetLocalRangeAccessor {
+        @Specialization
+        public static Object doDefault(VirtualFrame frame, LocalRangeAccessor accessor, FrameSlotKind kind, int offset, Object value,
+                        @Bind BytecodeNode node) {
+            switch (kind) {
+                case Boolean:
+                    accessor.setBoolean(node, frame, offset, (boolean) value);
+                    break;
+                case Byte:
+                    accessor.setByte(node, frame, offset, (byte) value);
+                    break;
+                case Int:
+                    accessor.setInt(node, frame, offset, (int) value);
+                    break;
+                case Long:
+                    accessor.setLong(node, frame, offset, (long) value);
+                    break;
+                case Double:
+                    accessor.setDouble(node, frame, offset, (double) value);
+                    break;
+                case Float:
+                    accessor.setFloat(node, frame, offset, (float) value);
+                    break;
+                case Object:
+                    accessor.setObject(node, frame, offset, value);
+                    break;
+                default:
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+            return value;
+        }
+    }
+
+    @Operation
+    @ConstantOperand(type = LocalAccessor.class)
+    @ConstantOperand(type = FrameSlotKind.class)
+    public static final class SetLocalAccessor {
+        @Specialization
+        public static Object doDefault(VirtualFrame frame, LocalAccessor accessor, FrameSlotKind kind, Object value,
+                        @Bind BytecodeNode node) {
+            switch (kind) {
+                case Boolean:
+                    accessor.setBoolean(node, frame, (boolean) value);
+                    break;
+                case Byte:
+                    accessor.setByte(node, frame, (byte) value);
+                    break;
+                case Int:
+                    accessor.setInt(node, frame, (int) value);
+                    break;
+                case Long:
+                    accessor.setLong(node, frame, (long) value);
+                    break;
+                case Double:
+                    accessor.setDouble(node, frame, (double) value);
+                    break;
+                case Float:
+                    accessor.setFloat(node, frame, (float) value);
+                    break;
+                case Object:
+                    accessor.setObject(node, frame, value);
+                    break;
+                default:
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+            return value;
         }
     }
 

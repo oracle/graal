@@ -55,7 +55,7 @@ import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.ForceQuickening;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
-import com.oracle.truffle.api.bytecode.LocalSetter;
+import com.oracle.truffle.api.bytecode.LocalAccessor;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.test.TypeSystemTest.EmptyTypeSystem;
 import com.oracle.truffle.api.dsl.Bind;
@@ -303,30 +303,30 @@ public class BoxingEliminationTypeSystemTest extends AbstractInstructionTest {
         }
 
         @Operation
-        @ConstantOperand(type = LocalSetter.class)
+        @ConstantOperand(type = LocalAccessor.class)
         static final class StoreLocalCustom {
 
             @Specialization
             @ForceQuickening
-            static void doInt(VirtualFrame frame, LocalSetter s, int value,
+            static void doInt(VirtualFrame frame, LocalAccessor s, int value,
                             @Bind BytecodeNode bytecode,
                             @Bind("$bytecodeIndex") int bci) {
-                s.setInt(bytecode, bci, frame, value);
+                s.setInt(bytecode, frame, value);
             }
 
             @Specialization(replaces = "doInt")
             @ForceQuickening
-            static void doLong(VirtualFrame frame, LocalSetter s, long value,
+            static void doLong(VirtualFrame frame, LocalAccessor s, long value,
                             @Bind BytecodeNode bytecode,
                             @Bind("$bytecodeIndex") int bci) {
-                s.setLong(bytecode, bci, frame, value);
+                s.setLong(bytecode, frame, value);
             }
 
             @Specialization(replaces = {"doInt", "doLong"})
-            static void doGeneric(VirtualFrame frame, LocalSetter s, Object value,
+            static void doGeneric(VirtualFrame frame, LocalAccessor s, Object value,
                             @Bind BytecodeNode bytecode,
                             @Bind("$bytecodeIndex") int bci) {
-                s.setObject(bytecode, bci, frame, value);
+                s.setObject(bytecode, frame, value);
             }
 
         }

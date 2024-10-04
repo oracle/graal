@@ -3161,23 +3161,10 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         BytecodeNode contBytecode = cont.getBytecodeLocation().getBytecodeNode();
         assertThrows(IllegalArgumentException.class, () -> contBytecode.getLocalValues(-1, frame));
         assertThrows(IllegalArgumentException.class, () -> contBytecode.getLocalValue(-1, frame, localOffset));
-        assertThrows(IllegalArgumentException.class, () -> contBytecode.getLocalValueInt(-1, frame, localOffset));
-        assertThrows(IllegalArgumentException.class, () -> contBytecode.getLocalValueFloat(-1, frame, localOffset));
-        assertThrows(IllegalArgumentException.class, () -> contBytecode.getLocalValueLong(-1, frame, localOffset));
-        assertThrows(IllegalArgumentException.class, () -> contBytecode.getLocalValueDouble(-1, frame, localOffset));
-        assertThrows(IllegalArgumentException.class, () -> contBytecode.getLocalValueShort(-1, frame, localOffset));
-        assertThrows(IllegalArgumentException.class, () -> contBytecode.getLocalValueByte(-1, frame, localOffset));
         assertThrows(IllegalArgumentException.class, () -> contBytecode.getLocalValueBoolean(-1, frame, localOffset));
 
         assertThrows(IllegalArgumentException.class, () -> contBytecode.setLocalValues(-1, frame, new Object[]{"hello"}));
         assertThrows(IllegalArgumentException.class, () -> contBytecode.setLocalValue(-1, frame, localOffset, "hello"));
-        assertThrows(IllegalArgumentException.class, () -> contBytecode.setLocalValueInt(-1, frame, localOffset, 42));
-        assertThrows(IllegalArgumentException.class, () -> contBytecode.setLocalValueFloat(-1, frame, localOffset, 3.14f));
-        assertThrows(IllegalArgumentException.class, () -> contBytecode.setLocalValueLong(-1, frame, localOffset, 42L));
-        assertThrows(IllegalArgumentException.class, () -> contBytecode.setLocalValueDouble(-1, frame, localOffset, 4.0d));
-        assertThrows(IllegalArgumentException.class, () -> contBytecode.setLocalValueShort(-1, frame, localOffset, (short) 24));
-        assertThrows(IllegalArgumentException.class, () -> contBytecode.setLocalValueByte(-1, frame, localOffset, (byte) 4));
-        assertThrows(IllegalArgumentException.class, () -> contBytecode.setLocalValueBoolean(-1, frame, localOffset, true));
 
     }
 }
