@@ -456,7 +456,8 @@ public abstract class BytecodeNode extends Node {
     /**
      * Returns a new array containing the current value of each local in the frame. This method
      * should only be used for slow-path use cases (like frame introspection). Prefer regular local
-     * load operations (via {@code LoadLocal} operations) when possible.
+     * load operations (via {@code LoadLocal} operations) when possible. If not possible using
+     * {@link LocalAccessor} should be preferred over using this method.
      * <p>
      * An operation can use this method by binding the bytecode node to a specialization parameter
      * (via {@code @Bind("$bytecodeNode")}) and then invoking the method on the bytecode node.
@@ -490,8 +491,9 @@ public abstract class BytecodeNode extends Node {
     /**
      * Returns the current value of the local at offset {@code localOffset} in the frame. This
      * method should be used for uncommon scenarios, like when a node needs to read a local directly
-     * from the frame. Prefer reading locals directly in the bytecode (via {@code LoadLocal}
-     * operations) when possible.
+     * from the frame. Prefer regular local load operations (via {@code LoadLocal} operations) when
+     * possible. If not possible using {@link LocalAccessor} should be preferred over using this
+     * method.
      *
      * @param bytecodeIndex the current bytecode index of the given frame. A valid bytecode index
      *            can be obtained by calling {@link BytecodeLocation#getBytecodeIndex()} or
@@ -506,108 +508,6 @@ public abstract class BytecodeNode extends Node {
      * @since 24.2
      */
     public abstract Object getLocalValue(int bytecodeIndex, Frame frame, int localOffset);
-
-    /**
-     * Returns the current int value of the local at offset {@code localOffset} in the frame. Throws
-     * {@link UnexpectedResultException} if the value is not an int.
-     *
-     * @see #getLocalValue(int, Frame, int)
-     * @since 24.2
-     */
-    public int getLocalValueInt(int bytecodeIndex, Frame frame, int localOffset) throws UnexpectedResultException {
-        Object value = getLocalValue(bytecodeIndex, frame, localOffset);
-        if (value instanceof Integer i) {
-            return i;
-        } else {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new UnexpectedResultException(value);
-        }
-    }
-
-    /**
-     * Returns the current float value of the local at offset {@code localOffset} in the frame.
-     * Throws {@link UnexpectedResultException} if the value is not a float.
-     *
-     * @see #getLocalValue(int, Frame, int)
-     * @since 24.2
-     */
-    public float getLocalValueFloat(int bytecodeIndex, Frame frame, int localOffset) throws UnexpectedResultException {
-        Object value = getLocalValue(bytecodeIndex, frame, localOffset);
-        if (value instanceof Float i) {
-            return i;
-        } else {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new UnexpectedResultException(value);
-        }
-    }
-
-    /**
-     * Returns the current long value of the local at offset {@code localOffset} in the frame.
-     * Throws {@link UnexpectedResultException} if the value is not a long.
-     *
-     * @see #getLocalValue(int, Frame, int)
-     * @since 24.2
-     */
-    public long getLocalValueLong(int bytecodeIndex, Frame frame, int localOffset) throws UnexpectedResultException {
-        Object value = getLocalValue(bytecodeIndex, frame, localOffset);
-        if (value instanceof Long i) {
-            return i;
-        } else {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new UnexpectedResultException(value);
-        }
-    }
-
-    /**
-     * Returns the current double value of the local at offset {@code localOffset} in the frame.
-     * Throws {@link UnexpectedResultException} if the value is not a double.
-     *
-     * @see #getLocalValue(int, Frame, int)
-     * @since 24.2
-     */
-    public double getLocalValueDouble(int bytecodeIndex, Frame frame, int localOffset) throws UnexpectedResultException {
-        Object value = getLocalValue(bytecodeIndex, frame, localOffset);
-        if (value instanceof Double i) {
-            return i;
-        } else {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new UnexpectedResultException(value);
-        }
-    }
-
-    /**
-     * Returns the current short value of the local at offset {@code localOffset} in the frame.
-     * Throws {@link UnexpectedResultException} if the value is not a short.
-     *
-     * @see #getLocalValue(int, Frame, int)
-     * @since 24.2
-     */
-    public short getLocalValueShort(int bytecodeIndex, Frame frame, int localOffset) throws UnexpectedResultException {
-        Object value = getLocalValue(bytecodeIndex, frame, localOffset);
-        if (value instanceof Short i) {
-            return i;
-        } else {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new UnexpectedResultException(value);
-        }
-    }
-
-    /**
-     * Returns the current byte value of the local at offset {@code localOffset} in the frame.
-     * Throws {@link UnexpectedResultException} if the value is not a byte.
-     *
-     * @see #getLocalValue(int, Frame, int)
-     * @since 24.2
-     */
-    public byte getLocalValueByte(int bytecodeIndex, Frame frame, int localOffset) throws UnexpectedResultException {
-        Object value = getLocalValue(bytecodeIndex, frame, localOffset);
-        if (value instanceof Byte i) {
-            return i;
-        } else {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new UnexpectedResultException(value);
-        }
-    }
 
     /**
      * Returns the current boolean value of the local at offset {@code localOffset} in the frame.
@@ -723,7 +623,7 @@ public abstract class BytecodeNode extends Node {
     /**
      * Updates the values of the live locals in the frame. This method should be used for uncommon
      * scenarios, like setting locals in the prolog/epilog or from another root node. Prefer setting
-     * locals directly in the bytecode (via {@code StoreLocal} operations or {@link LocalSetter})
+     * locals directly in the bytecode (via {@code StoreLocal} operations or {@link LocalAccessor})
      * when possible.
      * <p>
      *
@@ -838,80 +738,185 @@ public abstract class BytecodeNode extends Node {
     public abstract void setLocalValue(int bytecodeIndex, Frame frame, int localOffset, Object value);
 
     /**
-     * Updates the current value of the local at offset {@code localOffset} in the frame to the
-     * given int value.
+     * Internal method to be implemented by generated code.
      *
      * @since 24.2
-     * @see #setLocalValue(int, Frame, int, Object)
      */
-    public void setLocalValueInt(int bytecodeIndex, Frame frame, int localOffset, int value) {
-        setLocalValue(bytecodeIndex, frame, localOffset, value);
+    protected abstract Object getLocalValueInternal(Frame frame, int localOffset, int localIndex);
+
+    /**
+     * Internal method to be implemented by generated code.
+     *
+     * @since 24.2
+     */
+    protected boolean getLocalValueInternalBoolean(Frame frame, int localOffset, int localIndex) throws UnexpectedResultException {
+        Object value = getLocalValueInternal(frame, localOffset, localIndex);
+        if (value instanceof Boolean i) {
+            return i;
+        } else {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new UnexpectedResultException(value);
+        }
     }
 
     /**
-     * Updates the current value of the local at offset {@code localOffset} in the frame to the
-     * given long value.
+     * Internal method to be implemented by generated code.
      *
      * @since 24.2
-     * @see #setLocalValue(int, Frame, int, Object)
      */
-    public void setLocalValueLong(int bytecodeIndex, Frame frame, int localOffset, long value) {
-        setLocalValue(bytecodeIndex, frame, localOffset, value);
+    protected byte getLocalValueInternalByte(Frame frame, int localOffset, int localIndex) throws UnexpectedResultException {
+        Object value = getLocalValueInternal(frame, localOffset, localIndex);
+        if (value instanceof Byte i) {
+            return i;
+        } else {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new UnexpectedResultException(value);
+        }
     }
 
     /**
-     * Updates the current value of the local at offset {@code localOffset} in the frame to the
-     * given float value.
+     * Internal method to be implemented by generated code.
      *
      * @since 24.2
-     * @see #setLocalValue(int, Frame, int, Object)
      */
-    public void setLocalValueFloat(int bytecodeIndex, Frame frame, int localOffset, float value) {
-        setLocalValue(bytecodeIndex, frame, localOffset, value);
+    protected short getLocalValueInternalShort(Frame frame, int localOffset, int localIndex) throws UnexpectedResultException {
+        Object value = getLocalValueInternal(frame, localOffset, localIndex);
+        if (value instanceof Short i) {
+            return i;
+        } else {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new UnexpectedResultException(value);
+        }
     }
 
     /**
-     * Updates the current value of the local at offset {@code localOffset} in the frame to the
-     * given double value.
+     * Internal method to be implemented by generated code.
      *
      * @since 24.2
-     * @see #setLocalValue(int, Frame, int, Object)
      */
-    public void setLocalValueDouble(int bytecodeIndex, Frame frame, int localOffset, double value) {
-        setLocalValue(bytecodeIndex, frame, localOffset, value);
+    protected int getLocalValueInternalInt(Frame frame, int localOffset, int localIndex) throws UnexpectedResultException {
+        Object value = getLocalValueInternal(frame, localOffset, localIndex);
+        if (value instanceof Integer i) {
+            return i;
+        } else {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new UnexpectedResultException(value);
+        }
     }
 
     /**
-     * Updates the current value of the local at offset {@code localOffset} in the frame to the
-     * given short value.
+     * Internal method to be implemented by generated code.
      *
      * @since 24.2
-     * @see #setLocalValue(int, Frame, int, Object)
      */
-    public void setLocalValueShort(int bytecodeIndex, Frame frame, int localOffset, short value) {
-        setLocalValue(bytecodeIndex, frame, localOffset, value);
+    protected long getLocalValueInternalLong(Frame frame, int localOffset, int localIndex) throws UnexpectedResultException {
+        Object value = getLocalValueInternal(frame, localOffset, localIndex);
+        if (value instanceof Long i) {
+            return i;
+        } else {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new UnexpectedResultException(value);
+        }
     }
 
     /**
-     * Updates the current value of the local at offset {@code localOffset} in the frame to the
-     * given byte value.
+     * Internal method to be implemented by generated code.
      *
      * @since 24.2
-     * @see #setLocalValue(int, Frame, int, Object)
      */
-    public void setLocalValueByte(int bytecodeIndex, Frame frame, int localOffset, byte value) {
-        setLocalValue(bytecodeIndex, frame, localOffset, value);
+    protected float getLocalValueInternalFloat(Frame frame, int localOffset, int localIndex) throws UnexpectedResultException {
+        Object value = getLocalValueInternal(frame, localOffset, localIndex);
+        if (value instanceof Float i) {
+            return i;
+        } else {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new UnexpectedResultException(value);
+        }
     }
 
     /**
-     * Updates the current value of the local at offset {@code localOffset} in the frame to the
-     * given boolean value.
+     * Internal method to be implemented by generated code.
      *
      * @since 24.2
-     * @see #setLocalValue(int, Frame, int, Object)
      */
-    public void setLocalValueBoolean(int bytecodeIndex, Frame frame, int localOffset, boolean value) {
-        setLocalValue(bytecodeIndex, frame, localOffset, value);
+    protected double getLocalValueInternalDouble(Frame frame, int localOffset, int localIndex) throws UnexpectedResultException {
+        Object value = getLocalValueInternal(frame, localOffset, localIndex);
+        if (value instanceof Double i) {
+            return i;
+        } else {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new UnexpectedResultException(value);
+        }
+    }
+
+    /**
+     * Internal method to be implemented by generated code.
+     *
+     * @since 24.2
+     */
+    protected abstract void setLocalValueInternal(Frame frame, int localOffset, int localIndex, Object value);
+
+    /**
+     * Internal method to be implemented by generated code.
+     *
+     * @since 24.2
+     */
+    protected void setLocalValueInternalBoolean(Frame frame, int localOffset, int localIndex, boolean value) {
+        setLocalValueInternal(frame, localOffset, localIndex, value);
+    }
+
+    /**
+     * Internal method to be implemented by generated code.
+     *
+     * @since 24.2
+     */
+    protected void setLocalValueInternalByte(Frame frame, int localOffset, int localIndex, byte value) {
+        setLocalValueInternal(frame, localOffset, localIndex, value);
+    }
+
+    /**
+     * Internal method to be implemented by generated code.
+     *
+     * @since 24.2
+     */
+    protected void setLocalValueInternalShort(Frame frame, int localOffset, int localIndex, short value) {
+        setLocalValueInternal(frame, localOffset, localIndex, value);
+    }
+
+    /**
+     * Internal method to be implemented by generated code.
+     *
+     * @since 24.2
+     */
+    protected void setLocalValueInternalInt(Frame frame, int localOffset, int localIndex, int value) {
+        setLocalValueInternal(frame, localOffset, localIndex, value);
+    }
+
+    /**
+     * Internal method to be implemented by generated code.
+     *
+     * @since 24.2
+     */
+    protected void setLocalValueInternalLong(Frame frame, int localOffset, int localIndex, long value) {
+        setLocalValueInternal(frame, localOffset, localIndex, value);
+    }
+
+    /**
+     * Internal method to be implemented by generated code.
+     *
+     * @since 24.2
+     */
+    protected void setLocalValueInternalFloat(Frame frame, int localOffset, int localIndex, float value) {
+        setLocalValueInternal(frame, localOffset, localIndex, value);
+    }
+
+    /**
+     * Internal method to be implemented by generated code.
+     *
+     * @since 24.2
+     */
+    protected void setLocalValueInternalDouble(Frame frame, int localOffset, int localIndex, double value) {
+        setLocalValueInternal(frame, localOffset, localIndex, value);
     }
 
     /**

@@ -447,11 +447,11 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             TypeMirror builderType;
             TypeMirror constantType;
             OperationArgument.Encoding encoding;
-            if (ElementUtils.typeEquals(constantOperand.type(), types.LocalSetter)) {
+            if (ElementUtils.typeEquals(constantOperand.type(), types.LocalAccessor)) {
                 builderType = types.BytecodeLocal;
                 constantType = constantOperand.type();
                 encoding = OperationArgument.Encoding.LOCAL;
-            } else if (ElementUtils.typeEquals(constantOperand.type(), types.LocalSetterRange)) {
+            } else if (ElementUtils.typeEquals(constantOperand.type(), types.LocalRangeAccessor)) {
                 builderType = new ArrayCodeTypeMirror(types.BytecodeLocal);
                 constantType = constantOperand.type();
                 encoding = OperationArgument.Encoding.LOCAL_ARRAY;

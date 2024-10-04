@@ -71,11 +71,22 @@ public abstract class BytecodeLocal {
     }
 
     /**
-     * Returns the local index used when accessing local values with a local accessor like
+     * Returns the local offset used when accessing local values with a local accessor like
      * {@link BytecodeNode#getLocalValue(int, Frame, int)}.
      *
      * @since 24.2
      */
     public abstract int getLocalOffset();
+
+    /**
+     * Returns the index when accessing into the locals table with {@link BytecodeNode#getLocals()}.
+     * The local index is guaranteed to be equal to {@link #getLocalOffset()} if
+     * {@link GenerateBytecode#enableLocalScoping() block scoping} is set to <code>false</code>,
+     * otherwise and by default the local index must not be used for local accessor methods like
+     * {@link BytecodeNode#getLocalValue(int, Frame, int)}.
+     *
+     * @since 24.2
+     */
+    public abstract int getLocalIndex();
 
 }

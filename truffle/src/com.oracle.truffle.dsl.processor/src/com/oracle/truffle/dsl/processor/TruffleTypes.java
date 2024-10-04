@@ -131,6 +131,7 @@ public class TruffleTypes {
     public static final String FrameDescriptor_Name = "com.oracle.truffle.api.frame.FrameDescriptor";
     public static final String FrameDescriptor_Builder_Name = "com.oracle.truffle.api.frame.FrameDescriptor.Builder";
     public static final String FrameSlotKind_Name = "com.oracle.truffle.api.frame.FrameSlotKind";
+    public static final String FrameSlotTypeException_Name = "com.oracle.truffle.api.frame.FrameSlotTypeException";
     public static final String FinalBitSet_Name = "com.oracle.truffle.api.utilities.FinalBitSet";
     public static final String HostCompilerDirectives_Name = "com.oracle.truffle.api.HostCompilerDirectives";
     public static final String HostCompilerDirectives_BytecodeInterpreterSwitch_Name = "com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch";
@@ -192,6 +193,7 @@ public class TruffleTypes {
     public final DeclaredType FrameDescriptor = c.getDeclaredType(FrameDescriptor_Name);
     public final DeclaredType FrameDescriptor_Builder = c.getDeclaredType(FrameDescriptor_Builder_Name);
     public final DeclaredType FrameSlotKind = c.getDeclaredType(FrameSlotKind_Name);
+    public final DeclaredType FrameSlotTypeException = c.getDeclaredType(FrameSlotTypeException_Name);
     public final DeclaredType FinalBitSet = c.getDeclaredType(FinalBitSet_Name);
     public final DeclaredType HostCompilerDirectives = c.getDeclaredType(HostCompilerDirectives_Name);
     public final DeclaredType HostCompilerDirectives_BytecodeInterpreterSwitch = c.getDeclaredType(HostCompilerDirectives_BytecodeInterpreterSwitch_Name);
@@ -381,8 +383,8 @@ public class TruffleTypes {
     public static final String GenerateBytecodeTestVariants_Name = "com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants";
     public static final String GenerateBytecodeTestVariants_Variant_Name = "com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants.Variant";
     public static final String ForceQuickening_Name = "com.oracle.truffle.api.bytecode.ForceQuickening";
-    public static final String LocalSetter_Name = "com.oracle.truffle.api.bytecode.LocalSetter";
-    public static final String LocalSetterRange_Name = "com.oracle.truffle.api.bytecode.LocalSetterRange";
+    public static final String LocalAccessor_Name = "com.oracle.truffle.api.bytecode.LocalAccessor";
+    public static final String LocalRangeAccessor_Name = "com.oracle.truffle.api.bytecode.LocalRangeAccessor";
     public static final String Operation_Name = "com.oracle.truffle.api.bytecode.Operation";
     public static final String OperationProxy_Name = "com.oracle.truffle.api.bytecode.OperationProxy";
     public static final String OperationProxy_Proxyable_Name = "com.oracle.truffle.api.bytecode.OperationProxy.Proxyable";
@@ -443,8 +445,8 @@ public class TruffleTypes {
     public final DeclaredType GenerateBytecodeTestVariants = c.getDeclaredTypeOptional(GenerateBytecodeTestVariants_Name);
     public final DeclaredType GenerateBytecodeTestVariant_Variant = c.getDeclaredTypeOptional(GenerateBytecodeTestVariants_Variant_Name);
     public final DeclaredType ForceQuickening = c.getDeclaredTypeOptional(ForceQuickening_Name);
-    public final DeclaredType LocalSetter = c.getDeclaredTypeOptional(LocalSetter_Name);
-    public final DeclaredType LocalSetterRange = c.getDeclaredTypeOptional(LocalSetterRange_Name);
+    public final DeclaredType LocalAccessor = c.getDeclaredTypeOptional(LocalAccessor_Name);
+    public final DeclaredType LocalRangeAccessor = c.getDeclaredTypeOptional(LocalRangeAccessor_Name);
     public final DeclaredType Operation = c.getDeclaredTypeOptional(Operation_Name);
     public final DeclaredType OperationProxy = c.getDeclaredTypeOptional(OperationProxy_Name);
     public final DeclaredType Prolog = c.getDeclaredTypeOptional(Prolog_Name);

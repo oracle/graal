@@ -46,7 +46,7 @@ import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Instrumentation;
-import com.oracle.truffle.api.bytecode.LocalSetter;
+import com.oracle.truffle.api.bytecode.LocalAccessor;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.test.DebugBytecodeRootNode;
 import com.oracle.truffle.api.dsl.Bind;
@@ -483,20 +483,20 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
         }
 
         @Operation
-        @ConstantOperand(type = LocalSetter.class)
+        @ConstantOperand(type = LocalAccessor.class)
         static final class Increment {
             @Specialization
-            public static void perform(VirtualFrame frame, LocalSetter variable, int currentValue,
+            public static void perform(VirtualFrame frame, LocalAccessor variable, int currentValue,
                             @Bind BytecodeNode bytecodeNode, @Bind("$bytecodeIndex") int bci) {
-                variable.setInt(bytecodeNode, bci, frame, currentValue + 1);
+                variable.setInt(bytecodeNode, frame, currentValue + 1);
             }
         }
 
         @Operation
-        @ConstantOperand(type = LocalSetter.class)
+        @ConstantOperand(type = LocalAccessor.class)
         static final class IncrementIfCompiled {
             @Specialization
-            public static void perform(VirtualFrame frame, LocalSetter variable, int currentValue,
+            public static void perform(VirtualFrame frame, LocalAccessor variable, int currentValue,
                             @Bind BytecodeNode bytecodeNode, @Bind("$bytecodeIndex") int bci) {
                 /**
                  * NB: this is implemented as one operation rather than a built-in IfThen operation
@@ -504,7 +504,7 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
                  * dead and we'd deopt on OSR entry.
                  */
                 if (CompilerDirectives.inCompiledCode()) {
-                    variable.setInt(bytecodeNode, bci, frame, currentValue + 1);
+                    variable.setInt(bytecodeNode, frame, currentValue + 1);
                 }
             }
         }
@@ -551,20 +551,20 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
         }
 
         @Operation
-        @ConstantOperand(type = LocalSetter.class)
+        @ConstantOperand(type = LocalAccessor.class)
         static final class Increment {
             @Specialization
-            public static void perform(VirtualFrame frame, LocalSetter variable, int currentValue,
+            public static void perform(VirtualFrame frame, LocalAccessor variable, int currentValue,
                             @Bind BytecodeNode bytecodeNode, @Bind("$bytecodeIndex") int bci) {
-                variable.setInt(bytecodeNode, bci, frame, currentValue + 1);
+                variable.setInt(bytecodeNode, frame, currentValue + 1);
             }
         }
 
         @Operation
-        @ConstantOperand(type = LocalSetter.class)
+        @ConstantOperand(type = LocalAccessor.class)
         static final class IncrementIfCompiled {
             @Specialization
-            public static void perform(VirtualFrame frame, LocalSetter variable, int currentValue,
+            public static void perform(VirtualFrame frame, LocalAccessor variable, int currentValue,
                             @Bind BytecodeNode bytecodeNode, @Bind("$bytecodeIndex") int bci) {
                 /**
                  * NB: this is implemented as one operation rather than a built-in IfThen operation
@@ -572,7 +572,7 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
                  * dead and we'd deopt on OSR entry.
                  */
                 if (CompilerDirectives.inCompiledCode()) {
-                    variable.setInt(bytecodeNode, bci, frame, currentValue + 1);
+                    variable.setInt(bytecodeNode, frame, currentValue + 1);
                 }
             }
         }
