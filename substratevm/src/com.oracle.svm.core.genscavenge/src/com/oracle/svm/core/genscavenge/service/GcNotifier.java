@@ -126,7 +126,10 @@ public class GcNotifier {
          * We don't need to drain all requests since signals queue at the semaphore level. The rest
          * of the requests will be handled in subsequent calls to this method by the sevice thread.
          */
-        updateCurrentRequest();
+        if (!updateCurrentRequest()) {
+            // No new requests.
+            return;
+        }
 
         /*
          * Iterate to figure out which gc bean to send notifications too. Match with name in
