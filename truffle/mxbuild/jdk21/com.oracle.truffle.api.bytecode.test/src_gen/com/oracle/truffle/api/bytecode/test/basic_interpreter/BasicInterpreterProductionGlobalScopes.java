@@ -25,8 +25,8 @@ import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.ContinuationRootNode;
 import com.oracle.truffle.api.bytecode.ExceptionHandler;
 import com.oracle.truffle.api.bytecode.Instruction;
-import com.oracle.truffle.api.bytecode.LocalSetter;
-import com.oracle.truffle.api.bytecode.LocalSetterRange;
+import com.oracle.truffle.api.bytecode.LocalAccessor;
+import com.oracle.truffle.api.bytecode.LocalRangeAccessor;
 import com.oracle.truffle.api.bytecode.LocalVariable;
 import com.oracle.truffle.api.bytecode.SourceInformation;
 import com.oracle.truffle.api.bytecode.SourceInformationTree;
@@ -52,6 +52,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameExtensions;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
@@ -608,22 +609,22 @@ import java.util.function.Supplier;
  *     kind: CUSTOM
  *     encoding: [89 : short, setter (const) : int, node : int, child0 (bci) : int]
  *     nodeType: TeeLocal
- *     signature: Object (LocalSetter, Object)
+ *     signature: Object (LocalAccessor, Object)
  *   - Instruction c.TeeLocal$Long
  *     kind: CUSTOM
  *     encoding: [90 : short, setter (const) : int, node : int, child0 (bci) : int]
  *     nodeType: TeeLocal
- *     signature: long (LocalSetter, long)
+ *     signature: long (LocalAccessor, long)
  *   - Instruction c.TeeLocal$Long$unboxed
  *     kind: CUSTOM
  *     encoding: [91 : short, setter (const) : int, node : int, child0 (bci) : int]
  *     nodeType: TeeLocal
- *     signature: long (LocalSetter, long)
+ *     signature: long (LocalAccessor, long)
  *   - Instruction c.TeeLocalRange
  *     kind: CUSTOM
  *     encoding: [92 : short, setter (const) : int, node : int]
  *     nodeType: TeeLocalRange
- *     signature: Object (LocalSetterRange, Object)
+ *     signature: Object (LocalRangeAccessor, Object)
  *   - Instruction c.Invoke
  *     kind: CUSTOM
  *     encoding: [93 : short, node : int]
@@ -972,7 +973,12 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
     }
 
     @Override
+    @ExplodeLoop
     public Object execute(VirtualFrame frame) {
+        // Temporary until we can use FrameDescriptor.newBuilder().illegalDefaultValue().
+        for (int slot = 0; slot < maxLocals; slot++) {
+            FRAMES.clear(frame, slot);
+        }
         return continueAt(bytecode, 0, maxLocals, frame, frame, null);
     }
 
@@ -3862,182 +3868,9 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
             return locals.length / LOCALS_LENGTH;
         }
 
-        @Override
-        public final Object getLocalValue(int bci, Frame frame, int localOffset) {
-            assert validateBytecodeIndex(bci);
-            CompilerAsserts.partialEvaluationConstant(bci);
-            CompilerAsserts.partialEvaluationConstant(localOffset);
-            assert localOffset >= 0 && localOffset < getLocalCount(bci) : "Invalid out-of-bounds local offset provided.";
-            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
-            int frameIndex = USER_LOCALS_START_INDEX + localOffset;
-            try {
-                FrameSlotKind kind;
-                if (CompilerDirectives.inInterpreter()) {
-                    // Resolving the local index is expensive. Don't do it in the interpreter.
-                    kind = FrameSlotKind.fromTag(frame.getTag(frameIndex));
-                } else {
-                    kind = getCachedLocalKind(frame, frameIndex);
-                }
-                switch (kind) {
-                    case Boolean :
-                        return frame.expectBoolean(frameIndex);
-                    case Long :
-                        return frame.expectLong(frameIndex);
-                    case Object :
-                        return frame.expectObject(frameIndex);
-                    case Illegal :
-                        return frame.getFrameDescriptor().getDefaultValue();
-                    default :
-                        throw CompilerDirectives.shouldNotReachHere("unexpected slot");
-                }
-            } catch (UnexpectedResultException ex) {
-                return ex.getResult();
-            }
-        }
+        abstract FrameSlotKind getCachedLocalKindInternal(int frameIndex);
 
-        @Override
-        public void setLocalValue(int bci, Frame frame, int localOffset, Object value) {
-            assert validateBytecodeIndex(bci);
-            CompilerAsserts.partialEvaluationConstant(bci);
-            CompilerAsserts.partialEvaluationConstant(localOffset);
-            assert localOffset >= 0 && localOffset < getLocalCount(bci) : "Invalid out-of-bounds local offset provided.";
-            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
-            int frameIndex = USER_LOCALS_START_INDEX + localOffset;
-            setLocalValueImpl(frame, frameIndex, value);
-        }
-
-        private void setLocalValueImpl(Frame frame, int frameIndex, Object value) {
-            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
-            FrameSlotKind oldKind = getCachedLocalKind(frame, frameIndex);
-            FrameSlotKind newKind;
-            switch (oldKind) {
-                case Boolean :
-                    if (value instanceof Boolean booleanValue) {
-                        frame.setBoolean(frameIndex, booleanValue);
-                        return;
-                    } else {
-                        newKind = FrameSlotKind.Object;
-                    }
-                    break;
-                case Long :
-                    if (value instanceof Long longValue) {
-                        frame.setLong(frameIndex, longValue);
-                        return;
-                    } else {
-                        newKind = FrameSlotKind.Object;
-                    }
-                    break;
-                case Object :
-                    frame.setObject(frameIndex, value);
-                    return;
-                default :
-                    newKind = specializeSlotKind(value);
-                    break;
-            }
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            setCachedLocalKind(frameIndex, newKind);
-            setLocalValueImpl(frame, frameIndex, value);
-        }
-
-        @Override
-        public final boolean getLocalValueBoolean(int bci, Frame frame, int localOffset) throws UnexpectedResultException {
-            assert validateBytecodeIndex(bci);
-            CompilerAsserts.partialEvaluationConstant(bci);
-            CompilerAsserts.partialEvaluationConstant(localOffset);
-            assert localOffset >= 0 && localOffset < getLocalCount(bci) : "Invalid out-of-bounds local offset provided.";
-            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
-            int frameIndex = USER_LOCALS_START_INDEX + localOffset;
-            return frame.expectBoolean(frameIndex);
-        }
-
-        @Override
-        public void setLocalValueBoolean(int bci, Frame frame, int localOffset, boolean value) {
-            assert validateBytecodeIndex(bci);
-            CompilerAsserts.partialEvaluationConstant(bci);
-            CompilerAsserts.partialEvaluationConstant(localOffset);
-            assert localOffset >= 0 && localOffset < getLocalCount(bci) : "Invalid out-of-bounds local offset provided.";
-            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
-            int frameIndex = USER_LOCALS_START_INDEX + localOffset;
-            setLocalValueBooleanImpl(frame, frameIndex, value);
-        }
-
-        private void setLocalValueBooleanImpl(Frame frame, int frameIndex, boolean value) {
-            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
-            FrameSlotKind oldKind = getCachedLocalKind(frame, frameIndex);
-            FrameSlotKind newKind;
-            switch (oldKind) {
-                case Boolean :
-                    frame.setBoolean(frameIndex, value);
-                    return;
-                case Object :
-                    frame.setObject(frameIndex, value);
-                    return;
-                default :
-                    newKind = specializeSlotKind(value);
-                    break;
-            }
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            setCachedLocalKind(frameIndex, newKind);
-            setLocalValueImpl(frame, frameIndex, value);
-        }
-
-        @Override
-        public final long getLocalValueLong(int bci, Frame frame, int localOffset) throws UnexpectedResultException {
-            assert validateBytecodeIndex(bci);
-            CompilerAsserts.partialEvaluationConstant(bci);
-            CompilerAsserts.partialEvaluationConstant(localOffset);
-            assert localOffset >= 0 && localOffset < getLocalCount(bci) : "Invalid out-of-bounds local offset provided.";
-            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
-            int frameIndex = USER_LOCALS_START_INDEX + localOffset;
-            return frame.expectLong(frameIndex);
-        }
-
-        @Override
-        public void setLocalValueLong(int bci, Frame frame, int localOffset, long value) {
-            assert validateBytecodeIndex(bci);
-            CompilerAsserts.partialEvaluationConstant(bci);
-            CompilerAsserts.partialEvaluationConstant(localOffset);
-            assert localOffset >= 0 && localOffset < getLocalCount(bci) : "Invalid out-of-bounds local offset provided.";
-            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
-            int frameIndex = USER_LOCALS_START_INDEX + localOffset;
-            setLocalValueLongImpl(frame, frameIndex, value);
-        }
-
-        private void setLocalValueLongImpl(Frame frame, int frameIndex, long value) {
-            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
-            FrameSlotKind oldKind = getCachedLocalKind(frame, frameIndex);
-            FrameSlotKind newKind;
-            switch (oldKind) {
-                case Long :
-                    frame.setLong(frameIndex, value);
-                    return;
-                case Object :
-                    frame.setObject(frameIndex, value);
-                    return;
-                default :
-                    newKind = specializeSlotKind(value);
-                    break;
-            }
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            setCachedLocalKind(frameIndex, newKind);
-            setLocalValueImpl(frame, frameIndex, value);
-        }
-
-        final FrameSlotKind getCachedLocalKind(Frame frame, int frameIndex) {
-            return getRoot().getFrameDescriptor().getSlotKind(frameIndex);
-        }
-
-        final FrameSlotKind getCachedLocalKindInternal(int frameIndex) {
-            return getRoot().getFrameDescriptor().getSlotKind(frameIndex);
-        }
-
-        private void setCachedLocalKind(int frameIndex, FrameSlotKind kind) {
-            getRoot().getFrameDescriptor().setSlotKind(frameIndex, kind);
-        }
-
-        final void setCachedLocalKindInternal(int frameIndex, FrameSlotKind kind) {
-            getRoot().getFrameDescriptor().setSlotKind(frameIndex, kind);
-        }
+        abstract void setCachedLocalKindInternal(int frameIndex, FrameSlotKind kind);
 
         @Override
         public Object getLocalName(int bci, int localOffset) {
@@ -4117,16 +3950,6 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
             assert start >= 0 : "invalid source start index";
             assert length >= 0 : "invalid source length";
             return sources.get(sourceIndex).createSection(start, length);
-        }
-
-        private static FrameSlotKind specializeSlotKind(Object value) {
-            if (value instanceof Boolean) {
-                return FrameSlotKind.Boolean;
-            } else if (value instanceof Long) {
-                return FrameSlotKind.Long;
-            } else {
-                return FrameSlotKind.Object;
-            }
         }
 
         private static int toStableBytecodeIndex(byte[] bc, int searchBci) {
@@ -7589,6 +7412,215 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
         }
 
         @Override
+        public Object getLocalValue(int bci, Frame frame, int localOffset) {
+            assert validateBytecodeIndex(bci);
+            CompilerAsserts.partialEvaluationConstant(bci);
+            CompilerAsserts.partialEvaluationConstant(localOffset);
+            assert localOffset >= 0 && localOffset < getLocalCount(bci) : "Invalid out-of-bounds local offset provided.";
+            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
+            int frameIndex = USER_LOCALS_START_INDEX + localOffset;
+            try {
+                FrameSlotKind kind;
+                if (CompilerDirectives.inInterpreter()) {
+                    // Resolving the local index is expensive. Don't do it in the interpreter.
+                    kind = FrameSlotKind.fromTag(frame.getTag(frameIndex));
+                } else {
+                    kind = getCachedLocalKind(frame, frameIndex);
+                }
+                switch (kind) {
+                    case Boolean :
+                        return frame.expectBoolean(frameIndex);
+                    case Long :
+                        return frame.expectLong(frameIndex);
+                    case Object :
+                        return frame.expectObject(frameIndex);
+                    case Illegal :
+                        return null;
+                    default :
+                        throw CompilerDirectives.shouldNotReachHere("unexpected slot");
+                }
+            } catch (UnexpectedResultException ex) {
+                return ex.getResult();
+            }
+        }
+
+        @Override
+        public void setLocalValue(int bci, Frame frame, int localOffset, Object value) {
+            assert validateBytecodeIndex(bci);
+            CompilerAsserts.partialEvaluationConstant(bci);
+            CompilerAsserts.partialEvaluationConstant(localOffset);
+            assert localOffset >= 0 && localOffset < getLocalCount(bci) : "Invalid out-of-bounds local offset provided.";
+            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
+            int frameIndex = USER_LOCALS_START_INDEX + localOffset;
+            setLocalValueImpl(frame, frameIndex, value);
+        }
+
+        @Override
+        protected Object getLocalValueInternal(Frame frame, int localOffset, int localIndex) {
+            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
+            int frameIndex = USER_LOCALS_START_INDEX + localOffset;
+            try {
+                FrameSlotKind kind = getCachedLocalKindInternal(localIndex);
+                switch (kind) {
+                    case Boolean :
+                        return frame.expectBoolean(frameIndex);
+                    case Long :
+                        return frame.expectLong(frameIndex);
+                    case Object :
+                        return frame.expectObject(frameIndex);
+                    case Illegal :
+                        throw new FrameSlotTypeException();
+                    default :
+                        throw CompilerDirectives.shouldNotReachHere("unexpected slot");
+                }
+            } catch (UnexpectedResultException ex) {
+                return ex.getResult();
+            }
+        }
+
+        @Override
+        protected void setLocalValueInternal(Frame frame, int localOffset, int localIndex, Object value) {
+            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
+            int frameIndex = USER_LOCALS_START_INDEX + localOffset;
+            FrameSlotKind oldKind = getCachedLocalKindInternal(frameIndex);
+            FrameSlotKind newKind;
+            switch (oldKind) {
+                case Boolean :
+                    if (value instanceof Boolean booleanValue) {
+                        frame.setBoolean(frameIndex, booleanValue);
+                        return;
+                    } else {
+                        newKind = FrameSlotKind.Object;
+                    }
+                    break;
+                case Long :
+                    if (value instanceof Long longValue) {
+                        frame.setLong(frameIndex, longValue);
+                        return;
+                    } else {
+                        newKind = FrameSlotKind.Object;
+                    }
+                    break;
+                case Object :
+                    frame.setObject(frameIndex, value);
+                    return;
+                default :
+                    newKind = specializeSlotKind(value);
+                    break;
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            setCachedLocalKindInternal(frameIndex, newKind);
+            setLocalValueInternal(frame, localOffset, localIndex, value);
+        }
+
+        private void setLocalValueImpl(Frame frame, int frameIndex, Object value) {
+            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
+            FrameSlotKind oldKind = getCachedLocalKind(frame, frameIndex);
+            FrameSlotKind newKind;
+            switch (oldKind) {
+                case Boolean :
+                    if (value instanceof Boolean booleanValue) {
+                        frame.setBoolean(frameIndex, booleanValue);
+                        return;
+                    } else {
+                        newKind = FrameSlotKind.Object;
+                    }
+                    break;
+                case Long :
+                    if (value instanceof Long longValue) {
+                        frame.setLong(frameIndex, longValue);
+                        return;
+                    } else {
+                        newKind = FrameSlotKind.Object;
+                    }
+                    break;
+                case Object :
+                    frame.setObject(frameIndex, value);
+                    return;
+                default :
+                    newKind = specializeSlotKind(value);
+                    break;
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            setCachedLocalKind(frameIndex, newKind);
+            setLocalValueImpl(frame, frameIndex, value);
+        }
+
+        @Override
+        protected boolean getLocalValueInternalBoolean(Frame frame, int localOffset, int localIndex) throws UnexpectedResultException {
+            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
+            return frame.expectBoolean(USER_LOCALS_START_INDEX + localOffset);
+        }
+
+        @Override
+        protected void setLocalValueInternalBoolean(Frame frame, int localOffset, int localIndex, boolean value) {
+            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
+            int frameIndex = USER_LOCALS_START_INDEX + localOffset;
+            FrameSlotKind oldKind = getCachedLocalKindInternal(frameIndex);
+            FrameSlotKind newKind;
+            switch (oldKind) {
+                case Boolean :
+                    frame.setBoolean(frameIndex, value);
+                    return;
+                case Object :
+                    frame.setObject(frameIndex, value);
+                    return;
+                default :
+                    newKind = specializeSlotKind(value);
+                    break;
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            setCachedLocalKindInternal(frameIndex, newKind);
+            setLocalValueInternal(frame, localOffset, localIndex, value);
+        }
+
+        @Override
+        protected long getLocalValueInternalLong(Frame frame, int localOffset, int localIndex) throws UnexpectedResultException {
+            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
+            return frame.expectLong(USER_LOCALS_START_INDEX + localOffset);
+        }
+
+        @Override
+        protected void setLocalValueInternalLong(Frame frame, int localOffset, int localIndex, long value) {
+            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
+            int frameIndex = USER_LOCALS_START_INDEX + localOffset;
+            FrameSlotKind oldKind = getCachedLocalKindInternal(frameIndex);
+            FrameSlotKind newKind;
+            switch (oldKind) {
+                case Long :
+                    frame.setLong(frameIndex, value);
+                    return;
+                case Object :
+                    frame.setObject(frameIndex, value);
+                    return;
+                default :
+                    newKind = specializeSlotKind(value);
+                    break;
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            setCachedLocalKindInternal(frameIndex, newKind);
+            setLocalValueInternal(frame, localOffset, localIndex, value);
+        }
+
+        FrameSlotKind getCachedLocalKind(Frame frame, int frameIndex) {
+            return getRoot().getFrameDescriptor().getSlotKind(frameIndex);
+        }
+
+        private void setCachedLocalKind(int frameIndex, FrameSlotKind kind) {
+            getRoot().getFrameDescriptor().setSlotKind(frameIndex, kind);
+        }
+
+        @Override
+        FrameSlotKind getCachedLocalKindInternal(int frameIndex) {
+            return getRoot().getFrameDescriptor().getSlotKind(frameIndex);
+        }
+
+        @Override
+        void setCachedLocalKindInternal(int frameIndex, FrameSlotKind kind) {
+            getRoot().getFrameDescriptor().setSlotKind(frameIndex, kind);
+        }
+
+        @Override
         AbstractBytecodeNode toCached() {
             return this;
         }
@@ -8215,6 +8247,16 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
         private static void ensureFalseProfile(int[] branchProfiles, int profileIndex) {
             if (ACCESS.readInt(branchProfiles, profileIndex * 2 + 1) == 0) {
                 ACCESS.writeInt(branchProfiles, profileIndex * 2 + 1, 1);
+            }
+        }
+
+        private static FrameSlotKind specializeSlotKind(Object value) {
+            if (value instanceof Boolean) {
+                return FrameSlotKind.Boolean;
+            } else if (value instanceof Long) {
+                return FrameSlotKind.Long;
+            } else {
+                return FrameSlotKind.Object;
             }
         }
 
@@ -9347,13 +9389,13 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
 
         private void doTeeLocal_(VirtualFrame frame, VirtualFrame localFrame, byte[] bc, int bci, int sp) {
             FRAMES.setInt(localFrame, BCI_INDEX, bci);
-            Object result = TeeLocal_Node.UNCACHED.executeUncached(localFrame, ACCESS.uncheckedCast(ACCESS.readObject(constants, BYTES.getIntUnaligned(bc, bci + 2 /* imm setter */)), LocalSetter.class), FRAMES.uncheckedGetObject(frame, sp - 1), frame, this, bc, bci, sp);
+            Object result = TeeLocal_Node.UNCACHED.executeUncached(localFrame, ACCESS.uncheckedCast(ACCESS.readObject(constants, BYTES.getIntUnaligned(bc, bci + 2 /* imm setter */)), LocalAccessor.class), FRAMES.uncheckedGetObject(frame, sp - 1), frame, this, bc, bci, sp);
             FRAMES.setObject(frame, sp - 1, result);
         }
 
         private void doTeeLocalRange_(VirtualFrame frame, VirtualFrame localFrame, byte[] bc, int bci, int sp) {
             FRAMES.setInt(localFrame, BCI_INDEX, bci);
-            Object result = TeeLocalRange_Node.UNCACHED.executeUncached(localFrame, ACCESS.uncheckedCast(ACCESS.readObject(constants, BYTES.getIntUnaligned(bc, bci + 2 /* imm setter */)), LocalSetterRange.class), FRAMES.uncheckedGetObject(frame, sp - 1), frame, this, bc, bci, sp);
+            Object result = TeeLocalRange_Node.UNCACHED.executeUncached(localFrame, ACCESS.uncheckedCast(ACCESS.readObject(constants, BYTES.getIntUnaligned(bc, bci + 2 /* imm setter */)), LocalRangeAccessor.class), FRAMES.uncheckedGetObject(frame, sp - 1), frame, this, bc, bci, sp);
             FRAMES.setObject(frame, sp - 1, result);
         }
 
@@ -9605,6 +9647,86 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
         }
 
         @Override
+        public Object getLocalValue(int bci, Frame frame, int localOffset) {
+            assert validateBytecodeIndex(bci);
+            CompilerAsserts.partialEvaluationConstant(bci);
+            CompilerAsserts.partialEvaluationConstant(localOffset);
+            assert localOffset >= 0 && localOffset < getLocalCount(bci) : "Invalid out-of-bounds local offset provided.";
+            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
+            int frameIndex = USER_LOCALS_START_INDEX + localOffset;
+            if (frame.isObject(frameIndex)) {
+                return frame.getObject(frameIndex);
+            }
+            return null;
+        }
+
+        @Override
+        public void setLocalValue(int bci, Frame frame, int localOffset, Object value) {
+            assert validateBytecodeIndex(bci);
+            CompilerAsserts.partialEvaluationConstant(bci);
+            CompilerAsserts.partialEvaluationConstant(localOffset);
+            assert localOffset >= 0 && localOffset < getLocalCount(bci) : "Invalid out-of-bounds local offset provided.";
+            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
+            int frameIndex = USER_LOCALS_START_INDEX + localOffset;
+            frame.setObject(frameIndex, value);
+        }
+
+        @Override
+        protected Object getLocalValueInternal(Frame frame, int localOffset, int localIndex) {
+            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
+            return frame.getObject(USER_LOCALS_START_INDEX + localOffset);
+        }
+
+        @Override
+        protected void setLocalValueInternal(Frame frame, int localOffset, int localIndex, Object value) {
+            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
+            frame.setObject(USER_LOCALS_START_INDEX + localOffset, value);
+        }
+
+        @Override
+        protected boolean getLocalValueInternalBoolean(Frame frame, int localOffset, int localIndex) throws UnexpectedResultException {
+            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
+            Object value = frame.getObject(USER_LOCALS_START_INDEX + localOffset);
+            if (value instanceof Boolean castValue) {
+                return castValue;
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new UnexpectedResultException(value);
+        }
+
+        @Override
+        protected void setLocalValueInternalBoolean(Frame frame, int localOffset, int localIndex, boolean value) {
+            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
+            frame.setObject(USER_LOCALS_START_INDEX + localOffset, value);
+        }
+
+        @Override
+        protected long getLocalValueInternalLong(Frame frame, int localOffset, int localIndex) throws UnexpectedResultException {
+            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
+            Object value = frame.getObject(USER_LOCALS_START_INDEX + localOffset);
+            if (value instanceof Long castValue) {
+                return castValue;
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new UnexpectedResultException(value);
+        }
+
+        @Override
+        protected void setLocalValueInternalLong(Frame frame, int localOffset, int localIndex, long value) {
+            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
+            frame.setObject(USER_LOCALS_START_INDEX + localOffset, value);
+        }
+
+        @Override
+        FrameSlotKind getCachedLocalKindInternal(int frameIndex) {
+            return FrameSlotKind.Object;
+        }
+
+        @Override
+        void setCachedLocalKindInternal(int frameIndex, FrameSlotKind kind) {
+        }
+
+        @Override
         AbstractBytecodeNode toCached() {
             return new CachedBytecodeNode(this.bytecodes, this.constants, this.handlers, this.locals, this.sourceInfo, this.sources, this.numNodes, this.tagRoot);
         }
@@ -9664,9 +9786,8 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
         @TruffleBoundary
         protected int findBytecodeIndex(FrameInstance frameInstance) {
             Frame frame = frameInstance.getFrame(FrameAccess.READ_ONLY);
-            Frame coroutineFrame = (Frame) frame.getObject(COROUTINE_FRAME_INDEX);
-            if (coroutineFrame != null) {
-                frame = coroutineFrame;
+            if (frame.isObject(COROUTINE_FRAME_INDEX)) {
+                frame = (Frame) frame.getObject(COROUTINE_FRAME_INDEX);
             }
             return frame.getInt(BCI_INDEX);
         }
@@ -12056,7 +12177,7 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
             if (setterValue == null) {
                 throw failArgument("The setterValue parameter must not be null. Constant operands do not permit null values.");
             }
-            int setterIndex = constantPool.addConstant(LocalSetter.constantOf(setterValue));
+            int setterIndex = constantPool.addConstant(LocalAccessor.constantOf(setterValue));
             beforeChild();
             CustomOperationData operationData = new CustomOperationData(new int[] {UNINITIALIZED}, new int[] {setterIndex});
             beginOperation(Operations.TEELOCAL, operationData);
@@ -12124,7 +12245,7 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
             if (setterValue == null) {
                 throw failArgument("The setterValue parameter must not be null. Constant operands do not permit null values.");
             }
-            int setterIndex = constantPool.addConstant(LocalSetterRange.constantOf(setterValue));
+            int setterIndex = constantPool.addConstant(LocalRangeAccessor.constantOf(setterValue));
             beforeChild();
             CustomOperationData operationData = new CustomOperationData(EMPTY_INT_ARRAY, new int[] {setterIndex});
             beginOperation(Operations.TEELOCALRANGE, operationData);
@@ -15524,7 +15645,7 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
                 ensureBytecodeCapacity(newBci);
             }
             BYTES.putShort(bc, bci + 0, instruction);
-            BYTES.putShort(bc, bci + 2 /* imm index */, data0);
+            BYTES.putShort(bc, bci + 2 /* imm 0 */, data0);
             bci = newBci;
             return true;
         }
@@ -15545,7 +15666,7 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
                 ensureBytecodeCapacity(newBci);
             }
             BYTES.putShort(bc, bci + 0, instruction);
-            BYTES.putInt(bc, bci + 2 /* imm branch_target */, data0);
+            BYTES.putInt(bc, bci + 2 /* imm 0 */, data0);
             bci = newBci;
             return true;
         }
@@ -15566,8 +15687,8 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
                 ensureBytecodeCapacity(newBci);
             }
             BYTES.putShort(bc, bci + 0, instruction);
-            BYTES.putShort(bc, bci + 2 /* imm local_offset */, data0);
-            BYTES.putShort(bc, bci + 4 /* imm root_index */, data1);
+            BYTES.putShort(bc, bci + 2 /* imm 0 */, data0);
+            BYTES.putShort(bc, bci + 4 /* imm 1 */, data1);
             bci = newBci;
             return true;
         }
@@ -15588,8 +15709,8 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
                 ensureBytecodeCapacity(newBci);
             }
             BYTES.putShort(bc, bci + 0, instruction);
-            BYTES.putShort(bc, bci + 2 /* imm local_offset */, data0);
-            BYTES.putInt(bc, bci + 4 /* imm child0 */, data1);
+            BYTES.putShort(bc, bci + 2 /* imm 0 */, data0);
+            BYTES.putInt(bc, bci + 4 /* imm 1 */, data1);
             bci = newBci;
             return true;
         }
@@ -15610,8 +15731,8 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
                 ensureBytecodeCapacity(newBci);
             }
             BYTES.putShort(bc, bci + 0, instruction);
-            BYTES.putInt(bc, bci + 2 /* imm child0 */, data0);
-            BYTES.putInt(bc, bci + 6 /* imm child1 */, data1);
+            BYTES.putInt(bc, bci + 2 /* imm 0 */, data0);
+            BYTES.putInt(bc, bci + 6 /* imm 1 */, data1);
             bci = newBci;
             return true;
         }
@@ -15632,9 +15753,9 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
                 ensureBytecodeCapacity(newBci);
             }
             BYTES.putShort(bc, bci + 0, instruction);
-            BYTES.putShort(bc, bci + 2 /* imm local_offset */, data0);
-            BYTES.putShort(bc, bci + 4 /* imm root_index */, data1);
-            BYTES.putInt(bc, bci + 6 /* imm child0 */, data2);
+            BYTES.putShort(bc, bci + 2 /* imm 0 */, data0);
+            BYTES.putShort(bc, bci + 4 /* imm 1 */, data1);
+            BYTES.putInt(bc, bci + 6 /* imm 2 */, data2);
             bci = newBci;
             return true;
         }
@@ -15655,9 +15776,9 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
                 ensureBytecodeCapacity(newBci);
             }
             BYTES.putShort(bc, bci + 0, instruction);
-            BYTES.putInt(bc, bci + 2 /* imm node */, data0);
-            BYTES.putInt(bc, bci + 6 /* imm child0 */, data1);
-            BYTES.putInt(bc, bci + 10 /* imm child1 */, data2);
+            BYTES.putInt(bc, bci + 2 /* imm 0 */, data0);
+            BYTES.putInt(bc, bci + 6 /* imm 1 */, data1);
+            BYTES.putInt(bc, bci + 10 /* imm 2 */, data2);
             bci = newBci;
             return true;
         }
@@ -15872,6 +15993,11 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
             @Override
             public int getLocalOffset() {
                 return frameIndex - USER_LOCALS_START_INDEX;
+            }
+
+            @Override
+            public int getLocalIndex() {
+                return localIndex;
             }
 
         }
@@ -16242,6 +16368,11 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
 
             @Override
             public int getLocalOffset() {
+                throw new IllegalStateException();
+            }
+
+            @Override
+            public int getLocalIndex() {
                 throw new IllegalStateException();
             }
 
@@ -17328,7 +17459,7 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
          * kind: CUSTOM
          * encoding: [89 : short, setter (const) : int, node : int, child0 (bci) : int]
          * nodeType: TeeLocal
-         * signature: Object (LocalSetter, Object)
+         * signature: Object (LocalAccessor, Object)
          */
         private static final short TEE_LOCAL_ = 89;
         /*
@@ -17336,7 +17467,7 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
          * kind: CUSTOM
          * encoding: [90 : short, setter (const) : int, node : int, child0 (bci) : int]
          * nodeType: TeeLocal
-         * signature: long (LocalSetter, long)
+         * signature: long (LocalAccessor, long)
          */
         private static final short TEE_LOCAL$LONG_ = 90;
         /*
@@ -17344,7 +17475,7 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
          * kind: CUSTOM
          * encoding: [91 : short, setter (const) : int, node : int, child0 (bci) : int]
          * nodeType: TeeLocal
-         * signature: long (LocalSetter, long)
+         * signature: long (LocalAccessor, long)
          */
         private static final short TEE_LOCAL$LONG$UNBOXED_ = 91;
         /*
@@ -17352,7 +17483,7 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
          * kind: CUSTOM
          * encoding: [92 : short, setter (const) : int, node : int]
          * nodeType: TeeLocalRange
-         * signature: Object (LocalSetterRange, Object)
+         * signature: Object (LocalRangeAccessor, Object)
          */
         private static final short TEE_LOCAL_RANGE_ = 92;
         /*
@@ -19469,7 +19600,7 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
 
         private Object execute(VirtualFrame frameValue, VirtualFrame $stackFrame, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
             int state_0 = this.state_0_;
-            LocalSetter setterValue_ = ACCESS.uncheckedCast(ACCESS.readObject($bytecode.constants, BYTES.getIntUnaligned($bc, $bci + 2 /* imm setter */)), LocalSetter.class);
+            LocalAccessor setterValue_ = ACCESS.uncheckedCast(ACCESS.readObject($bytecode.constants, BYTES.getIntUnaligned($bc, $bci + 2 /* imm setter */)), LocalAccessor.class);
             Object child0Value_;
             try {
                 child0Value_ = FRAMES.expectObject($stackFrame, $sp - 1);
@@ -19477,20 +19608,18 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 return executeAndSpecialize(frameValue, setterValue_, ex.getResult(), $stackFrame, $bytecode, $bc, $bci, $sp);
             }
-            if (state_0 != 0 /* is SpecializationActive[BasicInterpreter.TeeLocal.doLong(VirtualFrame, LocalSetter, long, BytecodeNode, int)] || SpecializationActive[BasicInterpreter.TeeLocal.doGeneric(VirtualFrame, LocalSetter, Object, BytecodeNode, int)] */) {
-                if ((state_0 & 0b1) != 0 /* is SpecializationActive[BasicInterpreter.TeeLocal.doLong(VirtualFrame, LocalSetter, long, BytecodeNode, int)] */ && child0Value_ instanceof Long) {
+            if (state_0 != 0 /* is SpecializationActive[BasicInterpreter.TeeLocal.doLong(VirtualFrame, LocalAccessor, long, BytecodeNode)] || SpecializationActive[BasicInterpreter.TeeLocal.doGeneric(VirtualFrame, LocalAccessor, Object, BytecodeNode)] */) {
+                if ((state_0 & 0b1) != 0 /* is SpecializationActive[BasicInterpreter.TeeLocal.doLong(VirtualFrame, LocalAccessor, long, BytecodeNode)] */ && child0Value_ instanceof Long) {
                     long child0Value__ = (long) child0Value_;
                     {
                         BytecodeNode bytecode__ = ($bytecode);
-                        int bci__ = ($bci);
-                        return TeeLocal.doLong(frameValue, setterValue_, child0Value__, bytecode__, bci__);
+                        return TeeLocal.doLong(frameValue, setterValue_, child0Value__, bytecode__);
                     }
                 }
-                if ((state_0 & 0b10) != 0 /* is SpecializationActive[BasicInterpreter.TeeLocal.doGeneric(VirtualFrame, LocalSetter, Object, BytecodeNode, int)] */) {
+                if ((state_0 & 0b10) != 0 /* is SpecializationActive[BasicInterpreter.TeeLocal.doGeneric(VirtualFrame, LocalAccessor, Object, BytecodeNode)] */) {
                     {
                         BytecodeNode bytecode__1 = ($bytecode);
-                        int bci__1 = ($bci);
-                        return TeeLocal.doGeneric(frameValue, setterValue_, child0Value_, bytecode__1, bci__1);
+                        return TeeLocal.doGeneric(frameValue, setterValue_, child0Value_, bytecode__1);
                     }
                 }
             }
@@ -19499,7 +19628,7 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
         }
 
         private long executeLong(VirtualFrame frameValue, VirtualFrame $stackFrame, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) throws UnexpectedResultException {
-            LocalSetter setterValue_ = ACCESS.uncheckedCast(ACCESS.readObject($bytecode.constants, BYTES.getIntUnaligned($bc, $bci + 2 /* imm setter */)), LocalSetter.class);
+            LocalAccessor setterValue_ = ACCESS.uncheckedCast(ACCESS.readObject($bytecode.constants, BYTES.getIntUnaligned($bc, $bci + 2 /* imm setter */)), LocalAccessor.class);
             long child0Value_;
             try {
                 child0Value_ = FRAMES.expectLong($stackFrame, $sp - 1);
@@ -19509,13 +19638,12 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
             }
             {
                 BytecodeNode bytecode__ = ($bytecode);
-                int bci__ = ($bci);
-                return TeeLocal.doLong(frameValue, setterValue_, child0Value_, bytecode__, bci__);
+                return TeeLocal.doLong(frameValue, setterValue_, child0Value_, bytecode__);
             }
         }
 
         private long executeLong$unboxed(VirtualFrame frameValue, VirtualFrame $stackFrame, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) throws UnexpectedResultException {
-            LocalSetter setterValue_ = ACCESS.uncheckedCast(ACCESS.readObject($bytecode.constants, BYTES.getIntUnaligned($bc, $bci + 2 /* imm setter */)), LocalSetter.class);
+            LocalAccessor setterValue_ = ACCESS.uncheckedCast(ACCESS.readObject($bytecode.constants, BYTES.getIntUnaligned($bc, $bci + 2 /* imm setter */)), LocalAccessor.class);
             long child0Value_;
             try {
                 child0Value_ = FRAMES.expectLong($stackFrame, $sp - 1);
@@ -19525,38 +19653,33 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
             }
             {
                 BytecodeNode bytecode__ = ($bytecode);
-                int bci__ = ($bci);
-                return TeeLocal.doLong(frameValue, setterValue_, child0Value_, bytecode__, bci__);
+                return TeeLocal.doLong(frameValue, setterValue_, child0Value_, bytecode__);
             }
         }
 
-        private Object executeAndSpecialize(VirtualFrame frameValue, LocalSetter setterValue, Object child0Value, VirtualFrame $stackFrame, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
+        private Object executeAndSpecialize(VirtualFrame frameValue, LocalAccessor setterValue, Object child0Value, VirtualFrame $stackFrame, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
             int state_0 = this.state_0_;
             {
-                int bci__ = 0;
                 BytecodeNode bytecode__ = null;
-                if (((state_0 & 0b10)) == 0 /* is-not SpecializationActive[BasicInterpreter.TeeLocal.doGeneric(VirtualFrame, LocalSetter, Object, BytecodeNode, int)] */ && child0Value instanceof Long) {
+                if (((state_0 & 0b10)) == 0 /* is-not SpecializationActive[BasicInterpreter.TeeLocal.doGeneric(VirtualFrame, LocalAccessor, Object, BytecodeNode)] */ && child0Value instanceof Long) {
                     long child0Value_ = (long) child0Value;
                     bytecode__ = ($bytecode);
-                    bci__ = ($bci);
-                    state_0 = state_0 | 0b1 /* add SpecializationActive[BasicInterpreter.TeeLocal.doLong(VirtualFrame, LocalSetter, long, BytecodeNode, int)] */;
+                    state_0 = state_0 | 0b1 /* add SpecializationActive[BasicInterpreter.TeeLocal.doLong(VirtualFrame, LocalAccessor, long, BytecodeNode)] */;
                     this.state_0_ = state_0;
                     $bytecode.getRoot().onSpecialize(new InstructionImpl($bytecode, $bci, BYTES.getShort($bc, $bci)), "TeeLocal$Long");
                     quicken(state_0, $bytecode, $bc, $bci);
-                    return TeeLocal.doLong(frameValue, setterValue, child0Value_, bytecode__, bci__);
+                    return TeeLocal.doLong(frameValue, setterValue, child0Value_, bytecode__);
                 }
             }
             {
-                int bci__1 = 0;
                 BytecodeNode bytecode__1 = null;
                 bytecode__1 = ($bytecode);
-                bci__1 = ($bci);
-                state_0 = state_0 & 0xfffffffe /* remove SpecializationActive[BasicInterpreter.TeeLocal.doLong(VirtualFrame, LocalSetter, long, BytecodeNode, int)] */;
-                state_0 = state_0 | 0b10 /* add SpecializationActive[BasicInterpreter.TeeLocal.doGeneric(VirtualFrame, LocalSetter, Object, BytecodeNode, int)] */;
+                state_0 = state_0 & 0xfffffffe /* remove SpecializationActive[BasicInterpreter.TeeLocal.doLong(VirtualFrame, LocalAccessor, long, BytecodeNode)] */;
+                state_0 = state_0 | 0b10 /* add SpecializationActive[BasicInterpreter.TeeLocal.doGeneric(VirtualFrame, LocalAccessor, Object, BytecodeNode)] */;
                 this.state_0_ = state_0;
                 $bytecode.getRoot().onSpecialize(new InstructionImpl($bytecode, $bci, BYTES.getShort($bc, $bci)), "TeeLocal$Generic");
                 quicken(state_0, $bytecode, $bc, $bci);
-                return TeeLocal.doGeneric(frameValue, setterValue, child0Value, bytecode__1, bci__1);
+                return TeeLocal.doGeneric(frameValue, setterValue, child0Value, bytecode__1);
             }
         }
 
@@ -19568,14 +19691,14 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
             int state_0 = this.state_0_;
             s = new Object[3];
             s[0] = "doLong";
-            if ((state_0 & 0b1) != 0 /* is SpecializationActive[BasicInterpreter.TeeLocal.doLong(VirtualFrame, LocalSetter, long, BytecodeNode, int)] */) {
+            if ((state_0 & 0b1) != 0 /* is SpecializationActive[BasicInterpreter.TeeLocal.doLong(VirtualFrame, LocalAccessor, long, BytecodeNode)] */) {
                 s[1] = (byte)0b01 /* active */;
                 ArrayList<Object> cached = new ArrayList<>();
                 cached.add(Arrays.<Object>asList());
                 s[2] = cached;
             }
             if (s[1] == null) {
-                if ((state_0 & 0b10) != 0 /* is SpecializationActive[BasicInterpreter.TeeLocal.doGeneric(VirtualFrame, LocalSetter, Object, BytecodeNode, int)] */) {
+                if ((state_0 & 0b10) != 0 /* is SpecializationActive[BasicInterpreter.TeeLocal.doGeneric(VirtualFrame, LocalAccessor, Object, BytecodeNode)] */) {
                     s[1] = (byte)0b10 /* excluded */;
                 } else {
                     s[1] = (byte)0b00 /* inactive */;
@@ -19584,7 +19707,7 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
             data[1] = s;
             s = new Object[3];
             s[0] = "doGeneric";
-            if ((state_0 & 0b10) != 0 /* is SpecializationActive[BasicInterpreter.TeeLocal.doGeneric(VirtualFrame, LocalSetter, Object, BytecodeNode, int)] */) {
+            if ((state_0 & 0b10) != 0 /* is SpecializationActive[BasicInterpreter.TeeLocal.doGeneric(VirtualFrame, LocalAccessor, Object, BytecodeNode)] */) {
                 s[1] = (byte)0b01 /* active */;
                 ArrayList<Object> cached = new ArrayList<>();
                 cached.add(Arrays.<Object>asList());
@@ -19602,7 +19725,7 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
             int oldOperandIndex0 = BYTES.getIntUnaligned($bc, $bci + 10 /* imm child0 */);
             short oldOperand0 = BYTES.getShort($bc, oldOperandIndex0);
             short newOperand0;
-            if ((state_0 & 0b10) == 0 /* only-active SpecializationActive[BasicInterpreter.TeeLocal.doLong(VirtualFrame, LocalSetter, long, BytecodeNode, int)] */
+            if ((state_0 & 0b10) == 0 /* only-active SpecializationActive[BasicInterpreter.TeeLocal.doLong(VirtualFrame, LocalAccessor, long, BytecodeNode)] */
                && (newOperand0 = applyQuickeningLong(oldOperand0)) != -1) {
                 if (isQuickeningLong(BYTES.getShort($bc, $bci))) {
                     newInstruction = Instructions.TEE_LOCAL$LONG$UNBOXED_;
@@ -19626,9 +19749,9 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
         @DenyReplace
         private static final class Uncached extends Node implements UnadoptableNode {
 
-            public Object executeUncached(VirtualFrame frameValue, LocalSetter setterValue, Object child0Value, VirtualFrame $stackFrame, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
+            public Object executeUncached(VirtualFrame frameValue, LocalAccessor setterValue, Object child0Value, VirtualFrame $stackFrame, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                return TeeLocal.doGeneric(frameValue, setterValue, child0Value, ($bytecode), ($bci));
+                return TeeLocal.doGeneric(frameValue, setterValue, child0Value, ($bytecode));
             }
 
         }
@@ -19656,23 +19779,21 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
 
         private Object execute(VirtualFrame frameValue, VirtualFrame $stackFrame, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
             int state_0 = this.state_0_;
-            LocalSetterRange setterValue_ = ACCESS.uncheckedCast(ACCESS.readObject($bytecode.constants, BYTES.getIntUnaligned($bc, $bci + 2 /* imm setter */)), LocalSetterRange.class);
+            LocalRangeAccessor setterValue_ = ACCESS.uncheckedCast(ACCESS.readObject($bytecode.constants, BYTES.getIntUnaligned($bc, $bci + 2 /* imm setter */)), LocalRangeAccessor.class);
             Object child0Value_ = FRAMES.uncheckedGetObject($stackFrame, $sp - 1);
-            if (state_0 != 0 /* is SpecializationActive[BasicInterpreter.TeeLocalRange.doLong(VirtualFrame, LocalSetterRange, long[], BytecodeNode, int)] || SpecializationActive[BasicInterpreter.TeeLocalRange.doGeneric(VirtualFrame, LocalSetterRange, Object[], BytecodeNode, int)] */) {
-                if ((state_0 & 0b1) != 0 /* is SpecializationActive[BasicInterpreter.TeeLocalRange.doLong(VirtualFrame, LocalSetterRange, long[], BytecodeNode, int)] */ && child0Value_ instanceof long[]) {
+            if (state_0 != 0 /* is SpecializationActive[BasicInterpreter.TeeLocalRange.doLong(VirtualFrame, LocalRangeAccessor, long[], BytecodeNode)] || SpecializationActive[BasicInterpreter.TeeLocalRange.doGeneric(VirtualFrame, LocalRangeAccessor, Object[], BytecodeNode)] */) {
+                if ((state_0 & 0b1) != 0 /* is SpecializationActive[BasicInterpreter.TeeLocalRange.doLong(VirtualFrame, LocalRangeAccessor, long[], BytecodeNode)] */ && child0Value_ instanceof long[]) {
                     long[] child0Value__ = (long[]) child0Value_;
                     {
                         BytecodeNode bytecode__ = ($bytecode);
-                        int bci__ = ($bci);
-                        return TeeLocalRange.doLong(frameValue, setterValue_, child0Value__, bytecode__, bci__);
+                        return TeeLocalRange.doLong(frameValue, setterValue_, child0Value__, bytecode__);
                     }
                 }
-                if ((state_0 & 0b10) != 0 /* is SpecializationActive[BasicInterpreter.TeeLocalRange.doGeneric(VirtualFrame, LocalSetterRange, Object[], BytecodeNode, int)] */ && child0Value_ instanceof Object[]) {
+                if ((state_0 & 0b10) != 0 /* is SpecializationActive[BasicInterpreter.TeeLocalRange.doGeneric(VirtualFrame, LocalRangeAccessor, Object[], BytecodeNode)] */ && child0Value_ instanceof Object[]) {
                     Object[] child0Value__ = (Object[]) child0Value_;
                     {
                         BytecodeNode bytecode__1 = ($bytecode);
-                        int bci__1 = ($bci);
-                        return TeeLocalRange.doGeneric(frameValue, setterValue_, child0Value__, bytecode__1, bci__1);
+                        return TeeLocalRange.doGeneric(frameValue, setterValue_, child0Value__, bytecode__1);
                     }
                 }
             }
@@ -19680,32 +19801,28 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
             return executeAndSpecialize(frameValue, setterValue_, child0Value_, $stackFrame, $bytecode, $bc, $bci, $sp);
         }
 
-        private Object executeAndSpecialize(VirtualFrame frameValue, LocalSetterRange setterValue, Object child0Value, VirtualFrame $stackFrame, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
+        private Object executeAndSpecialize(VirtualFrame frameValue, LocalRangeAccessor setterValue, Object child0Value, VirtualFrame $stackFrame, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
             int state_0 = this.state_0_;
             {
-                int bci__ = 0;
                 BytecodeNode bytecode__ = null;
                 if (child0Value instanceof long[]) {
                     long[] child0Value_ = (long[]) child0Value;
                     bytecode__ = ($bytecode);
-                    bci__ = ($bci);
-                    state_0 = state_0 | 0b1 /* add SpecializationActive[BasicInterpreter.TeeLocalRange.doLong(VirtualFrame, LocalSetterRange, long[], BytecodeNode, int)] */;
+                    state_0 = state_0 | 0b1 /* add SpecializationActive[BasicInterpreter.TeeLocalRange.doLong(VirtualFrame, LocalRangeAccessor, long[], BytecodeNode)] */;
                     this.state_0_ = state_0;
                     $bytecode.getRoot().onSpecialize(new InstructionImpl($bytecode, $bci, BYTES.getShort($bc, $bci)), "TeeLocalRange$Long");
-                    return TeeLocalRange.doLong(frameValue, setterValue, child0Value_, bytecode__, bci__);
+                    return TeeLocalRange.doLong(frameValue, setterValue, child0Value_, bytecode__);
                 }
             }
             {
-                int bci__1 = 0;
                 BytecodeNode bytecode__1 = null;
                 if (child0Value instanceof Object[]) {
                     Object[] child0Value_ = (Object[]) child0Value;
                     bytecode__1 = ($bytecode);
-                    bci__1 = ($bci);
-                    state_0 = state_0 | 0b10 /* add SpecializationActive[BasicInterpreter.TeeLocalRange.doGeneric(VirtualFrame, LocalSetterRange, Object[], BytecodeNode, int)] */;
+                    state_0 = state_0 | 0b10 /* add SpecializationActive[BasicInterpreter.TeeLocalRange.doGeneric(VirtualFrame, LocalRangeAccessor, Object[], BytecodeNode)] */;
                     this.state_0_ = state_0;
                     $bytecode.getRoot().onSpecialize(new InstructionImpl($bytecode, $bci, BYTES.getShort($bc, $bci)), "TeeLocalRange$Generic");
-                    return TeeLocalRange.doGeneric(frameValue, setterValue, child0Value_, bytecode__1, bci__1);
+                    return TeeLocalRange.doGeneric(frameValue, setterValue, child0Value_, bytecode__1);
                 }
             }
             throw new UnsupportedSpecializationException(this, null, setterValue, child0Value);
@@ -19719,7 +19836,7 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
             int state_0 = this.state_0_;
             s = new Object[3];
             s[0] = "doLong";
-            if ((state_0 & 0b1) != 0 /* is SpecializationActive[BasicInterpreter.TeeLocalRange.doLong(VirtualFrame, LocalSetterRange, long[], BytecodeNode, int)] */) {
+            if ((state_0 & 0b1) != 0 /* is SpecializationActive[BasicInterpreter.TeeLocalRange.doLong(VirtualFrame, LocalRangeAccessor, long[], BytecodeNode)] */) {
                 s[1] = (byte)0b01 /* active */;
                 ArrayList<Object> cached = new ArrayList<>();
                 cached.add(Arrays.<Object>asList());
@@ -19731,7 +19848,7 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
             data[1] = s;
             s = new Object[3];
             s[0] = "doGeneric";
-            if ((state_0 & 0b10) != 0 /* is SpecializationActive[BasicInterpreter.TeeLocalRange.doGeneric(VirtualFrame, LocalSetterRange, Object[], BytecodeNode, int)] */) {
+            if ((state_0 & 0b10) != 0 /* is SpecializationActive[BasicInterpreter.TeeLocalRange.doGeneric(VirtualFrame, LocalRangeAccessor, Object[], BytecodeNode)] */) {
                 s[1] = (byte)0b01 /* active */;
                 ArrayList<Object> cached = new ArrayList<>();
                 cached.add(Arrays.<Object>asList());
@@ -19753,15 +19870,15 @@ public final class BasicInterpreterProductionGlobalScopes extends BasicInterpret
         @DenyReplace
         private static final class Uncached extends Node implements UnadoptableNode {
 
-            public Object executeUncached(VirtualFrame frameValue, LocalSetterRange setterValue, Object child0Value, VirtualFrame $stackFrame, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
+            public Object executeUncached(VirtualFrame frameValue, LocalRangeAccessor setterValue, Object child0Value, VirtualFrame $stackFrame, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 if (child0Value instanceof long[]) {
                     long[] child0Value_ = (long[]) child0Value;
-                    return TeeLocalRange.doLong(frameValue, setterValue, child0Value_, ($bytecode), ($bci));
+                    return TeeLocalRange.doLong(frameValue, setterValue, child0Value_, ($bytecode));
                 }
                 if (child0Value instanceof Object[]) {
                     Object[] child0Value_ = (Object[]) child0Value;
-                    return TeeLocalRange.doGeneric(frameValue, setterValue, child0Value_, ($bytecode), ($bci));
+                    return TeeLocalRange.doGeneric(frameValue, setterValue, child0Value_, ($bytecode));
                 }
                 throw newUnsupportedSpecializationException2(this, setterValue, child0Value);
             }

@@ -51,6 +51,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameExtensions;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -842,7 +843,12 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
     }
 
     @Override
+    @ExplodeLoop
     public Object execute(VirtualFrame frame) {
+        // Temporary until we can use FrameDescriptor.newBuilder().illegalDefaultValue().
+        for (int slot = 0; slot < maxLocals; slot++) {
+            FRAMES.clear(frame, slot);
+        }
         return continueAt(bytecode, 0, maxLocals, frame);
     }
 
@@ -3507,213 +3513,26 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             return count;
         }
 
-        @Override
-        public final Object getLocalValue(int bci, Frame frame, int localOffset) {
-            assert validateBytecodeIndex(bci);
-            CompilerAsserts.partialEvaluationConstant(bci);
-            CompilerAsserts.partialEvaluationConstant(localOffset);
-            assert localOffset >= 0 && localOffset < getLocalCount(bci) : "Invalid out-of-bounds local offset provided.";
-            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
-            int frameIndex = USER_LOCALS_START_INDEX + localOffset;
-            try {
-                FrameSlotKind kind;
-                if (CompilerDirectives.inInterpreter()) {
-                    // Resolving the local index is expensive. Don't do it in the interpreter.
-                    kind = FrameSlotKind.fromTag(frame.getTag(frameIndex));
-                } else {
-                    kind = getCachedLocalKind(frame, frameIndex, bci, localOffset);
-                }
-                switch (kind) {
-                    case Long :
-                        return frame.expectLong(frameIndex);
-                    case Boolean :
-                        return frame.expectBoolean(frameIndex);
-                    case Object :
-                        return frame.expectObject(frameIndex);
-                    case Illegal :
-                        return frame.getFrameDescriptor().getDefaultValue();
-                    default :
-                        throw CompilerDirectives.shouldNotReachHere("unexpected slot");
-                }
-            } catch (UnexpectedResultException ex) {
-                return ex.getResult();
-            }
-        }
+        abstract FrameSlotKind getCachedLocalKindInternal(int localIndex);
 
-        @Override
-        public void setLocalValue(int bci, Frame frame, int localOffset, Object value) {
-            assert validateBytecodeIndex(bci);
-            CompilerAsserts.partialEvaluationConstant(bci);
-            CompilerAsserts.partialEvaluationConstant(localOffset);
-            assert localOffset >= 0 && localOffset < getLocalCount(bci) : "Invalid out-of-bounds local offset provided.";
-            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
-            int frameIndex = USER_LOCALS_START_INDEX + localOffset;
-            setLocalValueImpl(frame, frameIndex, value, bci, localOffset);
-        }
+        abstract void setCachedLocalKindInternal(int frameIndex, FrameSlotKind kind, int localIndex);
 
-        private void setLocalValueImpl(Frame frame, int frameIndex, Object value, int bci, int localOffset) {
-            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
-            FrameSlotKind oldKind = getCachedLocalKind(frame, frameIndex, bci, localOffset);
-            FrameSlotKind newKind;
-            switch (oldKind) {
-                case Long :
-                    if (value instanceof Long longValue) {
-                        frame.setLong(frameIndex, longValue);
-                        return;
-                    } else {
-                        newKind = FrameSlotKind.Object;
+        @ExplodeLoop
+        protected final int localIndexToTableIndex(int bci, int localIndex) {
+            for (int index = 0; index < locals.length; index += LOCALS_LENGTH) {
+                int startIndex = locals[index + LOCALS_OFFSET_START_BCI];
+                int endIndex = locals[index + LOCALS_OFFSET_END_BCI];
+                if (bci >= startIndex && bci < endIndex) {
+                    if (locals[index + LOCALS_OFFSET_LOCAL_INDEX] == localIndex) {
+                        return index;
                     }
-                    break;
-                case Boolean :
-                    if (value instanceof Boolean booleanValue) {
-                        frame.setBoolean(frameIndex, booleanValue);
-                        return;
-                    } else {
-                        newKind = FrameSlotKind.Object;
-                    }
-                    break;
-                case Object :
-                    frame.setObject(frameIndex, value);
-                    return;
-                default :
-                    newKind = specializeSlotKind(value);
-                    break;
+                }
             }
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            setCachedLocalKind(frameIndex, newKind, bci, localOffset);
-            setLocalValueImpl(frame, frameIndex, value, bci, localOffset);
-        }
-
-        @Override
-        public final long getLocalValueLong(int bci, Frame frame, int localOffset) throws UnexpectedResultException {
-            assert validateBytecodeIndex(bci);
-            CompilerAsserts.partialEvaluationConstant(bci);
-            CompilerAsserts.partialEvaluationConstant(localOffset);
-            assert localOffset >= 0 && localOffset < getLocalCount(bci) : "Invalid out-of-bounds local offset provided.";
-            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
-            int frameIndex = USER_LOCALS_START_INDEX + localOffset;
-            return frame.expectLong(frameIndex);
-        }
-
-        @Override
-        public void setLocalValueLong(int bci, Frame frame, int localOffset, long value) {
-            assert validateBytecodeIndex(bci);
-            CompilerAsserts.partialEvaluationConstant(bci);
-            CompilerAsserts.partialEvaluationConstant(localOffset);
-            assert localOffset >= 0 && localOffset < getLocalCount(bci) : "Invalid out-of-bounds local offset provided.";
-            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
-            int frameIndex = USER_LOCALS_START_INDEX + localOffset;
-            setLocalValueLongImpl(frame, frameIndex, value, bci, localOffset);
-        }
-
-        private void setLocalValueLongImpl(Frame frame, int frameIndex, long value, int bci, int localOffset) {
-            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
-            FrameSlotKind oldKind = getCachedLocalKind(frame, frameIndex, bci, localOffset);
-            FrameSlotKind newKind;
-            switch (oldKind) {
-                case Long :
-                    frame.setLong(frameIndex, value);
-                    return;
-                case Object :
-                    frame.setObject(frameIndex, value);
-                    return;
-                default :
-                    newKind = specializeSlotKind(value);
-                    break;
-            }
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            setCachedLocalKind(frameIndex, newKind, bci, localOffset);
-            setLocalValueImpl(frame, frameIndex, value, bci, localOffset);
-        }
-
-        @Override
-        public final boolean getLocalValueBoolean(int bci, Frame frame, int localOffset) throws UnexpectedResultException {
-            assert validateBytecodeIndex(bci);
-            CompilerAsserts.partialEvaluationConstant(bci);
-            CompilerAsserts.partialEvaluationConstant(localOffset);
-            assert localOffset >= 0 && localOffset < getLocalCount(bci) : "Invalid out-of-bounds local offset provided.";
-            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
-            int frameIndex = USER_LOCALS_START_INDEX + localOffset;
-            return frame.expectBoolean(frameIndex);
-        }
-
-        @Override
-        public void setLocalValueBoolean(int bci, Frame frame, int localOffset, boolean value) {
-            assert validateBytecodeIndex(bci);
-            CompilerAsserts.partialEvaluationConstant(bci);
-            CompilerAsserts.partialEvaluationConstant(localOffset);
-            assert localOffset >= 0 && localOffset < getLocalCount(bci) : "Invalid out-of-bounds local offset provided.";
-            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
-            int frameIndex = USER_LOCALS_START_INDEX + localOffset;
-            setLocalValueBooleanImpl(frame, frameIndex, value, bci, localOffset);
-        }
-
-        private void setLocalValueBooleanImpl(Frame frame, int frameIndex, boolean value, int bci, int localOffset) {
-            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
-            FrameSlotKind oldKind = getCachedLocalKind(frame, frameIndex, bci, localOffset);
-            FrameSlotKind newKind;
-            switch (oldKind) {
-                case Boolean :
-                    frame.setBoolean(frameIndex, value);
-                    return;
-                case Object :
-                    frame.setObject(frameIndex, value);
-                    return;
-                default :
-                    newKind = specializeSlotKind(value);
-                    break;
-            }
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            setCachedLocalKind(frameIndex, newKind, bci, localOffset);
-            setLocalValueImpl(frame, frameIndex, value, bci, localOffset);
-        }
-
-        final FrameSlotKind getCachedLocalKind(Frame frame, int frameIndex, int bci, int localOffset) {
-            assert locals[localOffsetToTableIndex(bci, localOffset) + LOCALS_OFFSET_FRAME_INDEX] == frameIndex : "Inconsistent indices.";
-            byte[] localTags = getLocalTags();
-            if (localTags == null) {
-                // bytecode not yet cached.
-                return FrameSlotKind.Object;
-            } else {
-                int localIndex = locals[localOffsetToTableIndex(bci, localOffset) + LOCALS_OFFSET_LOCAL_INDEX];
-                return FrameSlotKind.fromTag(localTags[localIndex]);
-            }
-        }
-
-        final FrameSlotKind getCachedLocalKindInternal(int frameIndex, int localIndex) {
-            byte[] localTags = getLocalTags();
-            if (localTags == null) {
-                // bytecode not yet cached.
-                return FrameSlotKind.Object;
-            } else {
-                return FrameSlotKind.fromTag(localTags[localIndex]);
-            }
-        }
-
-        private void setCachedLocalKind(int frameIndex, FrameSlotKind kind, int bci, int localOffset) {
-            assert locals[localOffsetToTableIndex(bci, localOffset) + LOCALS_OFFSET_FRAME_INDEX] == frameIndex : "Inconsistent indices.";
-            byte[] localTags = getLocalTags();
-            if (localTags == null) {
-                // bytecode not yet cached.
-                return;
-            } else {
-                int localIndex = locals[localOffsetToTableIndex(bci, localOffset) + LOCALS_OFFSET_LOCAL_INDEX];
-                localTags[localIndex] = kind.tag;
-            }
-        }
-
-        final void setCachedLocalKindInternal(int frameIndex, FrameSlotKind kind, int localIndex) {
-            byte[] localTags = getLocalTags();
-            if (localTags == null) {
-                // bytecode not yet cached.
-                return;
-            } else {
-                localTags[localIndex] = kind.tag;
-            }
+            return -1;
         }
 
         @ExplodeLoop
-        private int localOffsetToTableIndex(int bci, int localOffset) {
+        protected final int localOffsetToTableIndex(int bci, int localOffset) {
             int count = 0;
             for (int index = 0; index < locals.length; index += LOCALS_LENGTH) {
                 int startIndex = locals[index + LOCALS_OFFSET_START_BCI];
@@ -3723,20 +3542,6 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                         return index;
                     }
                     count++;
-                }
-            }
-            return -1;
-        }
-
-        @ExplodeLoop
-        private int localIndexToTableIndex(int bci, int localIndex) {
-            for (int index = 0; index < locals.length; index += LOCALS_LENGTH) {
-                int startIndex = locals[index + LOCALS_OFFSET_START_BCI];
-                int endIndex = locals[index + LOCALS_OFFSET_END_BCI];
-                if (bci >= startIndex && bci < endIndex) {
-                    if (locals[index + LOCALS_OFFSET_LOCAL_INDEX] == localIndex) {
-                        return index;
-                    }
                 }
             }
             return -1;
@@ -3822,16 +3627,6 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             assert start >= 0 : "invalid source start index";
             assert length >= 0 : "invalid source length";
             return sources.get(sourceIndex).createSection(start, length);
-        }
-
-        private static FrameSlotKind specializeSlotKind(Object value) {
-            if (value instanceof Long) {
-                return FrameSlotKind.Long;
-            } else if (value instanceof Boolean) {
-                return FrameSlotKind.Boolean;
-            } else {
-                return FrameSlotKind.Object;
-            }
         }
 
         private static int toStableBytecodeIndex(byte[] bc, int searchBci) {
@@ -5495,7 +5290,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             if (operandIndex != -1) {
                 short newOperand;
                 short operand = BYTES.getShort(bc, operandIndex);
-                FrameSlotKind oldKind = this.getCachedLocalKindInternal(slot, localIndex);
+                FrameSlotKind oldKind = this.getCachedLocalKindInternal(localIndex);
                 FrameSlotKind newKind;
                 if (local instanceof Long) {
                     switch (oldKind) {
@@ -5570,7 +5365,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             }
             int slot = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
             int localIndex = BYTES.getShort(bc, bci + 4 /* imm local_index */);
-            FrameSlotKind kind = this.getCachedLocalKindInternal(slot, localIndex);
+            FrameSlotKind kind = this.getCachedLocalKindInternal(localIndex);
             if (kind == FrameSlotKind.Long) {
                 try {
                     FRAMES.setLong(frame, slot, SLBytecodeRootNodeGen.expectLong(local));
@@ -5598,7 +5393,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             }
             int slot = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
             int localIndex = BYTES.getShort(bc, bci + 4 /* imm local_index */);
-            FrameSlotKind kind = this.getCachedLocalKindInternal(slot, localIndex);
+            FrameSlotKind kind = this.getCachedLocalKindInternal(localIndex);
             if (kind == FrameSlotKind.Long) {
                 FRAMES.setLong(frame, slot, local);
                 if (CompilerDirectives.inCompiledCode()) {
@@ -5621,7 +5416,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             }
             int slot = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
             int localIndex = BYTES.getShort(bc, bci + 4 /* imm local_index */);
-            FrameSlotKind kind = this.getCachedLocalKindInternal(slot, localIndex);
+            FrameSlotKind kind = this.getCachedLocalKindInternal(localIndex);
             if (kind == FrameSlotKind.Boolean) {
                 try {
                     FRAMES.setBoolean(frame, slot, SLBytecodeRootNodeGen.expectBoolean(local));
@@ -5649,7 +5444,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             }
             int slot = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
             int localIndex = BYTES.getShort(bc, bci + 4 /* imm local_index */);
-            FrameSlotKind kind = this.getCachedLocalKindInternal(slot, localIndex);
+            FrameSlotKind kind = this.getCachedLocalKindInternal(localIndex);
             if (kind == FrameSlotKind.Boolean) {
                 FRAMES.setBoolean(frame, slot, local);
                 if (CompilerDirectives.inCompiledCode()) {
@@ -5697,7 +5492,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         private void doLoadLocal(Frame frame, byte[] bc, int bci, int sp) {
             int slot = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
             int localIndex = BYTES.getShort(bc, bci + 4 /* imm local_index */);
-            FrameSlotKind kind = this.getCachedLocalKindInternal(slot, localIndex);
+            FrameSlotKind kind = this.getCachedLocalKindInternal(localIndex);
             Object value;
             short newInstruction;
             try {
@@ -5771,7 +5566,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
             }
             AbstractBytecodeNode bytecodeNode = localRoot.getBytecodeNodeImpl();
-            FrameSlotKind kind = bytecodeNode.getCachedLocalKindInternal(slot, localIndex);
+            FrameSlotKind kind = bytecodeNode.getCachedLocalKindInternal(localIndex);
             Object value;
             short newInstruction;
             try {
@@ -5885,7 +5680,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             if (operandIndex != -1) {
                 short newOperand;
                 short operand = BYTES.getShort(bc, operandIndex);
-                FrameSlotKind oldKind = bytecodeNode.getCachedLocalKindInternal(slot, localIndex);
+                FrameSlotKind oldKind = bytecodeNode.getCachedLocalKindInternal(localIndex);
                 FrameSlotKind newKind;
                 if (local instanceof Long) {
                     switch (oldKind) {
@@ -5967,7 +5762,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
             }
             AbstractBytecodeNode bytecodeNode = localRoot.getBytecodeNodeImpl();
-            FrameSlotKind kind = bytecodeNode.getCachedLocalKindInternal(slot, localIndex);
+            FrameSlotKind kind = bytecodeNode.getCachedLocalKindInternal(localIndex);
             if (kind == FrameSlotKind.Long) {
                 try {
                     FRAMES.setLong(frame, slot, SLBytecodeRootNodeGen.expectLong(local));
@@ -6002,7 +5797,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
             }
             AbstractBytecodeNode bytecodeNode = localRoot.getBytecodeNodeImpl();
-            FrameSlotKind kind = bytecodeNode.getCachedLocalKindInternal(slot, localIndex);
+            FrameSlotKind kind = bytecodeNode.getCachedLocalKindInternal(localIndex);
             if (kind == FrameSlotKind.Long) {
                 FRAMES.setLong(frame, slot, local);
                 FRAMES.clear(stackFrame, sp - 1);
@@ -6032,7 +5827,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
             }
             AbstractBytecodeNode bytecodeNode = localRoot.getBytecodeNodeImpl();
-            FrameSlotKind kind = bytecodeNode.getCachedLocalKindInternal(slot, localIndex);
+            FrameSlotKind kind = bytecodeNode.getCachedLocalKindInternal(localIndex);
             if (kind == FrameSlotKind.Boolean) {
                 try {
                     FRAMES.setBoolean(frame, slot, SLBytecodeRootNodeGen.expectBoolean(local));
@@ -6067,7 +5862,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
             }
             AbstractBytecodeNode bytecodeNode = localRoot.getBytecodeNodeImpl();
-            FrameSlotKind kind = bytecodeNode.getCachedLocalKindInternal(slot, localIndex);
+            FrameSlotKind kind = bytecodeNode.getCachedLocalKindInternal(localIndex);
             if (kind == FrameSlotKind.Boolean) {
                 FRAMES.setBoolean(frame, slot, local);
                 FRAMES.clear(stackFrame, sp - 1);
@@ -6748,6 +6543,219 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         @Override
+        public Object getLocalValue(int bci, Frame frame, int localOffset) {
+            assert validateBytecodeIndex(bci);
+            CompilerAsserts.partialEvaluationConstant(bci);
+            CompilerAsserts.partialEvaluationConstant(localOffset);
+            assert localOffset >= 0 && localOffset < getLocalCount(bci) : "Invalid out-of-bounds local offset provided.";
+            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
+            int frameIndex = USER_LOCALS_START_INDEX + localOffset;
+            try {
+                FrameSlotKind kind;
+                if (CompilerDirectives.inInterpreter()) {
+                    // Resolving the local index is expensive. Don't do it in the interpreter.
+                    kind = FrameSlotKind.fromTag(frame.getTag(frameIndex));
+                } else {
+                    kind = getCachedLocalKind(frame, frameIndex, bci, localOffset);
+                }
+                switch (kind) {
+                    case Long :
+                        return frame.expectLong(frameIndex);
+                    case Boolean :
+                        return frame.expectBoolean(frameIndex);
+                    case Object :
+                        return frame.expectObject(frameIndex);
+                    case Illegal :
+                        return null;
+                    default :
+                        throw CompilerDirectives.shouldNotReachHere("unexpected slot");
+                }
+            } catch (UnexpectedResultException ex) {
+                return ex.getResult();
+            }
+        }
+
+        @Override
+        public void setLocalValue(int bci, Frame frame, int localOffset, Object value) {
+            assert validateBytecodeIndex(bci);
+            CompilerAsserts.partialEvaluationConstant(bci);
+            CompilerAsserts.partialEvaluationConstant(localOffset);
+            assert localOffset >= 0 && localOffset < getLocalCount(bci) : "Invalid out-of-bounds local offset provided.";
+            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
+            int frameIndex = USER_LOCALS_START_INDEX + localOffset;
+            setLocalValueImpl(frame, frameIndex, value, bci, localOffset);
+        }
+
+        @Override
+        protected Object getLocalValueInternal(Frame frame, int localOffset, int localIndex) {
+            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
+            int frameIndex = USER_LOCALS_START_INDEX + localOffset;
+            try {
+                FrameSlotKind kind = getCachedLocalKindInternal(localIndex);
+                switch (kind) {
+                    case Long :
+                        return frame.expectLong(frameIndex);
+                    case Boolean :
+                        return frame.expectBoolean(frameIndex);
+                    case Object :
+                        return frame.expectObject(frameIndex);
+                    case Illegal :
+                        throw new FrameSlotTypeException();
+                    default :
+                        throw CompilerDirectives.shouldNotReachHere("unexpected slot");
+                }
+            } catch (UnexpectedResultException ex) {
+                return ex.getResult();
+            }
+        }
+
+        @Override
+        protected void setLocalValueInternal(Frame frame, int localOffset, int localIndex, Object value) {
+            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
+            int frameIndex = USER_LOCALS_START_INDEX + localOffset;
+            FrameSlotKind oldKind = getCachedLocalKindInternal(localIndex);
+            FrameSlotKind newKind;
+            switch (oldKind) {
+                case Long :
+                    if (value instanceof Long longValue) {
+                        frame.setLong(frameIndex, longValue);
+                        return;
+                    } else {
+                        newKind = FrameSlotKind.Object;
+                    }
+                    break;
+                case Boolean :
+                    if (value instanceof Boolean booleanValue) {
+                        frame.setBoolean(frameIndex, booleanValue);
+                        return;
+                    } else {
+                        newKind = FrameSlotKind.Object;
+                    }
+                    break;
+                case Object :
+                    frame.setObject(frameIndex, value);
+                    return;
+                default :
+                    newKind = specializeSlotKind(value);
+                    break;
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            setCachedLocalKindInternal(frameIndex, newKind, localIndex);
+            setLocalValueInternal(frame, localOffset, localIndex, value);
+        }
+
+        private void setLocalValueImpl(Frame frame, int frameIndex, Object value, int bci, int localOffset) {
+            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
+            FrameSlotKind oldKind = getCachedLocalKind(frame, frameIndex, bci, localOffset);
+            FrameSlotKind newKind;
+            switch (oldKind) {
+                case Long :
+                    if (value instanceof Long longValue) {
+                        frame.setLong(frameIndex, longValue);
+                        return;
+                    } else {
+                        newKind = FrameSlotKind.Object;
+                    }
+                    break;
+                case Boolean :
+                    if (value instanceof Boolean booleanValue) {
+                        frame.setBoolean(frameIndex, booleanValue);
+                        return;
+                    } else {
+                        newKind = FrameSlotKind.Object;
+                    }
+                    break;
+                case Object :
+                    frame.setObject(frameIndex, value);
+                    return;
+                default :
+                    newKind = specializeSlotKind(value);
+                    break;
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            setCachedLocalKind(frameIndex, newKind, bci, localOffset);
+            setLocalValueImpl(frame, frameIndex, value, bci, localOffset);
+        }
+
+        @Override
+        protected long getLocalValueInternalLong(Frame frame, int localOffset, int localIndex) throws UnexpectedResultException {
+            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
+            return frame.expectLong(USER_LOCALS_START_INDEX + localOffset);
+        }
+
+        @Override
+        protected void setLocalValueInternalLong(Frame frame, int localOffset, int localIndex, long value) {
+            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
+            int frameIndex = USER_LOCALS_START_INDEX + localOffset;
+            FrameSlotKind oldKind = getCachedLocalKindInternal(localIndex);
+            FrameSlotKind newKind;
+            switch (oldKind) {
+                case Long :
+                    frame.setLong(frameIndex, value);
+                    return;
+                case Object :
+                    frame.setObject(frameIndex, value);
+                    return;
+                default :
+                    newKind = specializeSlotKind(value);
+                    break;
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            setCachedLocalKindInternal(frameIndex, newKind, localIndex);
+            setLocalValueInternal(frame, localOffset, localIndex, value);
+        }
+
+        @Override
+        protected boolean getLocalValueInternalBoolean(Frame frame, int localOffset, int localIndex) throws UnexpectedResultException {
+            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
+            return frame.expectBoolean(USER_LOCALS_START_INDEX + localOffset);
+        }
+
+        @Override
+        protected void setLocalValueInternalBoolean(Frame frame, int localOffset, int localIndex, boolean value) {
+            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
+            int frameIndex = USER_LOCALS_START_INDEX + localOffset;
+            FrameSlotKind oldKind = getCachedLocalKindInternal(localIndex);
+            FrameSlotKind newKind;
+            switch (oldKind) {
+                case Boolean :
+                    frame.setBoolean(frameIndex, value);
+                    return;
+                case Object :
+                    frame.setObject(frameIndex, value);
+                    return;
+                default :
+                    newKind = specializeSlotKind(value);
+                    break;
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            setCachedLocalKindInternal(frameIndex, newKind, localIndex);
+            setLocalValueInternal(frame, localOffset, localIndex, value);
+        }
+
+        FrameSlotKind getCachedLocalKind(Frame frame, int frameIndex, int bci, int localOffset) {
+            assert locals[localOffsetToTableIndex(bci, localOffset) + LOCALS_OFFSET_FRAME_INDEX] == frameIndex : "Inconsistent indices.";
+            int localIndex = locals[localOffsetToTableIndex(bci, localOffset) + LOCALS_OFFSET_LOCAL_INDEX];
+            return FrameSlotKind.fromTag(this.localTags_[localIndex]);
+        }
+
+        private void setCachedLocalKind(int frameIndex, FrameSlotKind kind, int bci, int localOffset) {
+            assert locals[localOffsetToTableIndex(bci, localOffset) + LOCALS_OFFSET_FRAME_INDEX] == frameIndex : "Inconsistent indices.";
+            int localIndex = locals[localOffsetToTableIndex(bci, localOffset) + LOCALS_OFFSET_LOCAL_INDEX];
+            this.localTags_[localIndex] = kind.tag;
+        }
+
+        @Override
+        FrameSlotKind getCachedLocalKindInternal(int localIndex) {
+            return FrameSlotKind.fromTag(this.localTags_[localIndex]);
+        }
+
+        @Override
+        void setCachedLocalKindInternal(int frameIndex, FrameSlotKind kind, int localIndex) {
+            this.localTags_[localIndex] = kind.tag;
+        }
+
+        @Override
         byte[] getLocalTags() {
             return this.localTags_;
         }
@@ -7334,6 +7342,16 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         private static void ensureFalseProfile(int[] branchProfiles, int profileIndex) {
             if (ACCESS.readInt(branchProfiles, profileIndex * 2 + 1) == 0) {
                 ACCESS.writeInt(branchProfiles, profileIndex * 2 + 1, 1);
+            }
+        }
+
+        private static FrameSlotKind specializeSlotKind(Object value) {
+            if (value instanceof Long) {
+                return FrameSlotKind.Long;
+            } else if (value instanceof Boolean) {
+                return FrameSlotKind.Boolean;
+            } else {
+                return FrameSlotKind.Object;
             }
         }
 
@@ -8373,6 +8391,86 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 assert targetBci < bc.length : "returnBci must be reachable";
                 return ((targetSp & 0xFFFFL) << 32) | (targetBci & 0xFFFFFFFFL);
             }
+        }
+
+        @Override
+        public Object getLocalValue(int bci, Frame frame, int localOffset) {
+            assert validateBytecodeIndex(bci);
+            CompilerAsserts.partialEvaluationConstant(bci);
+            CompilerAsserts.partialEvaluationConstant(localOffset);
+            assert localOffset >= 0 && localOffset < getLocalCount(bci) : "Invalid out-of-bounds local offset provided.";
+            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
+            int frameIndex = USER_LOCALS_START_INDEX + localOffset;
+            if (frame.isObject(frameIndex)) {
+                return frame.getObject(frameIndex);
+            }
+            return null;
+        }
+
+        @Override
+        public void setLocalValue(int bci, Frame frame, int localOffset, Object value) {
+            assert validateBytecodeIndex(bci);
+            CompilerAsserts.partialEvaluationConstant(bci);
+            CompilerAsserts.partialEvaluationConstant(localOffset);
+            assert localOffset >= 0 && localOffset < getLocalCount(bci) : "Invalid out-of-bounds local offset provided.";
+            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
+            int frameIndex = USER_LOCALS_START_INDEX + localOffset;
+            frame.setObject(frameIndex, value);
+        }
+
+        @Override
+        protected Object getLocalValueInternal(Frame frame, int localOffset, int localIndex) {
+            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
+            return frame.getObject(USER_LOCALS_START_INDEX + localOffset);
+        }
+
+        @Override
+        protected void setLocalValueInternal(Frame frame, int localOffset, int localIndex, Object value) {
+            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
+            frame.setObject(USER_LOCALS_START_INDEX + localOffset, value);
+        }
+
+        @Override
+        protected long getLocalValueInternalLong(Frame frame, int localOffset, int localIndex) throws UnexpectedResultException {
+            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
+            Object value = frame.getObject(USER_LOCALS_START_INDEX + localOffset);
+            if (value instanceof Long castValue) {
+                return castValue;
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new UnexpectedResultException(value);
+        }
+
+        @Override
+        protected void setLocalValueInternalLong(Frame frame, int localOffset, int localIndex, long value) {
+            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
+            frame.setObject(USER_LOCALS_START_INDEX + localOffset, value);
+        }
+
+        @Override
+        protected boolean getLocalValueInternalBoolean(Frame frame, int localOffset, int localIndex) throws UnexpectedResultException {
+            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
+            Object value = frame.getObject(USER_LOCALS_START_INDEX + localOffset);
+            if (value instanceof Boolean castValue) {
+                return castValue;
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new UnexpectedResultException(value);
+        }
+
+        @Override
+        protected void setLocalValueInternalBoolean(Frame frame, int localOffset, int localIndex, boolean value) {
+            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
+            frame.setObject(USER_LOCALS_START_INDEX + localOffset, value);
+        }
+
+        @Override
+        FrameSlotKind getCachedLocalKindInternal(int localIndex) {
+            return FrameSlotKind.Object;
+        }
+
+        @Override
+        void setCachedLocalKindInternal(int frameIndex, FrameSlotKind kind, int localIndex) {
         }
 
         @Override
@@ -13211,7 +13309,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 ensureBytecodeCapacity(newBci);
             }
             BYTES.putShort(bc, bci + 0, instruction);
-            BYTES.putShort(bc, bci + 2 /* imm local_offset */, data0);
+            BYTES.putShort(bc, bci + 2 /* imm 0 */, data0);
             bci = newBci;
             return true;
         }
@@ -13232,7 +13330,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 ensureBytecodeCapacity(newBci);
             }
             BYTES.putShort(bc, bci + 0, instruction);
-            BYTES.putInt(bc, bci + 2 /* imm branch_target */, data0);
+            BYTES.putInt(bc, bci + 2 /* imm 0 */, data0);
             bci = newBci;
             return true;
         }
@@ -13253,8 +13351,8 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 ensureBytecodeCapacity(newBci);
             }
             BYTES.putShort(bc, bci + 0, instruction);
-            BYTES.putShort(bc, bci + 2 /* imm local_offset */, data0);
-            BYTES.putShort(bc, bci + 4 /* imm local_index */, data1);
+            BYTES.putShort(bc, bci + 2 /* imm 0 */, data0);
+            BYTES.putShort(bc, bci + 4 /* imm 1 */, data1);
             bci = newBci;
             return true;
         }
@@ -13275,9 +13373,9 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 ensureBytecodeCapacity(newBci);
             }
             BYTES.putShort(bc, bci + 0, instruction);
-            BYTES.putShort(bc, bci + 2 /* imm local_offset */, data0);
-            BYTES.putShort(bc, bci + 4 /* imm root_index */, data1);
-            BYTES.putShort(bc, bci + 6 /* imm local_index */, data2);
+            BYTES.putShort(bc, bci + 2 /* imm 0 */, data0);
+            BYTES.putShort(bc, bci + 4 /* imm 1 */, data1);
+            BYTES.putShort(bc, bci + 6 /* imm 2 */, data2);
             bci = newBci;
             return true;
         }
@@ -13298,8 +13396,8 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 ensureBytecodeCapacity(newBci);
             }
             BYTES.putShort(bc, bci + 0, instruction);
-            BYTES.putInt(bc, bci + 2 /* imm child0 */, data0);
-            BYTES.putInt(bc, bci + 6 /* imm child1 */, data1);
+            BYTES.putInt(bc, bci + 2 /* imm 0 */, data0);
+            BYTES.putInt(bc, bci + 6 /* imm 1 */, data1);
             bci = newBci;
             return true;
         }
@@ -13320,9 +13418,9 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 ensureBytecodeCapacity(newBci);
             }
             BYTES.putShort(bc, bci + 0, instruction);
-            BYTES.putShort(bc, bci + 2 /* imm local_offset */, data0);
-            BYTES.putShort(bc, bci + 4 /* imm local_index */, data1);
-            BYTES.putInt(bc, bci + 6 /* imm child0 */, data2);
+            BYTES.putShort(bc, bci + 2 /* imm 0 */, data0);
+            BYTES.putShort(bc, bci + 4 /* imm 1 */, data1);
+            BYTES.putInt(bc, bci + 6 /* imm 2 */, data2);
             bci = newBci;
             return true;
         }
@@ -13343,10 +13441,10 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 ensureBytecodeCapacity(newBci);
             }
             BYTES.putShort(bc, bci + 0, instruction);
-            BYTES.putShort(bc, bci + 2 /* imm local_offset */, data0);
-            BYTES.putShort(bc, bci + 4 /* imm root_index */, data1);
-            BYTES.putShort(bc, bci + 6 /* imm local_index */, data2);
-            BYTES.putInt(bc, bci + 8 /* imm child0 */, data3);
+            BYTES.putShort(bc, bci + 2 /* imm 0 */, data0);
+            BYTES.putShort(bc, bci + 4 /* imm 1 */, data1);
+            BYTES.putShort(bc, bci + 6 /* imm 2 */, data2);
+            BYTES.putInt(bc, bci + 8 /* imm 3 */, data3);
             bci = newBci;
             return true;
         }
@@ -13367,9 +13465,9 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 ensureBytecodeCapacity(newBci);
             }
             BYTES.putShort(bc, bci + 0, instruction);
-            BYTES.putInt(bc, bci + 2 /* imm factory */, data0);
-            BYTES.putInt(bc, bci + 6 /* imm argumentCount */, data1);
-            BYTES.putInt(bc, bci + 10 /* imm node */, data2);
+            BYTES.putInt(bc, bci + 2 /* imm 0 */, data0);
+            BYTES.putInt(bc, bci + 6 /* imm 1 */, data1);
+            BYTES.putInt(bc, bci + 10 /* imm 2 */, data2);
             bci = newBci;
             return true;
         }
@@ -13604,6 +13702,11 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             @Override
             public int getLocalOffset() {
                 return frameIndex - USER_LOCALS_START_INDEX;
+            }
+
+            @Override
+            public int getLocalIndex() {
+                return localIndex;
             }
 
         }
@@ -13993,6 +14096,11 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
 
             @Override
             public int getLocalOffset() {
+                throw new IllegalStateException();
+            }
+
+            @Override
+            public int getLocalIndex() {
                 throw new IllegalStateException();
             }
 

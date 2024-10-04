@@ -397,11 +397,11 @@ public @interface GenerateBytecode {
 
     /**
      * Sets the default value that {@link BytecodeLocal locals} return when they are read without
-     * ever being written. By default {@link BytecodeLocal locals} that were never stored throw an
+     * ever being written. By default {@link BytecodeLocal locals} that were never stored throw a
      * {@link FrameSlotTypeException} internal error when they are read, unless a default local
      * value is specified.
      * <p>
-     * The default local value expression is recommended to be referring to a static and final
+     * It is recommended for the default local value expression to refer to a static and final
      * constant in the bytecode root node. For example:
      *
      * <pre>
@@ -414,9 +414,9 @@ public @interface GenerateBytecode {
      * }
      * </pre>
      *
-     * Other expressions like <code>null</code> or invoking a static method are possible as well.
-     * Note that instance methods of the root node cannot be bound with the default local value
-     * expression for efficiency reasons.
+     * Other expressions like <code>null</code> or a static method call are also possible. Note that
+     * instance methods of the root node cannot be bound with the default local value expression for
+     * efficiency reasons.
      *
      * @since 24.2
      */

@@ -25,8 +25,8 @@ import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.ContinuationRootNode;
 import com.oracle.truffle.api.bytecode.ExceptionHandler;
 import com.oracle.truffle.api.bytecode.Instruction;
-import com.oracle.truffle.api.bytecode.LocalSetter;
-import com.oracle.truffle.api.bytecode.LocalSetterRange;
+import com.oracle.truffle.api.bytecode.LocalAccessor;
+import com.oracle.truffle.api.bytecode.LocalRangeAccessor;
 import com.oracle.truffle.api.bytecode.LocalVariable;
 import com.oracle.truffle.api.bytecode.SourceInformation;
 import com.oracle.truffle.api.bytecode.SourceInformationTree;
@@ -413,12 +413,12 @@ import java.util.function.Supplier;
  *     kind: CUSTOM
  *     encoding: [44 : short, setter (const) : int, node : int]
  *     nodeType: TeeLocal
- *     signature: Object (LocalSetter, Object)
+ *     signature: Object (LocalAccessor, Object)
  *   - Instruction c.TeeLocalRange
  *     kind: CUSTOM
  *     encoding: [45 : short, setter (const) : int, node : int]
  *     nodeType: TeeLocalRange
- *     signature: Object (LocalSetterRange, Object)
+ *     signature: Object (LocalRangeAccessor, Object)
  *   - Instruction c.Invoke
  *     kind: CUSTOM
  *     encoding: [46 : short, node : int]
@@ -601,6 +601,7 @@ public final class BasicInterpreterWithGlobalScopes extends BasicInterpreter {
     private static final int LOCALS_LENGTH = 2;
     private static final int HANDLER_CUSTOM = 0;
     private static final int HANDLER_TAG_EXCEPTIONAL = 1;
+    private static final Object DEFAULT_LOCAL_VALUE = (BasicInterpreter.LOCAL_DEFAULT_VALUE);
     private static final ConcurrentHashMap<Integer, Class<? extends Tag>[]> TAG_MASK_TO_TAGS = new ConcurrentHashMap<>();
     private static final ClassValue<Integer> CLASS_TO_TAG_MASK = BasicInterpreterWithGlobalScopes.initializeTagMaskToClass();
 
@@ -2468,7 +2469,10 @@ public final class BasicInterpreterWithGlobalScopes extends BasicInterpreter {
             assert localOffset >= 0 && localOffset < getLocalCount(bci) : "Invalid out-of-bounds local offset provided.";
             assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
             int frameIndex = USER_LOCALS_START_INDEX + localOffset;
-            return frame.getObject(frameIndex);
+            if (frame.isObject(frameIndex)) {
+                return frame.getObject(USER_LOCALS_START_INDEX + localOffset);
+            }
+            return null;
         }
 
         @Override
@@ -2480,6 +2484,19 @@ public final class BasicInterpreterWithGlobalScopes extends BasicInterpreter {
             assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
             int frameIndex = USER_LOCALS_START_INDEX + localOffset;
             frame.setObject(frameIndex, value);
+        }
+
+        @Override
+        protected final Object getLocalValueInternal(Frame frame, int localOffset, int localIndex) {
+            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
+            int frameIndex = USER_LOCALS_START_INDEX + localOffset;
+            return frame.getObject(frameIndex);
+        }
+
+        @Override
+        protected void setLocalValueInternal(Frame frame, int localOffset, int localIndex, Object value) {
+            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
+            frame.setObject(USER_LOCALS_START_INDEX + localOffset, value);
         }
 
         @Override
@@ -3377,7 +3394,7 @@ public final class BasicInterpreterWithGlobalScopes extends BasicInterpreter {
                         }
                         case Instructions.CLEAR_LOCAL :
                         {
-                            FRAMES.clear(frame, BYTES.getShort(bc, bci + 2 /* imm local_offset */));
+                            FRAMES.setObject(frame, BYTES.getShort(bc, bci + 2 /* imm local_offset */), DEFAULT_LOCAL_VALUE);
                             bci += 4;
                             break;
                         }
@@ -5095,6 +5112,7 @@ public final class BasicInterpreterWithGlobalScopes extends BasicInterpreter {
                 assert result.buildIndex == operationData.index;
             } else {
                 com.oracle.truffle.api.frame.FrameDescriptor.Builder frameDescriptorBuilder = FrameDescriptor.newBuilder();
+                frameDescriptorBuilder.defaultValue(DEFAULT_LOCAL_VALUE);
                 frameDescriptorBuilder.addSlots(maxStackHeight + numLocals + USER_LOCALS_START_INDEX, FrameSlotKind.Illegal);
                 result = new BasicInterpreterWithGlobalScopes(language, frameDescriptorBuilder, nodes, numLocals + USER_LOCALS_START_INDEX, operationData.index, bytecodes_, constants_, handlers_, locals_, sourceInfo_, sources_, numNodes_, tagRoot_);
                 BytecodeNode bytecodeNode = result.getBytecodeNode();
@@ -7034,7 +7052,7 @@ public final class BasicInterpreterWithGlobalScopes extends BasicInterpreter {
             if (setterValue == null) {
                 throw failArgument("The setterValue parameter must not be null. Constant operands do not permit null values.");
             }
-            int setterIndex = constantPool.addConstant(LocalSetter.constantOf(setterValue));
+            int setterIndex = constantPool.addConstant(LocalAccessor.constantOf(setterValue));
             beforeChild();
             CustomOperationData operationData = new CustomOperationData(EMPTY_INT_ARRAY, new int[] {setterIndex});
             beginOperation(Operations.TEELOCAL, operationData);
@@ -7101,7 +7119,7 @@ public final class BasicInterpreterWithGlobalScopes extends BasicInterpreter {
             if (setterValue == null) {
                 throw failArgument("The setterValue parameter must not be null. Constant operands do not permit null values.");
             }
-            int setterIndex = constantPool.addConstant(LocalSetterRange.constantOf(setterValue));
+            int setterIndex = constantPool.addConstant(LocalRangeAccessor.constantOf(setterValue));
             beforeChild();
             CustomOperationData operationData = new CustomOperationData(EMPTY_INT_ARRAY, new int[] {setterIndex});
             beginOperation(Operations.TEELOCALRANGE, operationData);
@@ -10383,7 +10401,7 @@ public final class BasicInterpreterWithGlobalScopes extends BasicInterpreter {
                 ensureBytecodeCapacity(newBci);
             }
             BYTES.putShort(bc, bci + 0, instruction);
-            BYTES.putShort(bc, bci + 2 /* imm index */, data0);
+            BYTES.putShort(bc, bci + 2 /* imm 0 */, data0);
             bci = newBci;
             return true;
         }
@@ -10404,7 +10422,7 @@ public final class BasicInterpreterWithGlobalScopes extends BasicInterpreter {
                 ensureBytecodeCapacity(newBci);
             }
             BYTES.putShort(bc, bci + 0, instruction);
-            BYTES.putInt(bc, bci + 2 /* imm branch_target */, data0);
+            BYTES.putInt(bc, bci + 2 /* imm 0 */, data0);
             bci = newBci;
             return true;
         }
@@ -10425,8 +10443,8 @@ public final class BasicInterpreterWithGlobalScopes extends BasicInterpreter {
                 ensureBytecodeCapacity(newBci);
             }
             BYTES.putShort(bc, bci + 0, instruction);
-            BYTES.putShort(bc, bci + 2 /* imm local_offset */, data0);
-            BYTES.putShort(bc, bci + 4 /* imm root_index */, data1);
+            BYTES.putShort(bc, bci + 2 /* imm 0 */, data0);
+            BYTES.putShort(bc, bci + 4 /* imm 1 */, data1);
             bci = newBci;
             return true;
         }
@@ -10447,8 +10465,8 @@ public final class BasicInterpreterWithGlobalScopes extends BasicInterpreter {
                 ensureBytecodeCapacity(newBci);
             }
             BYTES.putShort(bc, bci + 0, instruction);
-            BYTES.putInt(bc, bci + 2 /* imm interpreter */, data0);
-            BYTES.putInt(bc, bci + 6 /* imm node */, data1);
+            BYTES.putInt(bc, bci + 2 /* imm 0 */, data0);
+            BYTES.putInt(bc, bci + 6 /* imm 1 */, data1);
             bci = newBci;
             return true;
         }
@@ -10663,6 +10681,11 @@ public final class BasicInterpreterWithGlobalScopes extends BasicInterpreter {
             @Override
             public int getLocalOffset() {
                 return frameIndex - USER_LOCALS_START_INDEX;
+            }
+
+            @Override
+            public int getLocalIndex() {
+                return localIndex;
             }
 
         }
@@ -11018,6 +11041,11 @@ public final class BasicInterpreterWithGlobalScopes extends BasicInterpreter {
 
             @Override
             public int getLocalOffset() {
+                throw new IllegalStateException();
+            }
+
+            @Override
+            public int getLocalIndex() {
                 throw new IllegalStateException();
             }
 
@@ -11778,7 +11806,7 @@ public final class BasicInterpreterWithGlobalScopes extends BasicInterpreter {
          * kind: CUSTOM
          * encoding: [44 : short, setter (const) : int, node : int]
          * nodeType: TeeLocal
-         * signature: Object (LocalSetter, Object)
+         * signature: Object (LocalAccessor, Object)
          */
         private static final short TEE_LOCAL_ = 44;
         /*
@@ -11786,7 +11814,7 @@ public final class BasicInterpreterWithGlobalScopes extends BasicInterpreter {
          * kind: CUSTOM
          * encoding: [45 : short, setter (const) : int, node : int]
          * nodeType: TeeLocalRange
-         * signature: Object (LocalSetterRange, Object)
+         * signature: Object (LocalRangeAccessor, Object)
          */
         private static final short TEE_LOCAL_RANGE_ = 45;
         /*
@@ -13113,22 +13141,20 @@ public final class BasicInterpreterWithGlobalScopes extends BasicInterpreter {
 
         private Object execute(VirtualFrame frameValue, VirtualFrame $stackFrame, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
             int state_0 = this.state_0_;
-            LocalSetter setterValue_ = ACCESS.uncheckedCast(ACCESS.readObject($bytecode.constants, BYTES.getIntUnaligned($bc, $bci + 2 /* imm setter */)), LocalSetter.class);
+            LocalAccessor setterValue_ = ACCESS.uncheckedCast(ACCESS.readObject($bytecode.constants, BYTES.getIntUnaligned($bc, $bci + 2 /* imm setter */)), LocalAccessor.class);
             Object child0Value_ = FRAMES.uncheckedGetObject($stackFrame, $sp - 1);
-            if (state_0 != 0 /* is SpecializationActive[BasicInterpreter.TeeLocal.doLong(VirtualFrame, LocalSetter, long, BytecodeNode, int)] || SpecializationActive[BasicInterpreter.TeeLocal.doGeneric(VirtualFrame, LocalSetter, Object, BytecodeNode, int)] */) {
-                if ((state_0 & 0b1) != 0 /* is SpecializationActive[BasicInterpreter.TeeLocal.doLong(VirtualFrame, LocalSetter, long, BytecodeNode, int)] */ && child0Value_ instanceof Long) {
+            if (state_0 != 0 /* is SpecializationActive[BasicInterpreter.TeeLocal.doLong(VirtualFrame, LocalAccessor, long, BytecodeNode)] || SpecializationActive[BasicInterpreter.TeeLocal.doGeneric(VirtualFrame, LocalAccessor, Object, BytecodeNode)] */) {
+                if ((state_0 & 0b1) != 0 /* is SpecializationActive[BasicInterpreter.TeeLocal.doLong(VirtualFrame, LocalAccessor, long, BytecodeNode)] */ && child0Value_ instanceof Long) {
                     long child0Value__ = (long) child0Value_;
                     {
                         BytecodeNode bytecode__ = ($bytecode);
-                        int bci__ = ($bci);
-                        return TeeLocal.doLong(frameValue, setterValue_, child0Value__, bytecode__, bci__);
+                        return TeeLocal.doLong(frameValue, setterValue_, child0Value__, bytecode__);
                     }
                 }
-                if ((state_0 & 0b10) != 0 /* is SpecializationActive[BasicInterpreter.TeeLocal.doGeneric(VirtualFrame, LocalSetter, Object, BytecodeNode, int)] */) {
+                if ((state_0 & 0b10) != 0 /* is SpecializationActive[BasicInterpreter.TeeLocal.doGeneric(VirtualFrame, LocalAccessor, Object, BytecodeNode)] */) {
                     {
                         BytecodeNode bytecode__1 = ($bytecode);
-                        int bci__1 = ($bci);
-                        return TeeLocal.doGeneric(frameValue, setterValue_, child0Value_, bytecode__1, bci__1);
+                        return TeeLocal.doGeneric(frameValue, setterValue_, child0Value_, bytecode__1);
                     }
                 }
             }
@@ -13136,31 +13162,27 @@ public final class BasicInterpreterWithGlobalScopes extends BasicInterpreter {
             return executeAndSpecialize(frameValue, setterValue_, child0Value_, $stackFrame, $bytecode, $bc, $bci, $sp);
         }
 
-        private Object executeAndSpecialize(VirtualFrame frameValue, LocalSetter setterValue, Object child0Value, VirtualFrame $stackFrame, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
+        private Object executeAndSpecialize(VirtualFrame frameValue, LocalAccessor setterValue, Object child0Value, VirtualFrame $stackFrame, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
             int state_0 = this.state_0_;
             {
-                int bci__ = 0;
                 BytecodeNode bytecode__ = null;
-                if (((state_0 & 0b10)) == 0 /* is-not SpecializationActive[BasicInterpreter.TeeLocal.doGeneric(VirtualFrame, LocalSetter, Object, BytecodeNode, int)] */ && child0Value instanceof Long) {
+                if (((state_0 & 0b10)) == 0 /* is-not SpecializationActive[BasicInterpreter.TeeLocal.doGeneric(VirtualFrame, LocalAccessor, Object, BytecodeNode)] */ && child0Value instanceof Long) {
                     long child0Value_ = (long) child0Value;
                     bytecode__ = ($bytecode);
-                    bci__ = ($bci);
-                    state_0 = state_0 | 0b1 /* add SpecializationActive[BasicInterpreter.TeeLocal.doLong(VirtualFrame, LocalSetter, long, BytecodeNode, int)] */;
+                    state_0 = state_0 | 0b1 /* add SpecializationActive[BasicInterpreter.TeeLocal.doLong(VirtualFrame, LocalAccessor, long, BytecodeNode)] */;
                     this.state_0_ = state_0;
                     $bytecode.getRoot().onSpecialize(new InstructionImpl($bytecode, $bci, BYTES.getShort($bc, $bci)), "TeeLocal$Long");
-                    return TeeLocal.doLong(frameValue, setterValue, child0Value_, bytecode__, bci__);
+                    return TeeLocal.doLong(frameValue, setterValue, child0Value_, bytecode__);
                 }
             }
             {
-                int bci__1 = 0;
                 BytecodeNode bytecode__1 = null;
                 bytecode__1 = ($bytecode);
-                bci__1 = ($bci);
-                state_0 = state_0 & 0xfffffffe /* remove SpecializationActive[BasicInterpreter.TeeLocal.doLong(VirtualFrame, LocalSetter, long, BytecodeNode, int)] */;
-                state_0 = state_0 | 0b10 /* add SpecializationActive[BasicInterpreter.TeeLocal.doGeneric(VirtualFrame, LocalSetter, Object, BytecodeNode, int)] */;
+                state_0 = state_0 & 0xfffffffe /* remove SpecializationActive[BasicInterpreter.TeeLocal.doLong(VirtualFrame, LocalAccessor, long, BytecodeNode)] */;
+                state_0 = state_0 | 0b10 /* add SpecializationActive[BasicInterpreter.TeeLocal.doGeneric(VirtualFrame, LocalAccessor, Object, BytecodeNode)] */;
                 this.state_0_ = state_0;
                 $bytecode.getRoot().onSpecialize(new InstructionImpl($bytecode, $bci, BYTES.getShort($bc, $bci)), "TeeLocal$Generic");
-                return TeeLocal.doGeneric(frameValue, setterValue, child0Value, bytecode__1, bci__1);
+                return TeeLocal.doGeneric(frameValue, setterValue, child0Value, bytecode__1);
             }
         }
 
@@ -13172,14 +13194,14 @@ public final class BasicInterpreterWithGlobalScopes extends BasicInterpreter {
             int state_0 = this.state_0_;
             s = new Object[3];
             s[0] = "doLong";
-            if ((state_0 & 0b1) != 0 /* is SpecializationActive[BasicInterpreter.TeeLocal.doLong(VirtualFrame, LocalSetter, long, BytecodeNode, int)] */) {
+            if ((state_0 & 0b1) != 0 /* is SpecializationActive[BasicInterpreter.TeeLocal.doLong(VirtualFrame, LocalAccessor, long, BytecodeNode)] */) {
                 s[1] = (byte)0b01 /* active */;
                 ArrayList<Object> cached = new ArrayList<>();
                 cached.add(Arrays.<Object>asList());
                 s[2] = cached;
             }
             if (s[1] == null) {
-                if ((state_0 & 0b10) != 0 /* is SpecializationActive[BasicInterpreter.TeeLocal.doGeneric(VirtualFrame, LocalSetter, Object, BytecodeNode, int)] */) {
+                if ((state_0 & 0b10) != 0 /* is SpecializationActive[BasicInterpreter.TeeLocal.doGeneric(VirtualFrame, LocalAccessor, Object, BytecodeNode)] */) {
                     s[1] = (byte)0b10 /* excluded */;
                 } else {
                     s[1] = (byte)0b00 /* inactive */;
@@ -13188,7 +13210,7 @@ public final class BasicInterpreterWithGlobalScopes extends BasicInterpreter {
             data[1] = s;
             s = new Object[3];
             s[0] = "doGeneric";
-            if ((state_0 & 0b10) != 0 /* is SpecializationActive[BasicInterpreter.TeeLocal.doGeneric(VirtualFrame, LocalSetter, Object, BytecodeNode, int)] */) {
+            if ((state_0 & 0b10) != 0 /* is SpecializationActive[BasicInterpreter.TeeLocal.doGeneric(VirtualFrame, LocalAccessor, Object, BytecodeNode)] */) {
                 s[1] = (byte)0b01 /* active */;
                 ArrayList<Object> cached = new ArrayList<>();
                 cached.add(Arrays.<Object>asList());
@@ -13223,23 +13245,21 @@ public final class BasicInterpreterWithGlobalScopes extends BasicInterpreter {
 
         private Object execute(VirtualFrame frameValue, VirtualFrame $stackFrame, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
             int state_0 = this.state_0_;
-            LocalSetterRange setterValue_ = ACCESS.uncheckedCast(ACCESS.readObject($bytecode.constants, BYTES.getIntUnaligned($bc, $bci + 2 /* imm setter */)), LocalSetterRange.class);
+            LocalRangeAccessor setterValue_ = ACCESS.uncheckedCast(ACCESS.readObject($bytecode.constants, BYTES.getIntUnaligned($bc, $bci + 2 /* imm setter */)), LocalRangeAccessor.class);
             Object child0Value_ = FRAMES.uncheckedGetObject($stackFrame, $sp - 1);
-            if (state_0 != 0 /* is SpecializationActive[BasicInterpreter.TeeLocalRange.doLong(VirtualFrame, LocalSetterRange, long[], BytecodeNode, int)] || SpecializationActive[BasicInterpreter.TeeLocalRange.doGeneric(VirtualFrame, LocalSetterRange, Object[], BytecodeNode, int)] */) {
-                if ((state_0 & 0b1) != 0 /* is SpecializationActive[BasicInterpreter.TeeLocalRange.doLong(VirtualFrame, LocalSetterRange, long[], BytecodeNode, int)] */ && child0Value_ instanceof long[]) {
+            if (state_0 != 0 /* is SpecializationActive[BasicInterpreter.TeeLocalRange.doLong(VirtualFrame, LocalRangeAccessor, long[], BytecodeNode)] || SpecializationActive[BasicInterpreter.TeeLocalRange.doGeneric(VirtualFrame, LocalRangeAccessor, Object[], BytecodeNode)] */) {
+                if ((state_0 & 0b1) != 0 /* is SpecializationActive[BasicInterpreter.TeeLocalRange.doLong(VirtualFrame, LocalRangeAccessor, long[], BytecodeNode)] */ && child0Value_ instanceof long[]) {
                     long[] child0Value__ = (long[]) child0Value_;
                     {
                         BytecodeNode bytecode__ = ($bytecode);
-                        int bci__ = ($bci);
-                        return TeeLocalRange.doLong(frameValue, setterValue_, child0Value__, bytecode__, bci__);
+                        return TeeLocalRange.doLong(frameValue, setterValue_, child0Value__, bytecode__);
                     }
                 }
-                if ((state_0 & 0b10) != 0 /* is SpecializationActive[BasicInterpreter.TeeLocalRange.doGeneric(VirtualFrame, LocalSetterRange, Object[], BytecodeNode, int)] */ && child0Value_ instanceof Object[]) {
+                if ((state_0 & 0b10) != 0 /* is SpecializationActive[BasicInterpreter.TeeLocalRange.doGeneric(VirtualFrame, LocalRangeAccessor, Object[], BytecodeNode)] */ && child0Value_ instanceof Object[]) {
                     Object[] child0Value__ = (Object[]) child0Value_;
                     {
                         BytecodeNode bytecode__1 = ($bytecode);
-                        int bci__1 = ($bci);
-                        return TeeLocalRange.doGeneric(frameValue, setterValue_, child0Value__, bytecode__1, bci__1);
+                        return TeeLocalRange.doGeneric(frameValue, setterValue_, child0Value__, bytecode__1);
                     }
                 }
             }
@@ -13247,32 +13267,28 @@ public final class BasicInterpreterWithGlobalScopes extends BasicInterpreter {
             return executeAndSpecialize(frameValue, setterValue_, child0Value_, $stackFrame, $bytecode, $bc, $bci, $sp);
         }
 
-        private Object executeAndSpecialize(VirtualFrame frameValue, LocalSetterRange setterValue, Object child0Value, VirtualFrame $stackFrame, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
+        private Object executeAndSpecialize(VirtualFrame frameValue, LocalRangeAccessor setterValue, Object child0Value, VirtualFrame $stackFrame, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
             int state_0 = this.state_0_;
             {
-                int bci__ = 0;
                 BytecodeNode bytecode__ = null;
                 if (child0Value instanceof long[]) {
                     long[] child0Value_ = (long[]) child0Value;
                     bytecode__ = ($bytecode);
-                    bci__ = ($bci);
-                    state_0 = state_0 | 0b1 /* add SpecializationActive[BasicInterpreter.TeeLocalRange.doLong(VirtualFrame, LocalSetterRange, long[], BytecodeNode, int)] */;
+                    state_0 = state_0 | 0b1 /* add SpecializationActive[BasicInterpreter.TeeLocalRange.doLong(VirtualFrame, LocalRangeAccessor, long[], BytecodeNode)] */;
                     this.state_0_ = state_0;
                     $bytecode.getRoot().onSpecialize(new InstructionImpl($bytecode, $bci, BYTES.getShort($bc, $bci)), "TeeLocalRange$Long");
-                    return TeeLocalRange.doLong(frameValue, setterValue, child0Value_, bytecode__, bci__);
+                    return TeeLocalRange.doLong(frameValue, setterValue, child0Value_, bytecode__);
                 }
             }
             {
-                int bci__1 = 0;
                 BytecodeNode bytecode__1 = null;
                 if (child0Value instanceof Object[]) {
                     Object[] child0Value_ = (Object[]) child0Value;
                     bytecode__1 = ($bytecode);
-                    bci__1 = ($bci);
-                    state_0 = state_0 | 0b10 /* add SpecializationActive[BasicInterpreter.TeeLocalRange.doGeneric(VirtualFrame, LocalSetterRange, Object[], BytecodeNode, int)] */;
+                    state_0 = state_0 | 0b10 /* add SpecializationActive[BasicInterpreter.TeeLocalRange.doGeneric(VirtualFrame, LocalRangeAccessor, Object[], BytecodeNode)] */;
                     this.state_0_ = state_0;
                     $bytecode.getRoot().onSpecialize(new InstructionImpl($bytecode, $bci, BYTES.getShort($bc, $bci)), "TeeLocalRange$Generic");
-                    return TeeLocalRange.doGeneric(frameValue, setterValue, child0Value_, bytecode__1, bci__1);
+                    return TeeLocalRange.doGeneric(frameValue, setterValue, child0Value_, bytecode__1);
                 }
             }
             throw new UnsupportedSpecializationException(this, null, setterValue, child0Value);
@@ -13286,7 +13302,7 @@ public final class BasicInterpreterWithGlobalScopes extends BasicInterpreter {
             int state_0 = this.state_0_;
             s = new Object[3];
             s[0] = "doLong";
-            if ((state_0 & 0b1) != 0 /* is SpecializationActive[BasicInterpreter.TeeLocalRange.doLong(VirtualFrame, LocalSetterRange, long[], BytecodeNode, int)] */) {
+            if ((state_0 & 0b1) != 0 /* is SpecializationActive[BasicInterpreter.TeeLocalRange.doLong(VirtualFrame, LocalRangeAccessor, long[], BytecodeNode)] */) {
                 s[1] = (byte)0b01 /* active */;
                 ArrayList<Object> cached = new ArrayList<>();
                 cached.add(Arrays.<Object>asList());
@@ -13298,7 +13314,7 @@ public final class BasicInterpreterWithGlobalScopes extends BasicInterpreter {
             data[1] = s;
             s = new Object[3];
             s[0] = "doGeneric";
-            if ((state_0 & 0b10) != 0 /* is SpecializationActive[BasicInterpreter.TeeLocalRange.doGeneric(VirtualFrame, LocalSetterRange, Object[], BytecodeNode, int)] */) {
+            if ((state_0 & 0b10) != 0 /* is SpecializationActive[BasicInterpreter.TeeLocalRange.doGeneric(VirtualFrame, LocalRangeAccessor, Object[], BytecodeNode)] */) {
                 s[1] = (byte)0b01 /* active */;
                 ArrayList<Object> cached = new ArrayList<>();
                 cached.add(Arrays.<Object>asList());

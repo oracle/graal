@@ -153,7 +153,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
     private static final String USER_LOCALS_START_INDEX = "USER_LOCALS_START_INDEX";
     private static final String BCI_INDEX = "BCI_INDEX";
     private static final String COROUTINE_FRAME_INDEX = "COROUTINE_FRAME_INDEX";
-    private static final String EPILOG_EXCEPTION_INDEX = "EPILOG_EXCEPTION_INDEX";
     private static final String EMPTY_INT_ARRAY = "EMPTY_INT_ARRAY";
 
     // Bytecode version encoding: [tags][instrumentations][source bit]
@@ -908,10 +907,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
         if (model.enableYield) {
             result.add(createInitializedVariable(Set.of(PRIVATE, STATIC, FINAL), int.class, COROUTINE_FRAME_INDEX, reserved++ + ""));
-        }
-
-        if (model.epilogExceptional != null) {
-            result.add(createInitializedVariable(Set.of(PRIVATE, STATIC, FINAL), int.class, EPILOG_EXCEPTION_INDEX, reserved++ + ""));
         }
 
         result.add(createInitializedVariable(Set.of(PRIVATE, STATIC, FINAL), int.class, USER_LOCALS_START_INDEX, reserved + ""));
@@ -6357,7 +6352,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.statement(writeInstruction("bc", "bci + 0", "instruction"));
             for (int i = 0; i < representativeInstruction.immediates.size(); i++) {
                 InstructionImmediate immediate = representativeInstruction.immediates.get(i);
-                b.statement(writeImmediate("bc", "bci", "data" + i, immediate));
+                // Use a general immediate name instead of this particular immediate's name.
+                InstructionImmediate representativeImmediate = new InstructionImmediate(immediate.offset(), immediate.kind(), Integer.toString(i));
+                b.statement(writeImmediate("bc", "bci", "data" + i, representativeImmediate));
             }
 
             b.statement("bci = newBci");
