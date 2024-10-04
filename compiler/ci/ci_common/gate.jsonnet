@@ -260,12 +260,7 @@
     "gate-compiler-benchmarktest_zgc-labsjdk-latest-linux-amd64": {},
 
     "gate-compiler-truffle_xcomp-labsjdk-latest-linux-amd64": t("1:30:00"),
-    "gate-compiler-truffle_xcomp_zgc-labsjdk-latest-linux-amd64": t("1:30:00"),
-
-    "gate-compiler-bootstrap_lite-labsjdk-latest-darwin-amd64": t("1:00:00"),
-
-    "gate-compiler-bootstrap_full-labsjdk-latest-linux-amd64": s.many_cores,
-    "gate-compiler-bootstrap_full_zgc-labsjdk-latest-linux-amd64": s.many_cores
+    "gate-compiler-truffle_xcomp_zgc-labsjdk-latest-linux-amd64": t("1:30:00")
   },
 
   # This map defines the builders that run as gates. Each key in this map
@@ -287,6 +282,11 @@
     "daily-compiler-ctw_economy-labsjdk-latest-linux-aarch64": {},
     "daily-compiler-ctw_economy-labsjdk-latest-darwin-amd64": {},
     "daily-compiler-ctw_economy-labsjdk-latest-darwin-aarch64": {},
+
+    "daily-compiler-bootstrap_lite-labsjdk-latest-darwin-amd64": t("1:00:00"),
+
+    "daily-compiler-bootstrap_full-labsjdk-latest-linux-amd64": s.many_cores,
+    "daily-compiler-bootstrap_full_zgc-labsjdk-latest-linux-amd64": s.many_cores
   } + $.as_dailies(gate_jobs),
 
   # This map defines the builders that run weekly. Each key in this map
