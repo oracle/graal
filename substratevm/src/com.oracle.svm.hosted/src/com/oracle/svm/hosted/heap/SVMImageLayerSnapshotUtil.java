@@ -274,12 +274,12 @@ public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
         @Override
         protected void encode(ObjectCopier.Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
             int id = ((HostedType) obj).getWrapped().getId();
-            stream.writeInt(id);
+            stream.writePackedUnsignedInt(id);
         }
 
         @Override
         protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
-            int id = stream.readInt();
+            int id = stream.readPackedUnsignedInt();
             AnalysisType type = svmImageLayerLoader.getAnalysisType(id);
             return svmImageLayerLoader.getHostedUniverse().lookup(type);
         }
@@ -295,12 +295,12 @@ public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
 
         @Override
         protected void encode(ObjectCopier.Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
-            stream.writeInt(((HostedMethod) obj).getWrapped().getId());
+            stream.writePackedUnsignedInt(((HostedMethod) obj).getWrapped().getId());
         }
 
         @Override
         protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
-            int id = stream.readInt();
+            int id = stream.readPackedUnsignedInt();
             AnalysisMethod method = svmImageLayerLoader.getAnalysisMethod(id);
             return svmImageLayerLoader.getHostedUniverse().lookup(method);
         }

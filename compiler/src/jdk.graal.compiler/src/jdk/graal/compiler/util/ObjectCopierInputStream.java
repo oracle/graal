@@ -26,83 +26,57 @@ package jdk.graal.compiler.util;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Array;
+import java.nio.charset.StandardCharsets;
 
 public class ObjectCopierInputStream extends TypedDataInputStream {
     public ObjectCopierInputStream(InputStream in) {
         super(in);
     }
 
-    public Object readTypedPrimitiveArray() throws IOException {
-        final int length = readInt();
-        final byte type = readByte();
-        switch (type) {
-            case 'Z': {
-                boolean[] a = new boolean[length];
-                for (int i = 0; i < length; i++) {
-                    a[i] = readBoolean();
-                }
-                return a;
-            }
-            case 'B': {
-                byte[] a = new byte[length];
-                for (int i = 0; i < length; i++) {
-                    a[i] = readByte();
-                }
-                return a;
-            }
-            case 'S': {
-                short[] a = new short[length];
-                for (int i = 0; i < length; i++) {
-                    a[i] = readShort();
-                }
-                return a;
-            }
-            case 'C': {
-                char[] a = new char[length];
-                for (int i = 0; i < length; i++) {
-                    a[i] = readChar();
-                }
-                return a;
-            }
-            case 'I': {
-                int[] a = new int[length];
-                for (int i = 0; i < length; i++) {
-                    a[i] = readInt();
-                }
-                return a;
-            }
-            case 'J': {
-                long[] a = new long[length];
-                for (int i = 0; i < length; i++) {
-                    a[i] = readLong();
-                }
-                return a;
-            }
-            case 'F': {
-                float[] a = new float[length];
-                for (int i = 0; i < length; i++) {
-                    a[i] = readFloat();
-                }
-                return a;
-            }
-            case 'D': {
-                double[] a = new double[length];
-                for (int i = 0; i < length; i++) {
-                    a[i] = readDouble();
-                }
-                return a;
-            }
-            default:
-                throw new IOException("Unsupported type: " + Integer.toHexString(type));
-        }
+    @Override
+    protected Object readUntypedValue(int type) throws IOException {
+        return switch (type) {
+            case 'I' -> (int) readPackedSignedLong();
+            case 'J' -> readPackedSignedLong();
+            default -> super.readUntypedValue(type);
+        };
     }
 
-    public long readPackedSigned() throws IOException {
+    @Override
+    protected String readStringValue() throws IOException {
+        int len = readPackedUnsignedInt();
+        byte[] bytes = new byte[len];
+        readFully(bytes);
+        return new String(bytes, StandardCharsets.UTF_8);
+    }
+
+    public Object readTypedPrimitiveArray() throws IOException {
+        int len = readPackedUnsignedInt();
+        int type = readUnsignedByte();
+        Object arr = switch (type) {
+            case 'Z' -> new boolean[len];
+            case 'B' -> new byte[len];
+            case 'S' -> new short[len];
+            case 'C' -> new char[len];
+            case 'I' -> new int[len];
+            case 'J' -> new long[len];
+            case 'F' -> new float[len];
+            case 'D' -> new double[len];
+            default -> throw new IOException("Unsupported type: " + Integer.toHexString(type));
+        };
+        for (int i = 0; i < len; i++) {
+            Array.set(arr, i, readUntypedValue(type));
+        }
+        return arr;
+    }
+
+    public long readPackedSignedLong() throws IOException {
         return decodeSign(readPacked());
     }
 
-    public long readPackedUnsigned() throws IOException {
-        return readPacked();
+    public int readPackedUnsignedInt() throws IOException {
+        return Math.toIntExact(readPacked());
     }
 
     private static long decodeSign(long value) {

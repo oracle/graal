@@ -280,12 +280,12 @@ public class ImageLayerSnapshotUtil {
         public void encode(ObjectCopier.Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
             ImageHeapConstant imageHeapConstant = (ImageHeapConstant) obj;
             imageLayerWriter.elementsToPersist.add(new AnalysisFuture<>(() -> imageLayerWriter.persistConstant(UNDEFINED_CONSTANT_ID, UNDEFINED_FIELD_INDEX, imageHeapConstant)));
-            stream.writeInt(imageHeapConstant.getConstantData().id);
+            stream.writePackedUnsignedInt(imageHeapConstant.getConstantData().id);
         }
 
         @Override
         protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
-            int id = stream.readInt();
+            int id = stream.readPackedUnsignedInt();
             return imageLayerLoader.getOrCreateConstant(id);
         }
     }
@@ -304,12 +304,12 @@ public class ImageLayerSnapshotUtil {
         public void encode(ObjectCopier.Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
             AnalysisType type = (AnalysisType) obj;
             imageLayerWriter.persistType(type);
-            stream.writeInt(type.getId());
+            stream.writePackedUnsignedInt(type.getId());
         }
 
         @Override
         protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
-            int id = stream.readInt();
+            int id = stream.readPackedUnsignedInt();
             return imageLayerLoader.getAnalysisType(id);
         }
     }
@@ -338,12 +338,12 @@ public class ImageLayerSnapshotUtil {
                 imageLayerWriter.persistType(parameter);
             }
             imageLayerWriter.persistType(declaringClass);
-            stream.writeInt(method.getId());
+            stream.writePackedUnsignedInt(method.getId());
         }
 
         @Override
         protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
-            int id = stream.readInt();
+            int id = stream.readPackedUnsignedInt();
             if (id == analysisMethod.getId()) {
                 return analysisMethod;
             }
@@ -365,12 +365,12 @@ public class ImageLayerSnapshotUtil {
         public void encode(ObjectCopier.Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
             AnalysisField field = (AnalysisField) obj;
             int id = encodeField(field, imageLayerWriter);
-            stream.writeInt(id);
+            stream.writePackedUnsignedInt(id);
         }
 
         @Override
         protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
-            int id = stream.readInt();
+            int id = stream.readPackedUnsignedInt();
             return decodeField(imageLayerLoader, id);
         }
     }
@@ -390,12 +390,12 @@ public class ImageLayerSnapshotUtil {
             FieldLocationIdentity fieldLocationIdentity = (FieldLocationIdentity) obj;
             AnalysisField field = (AnalysisField) fieldLocationIdentity.getField();
             int id = encodeField(field, imageLayerWriter);
-            stream.writeInt(id);
+            stream.writePackedUnsignedInt(id);
         }
 
         @Override
         protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
-            int id = stream.readInt();
+            int id = stream.readPackedUnsignedInt();
             return new FieldLocationIdentity(decodeField(imageLayerLoader, id));
         }
     }

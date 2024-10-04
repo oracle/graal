@@ -222,12 +222,12 @@ public class ObjectCopier {
 
         @Override
         protected void encode(Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
-            stream.writeInt(((Enum<?>) obj).ordinal());
+            stream.writePackedUnsignedInt(((Enum<?>) obj).ordinal());
         }
 
         @Override
         protected Object decode(Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
-            int ord = stream.readInt();
+            int ord = stream.readPackedUnsignedInt();
             Object[] constants = concreteType.getEnumConstants();
             return constants[ord];
         }
@@ -407,7 +407,7 @@ public class ObjectCopier {
         }
 
         void decodeMap(ObjectCopierInputStream stream, BiConsumer<Object, Object> putMethod) throws IOException {
-            int size = Math.toIntExact(stream.readPackedUnsigned());
+            int size = stream.readPackedUnsignedInt();
             for (int i = 0; i < size; i++) {
                 int keyId = readId(stream);
                 int valueId = readId(stream);
@@ -445,10 +445,10 @@ public class ObjectCopier {
             recordNum = 0;
 
             try (ObjectCopierInputStream stream = new ObjectCopierInputStream(new ByteArrayInputStream(encoded))) {
-                int nstrings = Math.toIntExact(stream.readPackedUnsigned());
+                int nstrings = stream.readPackedUnsignedInt();
                 strings = new String[nstrings];
                 for (int i = 0; i < nstrings; i++) {
-                    strings[i] = stream.readUTF();
+                    strings[i] = stream.readStringValue();
                 }
                 rootId = readId(stream);
                 for (int id = 1;; id++) {
@@ -476,7 +476,11 @@ public class ObjectCopier {
                         case ']': { // object array
                             String componentTypeName = readString(stream);
                             Class<?> componentType = loadClass(componentTypeName);
-                            int[] elements = (int[]) stream.readTypedPrimitiveArray();
+                            int length = stream.readPackedUnsignedInt();
+                            int[] elements = new int[length];
+                            for (int i = 0; i < length; i++) {
+                                elements[i] = readId(stream);
+                            }
                             Object[] arr = (Object[]) Array.newInstance(componentType, elements.length);
                             addDecodedObject(id, arr);
                             for (int i = 0; i < elements.length; i++) {
@@ -495,7 +499,7 @@ public class ObjectCopier {
                         }
                         case '{': {
                             String className = readString(stream);
-                            int fieldCount = Math.toIntExact(stream.readPackedUnsigned());
+                            int fieldCount = stream.readPackedUnsignedInt();
                             Class<?> clazz = loadClass(className);
                             Object obj = allocateInstance(clazz);
                             addDecodedObject(id, obj);
@@ -543,7 +547,7 @@ public class ObjectCopier {
         }
 
         private static int readId(ObjectCopierInputStream stream) throws IOException {
-            return (int) stream.readPackedUnsigned();
+            return stream.readPackedUnsignedInt();
         }
 
         void resolveId(int id, Consumer<Object> c) {
@@ -560,7 +564,7 @@ public class ObjectCopier {
         }
 
         public String readString(ObjectCopierInputStream stream) throws IOException {
-            int id = Math.toIntExact(stream.readPackedUnsigned());
+            int id = stream.readPackedUnsignedInt();
             return strings[id];
         }
 
@@ -676,7 +680,7 @@ public class ObjectCopier {
         }
 
         private void encodeMap(ObjectCopierOutputStream stream, UnmodifiableEconomicMap<?, ?> map) throws IOException {
-            stream.writePackedUnsigned(map.size());
+            stream.writePackedUnsignedInt(map.size());
 
             UnmodifiableMapCursor<?, ?> cursor = map.getEntries();
             while (cursor.advance()) {
@@ -697,7 +701,7 @@ public class ObjectCopier {
 
         public void writeString(ObjectCopierOutputStream stream, String s) throws IOException {
             int id = strings.getIndex(s);
-            stream.writePackedUnsigned(id);
+            stream.writePackedUnsignedInt(id);
         }
 
         public void makeStringId(String s, ObjectPath objectPath) {
@@ -782,9 +786,9 @@ public class ObjectCopier {
 
         private void encode(ObjectCopierOutputStream out, Object root) throws IOException {
             String[] encodedStrings = strings.encodeAll(new String[strings.getLength()]);
-            out.writePackedUnsigned(encodedStrings.length);
+            out.writePackedUnsignedInt(encodedStrings.length);
             for (String s : encodedStrings) {
-                out.writeUTF(s);
+                out.writeStringValue(s);
             }
             Object[] encodedObjects = objects.encodeAll(new Object[objects.getLength()]);
             writeId(out, getId(root));
@@ -805,8 +809,11 @@ public class ObjectCopier {
                     if (!componentType.isPrimitive()) {
                         out.writeByte(']');
                         writeString(out, componentType.getName());
-                        int[] ids = Stream.of((Object[]) obj).mapToInt(this::getId).toArray();
-                        out.writeTypedPrimitiveArray(ids);
+                        Object[] objs = (Object[]) obj;
+                        out.writePackedUnsignedInt(objs.length);
+                        for (Object o : objs) {
+                            writeId(out, getId(o));
+                        }
                     } else {
                         out.writeByte('[');
                         out.writeTypedPrimitiveArray(obj);
@@ -820,7 +827,7 @@ public class ObjectCopier {
                     ClassInfo classInfo = classInfos.get(clazz);
                     out.writeByte('{');
                     writeString(out, clazz.getName());
-                    out.writePackedUnsigned(classInfo.fields.size());
+                    out.writePackedUnsignedInt(classInfo.fields.size());
                     for (var e : classInfo.fields().entrySet()) {
                         Field f = e.getValue();
                         Class<?> fieldType = f.getType();
@@ -840,7 +847,7 @@ public class ObjectCopier {
         }
 
         private static void writeId(ObjectCopierOutputStream out, int id) throws IOException {
-            out.writePackedUnsigned(id);
+            out.writePackedUnsignedInt(id);
         }
 
         private int getId(Object o) {

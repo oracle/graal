@@ -27,6 +27,7 @@ package jdk.graal.compiler.util;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.reflect.Array;
+import java.nio.charset.StandardCharsets;
 
 import jdk.graal.compiler.core.common.calc.UnsignedMath;
 
@@ -41,49 +42,72 @@ public class ObjectCopierOutputStream extends TypedDataOutputStream {
         super(out);
     }
 
+    @Override
+    public void writeTypedValue(Object value) throws IOException {
+        if (value instanceof Enum<?>) {
+            throw new IllegalArgumentException(String.format("Unsupported type: Value: %s, Value type: %s", value, value.getClass()));
+        }
+        if (value instanceof Integer) {
+            writeByte('I');
+            writePackedSignedLong((int) value);
+        } else if (value instanceof Long) {
+            writeByte('J');
+            writePackedSignedLong((long) value);
+        } else {
+            super.writeTypedValue(value);
+        }
+    }
+
+    @Override
+    protected void writeStringValue(String value) throws IOException {
+        byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
+        this.writePackedUnsignedInt(bytes.length);
+        this.write(bytes);
+    }
+
     public void writeTypedPrimitiveArray(Object value) throws IOException {
         Class<?> compClz = value.getClass().componentType();
         int length = Array.getLength(value);
-        this.writeInt(length);
+        writePackedUnsignedInt(length);
         if (compClz == boolean.class) {
-            this.writeByte('Z');
+            writeByte('Z');
             for (int i = 0; i < length; i++) {
-                this.writeBoolean(Array.getBoolean(value, i));
+                writeBoolean(Array.getBoolean(value, i));
             }
         } else if (compClz == byte.class) {
-            this.writeByte('B');
+            writeByte('B');
             for (int i = 0; i < length; i++) {
-                this.writeByte(Array.getByte(value, i));
+                writeByte(Array.getByte(value, i));
             }
         } else if (compClz == short.class) {
-            this.writeByte('S');
+            writeByte('S');
             for (int i = 0; i < length; i++) {
-                this.writeShort(Array.getShort(value, i));
+                writeShort(Array.getShort(value, i));
             }
         } else if (compClz == char.class) {
-            this.writeByte('C');
+            writeByte('C');
             for (int i = 0; i < length; i++) {
-                this.writeChar(Array.getChar(value, i));
+                writeChar(Array.getChar(value, i));
             }
         } else if (compClz == int.class) {
-            this.writeByte('I');
+            writeByte('I');
             for (int i = 0; i < length; i++) {
-                this.writeInt(Array.getInt(value, i));
+                writePackedSignedLong(Array.getInt(value, i));
             }
         } else if (compClz == long.class) {
-            this.writeByte('J');
+            writeByte('J');
             for (int i = 0; i < length; i++) {
-                this.writeLong(Array.getLong(value, i));
+                writePackedSignedLong(Array.getLong(value, i));
             }
         } else if (compClz == float.class) {
-            this.writeByte('F');
+            writeByte('F');
             for (int i = 0; i < length; i++) {
-                this.writeFloat(Array.getFloat(value, i));
+                writeFloat(Array.getFloat(value, i));
             }
         } else if (compClz == double.class) {
-            this.writeByte('D');
+            writeByte('D');
             for (int i = 0; i < length; i++) {
-                this.writeDouble(Array.getDouble(value, i));
+                writeDouble(Array.getDouble(value, i));
             }
         } else {
             throw new IllegalArgumentException(String.format("Unsupported array: Value: %s, Value type: %s", value, value.getClass()));
@@ -94,12 +118,12 @@ public class ObjectCopierOutputStream extends TypedDataOutputStream {
         return (value << 1) ^ (value >> 63);
     }
 
-    public void writePackedSigned(long value) throws IOException {
+    public void writePackedSignedLong(long value) throws IOException {
         // this is a modified version of the SIGNED5 encoding from Pack200
         writePacked(encodeSign(value));
     }
 
-    public void writePackedUnsigned(long value) throws IOException {
+    public void writePackedUnsignedInt(int value) throws IOException {
         // this is a modified version of the UNSIGNED5 encoding from Pack200
         writePacked(value);
     }
