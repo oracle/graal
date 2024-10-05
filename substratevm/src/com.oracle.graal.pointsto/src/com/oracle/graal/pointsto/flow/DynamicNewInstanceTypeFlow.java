@@ -67,7 +67,9 @@ public final class DynamicNewInstanceTypeFlow extends TypeFlow<BytecodePosition>
 
     @Override
     public void initFlow(PointsToAnalysis bb) {
-        this.newTypeFlow.addObserver(bb, this);
+        assert !bb.usePredicates() || newTypeFlow.getPredicate() != null || MethodFlowsGraph.nonMethodFlow(newTypeFlow) : "Missing predicate for the flow " + newTypeFlow + ", which is input for " +
+                        this;
+        newTypeFlow.addObserver(bb, this);
     }
 
     @Override

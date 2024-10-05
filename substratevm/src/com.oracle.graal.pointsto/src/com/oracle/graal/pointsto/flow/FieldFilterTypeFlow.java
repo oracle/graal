@@ -38,7 +38,7 @@ import com.oracle.graal.pointsto.typestate.TypeState;
  * and it 'includes-null', i.e., it allows null values to pass through. However, it's 'source' is an
  * AnalysisField and not a ValueNode, thus it's a completely different class.
  */
-public class FieldFilterTypeFlow extends TypeFlow<AnalysisField> {
+public class FieldFilterTypeFlow extends TypeFlow<AnalysisField> implements GlobalFlow {
 
     public FieldFilterTypeFlow(AnalysisField field) {
         super(field, field.getType());
@@ -65,8 +65,26 @@ public class FieldFilterTypeFlow extends TypeFlow<AnalysisField> {
     }
 
     @Override
+    public void addPredicated(PointsToAnalysis bb, TypeFlow<?> predicatedFlow) {
+        if (isSaturated()) {
+            declaredType.getTypeFlow(bb, true).addPredicated(bb, predicatedFlow);
+            return;
+        }
+        super.addPredicated(bb, predicatedFlow);
+    }
+
+    @Override
     protected void onInputSaturated(PointsToAnalysis bb, TypeFlow<?> input) {
-        setSaturated();
+        if (!isFlowEnabled()) {
+            inputSaturated = true;
+            /* Another thread could enable the flow in the meantime, so check again. */
+            if (!isFlowEnabled()) {
+                return;
+            }
+        }
+        if (!setSaturated()) {
+            return;
+        }
         /* Swap out this flow with its declared type flow. */
         swapOut(bb, declaredType.getTypeFlow(bb, true));
     }

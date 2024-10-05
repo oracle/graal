@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,26 +26,43 @@ package com.oracle.graal.pointsto.flow;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.graal.pointsto.util.AnalysisError;
 
 import jdk.vm.ci.code.BytecodePosition;
 
-public class MergeTypeFlow extends TypeFlow<BytecodePosition> {
+/**
+ * This flow represents a boolean check, i.e. a null check, type check, or primitive check that
+ * converts its inputs into boolean values. Instances of this class are used as conditions for
+ * {@link ConditionalFlow}.
+ */
+public abstract class BooleanCheckTypeFlow extends TypeFlow<BytecodePosition> {
 
-    public MergeTypeFlow(BytecodePosition position, AnalysisType declaredType) {
+    public BooleanCheckTypeFlow(BytecodePosition position, AnalysisType declaredType) {
         super(position, declaredType);
     }
 
-    public MergeTypeFlow(MergeTypeFlow original, MethodFlowsGraph methodFlows) {
+    protected BooleanCheckTypeFlow(BooleanCheckTypeFlow original, MethodFlowsGraph methodFlows) {
         super(original, methodFlows);
     }
 
-    @Override
-    public TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
-        return new MergeTypeFlow(this, methodFlows);
+    protected static TypeState convertToBoolean(boolean canBeTrue, boolean canBeFalse) {
+        if (canBeTrue && canBeFalse) {
+            return TypeState.anyPrimitiveState();
+        } else if (canBeTrue) {
+            return TypeState.forBoolean(true);
+        } else if (canBeFalse) {
+            return TypeState.forBoolean(false);
+        }
+        return TypeState.forEmpty();
+    }
+
+    protected static TypeState convertToBoolean(TypeState trueState, TypeState falseState) {
+        return convertToBoolean(trueState.isNotEmpty(), falseState.isNotEmpty());
     }
 
     @Override
-    public String toString() {
-        return "MergeTypeFlow<" + getState() + ">";
+    public void addPredicated(PointsToAnalysis bb, TypeFlow<?> predicatedFlow) {
+        AnalysisError.shouldNotReachHere(getClass() + " shouldn't act as a predicate.");
     }
 }

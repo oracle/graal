@@ -125,7 +125,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
     public MethodFlowsGraph getMethodFlowsGraph() {
         ensureFlowsGraphSealed();
 
-        assert flowsGraph != null;
+        assert flowsGraph != null : "Flows graph not available yet.";
         return flowsGraph;
     }
 

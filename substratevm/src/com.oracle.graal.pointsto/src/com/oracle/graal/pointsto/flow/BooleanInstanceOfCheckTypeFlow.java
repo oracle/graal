@@ -31,40 +31,43 @@ import com.oracle.graal.pointsto.typestate.TypeState;
 import jdk.vm.ci.code.BytecodePosition;
 
 /**
- * Produces AnyPrimitive state that leads to immediate saturation of all uses. Used to represent any
- * operation on primitives that is not explicitly modeled by the analysis.
- * </p>
- * This flow can be either global (source == null) or local (source != null).
+ * This flow represents a type check used by {@link ConditionalFlow}.
  */
-public final class AnyPrimitiveSourceTypeFlow extends TypeFlow<BytecodePosition> implements PrimitiveFlow {
+public class BooleanInstanceOfCheckTypeFlow extends BooleanCheckTypeFlow {
+    private final AnalysisType checkedType;
+    private final boolean isExact;
+    private final boolean includeNull;
 
-    public AnyPrimitiveSourceTypeFlow(BytecodePosition source, AnalysisType type) {
-        super(source, type, TypeState.anyPrimitiveState());
+    public BooleanInstanceOfCheckTypeFlow(BytecodePosition position, AnalysisType checkedType, boolean isExact, boolean includeNull, AnalysisType longType) {
+        super(position, longType);
+        this.checkedType = checkedType;
+        this.isExact = isExact;
+        this.includeNull = includeNull;
     }
 
-    private AnyPrimitiveSourceTypeFlow(MethodFlowsGraph methodFlows, AnyPrimitiveSourceTypeFlow original) {
-        super(original, methodFlows, TypeState.anyPrimitiveState());
+    private BooleanInstanceOfCheckTypeFlow(MethodFlowsGraph methodFlows, BooleanInstanceOfCheckTypeFlow original) {
+        super(original, methodFlows);
+        this.checkedType = original.checkedType;
+        this.isExact = original.isExact;
+        this.includeNull = original.includeNull;
     }
 
     @Override
     public TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
-        assert isLocal() : "Global flow should never be cloned: " + this;
-        return new AnyPrimitiveSourceTypeFlow(methodFlows, this);
-    }
-
-    private boolean isLocal() {
-        return source != null;
+        return new BooleanInstanceOfCheckTypeFlow(methodFlows, this);
     }
 
     @Override
-    public boolean canSaturate() {
-        /*
-         * AnyPrimitiveSourceTypeFlow can be used as a global flow that should always propagate
-         * values. The global version can be identified be having source == null, and it should
-         * never saturate.
-         * 
-         * The local versions of this flow have a concrete bytecode position and can saturate.
-         */
-        return isLocal();
+    public TypeState filter(PointsToAnalysis bb, TypeState update) {
+        TypeState canBeTrue;
+        TypeState canBeFalse;
+        if (isExact) {
+            canBeTrue = TypeState.forIntersection(bb, update, TypeState.forExactType(bb, checkedType, includeNull));
+            canBeFalse = TypeState.forSubtraction(bb, update, TypeState.forExactType(bb, checkedType, includeNull));
+        } else {
+            canBeTrue = TypeState.forIntersection(bb, update, checkedType.getAssignableTypes(includeNull));
+            canBeFalse = TypeState.forSubtraction(bb, update, checkedType.getAssignableTypes(includeNull));
+        }
+        return convertToBoolean(canBeTrue, canBeFalse);
     }
 }

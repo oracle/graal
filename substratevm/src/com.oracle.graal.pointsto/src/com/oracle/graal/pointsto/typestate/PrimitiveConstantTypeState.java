@@ -31,7 +31,7 @@ import java.util.Objects;
  * corresponding primitive values are accessible via a factory method
  * {@link TypeState#forPrimitiveConstant }.
  */
-public final class PrimitiveConstantTypeState extends AnyPrimitiveTypeState {
+public final class PrimitiveConstantTypeState extends PrimitiveTypeState {
 
     private static final int CACHE_SIZE = 16;
 
@@ -58,6 +58,16 @@ public final class PrimitiveConstantTypeState extends AnyPrimitiveTypeState {
 
     public long getValue() {
         return value;
+    }
+
+    @Override
+    public boolean canBeTrue() {
+        return value != 0;
+    }
+
+    @Override
+    public boolean canBeFalse() {
+        return value == 0;
     }
 
     @Override
