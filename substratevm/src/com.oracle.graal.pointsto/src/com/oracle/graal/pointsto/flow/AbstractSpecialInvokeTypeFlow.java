@@ -46,6 +46,11 @@ public abstract class AbstractSpecialInvokeTypeFlow extends DirectInvokeTypeFlow
     }
 
     @Override
+    protected void onFlowEnabled(PointsToAnalysis bb) {
+        bb.postTask(() -> onObservedUpdate(bb));
+    }
+
+    @Override
     public boolean addState(PointsToAnalysis bb, TypeState add, boolean postFlow) {
         throw AnalysisError.shouldNotReachHere("The SpecialInvokeTypeFlow should not be updated directly.");
     }

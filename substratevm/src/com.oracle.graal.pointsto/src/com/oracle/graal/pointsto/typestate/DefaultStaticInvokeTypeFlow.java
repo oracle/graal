@@ -56,9 +56,15 @@ final class DefaultStaticInvokeTypeFlow extends AbstractStaticInvokeTypeFlow {
     }
 
     @Override
+    protected void onFlowEnabled(PointsToAnalysis bb) {
+        bb.postTask(() -> update(bb));
+    }
+
+    @Override
     public void update(PointsToAnalysis bb) {
+        assert isFlowEnabled() : "The linking should only be triggered for enabled flows: " + this;
         /* The static invokes should be updated only once and the callee should be null. */
-        guarantee(LightImmutableCollection.isEmpty(this, CALLEES_ACCESSOR), "static invoke updated multiple times!");
+        guarantee(LightImmutableCollection.isEmpty(this, CALLEES_ACCESSOR), "Static invoke updated multiple times, source %s, target method %s", getSource(), targetMethod);
 
         // Unlinked methods can not be parsed
         if (!targetMethod.getWrapped().getDeclaringClass().isLinked()) {

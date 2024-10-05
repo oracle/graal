@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,24 +25,31 @@
 package com.oracle.graal.pointsto.flow;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
-import com.oracle.svm.common.meta.MultiMethod.MultiMethodKey;
+import com.oracle.graal.pointsto.typestate.TypeState;
 
 import jdk.vm.ci.code.BytecodePosition;
 
-public abstract class AbstractStaticInvokeTypeFlow extends DirectInvokeTypeFlow {
-    protected AbstractStaticInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethodKey callerMultiMethodKey) {
-        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMultiMethodKey);
+/**
+ * Corresponds to a control flow merge. It is the only flow with multiple incoming predicates.
+ * <p>
+ * The code after a control flow merge is reachable iff the latest predicate in any of the incoming
+ * branches is non-empty.
+ */
+public class PredicateMergeFlow extends TypeFlow<BytecodePosition> {
+    public PredicateMergeFlow(BytecodePosition position) {
+        /*
+         * The type state is non-empty, but the flow is disabled by default. It will only start
+         * enabling its predicated flows once it is itself enabled.
+         */
+        super(position, null, TypeState.anyPrimitiveState());
     }
 
-    protected AbstractStaticInvokeTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, AbstractStaticInvokeTypeFlow original) {
-        super(bb, methodFlows, original);
+    private PredicateMergeFlow(MethodFlowsGraph methodFlows, PredicateMergeFlow original) {
+        super(original, methodFlows, TypeState.anyPrimitiveState());
     }
 
     @Override
-    public String toString() {
-        return "StaticInvoke<" + targetMethod.format("%h.%n") + ">" + ":" + getState();
+    public TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
+        return new PredicateMergeFlow(methodFlows, this);
     }
 }

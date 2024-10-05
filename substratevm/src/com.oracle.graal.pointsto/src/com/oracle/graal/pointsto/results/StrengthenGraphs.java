@@ -45,6 +45,7 @@ import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
+import com.oracle.graal.pointsto.flow.PrimitiveFilterTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.infrastructure.Universe;
@@ -94,6 +95,8 @@ import jdk.graal.compiler.nodes.StateSplit;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.ConditionalNode;
+import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
+import jdk.graal.compiler.nodes.calc.IntegerLowerThanNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
 import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
 import jdk.graal.compiler.nodes.extended.FieldOffsetProvider;
@@ -459,7 +462,7 @@ public abstract class StrengthenGraphs {
                 boolean falseUnreachable = isUnreachable(node.falseSuccessor());
 
                 if (trueUnreachable && falseUnreachable) {
-                    makeUnreachable(node, tool, () -> "method " + graph.method().format("%H.%n(%p)") + ", node " + node + ": both successors of IfNode are unreachable");
+                    makeUnreachable(node, tool, () -> "method " + getQualifiedName(graph) + ", node " + node + ": both successors of IfNode are unreachable");
 
                 } else if (trueUnreachable || falseUnreachable) {
                     AbstractBeginNode killedBegin = node.successor(trueUnreachable);
@@ -589,6 +592,7 @@ public abstract class StrengthenGraphs {
                 /* Invoke is unreachable, there is no point in improving any types further. */
                 return;
             }
+            assert invokeFlow.isFlowEnabled() : "Disabled invoke should have no callees: " + invokeFlow + ", in method " + getQualifiedName(graph);
 
             FixedWithNextNode beforeInvoke = (FixedWithNextNode) invoke.predecessor();
             NodeInputList<ValueNode> arguments = callTarget.arguments();
@@ -637,7 +641,7 @@ public abstract class StrengthenGraphs {
                  * interface call may have already been optimized to a special call by stamp
                  * strengthening of the receiver object, hence the invoke kind is direct, whereas
                  * the points-to analysis inaccurately concluded there can be more than one callee.
-                 * 
+                 *
                  * Below we just check that if there is a direct invoke *and* the analysis
                  * discovered a single callee, then the callee should match the target method.
                  */
@@ -684,8 +688,10 @@ public abstract class StrengthenGraphs {
                      */
                     JavaMethodProfile methodProfile = makeMethodProfile(callees);
 
-                    assert typeProfile == null || typeProfile.getTypes().length > 1 : "Should devirtualize with typeProfile=" + typeProfile + " and methodProfile=" + methodProfile;
-                    assert methodProfile == null || methodProfile.getMethods().length > 1 : "Should devirtualize with typeProfile=" + typeProfile + " and methodProfile=" + methodProfile;
+                    assert typeProfile == null || typeProfile.getTypes().length > 1 : "Should devirtualize with typeProfile=" + typeProfile + " and methodProfile=" + methodProfile + " and callees" +
+                                    callees + " invoke " + invokeFlow + " " + invokeFlow.getReceiver() + " in method " + getQualifiedName(graph);
+                    assert methodProfile == null || methodProfile.getMethods().length > 1 : "Should devirtualize with typeProfile=" + typeProfile + " and methodProfile=" + methodProfile +
+                                    " and callees" + callees + " invoke " + invokeFlow + " " + invokeFlow.getReceiver() + " in method " + getQualifiedName(graph);
 
                     setInvokeProfiles(invoke, typeProfile, methodProfile);
                 }
@@ -696,7 +702,19 @@ public abstract class StrengthenGraphs {
             }
 
             FixedWithNextNode anchorPointAfterInvoke = (FixedWithNextNode) (invoke instanceof InvokeWithExceptionNode ? invoke.next() : invoke);
-            Object newStampOrConstant = strengthenStampFromTypeFlow(node, invokeFlow.getResult(), anchorPointAfterInvoke, tool);
+            TypeFlow<?> nodeFlow = invokeFlow.getResult();
+            if (nodeFlow != null && node.getStackKind() == JavaKind.Void && !methodFlow.isSaturated((PointsToAnalysis) bb, nodeFlow)) {
+                /*
+                 * We track the reachability of return statements in void methods via returning
+                 * either Empty or AnyPrimitive TypeState, therefore we perform an emptiness check.
+                 */
+                var typeState = methodFlow.foldTypeFlow((PointsToAnalysis) bb, nodeFlow);
+                if (typeState.isEmpty() && unreachableValues.add(node)) {
+                    makeUnreachable(anchorPointAfterInvoke.next(), tool,
+                                    () -> "method " + getQualifiedName(graph) + ", node " + node + ": return from void method was proven unreachable");
+                }
+            }
+            Object newStampOrConstant = strengthenStampFromTypeFlow(node, nodeFlow, anchorPointAfterInvoke, tool);
             updateStampUsingPiNode(node, newStampOrConstant, anchorPointAfterInvoke, tool);
         }
 
@@ -758,7 +776,7 @@ public abstract class StrengthenGraphs {
                 InliningUtil.nonNullReceiver(invoke);
             }
 
-            makeUnreachable(invoke.asFixedNode(), tool, () -> "method " + ((AnalysisMethod) graph.method()).getQualifiedName() + ", node " + invoke +
+            makeUnreachable(invoke.asFixedNode(), tool, () -> "method " + getQualifiedName(graph) + ", node " + invoke +
                             ": empty list of callees for call to " + ((AnalysisMethod) invoke.callTarget().targetMethod()).getQualifiedName());
         }
 
@@ -784,9 +802,18 @@ public abstract class StrengthenGraphs {
 
         private boolean isUnreachable(Node branch) {
             TypeFlow<?> branchFlow = getNodeFlow(branch);
-            return branchFlow != null &&
-                            !methodFlow.isSaturated((PointsToAnalysis) bb, branchFlow) &&
-                            methodFlow.foldTypeFlow((PointsToAnalysis) bb, branchFlow).isEmpty();
+            if (branchFlow != null && !methodFlow.isSaturated(((PointsToAnalysis) bb), branchFlow)) {
+                TypeState typeState = methodFlow.foldTypeFlow((PointsToAnalysis) bb, branchFlow);
+                if (branchFlow.isPrimitiveFlow()) {
+                    /*
+                     * This assert is a safeguard to verify the assumption that only one type of
+                     * flow has to be considered as a branch predicate at the moment.
+                     */
+                    assert branchFlow instanceof PrimitiveFilterTypeFlow : "Unexpected type of primitive flow encountered as branch predicate: " + branchFlow;
+                }
+                return !branchFlow.isFlowEnabled() || typeState.isEmpty();
+            }
+            return false;
         }
 
         private void updateStampInPlace(ValueNode node, Stamp newStamp, SimplifierTool tool) {
@@ -878,7 +905,7 @@ public abstract class StrengthenGraphs {
             node.inferStamp();
             Stamp s = node.stamp(NodeView.DEFAULT);
             if (s.isIntegerStamp() || nodeTypeState.isPrimitive()) {
-                return getIntegerStamp(node, s, nodeTypeState);
+                return getIntegerStamp(node, ((IntegerStamp) s), anchorPoint, nodeTypeState, tool);
             }
 
             ObjectStamp oldStamp = (ObjectStamp) s;
@@ -901,7 +928,7 @@ public abstract class StrengthenGraphs {
             if (typeStateTypes.size() == 0) {
                 if (nonNull) {
                     makeUnreachable(anchorPoint.next(), tool,
-                                    () -> "method " + ((AnalysisMethod) graph.method()).getQualifiedName() + ", node " + node + ": empty stamp when strengthening oldStamp " + oldStamp);
+                                    () -> "method " + getQualifiedName(graph) + ", node " + node + ": empty object type state when strengthening oldStamp " + oldStamp);
                     unreachableValues.add(node);
                     return null;
                 } else {
@@ -972,9 +999,15 @@ public abstract class StrengthenGraphs {
             return null;
         }
 
-        private IntegerStamp getIntegerStamp(ValueNode node, Stamp stamp, TypeState nodeTypeState) {
+        private IntegerStamp getIntegerStamp(ValueNode node, IntegerStamp originalStamp, FixedWithNextNode anchorPoint, TypeState nodeTypeState, SimplifierTool tool) {
             assert bb.trackPrimitiveValues() : nodeTypeState + "," + node + " in " + node.graph();
             assert nodeTypeState != null && (nodeTypeState.isEmpty() || nodeTypeState.isPrimitive()) : nodeTypeState + "," + node + " in " + node.graph();
+            if (nodeTypeState.isEmpty()) {
+                makeUnreachable(anchorPoint.next(), tool,
+                                () -> "method " + getQualifiedName(graph) + ", node " + node + ": empty primitive type state when strengthening oldStamp " + originalStamp);
+                unreachableValues.add(node);
+                return null;
+            }
             if (nodeTypeState instanceof PrimitiveConstantTypeState constantTypeState) {
                 long constantValue = constantTypeState.getValue();
                 if (node instanceof ConstantNode constant) {
@@ -987,7 +1020,7 @@ public abstract class StrengthenGraphs {
                     assert ((PrimitiveConstant) value).asLong() == constantValue : "The actual value of node: " + value + " is different than the value " + constantValue +
                                     " computed by points-to analysis, method in " + node.graph().method();
                 } else {
-                    return IntegerStamp.createConstant(((IntegerStamp) stamp).getBits(), constantValue);
+                    return IntegerStamp.createConstant(originalStamp.getBits(), constantValue);
                 }
             }
             return null;
@@ -1061,6 +1094,10 @@ public abstract class StrengthenGraphs {
         }
     }
 
+    private static String getQualifiedName(StructuredGraph graph) {
+        return ((AnalysisMethod) graph.method()).getQualifiedName();
+    }
+
     protected JavaTypeProfile makeTypeProfile(TypeState typeState) {
         if (typeState == null || analysisSizeCutoff != -1 && typeState.typesCount() > analysisSizeCutoff) {
             return null;
@@ -1119,6 +1156,7 @@ final class StrengthenGraphsCounters {
         BLOCK,
         IS_NULL,
         INSTANCE_OF,
+        PRIM_CMP,
         INVOKE_STATIC,
         INVOKE_DIRECT,
         INVOKE_INDIRECT,
@@ -1167,6 +1205,8 @@ final class StrengthenGraphsCounters {
             inc(localValues, Counter.IS_NULL);
         } else if (condition instanceof InstanceOfNode) {
             inc(localValues, Counter.INSTANCE_OF);
+        } else if (condition instanceof IntegerEqualsNode || condition instanceof IntegerLowerThanNode) {
+            inc(localValues, Counter.PRIM_CMP);
         }
     }
 

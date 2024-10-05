@@ -26,6 +26,7 @@ package com.oracle.graal.pointsto.flow;
 
 import java.util.Collection;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
@@ -35,21 +36,66 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.results.StrengthenGraphs;
 import com.oracle.graal.pointsto.typestate.PointsToStats;
-import com.oracle.graal.pointsto.typestate.PrimitiveConstantTypeState;
+import com.oracle.graal.pointsto.typestate.PrimitiveTypeState;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.graal.pointsto.util.AtomicUtils;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 import com.oracle.svm.util.ClassUtil;
 
 import jdk.graal.compiler.graph.Node;
 import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.meta.JavaKind;
 
+/**
+ * This class represents a node (further called flow) in the type flow graph. Each flow typically
+ * corresponds to a Graal IR node in a particular method or some 'global' value such as the value of
+ * a given field ({@link FieldTypeFlow}) or all instantiatiated subtypes of a specific type
+ * ({@link AllInstantiatedTypeFlow}).
+ * <p>
+ * Each node has a {@link TypeState} modelling all the values that can be assigned to the
+ * instruction or memory location given node represents. Nodes are connected via use, observer and
+ * predicate edges.
+ * <p>
+ * Each flow can be in exactly one of the following states: disabled, enabled, or saturated.
+ * <p>
+ * Disabled nodes can accept values from incoming use edges and remember if their dependencies
+ * saturated, but they neither propagate any value further down along the use edges nor perform any
+ * other action such as method linking until they become enabled.
+ * <p>
+ * A flow can be enabled by its predicate when the predicate itself is enabled and predicate's
+ * {@link TypeState} becomes non-empty. This process is started by calling
+ * {@link TypeFlow#enableFlow}, which atomically marks given flow as enabled and triggers the
+ * {@link TypeFlow#onFlowEnabled} callback, which performs any flow-specific action that should be
+ * done at this stage such as method linking or marking a type as instantiated.
+ * <p>
+ * An enabled flow can become saturated when the size of its {@link TypeState} exceeds a given
+ * configurable threshold, which is checked by calling {@link TypeFlow#checkSaturated}. When a flow
+ * saturates, it notifies all its dependencies and disconnects itself from the graph. Note that its
+ * {@link TypeState} no longer matters at this point, therefore if one wants to query a state of a
+ * given flow, first check the saturation status via {@link TypeFlow#isSaturated()} and only then
+ * examine its {@link TypeState}.
+ * <p>
+ * Valid state transitions are as follows:
+ * <p>
+ * disabled -> enabled -> saturated
+ * <p>
+ * The transitions are always in this direction. Enabled flow cannot be disabled. Disabled flow
+ * cannot saturate.
+ * <p>
+ */
 @SuppressWarnings("rawtypes")
 public abstract class TypeFlow<T> {
     private static final AtomicReferenceFieldUpdater<TypeFlow, Object> USE_UPDATER = AtomicReferenceFieldUpdater.newUpdater(TypeFlow.class, Object.class, "uses");
     private static final AtomicReferenceFieldUpdater<TypeFlow, Object> INPUTS_UPDATER = AtomicReferenceFieldUpdater.newUpdater(TypeFlow.class, Object.class, "inputs");
     private static final AtomicReferenceFieldUpdater<TypeFlow, Object> OBSERVERS_UPDATER = AtomicReferenceFieldUpdater.newUpdater(TypeFlow.class, Object.class, "observers");
     private static final AtomicReferenceFieldUpdater<TypeFlow, Object> OBSERVEES_UPDATER = AtomicReferenceFieldUpdater.newUpdater(TypeFlow.class, Object.class, "observees");
+    private static final AtomicReferenceFieldUpdater<TypeFlow, Object> PREDICATED_FLOWS_UPDATER = AtomicReferenceFieldUpdater.newUpdater(TypeFlow.class, Object.class, "predicatedFlows");
+    private static final AtomicIntegerFieldUpdater<TypeFlow> PREDICATE_TRIGGERED_UPDATER = AtomicIntegerFieldUpdater.newUpdater(TypeFlow.class, "predicateTriggered");
+    private static final AtomicIntegerFieldUpdater<TypeFlow> IS_ENABLED_UPDATER = AtomicIntegerFieldUpdater.newUpdater(TypeFlow.class, "isEnabled");
+    private static final AtomicReferenceFieldUpdater<TypeFlow, TypeFlow> PREDICATE_UPDATER = AtomicReferenceFieldUpdater.newUpdater(TypeFlow.class, TypeFlow.class, "predicate");
+    private static final AtomicIntegerFieldUpdater<TypeFlow> SATURATED_UPDATER = AtomicIntegerFieldUpdater.newUpdater(TypeFlow.class, "isSaturated");
+
     protected static final AtomicInteger nextId = new AtomicInteger();
 
     protected final int id;
@@ -63,6 +109,18 @@ public abstract class TypeFlow<T> {
 
     protected volatile TypeState state;
 
+    /** Nonzero iff this flow was enabled by its predicate. */
+    @SuppressWarnings("unused") private volatile int isEnabled;
+
+    /** A reference to the predicate of this flow. */
+    @SuppressWarnings("unused") private volatile TypeFlow<?> predicate;
+
+    /**
+     * Nonzero if this flow already triggered and cleared its predicate edges. Used to avoid
+     * executing the content of{@link TypeFlow#enablePredicated} redundantly.
+     */
+    @SuppressWarnings("unused") private volatile int predicateTriggered;
+
     /** The set of all {@link TypeFlow}s that need to be update when this flow changes. */
     @SuppressWarnings("unused") private volatile Object uses;
 
@@ -74,6 +132,12 @@ public abstract class TypeFlow<T> {
 
     /** The set of all observees, i.e., objects that notify this flow when they change. */
     @SuppressWarnings("unused") private volatile Object observees;
+
+    /**
+     * The set of all predicated flows, i.e., flows that should be enabled when this flows' state
+     * becomes truthy.
+     */
+    @SuppressWarnings("unused") private volatile Object predicatedFlows;
 
     private int slot;
     private final boolean isClone; // true -> clone, false -> original
@@ -100,7 +164,19 @@ public abstract class TypeFlow<T> {
      * <p/>
      * The initial value is false, i.e., the flow is initially not saturated.
      */
-    private volatile boolean isSaturated;
+    @SuppressWarnings("unused") private volatile int isSaturated;
+
+    /**
+     * True iff the input of this flow saturated. Used to delay the execution of the
+     * {@link TypeFlow#onInputSaturated} until this flow is enabled.
+     */
+    protected volatile boolean inputSaturated;
+
+    /**
+     * True iff the observed value saturated. Used to delay the execution of the
+     * {@link TypeFlow#onObservedSaturated} until this flow is enabled.
+     */
+    protected volatile boolean observedSaturated;
 
     /**
      * A TypeFlow is invalidated when the flowsgraph it belongs to is updated due to
@@ -115,6 +191,7 @@ public abstract class TypeFlow<T> {
 
     protected final boolean isPrimitiveFlow;
 
+    @SuppressWarnings("this-escape")
     private TypeFlow(T source, AnalysisType declaredType, TypeState typeState, int slot, boolean isClone, MethodFlowsGraph graphRef) {
         this.id = nextId.incrementAndGet();
         this.source = source;
@@ -130,7 +207,93 @@ public abstract class TypeFlow<T> {
             isPrimitiveFlow = typeState.isPrimitive();
         }
         validateSource();
-        assert primitiveFlowCheck(state) : this;
+        assert primitiveFlowCheck(state) : state + ", " + this;
+        if (this instanceof GlobalFlow) {
+            /* Global flows should be enabled immediately. */
+            AtomicUtils.atomicMark(this, IS_ENABLED_UPDATER);
+            if (state.isNotEmpty()) {
+                /*
+                 * If the initial state is already non-empty, trigger the predicate edge.
+                 */
+                AtomicUtils.atomicMark(this, PREDICATE_TRIGGERED_UPDATER);
+            }
+        }
+    }
+
+    public void setPredicate(TypeFlow<?> predicate) {
+        AtomicUtils.atomicSet(this, predicate, PREDICATE_UPDATER);
+    }
+
+    public TypeFlow<?> getPredicate() {
+        return PREDICATE_UPDATER.get(this);
+    }
+
+    public boolean isPrimitiveFlow() {
+        return isPrimitiveFlow;
+    }
+
+    /**
+     * Enables the flow and triggers value propagation if bb is not null.
+     * <p/>
+     * Some global flows are created and enabled early on in a place where a reference to bb is not
+     * easily available, so they pass in null, enabling the flow, but not triggering value
+     * propagation yet.
+     * 
+     * @return true iff the flow was enabled by this operation
+     */
+    public boolean enableFlow(PointsToAnalysis bb) {
+        if (AtomicUtils.atomicMark(this, IS_ENABLED_UPDATER)) {
+            if (bb != null) {
+                onFlowEnabled(bb);
+                if (inputSaturated) {
+                    onInputSaturated(bb, null);
+                }
+                if (observedSaturated) {
+                    onObservedSaturated(bb, null);
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Hook to perform any updates that should only be done once a flow is enabled by its predicate.
+     */
+    protected void onFlowEnabled(PointsToAnalysis bb) {
+        if (state.isNotEmpty()) {
+            propagateState(bb, true, state);
+        }
+    }
+
+    /** Add a new predicated flow. */
+    public void addPredicated(PointsToAnalysis bb, TypeFlow<?> predicatedFlow) {
+        predicatedFlow.setPredicate(this);
+        ConcurrentLightHashSet.addElement(this, PREDICATED_FLOWS_UPDATER, predicatedFlow);
+        if (predicateAlreadyTriggered()) {
+            predicatedFlow.enableFlow(bb);
+            /*
+             * The add-check-remove sequence is to prevent a data race with the enablePredicated
+             * method.
+             */
+            ConcurrentLightHashSet.removeElement(this, PREDICATED_FLOWS_UPDATER, predicatedFlow);
+        }
+    }
+
+    private void removePredicated(TypeFlow<?> predicatedFlow) {
+        ConcurrentLightHashSet.removeElement(this, PREDICATED_FLOWS_UPDATER, predicatedFlow);
+    }
+
+    public Collection<TypeFlow<?>> getPredicatedFlows() {
+        return ConcurrentLightHashSet.getElements(this, PREDICATED_FLOWS_UPDATER);
+    }
+
+    public boolean predicateAlreadyTriggered() {
+        return AtomicUtils.isSet(this, PREDICATE_TRIGGERED_UPDATER);
+    }
+
+    public final boolean isFlowEnabled() {
+        return AtomicUtils.isSet(this, IS_ENABLED_UPDATER);
     }
 
     private void validateSource() {
@@ -171,6 +334,9 @@ public abstract class TypeFlow<T> {
     public TypeFlow(TypeFlow<T> original, MethodFlowsGraph graphRef, TypeState cloneState) {
         this(original.getSource(), original.getDeclaredType(), cloneState, original.getSlot(), true, graphRef);
         PointsToStats.registerTypeFlowRetainReason(this, original);
+        if (original.isFlowEnabled()) {
+            enableFlow(null);
+        }
     }
 
     /**
@@ -251,6 +417,7 @@ public abstract class TypeFlow<T> {
     }
 
     public TypeState getState() {
+        /* GR-58690 - We should not query the type state of disabled flows. */
         return state;
     }
 
@@ -285,7 +452,7 @@ public abstract class TypeFlow<T> {
      * immediately remove itself from all its inputs. The inputs lazily remove it on next update.
      */
     public boolean isSaturated() {
-        return isSaturated;
+        return AtomicUtils.isSet(this, SATURATED_UPDATER);
     }
 
     /**
@@ -300,8 +467,9 @@ public abstract class TypeFlow<T> {
      * Mark this flow as saturated. Each flow starts with isSaturated as false and once it is set to
      * true it cannot be changed.
      */
-    public void setSaturated() {
-        isSaturated = true;
+    public boolean setSaturated() {
+        assert isFlowEnabled() : "A flow cannot saturate before it is enabled.";
+        return AtomicUtils.atomicMark(this, SATURATED_UPDATER);
     }
 
     public boolean addState(PointsToAnalysis bb, TypeState add) {
@@ -311,7 +479,6 @@ public abstract class TypeFlow<T> {
     /* Add state and notify inputs of the result. */
     public boolean addState(PointsToAnalysis bb, TypeState add, boolean postFlow) {
         PointsToStats.registerTypeFlowUpdate(bb, this, add);
-
         TypeState before;
         TypeState after;
         TypeState filteredAdd;
@@ -326,21 +493,35 @@ public abstract class TypeFlow<T> {
 
         PointsToStats.registerTypeFlowSuccessfulUpdate(bb, this, add);
 
-        assert !bb.trackPrimitiveValues() || primitiveFlowCheck(after) : this + "," + after;
-        if (checkSaturated(bb, after)) {
-            onSaturated(bb);
-        } else if (postFlow) {
-            bb.postFlow(this);
+        assert !bb.trackPrimitiveValues() || primitiveFlowCheck(after) : after + ", " + this;
+
+        /* Only propagate values if this flow is enabled */
+        if (isFlowEnabled()) {
+            propagateState(bb, postFlow, after);
         }
 
         return true;
     }
 
-    /**
-     * Primitive flows should only have primitive or empty type states.
-     */
-    private boolean primitiveFlowCheck(TypeState newState) {
-        return !isPrimitiveFlow || newState.isPrimitive() || newState.isEmpty();
+    protected void propagateState(PointsToAnalysis bb, boolean postFlow, TypeState newState) {
+        assert isFlowEnabled() : "A flow cannot propagate state before it is enabled: " + this;
+        assert newState.isNotEmpty() : "Empty state should not trigger propagation: " + this;
+        enablePredicated(bb);
+        if (checkSaturated(bb, newState)) {
+            onSaturated(bb);
+        } else if (postFlow) {
+            bb.postFlow(this);
+        }
+    }
+
+    /** Enables all the predicated flows and clears the predicatedFlows set. */
+    protected void enablePredicated(PointsToAnalysis bb) {
+        if (AtomicUtils.atomicMark(this, PREDICATE_TRIGGERED_UPDATER)) {
+            ConcurrentLightHashSet.forEach(this, PREDICATED_FLOWS_UPDATER, (TypeFlow<?> predicatedFlow) -> {
+                bb.postTask(() -> predicatedFlow.enableFlow(bb));
+            });
+            ConcurrentLightHashSet.clear(this, PREDICATED_FLOWS_UPDATER);
+        }
     }
 
     // manage uses
@@ -366,6 +547,15 @@ public abstract class TypeFlow<T> {
                  * because we only propagate object types states through them. Unsafe accessed
                  * primitive fields are set to AnyPrimitiveTypeState and so are the corresponding
                  * FieldFilterTypeFlows.
+                 */
+                return true;
+            } else if (!this.isPrimitiveFlow && (use instanceof BooleanNullCheckTypeFlow || use instanceof BooleanInstanceOfCheckTypeFlow)) {
+                /* Valid transformation, converts an object into boolean. */
+                return true;
+            } else if (use instanceof FormalReturnTypeFlow && use.getDeclaredType().getJavaKind() == JavaKind.Void) {
+                /*
+                 * Object to primitive use edge from predicate to ReturnFlow is used to model the
+                 * reachability of the return.
                  */
                 return true;
             }
@@ -397,7 +587,7 @@ public abstract class TypeFlow<T> {
                     /* And unlink the use. */
                     removeUse(use);
                     return false;
-                } else {
+                } else if (isFlowEnabled()) {
                     use.addState(bb, getState());
                 }
             }
@@ -466,7 +656,7 @@ public abstract class TypeFlow<T> {
                     notifyObserverOfSaturation(bb, observer);
                     removeObserver(observer);
                     return false;
-                } else if (!this.state.isEmpty()) {
+                } else if (isFlowEnabled() && !this.state.isEmpty()) {
                     /* Only trigger an observer update if this flow has a non-empty state. */
                     /*
                      * Notify the observer after registering. This flow might have already reached a
@@ -580,11 +770,18 @@ public abstract class TypeFlow<T> {
             return newState;
         }
         if (isPrimitiveFlow) {
-            assert newState.isPrimitive() || newState.isEmpty() : newState + "," + this;
+            assert primitiveFlowCheck(newState) : newState + ", " + this;
             return newState;
         }
         /* By default, filter all type flows with the declared type. */
         return TypeState.forIntersection(bb, newState, declaredType.getAssignableTypes(true));
+    }
+
+    /**
+     * Primitive flows should only have primitive or empty type states.
+     */
+    private boolean primitiveFlowCheck(TypeState newState) {
+        return !isPrimitiveFlow || newState.isPrimitive() || newState.isEmpty();
     }
 
     /**
@@ -648,7 +845,7 @@ public abstract class TypeFlow<T> {
             return false;
         }
         if (typeState.isPrimitive()) {
-            return !(typeState instanceof PrimitiveConstantTypeState);
+            return ((PrimitiveTypeState) typeState).isAnyPrimitive();
         }
         return typeState.typesCount() > bb.analysisPolicy().typeFlowSaturationCutoff();
     }
@@ -657,6 +854,7 @@ public abstract class TypeFlow<T> {
     protected void onSaturated(PointsToAnalysis bb) {
         assert bb.analysisPolicy().removeSaturatedTypeFlows() : "The type flow saturation optimization is disabled.";
         assert canSaturate() : "This type flow cannot saturate.";
+        assert isFlowEnabled() : "A flow cannot saturate before it is enabled.";
         /*
          * Array type flow aliasing needs to be enabled for the type flow saturation optimization to
          * work correctly. When the receiver object of an array load/store operation is saturated,
@@ -668,15 +866,16 @@ public abstract class TypeFlow<T> {
          */
         assert bb.analysisPolicy().aliasArrayTypeFlows() : "Array type flows must be aliased.";
 
-        if (isSaturated()) {
+        /* Mark the flow as saturated, this will lead to lazy removal from *all* its inputs. */
+        if (!setSaturated()) {
             /* This flow is already marked as saturated. */
             return;
         }
 
-        /* Mark the flow as saturated, this will lead to lazy removal from *all* its inputs. */
-        setSaturated();
         /* Run flow-specific saturation tasks, e.g., stop observing receivers. */
         onSaturated();
+        /* Enable predicated flows */
+        enablePredicated(bb);
         /* Notify uses and observers that this input is saturated and unlink them. */
         notifySaturated(bb);
     }
@@ -705,6 +904,9 @@ public abstract class TypeFlow<T> {
         for (TypeFlow<?> observer : getObservers()) {
             swapAtObserver(bb, newFlow, observer);
         }
+        for (TypeFlow<?> predicatedFlow : getPredicatedFlows()) {
+            swapAtPredicated(bb, newFlow, predicatedFlow);
+        }
     }
 
     protected void swapAtUse(PointsToAnalysis bb, TypeFlow<?> newFlow, TypeFlow<?> use) {
@@ -718,6 +920,11 @@ public abstract class TypeFlow<T> {
         observer.replacedObservedWith(bb, newFlow);
     }
 
+    private void swapAtPredicated(PointsToAnalysis bb, TypeFlow<?> newFlow, TypeFlow<?> predicatedFlow) {
+        removePredicated(predicatedFlow);
+        newFlow.addPredicated(bb, predicatedFlow);
+    }
+
     /**
      * Notified by an input that it is saturated and it will stop sending updates.
      */
@@ -726,6 +933,14 @@ public abstract class TypeFlow<T> {
         if (!canSaturate()) {
             /* This type flow needs to track all its individual types. */
             return;
+        }
+
+        if (!isFlowEnabled()) {
+            inputSaturated = true;
+            /* Another thread could enable the flow in the meantime, so check again. */
+            if (!isFlowEnabled()) {
+                return;
+            }
         }
         /*
          * By default when a type flow is notified that one of its inputs is saturated it will just

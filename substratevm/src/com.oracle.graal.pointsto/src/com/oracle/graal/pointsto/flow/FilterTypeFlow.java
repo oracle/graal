@@ -101,10 +101,30 @@ public class FilterTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
+    public void addPredicated(PointsToAnalysis bb, TypeFlow<?> predicatedFlow) {
+        if (isAssignable && isSaturated()) {
+            filterType.getTypeFlow(bb, includeNull).addPredicated(bb, predicatedFlow);
+            return;
+        }
+        super.addPredicated(bb, predicatedFlow);
+    }
+
+    @Override
     protected void onInputSaturated(PointsToAnalysis bb, TypeFlow<?> input) {
         if (isAssignable) {
-            /* Swap this flow out at its uses/observers with its filter type flow. */
-            setSaturated();
+            if (!isFlowEnabled()) {
+                inputSaturated = true;
+                /* Another thread could enable the flow in the meantime, so check again. */
+                if (!isFlowEnabled()) {
+                    return;
+                }
+            }
+            if (!setSaturated()) {
+                return;
+            }
+            /*
+             * Swap this flow out at its uses/observers/predicated flows with its filter type flow.
+             */
             swapOut(bb, filterType.getTypeFlow(bb, includeNull));
         } else {
             super.onInputSaturated(bb, input);

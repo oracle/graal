@@ -58,6 +58,9 @@ final class DefaultSpecialInvokeTypeFlow extends AbstractSpecialInvokeTypeFlow {
     @Override
     public void onObservedUpdate(PointsToAnalysis bb) {
         assert !isSaturated() : this;
+        if (!isFlowEnabled()) {
+            return;
+        }
 
         /*
          * Filter types not compatible with the receiver type and determine which types have been

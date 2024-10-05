@@ -34,7 +34,7 @@ import com.oracle.graal.pointsto.typestate.TypeState;
 /**
  * This class is used to model the elements type flow for array objects.
  */
-public class ArrayElementsTypeFlow extends TypeFlow<AnalysisType> {
+public class ArrayElementsTypeFlow extends TypeFlow<AnalysisType> implements GlobalFlow {
 
     /** The array object. */
     private final AnalysisObject object;
