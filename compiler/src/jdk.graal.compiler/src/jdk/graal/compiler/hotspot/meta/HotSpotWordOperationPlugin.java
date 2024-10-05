@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -132,6 +132,11 @@ public class HotSpotWordOperationPlugin extends WordOperationPlugin {
             case FROM_POINTER:
                 assert args.length == 1 : args;
                 b.addPush(returnKind, PointerCastNode.create(StampFactory.forKind(wordKind), args[0]));
+                break;
+
+            case FROM_COMPRESSED_POINTER:
+                assert args.length == 1 : args;
+                b.addPush(returnKind, PointerCastNode.create(StampFactory.forKind(JavaKind.Int), args[0]));
                 break;
 
             case TO_KLASS_POINTER:

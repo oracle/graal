@@ -54,7 +54,7 @@ import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.jv
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.klassAccessFlagsOffset;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.klassMiscFlagsOffset;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.loadWordFromObject;
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.lockMaskInPlace;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.markWordLockMaskInPlace;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.lockMetadataOffset;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.markOffset;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.monitorValue;
@@ -149,6 +149,7 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+// TODO update to include compact class pointer
 /**
  * Snippets used for implementing the monitorenter and monitorexit instructions.
  *
@@ -554,7 +555,7 @@ public class MonitorSnippets implements Snippets {
         // We elide the monitor check, let the CAS fail instead.
 
         // Try to unlock. Transition lock bits 0b00 => 0b01
-        Word markLocked = mark.and(~lockMaskInPlace(INJECTED_VMCONFIG));
+        Word markLocked = mark.and(WordFactory.unsigned(~markWordLockMaskInPlace(INJECTED_VMCONFIG)));
         Word markUnlocked = mark.or(unlockedValue(INJECTED_VMCONFIG));
         if (probability(FAST_PATH_PROBABILITY, objectPointer.logicCompareAndSwapWord(markOffset(INJECTED_VMCONFIG), markLocked, markUnlocked, MARK_WORD_LOCATION))) {
             traceObject(trace, "-lock{lightweight:cas}", object, false);

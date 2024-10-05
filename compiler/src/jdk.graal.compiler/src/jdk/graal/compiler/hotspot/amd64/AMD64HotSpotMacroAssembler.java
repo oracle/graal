@@ -111,22 +111,27 @@ public class AMD64HotSpotMacroAssembler extends AMD64MacroAssembler {
             testAndJcc(compressed ? DWORD : QWORD, value, value, AMD64Assembler.ConditionFlag.Zero, ok, true);
         }
 
-        AMD64Address hubAddress;
+        Register object = value;
         if (compressed) {
             CompressEncoding encoding = config.getOopEncoding();
             Register heapBaseRegister = AMD64Move.UncompressPointerOp.hasBase(encoding) ? providers.getRegisters().getHeapBaseRegister() : Register.None;
             movq(tmp, value);
             AMD64Move.UncompressPointerOp.emitUncompressCode(this, tmp, encoding.getShift(), heapBaseRegister, true);
-            hubAddress = new AMD64Address(tmp, config.hubOffset);
-        } else {
-            hubAddress = new AMD64Address(value, config.hubOffset);
+            object = tmp;
         }
 
-        // Load the klass
+        // Load the klass into tmp
         if (config.useCompressedClassPointers) {
-            AMD64HotSpotMove.decodeKlassPointer(this, tmp, tmp2, hubAddress, config);
+            if (config.useCompactObjectHeaders) {
+                movq(tmp, new AMD64Address(object, config.markOffset));
+                shrq(tmp, config.markWordKlassShift);
+                AMD64HotSpotMove.decodeKlassPointer(this, tmp, tmp2, config);
+            } else {
+                movl(tmp, new AMD64Address(object, config.hubOffset));
+                AMD64HotSpotMove.decodeKlassPointer(this, tmp, tmp2, config);
+            }
         } else {
-            movq(tmp, hubAddress);
+            movq(tmp, new AMD64Address(object, config.hubOffset));
         }
         // Klass::_super_check_offset
         movl(tmp2, new AMD64Address(tmp, config.superCheckOffsetOffset));

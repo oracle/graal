@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,10 +27,11 @@ package jdk.graal.compiler.hotspot.replacements;
 import static jdk.graal.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.IDENTITY_HASHCODE;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.identityHashCode;
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.identityHashCodeShift;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.loadWordFromObject;
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.lockMaskInPlace;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.markOffset;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.markWordHashCodeShift;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.markWordHashMark;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.markWordLockMaskInPlace;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.monitorValue;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.uninitializedIdentityHashCodeValue;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.unlockedValue;
@@ -55,6 +56,7 @@ public class HotSpotHashCodeSnippets extends IdentityHashCodeSnippets {
     protected int computeIdentityHashCode(final Object x) {
         Word mark = loadWordFromObject(x, markOffset(INJECTED_VMCONFIG));
 
+        // TODO update to include compact class pointer
         // In HotSpot, the upper bits (i.e., [63:2] in 64-bits VM) of the mark word in object header
         // are
         // 1) not used with lightweight locking;
@@ -72,11 +74,11 @@ public class HotSpotHashCodeSnippets extends IdentityHashCodeSnippets {
         // unlocked, i.e., lock bits equals to 0b01.
         //
         // See src/hotspot/share/oops/markWord.hpp for more details.
-        final Word lockBits = mark.and(lockMaskInPlace(INJECTED_VMCONFIG));
+        final Word lockBits = mark.and(WordFactory.unsigned(markWordLockMaskInPlace(INJECTED_VMCONFIG)));
         if (probability(FAST_PATH_PROBABILITY, useObjectMonitorTable(INJECTED_VMCONFIG) ||
-                        useLightweightLocking(INJECTED_VMCONFIG) ? lockBits.notEqual(WordFactory.unsigned(monitorValue(INJECTED_VMCONFIG)))
-                                        : lockBits.equal(WordFactory.unsigned(unlockedValue(INJECTED_VMCONFIG))))) {
-            int hash = (int) mark.unsignedShiftRight(identityHashCodeShift(INJECTED_VMCONFIG)).rawValue();
+                        (useLightweightLocking(INJECTED_VMCONFIG) ? lockBits.notEqual(WordFactory.unsigned(monitorValue(INJECTED_VMCONFIG)))
+                                        : lockBits.equal(WordFactory.unsigned(unlockedValue(INJECTED_VMCONFIG)))))) {
+            int hash = (int) mark.unsignedShiftRight(markWordHashCodeShift(INJECTED_VMCONFIG)).and((int) markWordHashMark(INJECTED_VMCONFIG)).rawValue();
             if (probability(FAST_PATH_PROBABILITY, hash != uninitializedIdentityHashCodeValue(INJECTED_VMCONFIG))) {
                 return hash;
             }
