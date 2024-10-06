@@ -1784,7 +1784,11 @@ public class StandardGraphBuilderPlugins {
         r.register(new RequiredInlineOnlyInvocationPlugin("inCompiledCode") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(true));
+                if (b.bci() >= b.getGraph().getEntryBCI()) {
+                    b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(true));
+                } else {
+                    b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(false));
+                }
                 return true;
             }
         });
