@@ -53,6 +53,7 @@ import jdk.vm.ci.meta.Value;
  */
 // @formatter:off
 @SyncPort(from = "https://github.com/openjdk/jdk/blob/43a2f17342af8f5bf1f5823df9fa0bf0bdfdfce2/src/hotspot/cpu/x86/gc/g1/g1BarrierSetAssembler_x86.cpp#L266-L342",
+          ignore = "GR-58685",
           sha1 = "5691006914119b2a6047c6935a3d4fe656dc663f")
 // @formatter:on
 public class AMD64G1PostWriteBarrierOp extends AMD64LIRInstruction {
