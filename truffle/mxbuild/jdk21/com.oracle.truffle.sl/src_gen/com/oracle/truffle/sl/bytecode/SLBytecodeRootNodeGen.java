@@ -2459,6 +2459,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 this.probe = p = insert(createProbe(getSourceSection()));
             }
+            CompilerAsserts.partialEvaluationConstant(p);
             return p;
         }
 
@@ -2565,7 +2566,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
     private static final class TagRootNode extends Node {
 
         @Child TagNode root;
-        final TagNode[] tagNodes;
+        @CompilationFinal(dimensions = 1) final TagNode[] tagNodes;
         @Child ProbeNode probe;
 
         TagRootNode(TagNode root, TagNode[] tagNodes) {
@@ -4325,6 +4326,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             byte[] bc = this.bytecodes;
             Node[] cachedNodes = this.cachedNodes_;
             int[] branchProfiles = this.branchProfiles_;
+            TagNode[] tagNodes = tagRoot != null ? tagRoot.tagNodes : null;
             int bci = (int) startState;
             int sp = (short) (startState >>> 32);
             int op;
@@ -4670,50 +4672,50 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                         }
                         case Instructions.TAG_ENTER :
                         {
-                            doTagEnter(frame, bc, bci, sp);
+                            doTagEnter(frame, bc, bci, sp, tagNodes);
                             bci += 6;
                             break;
                         }
                         case Instructions.TAG_LEAVE :
                         {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
-                            doTagLeave(frame, bc, bci, sp);
+                            doTagLeave(frame, bc, bci, sp, tagNodes);
                             bci += 10;
                             break;
                         }
                         case Instructions.TAG_LEAVE$LONG :
                         {
-                            doTagLeave$Long(frame, bc, bci, sp);
+                            doTagLeave$Long(frame, bc, bci, sp, tagNodes);
                             bci += 10;
                             break;
                         }
                         case Instructions.TAG_LEAVE$LONG$UNBOXED :
                         {
-                            doTagLeave$Long$unboxed(frame, bc, bci, sp);
+                            doTagLeave$Long$unboxed(frame, bc, bci, sp, tagNodes);
                             bci += 10;
                             break;
                         }
                         case Instructions.TAG_LEAVE$BOOLEAN :
                         {
-                            doTagLeave$Boolean(frame, bc, bci, sp);
+                            doTagLeave$Boolean(frame, bc, bci, sp, tagNodes);
                             bci += 10;
                             break;
                         }
                         case Instructions.TAG_LEAVE$BOOLEAN$UNBOXED :
                         {
-                            doTagLeave$Boolean$unboxed(frame, bc, bci, sp);
+                            doTagLeave$Boolean$unboxed(frame, bc, bci, sp, tagNodes);
                             bci += 10;
                             break;
                         }
                         case Instructions.TAG_LEAVE$GENERIC :
                         {
-                            doTagLeave$generic(frame, bc, bci, sp);
+                            doTagLeave$generic(frame, bc, bci, sp, tagNodes);
                             bci += 10;
                             break;
                         }
                         case Instructions.TAG_LEAVE_VOID :
                         {
-                            doTagLeaveVoid(frame, bc, bci, sp);
+                            doTagLeaveVoid(frame, bc, bci, sp, tagNodes);
                             bci += 6;
                             break;
                         }
@@ -5897,12 +5899,12 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         @InliningCutoff
-        private void doTagEnter(VirtualFrame frame, byte[] bc, int bci, int sp) {
-            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagRoot.tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
+        private void doTagEnter(VirtualFrame frame, byte[] bc, int bci, int sp, TagNode[] tagNodes) {
+            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
             tagNode.findProbe().onEnter(frame);
         }
 
-        private void doTagLeave(VirtualFrame frame, byte[] bc, int bci, int sp) {
+        private void doTagLeave(VirtualFrame frame, byte[] bc, int bci, int sp, TagNode[] tagNodes) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             short newInstruction;
             short newOperand;
@@ -5921,70 +5923,70 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             }
             BYTES.putShort(bc, operandIndex, newOperand);
             BYTES.putShort(bc, bci, newInstruction);
-            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagRoot.tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
+            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
             tagNode.findProbe().onReturnValue(frame, value);
         }
 
-        private void doTagLeave$Long(VirtualFrame frame, byte[] bc, int bci, int sp) {
+        private void doTagLeave$Long(VirtualFrame frame, byte[] bc, int bci, int sp, TagNode[] tagNodes) {
             long returnValue;
             try {
                 returnValue = FRAMES.expectLong(frame, sp - 1);
             } catch (UnexpectedResultException ex) {
-                doTagLeave(frame, bc, bci, sp);
+                doTagLeave(frame, bc, bci, sp, tagNodes);
                 return;
             }
-            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagRoot.tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
+            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
             tagNode.findProbe().onReturnValue(frame, returnValue);
             FRAMES.setObject(frame, sp - 1, returnValue);
         }
 
-        private void doTagLeave$Long$unboxed(VirtualFrame frame, byte[] bc, int bci, int sp) {
+        private void doTagLeave$Long$unboxed(VirtualFrame frame, byte[] bc, int bci, int sp, TagNode[] tagNodes) {
             long returnValue;
             try {
                 returnValue = FRAMES.expectLong(frame, sp - 1);
             } catch (UnexpectedResultException ex) {
-                doTagLeave(frame, bc, bci, sp);
+                doTagLeave(frame, bc, bci, sp, tagNodes);
                 return;
             }
-            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagRoot.tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
+            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
             tagNode.findProbe().onReturnValue(frame, returnValue);
         }
 
-        private void doTagLeave$Boolean(VirtualFrame frame, byte[] bc, int bci, int sp) {
+        private void doTagLeave$Boolean(VirtualFrame frame, byte[] bc, int bci, int sp, TagNode[] tagNodes) {
             boolean returnValue;
             try {
                 returnValue = FRAMES.expectBoolean(frame, sp - 1);
             } catch (UnexpectedResultException ex) {
-                doTagLeave(frame, bc, bci, sp);
+                doTagLeave(frame, bc, bci, sp, tagNodes);
                 return;
             }
-            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagRoot.tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
+            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
             tagNode.findProbe().onReturnValue(frame, returnValue);
             FRAMES.setObject(frame, sp - 1, returnValue);
         }
 
-        private void doTagLeave$Boolean$unboxed(VirtualFrame frame, byte[] bc, int bci, int sp) {
+        private void doTagLeave$Boolean$unboxed(VirtualFrame frame, byte[] bc, int bci, int sp, TagNode[] tagNodes) {
             boolean returnValue;
             try {
                 returnValue = FRAMES.expectBoolean(frame, sp - 1);
             } catch (UnexpectedResultException ex) {
-                doTagLeave(frame, bc, bci, sp);
+                doTagLeave(frame, bc, bci, sp, tagNodes);
                 return;
             }
-            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagRoot.tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
+            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
             tagNode.findProbe().onReturnValue(frame, returnValue);
         }
 
-        private void doTagLeave$generic(VirtualFrame frame, byte[] bc, int bci, int sp) {
+        private void doTagLeave$generic(VirtualFrame frame, byte[] bc, int bci, int sp, TagNode[] tagNodes) {
             Object returnValue;
             returnValue = FRAMES.requireObject(frame, sp - 1);
-            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagRoot.tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
+            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
             tagNode.findProbe().onReturnValue(frame, returnValue);
         }
 
         @InliningCutoff
-        private void doTagLeaveVoid(VirtualFrame frame, byte[] bc, int bci, int sp) {
-            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagRoot.tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
+        private void doTagLeaveVoid(VirtualFrame frame, byte[] bc, int bci, int sp, TagNode[] tagNodes) {
+            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
             tagNode.findProbe().onReturnValue(frame, null);
         }
 
@@ -7596,6 +7598,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                     return startState;
                 }
                 byte[] bc = this.bytecodes;
+                TagNode[] tagNodes = tagRoot != null ? tagRoot.tagNodes : null;
                 int bci = (int) startState;
                 int sp = (short) (startState >>> 32);
                 int op;
@@ -7754,7 +7757,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                             }
                             case Instructions.TAG_ENTER :
                             {
-                                doTagEnter(frame, bc, bci, sp);
+                                doTagEnter(frame, bc, bci, sp, tagNodes);
                                 bci += 6;
                                 break;
                             }
@@ -7765,13 +7768,13 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                             case Instructions.TAG_LEAVE$BOOLEAN$UNBOXED :
                             case Instructions.TAG_LEAVE$GENERIC :
                             {
-                                doTagLeave(frame, bc, bci, sp);
+                                doTagLeave(frame, bc, bci, sp, tagNodes);
                                 bci += 10;
                                 break;
                             }
                             case Instructions.TAG_LEAVE_VOID :
                             {
-                                doTagLeaveVoid(frame, bc, bci, sp);
+                                doTagLeaveVoid(frame, bc, bci, sp, tagNodes);
                                 bci += 6;
                                 break;
                             }
@@ -8160,26 +8163,26 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         @InliningCutoff
-        private void doTagEnter(VirtualFrame frame, byte[] bc, int bci, int sp) {
-            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagRoot.tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
+        private void doTagEnter(VirtualFrame frame, byte[] bc, int bci, int sp, TagNode[] tagNodes) {
+            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
             tagNode.findProbe().onEnter(frame);
         }
 
-        private void doTagLeave(VirtualFrame frame, byte[] bc, int bci, int sp) {
+        private void doTagLeave(VirtualFrame frame, byte[] bc, int bci, int sp, TagNode[] tagNodes) {
             Object returnValue;
             try {
                 returnValue = FRAMES.expectObject(frame, sp - 1);
             } catch (UnexpectedResultException ex) {
-                doTagLeave(frame, bc, bci, sp);
+                doTagLeave(frame, bc, bci, sp, tagNodes);
                 return;
             }
-            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagRoot.tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
+            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
             tagNode.findProbe().onReturnValue(frame, returnValue);
         }
 
         @InliningCutoff
-        private void doTagLeaveVoid(VirtualFrame frame, byte[] bc, int bci, int sp) {
-            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagRoot.tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
+        private void doTagLeaveVoid(VirtualFrame frame, byte[] bc, int bci, int sp, TagNode[] tagNodes) {
+            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
             tagNode.findProbe().onReturnValue(frame, null);
         }
 

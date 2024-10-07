@@ -2193,7 +2193,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
     }
 
     private static CodeTree readTagNode(TypeMirror expectedType, CodeTree index) {
-        return readTagNode(expectedType, "tagRoot.tagNodes", index);
+        return readTagNode(expectedType, "tagNodes", index);
     }
 
     private static CodeTree readTagNode(TypeMirror expectedType, String tagNodes, CodeTree index) {
@@ -9658,6 +9658,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
             b.statement("this.probe = p = insert(createProbe(getSourceSection()))");
             b.end();
+            b.startStatement().startStaticCall(types.CompilerAsserts, "partialEvaluationConstant").string("p").end().end();
             b.statement("return p");
             return ex;
         }
@@ -9794,7 +9795,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             super(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "TagRootNode");
             this.setSuperClass(types.Node);
             child(this.add(new CodeVariableElement(Set.of(), tagNode.asType(), "root")));
-            this.add(new CodeVariableElement(Set.of(FINAL), arrayOf(tagNode.asType()), "tagNodes"));
+            this.add(compFinal(1, new CodeVariableElement(Set.of(FINAL), arrayOf(tagNode.asType()), "tagNodes")));
             this.add(GeneratorUtils.createConstructorUsingFields(Set.of(), this));
 
             child(this.add(new CodeVariableElement(Set.of(), types.ProbeNode, "probe")));
@@ -12739,6 +12740,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 ex.addAnnotationMirror(createExplodeLoopAnnotation("MERGE_EXPLODE"));
             }
 
+            if (model.enableTagInstrumentation) {
+                b.declaration(arrayOf(tagNode.asType()), "tagNodes", "tagRoot != null ? tagRoot.tagNodes : null");
+            }
+
             b.statement("int bci = ", decodeBci("startState"));
             b.statement("int sp = ", decodeSp("startState"));
             b.statement("int op");
@@ -13120,7 +13125,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     b.startStatement();
                     b.startCall(lookupTagResume(instr).getSimpleName().toString());
                     b.string("frame");
-                    b.string("bc").string("bci").string("sp");
+                    b.string("bc").string("bci").string("sp").string("tagNodes");
                     b.end();
                     b.end();
                     break;
@@ -13128,7 +13133,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     b.startStatement();
                     b.startCall(lookupTagEnter(instr).getSimpleName().toString());
                     b.string("frame");
-                    b.string("bc").string("bci").string("sp");
+                    b.string("bc").string("bci").string("sp").string("tagNodes");
                     b.end();
                     b.end();
                     break;
@@ -13136,7 +13141,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     b.startStatement();
                     b.startCall(lookupTagYield(instr).getSimpleName().toString());
                     b.string("frame");
-                    b.string("bc").string("bci").string("sp");
+                    b.string("bc").string("bci").string("sp").string("tagNodes");
                     b.end();
                     b.end();
                     break;
@@ -13148,7 +13153,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                             b.string("this");
                         }
                         b.string("frame");
-                        b.string("bc").string("bci").string("sp");
+                        b.string("bc").string("bci").string("sp").string("tagNodes");
                         b.end();
                         b.end();
                     } else {
@@ -13159,7 +13164,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                             b.string("this");
                         }
                         b.string("frame");
-                        b.string("bc").string("bci").string("sp");
+                        b.string("bc").string("bci").string("sp").string("tagNodes");
                         b.end();
                         b.end();
                     }
@@ -13168,7 +13173,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     b.startStatement();
                     b.startCall(lookupTagLeaveVoid(instr).getSimpleName().toString());
                     b.string("frame");
-                    b.string("bc").string("bci").string("sp");
+                    b.string("bc").string("bci").string("sp").string("tagNodes");
                     b.end();
                     b.end();
                     break;
@@ -13832,7 +13837,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                             new CodeVariableElement(types.VirtualFrame, "frame"),
                             new CodeVariableElement(type(byte[].class), "bc"),
                             new CodeVariableElement(type(int.class), "bci"),
-                            new CodeVariableElement(type(int.class), "sp"));
+                            new CodeVariableElement(type(int.class), "sp"),
+                            new CodeVariableElement(arrayOf(tagNode.asType()), "tagNodes"));
 
             method.addAnnotationMirror(new CodeAnnotationMirror(types.HostCompilerDirectives_InliningCutoff));
 
@@ -13859,7 +13865,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                             new CodeVariableElement(types.VirtualFrame, "frame"),
                             new CodeVariableElement(type(byte[].class), "bc"),
                             new CodeVariableElement(type(int.class), "bci"),
-                            new CodeVariableElement(type(int.class), "sp"));
+                            new CodeVariableElement(type(int.class), "sp"),
+                            new CodeVariableElement(arrayOf(tagNode.asType()), "tagNodes"));
 
             method.addAnnotationMirror(new CodeAnnotationMirror(types.HostCompilerDirectives_InliningCutoff));
 
@@ -14045,7 +14052,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                             new CodeVariableElement(types.VirtualFrame, "frame"),
                             new CodeVariableElement(type(byte[].class), "bc"),
                             new CodeVariableElement(type(int.class), "bci"),
-                            new CodeVariableElement(type(int.class), "sp"));
+                            new CodeVariableElement(type(int.class), "sp"),
+                            new CodeVariableElement(arrayOf(tagNode.asType()), "tagNodes"));
 
             method.addAnnotationMirror(new CodeAnnotationMirror(types.HostCompilerDirectives_InliningCutoff));
 
@@ -14072,7 +14080,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                             new CodeVariableElement(types.VirtualFrame, "frame"),
                             new CodeVariableElement(type(byte[].class), "bc"),
                             new CodeVariableElement(type(int.class), "bci"),
-                            new CodeVariableElement(type(int.class), "sp"));
+                            new CodeVariableElement(type(int.class), "sp"),
+                            new CodeVariableElement(arrayOf(tagNode.asType()), "tagNodes"));
 
             method.addAnnotationMirror(new CodeAnnotationMirror(types.HostCompilerDirectives_InliningCutoff));
 
@@ -14100,7 +14109,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                             new CodeVariableElement(types.VirtualFrame, "frame"),
                             new CodeVariableElement(type(byte[].class), "bc"),
                             new CodeVariableElement(type(int.class), "bci"),
-                            new CodeVariableElement(type(int.class), "sp"));
+                            new CodeVariableElement(type(int.class), "sp"),
+                            new CodeVariableElement(arrayOf(tagNode.asType()), "tagNodes"));
 
             boolean isMaterialized = instr.kind == InstructionKind.LOAD_LOCAL_MATERIALIZED;
             if (isMaterialized) {
@@ -14139,7 +14149,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 if (model.specializationDebugListener) {
                     b.string("$this");
                 }
-                b.string("frame").string("bc").string("bci").string("sp");
+                b.string("frame").string("bc").string("bci").string("sp").string("tagNodes");
                 b.end().end();
             }
 
@@ -14173,7 +14183,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                             new CodeVariableElement(types.VirtualFrame, "frame"),
                             new CodeVariableElement(type(byte[].class), "bc"),
                             new CodeVariableElement(type(int.class), "bci"),
-                            new CodeVariableElement(type(int.class), "sp"));
+                            new CodeVariableElement(type(int.class), "sp"),
+                            new CodeVariableElement(arrayOf(tagNode.asType()), "tagNodes"));
 
             if (model.specializationDebugListener) {
                 method.getParameters().add(0, new CodeVariableElement(this.getSuperclass(), "$this"));

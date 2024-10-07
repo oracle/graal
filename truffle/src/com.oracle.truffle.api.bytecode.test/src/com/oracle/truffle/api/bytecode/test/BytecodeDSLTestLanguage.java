@@ -59,4 +59,6 @@ public class BytecodeDSLTestLanguage extends TruffleLanguage<Object> {
     protected Object createContext(Env env) {
         return new Object();
     }
+
+    public static final LanguageReference<BytecodeDSLTestLanguage> REF = LanguageReference.create(BytecodeDSLTestLanguage.class);
 }
