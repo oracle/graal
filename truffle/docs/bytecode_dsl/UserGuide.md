@@ -372,7 +372,7 @@ b.endIfThenElse();
 A limited form of unstructured control flow is also possible in Bytecode DSL interpreters using labels and forward branches.
 
 Parsers can allocate a `BytecodeLabel` using the builder's `createLabel` method when inside a `Root` or `Block` operation.
-The label should be emitted at some location in the same operation using `emitLabel`, and can be branched to using `emitBranch`.
+The label should be emitted at some location in the same `Root` or `Block` using `emitLabel`, and can be branched to using `emitBranch`.
 
 The following code allocates a label, emits a branch to it, and then emits the label at the location to branch to:
 ```java
