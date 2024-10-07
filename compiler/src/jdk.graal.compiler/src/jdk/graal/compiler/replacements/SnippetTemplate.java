@@ -970,7 +970,11 @@ public class SnippetTemplate {
                         LocationIdentity... initialPrivateLocations) {
             assert methodName != null;
             ResolvedJavaMethod javaMethod = findMethod(providers.getMetaAccess(), declaringClass, methodName);
-            assert javaMethod != null : "did not find @" + Snippet.class.getSimpleName() + " method in " + declaringClass + " named " + methodName;
+            if (javaMethod.isStatic()) {
+                assert receiver == null : "static snippet " + javaMethod + " created with non-null receiver";
+            } else {
+                assert receiver != null : "non-static snippet " + javaMethod + " created with null receiver";
+            }
             providers.getReplacements().registerSnippet(javaMethod, original, receiver, GraalOptions.TrackNodeSourcePosition.getValue(options), options);
             LocationIdentity[] privateLocations = GraalOptions.SnippetCounters.getValue(options) ? SnippetCounterNode.addSnippetCounters(initialPrivateLocations) : initialPrivateLocations;
             if (IS_IN_NATIVE_IMAGE || GraalOptions.EagerSnippets.getValue(options)) {
@@ -1838,9 +1842,10 @@ public class SnippetTemplate {
         EconomicSet<LocationIdentity> kills = EconomicSet.create(Equivalence.DEFAULT);
         kills.addAll(memoryMap.getLocations());
 
-        if (MemoryKill.isSingleMemoryKill(replacee)) {
+        if (MemoryKill.isMemoryKill(replacee)) {
+            assert !(MemoryKill.isMultiMemoryKill(replacee)) : replacee + " multi not supported (yet)";
             // check if some node in snippet graph also kills the same location
-            LocationIdentity locationIdentity = ((SingleMemoryKill) replacee).getKilledLocationIdentity();
+            LocationIdentity locationIdentity = MemoryKill.asSingleMemoryKill(replacee).getKilledLocationIdentity();
             if (locationIdentity.isAny()) {
                 // if the replacee kills ANY_LOCATION, the snippet can kill arbitrary locations
                 return true;
@@ -1848,7 +1853,6 @@ public class SnippetTemplate {
             assert kills.contains(locationIdentity) : replacee + " kills " + locationIdentity + ", but snippet doesn't contain a kill to this location";
             kills.remove(locationIdentity);
         }
-        assert !(MemoryKill.isMultiMemoryKill(replacee)) : replacee + " multi not supported (yet)";
 
         // remove ANY_LOCATION if it's just a kill by the start node
         if (memoryMap.getLastLocationAccess(any()) instanceof MemoryAnchorNode) {

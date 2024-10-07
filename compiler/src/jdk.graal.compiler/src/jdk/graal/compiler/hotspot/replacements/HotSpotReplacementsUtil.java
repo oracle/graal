@@ -847,7 +847,7 @@ public class HotSpotReplacementsUtil {
     }
 
     static byte readInstanceKlassInitState(KlassPointer hub) {
-        return hub.readByte(instanceKlassInitStateOffset(INJECTED_VMCONFIG), CLASS_INIT_STATE_LOCATION);
+        return hub.readByteVolatile(instanceKlassInitStateOffset(INJECTED_VMCONFIG), CLASS_INIT_STATE_LOCATION);
     }
 
     static Word readInstanceKlassInitThread(KlassPointer hub) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,24 +29,34 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_16;
 
 import org.graalvm.word.LocationIdentity;
 
+import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
+import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.DeoptimizingFixedWithNextNode;
+import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
 import jdk.graal.compiler.nodes.spi.Lowerable;
 
+/**
+ * Checks that the input {@link Class}'s hub is either null or has been fully initialized, or
+ * deoptimizes otherwise.
+ */
 @NodeInfo(allowedUsageTypes = {InputType.Memory}, cycles = CYCLES_4, size = SIZE_16)
-public class KlassBeingInitializedCheckNode extends DeoptimizingFixedWithNextNode implements Lowerable, SingleMemoryKill {
-    public static final NodeClass<KlassBeingInitializedCheckNode> TYPE = NodeClass.create(KlassBeingInitializedCheckNode.class);
+public class KlassFullyInitializedCheckNode extends DeoptimizingFixedWithNextNode implements Lowerable, SingleMemoryKill {
+    public static final NodeClass<KlassFullyInitializedCheckNode> TYPE = NodeClass.create(KlassFullyInitializedCheckNode.class);
 
     @Input protected ValueNode klass;
 
-    public KlassBeingInitializedCheckNode(ValueNode klass) {
+    public KlassFullyInitializedCheckNode(ValueNode klassNonNull) {
         super(TYPE, StampFactory.forVoid());
-        this.klass = klass;
+        Stamp inputStamp = klassNonNull.stamp(NodeView.DEFAULT);
+        assert inputStamp instanceof AbstractPointerStamp : klassNonNull + " has wrong input stamp type for klass init state check: " + inputStamp;
+        assert ((AbstractPointerStamp) inputStamp).nonNull() : klassNonNull + " must have non-null stamp: " + inputStamp;
+        this.klass = klassNonNull;
     }
 
     @Override
