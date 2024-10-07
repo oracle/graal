@@ -26,32 +26,32 @@
 
 package com.oracle.svm.hosted;
 
+import java.lang.instrument.Instrumentation;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
+
 import com.oracle.svm.core.PreMainSupport;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.reflect.ReflectionFeature;
+
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionStability;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
-
-import java.lang.instrument.Instrumentation;
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * This feature supports instrumentation in native image.
  */
 @AutomaticallyRegisteredFeature
 public class InstrumentFeature implements InternalFeature {
-    private ClassLoader cl;
-    private PreMainSupport preMainSupport;
-
     public static class Options {
         @Option(help = "Specify premain-class list. Multiple classes are separated by comma, and order matters. This is an experimental option.", stability = OptionStability.EXPERIMENTAL)//
         public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> PremainClasses = new HostedOptionKey<>(
@@ -59,62 +59,62 @@ public class InstrumentFeature implements InternalFeature {
 
     }
 
-    /**
-     * {@link ReflectionFeature} must come before this feature, because many instrumentation methods
-     * are called by reflection, e.g. premain.
-     */
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return !Options.PremainClasses.getValue().values().isEmpty();
+    }
+
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
+        /* Many instrumentation methods are called via reflection, e.g. premain. */
         return List.of(ReflectionFeature.class);
     }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         FeatureImpl.AfterRegistrationAccessImpl a = (FeatureImpl.AfterRegistrationAccessImpl) access;
-        cl = a.getImageClassLoader().getClassLoader();
-        ImageSingletons.add(PreMainSupport.class, preMainSupport = new PreMainSupport());
-        if (Options.PremainClasses.hasBeenSet()) {
-            List<String> premains = Options.PremainClasses.getValue().values();
-            for (String premain : premains) {
-                addPremainClass(premain);
-            }
+        ClassLoader cl = a.getImageClassLoader().getClassLoader();
+        PreMainSupport support = new PreMainSupport();
+        ImageSingletons.add(PreMainSupport.class, support);
+
+        List<String> premainClasses = Options.PremainClasses.getValue().values();
+        for (String clazz : premainClasses) {
+            addPremainClass(support, cl, clazz);
         }
     }
 
-    /**
-     * Find the premain method from the given class and register it for runtime usage. According to
-     * java.lang.instrument <a
-     * href=https://docs.oracle.com/en/java/javase/17/docs/api/java.instrument/java/lang/instrument/package-summary.html>API
-     * doc</a>, there are two premain methods:
-     * <ol>
-     * <li>{@code public static void premain(String agentArgs, Instrumentation inst)}</li>
-     * <li>{@code public static void premain(String agentArgs)}</li>
-     * </ol>
-     * The first one is taken with higher priority. The second one is taken only when the first one
-     * is absent. <br>
-     * So this method looks for them in the same order.
-     */
-    private void addPremainClass(String premainClass) {
+    private static void addPremainClass(PreMainSupport support, ClassLoader cl, String premainClass) {
         try {
             Class<?> clazz = Class.forName(premainClass, false, cl);
-            Method premain = null;
+            Method premain = findPremainMethod(premainClass, clazz);
+
             List<Object> args = new ArrayList<>();
-            args.add(""); // First argument is options which will be set at runtime
-            try {
-                premain = clazz.getDeclaredMethod("premain", String.class, Instrumentation.class);
+            /* The first argument contains the premain options, which will be set at runtime. */
+            args.add("");
+            if (premain.getParameterCount() == 2) {
                 args.add(new PreMainSupport.NativeImageNoOpRuntimeInstrumentation());
-            } catch (NoSuchMethodException e) {
-                try {
-                    premain = clazz.getDeclaredMethod("premain", String.class);
-                } catch (NoSuchMethodException e1) {
-                    UserError.abort(e1, "Can't register agent premain method, because can't find the premain method from the given class %s. Please check your %s setting.", premainClass,
-                                    SubstrateOptionsParser.commandArgument(Options.PremainClasses, ""));
-                }
             }
-            preMainSupport.registerPremainMethod(premainClass, premain, args.toArray(new Object[0]));
+
+            support.registerPremainMethod(premainClass, premain, args.toArray(new Object[0]));
         } catch (ClassNotFoundException e) {
-            UserError.abort(e, "Can't register agent premain method, because the given class %s is not found. Please check your %s setting.", premainClass,
+            UserError.abort("Could not register agent premain method because class %s was not found. Please check your %s setting.", premainClass,
                             SubstrateOptionsParser.commandArgument(Options.PremainClasses, ""));
         }
+    }
+
+    /** Find the premain method from the given class. */
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+16/src/java.instrument/share/classes/sun/instrument/InstrumentationImpl.java#L498-L565")
+    private static Method findPremainMethod(String premainClass, Class<?> javaAgentClass) {
+        try {
+            return javaAgentClass.getDeclaredMethod("premain", String.class, Instrumentation.class);
+        } catch (NoSuchMethodException ignored) {
+        }
+
+        try {
+            return javaAgentClass.getDeclaredMethod("premain", String.class);
+        } catch (NoSuchMethodException ignored) {
+        }
+
+        throw UserError.abort("Could not register agent premain method: class %s neither declares 'premain(String, Instrumentation)' nor 'premain(String)'.", premainClass);
     }
 }
