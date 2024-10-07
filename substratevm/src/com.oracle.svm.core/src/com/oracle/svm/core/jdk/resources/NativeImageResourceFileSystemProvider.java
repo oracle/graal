@@ -142,7 +142,7 @@ public class NativeImageResourceFileSystemProvider extends FileSystemProvider {
             readLock.lock();
             if (fileSystem == null) {
                 throw new FileSystemNotFoundException("The Native Image Resource File System is not present. " +
-                                "Please create a new file system using the `newFileSystem` operation before attempting any file system operations.");
+                                "Please create a new file system using the `newFileSystem` operation before attempting any file system operations on resource URIs.");
             }
             return fileSystem;
         } finally {
