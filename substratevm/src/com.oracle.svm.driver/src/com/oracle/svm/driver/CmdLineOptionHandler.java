@@ -76,8 +76,6 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     private boolean consume(ArgumentQueue args, String headArg) {
         switch (headArg) {
             case "--help":
-                args.poll();
-                singleArgumentCheck(args, headArg);
                 nativeImage.showMessage(HELP_TEXT);
                 nativeImage.showNewline();
                 nativeImage.apiOptionHandler.printOptions(nativeImage::showMessage, false);
@@ -87,14 +85,10 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 System.exit(ExitStatus.OK.getValue());
                 return true;
             case "--version":
-                args.poll();
-                singleArgumentCheck(args, headArg);
                 printVersion();
                 System.exit(ExitStatus.OK.getValue());
                 return true;
             case "--help-extra":
-                args.poll();
-                singleArgumentCheck(args, headArg);
                 nativeImage.showMessage(HELP_EXTRA_TEXT);
                 nativeImage.apiOptionHandler.printOptions(nativeImage::showMessage, true);
                 nativeImage.showNewline();
@@ -221,12 +215,6 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         String javaVMVersion = System.getProperty("java.vm.version");
         String javaVMInfo = System.getProperty("java.vm.info");
         nativeImage.showMessage("%s%s (%sbuild %s, %s)", javaVMName, vendorVersion, jdkDebugLevel, javaVMVersion, javaVMInfo);
-    }
-
-    private static void singleArgumentCheck(ArgumentQueue args, String arg) {
-        if (!args.isEmpty()) {
-            NativeImage.showError("Option " + arg + " cannot be combined with other options.");
-        }
     }
 
     @Override
