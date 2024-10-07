@@ -79,13 +79,13 @@ import com.oracle.svm.core.util.BasedOnJDKFile;
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+16/src/hotspot/share/utilities/compilerWarnings.hpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+16/src/hotspot/share/utilities/globalDefinitions_gcc.hpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+16/src/hotspot/share/utilities/globalDefinitions.hpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+16/src/hotspot/share/utilities/macros.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/utilities/macros.hpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+16/src/hotspot/share/utilities/ostream.cpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+16/src/hotspot/share/utilities/ostream.hpp")
 // The following annotations are for files in `src/svm`, which are completely customized for SVM
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+16/src/hotspot/share/logging/log.hpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+16/src/hotspot/share/memory/allocation.cpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+16/src/hotspot/share/runtime/globals.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/runtime/globals.hpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+16/src/hotspot/share/utilities/debug.cpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+16/src/hotspot/share/utilities/debug.hpp")
 public class ContainerLibrary {
