@@ -56,7 +56,7 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/715fa8f9fe7242e86b985aece3d078b226f53fb9/src/hotspot/cpu/x86/stubGenerator_x86_64.cpp#L1514-L1556",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/7fa2f229fbee68112cbdd18b811d95721adfe2ec/src/hotspot/cpu/x86/stubGenerator_x86_64.cpp#L1515-L1557",
           sha1 = "593a45db708f1b6a74086cf170612c1102fe56c2")
 @SyncPort(from = "https://github.com/openjdk/jdk/blob/8c9d091f19760deece8daf3e57add85482b9f2a7/src/hotspot/cpu/x86/macroAssembler_x86_sha.cpp#L235-L493",
           sha1 = "722bdd7519a7d7b9d9cec900af38137f1849ac4e")
