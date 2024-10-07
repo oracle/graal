@@ -44,6 +44,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -306,9 +308,9 @@ public class ObjectCopier {
      *            have the same name in which case the descriptor includes the qualified name of the
      *            class declaring the field as a prefix.
      */
-    public record ClassInfo(Class<?> clazz, Map<String, Field> fields) {
+    public record ClassInfo(Class<?> clazz, SortedMap<String, Field> fields) {
         public static ClassInfo of(Class<?> declaringClass) {
-            Map<String, Field> fields = new HashMap<>();
+            SortedMap<String, Field> fields = new TreeMap<>();
             for (Class<?> c = declaringClass; !c.equals(Object.class); c = c.getSuperclass()) {
                 for (Field f : c.getDeclaredFields()) {
                     if (!Modifier.isStatic(f.getModifiers())) {
@@ -499,30 +501,22 @@ public class ObjectCopier {
                         }
                         case '{': {
                             String className = readString(stream);
-                            int fieldCount = stream.readPackedUnsignedInt();
                             Class<?> clazz = loadClass(className);
                             Object obj = allocateInstance(clazz);
                             addDecodedObject(id, obj);
                             ClassInfo classInfo = classInfos.computeIfAbsent(clazz, ClassInfo::of);
-                            for (int i = 0; i < fieldCount; i++) {
-                                fieldNum = i;
-                                String fieldDesc = readString(stream);
-                                Field field = classInfo.fields().get(fieldDesc);
-                                GraalError.guarantee(field != null, "Unknown field: %s", fieldDesc);
+                            fieldNum = 0;
+                            for (Field field : classInfo.fields.values()) {
                                 Class<?> type = field.getType();
-
                                 if (type.isPrimitive()) {
-                                    Object value = stream.readTypedValue();
-                                    GraalError.guarantee(type == value.getClass().getDeclaredField("TYPE").get(null),
-                                                    "Different primitive type: %s, expected %s", value.getClass(), type.getName());
+                                    char typeCh = type.descriptorString().charAt(0);
+                                    Object value = stream.readUntypedValue(typeCh);
                                     writeField(field, obj, value);
                                 } else {
-                                    GraalError.guarantee(stream.readByte() == 'L', "Expecting object type");
-                                    int expectTypeId = readId(stream);
                                     int value = readId(stream);
-                                    resolveId(expectTypeId, o -> checkFieldType(expectTypeId, field));
                                     resolveId(value, o -> writeField(field, obj, o));
                                 }
+                                fieldNum++;
                             }
                             break;
                         }
@@ -566,12 +560,6 @@ public class ObjectCopier {
         public String readString(ObjectCopierInputStream stream) throws IOException {
             int id = stream.readPackedUnsignedInt();
             return strings[id];
-        }
-
-        private void checkFieldType(int expectTypeId, Field field) {
-            Class<?> actualType = field.getType();
-            Class<?> expectType = (Class<?>) idToObject.get(expectTypeId);
-            GraalError.guarantee(actualType.equals(expectType), "Type of %s has changed: %s != %s", field, expectType, actualType);
         }
 
         private static Object allocateInstance(Class<?> clazz) {
@@ -766,9 +754,7 @@ public class ObjectCopier {
                 ClassInfo classInfo = makeClassInfo(clazz, objectPath);
                 classInfo.fields().forEach((fieldDesc, f) -> {
                     String fieldName = f.getDeclaringClass().getSimpleName() + "#" + f.getName();
-                    makeStringId(fieldDesc, objectPath.add(fieldName + ":name"));
                     if (!f.getType().isPrimitive()) {
-                        makeId(f.getType(), objectPath.add(fieldName + ":type"));
                         Object fieldValue = readField(f, obj);
                         makeId(fieldValue, objectPath.add(fieldName));
                     }
@@ -827,18 +813,13 @@ public class ObjectCopier {
                     ClassInfo classInfo = classInfos.get(clazz);
                     out.writeByte('{');
                     writeString(out, clazz.getName());
-                    out.writePackedUnsignedInt(classInfo.fields.size());
                     for (var e : classInfo.fields().entrySet()) {
                         Field f = e.getValue();
                         Class<?> fieldType = f.getType();
                         Object fValue = readField(f, obj);
-                        writeString(out, e.getKey());
                         if (fieldType.isPrimitive()) {
-                            out.writeTypedValue(fValue);
+                            out.writeUntypedValue(fValue);
                         } else {
-                            int fieldTypeId = getId(fieldType);
-                            out.writeByte('L');
-                            writeId(out, fieldTypeId);
                             writeId(out, getId(fValue));
                         }
                     }
@@ -856,6 +837,7 @@ public class ObjectCopier {
                 return objects.getIndex(field);
             }
             return objects.getIndex(o);
+
         }
     }
 

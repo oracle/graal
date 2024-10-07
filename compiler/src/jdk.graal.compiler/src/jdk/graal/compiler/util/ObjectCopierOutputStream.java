@@ -58,6 +58,31 @@ public class ObjectCopierOutputStream extends TypedDataOutputStream {
         }
     }
 
+    public void writeUntypedValue(Object value) throws IOException {
+        Class<?> valueClz = value.getClass();
+        if (valueClz == Boolean.class) {
+            writeBoolean((Boolean) value);
+        } else if (valueClz == Byte.class) {
+            writeByte((Byte) value);
+        } else if (valueClz == Short.class) {
+            writeShort((Short) value);
+        } else if (valueClz == Character.class) {
+            writeChar((Character) value);
+        } else if (valueClz == Integer.class) {
+            writePackedSignedLong((int) value);
+        } else if (valueClz == Long.class) {
+            writePackedSignedLong((long) value);
+        } else if (valueClz == Float.class) {
+            writeFloat((Float) value);
+        } else if (valueClz == Double.class) {
+            writeDouble((Double) value);
+        } else if (valueClz == String.class) {
+            writeStringValue((String) value);
+        } else {
+            throw new IllegalArgumentException(String.format("Unsupported type: Value: %s, Value type: %s", value, valueClz));
+        }
+    }
+
     @Override
     protected void writeStringValue(String value) throws IOException {
         byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
