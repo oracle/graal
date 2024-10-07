@@ -82,12 +82,12 @@ public class CompilationAlarmPhaseTimesTest extends GraalCompilerTest {
 
     @Test
     public void testTimeOutRetryToString() {
-        // 1D will be multiplied by 2 since we are running with assertions
-        OptionValues opt = new OptionValues(getInitialOptions(), CompilationAlarm.Options.CompilationExpirationPeriod, 1D);
+        final double secondsToWait = 1D;
+        OptionValues opt = new OptionValues(getInitialOptions(), CompilationAlarm.Options.CompilationExpirationPeriod, secondsToWait);
         try {
             test(opt, "foo", 10000);
         } catch (Throwable t) {
-            if (!t.getMessage().contains("Compilation exceeded 2.000 seconds")) {
+            if (!t.getMessage().contains("Compilation exceeded")) {
                 throw new AssertionError("Unexpected exception: " + t, t);
             }
             StructuredGraph g = lastCompiledGraph;
@@ -103,7 +103,9 @@ public class CompilationAlarmPhaseTimesTest extends GraalCompilerTest {
                 duration += c;
                 index++;
             }
-            assert Integer.parseInt(duration) >= 2000 - IMPRECISION_DELTA : String.format("Must at least wait for 2000ms but waited %s error was %s", duration, message);
+            final double scaledSecondsToWait = CompilationAlarm.scaleExpirationPeriod(secondsToWait, opt);
+            assert Integer.parseInt(duration) >= (scaledSecondsToWait * 1000) -
+                            IMPRECISION_DELTA : String.format("Must at least wait for 2000ms but waited %s error was %s", duration, message);
         }
     }
 

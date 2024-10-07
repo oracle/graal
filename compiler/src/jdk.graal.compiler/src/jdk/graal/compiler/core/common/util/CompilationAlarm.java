@@ -82,14 +82,24 @@ public final class CompilationAlarm implements AutoCloseable {
     public void reset(OptionValues options) {
         double optionPeriod = Options.CompilationExpirationPeriod.getValue(options);
         if (optionPeriod > 0) {
-            if (Assertions.assertionsEnabled()) {
-                optionPeriod *= 2;
-            }
-            if (Assertions.detailedAssertionsEnabled(options)) {
-                optionPeriod *= 2;
-            }
-            reset(optionPeriod);
+            reset(scaleExpirationPeriod(optionPeriod, options));
         }
+    }
+
+    /**
+     * Scale the compilation alarm expiration period to account for different system properties. The
+     * period has a default value or can be set by users. Global context flags like assertions can
+     * slow down compilation significantly and we want to avoid false positives of the alarm.
+     */
+    public static double scaleExpirationPeriod(double period, OptionValues options) {
+        double p = period;
+        if (Assertions.assertionsEnabled()) {
+            p *= 2;
+        }
+        if (Assertions.detailedAssertionsEnabled(options)) {
+            p *= 2;
+        }
+        return p;
     }
 
     /**
