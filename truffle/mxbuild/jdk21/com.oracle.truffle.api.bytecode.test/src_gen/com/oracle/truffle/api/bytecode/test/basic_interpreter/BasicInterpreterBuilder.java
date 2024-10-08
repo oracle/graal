@@ -60,11 +60,11 @@ public abstract class BasicInterpreterBuilder extends BytecodeBuilder {
 
     public abstract void endTryCatch();
 
-    public abstract void beginTryFinally(Runnable finallyParser);
+    public abstract void beginTryFinally(Runnable finallyGenerator);
 
     public abstract void endTryFinally();
 
-    public abstract void beginTryCatchOtherwise(Runnable otherwiseParser);
+    public abstract void beginTryCatchOtherwise(Runnable otherwiseGenerator);
 
     public abstract void endTryCatchOtherwise();
 

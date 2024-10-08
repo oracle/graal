@@ -358,11 +358,19 @@ public class ParsingTutorial {
     }
 
     /**
-     * For convenience, lets define a helper method that performs the parse.
+     * For convenience, let's define a helper method that performs the parse.
+     * <p>
+     * Note: For simplicity, this {@link BytecodeParser} captures {@code method}, which means the
+     * AST will be kept alive in the heap in order to perform reparsing. To reduce footprint, it is
+     * recommended for the {@link BytecodeParser} to parse from source when possible. For example,
+     * the <a href=
+     * "https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.sl/src/com/oracle/truffle/sl/parser/SLBytecodeParser.java">Simple
+     * Language parser</a> invokes the ANTLR parser to obtain a fresh parse tree and then visits the
+     * parse tree to build bytecode.
      */
     public static GettingStartedBytecodeRootNode parse(Method method) {
         BytecodeParser<GettingStartedBytecodeRootNodeGen.Builder> parser = b -> {
-            method.accept(new BytecodeVisitor(b)); // TruffleLanguage goes here
+            method.accept(new BytecodeVisitor(b));
         };
         BytecodeRootNodes<GettingStartedBytecodeRootNode> rootNodes = GettingStartedBytecodeRootNodeGen.create(getLanguage(), BytecodeConfig.DEFAULT, parser);
         return rootNodes.getNode(0);
