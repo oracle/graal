@@ -755,11 +755,19 @@ public class ModelBuilder implements Builder {
         }
     }
 
+    protected static String inputEdgeType(Port p) {
+        EnumValue type = ((TypedPort) p).type;
+        return type == null ? null : type.toString(Length.S);
+    }
+    
     @Override
     public void inputEdge(Port p, int from, int to, char num, int index) {
         assert currentNode != null;
-        EnumValue type = ((TypedPort) p).type;
-        EdgeInfo ei = new EdgeInfo(from, to, num, index, p.name, type == null ? null : type.toString(Length.S), true);
+        // Ignore null edges
+        if (from < 0) {
+            return;
+        }
+        EdgeInfo ei = new EdgeInfo(from, to, num, index, p.name, inputEdgeType(p), true);
         inputEdges.add(ei);
         nodeEdges.add(ei);
     }
@@ -767,6 +775,10 @@ public class ModelBuilder implements Builder {
     @Override
     public void successorEdge(Port p, int from, int to, char num, int index) {
         assert currentNode != null;
+        // Ignore null edges
+        if (from < 0) {
+            return;
+        }
         EdgeInfo ei = new EdgeInfo(to, from, num, index, p.name, InputEdge.SUCCESSOR_EDGE_TYPE, false);
         successorEdges.add(ei);
         nodeEdges.add(ei);

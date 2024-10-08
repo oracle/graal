@@ -286,14 +286,14 @@ public class ScanningModelBuilder extends LazyModelBuilder {
 
     @Override
     public void successorEdge(Port p, int from, int to, char num, int index) {
-        if (scanGraph) {
+        if (scanGraph && from >= 0) {
             entry.getGraphMeta().addEdge(from, to);
         }
     }
 
     @Override
     public void inputEdge(Port p, int from, int to, char num, int index) {
-        if (scanGraph) {
+        if (scanGraph && from >= 0) {
             entry.getGraphMeta().addEdge(from, to);
         }
     }

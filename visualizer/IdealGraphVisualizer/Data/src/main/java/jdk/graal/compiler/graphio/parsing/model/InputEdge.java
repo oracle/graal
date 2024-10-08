@@ -129,10 +129,6 @@ public class InputEdge {
         return fromIndex;
     }
 
-    public String getName() {
-        return "in" + toIndex;
-    }
-
     public int getFrom() {
         return from;
     }
