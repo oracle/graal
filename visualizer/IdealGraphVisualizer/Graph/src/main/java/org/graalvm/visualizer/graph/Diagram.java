@@ -308,7 +308,7 @@ public class Diagram {
             assert toFigure.getInputSlots().size() >= toIndex + 1;
             InputSlot inputSlot = toFigure.getInputSlots().get(toIndex);
 
-            Connection c = d.createConnection(inputSlot, outputSlot, e.getLabel(), e.getType());
+            Connection c = d.createConnection(inputSlot, outputSlot, e.getDisplayLabel(), e.getType());
 
             if (e.getState() == InputEdge.State.NEW) {
                 c.setStyle(Connection.ConnectionStyle.BOLD);
