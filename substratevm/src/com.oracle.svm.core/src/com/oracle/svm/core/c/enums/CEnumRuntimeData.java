@@ -57,7 +57,7 @@ public abstract class CEnumRuntimeData {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public final int enumToShort(Enum<?> value) {
+    public final short enumToShort(Enum<?> value) {
         return (short) enumToLong(value);
     }
 
