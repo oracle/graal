@@ -109,7 +109,7 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
 
         for (int i = 0; i < localCount; i++) {
             LocalVariable l = b.getLocals().get(i);
-            if (run.hasLocalScopes()) {
+            if (run.hasBlockScoping()) {
                 assertEquals(0, l.getStartIndex());
                 assertEquals(last.getNextBytecodeIndex(), l.getEndIndex());
             } else {
@@ -186,7 +186,7 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
         BytecodeNode b = root.getBytecodeNode();
         List<LocalVariable> locals = b.getLocals();
 
-        if (run.hasLocalScopes()) {
+        if (run.hasBlockScoping()) {
             assertEquals(6, locals.size());
             LocalVariable l0 = locals.get(0);  // can be merged
             LocalVariable l1a = locals.get(1);
@@ -364,7 +364,7 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
         List<LocalVariable> locals = b.getLocals();
         assertEquals(5, locals.size());
         assertEquals(42L, root.getCallTarget().call());
-        if (run.hasLocalScopes()) {
+        if (run.hasBlockScoping()) {
             assertEquals(0, locals.get(0).getStartIndex());
             assertEquals(endBci, locals.get(0).getEndIndex());
             assertEquals("l0", locals.get(0).getName());
@@ -586,7 +586,7 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
         assertNull(l1b.getTypeProfile());
         assertNull(l2b.getTypeProfile());
 
-        if (run.hasGlobalScopes()) {
+        if (run.hasRootScoping()) {
             assertEquals(0, l0.getLocalOffset());
             assertEquals(1, l1a.getLocalOffset());
             assertEquals(2, l2a.getLocalOffset());

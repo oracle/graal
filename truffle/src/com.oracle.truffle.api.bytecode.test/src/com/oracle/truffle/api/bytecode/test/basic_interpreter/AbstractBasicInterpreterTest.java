@@ -101,24 +101,24 @@ public abstract class AbstractBasicInterpreterTest {
         public boolean hasBoxingElimination() {
             return interpreterClass == BasicInterpreterWithBE.class ||
                             interpreterClass == BasicInterpreterWithStoreBytecodeIndexInFrame.class ||
-                            interpreterClass == BasicInterpreterProductionLocalScopes.class ||
-                            interpreterClass == BasicInterpreterProductionGlobalScopes.class;
+                            interpreterClass == BasicInterpreterProductionBlockScoping.class ||
+                            interpreterClass == BasicInterpreterProductionRootScoping.class;
         }
 
         public boolean hasUncachedInterpreter() {
             return interpreterClass == BasicInterpreterWithUncached.class ||
                             interpreterClass == BasicInterpreterWithStoreBytecodeIndexInFrame.class ||
-                            interpreterClass == BasicInterpreterProductionLocalScopes.class ||
-                            interpreterClass == BasicInterpreterProductionGlobalScopes.class;
+                            interpreterClass == BasicInterpreterProductionBlockScoping.class ||
+                            interpreterClass == BasicInterpreterProductionRootScoping.class;
         }
 
-        public boolean hasGlobalScopes() {
-            return interpreterClass == BasicInterpreterWithGlobalScopes.class ||
-                            interpreterClass == BasicInterpreterProductionGlobalScopes.class;
+        public boolean hasRootScoping() {
+            return interpreterClass == BasicInterpreterWithRootScoping.class ||
+                            interpreterClass == BasicInterpreterProductionRootScoping.class;
         }
 
-        public boolean hasLocalScopes() {
-            return !hasGlobalScopes();
+        public boolean hasBlockScoping() {
+            return !hasRootScoping();
         }
 
         @Override
@@ -127,7 +127,7 @@ public abstract class AbstractBasicInterpreterTest {
         }
 
         public Object getDefaultLocalValue() {
-            if (interpreterClass == BasicInterpreterWithOptimizations.class || interpreterClass == BasicInterpreterWithGlobalScopes.class) {
+            if (interpreterClass == BasicInterpreterWithOptimizations.class || interpreterClass == BasicInterpreterWithRootScoping.class) {
                 return BasicInterpreter.LOCAL_DEFAULT_VALUE;
             }
             return null;
@@ -408,14 +408,14 @@ public abstract class AbstractBasicInterpreterTest {
         }
         List<LocalVariable> locals = bytecode.getLocals();
         for (LocalVariable local : locals) {
-            // if local scoping
             assertTrue(local.getLocalOffset() >= 0);
             assertEquals(local, local);
-            // not failing
+            // call just to ensure it doesn't fail
             local.getTypeProfile();
             assertNotNull(local.toString());
 
             if (local.getStartIndex() != -1) {
+                // block scoping
                 assertNotNull(BytecodeLocation.get(bytecode, local.getStartIndex()));
                 assertTrue(local.getStartIndex() < local.getEndIndex());
 
@@ -425,6 +425,7 @@ public abstract class AbstractBasicInterpreterTest {
                     assertTrue(local.getLocalOffset() < bytecode.getLocalCount(local.getStartIndex()));
                 }
             } else {
+                // root scoping
                 assertEquals(-1, local.getEndIndex());
                 if (locals.size() < 1000) {
                     assertEquals(local.getName(), bytecode.getLocalName(0, local.getLocalOffset()));
@@ -584,7 +585,7 @@ public abstract class AbstractBasicInterpreterTest {
     public static List<Class<? extends BasicInterpreter>> allInterpreters() {
         return List.of(BasicInterpreterBase.class, BasicInterpreterUnsafe.class, BasicInterpreterWithUncached.class, BasicInterpreterWithBE.class, BasicInterpreterWithOptimizations.class,
                         BasicInterpreterWithStoreBytecodeIndexInFrame.class,
-                        BasicInterpreterWithGlobalScopes.class, BasicInterpreterProductionGlobalScopes.class, BasicInterpreterProductionLocalScopes.class);
+                        BasicInterpreterWithRootScoping.class, BasicInterpreterProductionRootScoping.class, BasicInterpreterProductionBlockScoping.class);
     }
 
     /// Code gen helpers

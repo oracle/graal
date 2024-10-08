@@ -67,7 +67,7 @@ public abstract class LocalVariable {
 
     /**
      * Returns the bytecode index at which this local starts being live. If
-     * {@link GenerateBytecode#enableLocalScoping() local scoping} is disabled, returns
+     * {@link GenerateBytecode#enableBlockScoping() block scoping} is disabled, returns
      * <code>-1</code>.
      *
      * @since 24.2
@@ -78,7 +78,7 @@ public abstract class LocalVariable {
 
     /**
      * Returns the bytecode index at which this local stops being live. If
-     * {@link GenerateBytecode#enableLocalScoping() local scoping} is disabled, returns
+     * {@link GenerateBytecode#enableBlockScoping() block scoping} is disabled, returns
      * <code>-1</code>.
      *
      * @since 24.2

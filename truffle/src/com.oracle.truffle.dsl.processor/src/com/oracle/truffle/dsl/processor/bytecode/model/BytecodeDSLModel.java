@@ -121,7 +121,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public boolean enableTagInstrumentation;
     public boolean enableRootTagging;
     public boolean enableRootBodyTagging;
-    public boolean enableLocalScoping;
+    public boolean enableBlockScoping;
     public String defaultLocalValue;
     public DSLExpression defaultLocalValueExpression;
 
@@ -504,7 +504,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public boolean materializedAccessesNeedLocalIndex() {
         // We need the local index to validate accesses at run time. We can only do this when the
         // bci is stored in the frame.
-        return enableLocalScoping && storeBciInFrame;
+        return enableBlockScoping && storeBciInFrame;
     }
 
     @Override

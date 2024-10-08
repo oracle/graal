@@ -199,7 +199,7 @@ public class BranchTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testBranchOutwardClearedLocal() {
-        assumeTrue(run.hasLocalScopes());
+        assumeTrue(run.hasBlockScoping());
         // y = 4
         // {
         //   x = 123;

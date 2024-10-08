@@ -1257,7 +1257,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         // @formatter:on
 
         // The interpreter can only check liveness if it stores the bci in the frame and it uses
-        // local scoping.
+        // block scoping.
         assumeTrue(run.interpreterClass() == BasicInterpreterWithStoreBytecodeIndexInFrame.class);
 
         BytecodeRootNodes<BasicInterpreter> nodes = createNodes(BytecodeConfig.DEFAULT, b -> {

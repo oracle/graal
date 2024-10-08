@@ -487,7 +487,7 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
         static final class Increment {
             @Specialization
             public static void perform(VirtualFrame frame, LocalAccessor variable, int currentValue,
-                            @Bind BytecodeNode bytecodeNode, @Bind("$bytecodeIndex") int bci) {
+                            @Bind BytecodeNode bytecodeNode) {
                 variable.setInt(bytecodeNode, frame, currentValue + 1);
             }
         }
@@ -497,7 +497,7 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
         static final class IncrementIfCompiled {
             @Specialization
             public static void perform(VirtualFrame frame, LocalAccessor variable, int currentValue,
-                            @Bind BytecodeNode bytecodeNode, @Bind("$bytecodeIndex") int bci) {
+                            @Bind BytecodeNode bytecodeNode) {
                 /**
                  * NB: this is implemented as one operation rather than a built-in IfThen operation
                  * because the IfThen branch profile would mark the "in compiled code" branch as
@@ -555,7 +555,7 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
         static final class Increment {
             @Specialization
             public static void perform(VirtualFrame frame, LocalAccessor variable, int currentValue,
-                            @Bind BytecodeNode bytecodeNode, @Bind("$bytecodeIndex") int bci) {
+                            @Bind BytecodeNode bytecodeNode) {
                 variable.setInt(bytecodeNode, frame, currentValue + 1);
             }
         }
@@ -565,7 +565,7 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
         static final class IncrementIfCompiled {
             @Specialization
             public static void perform(VirtualFrame frame, LocalAccessor variable, int currentValue,
-                            @Bind BytecodeNode bytecodeNode, @Bind("$bytecodeIndex") int bci) {
+                            @Bind BytecodeNode bytecodeNode) {
                 /**
                  * NB: this is implemented as one operation rather than a built-in IfThen operation
                  * because the IfThen branch profile would mark the "in compiled code" branch as

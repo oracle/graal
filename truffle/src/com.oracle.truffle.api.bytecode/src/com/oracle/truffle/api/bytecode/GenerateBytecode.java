@@ -203,7 +203,7 @@ public @interface GenerateBytecode {
      * Common use-cases when implementing a custom tag tree node library is required:
      * <ul>
      * <li>Allowing instruments to access the current receiver or function object
-     * <li>Implementing custom scopes for local variables instead of the default global scope.
+     * <li>Implementing custom scopes for local variables instead of the default scope.
      * <li>Hiding certain local local variables or arguments from instruments.
      * </ul>
      * <p>
@@ -262,37 +262,48 @@ public @interface GenerateBytecode {
     boolean enableYield() default false;
 
     /**
-     * Enables local variable scoping for this interpreter. By default local variable scoping is
-     * enabled (<code>true</code>). Whether this flag is enabled significantly changes the behavior
-     * of local variables (breaking changes), so the value of this flag should be determined
-     * relatively early in the development of a language.
+     * Enables block scoping, which limits a local's lifetime to the lifetime of the enclosing
+     * Block/Root operation. Block scoping is enabled by default. If this flag is set to
+     * <code>false</code>, locals use root scoping, which keeps locals alive for the lifetime of the
+     * root node (i.e., the entire invocation).
      * <p>
-     * If local scoping is enabled then all local variables are scoped with the parent block. If no
-     * block is currently on the operation stack then the local variable will be scoped with their
-     * respective root. Local variables that are no longer in scope are automatically
-     * {@link Frame#clear(int) cleared} when their block or root ends. When local variables are read
-     * or written without an instruction using the methods in {@link BytecodeNode} then a
-     * compilation final bytecode index must be passed. For example,
-     * {@link BytecodeNode#getLocalValues(int, Frame)} requires a valid
-     * {@link CompilerAsserts#partialEvaluationConstant(boolean) partial evaluation constant}
-     * bytecode index parameter to determine which values are currently accessible. The life-time of
-     * local variables can be accessed using {@link LocalVariable#getStartIndex()} and
+     * The value of this flag significantly changes the behaviour of local variables, so the value
+     * of this flag should be decided relatively early in the development of a language.
+     * <p>
+     * When block scoping is enabled, all local variables are scoped to the closest enclosing
+     * Block/Root operation. When a local variable's enclosing Block ends, it falls out of scope and
+     * its value is automatically {@link Frame#clear(int) cleared} (or reset to a
+     * {@link #defaultLocalValue() default value}, if provided). Locals scoped to the Root operation
+     * are not cleared on exit. Block scoping allows the interpreter to reuse a frame index for
+     * multiple locals that have disjoint lifetimes, which can reduce the frame size.
+     * <p>
+     * With block scoping, a different set of locals can be live at different bytecode indices. The
+     * interpreter retains extra metadata to track the lifetimes of each local. The local accessor
+     * methods on {@link BytecodeNode} (e.g., {@link BytecodeNode#getLocalValues(int, Frame)}) take
+     * the current bytecode index as a parameter so that they can correctly compute the locals in
+     * scope. These liveness computations can require extra computation, so accessing locals using
+     * bytecode instructions or {@link LocalAccessor LocalAccessors} (which validate liveness at
+     * parse time) is encouraged when possible. The bytecode index should be a
+     * {@link CompilerAsserts#partialEvaluationConstant(boolean) partial evaluation constant} for
+     * performance reasons. The lifetime of local variables can also be accessed through
+     * introspection using {@link LocalVariable#getStartIndex()} and
      * {@link LocalVariable#getEndIndex()}.
      * <p>
-     * If local scoping is disabled all local variables get their unique absolute index in the frame
-     * independent of the current source location. This means that when reading the current
-     * {@link BytecodeNode#getLocalValues(int, Frame) local values} the bytecode index parameter has
-     * no effect. With scoping disabled no additional meta-data needs to be emitted for the
-     * life-time of local variables, hence {@link BytecodeNode#getLocals()} returns local variables
-     * without life-time ranges.
+     * When root scoping is enabled, all local variables are assigned a unique index in the frame
+     * regardless of the current source location. They are never cleared, and frame indexes are not
+     * reused. Consequently, the bytecode index parameter on the local accessor methods on
+     * {@link BytecodeNode} has no effect. Root scoping does not retain additional liveness metadata
+     * (which may be a useful footprint optimization); this also means
+     * {@link LocalVariable#getStartIndex()} and {@link LocalVariable#getEndIndex()} methods do not
+     * return lifetime data.
      * <p>
-     * Primarily local variable scoping is intended to be disabled if the implemented language does
-     * not use local variable scoping, but it can also be useful if the default local variable
-     * scoping is not flexible enough and custom scoping rules are needed.
+     * Root scoping is primarily intended for cases where the implemented language does not use
+     * block scoping. It can also be useful if the default block scoping is not flexible enough and
+     * custom scoping rules are needed.
      *
      * @since 24.2
      */
-    boolean enableLocalScoping() default true;
+    boolean enableBlockScoping() default true;
 
     /**
      * Whether to generate quickened bytecodes for user-provided operations.

@@ -97,8 +97,10 @@ public abstract class TagTreeNode extends Node implements TagTree {
     /**
      * Creates a default scope implementation based of this tag tree node. The scope returned
      * represents the default scope implementation in use without any configuration in
-     * {@link GenerateBytecode}. Use this method if the default scope implementation is usable for
-     * your language but other methods in {@link NodeLibrary} need to be implemented differently.
+     * {@link GenerateBytecode}. The scope respects your interpreter's choice of
+     * {@link GenerateBytecode#enableBlockScoping() block/root scoping}. Use this method if the
+     * default scope implementation is usable for your language but other methods in
+     * {@link NodeLibrary} need to be implemented differently.
      * <p>
      * The scope used for a tag tree node can be customized by setting
      * {@link GenerateBytecode#tagTreeNodeLibrary()} and overriding
