@@ -24,18 +24,54 @@
  */
 package jdk.graal.compiler.graphio.parsing;
 
-import static jdk.graal.compiler.graphio.parsing.BinaryStreamDefs.*;
+import static jdk.graal.compiler.graphio.parsing.BinaryStreamDefs.BEGIN_GRAPH;
+import static jdk.graal.compiler.graphio.parsing.BinaryStreamDefs.BEGIN_GROUP;
+import static jdk.graal.compiler.graphio.parsing.BinaryStreamDefs.CLOSE_GROUP;
+import static jdk.graal.compiler.graphio.parsing.BinaryStreamDefs.ENUM_KLASS;
+import static jdk.graal.compiler.graphio.parsing.BinaryStreamDefs.KLASS;
+import static jdk.graal.compiler.graphio.parsing.BinaryStreamDefs.POOL_CLASS;
+import static jdk.graal.compiler.graphio.parsing.BinaryStreamDefs.POOL_ENUM;
+import static jdk.graal.compiler.graphio.parsing.BinaryStreamDefs.POOL_FIELD;
+import static jdk.graal.compiler.graphio.parsing.BinaryStreamDefs.POOL_METHOD;
+import static jdk.graal.compiler.graphio.parsing.BinaryStreamDefs.POOL_NEW;
+import static jdk.graal.compiler.graphio.parsing.BinaryStreamDefs.POOL_NODE;
+import static jdk.graal.compiler.graphio.parsing.BinaryStreamDefs.POOL_NODE_CLASS;
+import static jdk.graal.compiler.graphio.parsing.BinaryStreamDefs.POOL_NODE_SOURCE_POSITION;
+import static jdk.graal.compiler.graphio.parsing.BinaryStreamDefs.POOL_NULL;
+import static jdk.graal.compiler.graphio.parsing.BinaryStreamDefs.POOL_SIGNATURE;
+import static jdk.graal.compiler.graphio.parsing.BinaryStreamDefs.POOL_STRING;
+import static jdk.graal.compiler.graphio.parsing.BinaryStreamDefs.PROPERTY_ARRAY;
+import static jdk.graal.compiler.graphio.parsing.BinaryStreamDefs.PROPERTY_DOUBLE;
+import static jdk.graal.compiler.graphio.parsing.BinaryStreamDefs.PROPERTY_FALSE;
+import static jdk.graal.compiler.graphio.parsing.BinaryStreamDefs.PROPERTY_FLOAT;
+import static jdk.graal.compiler.graphio.parsing.BinaryStreamDefs.PROPERTY_INT;
+import static jdk.graal.compiler.graphio.parsing.BinaryStreamDefs.PROPERTY_LONG;
+import static jdk.graal.compiler.graphio.parsing.BinaryStreamDefs.PROPERTY_POOL;
+import static jdk.graal.compiler.graphio.parsing.BinaryStreamDefs.PROPERTY_SUBGRAPH;
+import static jdk.graal.compiler.graphio.parsing.BinaryStreamDefs.PROPERTY_TRUE;
+import static jdk.graal.compiler.graphio.parsing.BinaryStreamDefs.STREAM_PROPERTIES;
 
 import java.io.EOFException;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Deque;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import jdk.graal.compiler.graphio.parsing.Builder.*;
+import jdk.graal.compiler.graphio.parsing.Builder.Length;
+import jdk.graal.compiler.graphio.parsing.Builder.LengthToString;
+import jdk.graal.compiler.graphio.parsing.Builder.ModelControl;
+import jdk.graal.compiler.graphio.parsing.Builder.Node;
+import jdk.graal.compiler.graphio.parsing.Builder.NodeClass;
+import jdk.graal.compiler.graphio.parsing.Builder.Port;
+import jdk.graal.compiler.graphio.parsing.Builder.TypedPort;
 import jdk.graal.compiler.graphio.parsing.model.GraphDocument;
 import jdk.graal.compiler.graphio.parsing.model.Group;
 import jdk.graal.compiler.graphio.parsing.model.InputGraph;
@@ -676,7 +712,7 @@ public class BinaryReader implements GraphParser, ModelControl {
                     }
                     LocationStackFrame parent = readPoolObject(LocationStackFrame.class);
                     obj = LocationCache.createFrame(method, bci,
-                            LocationCache.fileLineStratum(fileName, line), parent);
+                                    LocationCache.fileLineStratum(fileName, line), parent);
                 } else {
                     ArrayList<LocationStratum> infos = new ArrayList<>();
                     while (true) { // TERMINATION ARGUMENT: stack traces can reach arbitrary depth
@@ -772,7 +808,7 @@ public class BinaryReader implements GraphParser, ModelControl {
         boolean restart = false;
         try {
             while (true) { // TERMINATION ARGUMENT: finite length of data source will result in
-                // EOFException eventually.
+                           // EOFException eventually.
                 // allows to concatenate BGV files; at the top-level, either BIGV signature,
                 // or 0x00-0x02 should be present.
                 // Check for a version specification

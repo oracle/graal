@@ -146,11 +146,11 @@ public class InputEdge {
     }
 
     public String getDisplayLabel() {
-        String label = getLabel();
+        String ret = getLabel();
         if (listIndex >= 0) {
-            label = label + "[" + listIndex + "]";
+            ret = ret + "[" + listIndex + "]";
         }
-        return label;
+        return ret;
     }
 
     public String getType() {
