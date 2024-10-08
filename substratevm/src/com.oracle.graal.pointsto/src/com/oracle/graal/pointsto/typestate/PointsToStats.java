@@ -296,8 +296,8 @@ public class PointsToStats {
                             TypeFlowStats stats = e.getValue();
 
                             doWrite(out, String.format("%-35s\t%-10d\t%-10d\t%-10b\t%-10b\t%-10d\t%-10d\t%-10d\t%-10s\t%-10d\t%10d\t%10d\t%10s%n",
-                                            asString(flow), stateToId.get(flow.getState()), objectsCount(flow.getState()),
-                                            flow.getState().canBeNull(), flow.isClone(),
+                                            asString(flow), stateToId.get(flow.getRawState()), objectsCount(flow.getRawState()),
+                                            flow.getRawState().canBeNull(), flow.isClone(),
                                             flow.getUses().size(), flow.getObservers().size(), flow.getUses().size() + flow.getObservers().size(),
                                             retainReson.getOrDefault(flow, ""),
                                             stats.queuedUpdatesCount(), stats.successfulUpdatesCount(), stats.allUpdatesCount(),

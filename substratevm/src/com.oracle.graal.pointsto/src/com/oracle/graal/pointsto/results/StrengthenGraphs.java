@@ -803,6 +803,9 @@ public abstract class StrengthenGraphs {
         private boolean isUnreachable(Node branch) {
             TypeFlow<?> branchFlow = getNodeFlow(branch);
             if (branchFlow != null && !methodFlow.isSaturated(((PointsToAnalysis) bb), branchFlow)) {
+                if (!branchFlow.isFlowEnabled()) {
+                    return true;
+                }
                 TypeState typeState = methodFlow.foldTypeFlow((PointsToAnalysis) bb, branchFlow);
                 if (branchFlow.isPrimitiveFlow()) {
                     /*
@@ -811,7 +814,7 @@ public abstract class StrengthenGraphs {
                      */
                     assert branchFlow instanceof PrimitiveFilterTypeFlow : "Unexpected type of primitive flow encountered as branch predicate: " + branchFlow;
                 }
-                return !branchFlow.isFlowEnabled() || typeState.isEmpty();
+                return typeState.isEmpty();
             }
             return false;
         }
@@ -893,7 +896,7 @@ public abstract class StrengthenGraphs {
              */
             boolean hasUsages = node.usages().filter(n -> !(n instanceof FrameState)).isNotEmpty();
 
-            TypeState nodeTypeState = methodFlow.foldTypeFlow((PointsToAnalysis) bb, nodeFlow);
+            TypeState nodeTypeState = nodeFlow.isFlowEnabled() ? methodFlow.foldTypeFlow((PointsToAnalysis) bb, nodeFlow) : TypeState.forEmpty();
 
             if (hasUsages && allowConstantFolding && !nodeTypeState.canBeNull()) {
                 JavaConstant constantValue = nodeTypeState.asConstant();

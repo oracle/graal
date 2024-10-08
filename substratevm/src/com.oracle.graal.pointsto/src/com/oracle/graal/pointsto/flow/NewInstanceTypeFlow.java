@@ -149,6 +149,6 @@ public class NewInstanceTypeFlow extends TypeFlow<BytecodePosition> {
 
     @Override
     public String toString() {
-        return "NewInstanceFlow<" + getState() + ">";
+        return "NewInstanceFlow<" + getStateDescription() + ">";
     }
 }
