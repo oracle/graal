@@ -61,6 +61,7 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.PrimitiveKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.EspressoInlineNode;
 import com.oracle.truffle.espresso.nodes.interop.LookupInternalTypeConverterNode;
 import com.oracle.truffle.espresso.nodes.interop.LookupTypeConverterNode;
 import com.oracle.truffle.espresso.nodes.interop.MethodArgsUtils;
@@ -4275,7 +4276,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      */
     @GenerateInline
     @GenerateCached(false)
-    abstract static class ToHostArguments extends SubstitutionNode {
+    abstract static class ToHostArguments extends EspressoInlineNode {
         private static final Object[] EMPTY_ARRAY = new Object[0];
 
         abstract Object[] execute(Node node, boolean unwrapArguments, @JavaType(Object[].class) StaticObject arguments);
@@ -4284,27 +4285,30 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         "!unwrapArguments",
                         "arguments.isEspressoObject()"
         })
-        Object[] doEspressoNoUnwrap(
+        static Object[] doEspressoNoUnwrap(
                         @SuppressWarnings("unused") boolean unwrapArguments,
-                        @JavaType(Object[].class) StaticObject arguments) {
-            return arguments.<StaticObject[]> unwrap(getLanguage());
+                        @JavaType(Object[].class) StaticObject arguments,
+                        @Bind("$node") Node node) {
+            return arguments.<StaticObject[]> unwrap(EspressoLanguage.get(node));
         }
 
         @Specialization(guards = {
                         "unwrapArguments",
                         "arguments.isEspressoObject()",
         })
-        Object[] doEspressoUnwrap(
+        static Object[] doEspressoUnwrap(
                         @SuppressWarnings("unused") boolean unwrapArguments,
-                        @JavaType(Object[].class) StaticObject arguments) {
-            EspressoLanguage language = getLanguage();
+                        @JavaType(Object[].class) StaticObject arguments,
+                        @Bind("$node") Node node) {
+            EspressoLanguage language = EspressoLanguage.get(node);
             Object[] rawArgs = arguments.unwrap(language);
             if (rawArgs.length == 0) {
                 return EMPTY_ARRAY;
             }
             Object[] hostArgs = new Object[rawArgs.length];
+            Meta meta = EspressoContext.get(node).getMeta();
             for (int i = 0; i < rawArgs.length; ++i) {
-                hostArgs[i] = InteropUtils.unwrap(language, (StaticObject) rawArgs[i], getMeta());
+                hostArgs[i] = InteropUtils.unwrap(language, (StaticObject) rawArgs[i], meta);
             }
             return hostArgs;
         }
@@ -4312,20 +4316,22 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         @Specialization(guards = {
                         "arguments.isForeignObject()",
         })
-        Object[] doForeign(
+        static Object[] doForeign(
                         boolean unwrapArguments,
                         @JavaType(Object[].class) StaticObject arguments,
                         @Cached(inline = false) GetArraySize getArraySize,
-                        @Cached(inline = false) ReadArrayElement readArrayElement) {
-            EspressoLanguage language = getLanguage();
+                        @Cached(inline = false) ReadArrayElement readArrayElement,
+                        @Bind("$node") Node node) {
+            EspressoLanguage language = EspressoLanguage.get(node);
             int argsLength = Math.toIntExact(getArraySize.execute(arguments));
             if (argsLength == 0) {
                 return EMPTY_ARRAY;
             }
             Object[] hostArgs = new Object[argsLength];
+            Meta meta = EspressoContext.get(node).getMeta();
             for (int i = 0; i < argsLength; ++i) {
                 StaticObject elem = readArrayElement.execute(arguments, i);
-                hostArgs[i] = unwrapArguments ? InteropUtils.unwrap(language, elem, getMeta()) : elem;
+                hostArgs[i] = unwrapArguments ? InteropUtils.unwrap(language, elem, meta) : elem;
             }
             return hostArgs;
         }
@@ -4336,7 +4342,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      */
     @GenerateInline
     @GenerateCached(false)
-    abstract static class ThrowInteropExceptionAsGuest extends SubstitutionNode {
+    abstract static class ThrowInteropExceptionAsGuest extends EspressoInlineNode {
         static final int LIMIT = 2;
 
         abstract RuntimeException execute(Node node, InteropException hostException);
@@ -4347,8 +4353,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         UnsupportedMessageException e,
                         @CachedLibrary(limit = "LIMIT") @Shared InteropLibrary causeInterop,
                         @Cached @Shared InlinedConditionProfile noCauseProfile,
-                        @Cached(value = "create(getMeta().polyglot.UnsupportedMessageException_create.getCallTargetForceInit())", inline = false) DirectCallNode create,
-                        @Cached(value = "create(getMeta().polyglot.UnsupportedMessageException_create_Throwable.getCallTargetForceInit())", inline = false) DirectCallNode createWithCause) {
+                        @Cached(value = "create(getMeta(node).polyglot.UnsupportedMessageException_create.getCallTargetForceInit())", inline = false) DirectCallNode create,
+                        @Cached(value = "create(getMeta(node).polyglot.UnsupportedMessageException_create_Throwable.getCallTargetForceInit())", inline = false) DirectCallNode createWithCause) {
             Throwable cause = e.getCause();
             assert cause == null || cause instanceof AbstractTruffleException;
             EspressoContext context = EspressoContext.get(node);
@@ -4367,8 +4373,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         UnknownIdentifierException e,
                         @CachedLibrary(limit = "LIMIT") @Shared InteropLibrary causeInterop,
                         @Cached @Shared InlinedConditionProfile noCauseProfile,
-                        @Cached(value = "create(getMeta().polyglot.UnknownIdentifierException_create_String.getCallTargetForceInit())", inline = false) DirectCallNode createWithIdentifier,
-                        @Cached(value = "create(getMeta().polyglot.UnknownIdentifierException_create_String_Throwable.getCallTargetForceInit())", inline = false) DirectCallNode createWithIdentifierAndCause) {
+                        @Cached(value = "create(getMeta(node).polyglot.UnknownIdentifierException_create_String.getCallTargetForceInit())", inline = false) DirectCallNode createWithIdentifier,
+                        @Cached(value = "create(getMeta(node).polyglot.UnknownIdentifierException_create_String_Throwable.getCallTargetForceInit())", inline = false) DirectCallNode createWithIdentifierAndCause) {
             EspressoContext context = EspressoContext.get(node);
             Meta meta = context.getMeta();
             StaticObject unknownIdentifier = meta.toGuestString(e.getUnknownIdentifier());
@@ -4390,8 +4396,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         ArityException e,
                         @CachedLibrary(limit = "LIMIT") @Shared InteropLibrary causeInterop,
                         @Cached @Shared InlinedConditionProfile noCauseProfile,
-                        @Cached(value = "create(getMeta().polyglot.ArityException_create_int_int_int.getCallTargetForceInit())", inline = false) DirectCallNode createWithArityRange,
-                        @Cached(value = "create(getMeta().polyglot.ArityException_create_int_int_int_Throwable.getCallTargetForceInit())", inline = false) DirectCallNode createWithArityRangeAndCause) {
+                        @Cached(value = "create(getMeta(node).polyglot.ArityException_create_int_int_int.getCallTargetForceInit())", inline = false) DirectCallNode createWithArityRange,
+                        @Cached(value = "create(getMeta(node).polyglot.ArityException_create_int_int_int_Throwable.getCallTargetForceInit())", inline = false) DirectCallNode createWithArityRangeAndCause) {
             int expectedMinArity = e.getExpectedMinArity();
             int expectedMaxArity = e.getExpectedMaxArity();
             int actualArity = e.getActualArity();
@@ -4419,8 +4425,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         UnsupportedTypeException e,
                         @CachedLibrary(limit = "LIMIT") @Shared InteropLibrary causeInterop,
                         @Cached @Shared InlinedConditionProfile noCauseProfile,
-                        @Cached(value = "create(getMeta().polyglot.UnsupportedTypeException_create_Object_array_String.getCallTargetForceInit())", inline = false) DirectCallNode createWithValuesHint,
-                        @Cached(value = "create(getMeta().polyglot.UnsupportedTypeException_create_Object_array_String_Throwable.getCallTargetForceInit())", inline = false) DirectCallNode createWithValuesHintAndCause) {
+                        @Cached(value = "create(getMeta(node).polyglot.UnsupportedTypeException_create_Object_array_String.getCallTargetForceInit())", inline = false) DirectCallNode createWithValuesHint,
+                        @Cached(value = "create(getMeta(node).polyglot.UnsupportedTypeException_create_Object_array_String_Throwable.getCallTargetForceInit())", inline = false) DirectCallNode createWithValuesHintAndCause) {
             Object[] hostValues = e.getSuppliedValues();
             EspressoContext context = EspressoContext.get(node);
             Meta meta = context.getMeta();
@@ -4451,8 +4457,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         InvalidArrayIndexException e,
                         @CachedLibrary(limit = "LIMIT") @Shared InteropLibrary causeInterop,
                         @Cached @Shared InlinedConditionProfile noCauseProfile,
-                        @Cached(value = "create(getMeta().polyglot.InvalidArrayIndexException_create_long.getCallTargetForceInit())", inline = false) DirectCallNode createWithIndex,
-                        @Cached(value = "create(getMeta().polyglot.InvalidArrayIndexException_create_long_Throwable.getCallTargetForceInit())", inline = false) DirectCallNode createWithIndexAndCause) {
+                        @Cached(value = "create(getMeta(node).polyglot.InvalidArrayIndexException_create_long.getCallTargetForceInit())", inline = false) DirectCallNode createWithIndex,
+                        @Cached(value = "create(getMeta(node).polyglot.InvalidArrayIndexException_create_long_Throwable.getCallTargetForceInit())", inline = false) DirectCallNode createWithIndexAndCause) {
             long invalidIndex = e.getInvalidIndex();
             Throwable cause = e.getCause();
             EspressoContext context = EspressoContext.get(node);
@@ -4473,8 +4479,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         InvalidBufferOffsetException e,
                         @CachedLibrary(limit = "LIMIT") @Shared InteropLibrary causeInterop,
                         @Cached @Shared InlinedConditionProfile noCauseProfile,
-                        @Cached(value = "create(getMeta().polyglot.InvalidBufferOffsetException_create_long_long.getCallTargetForceInit())", inline = false) DirectCallNode createWithOffsetLength,
-                        @Cached(value = "create(getMeta().polyglot.InvalidBufferOffsetException_create_long_long_Throwable.getCallTargetForceInit())", inline = false) DirectCallNode createWithOffsetLengthAndCause) {
+                        @Cached(value = "create(getMeta(node).polyglot.InvalidBufferOffsetException_create_long_long.getCallTargetForceInit())", inline = false) DirectCallNode createWithOffsetLength,
+                        @Cached(value = "create(getMeta(node).polyglot.InvalidBufferOffsetException_create_long_long_Throwable.getCallTargetForceInit())", inline = false) DirectCallNode createWithOffsetLengthAndCause) {
             long byteOffset = e.getByteOffset();
             long length = e.getLength();
             Throwable cause = e.getCause();
@@ -4497,8 +4503,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         StopIterationException e,
                         @CachedLibrary(limit = "LIMIT") @Shared InteropLibrary causeInterop,
                         @Cached @Shared InlinedConditionProfile noCauseProfile,
-                        @Cached(value = "create(getMeta().polyglot.StopIterationException_create.getCallTargetForceInit())", inline = false) DirectCallNode create,
-                        @Cached(value = "create(getMeta().polyglot.StopIterationException_create_Throwable.getCallTargetForceInit())", inline = false) DirectCallNode createWithCause) {
+                        @Cached(value = "create(getMeta(node).polyglot.StopIterationException_create.getCallTargetForceInit())", inline = false) DirectCallNode create,
+                        @Cached(value = "create(getMeta(node).polyglot.StopIterationException_create_Throwable.getCallTargetForceInit())", inline = false) DirectCallNode createWithCause) {
             Throwable cause = e.getCause();
             EspressoContext context = EspressoContext.get(node);
             Meta meta = context.getMeta();
@@ -4517,8 +4523,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @CachedLibrary(limit = "LIMIT") @Exclusive InteropLibrary keyInterop,
                         @CachedLibrary(limit = "LIMIT") @Shared InteropLibrary causeInterop,
                         @Cached @Shared InlinedConditionProfile noCauseProfile,
-                        @Cached(value = "create(getMeta().polyglot.UnknownKeyException_create_Object.getCallTargetForceInit())", inline = false) DirectCallNode createWithKey,
-                        @Cached(value = "create(getMeta().polyglot.UnknownKeyException_create_Object_Throwable.getCallTargetForceInit())", inline = false) DirectCallNode createWithKeyAndCause) {
+                        @Cached(value = "create(getMeta(node).polyglot.UnknownKeyException_create_Object.getCallTargetForceInit())", inline = false) DirectCallNode createWithKey,
+                        @Cached(value = "create(getMeta(node).polyglot.UnknownKeyException_create_Object_Throwable.getCallTargetForceInit())", inline = false) DirectCallNode createWithKeyAndCause) {
             EspressoContext context = EspressoContext.get(node);
             Meta meta = context.getMeta();
             StaticObject unknownKey = InteropUtils.maybeWrapAsObject(e.getUnknownKey(), keyInterop, context);
