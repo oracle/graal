@@ -81,7 +81,7 @@ public class PhysicalMemory {
      */
     public static void initialize() {
         assert !isInitialized() : "Physical memory already initialized.";
-        long memoryLimit = IsolateArgumentParser.getLongOptionValue(IsolateArgumentParser.getOptionIndex(SubstrateOptions.MaxRAM));
+        long memoryLimit = IsolateArgumentParser.getLongOptionValue(IsolateArgumentParser.getOptionIndex(SubstrateOptions.ConcealedOptions.MaxRAM));
         if (memoryLimit > 0) {
             cachedSize = WordFactory.unsigned(memoryLimit);
         } else if (Container.singleton().isContainerized()) {

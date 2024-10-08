@@ -535,9 +535,6 @@ public class SubstrateOptions {
         };
     }
 
-    @Option(help = "Physical memory size (in bytes). By default, the value is queried from the OS/container during VM startup.", type = OptionType.Expert)//
-    public static final RuntimeOptionKey<Long> MaxRAM = new RuntimeOptionKey<>(0L, Immutable);
-
     @Option(help = "Enable detection and runtime container configuration support.")//
     public static final HostedOptionKey<Boolean> UseContainerSupport = new HostedOptionKey<>(true);
 
@@ -1080,10 +1077,13 @@ public class SubstrateOptions {
         @APIOption(name = "install-exit-handlers")//
         @Option(help = "Provide java.lang.Terminator exit handlers", type = User)//
         protected static final HostedOptionKey<Boolean> InstallExitHandlers = new HostedOptionKey<>(false);
+
+        @Option(help = "Physical memory size (in bytes). By default, the value is queried from the OS/container during VM startup.", type = OptionType.Expert)//
+        public static final RuntimeOptionKey<Long> MaxRAM = new RuntimeOptionKey<>(0L, Immutable);
     }
 
     @Fold
-    public static final boolean needsExitHandlers() {
+    public static boolean needsExitHandlers() {
         return ConcealedOptions.InstallExitHandlers.getValue() || VMInspectionOptions.hasJfrSupport() || VMInspectionOptions.hasNativeMemoryTrackingSupport();
     }
 

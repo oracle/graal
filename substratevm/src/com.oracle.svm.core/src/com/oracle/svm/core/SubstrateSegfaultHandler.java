@@ -69,6 +69,7 @@ import com.oracle.svm.util.ReflectionUtil;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.word.Word;
 
 @AutomaticallyRegisteredFeature
 class SubstrateSegfaultHandlerFeature implements InternalFeature {
@@ -108,14 +109,20 @@ class SubstrateSegfaultHandlerFeature implements InternalFeature {
 }
 
 final class SubstrateSegfaultHandlerStartupHook implements RuntimeSupport.Hook {
+    private static final CGlobalData<Pointer> SEGFAULT_HANDLER_INSTALLED = CGlobalDataFactory.createWord();
+
     @Override
     public void execute(boolean isFirstIsolate) {
-        if (isFirstIsolate) {
-            Boolean optionValue = SubstrateSegfaultHandler.Options.InstallSegfaultHandler.getValue();
-            if (SubstrateOptions.EnableSignalHandling.getValue() && optionValue != Boolean.FALSE) {
-                ImageSingletons.lookup(SubstrateSegfaultHandler.class).install();
-            }
+        Boolean optionValue = SubstrateSegfaultHandler.Options.InstallSegfaultHandler.getValue();
+        if (SubstrateOptions.EnableSignalHandling.getValue() && optionValue != Boolean.FALSE && isFirst()) {
+            ImageSingletons.lookup(SubstrateSegfaultHandler.class).install();
         }
+    }
+
+    private static boolean isFirst() {
+        Word expected = WordFactory.zero();
+        Word actual = SEGFAULT_HANDLER_INSTALLED.get().compareAndSwapWord(0, expected, WordFactory.unsigned(1), LocationIdentity.ANY_LOCATION);
+        return expected == actual;
     }
 }
 
@@ -130,24 +137,13 @@ public abstract class SubstrateSegfaultHandler {
     static long offsetOfStaticFieldWithWellKnownValue;
     @SuppressWarnings("unused") private static long staticFieldWithWellKnownValue = MARKER_VALUE;
 
-    private boolean installed;
-
     @Fold
     public static SubstrateSegfaultHandler singleton() {
         return ImageSingletons.lookup(SubstrateSegfaultHandler.class);
     }
 
-    public static boolean isInstalled() {
-        return singleton().installed;
-    }
-
     /** Installs the platform dependent segfault handler. */
-    public void install() {
-        installInternal();
-        installed = true;
-    }
-
-    protected abstract void installInternal();
+    public abstract void install();
 
     protected abstract void printSignalInfo(Log log, PointerBase signalInfo);
 
@@ -255,23 +251,28 @@ public abstract class SubstrateSegfaultHandler {
         }
     }
 
-    /** Called from the platform dependent segfault handler to print diagnostics. */
+    /** Called in certain embedding use-cases. */
     @Uninterruptible(reason = "Must be uninterruptible until we get immune to safepoints.")
     public static void dump(PointerBase signalInfo, RegisterDumper.Context context) {
+        dump(signalInfo, context, false);
+    }
+
+    @Uninterruptible(reason = "Must be uninterruptible until we get immune to safepoints.")
+    public static void dump(PointerBase signalInfo, RegisterDumper.Context context, boolean inSVMSegfaultHandler) {
         Pointer sp = (Pointer) RegisterDumper.singleton().getSP(context);
         CodePointer ip = (CodePointer) RegisterDumper.singleton().getIP(context);
-        dump(sp, ip, signalInfo, context);
+        dump(sp, ip, signalInfo, context, inSVMSegfaultHandler);
     }
 
     @Uninterruptible(reason = "Must be uninterruptible until we get immune to safepoints.", calleeMustBe = false)
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in segfault handler.")
-    public static void dump(Pointer sp, CodePointer ip, PointerBase signalInfo, RegisterDumper.Context context) {
+    private static void dump(Pointer sp, CodePointer ip, PointerBase signalInfo, RegisterDumper.Context context, boolean inSVMSegfaultHandler) {
         SafepointBehavior.preventSafepoints();
         StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
-        dumpInterruptibly(sp, ip, signalInfo, context);
+        dumpInterruptibly(sp, ip, signalInfo, context, inSVMSegfaultHandler);
     }
 
-    private static void dumpInterruptibly(Pointer sp, CodePointer ip, PointerBase signalInfo, RegisterDumper.Context context) {
+    private static void dumpInterruptibly(Pointer sp, CodePointer ip, PointerBase signalInfo, RegisterDumper.Context context, boolean inSVMSegfaultHandler) {
         LogHandler logHandler = ImageSingletons.lookup(LogHandler.class);
         Log log = Log.enterFatalContext(logHandler, ip, "[ [ SegfaultHandler caught a segfault. ] ]", null);
         if (log != null) {
@@ -282,7 +283,7 @@ public abstract class SubstrateSegfaultHandler {
             }
 
             boolean printedDiagnostics = SubstrateDiagnostics.printFatalError(log, sp, ip, context, false);
-            if (SubstrateSegfaultHandler.isInstalled() && printedDiagnostics) {
+            if (printedDiagnostics && inSVMSegfaultHandler) {
                 log.string("Segfault detected, aborting process. ") //
                                 .string("Use '-XX:-InstallSegfaultHandler' to disable the segfault handler at run time and create a core dump instead. ") //
                                 .string("Rebuild with '-R:-InstallSegfaultHandler' to disable the handler permanently at build time.") //

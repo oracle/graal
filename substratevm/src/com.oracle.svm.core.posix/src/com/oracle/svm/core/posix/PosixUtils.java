@@ -31,7 +31,6 @@ import java.io.IOException;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -41,7 +40,6 @@ import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
@@ -58,18 +56,15 @@ import com.oracle.svm.core.posix.headers.Locale;
 import com.oracle.svm.core.posix.headers.Pwd;
 import com.oracle.svm.core.posix.headers.Pwd.passwd;
 import com.oracle.svm.core.posix.headers.Pwd.passwdPointer;
-import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posix.headers.Wait;
 import com.oracle.svm.core.posix.headers.darwin.DarwinTime;
 import com.oracle.svm.core.posix.headers.linux.LinuxTime;
-import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.VMError;
 
 public class PosixUtils {
-
     static String setLocale(String category, String locale) {
         int intCategory = getCategory(category);
 
@@ -263,74 +258,6 @@ public class PosixUtils {
             } while (readBytes == -1 && LibC.errno() == Errno.EINTR());
         }
         return readBytes;
-    }
-
-    public static Signal.SignalDispatcher installSignalHandler(Signal.SignalEnum signum, Signal.SignalDispatcher handler, int flags) {
-        return installSignalHandler(signum.getCValue(), handler, flags);
-    }
-
-    /**
-     * Emulates the deprecated {@code signal} function via its replacement {@code sigaction},
-     * assuming BSD semantics (like glibc does, for example).
-     *
-     * Use this or {@code sigaction} directly instead of calling {@code signal} or {@code sigset}:
-     * they are not portable and when running in HotSpot, signal chaining (libjsig) prints warnings.
-     *
-     * Note that this method should not be called from an initialization hook:
-     * {@code EnableSignalHandling} may not be set correctly at the time initialization hooks run.
-     */
-    public static Signal.SignalDispatcher installSignalHandler(int signum, Signal.SignalDispatcher handler, int flags) {
-        int structSigActionSize = SizeOf.get(Signal.sigaction.class);
-        Signal.sigaction act = UnsafeStackValue.get(structSigActionSize);
-        LibC.memset(act, WordFactory.signed(0), WordFactory.unsigned(structSigActionSize));
-        act.sa_flags(flags);
-        act.sa_handler(handler);
-
-        Signal.sigaction old = UnsafeStackValue.get(Signal.sigaction.class);
-
-        int result = sigaction(signum, act, old);
-        if (result != 0) {
-            return Signal.SIG_ERR();
-        }
-        return old.sa_handler();
-    }
-
-    public static void installSignalHandler(Signal.SignalEnum signum, Signal.AdvancedSignalDispatcher handler, int flags) {
-        installSignalHandler(signum.getCValue(), handler, flags);
-    }
-
-    public static void installSignalHandler(int signum, Signal.AdvancedSignalDispatcher handler, int flags) {
-        int structSigActionSize = SizeOf.get(Signal.sigaction.class);
-        Signal.sigaction act = UnsafeStackValue.get(structSigActionSize);
-        LibC.memset(act, WordFactory.signed(0), WordFactory.unsigned(structSigActionSize));
-        act.sa_flags(Signal.SA_SIGINFO() | flags);
-        act.sa_sigaction(handler);
-
-        int result = sigaction(signum, act, WordFactory.nullPointer());
-        PosixUtils.checkStatusIs0(result, "sigaction failed in installSignalHandler().");
-    }
-
-    /*
-     * Avoid races with logic within Util_jdk_internal_misc_Signal#handle0 which reads these
-     * signals.
-     */
-    private static int sigaction(int signum, Signal.sigaction structSigAction, Signal.sigaction old) {
-        VMError.guarantee(SubstrateOptions.EnableSignalHandling.getValue(), "Trying to install a signal handler while signal handling is disabled.");
-
-        if (VMOperation.isInProgress()) {
-            /*
-             * Note this can race with other signals being installed. However, using Java
-             * synchronization is disallowed within a VMOperation. If race-free execution becomes
-             * necessary, then a VMMutex will be needed and additional code will need to be
-             * made @Uninterruptible so that a thread owning the VMMutex cannot block at a
-             * safepoint.
-             */
-            return Signal.sigaction(signum, structSigAction, old);
-        } else {
-            synchronized (Target_jdk_internal_misc_Signal.class) {
-                return Signal.sigaction(signum, structSigAction, old);
-            }
-        }
     }
 
     // Checkstyle: stop

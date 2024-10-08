@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,24 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix;
+package com.oracle.svm.core.posix.jdk;
 
-import org.graalvm.nativeimage.StackValue;
+import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.posix.PosixSignalHandlerSupport;
+import com.oracle.svm.core.posix.headers.Signal;
 
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.core.posix.headers.Time;
-import com.oracle.svm.core.util.BasedOnJDKFile;
-import com.oracle.svm.core.util.PlatformTimeUtils;
+@TargetClass(className = "jdk.internal.misc.Signal")
+final class Target_jdk_internal_misc_Signal {
+    @Substitute
+    private static int findSignal0(String signalName) {
+        return PosixSignalHandlerSupport.singleton().findSignal(signalName);
+    }
 
-@AutomaticallyRegisteredImageSingleton(PlatformTimeUtils.class)
-public final class PosixPlatformTimeUtils extends PlatformTimeUtils {
-
-    @Override
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+3/src/hotspot/os/posix/os_posix.cpp#L1409-L1415")
-    public SecondsNanos javaTimeSystemUTC() {
-        Time.timespec ts = StackValue.get(Time.timespec.class);
-        int status = PosixUtils.clock_gettime(Time.CLOCK_REALTIME(), ts);
-        PosixUtils.checkStatusIs0(status, "javaTimeSystemUTC: clock_gettime(CLOCK_REALTIME) failed.");
-        return new SecondsNanos(ts.tv_sec(), ts.tv_nsec());
+    @Substitute
+    private static void raise0(int signalNumber) {
+        Signal.raise(signalNumber);
     }
 }
