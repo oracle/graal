@@ -142,7 +142,9 @@ public class IsolateArgumentParser {
         byte[] result = new byte[Long.BYTES * getOptionCount()];
         ByteBuffer buffer = ByteBuffer.wrap(result).order(ByteOrder.nativeOrder());
         for (int i = 0; i < getOptionCount(); i++) {
-            long value = toLong(getOptions()[i].getHostedValue(), getOptions()[i].getDescriptor().getOptionValueType());
+            RuntimeOptionKey<?> option = getOptions()[i];
+            VMError.guarantee(option.isIsolateCreationOnly(), "Options parsed by IsolateArgumentParser should all have the IsolateCreationOnly flag. %s doesn't", option);
+            long value = toLong(option.getHostedValue(), option.getDescriptor().getOptionValueType());
             buffer.putLong(value);
         }
         return result;
