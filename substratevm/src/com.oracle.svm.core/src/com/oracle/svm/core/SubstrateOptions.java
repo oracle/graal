@@ -1249,6 +1249,9 @@ public class SubstrateOptions {
     public static final RuntimeOptionKey<ReportingMode> MissingRegistrationReportingMode = new RuntimeOptionKey<>(
                     ReportingMode.Throw);
 
+    @Option(help = "Number of context lines printed for each missing registration error in Warn mode")//
+    public static final RuntimeOptionKey<Integer> MissingRegistrationWarnContextLines = new RuntimeOptionKey<>(8);
+
     @Option(help = "Instead of warning, throw IOExceptions for link-at-build-time resources at build time")//
     public static final HostedOptionKey<Boolean> ThrowLinkAtBuildTimeIOExceptions = new HostedOptionKey<>(false);
 
