@@ -75,13 +75,6 @@ public class FieldFilterTypeFlow extends TypeFlow<AnalysisField> implements Glob
 
     @Override
     protected void onInputSaturated(PointsToAnalysis bb, TypeFlow<?> input) {
-        if (!isFlowEnabled()) {
-            inputSaturated = true;
-            /* Another thread could enable the flow in the meantime, so check again. */
-            if (!isFlowEnabled()) {
-                return;
-            }
-        }
         if (!setSaturated()) {
             return;
         }
