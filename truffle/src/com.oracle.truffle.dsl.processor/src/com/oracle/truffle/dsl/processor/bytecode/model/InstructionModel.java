@@ -498,7 +498,7 @@ public final class InstructionModel implements PrettyPrintable {
     }
 
     public String getInternalName() {
-        String withoutPrefix = switch (kind) {
+        String operationName = switch (kind) {
             case CUSTOM -> {
                 assert name.startsWith("c.");
                 yield name.substring(2) + "_";
@@ -509,7 +509,7 @@ public final class InstructionModel implements PrettyPrintable {
             }
             default -> name;
         };
-        StringBuilder b = new StringBuilder(withoutPrefix);
+        StringBuilder b = new StringBuilder(operationName);
         for (int i = 0; i < b.length(); i++) {
             char c = b.charAt(i);
             switch (c) {

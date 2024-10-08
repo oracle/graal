@@ -286,7 +286,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         operation.operationBeginArguments = createOperationConstantArguments(constantOperands.before(), constantOperandBeforeNames);
         operation.operationEndArguments = createOperationConstantArguments(constantOperands.after(), constantOperandAfterNames);
 
-        customOperation.operation.setInstruction(createCustomInstruction(customOperation, generatedNode, signature, name));
+        operation.setInstruction(createCustomInstruction(customOperation, generatedNode, signature, name));
 
         return customOperation;
     }
@@ -862,8 +862,16 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
      * code generation} to generate code for the instruction.
      */
     private InstructionModel createCustomInstruction(CustomOperationModel customOperation, CodeTypeElement generatedNode, Signature signature,
-                    String nameSuffix) {
-        InstructionModel instr = parent.instruction(InstructionKind.CUSTOM, "c." + nameSuffix, signature);
+                    String operationName) {
+        String instructionName = "c." + operationName;
+        InstructionModel instr;
+        if (customOperation.isEpilogExceptional()) {
+            // We don't emit bytecode for this operation. Allocate an InstructionModel but don't
+            // register it as an instruction.
+            instr = new InstructionModel(InstructionKind.CUSTOM, instructionName, signature, null);
+        } else {
+            instr = parent.instruction(InstructionKind.CUSTOM, instructionName, signature);
+        }
         instr.nodeType = generatedNode;
         instr.nodeData = parseGeneratedNode(customOperation, generatedNode, signature);
 

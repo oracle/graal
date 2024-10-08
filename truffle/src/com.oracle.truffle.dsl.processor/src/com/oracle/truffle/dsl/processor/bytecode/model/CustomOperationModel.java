@@ -48,6 +48,7 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 import com.oracle.truffle.dsl.processor.model.Template;
 
@@ -73,6 +74,10 @@ public class CustomOperationModel extends Template {
 
     public List<TypeMirror> getImplicitTags() {
         return implicitTags;
+    }
+
+    public boolean isEpilogExceptional() {
+        return ElementUtils.typeEquals(getTemplateTypeAnnotation().getAnnotationType(), types.EpilogExceptional);
     }
 
     @Override
