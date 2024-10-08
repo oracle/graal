@@ -131,8 +131,6 @@ class NetBeansBuildTask(mx.BuildTask):
         env["MAVEN_OPTS"] = "-Djava.awt.headless=true -Dpolyglot.engine.WarnInterpreterOnly=false"
 
         mx.logv('Setting PATH to {}'.format(os.environ["PATH"]))
-        mx.logv('Calling java -version')
-        mx.run(['java', '-version'])
 
         mx.log('Invoking maven for {} for {} in {}'.format(' '.join(self.subject.build_commands), self.subject.name, self.subject.baseDir))
         run_maven(self.subject.build_commands, nonZeroIsFatal=True, cwd=self.subject.baseDir, env=env)
