@@ -65,7 +65,6 @@ import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
@@ -608,7 +607,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
 
     @Test
     public void testSpecializedLocalUndefined() {
-        // if (arg0) { x = 42 } else { x /* undefined */ }
+        // if (arg0) { x = 42 } else { return x /* undefined */ }
         // return 123
         BoxingEliminationTestRootNode node = parse(b -> {
             b.beginRoot();
@@ -622,7 +621,9 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
             b.emitLoadConstant(42);
             b.endStoreLocal();
 
+            b.beginReturn();
             b.emitLoadLocal(x);
+            b.endReturn();
 
             b.endIfThenElse();
 
@@ -640,7 +641,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
                         "store.local",
                         "branch",
                         "load.local",
-                        "pop",
+                        "return",
                         "load.constant",
                         "return");
 
@@ -653,19 +654,17 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
                         "store.local$Int$Int",
                         "branch",
                         "load.local",
-                        "pop",
+                        "return",
                         "load.constant",
                         "return");
 
         /**
          * After the first call, the local frame slot is set to Int. During this second call, the
          * "false" branch will run the unquickened load.local, which sees the frame slot and tries
-         * to read an int. Since the local is undefined, the int read should throw a
-         * FrameSlotTypeException.
+         * to read an int. Since the default value is "Nil", it should gracefully quicken to
+         * generic.
          */
-        assertFails(() -> {
-            node.getCallTarget().call(false);
-        }, FrameSlotTypeException.class);
+        assertEquals("Nil", node.getCallTarget().call(false));
 
         assertInstructions(node,
                         "load.argument$Boolean",
@@ -673,12 +672,12 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
                         "load.constant$Int",
                         "store.local$Int$Int",
                         "branch",
-                        "load.local",
-                        "pop",
+                        "load.local$generic",
+                        "return",
                         "load.constant",
                         "return");
 
-        var quickenings = assertQuickenings(node, 4, 3);
+        var quickenings = assertQuickenings(node, 5, 4);
         assertStable(quickenings, node, true);
     }
 
@@ -1404,21 +1403,17 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
     @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                     enableYield = true, enableSerialization = true, //
                     enableQuickening = true, //
-                    boxingEliminationTypes = {long.class, int.class, boolean.class})
+                    boxingEliminationTypes = {long.class, int.class, boolean.class}, defaultLocalValue = "DEFAULT_VALUE")
     @ShortCircuitOperation(name = "And", operator = Operator.AND_RETURN_CONVERTED, booleanConverter = ToBoolean.class)
     @ShortCircuitOperation(name = "Or", operator = Operator.OR_RETURN_CONVERTED, booleanConverter = ToBoolean.class)
     @ShortCircuitOperation(name = "AndReturn", operator = Operator.AND_RETURN_VALUE, booleanConverter = ToBoolean.class)
     @ShortCircuitOperation(name = "OrReturn", operator = Operator.OR_RETURN_VALUE, booleanConverter = ToBoolean.class)
     public abstract static class BoxingEliminationTestRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
+        protected static final String DEFAULT_VALUE = "Nil";
 
         protected BoxingEliminationTestRootNode(BytecodeDSLTestLanguage language,
-                        FrameDescriptor.Builder frameDescriptor) {
-            super(language, customize(frameDescriptor).build());
-        }
-
-        private static FrameDescriptor.Builder customize(FrameDescriptor.Builder b) {
-            b.defaultValue("Nil");
-            return b;
+                        FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
         }
 
         @Operation

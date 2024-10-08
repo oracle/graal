@@ -154,7 +154,7 @@ public class ErrorTests {
         }
     }
 
-    @ExpectError("Bytecode DSL class should declare a constructor that has signature (ErrorLanguage, FrameDescriptor) or (ErrorLanguage, FrameDescriptor.Builder). The constructor should be visible to subclasses.")
+    @ExpectError("Bytecode DSL class should declare a constructor that has signature (ErrorLanguage, FrameDescriptor). The constructor should be visible to subclasses.")
     @GenerateBytecode(languageClass = ErrorLanguage.class)
     public abstract static class HiddenConstructor extends RootNode implements BytecodeRootNode {
         private HiddenConstructor(TruffleLanguage<?> language, FrameDescriptor descriptor) {
@@ -162,7 +162,7 @@ public class ErrorTests {
         }
     }
 
-    @ExpectError("Bytecode DSL class should declare a constructor that has signature (ErrorLanguage, FrameDescriptor) or (ErrorLanguage, FrameDescriptor.Builder). The constructor should be visible to subclasses.")
+    @ExpectError("Bytecode DSL class should declare a constructor that has signature (ErrorLanguage, FrameDescriptor). The constructor should be visible to subclasses.")
     @GenerateBytecode(languageClass = ErrorLanguage.class)
     public abstract static class InvalidConstructor extends RootNode implements BytecodeRootNode {
         protected InvalidConstructor() {
@@ -186,6 +186,10 @@ public class ErrorTests {
         }
 
         protected InvalidConstructor(FrameDescriptor.Builder builder, TruffleLanguage<?> language) {
+            super(language, builder.build());
+        }
+
+        protected InvalidConstructor(TruffleLanguage<?> language, FrameDescriptor.Builder builder) {
             super(language, builder.build());
         }
     }

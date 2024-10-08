@@ -51,6 +51,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -259,7 +260,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         checkUnsupportedAnnotation(model, annotations, types.GenerateUncached, "Set GenerateBytecode#enableUncachedInterpreter to generate an uncached interpreter.");
 
         // Find the appropriate constructor.
-        List<ExecutableElement> viableConstructors = ElementFilter.constructorsIn(typeElement.getEnclosedElements()).stream().filter(ctor -> {
+        Optional<ExecutableElement> constructor = ElementFilter.constructorsIn(typeElement.getEnclosedElements()).stream().filter(ctor -> {
             if (!(ctor.getModifiers().contains(Modifier.PUBLIC) || ctor.getModifiers().contains(Modifier.PROTECTED))) {
                 // not visible
                 return false;
@@ -270,25 +271,20 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                 return false;
             }
             if (!ElementUtils.typeEquals(params.get(0).asType(), model.languageClass)) {
-                // wrong first parameter type
+                // first parameter should be the language first parameter type
                 return false;
             }
-            TypeMirror secondParameterType = ctor.getParameters().get(1).asType();
-            boolean isFrameDescriptor = ElementUtils.isAssignable(secondParameterType, types.FrameDescriptor);
-            boolean isFrameDescriptorBuilder = ElementUtils.isAssignable(secondParameterType, types.FrameDescriptor_Builder);
-            // second parameter type should be FrameDescriptor or FrameDescriptor.Builder
-            return isFrameDescriptor || isFrameDescriptorBuilder;
-        }).collect(Collectors.toList());
+            // second parameter should be FrameDescriptor
+            return ElementUtils.typeEquals(params.get(1).asType(), types.FrameDescriptor);
+        }).findFirst();
 
-        if (viableConstructors.isEmpty()) {
-            model.addError(typeElement, "Bytecode DSL class should declare a constructor that has signature (%s, %s) or (%s, %s.%s). The constructor should be visible to subclasses.",
+        if (constructor.isEmpty()) {
+            model.addError(typeElement, "Bytecode DSL class should declare a constructor that has signature (%s, %s). The constructor should be visible to subclasses.",
                             getSimpleName(model.languageClass),
-                            getSimpleName(types.FrameDescriptor),
-                            getSimpleName(model.languageClass),
-                            getSimpleName(types.FrameDescriptor),
-                            getSimpleName(types.FrameDescriptor_Builder));
+                            getSimpleName(types.FrameDescriptor));
             return;
         }
+        model.constructor = constructor.get();
 
         // tag instrumentation
         if (model.enableTagInstrumentation) {
@@ -336,26 +332,6 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                 model.addError(generateBytecodeMirror, tagTreeNodeLibraryValue,
                                 "The attribute tagTreeNodeLibrary must not be set if enableTagInstrumentation is not enabled. Enable tag instrumentation or remove this attribute.");
             }
-        }
-
-        Map<String, List<ExecutableElement>> constructorsByFDType = viableConstructors.stream().collect(Collectors.groupingBy(ctor -> {
-            TypeMirror secondParameterType = ctor.getParameters().get(1).asType();
-            if (ElementUtils.isAssignable(secondParameterType, types.FrameDescriptor)) {
-                return TruffleTypes.FrameDescriptor_Name;
-            } else {
-                return TruffleTypes.FrameDescriptor_Builder_Name;
-            }
-        }));
-
-        // Prioritize a constructor that takes a FrameDescriptor.Builder.
-        if (constructorsByFDType.containsKey(TruffleTypes.FrameDescriptor_Builder_Name)) {
-            List<ExecutableElement> ctors = constructorsByFDType.get(TruffleTypes.FrameDescriptor_Builder_Name);
-            assert ctors.size() == 1;
-            model.fdBuilderConstructor = ctors.get(0);
-        } else {
-            List<ExecutableElement> ctors = constructorsByFDType.get(TruffleTypes.FrameDescriptor_Name);
-            assert ctors.size() == 1;
-            model.fdConstructor = ctors.get(0);
         }
 
         // Extract hook implementations.

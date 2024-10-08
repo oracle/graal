@@ -621,8 +621,8 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
     private final int buildIndex;
     private CloneReferenceList<BasicInterpreterWithUncached> clones;
 
-    private BasicInterpreterWithUncached(BytecodeDSLTestLanguage language, com.oracle.truffle.api.frame.FrameDescriptor.Builder builder, BytecodeRootNodesImpl nodes, int maxLocals, int buildIndex, byte[] bytecodes, Object[] constants, int[] handlers, int[] locals, int[] sourceInfo, List<Source> sources, int numNodes, TagRootNode tagRoot) {
-        super(language, builder.build());
+    private BasicInterpreterWithUncached(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor, BytecodeRootNodesImpl nodes, int maxLocals, int buildIndex, byte[] bytecodes, Object[] constants, int[] handlers, int[] locals, int[] sourceInfo, List<Source> sources, int numNodes, TagRootNode tagRoot) {
+        super(language, frameDescriptor);
         this.nodes = nodes;
         this.maxLocals = maxLocals;
         this.buildIndex = buildIndex;
@@ -6088,7 +6088,7 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
         public void beginRoot() {
             if (serialization != null) {
                 try {
-                    SerializationRootNode node = new SerializationRootNode(FrameDescriptor.newBuilder(), serialization.depth, checkOverflowShort(serialization.rootCount++, "Root node count"));
+                    SerializationRootNode node = new SerializationRootNode(new FrameDescriptor(), serialization.depth, checkOverflowShort(serialization.rootCount++, "Root node count"));
                     serialization.rootStack.push(node);
                     serialization.builtNodes.add(node);
                     serialization.buffer.writeShort(SerializationState.CODE_BEGIN_ROOT);
@@ -6232,7 +6232,7 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
             } else {
                 com.oracle.truffle.api.frame.FrameDescriptor.Builder frameDescriptorBuilder = FrameDescriptor.newBuilder();
                 frameDescriptorBuilder.addSlots(maxStackHeight + maxLocals + USER_LOCALS_START_INDEX, FrameSlotKind.Illegal);
-                result = new BasicInterpreterWithUncached(language, frameDescriptorBuilder, nodes, maxLocals + USER_LOCALS_START_INDEX, operationData.index, bytecodes_, constants_, handlers_, locals_, sourceInfo_, sources_, numNodes_, tagRoot_);
+                result = new BasicInterpreterWithUncached(language, frameDescriptorBuilder.build(), nodes, maxLocals + USER_LOCALS_START_INDEX, operationData.index, bytecodes_, constants_, handlers_, locals_, sourceInfo_, sources_, numNodes_, tagRoot_);
                 BytecodeNode bytecodeNode = result.getBytecodeNode();
                 for (ContinuationLocation continuationLocation : continuationLocations) {
                     int constantPoolIndex = continuationLocation.constantPoolIndex;
@@ -12224,8 +12224,8 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
             private final int contextDepth;
             private final int rootIndex;
 
-            private SerializationRootNode(com.oracle.truffle.api.frame.FrameDescriptor.Builder builder, int contextDepth, int rootIndex) {
-                super(null, builder.build());
+            private SerializationRootNode(FrameDescriptor frameDescriptor, int contextDepth, int rootIndex) {
+                super(null, frameDescriptor);
                 this.contextDepth = contextDepth;
                 this.rootIndex = rootIndex;
             }

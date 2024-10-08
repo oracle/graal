@@ -115,15 +115,11 @@ final class BytecodeRootNodeErrorElement extends CodeTypeElement {
     private CodeExecutableElement createConstructor() {
         CodeExecutableElement ctor = new CodeExecutableElement(Set.of(PRIVATE), null, this.getSimpleName().toString());
         ctor.addParameter(new CodeVariableElement(languageClass, "language"));
-        ctor.addParameter(new CodeVariableElement(types.FrameDescriptor_Builder, "builder"));
+        ctor.addParameter(new CodeVariableElement(types.FrameDescriptor, "frameDescriptor"));
         CodeTreeBuilder b = ctor.getBuilder();
         b.startStatement().startCall("super");
         b.string("language");
-        if (model.fdBuilderConstructor != null) {
-            b.string("builder");
-        } else {
-            b.string("builder.build()");
-        }
+        b.string("frameDescriptor");
         b.end(2);
         emitThrowNotImplemented(b);
         return ctor;
