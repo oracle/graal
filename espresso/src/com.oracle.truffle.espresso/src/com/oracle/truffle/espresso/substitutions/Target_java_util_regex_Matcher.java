@@ -56,6 +56,7 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.EspressoInlineNode;
 import com.oracle.truffle.espresso.nodes.bytecodes.InvokeInterface;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.JavaVersion;
@@ -332,7 +333,7 @@ public final class Target_java_util_regex_Matcher {
 
     @GenerateInline
     @GenerateUncached
-    abstract static class JavaRegexCompileNode extends Node {
+    abstract static class JavaRegexCompileNode extends EspressoInlineNode {
         public abstract Object execute(Node node, StaticObject self, RegexAction action, Field destination, EspressoContext context);
 
         @Specialization
@@ -458,7 +459,7 @@ public final class Target_java_util_regex_Matcher {
 
     @GenerateInline
     @GenerateUncached
-    public abstract static class JavaRegexExecNode extends Node {
+    public abstract static class JavaRegexExecNode extends EspressoInlineNode {
         public abstract boolean execute(Node node, Object regexObject, StaticObject self, int from, Meta meta);
 
         @Specialization

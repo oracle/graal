@@ -60,7 +60,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
-import com.oracle.truffle.espresso.nodes.EspressoNode;
+import com.oracle.truffle.espresso.nodes.EspressoInlineNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.GuestAllocator;
@@ -905,23 +905,26 @@ public final class Target_sun_misc_Unsafe {
 
     @GenerateInline
     @GenerateCached(false)
-    abstract static class GetFieldFromIndexNode extends EspressoNode {
+    abstract static class GetFieldFromIndexNode extends EspressoInlineNode {
         static final int LIMIT = 3;
 
         abstract Field execute(Node node, StaticObject holder, long slot);
 
         @Specialization(guards = {"slot == cachedSlot", "holder.isStaticStorage() == cachedIsStaticStorage", "holder.getKlass() == cachedKlass"}, limit = "LIMIT")
         static Field doCached(@SuppressWarnings("unused") StaticObject holder, @SuppressWarnings("unused") long slot,
+                        @SuppressWarnings("unused") @Bind("$node") Node node,
                         @SuppressWarnings("unused") @Cached("slot") long cachedSlot,
                         @SuppressWarnings("unused") @Cached("holder.getKlass()") Klass cachedKlass,
                         @SuppressWarnings("unused") @Cached("holder.isStaticStorage()") boolean cachedIsStaticStorage,
-                        @Cached("doGeneric(holder, slot)") Field cachedField) {
+                        @Cached("doGeneric(holder, slot, node)") Field cachedField) {
             return cachedField;
         }
 
         @Specialization(replaces = "doCached")
-        Field doGeneric(StaticObject holder, long slot) {
-            return resolveUnsafeAccessField(holder, slot, getMeta(), getLanguage());
+        static Field doGeneric(StaticObject holder, long slot,
+                        @Bind("$node") Node node) {
+            Meta meta = EspressoContext.get(node).getMeta();
+            return resolveUnsafeAccessField(holder, slot, meta, EspressoLanguage.get(node));
         }
     }
 
