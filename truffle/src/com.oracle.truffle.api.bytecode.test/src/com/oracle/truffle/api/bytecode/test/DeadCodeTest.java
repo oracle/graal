@@ -952,21 +952,17 @@ public class DeadCodeTest extends AbstractInstructionTest {
     @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                     enableYield = true, enableSerialization = true, //
                     enableQuickening = true, //
-                    boxingEliminationTypes = {long.class, int.class, boolean.class})
+                    boxingEliminationTypes = {long.class, int.class, boolean.class}, defaultLocalValue = "DEFAULT_VALUE")
     @ShortCircuitOperation(name = "And", operator = Operator.AND_RETURN_CONVERTED, booleanConverter = ToBoolean.class)
     @ShortCircuitOperation(name = "Or", operator = Operator.OR_RETURN_CONVERTED, booleanConverter = ToBoolean.class)
     @ShortCircuitOperation(name = "AndReturn", operator = Operator.AND_RETURN_VALUE, booleanConverter = ToBoolean.class)
     @ShortCircuitOperation(name = "OrReturn", operator = Operator.OR_RETURN_VALUE, booleanConverter = ToBoolean.class)
     public abstract static class DeadCodeTestRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
+        protected static final String DEFAULT_VALUE = "Nil";
 
         protected DeadCodeTestRootNode(BytecodeDSLTestLanguage language,
-                        FrameDescriptor.Builder frameDescriptor) {
-            super(language, customize(frameDescriptor).build());
-        }
-
-        private static FrameDescriptor.Builder customize(FrameDescriptor.Builder b) {
-            b.defaultValue("Nil");
-            return b;
+                        FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
         }
 
         @Operation
