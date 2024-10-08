@@ -1,0 +1,30 @@
+name: "🔙 Backport request"
+description: Create a backport request of a bug fix.
+title: '[Backport] '
+labels: ["backport"]
+
+body:
+  - type: textarea
+    id: backports
+    attributes:
+      label: What would you like to backport?
+      description: "Provide a list of links to PRs or commit SHAs you would like to backport."
+    validations:
+      required: true
+
+  - type: textarea
+    id: graalvm_versions
+    attributes:
+      label: GraalVM versions
+      description: "List the GraalVM versions you would like to see the changes backported to."
+      value: "GraalVM for JDK 21"
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Describe the motivation for the backport.
+      description: "Provide a clear and concise explanation of why this backport is needed. If it fixes a reported issue please link to it."
+    validations:
+      required: true

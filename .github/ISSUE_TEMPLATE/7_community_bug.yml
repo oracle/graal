@@ -1,0 +1,87 @@
+name: "🐞 Issue Report for Community Builds 🧑‍🤝‍🧑"
+description: Create a report to help us improve GraalVM's community builds.
+title: '[Community] '
+labels: ["bug", "community-21"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For security vulnerabilities, please consult the [GraalVM security policy](https://github.com/oracle/graal/security/policy) and contact the security team directly.
+
+  - type: textarea
+    id: describe_issue
+    attributes:
+      label: Describe the Issue
+      description: "Provide a clear and concise description of the issue."
+    validations:
+      required: true        
+
+  - type: textarea
+    id: steps_to_reproduce
+    attributes:
+      label: Steps to reproduce the issue
+      description: "Please include both build steps as well as run steps."
+      placeholder: "1. \n2. \n3."
+    validations:
+      required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        ### Describe GraalVM community build and your environment
+
+  - type: dropdown
+    id: graalvm_community_build
+    attributes:
+      label: GraalVM Community Build
+      description: "Select the GraalVM community build you are using."
+      options:
+        - label: Liberica
+        - label: Mandrel
+    validations:
+      required: true
+
+  - type: textarea
+    id: graalvm_version
+    attributes:
+      label: GraalVM Version
+      description: "Provide the version of GraalVM used."
+      placeholder: "Output of `native-image -version` or `java -version` or commit id if built from source"
+    validations:
+      required: true
+
+  - type: input
+    id: operating_system
+    attributes:
+      label: Operating System and Version
+      description: "Provide details of your operating system and version (e.g., output of `uname -a` or Windows version)."
+      placeholder: "OS details here"
+    validations:
+      required: true
+
+  - type: input
+    id: architecture
+    attributes:
+      label: Architecture
+      description: "Provide details of your system architecture."
+      placeholder: "AMD64"
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional Context
+      description: "Provide any additional context or information that might help in diagnosing the issue, such as environmental variables, system settings, or external dependencies."
+    validations:
+      required: false
+
+  - type: textarea
+    id: log_output
+    attributes:
+      label: Build Log Output and Error Messages
+      description: "Include any relevant build log outputs or error messages. Attach files by selecting this field and then dragging and dropping them into the comment box below the issue form."
+      placeholder: "Paste build logs or error messages here"
+    validations:
+      required: false
