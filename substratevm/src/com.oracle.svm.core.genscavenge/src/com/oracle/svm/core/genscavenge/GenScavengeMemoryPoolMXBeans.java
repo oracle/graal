@@ -39,13 +39,13 @@ import com.oracle.svm.core.util.VMError;
 import jdk.graal.compiler.api.replacements.Fold;
 
 public class GenScavengeMemoryPoolMXBeans {
-    static final String YOUNG_GEN_SCAVENGER = "young generation scavenger";
-    static final String COMPLETE_SCAVENGER = "complete scavenger";
+    public static final String YOUNG_GEN_SCAVENGER = "young generation scavenger";
+    public static final String COMPLETE_SCAVENGER = "complete scavenger";
     static final String EPSILON_SCAVENGER = "epsilon scavenger";
 
     static final String EDEN_SPACE = "eden space";
     static final String SURVIVOR_SPACE = "survivor space";
-    static final String OLD_GEN_SPACE = "old generation space";
+    public static final String OLD_GEN_SPACE = "old generation space";
     static final String EPSILON_HEAP = "epsilon heap";
 
     private final AbstractMemoryPoolMXBean[] mxBeans;
@@ -111,12 +111,12 @@ public class GenScavengeMemoryPoolMXBeans {
 
         @Override
         public MemoryUsage getUsage() {
-            return memoryUsage(getCurrentUsage());
+            return memoryUsage(getUsedBytes());
         }
 
         @Override
         public MemoryUsage getPeakUsage() {
-            updatePeakUsage(getCurrentUsage());
+            updatePeakUsage(getUsedBytes());
             return memoryUsage(peakUsage.get());
         }
 
@@ -125,7 +125,8 @@ public class GenScavengeMemoryPoolMXBeans {
             return memoryUsage(WordFactory.zero());
         }
 
-        private static UnsignedWord getCurrentUsage() {
+        @Override
+        public UnsignedWord getUsedBytes() {
             return HeapImpl.getAccounting().getEdenUsedBytes();
         }
     }
@@ -166,6 +167,11 @@ public class GenScavengeMemoryPoolMXBeans {
         public MemoryUsage getCollectionUsage() {
             return memoryUsage(HeapImpl.getAccounting().getSurvivorUsedBytes());
         }
+
+        @Override
+        public UnsignedWord getUsedBytes() {
+            return HeapImpl.getAccounting().getSurvivorUsedBytes();
+        }
     }
 
     static final class OldGenerationMemoryPoolMXBean extends AbstractMemoryPoolMXBean {
@@ -203,6 +209,11 @@ public class GenScavengeMemoryPoolMXBeans {
         @Override
         public MemoryUsage getCollectionUsage() {
             return memoryUsage(HeapImpl.getAccounting().getOldUsedBytes());
+        }
+
+        @Override
+        public UnsignedWord getUsedBytes() {
+            return HeapImpl.getAccounting().getOldUsedBytes();
         }
     }
 
@@ -242,6 +253,16 @@ public class GenScavengeMemoryPoolMXBeans {
         @Override
         public MemoryUsage getCollectionUsage() {
             return memoryUsage(WordFactory.zero());
+        }
+
+        @Override
+        public UnsignedWord getUsedBytes() {
+            return HeapImpl.getAccounting().getUsedBytes();
+        }
+
+        @Override
+        public UnsignedWord getCommittedBytes() {
+            return HeapImpl.getAccounting().getCommittedBytes();
         }
     }
 }

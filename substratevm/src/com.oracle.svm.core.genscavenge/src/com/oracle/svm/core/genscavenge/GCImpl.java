@@ -66,6 +66,7 @@ import com.oracle.svm.core.genscavenge.HeapAccounting.HeapSizes;
 import com.oracle.svm.core.genscavenge.HeapChunk.Header;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
+import com.oracle.svm.core.genscavenge.service.ServiceSupport;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.GC;
@@ -103,6 +104,7 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.VMInspectionOptions;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
@@ -240,6 +242,9 @@ public final class GCImpl implements GC {
         try {
             ThreadLocalAllocation.disableAndFlushForAllThreads();
             GenScavengeMemoryPoolMXBeans.singleton().notifyBeforeCollection();
+            if (VMInspectionOptions.hasGcNotificationSupport()) {
+                ServiceSupport.singleton().beforeCollection(Isolates.getCurrentUptimeMillis());
+            }
             HeapImpl.getAccounting().notifyBeforeCollection();
 
             verifyHeap(Before);
@@ -256,6 +261,10 @@ public final class GCImpl implements GC {
         HeapImpl.getAccounting().notifyAfterCollection();
         GenScavengeMemoryPoolMXBeans.singleton().notifyAfterCollection();
         ChunkBasedCommittedMemoryProvider.get().afterGarbageCollection();
+
+        if (VMInspectionOptions.hasGcNotificationSupport()) {
+            ServiceSupport.singleton().afterCollection(!isCompleteCollection(), cause, getCollectionEpoch(), Isolates.getCurrentUptimeMillis());
+        }
 
         printGCAfter(cause);
         JfrGCHeapSummaryEvent.emit(JfrGCWhen.AFTER_GC);

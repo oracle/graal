@@ -26,21 +26,16 @@ package com.oracle.svm.core.genscavenge;
 
 import java.lang.management.ManagementFactory;
 
-import javax.management.MBeanNotificationInfo;
-import javax.management.NotificationEmitter;
-import javax.management.NotificationFilter;
-import javax.management.NotificationListener;
 import javax.management.ObjectName;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.util.TimeUtils;
-import com.sun.management.GcInfo;
 
 import sun.management.Util;
 
-public final class CompleteGarbageCollectorMXBean implements com.sun.management.GarbageCollectorMXBean, NotificationEmitter {
+public final class CompleteGarbageCollectorMXBean extends AbstractGarbageCollectorMXBean {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public CompleteGarbageCollectorMXBean() {
@@ -80,27 +75,5 @@ public final class CompleteGarbageCollectorMXBean implements com.sun.management.
     @Override
     public ObjectName getObjectName() {
         return Util.newObjectName(ManagementFactory.GARBAGE_COLLECTOR_MXBEAN_DOMAIN_TYPE, getName());
-    }
-
-    @Override
-    public void removeNotificationListener(NotificationListener listener, NotificationFilter filter, Object handback) {
-    }
-
-    @Override
-    public void addNotificationListener(NotificationListener listener, NotificationFilter filter, Object handback) {
-    }
-
-    @Override
-    public void removeNotificationListener(NotificationListener listener) {
-    }
-
-    @Override
-    public MBeanNotificationInfo[] getNotificationInfo() {
-        return new MBeanNotificationInfo[0];
-    }
-
-    @Override
-    public GcInfo getLastGcInfo() {
-        return null;
     }
 }
