@@ -67,13 +67,13 @@ You may find it useful to read through the generated code (it is intended to be 
 
 ### Phase 2: Generating bytecode (parsing)
 Now that we have an interpreter, we need to generate some concrete bytecode for it to execute.
-This process is called _parsing_.
-Each method/function in your guest language is parsed to its own bytecode.
+We refer to the the process of converting a source program to bytecode as _parsing_.
+Each method/function in the guest language is parsed to its own bytecode using a `BytecodeParser`.
 
-Parsers specify a tree of operations by calling a sequence of methods defined on the generated `Builder` class.
+A `BytecodeParser` specifies a tree of operations by calling a sequence of methods defined on the generated `Builder` class.
 The `Builder` class is responsible for validating the well-formedness of these operations and converting them to low-level bytecodes that implement their behaviour.
 
-Below is a simple example that generates a bytecode program to add two integer arguments together and return the result:
+Below is a simple `BytecodeParser` that generates bytecode to add two integer arguments together and return the result:
 ```java
 BytecodeParser<SampleInterpreterGen.Builder> parser = (SampleInterpreterGen.Builder b) -> {
     b.beginRoot();
@@ -88,7 +88,8 @@ BytecodeParser<SampleInterpreterGen.Builder> parser = (SampleInterpreterGen.Buil
 BytecodeRootNodes<SampleInterpreter> rootNodes = SampleInterpreterGen.create(getLanguage(), BytecodeConfig.DEFAULT, parser);
 ```
 
-You can typically implement a parser using an AST visitor. See the [Parsing tutorial](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode.test/src/com/oracle/truffle/api/bytecode/test/examples/ParsingTutorial.java) for an example.
+This `BytecodeParser` hard-codes a sequence of builder calls.
+A real parser will typically be implemented using an AST visitor; see the [Parsing tutorial](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode.test/src/com/oracle/truffle/api/bytecode/test/examples/ParsingTutorial.java) for an example.
 
 ### Phase 3: Executing the bytecode
 The result of parsing is a [`BytecodeRootNodes`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeRootNodes.java) object containing one or more parsed root nodes.
@@ -418,8 +419,8 @@ b.endTryCatch();
 The second handler operation, `TryFinally`, executes a `try` operation (its first child), and ensures a `finally` operation is always executed, even if a Truffle exception is thrown or the `try` returns/branches out.
 If an exception was thrown, it rethrows the exception afterward.
 
-The bytecode for `finally` is emitted multiple times (once for each exit point of `try`, including at early returns), so it is specified using a `Runnable` parser that can be repeatedly invoked.
-This parser must be idempotent.
+The bytecode for `finally` is emitted multiple times (once for each exit point of `try`, including at early returns), so it is specified using a `Runnable` generator that can be repeatedly invoked.
+This generator must be idempotent.
 
 For example, the following try-finally block:
 ```python
@@ -458,8 +459,8 @@ The last handler operation, `TryCatchOtherwise`, is a combination of the previou
 It executes a `try` operation (its first child); if an exception is thrown, it then executes its `catch` operation (its second child), otherwise it executes its `otherwise` operation (even if `try` returns/branches out).
 Effectively, it implements `TryFinally` with a specialized handler for when an exception is thrown.
 
-The bytecode for `otherwise` is emitted multiple times (once for each non-exceptional exit point of `try`), so it is specified using a `Runnable` parser that can be repeatedly invoked.
-This parser must be idempotent.
+The bytecode for `otherwise` is emitted multiple times (once for each non-exceptional exit point of `try`), so it is specified using a `Runnable` generator that can be repeatedly invoked.
+This generator must be idempotent.
 
 Note that `TryCatchOtherwise` has different semantics from a Java try-catch-finally block.
 Whereas a try-catch-finally always executes the `finally` operation even if the `catch` block executes, the `TryCatchOtherwise` operation executes *either* its `catch` or `otherwise` operation (not both).
@@ -553,7 +554,9 @@ Note that metadata/instructions are only added; there is no way to "clear" them 
 
 To support reparsing, [`BytecodeParser`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeParser.java)s **must** be deterministic and idempotent.
 When a reparse is requested, the parser is invoked again and is expected to perform the same series of builder calls.
-The [`BytecodeRootNodes`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeRootNodes.java) result from the parse retains a reference to the parser, so keep in mind that any strong references the parser holds may keep some objects (e.g., source file contents or ASTs) alive in the heap.
+
+Since the parser is retained for reparsing, any data structures (e.g., parse trees) captured by the parser will be kept alive in the heap.
+To reduce footprint, it is recommended for the parser to parse directly from source code instead of keeping these data structures alive (see the [SimpleLanguage parser](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.sl/src/com/oracle/truffle/sl/parser/SLBytecodeParser.java) for an example).
 
 Reparsing updates the [`BytecodeNode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeNode.java) for a given root node.
 When the bytecode instructions change, any compiled code for the root node is invalidated, and the old bytecode is invalidated in order to transition active (on-stack) invocations to the new bytecode.

@@ -5539,22 +5539,22 @@ public final class BasicInterpreterUnsafe extends BasicInterpreter {
          * If {@code try} finishes with a control flow operation, {@code finally} executes and then the control flow operation continues (i.e., a Branch will branch, a Return will return).
          * <p>
          * Unlike other child operations, {@code finally} is emitted multiple times in the bytecode (once for each regular, exceptional, and early control flow exit).
-         * To facilitate this, the {@code finally} operation is specified by a {@code finallyParser} that can be invoked multiple times. It should be repeatable and not have side effects.
+         * To facilitate this, the {@code finally} operation is specified by a {@code finallyGenerator} that can be invoked multiple times. It should be repeatable and not have side effects.
          * <p>
          * This is a void operation; either of {@code try} or {@code finally} can be void.
          * <p>
          * A corresponding call to {@link #endTryFinally} is required to end the operation.
          *
-         * @param finallyParser an idempotent Runnable that parses the {@code finally} operation using builder calls.
+         * @param finallyGenerator an idempotent Runnable that generates the {@code finally} operation using builder calls.
          */
         @Override
-        public void beginTryFinally(Runnable finallyParser) {
+        public void beginTryFinally(Runnable finallyGenerator) {
             if (serialization != null) {
                 try {
-                    short finallyParserIndex = serializeFinallyParser(finallyParser);
+                    short finallyGeneratorIndex = serializeFinallyGenerator(finallyGenerator);
                     serialization.buffer.writeShort(SerializationState.CODE_BEGIN_TRY_FINALLY);
                     serialization.buffer.writeShort(serialization.depth);
-                    serialization.buffer.writeShort(finallyParserIndex);
+                    serialization.buffer.writeShort(finallyGeneratorIndex);
                 } catch (IOException ex) {
                     throw new IOError(ex);
                 }
@@ -5562,7 +5562,7 @@ public final class BasicInterpreterUnsafe extends BasicInterpreter {
             }
             validateRootOperationBegin();
             beforeChild();
-            TryFinallyData operationData = new TryFinallyData(++numHandlers, safeCastShort(currentStackHeight), finallyParser, bci, this.reachable, this.reachable, false);
+            TryFinallyData operationData = new TryFinallyData(++numHandlers, safeCastShort(currentStackHeight), finallyGenerator, bci, this.reachable, this.reachable, false);
             beginOperation(Operations.TRYFINALLY, operationData);
         }
 
@@ -5635,7 +5635,7 @@ public final class BasicInterpreterUnsafe extends BasicInterpreter {
          * If {@code try} finishes with a control flow operation, {@code otherwise} executes and then the control flow operation continues (i.e., a Branch will branch, a Return will return).
          * <p>
          * Unlike other child operations, {@code otherwise} is emitted multiple times in the bytecode (once for each regular and early control flow exit).
-         * To facilitate this, the {@code otherwise} operation is specified by an {@code otherwiseParser} that can be invoked multiple times. It should be repeatable and not have side effects.
+         * To facilitate this, the {@code otherwise} operation is specified by an {@code otherwiseGenerator} that can be invoked multiple times. It should be repeatable and not have side effects.
          * <p>
          * This operation is effectively a TryFinally operation with a specialized handler for the exception case.
          * It does <strong>not</strong> implement try-catch-finally semantics: if an exception is thrown {@code catch} executes and {@code otherwise} does not.
@@ -5656,16 +5656,16 @@ public final class BasicInterpreterUnsafe extends BasicInterpreter {
          * <p>
          * A corresponding call to {@link #endTryCatchOtherwise} is required to end the operation.
          *
-         * @param otherwiseParser an idempotent Runnable that parses the {@code otherwise} operation using builder calls.
+         * @param otherwiseGenerator an idempotent Runnable that generates the {@code otherwise} operation using builder calls.
          */
         @Override
-        public void beginTryCatchOtherwise(Runnable otherwiseParser) {
+        public void beginTryCatchOtherwise(Runnable otherwiseGenerator) {
             if (serialization != null) {
                 try {
-                    short finallyParserIndex = serializeFinallyParser(otherwiseParser);
+                    short finallyGeneratorIndex = serializeFinallyGenerator(otherwiseGenerator);
                     serialization.buffer.writeShort(SerializationState.CODE_BEGIN_TRY_CATCH_OTHERWISE);
                     serialization.buffer.writeShort(serialization.depth);
-                    serialization.buffer.writeShort(finallyParserIndex);
+                    serialization.buffer.writeShort(finallyGeneratorIndex);
                 } catch (IOException ex) {
                     throw new IOError(ex);
                 }
@@ -5673,7 +5673,7 @@ public final class BasicInterpreterUnsafe extends BasicInterpreter {
             }
             validateRootOperationBegin();
             beforeChild();
-            TryFinallyData operationData = new TryFinallyData(++numHandlers, safeCastShort(currentStackHeight), otherwiseParser, bci, this.reachable, this.reachable, this.reachable);
+            TryFinallyData operationData = new TryFinallyData(++numHandlers, safeCastShort(currentStackHeight), otherwiseGenerator, bci, this.reachable, this.reachable, this.reachable);
             beginOperation(Operations.TRYCATCHOTHERWISE, operationData);
         }
 
@@ -5710,8 +5710,8 @@ public final class BasicInterpreterUnsafe extends BasicInterpreter {
          * <p>
          * Signature: FinallyHandler(body...) -> void
          * <p>
-         * FinallyHandler is an internal operation that has no stack effect. All finally parsers execute within a FinallyHandler operation.
-         * Executing the parser emits new operations, but these operations should not affect the outer operation's child count/value validation.
+         * FinallyHandler is an internal operation that has no stack effect. All finally generators execute within a FinallyHandler operation.
+         * Executing the generator emits new operations, but these operations should not affect the outer operation's child count/value validation.
          * To accomplish this, FinallyHandler "hides" these operations by popping any produced values and omitting calls to beforeChild/afterChild.
          * When walking the operation stack, we skip over operations above finallyOperationSp since they do not logically enclose the handler.
          * <p>
@@ -9203,7 +9203,7 @@ public final class BasicInterpreterUnsafe extends BasicInterpreter {
             try {
                 TryFinallyData.finallyHandlerSp = operationSp;
                 beginFinallyHandler(safeCastShort(finallyOperationSp));
-                TryFinallyData.finallyParser.run();
+                TryFinallyData.finallyGenerator.run();
                 endFinallyHandler();
             } finally {
                 TryFinallyData.finallyHandlerSp = UNINITIALIZED;
@@ -9814,21 +9814,21 @@ public final class BasicInterpreterUnsafe extends BasicInterpreter {
             }
         }
 
-        private short serializeFinallyParser(Runnable finallyParser) throws IOException {
+        private short serializeFinallyGenerator(Runnable finallyGenerator) throws IOException {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             SerializationState outerSerialization = serialization;
             try {
                 serialization = new SerializationState(new DataOutputStream(baos), serialization);
-                finallyParser.run();
-                serialization.buffer.writeShort(SerializationState.CODE_$END_FINALLY_PARSER);
+                finallyGenerator.run();
+                serialization.buffer.writeShort(SerializationState.CODE_$END_FINALLY_GENERATOR);
             } finally {
                 serialization = outerSerialization;
             }
             byte[] bytes = baos.toByteArray();
-            serialization.buffer.writeShort(SerializationState.CODE_$CREATE_FINALLY_PARSER);
+            serialization.buffer.writeShort(SerializationState.CODE_$CREATE_FINALLY_GENERATOR);
             serialization.buffer.writeInt(bytes.length);
             serialization.buffer.write(bytes);
-            return safeCastShort(serialization.finallyParserCount++);
+            return safeCastShort(serialization.finallyGeneratorCount++);
         }
 
         @SuppressWarnings("hiding")
@@ -9869,14 +9869,14 @@ public final class BasicInterpreterUnsafe extends BasicInterpreter {
                             context.consts.add(Objects.requireNonNull(callback.deserialize(context, buffer)));
                             break;
                         }
-                        case SerializationState.CODE_$CREATE_FINALLY_PARSER :
+                        case SerializationState.CODE_$CREATE_FINALLY_GENERATOR :
                         {
-                            byte[] finallyParserBytes = new byte[buffer.readInt()];
-                            buffer.readFully(finallyParserBytes);
-                            context.finallyParsers.add(() -> deserialize(() -> SerializationUtils.createDataInput(ByteBuffer.wrap(finallyParserBytes)), callback, context));
+                            byte[] finallyGeneratorBytes = new byte[buffer.readInt()];
+                            buffer.readFully(finallyGeneratorBytes);
+                            context.finallyGenerators.add(() -> deserialize(() -> SerializationUtils.createDataInput(ByteBuffer.wrap(finallyGeneratorBytes)), callback, context));
                             break;
                         }
-                        case SerializationState.CODE_$END_FINALLY_PARSER :
+                        case SerializationState.CODE_$END_FINALLY_GENERATOR :
                         {
                             return;
                         }
@@ -9966,8 +9966,8 @@ public final class BasicInterpreterUnsafe extends BasicInterpreter {
                         }
                         case SerializationState.CODE_BEGIN_TRY_FINALLY :
                         {
-                            Runnable finallyParser = context.getContext(buffer.readShort()).finallyParsers.get(buffer.readShort());
-                            beginTryFinally(finallyParser);
+                            Runnable finallyGenerator = context.getContext(buffer.readShort()).finallyGenerators.get(buffer.readShort());
+                            beginTryFinally(finallyGenerator);
                             break;
                         }
                         case SerializationState.CODE_END_TRY_FINALLY :
@@ -9977,8 +9977,8 @@ public final class BasicInterpreterUnsafe extends BasicInterpreter {
                         }
                         case SerializationState.CODE_BEGIN_TRY_CATCH_OTHERWISE :
                         {
-                            Runnable otherwiseParser = context.getContext(buffer.readShort()).finallyParsers.get(buffer.readShort());
-                            beginTryCatchOtherwise(otherwiseParser);
+                            Runnable otherwiseGenerator = context.getContext(buffer.readShort()).finallyGenerators.get(buffer.readShort());
+                            beginTryCatchOtherwise(otherwiseGenerator);
                             break;
                         }
                         case SerializationState.CODE_END_TRY_CATCH_OTHERWISE :
@@ -11063,7 +11063,7 @@ public final class BasicInterpreterUnsafe extends BasicInterpreter {
 
             final int handlerId;
             final short stackHeight;
-            final Runnable finallyParser;
+            final Runnable finallyGenerator;
             int tryStartBci;
             final boolean operationReachable;
             boolean tryReachable;
@@ -11078,10 +11078,10 @@ public final class BasicInterpreterUnsafe extends BasicInterpreter {
              */
             int finallyHandlerSp;
 
-            TryFinallyData(int handlerId, short stackHeight, Runnable finallyParser, int tryStartBci, boolean operationReachable, boolean tryReachable, boolean catchReachable) {
+            TryFinallyData(int handlerId, short stackHeight, Runnable finallyGenerator, int tryStartBci, boolean operationReachable, boolean tryReachable, boolean catchReachable) {
                 this.handlerId = handlerId;
                 this.stackHeight = stackHeight;
-                this.finallyParser = finallyParser;
+                this.finallyGenerator = finallyGenerator;
                 this.tryStartBci = tryStartBci;
                 this.operationReachable = operationReachable;
                 this.tryReachable = tryReachable;
@@ -11300,8 +11300,8 @@ public final class BasicInterpreterUnsafe extends BasicInterpreter {
             private static final short CODE_$CREATE_LOCAL = -3;
             private static final short CODE_$CREATE_OBJECT = -4;
             private static final short CODE_$CREATE_NULL = -5;
-            private static final short CODE_$CREATE_FINALLY_PARSER = -6;
-            private static final short CODE_$END_FINALLY_PARSER = -7;
+            private static final short CODE_$CREATE_FINALLY_GENERATOR = -6;
+            private static final short CODE_$END_FINALLY_GENERATOR = -7;
             private static final short CODE_$END = -8;
             private static final short CODE_BEGIN_BLOCK = 1 << 1;
             private static final short CODE_END_BLOCK = (1 << 1) | 0b1;
@@ -11419,7 +11419,7 @@ public final class BasicInterpreterUnsafe extends BasicInterpreter {
             private int labelCount;
             private int localCount;
             private short rootCount;
-            private int finallyParserCount;
+            private int finallyGeneratorCount;
 
             private SerializationState(DataOutput buffer, BytecodeSerializer callback) {
                 this.buffer = buffer;
@@ -11467,7 +11467,7 @@ public final class BasicInterpreterUnsafe extends BasicInterpreter {
             private final ArrayList<BasicInterpreterUnsafe> builtNodes = new ArrayList<>();
             private final ArrayList<BytecodeLabel> labels = new ArrayList<>();
             private final ArrayList<BytecodeLocal> locals = new ArrayList<>();
-            private final ArrayList<Runnable> finallyParsers = new ArrayList<>();
+            private final ArrayList<Runnable> finallyGenerators = new ArrayList<>();
 
             private DeserializationState(DeserializationState outer) {
                 this.outer = outer;

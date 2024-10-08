@@ -144,7 +144,7 @@ public class BytecodeDSLBuiltins {
 
                         .setDynamicOperands(voidableChild("try"), voidableChild("catch"));
 
-        TypeMirror parserType = context.getDeclaredType(Runnable.class);
+        TypeMirror finallyGeneratorType = context.getDeclaredType(Runnable.class);
         m.tryFinallyOperation = m.operation(OperationKind.TRY_FINALLY, "TryFinally",
                         """
                                         TryFinally implements a finally handler. It executes {@code try}, and after execution finishes it always executes {@code finally}.
@@ -153,13 +153,13 @@ public class BytecodeDSLBuiltins {
                                         If {@code try} finishes with a control flow operation, {@code finally} executes and then the control flow operation continues (i.e., a Branch will branch, a Return will return).
                                         <p>
                                         Unlike other child operations, {@code finally} is emitted multiple times in the bytecode (once for each regular, exceptional, and early control flow exit).
-                                        To facilitate this, the {@code finally} operation is specified by a {@code finallyParser} that can be invoked multiple times. It should be repeatable and not have side effects.
+                                        To facilitate this, the {@code finally} operation is specified by a {@code finallyGenerator} that can be invoked multiple times. It should be repeatable and not have side effects.
                                         <p>
                                         This is a void operation; either of {@code try} or {@code finally} can be void.
                                         """) //
                         .setVoid(true) //
-                        .setOperationBeginArguments(new OperationArgument(parserType, Encoding.FINALLY_PARSER, "finallyParser",
-                                        "an idempotent Runnable that parses the {@code finally} operation using builder calls") //
+                        .setOperationBeginArguments(new OperationArgument(finallyGeneratorType, Encoding.FINALLY_GENERATOR, "finallyGenerator",
+                                        "an idempotent Runnable that generates the {@code finally} operation using builder calls") //
                         ).setDynamicOperands(voidableChild("try"));
         m.tryCatchOtherwiseOperation = m.operation(OperationKind.TRY_CATCH_OTHERWISE, "TryCatchOtherwise",
                         """
@@ -169,7 +169,7 @@ public class BytecodeDSLBuiltins {
                                         If {@code try} finishes with a control flow operation, {@code otherwise} executes and then the control flow operation continues (i.e., a Branch will branch, a Return will return).
                                         <p>
                                         Unlike other child operations, {@code otherwise} is emitted multiple times in the bytecode (once for each regular and early control flow exit).
-                                        To facilitate this, the {@code otherwise} operation is specified by an {@code otherwiseParser} that can be invoked multiple times. It should be repeatable and not have side effects.
+                                        To facilitate this, the {@code otherwise} operation is specified by an {@code otherwiseGenerator} that can be invoked multiple times. It should be repeatable and not have side effects.
                                         <p>
                                         This operation is effectively a TryFinally operation with a specialized handler for the exception case.
                                         It does <strong>not</strong> implement try-catch-finally semantics: if an exception is thrown {@code catch} executes and {@code otherwise} does not.
@@ -189,13 +189,13 @@ public class BytecodeDSLBuiltins {
                                         This is a void operation; any of {@code try}, {@code catch}, or {@code otherwise} can be void.
                                         """) //
                         .setVoid(true) //
-                        .setOperationBeginArguments(new OperationArgument(parserType, Encoding.FINALLY_PARSER, "otherwiseParser",
-                                        "an idempotent Runnable that parses the {@code otherwise} operation using builder calls") //
+                        .setOperationBeginArguments(new OperationArgument(finallyGeneratorType, Encoding.FINALLY_GENERATOR, "otherwiseGenerator",
+                                        "an idempotent Runnable that generates the {@code otherwise} operation using builder calls") //
                         ).setDynamicOperands(voidableChild("try"), voidableChild("catch"));
         m.finallyHandlerOperation = m.operation(OperationKind.FINALLY_HANDLER, "FinallyHandler",
                         """
-                                        FinallyHandler is an internal operation that has no stack effect. All finally parsers execute within a FinallyHandler operation.
-                                        Executing the parser emits new operations, but these operations should not affect the outer operation's child count/value validation.
+                                        FinallyHandler is an internal operation that has no stack effect. All finally generators execute within a FinallyHandler operation.
+                                        Executing the generator emits new operations, but these operations should not affect the outer operation's child count/value validation.
                                         To accomplish this, FinallyHandler "hides" these operations by popping any produced values and omitting calls to beforeChild/afterChild.
                                         When walking the operation stack, we skip over operations above finallyOperationSp since they do not logically enclose the handler.
                                         """) //

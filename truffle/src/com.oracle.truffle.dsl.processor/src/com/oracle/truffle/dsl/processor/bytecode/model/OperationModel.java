@@ -115,7 +115,7 @@ public class OperationModel implements PrettyPrintable {
             LOCAL_ARRAY,
             TAGS,
             LABEL,
-            FINALLY_PARSER,
+            FINALLY_GENERATOR,
         }
 
     }

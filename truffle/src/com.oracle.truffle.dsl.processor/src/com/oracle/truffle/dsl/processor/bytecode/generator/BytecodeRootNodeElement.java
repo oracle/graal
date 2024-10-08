@@ -2580,7 +2580,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             if (model.enableSerialization) {
                 this.add(createSerialize());
-                this.add(createSerializeFinallyParser());
+                this.add(createSerializeFinallyGenerator());
                 this.add(createDeserialize());
             }
 
@@ -3048,9 +3048,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
         }
 
-        private CodeExecutableElement createSerializeFinallyParser() {
-            CodeExecutableElement method = new CodeExecutableElement(Set.of(PRIVATE), type(short.class), "serializeFinallyParser");
-            method.addParameter(new CodeVariableElement(declaredType(Runnable.class), "finallyParser"));
+        private CodeExecutableElement createSerializeFinallyGenerator() {
+            CodeExecutableElement method = new CodeExecutableElement(Set.of(PRIVATE), type(short.class), "serializeFinallyGenerator");
+            method.addParameter(new CodeVariableElement(declaredType(Runnable.class), "finallyGenerator"));
             method.addThrownType(declaredType(IOException.class));
 
             CodeTreeBuilder b = method.getBuilder();
@@ -3065,8 +3065,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.startNew(declaredType(DataOutputStream.class)).string("baos").end();
             b.string("serialization");
             b.end(2);
-            b.statement("finallyParser.run()");
-            serializationElements.writeShort(b, serializationElements.codeEndFinallyParser);
+            b.statement("finallyGenerator.run()");
+            serializationElements.writeShort(b, serializationElements.codeEndFinallyGenerator);
             b.end(); // try
 
             b.startFinallyBlock();
@@ -3074,10 +3074,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.end(); // finally
 
             b.declaration(arrayOf(type(byte.class)), "bytes", "baos.toByteArray()");
-            serializationElements.writeShort(b, serializationElements.codeCreateFinallyParser);
+            serializationElements.writeShort(b, serializationElements.codeCreateFinallyGenerator);
             serializationElements.writeInt(b, "bytes.length");
             serializationElements.writeBytes(b, "bytes");
-            b.startReturn().string(safeCastShort("serialization.finallyParserCount++")).end();
+            b.startReturn().string(safeCastShort("serialization.finallyGeneratorCount++")).end();
 
             return method;
         }
@@ -3147,25 +3147,25 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.statement("break");
             b.end(); // create object
 
-            b.startCase().staticReference(serializationElements.codeCreateFinallyParser).end().startBlock();
-            b.statement("byte[] finallyParserBytes = new byte[buffer.readInt()]");
-            b.statement("buffer.readFully(finallyParserBytes)");
+            b.startCase().staticReference(serializationElements.codeCreateFinallyGenerator).end().startBlock();
+            b.statement("byte[] finallyGeneratorBytes = new byte[buffer.readInt()]");
+            b.statement("buffer.readFully(finallyGeneratorBytes)");
 
-            b.startStatement().startCall("context.finallyParsers.add");
+            b.startStatement().startCall("context.finallyGenerators.add");
             b.startGroup().string("() -> ").startCall("deserialize");
             b.startGroup().string("() -> ").startStaticCall(types.SerializationUtils, "createDataInput");
-            b.startStaticCall(declaredType(ByteBuffer.class), "wrap").string("finallyParserBytes").end();
+            b.startStaticCall(declaredType(ByteBuffer.class), "wrap").string("finallyGeneratorBytes").end();
             b.end(2);
             b.string("callback");
             b.string("context");
             b.end(2); // lambda
             b.end(2);
             b.statement("break");
-            b.end(); // create finally parser
+            b.end(); // create finally generator
 
-            b.startCase().staticReference(serializationElements.codeEndFinallyParser).end().startBlock();
+            b.startCase().staticReference(serializationElements.codeEndFinallyGenerator).end().startBlock();
             b.statement("return");
-            b.end(); // end finally parser
+            b.end(); // end finally generator
 
             b.startCase().staticReference(serializationElements.codeEndSerialize).end().startBlock();
 
@@ -3343,10 +3343,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     serializationElements.writeInt(after, index);
                     break;
                 }
-                case FINALLY_PARSER: {
-                    String index = "finallyParserIndex";
+                case FINALLY_GENERATOR: {
+                    String index = "finallyGeneratorIndex";
                     before.startDeclaration(type(short.class), index);
-                    before.startCall("serializeFinallyParser");
+                    before.startCall("serializeFinallyGenerator");
                     before.string(argumentName);
                     before.end(2);
                     serializationElements.writeShort(after, "serialization.depth");
@@ -3396,9 +3396,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     b.string("context.consts.get(buffer.readInt())");
                     b.end(); // declaration
                     break;
-                case FINALLY_PARSER:
+                case FINALLY_GENERATOR:
                     b.startDeclaration(argType, argumentName);
-                    b.string("context.getContext(buffer.readShort()).finallyParsers.get(buffer.readShort())");
+                    b.string("context.getContext(buffer.readShort()).finallyGenerators.get(buffer.readShort())");
                     b.end();
                     break;
                 default:
@@ -6624,7 +6624,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.startTryBlock();
             b.statement("TryFinallyData.finallyHandlerSp = operationSp");
             buildBegin(b, model.finallyHandlerOperation, safeCastShort("finallyOperationSp"));
-            b.statement("TryFinallyData.finallyParser.run()");
+            b.statement("TryFinallyData.finallyGenerator.run()");
             buildEnd(b, model.finallyHandlerOperation);
             b.end().startFinallyBlock();
             b.statement("TryFinallyData.finallyHandlerSp = ", UNINIT);
@@ -7443,7 +7443,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         fields = List.of(//
                                         field(type(int.class), "handlerId").asFinal(),
                                         field(type(short.class), "stackHeight").asFinal(),
-                                        field(context.getDeclaredType(Runnable.class), "finallyParser").asFinal(),
+                                        field(context.getDeclaredType(Runnable.class), "finallyGenerator").asFinal(),
                                         field(type(int.class), "tryStartBci"),
                                         field(type(boolean.class), "operationReachable").asFinal(),
                                         field(type(boolean.class), "tryReachable"),
@@ -8011,8 +8011,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             private final CodeVariableElement codeCreateLocal = addField(this, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$CREATE_LOCAL", "-3");
             private final CodeVariableElement codeCreateObject = addField(this, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$CREATE_OBJECT", "-4");
             private final CodeVariableElement codeCreateNull = addField(this, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$CREATE_NULL", "-5");
-            private final CodeVariableElement codeCreateFinallyParser = addField(this, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$CREATE_FINALLY_PARSER", "-6");
-            private final CodeVariableElement codeEndFinallyParser = addField(this, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$END_FINALLY_PARSER", "-7");
+            private final CodeVariableElement codeCreateFinallyGenerator = addField(this, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$CREATE_FINALLY_GENERATOR", "-6");
+            private final CodeVariableElement codeEndFinallyGenerator = addField(this, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$END_FINALLY_GENERATOR", "-7");
             private final CodeVariableElement codeEndSerialize = addField(this, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$END", "-8");
 
             private final CodeVariableElement buffer = addField(this, Set.of(PRIVATE, FINAL), DataOutput.class, "buffer");
@@ -8038,7 +8038,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
                 addField(this, Set.of(PRIVATE), int.class, "localCount");
                 addField(this, Set.of(PRIVATE), short.class, "rootCount");
-                addField(this, Set.of(PRIVATE), int.class, "finallyParserCount");
+                addField(this, Set.of(PRIVATE), int.class, "finallyGeneratorCount");
 
                 codeBegin = new CodeVariableElement[model.getOperations().size() + 1];
                 codeEnd = new CodeVariableElement[model.getOperations().size() + 1];
@@ -8196,7 +8196,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                                 createInitBuilder().startNew("ArrayList<>").end();
                 this.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(context.getDeclaredType(ArrayList.class), types.BytecodeLocal), "locals")).//
                                 createInitBuilder().startNew("ArrayList<>").end();
-                this.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(ArrayList.class, Runnable.class), "finallyParsers")).//
+                this.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(ArrayList.class, Runnable.class), "finallyGenerators")).//
                                 createInitBuilder().startNew("ArrayList<>").end();
                 this.add(createConstructor());
                 this.add(createReadBytecodeNode());
