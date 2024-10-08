@@ -229,7 +229,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         model.enableTagInstrumentation = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableTagInstrumentation");
         model.enableRootTagging = model.enableTagInstrumentation && ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableRootTagging");
         model.enableRootBodyTagging = model.enableTagInstrumentation && ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableRootBodyTagging");
-        model.enableLocalScoping = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableLocalScoping");
+        model.enableBlockScoping = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableBlockScoping");
         model.defaultLocalValue = ElementUtils.getAnnotationValue(String.class, generateBytecodeMirror, "defaultLocalValue", false);
 
         BytecodeDSLBuiltins.addBuiltins(model, types, context);
@@ -541,7 +541,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
          * Materialized accesses need a local index if using BE (for tag tracking) or if storing the
          * bci in the frame (for dynamic scope validation)
          */
-        if (model.enableLocalScoping && (model.usesBoxingElimination() || model.storeBciInFrame)) {
+        if (model.enableBlockScoping && (model.usesBoxingElimination() || model.storeBciInFrame)) {
             model.loadLocalMaterializedOperation.instruction.addImmediate(ImmediateKind.LOCAL_INDEX, "local_index");
             model.storeLocalMaterializedOperation.instruction.addImmediate(ImmediateKind.LOCAL_INDEX, "local_index");
         }
@@ -554,8 +554,8 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         List<ResolvedQuickenDecision> boxingEliminationQuickenings = new ArrayList<>();
         if (model.usesBoxingElimination()) {
 
-            if (model.enableLocalScoping) {
-                // clearLocal does never lookup the type so not needed.
+            if (model.enableBlockScoping) {
+                // clearLocal never looks up the tag, so it does not need a local index.
                 model.loadLocalOperation.instruction.addImmediate(ImmediateKind.LOCAL_INDEX, "local_index");
                 model.storeLocalOperation.instruction.addImmediate(ImmediateKind.LOCAL_INDEX, "local_index");
             }

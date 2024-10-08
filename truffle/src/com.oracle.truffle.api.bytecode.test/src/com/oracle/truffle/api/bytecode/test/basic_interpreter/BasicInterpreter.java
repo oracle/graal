@@ -121,35 +121,33 @@ import com.oracle.truffle.api.source.SourceSection;
                                 enableSpecializationIntrospection = true, //
                                 enableTagInstrumentation = true, //
                                 defaultLocalValue = "LOCAL_DEFAULT_VALUE")),
-                @Variant(suffix = "WithGlobalScopes", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                @Variant(suffix = "WithRootScoping", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                                 enableYield = true, //
                                 enableSerialization = true, //
-                                enableLocalScoping = false, //
+                                enableBlockScoping = false, //
                                 enableTagInstrumentation = true, //
                                 enableSpecializationIntrospection = true, //
                                 defaultLocalValue = "LOCAL_DEFAULT_VALUE")),
                 @Variant(suffix = "WithStoreBytecodeIndexInFrame", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                                 enableYield = true, //
                                 enableSerialization = true, //
-                                enableLocalScoping = true, //
                                 enableUncachedInterpreter = true, //
                                 enableSpecializationIntrospection = true, //
                                 boxingEliminationTypes = {boolean.class, long.class}, //
                                 storeBytecodeIndexInFrame = true, //
                                 enableTagInstrumentation = true)),
                 // A typical "production" configuration with all of the bells and whistles.
-                @Variant(suffix = "ProductionLocalScopes", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                @Variant(suffix = "ProductionBlockScoping", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                                 enableYield = true, //
                                 enableSerialization = true, //
-                                enableLocalScoping = true, //
                                 enableTagInstrumentation = true, //
                                 enableUncachedInterpreter = true, //
                                 enableSpecializationIntrospection = true, //
                                 boxingEliminationTypes = {boolean.class, long.class})),
-                @Variant(suffix = "ProductionGlobalScopes", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                @Variant(suffix = "ProductionRootScoping", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                                 enableYield = true, //
                                 enableSerialization = true, //
-                                enableLocalScoping = false, //
+                                enableBlockScoping = false, //
                                 enableTagInstrumentation = true, //
                                 enableUncachedInterpreter = true, //
                                 enableSpecializationIntrospection = true, //

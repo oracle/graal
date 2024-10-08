@@ -140,12 +140,12 @@ public final class InstructionModel implements PrettyPrintable {
 
     public enum ImmediateKind {
         /**
-         * Relative local offset into the frame. Without boxing elimination or local scoping
+         * Relative local offset into the frame. Without boxing elimination or block scoping
          * localOffset == localIndex.
          */
         LOCAL_OFFSET("local_offset", ImmediateWidth.SHORT),
         /**
-         * Local index into the locals table. Without boxing elimination or local scoping
+         * Local index into the locals table. Without boxing elimination or block scoping
          * localOffset == localIndex.
          */
         LOCAL_INDEX("local_index", ImmediateWidth.SHORT),

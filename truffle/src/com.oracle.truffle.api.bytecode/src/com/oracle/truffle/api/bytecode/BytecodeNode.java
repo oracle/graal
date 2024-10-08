@@ -470,7 +470,7 @@ public abstract class BytecodeNode extends Node {
      *            frame passed then the result of this method is unspecified.
      * @param frame the frame to read locals from
      * @return an array of local values
-     * @see GenerateBytecode#enableLocalScoping
+     * @see GenerateBytecode#enableBlockScoping
      * @since 24.2
      */
     @ExplodeLoop
@@ -503,7 +503,7 @@ public abstract class BytecodeNode extends Node {
      *            {@link BytecodeLocal#getLocalOffset()} or {@link LocalVariable#getLocalOffset()}).
      * @return the current local value, or null if the local never written to (and there is no
      *         {@link GenerateBytecode#defaultLocalValue() default local value}).
-     * @see GenerateBytecode#enableLocalScoping
+     * @see GenerateBytecode#enableBlockScoping
      * @since 24.2
      */
     public abstract Object getLocalValue(int bytecodeIndex, Frame frame, int localOffset);
@@ -540,7 +540,7 @@ public abstract class BytecodeNode extends Node {
      *            Bind}("$bytecodeIndex") annotation. The value must be a partial evaluation
      *            constant.
      * @return an array of local names
-     * @see GenerateBytecode#enableLocalScoping
+     * @see GenerateBytecode#enableBlockScoping
      * @since 24.2
      */
     @ExplodeLoop
@@ -567,7 +567,7 @@ public abstract class BytecodeNode extends Node {
      * @param localOffset the logical offset of the local (as obtained by
      *            {@link BytecodeLocal#getLocalOffset()} or {@link LocalVariable#getLocalOffset()}).
      * @return the local name as a partial evaluation constant
-     * @see GenerateBytecode#enableLocalScoping
+     * @see GenerateBytecode#enableBlockScoping
      * @since 24.2
      */
     public abstract Object getLocalName(int bytecodeIndex, int localOffset);
@@ -587,7 +587,7 @@ public abstract class BytecodeNode extends Node {
      *            Bind}("$bytecodeIndex") annotation. The value must be a partial evaluation
      *            constant.
      * @return an array of local names
-     * @see GenerateBytecode#enableLocalScoping
+     * @see GenerateBytecode#enableBlockScoping
      * @since 24.2
      */
     @ExplodeLoop
@@ -614,7 +614,7 @@ public abstract class BytecodeNode extends Node {
      * @param localOffset the logical offset of the local (as obtained by
      *            {@link BytecodeLocal#getLocalOffset()} or {@link LocalVariable#getLocalOffset()}).
      * @return the local info as a partial evaluation constant
-     * @see GenerateBytecode#enableLocalScoping
+     * @see GenerateBytecode#enableBlockScoping
      * @since 24.2
      */
     public abstract Object getLocalInfo(int bytecodeIndex, int localOffset);
@@ -634,7 +634,7 @@ public abstract class BytecodeNode extends Node {
      * @param frame the frame to store the local values into
      * @param values the values to store into the frame
      *
-     * @see GenerateBytecode#enableLocalScoping
+     * @see GenerateBytecode#enableBlockScoping
      * @since 24.2
      */
     @ExplodeLoop
@@ -660,7 +660,7 @@ public abstract class BytecodeNode extends Node {
      *            frames passed then the result of this method is unspecified.
      * @param source the frame to copy locals from
      * @param destination the frame to copy locals into
-     * @see GenerateBytecode#enableLocalScoping
+     * @see GenerateBytecode#enableBlockScoping
      * @since 24.2
      */
     @ExplodeLoop
@@ -694,7 +694,7 @@ public abstract class BytecodeNode extends Node {
      * @param localOffset the logical offset of the first local to be copied (as obtained by
      *            {@link BytecodeLocal#getLocalOffset()} or {@link LocalVariable#getLocalOffset()}).
      * @param localCount the number of locals to copy
-     * @see GenerateBytecode#enableLocalScoping
+     * @see GenerateBytecode#enableBlockScoping
      * @since 24.2
      */
     @ExplodeLoop
@@ -732,7 +732,7 @@ public abstract class BytecodeNode extends Node {
      *            {@link BytecodeLocal#getLocalOffset()} or {@link LocalVariable#getLocalOffset()}).
      * @param value the value to store into the local
      * @since 24.2
-     * @see GenerateBytecode#enableLocalScoping
+     * @see GenerateBytecode#enableBlockScoping
      */
     public abstract void setLocalValue(int bytecodeIndex, Frame frame, int localOffset, Object value);
 
@@ -928,7 +928,7 @@ public abstract class BytecodeNode extends Node {
      *            constant.
      * @return the number of live locals
      * @since 24.2
-     * @see GenerateBytecode#enableLocalScoping
+     * @see GenerateBytecode#enableBlockScoping
      */
     public abstract int getLocalCount(int bytecodeIndex);
 

@@ -304,12 +304,12 @@ It is undefined behaviour to load a local before a value is stored into it.
 
 ### Scoping
 
-By default, interpreters use _local scoping_, in which locals are scoped to the enclosing `Root` or `Block` operation.
-When exiting the enclosing operation, locals are cleared and their frame slots are automatically reused.
+By default, interpreters use _block scoping_, in which locals are scoped to the enclosing `Block`/`Root` operation.
+When exiting the enclosing `Block` operation, locals are cleared and their frame slots are automatically reused (locals are not cleared when exiting the `Root`).
 Since the set of live locals depends on the location in the code, most of the local accessor methods on `BytecodeNode` are parameterized by the current `bytecodeIndex`.
 
-Interpreters can alternatively opt to use _global scoping_, in which all locals get a unique position in the frame and live for the entire extent of the root.
-The setting is controlled by the `enableLocalScoping` flag in [`@GenerateBytecode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/GenerateBytecode.java).
+Interpreters can alternatively opt to use _root scoping_, in which all locals get a unique position in the frame and live for the entire extent of the root.
+The setting is controlled by the `enableBlockScoping` flag in [`@GenerateBytecode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/GenerateBytecode.java).
 
 ### Materialized local accesses
 

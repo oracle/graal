@@ -49,9 +49,9 @@ package com.oracle.truffle.api.bytecode;
  * the {@link BytecodeNode}, such as {@link BytecodeNode#getLocalValue(int, Frame, int)} and
  * {@link BytecodeNode#setLocalValue(int, com.oracle.truffle.api.frame.Frame, int, Object)}.
  * <p>
- * By default a local variable is live for the extent of the block that defines it ("local
+ * By default a local variable is live for the extent of the block that defines it ("block
  * scoping"). Interpreters can also be configured so that locals live for the extent of the root
- * node ("global scoping"). See {@link GenerateBytecode#enableLocalScoping()} for details.
+ * node ("root scoping"). See {@link GenerateBytecode#enableBlockScoping()} for details.
  * <p>
  * Refer to the <a href=
  * "https://github.com/oracle/graal/blob/master/truffle/docs/bytecode_dsl/UserGuide.md">user
@@ -81,7 +81,7 @@ public abstract class BytecodeLocal {
     /**
      * Returns the index when accessing into the locals table with {@link BytecodeNode#getLocals()}.
      * The local index is guaranteed to be equal to {@link #getLocalOffset()} if
-     * {@link GenerateBytecode#enableLocalScoping() block scoping} is set to <code>false</code>,
+     * {@link GenerateBytecode#enableBlockScoping() block scoping} is set to <code>false</code>,
      * otherwise and by default the local index must not be used for local accessor methods like
      * {@link BytecodeNode#getLocalValue(int, Frame, int)}.
      *

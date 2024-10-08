@@ -31,7 +31,9 @@ import static org.junit.Assert.fail;
 
 import java.util.List;
 
+import org.graalvm.polyglot.Context;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -45,13 +47,19 @@ import com.oracle.truffle.api.bytecode.test.BytecodeDSLTestLanguage;
 import com.oracle.truffle.api.bytecode.test.basic_interpreter.AbstractBasicInterpreterTest;
 import com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter;
 import com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreterBuilder;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
+import com.oracle.truffle.api.instrumentation.Instrumenter;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
+import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 @RunWith(Parameterized.class)
 public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
-    protected static final BytecodeDSLTestLanguage LANGUAGE = null;
 
     @Parameters(name = "{0}")
     public static List<Class<? extends BasicInterpreter>> getInterpreterClasses() {
@@ -60,10 +68,19 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
 
     @Parameter(0) public Class<? extends BasicInterpreter> interpreterClass;
 
+    Context context;
+    Instrumenter instrumenter;
+
     @Before
     @Override
     public void before() {
-        super.before();
+        context = setupContext();
+        context.initialize(BytecodeDSLTestLanguage.ID);
+        instrumenter = context.getEngine().getInstruments().get(BytecodeDSLCompilationTestInstrumentation.ID).lookup(Instrumenter.class);
+    }
+
+    @BeforeClass
+    public static void beforeClass() {
         /**
          * Note: we force load the EarlyReturnException class because compilation bails out when it
          * hasn't been loaded (the {@code interceptControlFlowException} method references it
@@ -95,7 +112,7 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
      */
     @Test
     public void testOSR1() {
-        BasicInterpreter root = parseNode(interpreterClass, LANGUAGE, false, "osrRoot", b -> {
+        BasicInterpreter root = parseNode(interpreterClass, BytecodeDSLTestLanguage.REF.get(null), false, "osrRoot", b -> {
             b.beginRoot();
 
             BytecodeLocal iLoc = b.createLocal();
@@ -195,7 +212,7 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
      */
     @Test
     public void testOSR2() {
-        BasicInterpreter root = parseNode(interpreterClass, LANGUAGE, false, "osrRoot", b -> {
+        BasicInterpreter root = parseNode(interpreterClass, BytecodeDSLTestLanguage.REF.get(null), false, "osrRoot", b -> {
             b.beginRoot();
 
             BytecodeLocal iLoc = b.createLocal();
@@ -544,8 +561,137 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
         assertCompiled(target);
     }
 
+    @Test
+    public void testTagInstrumentation() {
+        BasicInterpreter root = parseNodeForCompilation(interpreterClass, "tagInstrumentation", b -> {
+            b.beginRoot();
+
+            // i = 0
+            BytecodeLocal i = b.createLocal();
+            b.beginTag(StatementTag.class);
+            b.beginStoreLocal(i);
+            b.emitLoadConstant(0L);
+            b.endStoreLocal();
+            b.endTag(StatementTag.class);
+
+            // while i < arg0
+            b.beginWhile();
+            b.beginTag(StatementTag.class);
+            b.beginLess();
+            b.emitLoadLocal(i);
+            b.emitLoadArgument(0);
+            b.endLess();
+            b.endTag(StatementTag.class);
+
+            // i = i + 1;
+            b.beginTag(StatementTag.class);
+            b.beginStoreLocal(i);
+            b.beginAdd();
+            b.emitLoadLocal(i);
+            b.emitLoadConstant(1L);
+            b.endAdd();
+            b.endStoreLocal();
+            b.endTag(StatementTag.class);
+
+            b.endWhile();
+
+            // return i
+            b.beginTag(StatementTag.class);
+            b.beginReturn();
+            b.emitLoadLocal(i);
+            b.endReturn();
+            b.endTag(StatementTag.class);
+
+            b.endRoot();
+        });
+
+        OptimizedCallTarget target = (OptimizedCallTarget) root.getCallTarget();
+        assertEquals(5L, target.call(5L));
+
+        // Ensure it compiles without tags.
+        target.compile(true);
+        assertCompiled(target);
+        // It shouldn't deopt.
+        assertEquals(42L, target.call(42L));
+        assertCompiled(target);
+
+        // Reparsing with tags should invalidate the code, but it should recompile.
+        // Expected count: 1 enter + (n+1) condition + n loop body + 1 return = 2n + 3
+        Counter c = attachCounter(StatementTag.class);
+        assertNotCompiled(target);
+        target.resetCompilationProfile();
+        assertEquals(5L, target.call(5L));
+        assertEquals(13, c.get());
+        assertNotCompiled(target);
+        target.compile(true);
+        assertCompiled(target);
+        // It shouldn't deopt.
+        c.clear();
+        assertEquals(11L, target.call(11L));
+        assertEquals(25, c.get());
+        assertCompiled(target);
+
+        // Attaching a second binding with different tags should invalidate the code again.
+        Counter c2 = attachCounter(RootTag.class);
+        assertNotCompiled(target);
+        c.clear();
+        assertEquals(5L, target.call(5L));
+        assertEquals(13, c.get());
+        assertEquals(1, c2.get());
+        assertNotCompiled(target);
+        target.compile(true);
+        assertCompiled(target);
+        // It shouldn't deopt.
+        c.clear();
+        c2.clear();
+        assertEquals(20L, target.call(20L));
+        assertEquals(43, c.get());
+        assertEquals(1, c2.get());
+        assertCompiled(target);
+    }
+
+    @TruffleInstrument.Registration(id = BytecodeDSLCompilationTestInstrumentation.ID, services = Instrumenter.class)
+    public static class BytecodeDSLCompilationTestInstrumentation extends TruffleInstrument {
+
+        public static final String ID = "bytecode_CompilationTestInstrument";
+
+        @Override
+        protected void onCreate(Env env) {
+            env.registerService(env.getInstrumenter());
+        }
+    }
+
+    private static class Counter {
+        private int count = 0;
+
+        public int get() {
+            return count;
+        }
+
+        public void inc() {
+            count++;
+        }
+
+        public void clear() {
+            count = 0;
+        }
+    }
+
+    private Counter attachCounter(Class<?>... tags) {
+        Counter c = new Counter();
+        instrumenter.attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(tags).build(), (e) -> {
+            return new ExecutionEventNode() {
+                @Override
+                public void onEnter(VirtualFrame f) {
+                    c.inc();
+                }
+            };
+        });
+        return c;
+    }
+
     private static <T extends BasicInterpreterBuilder> BasicInterpreter parseNodeForCompilation(Class<? extends BasicInterpreter> interpreterClass, String rootName, BytecodeParser<T> builder) {
-        BasicInterpreter result = parseNode(interpreterClass, LANGUAGE, false, rootName, builder);
+        BasicInterpreter result = parseNode(interpreterClass, BytecodeDSLTestLanguage.REF.get(null), false, rootName, builder);
         result.getBytecodeNode().setUncachedThreshold(0); // force interpreter to skip tier 0
         return result;
     }

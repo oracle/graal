@@ -1706,7 +1706,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
     }
 
     private boolean usesLocalTags() {
-        return model.enableLocalScoping && model.usesBoxingElimination();
+        return model.enableBlockScoping && model.usesBoxingElimination();
     }
 
     private void serializationWrapException(CodeTreeBuilder b, Runnable r) {
@@ -2568,7 +2568,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 }
             }
 
-            if (model.enableLocalScoping) {
+            if (model.enableBlockScoping) {
                 this.add(createGetCurrentScope());
             }
             this.add(createDoEmitLocal());
@@ -2627,7 +2627,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 list.add(new CodeVariableElement(Set.of(PRIVATE), generic(ArrayList.class, continuationLocation.asType()), "continuationLocations"));
             }
 
-            if (model.enableLocalScoping) {
+            if (model.enableBlockScoping) {
                 list.add(new CodeVariableElement(Set.of(PRIVATE), type(int.class), "maxLocals"));
             }
 
@@ -3477,7 +3477,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.end();
             }
 
-            if (model.enableLocalScoping) {
+            if (model.enableBlockScoping) {
                 TypeMirror scopeType = scopeDataType.asType();
                 b.declaration(scopeType, "scope", "getCurrentScope()");
                 b.declaration(type(short.class), "localIndex", "allocateBytecodeLocal() /* unique global index */");
@@ -3493,13 +3493,13 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             b.startNew(bytecodeLocalImpl.asType()).string("frameIndex");
 
-            if (model.enableLocalScoping) {
+            if (model.enableBlockScoping) {
                 b.string("localIndex");
             } else {
                 b.string("frameIndex");
             }
             b.string("((RootData) operationStack[this.rootOperationSp].data).index");
-            if (model.enableLocalScoping) {
+            if (model.enableBlockScoping) {
                 b.string("scope");
             }
 
@@ -3913,7 +3913,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.statement("tagNodes.add(node)");
             }
 
-            if (model.enableLocalScoping) {
+            if (model.enableBlockScoping) {
                 switch (operation.kind) {
                     case ROOT:
                     case BLOCK:
@@ -3954,7 +3954,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             switch (operation.kind) {
                 case BLOCK:
-                    if (model.enableLocalScoping) {
+                    if (model.enableBlockScoping) {
                         b.statement("operationData.frameOffset = parentScope.frameOffset + parentScope.numLocals");
                     }
                     break;
@@ -4037,7 +4037,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             }
 
             b.statement("numLocals = 0");
-            if (model.enableLocalScoping) {
+            if (model.enableBlockScoping) {
                 b.statement("maxLocals = numLocals");
             }
             b.statement("numLabels = 0");
@@ -4073,7 +4073,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.end();
             b.end();
 
-            if (model.enableLocalScoping) {
+            if (model.enableBlockScoping) {
                 b.statement("operationData.frameOffset = numLocals");
             }
 
@@ -4620,9 +4620,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
                     break;
                 case BLOCK:
-                    if (model.enableLocalScoping) {
-                        // with local scoping locals are emitted at the end of the block
-                        // and also for roots. with global scoping this step is not necessary.
+                    if (model.enableBlockScoping) {
+                        // local table entries are emitted at the end of the block.
                         createEndLocalsBlock(b, false);
                     }
                     break;
@@ -4791,7 +4790,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.tree(createOperationConstant(rootOperation));
             b.end(2);
 
-            if (model.enableLocalScoping) {
+            if (model.enableBlockScoping) {
                 createEndLocalsBlock(b, true);
             }
 
@@ -4984,7 +4983,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private String maxLocals() {
-            if (model.enableLocalScoping) {
+            if (model.enableBlockScoping) {
                 return "maxLocals + USER_LOCALS_START_INDEX";
             } else {
                 return "numLocals + USER_LOCALS_START_INDEX";
@@ -5261,7 +5260,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private String[] createStoreLocalArgsWithBE(String local, String childBci) {
-            if (model.enableLocalScoping) {
+            if (model.enableBlockScoping) {
                 return new String[]{
                                 local + ".frameIndex",
                                 local + ".localIndex",
@@ -5474,7 +5473,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             b.startStatement().startCall("beforeChild").end(2);
 
-            if (operation.kind == OperationKind.LOAD_LOCAL && model.enableLocalScoping) {
+            if (operation.kind == OperationKind.LOAD_LOCAL && model.enableBlockScoping) {
                 createThrowInvalidScope(b, operation);
             }
 
@@ -6217,7 +6216,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
         private CodeExecutableElement createDoEmitLocal() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(int.class), "doEmitLocal");
-            if (model.enableLocalScoping) {
+            if (model.enableBlockScoping) {
                 ex.addParameter(new CodeVariableElement(type(int.class), "localIndex"));
                 ex.addParameter(new CodeVariableElement(type(int.class), "frameIndex"));
             }
@@ -6236,7 +6235,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.end();
 
             b.startReturn().startCall("doEmitLocal");
-            if (model.enableLocalScoping) {
+            if (model.enableBlockScoping) {
                 b.string("localIndex");
                 b.string("frameIndex");
             }
@@ -6247,7 +6246,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createDoEmitLocalConstantIndices() {
-            if (model.enableLocalScoping) {
+            if (model.enableBlockScoping) {
                 BytecodeRootNodeElement.this.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "LOCALS_OFFSET_START_BCI")).createInitBuilder().string("0");
                 BytecodeRootNodeElement.this.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "LOCALS_OFFSET_END_BCI")).createInitBuilder().string("1");
                 BytecodeRootNodeElement.this.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "LOCALS_OFFSET_LOCAL_INDEX")).createInitBuilder().string("2");
@@ -6262,7 +6261,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             }
 
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(int.class), "doEmitLocal");
-            if (model.enableLocalScoping) {
+            if (model.enableBlockScoping) {
                 ex.addParameter(new CodeVariableElement(type(int.class), "localIndex"));
                 ex.addParameter(new CodeVariableElement(type(int.class), "frameIndex"));
             }
@@ -6272,7 +6271,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             b.declaration(type(int.class), "tableIndex", "allocateLocalsTableEntry()");
 
-            if (model.enableLocalScoping) {
+            if (model.enableBlockScoping) {
                 b.statement("assert frameIndex - USER_LOCALS_START_INDEX >= 0");
                 b.statement("locals[tableIndex + LOCALS_OFFSET_START_BCI] = bci");
                 b.lineComment("will be patched later at the end of the block");
@@ -7072,7 +7071,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.statement("break");
                 b.end(); // case source section
 
-                if (model.enableLocalScoping) {
+                if (model.enableBlockScoping) {
                     b.startCase().tree(createOperationConstant(model.blockOperation)).end();
                     b.startBlock();
                     emitCastOperationData(b, model.blockOperation, "i");
@@ -7150,7 +7149,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.statement("break");
                 b.end(); // case source section
 
-                if (model.enableLocalScoping) {
+                if (model.enableBlockScoping) {
                     b.startCase().tree(createOperationConstant(model.blockOperation)).end();
                     b.startBlock();
                     emitCastOperationData(b, model.blockOperation, "i");
@@ -7218,7 +7217,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             CodeTreeBuilder b = ex.createBuilder();
 
             b.startReturn().startCall("checkOverflowShort");
-            if (model.enableLocalScoping) {
+            if (model.enableBlockScoping) {
                 b.string("(short) numLocals++");
             } else {
                 b.string("(short) (USER_LOCALS_START_INDEX + numLocals++)");
@@ -7279,7 +7278,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             private Collection<CodeTypeElement> create() {
                 List<CodeTypeElement> result = new ArrayList<>();
 
-                if (model.enableLocalScoping) {
+                if (model.enableBlockScoping) {
                     scopeDataType = new ScopeDataElement();
                     result.add(scopeDataType);
                 }
@@ -7322,7 +7321,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         if (model.prolog != null && model.prolog.operation.operationEndArguments.length != 0) {
                             fields.add(field(type(int.class), "prologBci").withInitializer(UNINIT));
                         }
-                        if (model.enableLocalScoping) {
+                        if (model.enableBlockScoping) {
                             superType = scopeDataType.asType();
                         }
                         break;
@@ -7332,7 +7331,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                                         field(type(int.class), "startStackHeight").asFinal(),
                                         field(type(boolean.class), "producedValue").withInitializer("false"),
                                         field(type(int.class), "childBci").withInitializer(UNINIT));
-                        if (model.enableLocalScoping) {
+                        if (model.enableBlockScoping) {
                             superType = scopeDataType.asType();
                         }
                         break;
@@ -7735,7 +7734,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                             break;
                         case BLOCK:
                         case ROOT:
-                            if (model.enableLocalScoping) {
+                            if (model.enableBlockScoping) {
                                 b.startCase().tree(createOperationConstant(op)).end().startBlock();
                                 b.declaration(getDataClassName(op), "operationData", "(" + getDataClassName(op) + ") data");
 
@@ -7837,7 +7836,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 this.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), type(short.class), "localIndex"));
                 this.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), type(short.class), "rootIndex"));
 
-                if (model.enableLocalScoping) {
+                if (model.enableBlockScoping) {
                     this.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), scopeDataType.asType(), "scope"));
                 }
 
@@ -8937,7 +8936,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.startStatement().startSuperCall().staticReference(bytecodeRootNodesImpl.asType(), "VISIBLE_TOKEN").end().end();
             b.tree(tree);
 
-            if (model.enableLocalScoping) {
+            if (model.enableBlockScoping) {
                 this.add(createGetStartIndex());
                 this.add(createGetEndIndex());
             }
@@ -8991,7 +8990,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         private CodeExecutableElement createGetLocalIndex() {
             CodeExecutableElement ex = GeneratorUtils.override(types.LocalVariable, "getLocalIndex");
             CodeTreeBuilder b = ex.createBuilder();
-            if (model.enableLocalScoping) {
+            if (model.enableBlockScoping) {
                 b.statement("return bytecode.locals[baseIndex + LOCALS_OFFSET_LOCAL_INDEX]");
             } else {
                 b.statement("return baseIndex / LOCALS_LENGTH");
@@ -9002,7 +9001,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         private CodeExecutableElement createGetLocalOffset() {
             CodeExecutableElement ex = GeneratorUtils.override(types.LocalVariable, "getLocalOffset");
             CodeTreeBuilder b = ex.createBuilder();
-            if (model.enableLocalScoping) {
+            if (model.enableBlockScoping) {
                 b.statement("return bytecode.locals[baseIndex + LOCALS_OFFSET_FRAME_INDEX] - USER_LOCALS_START_INDEX");
             } else {
                 b.statement("return baseIndex / LOCALS_LENGTH");
@@ -9015,7 +9014,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             CodeTreeBuilder b = ex.createBuilder();
 
             if (model.usesBoxingElimination()) {
-                if (model.enableLocalScoping) {
+                if (model.enableBlockScoping) {
                     b.declaration(type(byte[].class), "localTags", "bytecode.getLocalTags()");
                     b.startIf().string("localTags == null").end().startBlock();
                     b.returnNull();
@@ -9103,8 +9102,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             Set<String> generated = new HashSet<>();
             for (ImmediateKind kind : ImmediateKind.values()) {
-                if (kind == ImmediateKind.LOCAL_INDEX && !(model.usesBoxingElimination() || model.enableLocalScoping)) {
-                    // Local index is only used when local scoping or BE are enabled.
+                if (kind == ImmediateKind.LOCAL_INDEX && !(model.usesBoxingElimination() || model.enableBlockScoping)) {
+                    // Local index is only used when block scoping or BE are enabled.
                     continue;
                 }
 
@@ -9913,7 +9912,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             this.add(new CodeExecutableElement(Set.of(ABSTRACT), this.asType(), "cloneUninitialized"));
 
             this.add(new CodeExecutableElement(Set.of(ABSTRACT), arrayOf(types.Node), "getCachedNodes"));
-            if (model.usesBoxingElimination() && model.enableLocalScoping) {
+            if (model.usesBoxingElimination() && model.enableBlockScoping) {
                 this.add(new CodeExecutableElement(Set.of(ABSTRACT), arrayOf(type(byte.class)), "getLocalTags"));
             }
             this.add(new CodeExecutableElement(Set.of(ABSTRACT), arrayOf(type(int.class)), "getBranchProfiles"));
@@ -9944,7 +9943,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 this.add(createSetLocalValueInternal());
             }
 
-            if (model.enableLocalScoping) {
+            if (model.enableBlockScoping) {
                 this.add(createLocalIndexToTableIndex());
                 this.add(createLocalOffsetToTableIndex());
                 if (model.storeBciInFrame) {
@@ -9979,7 +9978,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             ex.getAnnotationMirrors().add(new CodeAnnotationMirror(types.ExplodeLoop));
             b.startStatement().startStaticCall(types.CompilerAsserts, "partialEvaluationConstant").string("bci").end().end();
 
-            if (model.enableLocalScoping) {
+            if (model.enableBlockScoping) {
                 b.declaration(type(int.class), "count", "0");
                 b.startFor().string("int index = 0; index < locals.length; index += LOCALS_LENGTH").end().startBlock();
                 b.declaration(type(int.class), "startIndex", "locals[index + LOCALS_OFFSET_START_BCI]");
@@ -10099,7 +10098,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createValidateLocalLivenessInternal() {
-            if (!(model.enableLocalScoping && model.storeBciInFrame)) {
+            if (!(model.enableBlockScoping && model.storeBciInFrame)) {
                 throw new AssertionError("Not supported.");
             }
 
@@ -10140,7 +10139,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(ABSTRACT), types.FrameSlotKind, "getCachedLocalKindInternal");
 
-            if (model.enableLocalScoping) {
+            if (model.enableBlockScoping) {
                 ex.addParameter(new CodeVariableElement(type(int.class), "localIndex"));
             } else {
                 ex.addParameter(new CodeVariableElement(type(int.class), "frameIndex"));
@@ -10156,7 +10155,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(ABSTRACT), type(void.class), "setCachedLocalKindInternal");
             ex.addParameter(new CodeVariableElement(type(int.class), "frameIndex"));
             ex.addParameter(new CodeVariableElement(types.FrameSlotKind, "kind"));
-            if (model.enableLocalScoping) {
+            if (model.enableBlockScoping) {
                 ex.addParameter(new CodeVariableElement(type(int.class), "localIndex"));
             }
 
@@ -10179,7 +10178,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             CodeTreeBuilder b = ex.createBuilder();
             b.statement("assert validateBytecodeIndex(bci)");
             buildVerifyLocalsIndex(b);
-            if (model.enableLocalScoping) {
+
+            if (model.enableBlockScoping) {
                 b.declaration(type(int.class), "index", "localOffsetToTableIndex(bci, localOffset)");
                 b.startIf().string("index == -1").end().startBlock();
                 b.returnNull();
@@ -10193,6 +10193,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.end().startElseBlock();
             b.startReturn().tree(readConst("nameId")).end();
             b.end();
+
             return ex;
         }
 
@@ -10203,7 +10204,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.statement("assert validateBytecodeIndex(bci)");
             buildVerifyLocalsIndex(b);
 
-            if (model.enableLocalScoping) {
+            if (model.enableBlockScoping) {
                 b.declaration(type(int.class), "index", "localOffsetToTableIndex(bci, localOffset)");
                 b.startIf().string("index == -1").end().startBlock();
                 b.returnNull();
@@ -11612,7 +11613,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
                 b.end().startElseBlock();
 
-                if (model.enableLocalScoping) {
+                if (model.enableBlockScoping) {
                     b.startAssign("kind").string("getCachedLocalKind(frame, frameIndex, bci, localOffset)").end();
                 } else {
                     b.startAssign("kind").string("getCachedLocalKind(frame, frameIndex)").end();
@@ -11678,7 +11679,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             if (model.usesBoxingElimination() && tier.isCached()) {
                 b.startStatement().startCall("setLocalValueImpl");
                 b.string("frame").string("frameIndex").string("value");
-                if (model.enableLocalScoping) {
+                if (model.enableBlockScoping) {
                     b.string("bci").string("localOffset");
                 }
                 b.end().end(); // call, statement
@@ -11706,7 +11707,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             CodeTreeBuilder b = ex.createBuilder();
             AbstractBytecodeNodeElement.buildVerifyFrameDescriptor(b);
 
-            if (model.enableLocalScoping) {
+            if (model.enableBlockScoping) {
                 ex.addParameter(new CodeVariableElement(type(int.class), "bci"));
                 ex.addParameter(new CodeVariableElement(type(int.class), "localOffset"));
                 b.declaration(types.FrameSlotKind, "oldKind", "getCachedLocalKind(frame, frameIndex, bci, localOffset)");
@@ -11748,7 +11749,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.end(); // switch block
 
             b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-            if (model.enableLocalScoping) {
+            if (model.enableBlockScoping) {
                 b.statement("setCachedLocalKind(frameIndex, newKind, bci, localOffset)");
                 b.statement("setLocalValueImpl(frame, frameIndex, value, bci, localOffset)");
             } else {
@@ -11781,7 +11782,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
                 b.startDeclaration(types.FrameSlotKind, "oldKind");
                 b.startCall("getCachedLocalKindInternal");
-                if (model.enableLocalScoping) {
+                if (model.enableBlockScoping) {
                     b.string("localIndex");
                 } else {
                     b.string("frameIndex");
@@ -11836,7 +11837,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.end(); // switch block
 
                 b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-                if (model.enableLocalScoping) {
+                if (model.enableBlockScoping) {
                     b.statement("setCachedLocalKindInternal(frameIndex, newKind, localIndex)");
                     b.statement("setLocalValueInternal(frame, localOffset, localIndex, value)");
                 } else {
@@ -11942,7 +11943,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             ex.addParameter(new CodeVariableElement(type(int.class), "frameIndex"));
             ex.addParameter(new CodeVariableElement(types.FrameSlotKind, "kind"));
             CodeTreeBuilder b = ex.createBuilder();
-            if (model.enableLocalScoping) {
+            if (model.enableBlockScoping) {
                 ex.addParameter(new CodeVariableElement(type(int.class), "bci"));
                 ex.addParameter(new CodeVariableElement(type(int.class), "localOffset"));
                 b.startAssert().string("locals[localOffsetToTableIndex(bci, localOffset) + LOCALS_OFFSET_FRAME_INDEX] == frameIndex : ").doubleQuote("Inconsistent indices.").end();
@@ -11963,13 +11964,13 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(FINAL), type(void.class), "setCachedLocalKindInternal");
             ex.addParameter(new CodeVariableElement(type(int.class), "frameIndex"));
             ex.addParameter(new CodeVariableElement(types.FrameSlotKind, "kind"));
-            if (model.enableLocalScoping) {
+            if (model.enableBlockScoping) {
                 ex.addParameter(new CodeVariableElement(type(int.class), "localIndex"));
             }
 
             CodeTreeBuilder b = ex.createBuilder();
             if (tier.isCached()) {
-                if (model.enableLocalScoping) {
+                if (model.enableBlockScoping) {
                     b.statement("this.localTags_[localIndex] = kind.tag");
                 } else {
                     b.statement("getRoot().getFrameDescriptor().setSlotKind(frameIndex, kind)");
@@ -11994,7 +11995,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             ex.addParameter(new CodeVariableElement(type(int.class), "frameIndex"));
 
             CodeTreeBuilder b = ex.createBuilder();
-            if (model.enableLocalScoping) {
+            if (model.enableBlockScoping) {
                 ex.addParameter(new CodeVariableElement(type(int.class), "bci"));
                 ex.addParameter(new CodeVariableElement(type(int.class), "localOffset"));
                 b.startAssert().string("locals[localOffsetToTableIndex(bci, localOffset) + LOCALS_OFFSET_FRAME_INDEX] == frameIndex : ").doubleQuote("Inconsistent indices.").end();
@@ -12015,14 +12016,14 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(FINAL), types.FrameSlotKind, "getCachedLocalKindInternal");
             CodeTreeBuilder b = ex.createBuilder();
 
-            if (model.enableLocalScoping) {
+            if (model.enableBlockScoping) {
                 ex.addParameter(new CodeVariableElement(type(int.class), "localIndex"));
             } else {
                 ex.addParameter(new CodeVariableElement(type(int.class), "frameIndex"));
             }
 
             if (tier.isCached()) {
-                if (model.enableLocalScoping) {
+                if (model.enableBlockScoping) {
                     b.startReturn().startStaticCall(types.FrameSlotKind, "fromTag").string("this.localTags_[localIndex]").end().end();
                 } else {
                     b.statement("return getRoot().getFrameDescriptor().getSlotKind(frameIndex)");
@@ -14565,7 +14566,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.end(); // statement
 
             if (!generic) {
-                if (model.enableLocalScoping) {
+                if (model.enableBlockScoping) {
                     method.getModifiers().remove(Modifier.STATIC);
                 }
 
@@ -14642,7 +14643,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             b.startDeclaration(types.FrameSlotKind, "kind");
             b.startCall(bytecodeNode, "getCachedLocalKindInternal");
-            if (model.enableLocalScoping) {
+            if (model.enableBlockScoping) {
                 b.string("localIndex");
             } else {
                 b.string("slot");
@@ -14973,7 +14974,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 if (materialized) {
                     b.declaration(type(int.class), "localRootIndex", readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.LOCAL_ROOT)));
                 }
-                if (model.enableLocalScoping) {
+                if (model.enableBlockScoping) {
                     b.declaration(type(int.class), "localIndex", readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.LOCAL_INDEX)));
                 }
 
@@ -14987,7 +14988,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
                 b.startDeclaration(types.FrameSlotKind, "kind");
                 b.startCall(bytecodeNode, "getCachedLocalKindInternal");
-                if (model.enableLocalScoping) {
+                if (model.enableBlockScoping) {
                     b.string("localIndex");
                 } else {
                     b.string("slot");
@@ -15079,7 +15080,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             if (materialized) {
                 b.declaration(type(int.class), "localRootIndex", readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.LOCAL_ROOT)));
             }
-            if (model.enableLocalScoping) {
+            if (model.enableBlockScoping) {
                 b.declaration(type(int.class), "localIndex", readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.LOCAL_INDEX)));
             }
             b.declaration(type(int.class), "operandIndex", readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX)));
@@ -15099,7 +15100,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             b.startDeclaration(types.FrameSlotKind, "oldKind");
             b.startCall(bytecodeNode, "getCachedLocalKindInternal");
-            if (model.enableLocalScoping) {
+            if (model.enableBlockScoping) {
                 b.string("localIndex");
             } else {
                 b.string("slot");
@@ -15191,7 +15192,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.startStatement().startCall(bytecodeNode, "setCachedLocalKindInternal");
             b.string("slot");
             b.string("newKind");
-            if (model.enableLocalScoping) {
+            if (model.enableBlockScoping) {
                 b.string("localIndex");
             }
             b.end().end();
@@ -15205,7 +15206,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.startStatement().startCall(bytecodeNode, "setCachedLocalKindInternal");
             b.string("slot");
             b.staticReference(types.FrameSlotKind, "Object");
-            if (model.enableLocalScoping) {
+            if (model.enableBlockScoping) {
                 b.string("localIndex");
             }
             b.end().end();
@@ -15259,7 +15260,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
              * Check that the local is live at the current bci. We can only perform this check when
              * the bci is stored in the frame.
              */
-            if (model.enableLocalScoping && model.storeBciInFrame && localIndex != null) {
+            if (model.enableBlockScoping && model.storeBciInFrame && localIndex != null) {
                 b.startAssert().startCall(getBytecode, "validateLocalLivenessInternal");
                 b.string("frame");
                 b.string("slot");
