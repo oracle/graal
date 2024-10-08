@@ -449,30 +449,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             if (instr.nodeData == null || instr.quickeningBase != null) {
                 continue;
             }
-
-            NodeConstants nodeConsts = new NodeConstants();
-            BytecodeDSLNodeGeneratorPlugs plugs = new BytecodeDSLNodeGeneratorPlugs(BytecodeRootNodeElement.this, instr);
-            FlatNodeGenFactory factory = new FlatNodeGenFactory(context, GeneratorMode.DEFAULT, instr.nodeData, consts, nodeConsts, plugs);
-
-            CodeTypeElement el = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, cachedDataClassName(instr));
-            el.setSuperClass(types.Node);
-            factory.create(el);
-
-            List<ExecutableElement> cachedExecuteMethods = new ArrayList<>();
-            cachedExecuteMethods.add(createCachedExecute(plugs, factory, el, instr));
-            for (InstructionModel quickening : instr.getFlattenedQuickenedInstructions()) {
-                cachedExecuteMethods.add(createCachedExecute(plugs, factory, el, quickening));
-            }
-            processCachedNode(el);
-            el.getEnclosedElements().addAll(0, cachedExecuteMethods);
-
-            CodeExecutableElement quicken = plugs.getQuickenMethod();
-            if (quicken != null) {
-                el.getEnclosedElements().add(quicken);
-            }
-
-            nodeConsts.addToClass(el);
-            this.add(el);
+            this.add(createCachedDataClass(instr, consts));
+        }
+        if (model.epilogExceptional != null) {
+            this.add(createCachedDataClass(model.epilogExceptional.operation.instruction, consts));
         }
         consts.addElementsTo(this);
 
@@ -571,6 +551,33 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         b.end(2);
 
         return ex;
+    }
+
+    private CodeTypeElement createCachedDataClass(InstructionModel instr, StaticConstants consts) {
+        NodeConstants nodeConsts = new NodeConstants();
+        BytecodeDSLNodeGeneratorPlugs plugs = new BytecodeDSLNodeGeneratorPlugs(BytecodeRootNodeElement.this, instr);
+        FlatNodeGenFactory factory = new FlatNodeGenFactory(context, GeneratorMode.DEFAULT, instr.nodeData, consts, nodeConsts, plugs);
+
+        CodeTypeElement el = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, cachedDataClassName(instr));
+        el.setSuperClass(types.Node);
+        factory.create(el);
+
+        List<ExecutableElement> cachedExecuteMethods = new ArrayList<>();
+        cachedExecuteMethods.add(createCachedExecute(plugs, factory, el, instr));
+        for (InstructionModel quickening : instr.getFlattenedQuickenedInstructions()) {
+            cachedExecuteMethods.add(createCachedExecute(plugs, factory, el, quickening));
+        }
+        processCachedNode(el);
+        el.getEnclosedElements().addAll(0, cachedExecuteMethods);
+
+        CodeExecutableElement quicken = plugs.getQuickenMethod();
+        if (quicken != null) {
+            el.getEnclosedElements().add(quicken);
+        }
+
+        nodeConsts.addToClass(el);
+
+        return el;
     }
 
     /**
@@ -13689,10 +13696,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             method.addParameter(new CodeVariableElement(types.AbstractTruffleException, "exception"));
             method.addParameter(new CodeVariableElement(type(int.class), "nodeId"));
 
-            InstructionModel instr = model.epilogExceptional.operation.instruction;
-
             CodeTreeBuilder b = method.createBuilder();
-            TypeMirror cachedType = getCachedDataClassType(instr);
+            TypeMirror cachedType = getCachedDataClassType(model.epilogExceptional.operation.instruction);
             if (tier.isCached()) {
                 b.declaration(cachedType, "node", "this.epilogExceptionalNode_");
             }
@@ -13700,7 +13705,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             List<CodeVariableElement> extraParams = createExtraParameters();
             buildCallExecute(b, model.epilogExceptional.operation.instruction, "exception", extraParams);
             return method;
-
         }
 
         private CodeExecutableElement createDoTagExceptional() {
@@ -15564,10 +15568,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             // and not the stack frame.
             b.string(localFrame());
 
-            // The uncached version takes all of its parameters. Other versions compute them.
             if (evaluatedArg != null) {
                 b.string(evaluatedArg);
             } else if (tier.isUncached()) {
+                // The uncached version takes all of its parameters. Other versions compute them.
                 List<InstructionImmediate> constants = instr.getImmediates(ImmediateKind.CONSTANT);
                 for (int i = 0; i < instr.signature.constantOperandsBeforeCount; i++) {
                     TypeMirror constantOperandType = instr.operation.constantOperands.before().get(i).type();
