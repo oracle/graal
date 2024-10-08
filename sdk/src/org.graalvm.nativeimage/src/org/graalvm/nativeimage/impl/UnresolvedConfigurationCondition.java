@@ -53,6 +53,10 @@ public final class UnresolvedConfigurationCondition implements Comparable<Unreso
     private final String typeName;
     private final boolean runtimeChecked;
 
+    public static UnresolvedConfigurationCondition create(String typeName) {
+        return create(typeName, true);
+    }
+
     public static UnresolvedConfigurationCondition create(String typeName, boolean runtimeChecked) {
         Objects.requireNonNull(typeName);
         if (JAVA_LANG_OBJECT_REACHED.getTypeName().equals(typeName)) {
