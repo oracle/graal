@@ -57,8 +57,8 @@ final class BasicCollectionPolicies {
         }
 
         @Override
-        public boolean shouldCollectOnAllocation() {
-            UnsignedWord youngUsed = HeapImpl.getAccounting().getYoungUsedBytes();
+        public boolean shouldCollectOnAllocation(UnsignedWord allocationSize) {
+            UnsignedWord youngUsed = HeapImpl.getAccounting().getYoungUsedBytes().add(allocationSize);
             return youngUsed.aboveOrEqual(getMaximumYoungGenerationSize());
         }
 
@@ -243,7 +243,7 @@ final class BasicCollectionPolicies {
     public static final class NeverCollect extends BasicPolicy {
 
         @Override
-        public boolean shouldCollectOnAllocation() {
+        public boolean shouldCollectOnAllocation(UnsignedWord allocationSize) {
             throw VMError.shouldNotReachHere("Caller is supposed to be aware of never-collect policy");
         }
 

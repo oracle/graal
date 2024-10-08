@@ -119,7 +119,7 @@ public interface CollectionPolicy {
      * {@code true} will initiate a safepoint during which {@link #shouldCollectCompletely} will be
      * called followed by the collection.
      */
-    boolean shouldCollectOnAllocation();
+    boolean shouldCollectOnAllocation(UnsignedWord allocationSize);
 
     /**
      * Called when an application provides a hint to the GC that it might be a good time to do a

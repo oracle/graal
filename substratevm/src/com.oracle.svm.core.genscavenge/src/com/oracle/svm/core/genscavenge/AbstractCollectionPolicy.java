@@ -87,11 +87,11 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     }
 
     @Override
-    public boolean shouldCollectOnAllocation() {
+    public boolean shouldCollectOnAllocation(UnsignedWord allocationSize) {
         if (sizes == null) {
             return false; // updateSizeParameters() has never been called
         }
-        UnsignedWord edenUsed = HeapImpl.getAccounting().getEdenUsedBytes();
+        UnsignedWord edenUsed = HeapImpl.getAccounting().getEdenUsedBytes().add(allocationSize);
         return edenUsed.aboveOrEqual(edenSize);
     }
 
