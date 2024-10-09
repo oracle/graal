@@ -68,9 +68,16 @@ import jdk.graal.compiler.api.replacements.Fold;
  */
 @AutomaticallyRegisteredImageSingleton
 public class IsolateArgumentParser {
-    private static final RuntimeOptionKey<?>[] OPTIONS = {SubstrateGCOptions.MinHeapSize, SubstrateGCOptions.MaxHeapSize, SubstrateGCOptions.MaxNewSize, SubstrateOptions.ActiveProcessorCount,
-                    SubstrateGCOptions.ReservedAddressSpaceSize, SubstrateOptions.ConcealedOptions.AutomaticReferenceHandling, SubstrateOptions.ConcealedOptions.UsePerfData,
-                    SubstrateOptions.ConcealedOptions.MaxRAM};
+    private static final RuntimeOptionKey<?>[] OPTIONS = {
+                    SubstrateGCOptions.MinHeapSize,
+                    SubstrateGCOptions.MaxHeapSize,
+                    SubstrateGCOptions.MaxNewSize,
+                    SubstrateGCOptions.ReservedAddressSpaceSize,
+                    SubstrateOptions.ActiveProcessorCount,
+                    SubstrateOptions.ConcealedOptions.AutomaticReferenceHandling,
+                    SubstrateOptions.ConcealedOptions.UsePerfData,
+                    SubstrateOptions.ConcealedOptions.MaxRAM
+    };
     private static final CGlobalData<CCharPointer> OPTION_NAMES = CGlobalDataFactory.createBytes(IsolateArgumentParser::createOptionNames);
     private static final CGlobalData<CIntPointer> OPTION_NAME_POSITIONS = CGlobalDataFactory.createBytes(IsolateArgumentParser::createOptionNamePosition);
     private static final CGlobalData<CCharPointer> OPTION_TYPES = CGlobalDataFactory.createBytes(IsolateArgumentParser::createOptionTypes);
