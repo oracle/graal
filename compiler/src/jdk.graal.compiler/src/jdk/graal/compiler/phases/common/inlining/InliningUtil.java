@@ -74,7 +74,6 @@ import jdk.graal.compiler.nodes.EndNode;
 import jdk.graal.compiler.nodes.FixedGuardNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FrameState;
-import jdk.graal.compiler.nodes.GraphState.GuardsStage;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.InliningLog;
 import jdk.graal.compiler.nodes.Invoke;
@@ -910,7 +909,7 @@ public class InliningUtil extends ValueMergeUtil {
             }
             frameState.replaceAndDelete(stateAfterException);
             return stateAfterException;
-        } else if ((frameState.bci == BytecodeFrame.UNWIND_BCI && frameState.graph().getGuardsStage() == GuardsStage.FLOATING_GUARDS) ||
+        } else if ((frameState.bci == BytecodeFrame.UNWIND_BCI && frameState.graph().getGuardsStage().allowsFloatingGuards()) ||
                         frameState.bci == BytecodeFrame.AFTER_EXCEPTION_BCI) {
             /*
              * This path converts the frame states relevant for exception unwinding to
@@ -1074,7 +1073,7 @@ public class InliningUtil extends ValueMergeUtil {
     }
 
     private static DeoptimizeNode addDeoptimizeNode(StructuredGraph graph, DeoptimizationAction action, DeoptimizationReason reason) {
-        GraalError.guarantee(graph.getGuardsStage() == GuardsStage.FLOATING_GUARDS, "Cannot introduce speculative deoptimization when Graal is used with fixed guards");
+        GraalError.guarantee(graph.getGuardsStage().allowsFloatingGuards(), "Cannot introduce speculative deoptimization when Graal is used with fixed guards");
         return graph.add(new DeoptimizeNode(action, reason));
     }
 
