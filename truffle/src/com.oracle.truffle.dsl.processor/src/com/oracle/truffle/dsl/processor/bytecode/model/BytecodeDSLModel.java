@@ -125,7 +125,8 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public String defaultLocalValue;
     public DSLExpression defaultLocalValueExpression;
 
-    public ExecutableElement constructor;
+    public ExecutableElement fdConstructor;
+    public ExecutableElement fdBuilderConstructor;
     public ExecutableElement interceptControlFlowException;
     public ExecutableElement interceptInternalException;
     public ExecutableElement interceptTruffleException;
