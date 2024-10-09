@@ -833,8 +833,8 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
     private final int buildIndex;
     private CloneReferenceList<SLBytecodeRootNodeGen> clones;
 
-    private SLBytecodeRootNodeGen(SLLanguage language, FrameDescriptor frameDescriptor, BytecodeRootNodesImpl nodes, int maxLocals, int numLocals, int buildIndex, byte[] bytecodes, Object[] constants, int[] handlers, int[] locals, int[] sourceInfo, List<Source> sources, int numNodes, TagRootNode tagRoot) {
-        super(language, frameDescriptor);
+    private SLBytecodeRootNodeGen(SLLanguage language, com.oracle.truffle.api.frame.FrameDescriptor.Builder builder, BytecodeRootNodesImpl nodes, int maxLocals, int numLocals, int buildIndex, byte[] bytecodes, Object[] constants, int[] handlers, int[] locals, int[] sourceInfo, List<Source> sources, int numNodes, TagRootNode tagRoot) {
+        super(language, builder.build());
         this.nodes = nodes;
         this.maxLocals = maxLocals;
         this.numLocals = numLocals;
@@ -8854,7 +8854,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         public void beginRoot() {
             if (serialization != null) {
                 try {
-                    SerializationRootNode node = new SerializationRootNode(new FrameDescriptor(), serialization.depth, checkOverflowShort(serialization.rootCount++, "Root node count"));
+                    SerializationRootNode node = new SerializationRootNode(FrameDescriptor.newBuilder(), serialization.depth, checkOverflowShort(serialization.rootCount++, "Root node count"));
                     serialization.rootStack.push(node);
                     serialization.builtNodes.add(node);
                     serialization.buffer.writeShort(SerializationState.CODE_BEGIN_ROOT);
@@ -8991,7 +8991,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             } else {
                 com.oracle.truffle.api.frame.FrameDescriptor.Builder frameDescriptorBuilder = FrameDescriptor.newBuilder();
                 frameDescriptorBuilder.addSlots(maxStackHeight + maxLocals + USER_LOCALS_START_INDEX, FrameSlotKind.Illegal);
-                result = new SLBytecodeRootNodeGen(language, frameDescriptorBuilder.build(), nodes, maxLocals + USER_LOCALS_START_INDEX, numLocals, operationData.index, bytecodes_, constants_, handlers_, locals_, sourceInfo_, sources_, numNodes_, tagRoot_);
+                result = new SLBytecodeRootNodeGen(language, frameDescriptorBuilder, nodes, maxLocals + USER_LOCALS_START_INDEX, numLocals, operationData.index, bytecodes_, constants_, handlers_, locals_, sourceInfo_, sources_, numNodes_, tagRoot_);
                 assert operationData.index <= numRoots;
                 builtNodes.set(operationData.index, result);
             }
@@ -14034,8 +14034,8 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             private final int contextDepth;
             private final int rootIndex;
 
-            private SerializationRootNode(FrameDescriptor frameDescriptor, int contextDepth, int rootIndex) {
-                super(null, frameDescriptor);
+            private SerializationRootNode(com.oracle.truffle.api.frame.FrameDescriptor.Builder builder, int contextDepth, int rootIndex) {
+                super(null, builder.build());
                 this.contextDepth = contextDepth;
                 this.rootIndex = rootIndex;
             }

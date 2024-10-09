@@ -478,7 +478,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
     private CodeExecutableElement createConstructor(CodeTypeElement initialBytecodeNode) {
         CodeExecutableElement ctor = new CodeExecutableElement(Set.of(PRIVATE), null, this.getSimpleName().toString());
         ctor.addParameter(new CodeVariableElement(model.languageClass, "language"));
-        ctor.addParameter(new CodeVariableElement(types.FrameDescriptor, "frameDescriptor"));
+        ctor.addParameter(new CodeVariableElement(types.FrameDescriptor_Builder, "builder"));
         ctor.addParameter(new CodeVariableElement(bytecodeRootNodesImpl.asType(), "nodes"));
         ctor.addParameter(new CodeVariableElement(type(int.class), "maxLocals"));
         if (usesLocalTags()) {
@@ -495,7 +495,11 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         // super call
         b.startStatement().startCall("super");
         b.string("language");
-        b.string("frameDescriptor");
+        if (model.fdBuilderConstructor != null) {
+            b.string("builder");
+        } else {
+            b.string("builder.build()");
+        }
         b.end(2);
 
         b.statement("this.nodes = nodes");
@@ -4170,7 +4174,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 if (operation.kind == OperationKind.ROOT) {
                     b.startDeclaration(serializationRootNode.asType(), "node");
                     b.startNew(serializationRootNode.asType());
-                    b.startNew(types.FrameDescriptor).end();
+                    b.startStaticCall(types.FrameDescriptor, "newBuilder").end();
                     b.string("serialization.depth");
                     b.startCall("checkOverflowShort").string("serialization.rootCount++").doubleQuote("Root node count").end();
                     b.end();
@@ -4916,7 +4920,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             b.startAssign("result").startNew(BytecodeRootNodeElement.this.asType());
             b.string("language");
-            b.string("frameDescriptorBuilder.build()");
+            b.string("frameDescriptorBuilder");
             b.string("nodes"); // BytecodeRootNodesImpl
             b.string(maxLocals());
             if (usesLocalTags()) {
@@ -7937,7 +7941,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             private CodeExecutableElement createConstructor(CodeTypeElement serializationRoot, List<CodeVariableElement> fields) {
                 CodeExecutableElement ctor = new CodeExecutableElement(Set.of(PRIVATE), null, serializationRoot.getSimpleName().toString());
-                ctor.addParameter(new CodeVariableElement(types.FrameDescriptor, "frameDescriptor"));
+                ctor.addParameter(new CodeVariableElement(types.FrameDescriptor_Builder, "builder"));
                 for (CodeVariableElement field : fields) {
                     ctor.addParameter(new CodeVariableElement(field.asType(), field.getName().toString()));
                 }
@@ -7946,7 +7950,11 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 // super call
                 b.startStatement().startCall("super");
                 b.string("null"); // language not needed for serialization
-                b.string("frameDescriptor");
+                if (model.fdBuilderConstructor != null) {
+                    b.string("builder");
+                } else {
+                    b.string("builder.build()");
+                }
                 b.end(2);
 
                 for (CodeVariableElement field : fields) {
