@@ -597,7 +597,7 @@ public abstract class TypeFlow<T> {
     }
 
     protected void notifyUseOfSaturation(PointsToAnalysis bb, TypeFlow<?> use) {
-        use.onInputSaturated(bb, this);
+        use.markInputSaturated(bb, this);
     }
 
     protected boolean doAddUse(PointsToAnalysis bb, TypeFlow<?> use) {
@@ -671,7 +671,7 @@ public abstract class TypeFlow<T> {
     }
 
     protected void notifyObserverOfSaturation(PointsToAnalysis bb, TypeFlow<?> observer) {
-        observer.onObservedSaturated(bb, this);
+        observer.markObservedSaturated(bb, this);
     }
 
     private boolean doAddObserver(PointsToAnalysis bb, TypeFlow<?> observer) {
@@ -926,6 +926,22 @@ public abstract class TypeFlow<T> {
     }
 
     /**
+     * Notifies this flow that its input has saturated, but only runs the
+     * {@link TypeFlow#onInputSaturated}} if this flow is enabled. Otherwise, the execution of
+     * callback is delayed to {@link TypeFlow#enableFlow}.
+     */
+    private void markInputSaturated(PointsToAnalysis bb, TypeFlow<?> input) {
+        if (!isFlowEnabled()) {
+            inputSaturated = true;
+            /* Another thread could enable the flow in the meantime, so check again. */
+            if (!isFlowEnabled()) {
+                return;
+            }
+        }
+        onInputSaturated(bb, input);
+    }
+
+    /**
      * Notified by an input that it is saturated and it will stop sending updates.
      */
     protected void onInputSaturated(PointsToAnalysis bb, @SuppressWarnings("unused") TypeFlow<?> input) {
@@ -935,19 +951,28 @@ public abstract class TypeFlow<T> {
             return;
         }
 
-        if (!isFlowEnabled()) {
-            inputSaturated = true;
-            /* Another thread could enable the flow in the meantime, so check again. */
-            if (!isFlowEnabled()) {
-                return;
-            }
-        }
         /*
          * By default when a type flow is notified that one of its inputs is saturated it will just
          * pass this information to its uses and observers and unlink them. Subclases should
          * override this method and provide custom behavior.
          */
         onSaturated(bb);
+    }
+
+    /**
+     * Notifies this flow that its observed flow has saturated, but only runs the
+     * {@link TypeFlow#onObservedSaturated}} if this flow is enabled. Otherwise, the execution of
+     * callback is delayed to {@link TypeFlow#enableFlow}.
+     */
+    private void markObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
+        if (!isFlowEnabled()) {
+            observedSaturated = true;
+            /* Another thread could enable the flow in the meantime, so check again. */
+            if (!isFlowEnabled()) {
+                return;
+            }
+        }
+        onObservedSaturated(bb, observed);
     }
 
     /**
