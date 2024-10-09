@@ -438,6 +438,8 @@ NO_INLINE static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_i
   {
     features->fAVX = 1;
     features->fVZEROUPPER = 1;
+    if (_cpuid_info->sefsl1_cpuid7_eax.bits.sha512 != 0)
+      features->fSHA512 = 1;
     if (_cpuid_info->std_cpuid1_ecx.bits.f16c != 0)
       features->fF16C = 1;
     if (_cpuid_info->sef_cpuid7_ebx.bits.avx2 != 0)

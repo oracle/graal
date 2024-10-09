@@ -274,7 +274,8 @@ typedef union {
 typedef union {
   uint32_t value;
   struct {
-    uint32_t             : 23,
+    uint32_t    sha512   : 1,
+                         : 22,
                 avx_ifma : 1,
                          : 8;
   } bits;
