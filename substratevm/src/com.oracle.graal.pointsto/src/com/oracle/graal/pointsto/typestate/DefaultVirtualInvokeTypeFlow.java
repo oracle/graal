@@ -138,14 +138,6 @@ final class DefaultVirtualInvokeTypeFlow extends AbstractVirtualInvokeTypeFlow {
 
     @Override
     public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
-        if (!isFlowEnabled()) {
-            observedSaturated = true;
-            /* Another thread could enable the flow in the meantime, so check again. */
-            if (!isFlowEnabled()) {
-                return;
-            }
-        }
-
         if (!setSaturated()) {
             return;
         }
