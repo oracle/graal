@@ -59,7 +59,7 @@ class NetBeansProject(mx.ArchivableProject, mx.ClasspathDependency):
     def classpath_repr(self, resolve=True):
         src = os.path.join(self.dir, 'IdealGraphVisualizer', self.name, 'src')
         if not os.path.exists(src):
-            mx.abort("Cannot find {0}".format(src))
+            mx.abort(f"Cannot find {src}")
         return src
 
     def output_dir(self, relative=False):
@@ -107,7 +107,7 @@ class NetBeansBuildTask(mx.BuildTask):
         self.vmbuild = vmbuild
 
     def __str__(self):
-        return 'Building NetBeans for {}'.format(self.subject)
+        return f'Building NetBeans for {self.subject}'
 
     def needsBuild(self, newestInput):
         return (True, 'Let us re-build everytime')
@@ -123,24 +123,22 @@ class NetBeansBuildTask(mx.BuildTask):
                 lib_path = lib.classpath_repr(resolve=False)
                 link_name = os.path.join(libs_dir, os.path.basename(lib_path))
                 from_path = os.path.relpath(lib_path, os.path.dirname(link_name))
-                mx.log("Symlink {0}, {1}".format(from_path, link_name))
+                mx.log(f"Symlink {from_path}, {link_name}")
                 os.symlink(from_path, link_name)
         mx.log('Symlinks must be copied!')
 
         env = os.environ.copy()
         env["MAVEN_OPTS"] = "-Djava.awt.headless=true -Dpolyglot.engine.WarnInterpreterOnly=false"
 
-        mx.logv('Setting PATH to {}'.format(os.environ["PATH"]))
-        mx.logv('Calling java -version')
-        mx.run(['java', '-version'])
+        mx.logv(f"Setting PATH to {os.environ['PATH']}")
 
-        mx.log('Invoking maven for {} for {} in {}'.format(' '.join(self.subject.build_commands), self.subject.name, self.subject.baseDir))
+        mx.log(f"Invoking maven for {' '.join(self.subject.build_commands)} for {self.subject.name} in {self.subject.baseDir}")
         run_maven(self.subject.build_commands, nonZeroIsFatal=True, cwd=self.subject.baseDir, env=env)
 
         for output_dir in self.subject.output_dirs:
             os.chmod(os.path.join(self.subject.output_dir(), output_dir, 'bin', 'idealgraphvisualizer'), 0o755)
 
-        mx.log('...finished build of {}'.format(self.subject))
+        mx.log(f'...finished build of {self.subject}')
 
     def clean(self, forBuild=False):
         if self.subject.mxLibs:

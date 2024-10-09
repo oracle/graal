@@ -26,6 +26,7 @@ package jdk.graal.compiler.graphio.parsing.model;
 
 import java.lang.ref.WeakReference;
 import java.util.Comparator;
+import java.util.Objects;
 import java.util.WeakHashMap;
 
 public class InputEdge {
@@ -44,10 +45,13 @@ public class InputEdge {
 
     private final char toIndex;
     private final char fromIndex;
+
     private final int from;
     private final int to;
+    private final int listIndex;
     private final String label;
     private final String type;
+
     private State state;
     private int hashCode = -1;
 
@@ -60,13 +64,17 @@ public class InputEdge {
     }
 
     public InputEdge(char fromIndex, char toIndex, int from, int to, String label, String type) {
-        this(fromIndex, toIndex, from, to, label, type, State.SAME);
+        this(fromIndex, toIndex, from, to, -1, label, type, State.SAME);
+    }
+
+    public InputEdge(char fromIndex, char toIndex, int from, int to, int listIndex, String label, String type) {
+        this(fromIndex, toIndex, from, to, listIndex, label, type, State.SAME);
     }
 
     static WeakHashMap<InputEdge, WeakReference<InputEdge>> immutableCache = new WeakHashMap<>();
 
-    public static synchronized InputEdge createImmutable(char fromIndex, char toIndex, int from, int to, String label, String type) {
-        InputEdge edge = new InputEdge(fromIndex, toIndex, from, to, label, type, State.IMMUTABLE);
+    public static synchronized InputEdge createImmutable(char fromIndex, char toIndex, int from, int to, int listIndex, String label, String type) {
+        InputEdge edge = new InputEdge(fromIndex, toIndex, from, to, listIndex, label, type, State.IMMUTABLE);
         WeakReference<InputEdge> result = immutableCache.get(edge);
         if (result != null) {
             InputEdge edge2 = result.get();
@@ -78,18 +86,19 @@ public class InputEdge {
         return edge;
     }
 
-    public InputEdge(char fromIndex, char toIndex, int from, int to, String label, String type, State state) {
+    public InputEdge(char fromIndex, char toIndex, int from, int to, int listIndex, String label, String type, State state) {
         this.toIndex = toIndex;
         this.fromIndex = fromIndex;
         this.from = from;
         this.to = to;
+        this.listIndex = listIndex;
         this.state = state;
         this.label = label;
         this.type = type;
 
-        int hash = (from << 20 | to << 8 | toIndex << 4 | fromIndex);
+        int hash = Objects.hash(from, to, fromIndex, toIndex, listIndex);
         if (state == State.IMMUTABLE) {
-            hash = hash << 5 ^ label.hashCode();
+            hash = Objects.hash(hash, label);
         }
         this.hashCode = hash;
     }
@@ -108,7 +117,7 @@ public class InputEdge {
         this.state = x;
         // terminal state
         if (state == State.IMMUTABLE) {
-            hashCode = hashCode << 5 ^ label.hashCode();
+            hashCode = Objects.hash(hashCode, label);
         }
     }
 
@@ -120,10 +129,6 @@ public class InputEdge {
         return fromIndex;
     }
 
-    public String getName() {
-        return "in" + toIndex;
-    }
-
     public int getFrom() {
         return from;
     }
@@ -132,8 +137,20 @@ public class InputEdge {
         return to;
     }
 
+    public int getListIndex() {
+        return listIndex;
+    }
+
     public String getLabel() {
         return label;
+    }
+
+    public String getDisplayLabel() {
+        String ret = getLabel();
+        if (listIndex >= 0) {
+            ret = ret + "[" + listIndex + "]";
+        }
+        return ret;
     }
 
     public String getType() {
@@ -142,11 +159,10 @@ public class InputEdge {
 
     @Override
     public boolean equals(Object o) {
-        if (!(o instanceof InputEdge)) {
+        if (!(o instanceof InputEdge conn2)) {
             return false;
         }
-        InputEdge conn2 = (InputEdge) o;
-        boolean result = conn2.fromIndex == fromIndex && conn2.toIndex == toIndex && conn2.from == from && conn2.to == to;
+        boolean result = conn2.fromIndex == fromIndex && conn2.toIndex == toIndex && conn2.from == from && conn2.to == to && conn2.listIndex == listIndex;
         if (result && (state == State.IMMUTABLE || conn2.state == State.IMMUTABLE)) {
             // Immutable instances must be exactly the same
             return conn2.state == state && conn2.label.equals(label);

@@ -1047,7 +1047,7 @@ public class BinaryReader implements GraphParser, ModelControl {
         }
     }
 
-    private void createEdges(int id, int preds, List<? extends Port> portList, EdgeBuilder factory) throws IOException {
+    private void createEdges(int id, int startNum, List<? extends Port> portList, EdgeBuilder factory) throws IOException {
         int portNum = 0;
         for (Port p : portList) {
             if (p.isList) {
@@ -1055,18 +1055,14 @@ public class BinaryReader implements GraphParser, ModelControl {
                 for (int j = 0; j < size; j++) {
                     int in = dataSource.readInt();
                     p.ids.add(in);
-                    if (in >= 0) {
-                        factory.edge(p, in, id, (char) (preds + portNum), j);
-                        portNum++;
-                    }
+                    factory.edge(p, in, id, (char) (startNum + portNum), j);
+                    portNum++;
                 }
             } else {
                 int in = dataSource.readInt();
                 p.ids.add(in);
-                if (in >= 0) {
-                    factory.edge(p, in, id, (char) (preds + portNum), -1);
-                    portNum++;
-                }
+                factory.edge(p, in, id, (char) (startNum + portNum), -1);
+                portNum++;
             }
             p.ids = new ArrayList<>();
         }
