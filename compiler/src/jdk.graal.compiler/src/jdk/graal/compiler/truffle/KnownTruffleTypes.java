@@ -39,6 +39,7 @@ import java.util.Set;
 import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -215,10 +216,8 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
         Throwable_jfrTracing = getThrowableJFRTracingField(metaAccess);
     }
 
-    public static final int JDK = Runtime.version().feature();
-
     private static boolean throwableUsesJFRTracing() {
-        return JDK >= 22;
+        return JavaVersionUtil.JAVA_SPEC >= 22;
     }
 
     private static ResolvedJavaField getThrowableJFRTracingField(MetaAccessProvider metaAccess) {

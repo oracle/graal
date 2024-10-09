@@ -461,7 +461,7 @@ public class NativeImageGeneratorRunner {
                                             " 1) Recompile the source files for your application using Java %s, then try running native-image again%n" +
                                             " 2) Use a version of native-image corresponding to the version of Java with which you compiled the source files for your application%n%n" +
                                             "Root cause: %s",
-                                            className, Runtime.version().feature(), ex);
+                                            className, JavaVersionUtil.JAVA_SPEC, ex);
                         } else {
                             throw UserError.abort(ex.getMessage());
                         }
