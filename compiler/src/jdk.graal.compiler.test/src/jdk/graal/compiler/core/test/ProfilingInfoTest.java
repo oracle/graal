@@ -26,11 +26,11 @@ package jdk.graal.compiler.core.test;
 
 import java.io.Serializable;
 
-import jdk.graal.compiler.test.SubprocessUtil;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
+import jdk.graal.compiler.test.SubprocessUtil;
 import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -196,7 +196,6 @@ public class ProfilingInfoTest extends GraalCompilerTest {
 
     @Test
     public void testExceptionSeen() {
-        Assume.assumeTrue("GR-45918", Runtime.version().feature() < 21);
         // NullPointerException
         ProfilingInfo info = profile("nullPointerExceptionSnippet", 5);
         Assert.assertEquals(TriState.FALSE, info.getExceptionSeen(1));
