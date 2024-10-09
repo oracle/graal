@@ -87,20 +87,22 @@ public class ModelBuilder implements Builder {
         final int from;
         final int to;
         final char num;
+        final int listIndex;
         final String label;
         final String type;
         final boolean input;
 
         EdgeInfo(int from, int to) {
-            this(from, to, (char) 0, null, null, false);
+            this(from, to, (char) 0, -1, null, null, false);
         }
 
-        EdgeInfo(int from, int to, char num, String label, String type, boolean input) {
+        EdgeInfo(int from, int to, char num, int listIndex, String label, String type, boolean input) {
             this.from = from;
             this.to = to;
             this.label = label;
             this.type = type;
             this.num = num;
+            this.listIndex = listIndex;
             this.input = input;
         }
 
@@ -112,6 +114,10 @@ public class ModelBuilder implements Builder {
             return to;
         }
 
+        public int getListIndex() {
+            return listIndex;
+        }
+
         @Override
         public boolean equals(Object other) {
             if (other == null) {
@@ -121,12 +127,13 @@ public class ModelBuilder implements Builder {
                 return false;
             }
             EdgeInfo otherEdge = (EdgeInfo) other;
-            return from == otherEdge.from && to == otherEdge.to && num == otherEdge.num && input == otherEdge.input && Objects.equals(label, otherEdge.label) && Objects.equals(type, otherEdge.type);
+            return from == otherEdge.from && to == otherEdge.to && num == otherEdge.num && listIndex == otherEdge.listIndex && input == otherEdge.input && Objects.equals(label, otherEdge.label) &&
+                            Objects.equals(type, otherEdge.type);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(from, to, label);
+            return Objects.hash(from, to, listIndex, label);
         }
     }
 
@@ -335,10 +342,9 @@ public class ModelBuilder implements Builder {
     }
 
     protected void connectModifiedProperties(FolderElement g) {
-        if (!(g instanceof Properties.MutableOwner)) {
+        if (!(g instanceof Properties.MutableOwner<?> mu)) {
             return;
         }
-        Properties.MutableOwner<?> mu = (Properties.MutableOwner<?>) g;
         GraphDocument doc = g.getOwner();
         if (doc != null) {
             Properties props = doc.getModifiedProperties(g);
@@ -357,8 +363,8 @@ public class ModelBuilder implements Builder {
         for (int i = 0; i < args.length; ++i) {
             if (args[i] instanceof BinaryReader.Klass) {
                 String className = args[i].toString();
-                String s = className.substring(className.lastIndexOf(".") + 1); // strip the package
-                                                                                // name
+                // strip the package name
+                String s = className.substring(className.lastIndexOf(".") + 1);
                 int innerClassPos = s.indexOf('$');
                 if (innerClassPos > 0) {
                     /* Remove inner class name. */
@@ -721,8 +727,7 @@ public class ModelBuilder implements Builder {
                     String length = m.group(4);
                     if (prop == null) {
                         result = "?";
-                    } else if (length != null && prop instanceof LengthToString) {
-                        LengthToString lengthProp = (LengthToString) prop;
+                    } else if (length != null && prop instanceof LengthToString lengthProp) {
                         switch (length) {
                             case "s":
                                 result = lengthProp.toString(Length.S);
@@ -777,12 +782,19 @@ public class ModelBuilder implements Builder {
         }
     }
 
+    protected static String inputEdgeType(Port p) {
+        EnumValue type = ((TypedPort) p).type;
+        return type == null ? null : type.toString(Length.S);
+    }
+
     @Override
     public void inputEdge(Port p, int from, int to, char num, int index) {
         assert currentNode != null;
-        String label = (p.isList && index >= 0) ? p.name + "[" + index + "]" : p.name;
-        EnumValue type = ((TypedPort) p).type;
-        EdgeInfo ei = new EdgeInfo(from, to, num, label, type == null ? null : type.toString(Length.S), true);
+        // Ignore null edges
+        if (from < 0) {
+            return;
+        }
+        EdgeInfo ei = new EdgeInfo(from, to, num, index, p.name, inputEdgeType(p), true);
         inputEdges.add(ei);
         nodeEdges.add(ei);
     }
@@ -790,14 +802,17 @@ public class ModelBuilder implements Builder {
     @Override
     public void successorEdge(Port p, int from, int to, char num, int index) {
         assert currentNode != null;
-        String label = (p.isList && index >= 0) ? p.name + "[" + index + "]" : p.name;
-        EdgeInfo ei = new EdgeInfo(to, from, num, label, InputEdge.SUCCESSOR_EDGE_TYPE, false);
+        // Ignore null edges
+        if (from < 0) {
+            return;
+        }
+        EdgeInfo ei = new EdgeInfo(to, from, num, index, p.name, InputEdge.SUCCESSOR_EDGE_TYPE, false);
         successorEdges.add(ei);
         nodeEdges.add(ei);
     }
 
-    protected InputEdge immutableEdge(char fromIndex, char toIndex, int from, int to, String label, String type) {
-        return InputEdge.createImmutable(fromIndex, toIndex, from, to, label, type);
+    protected InputEdge immutableEdge(char fromIndex, char toIndex, int from, int to, int listIndex, String label, String type) {
+        return InputEdge.createImmutable(fromIndex, toIndex, from, to, listIndex, label, type);
     }
 
     @Override
@@ -818,13 +833,13 @@ public class ModelBuilder implements Builder {
             if (currentGraph.getNode(e.to) == null) {
                 reportLoadingError(ErrorMessages.edgeEndNodeNotExists(e.label, e.to));
             }
-            graph.addEdge(immutableEdge(fromIndex, toIndex, e.from, e.to, e.label, e.type));
+            graph.addEdge(immutableEdge(fromIndex, toIndex, e.from, e.to, e.listIndex, e.label, e.type));
         }
         for (EdgeInfo e : inputEdges) {
             assert e.input;
             char fromIndex = (char) (nodesWithSuccessor.contains(graph.getNode(e.from)) ? 1 : 0);
             char toIndex = e.num;
-            graph.addEdge(immutableEdge(fromIndex, toIndex, e.from, e.to, e.label, e.type));
+            graph.addEdge(immutableEdge(fromIndex, toIndex, e.from, e.to, e.listIndex, e.label, e.type));
         }
     }
 
