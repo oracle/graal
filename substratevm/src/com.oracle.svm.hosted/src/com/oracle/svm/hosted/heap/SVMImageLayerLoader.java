@@ -392,6 +392,15 @@ class ImageSingletonLoaderImpl implements ImageSingletonLoader {
     }
 
     @Override
+    public List<Boolean> readBoolList(String keyName) {
+        List<Object> value = cast(keyStore.get(keyName));
+        String type = cast(value.get(0));
+        assert type.equals("B(") : type;
+        List<Integer> internalValue = cast(value.get(1));
+        return internalValue.stream().map(e -> e == 1).toList();
+    }
+
+    @Override
     public int readInt(String keyName) {
         List<Object> value = cast(keyStore.get(keyName));
         String type = cast(value.get(0));

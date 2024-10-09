@@ -238,13 +238,7 @@ public class SVMHost extends HostVM {
         }
 
         enableTrackAcrossLayers = ImageLayerBuildingSupport.buildingSharedLayer();
-        builderModules = getBuilderModules();
-    }
-
-    private static Set<Module> getBuilderModules() {
-        Module m0 = ImageSingletons.lookup(VMFeature.class).getClass().getModule();
-        Module m1 = SVMHost.class.getModule();
-        return m0.equals(m1) ? Set.of(m0) : Set.of(m0, m1);
+        builderModules = ImageSingletons.contains(OpenTypeWorldFeature.class) ? ImageSingletons.lookup(OpenTypeWorldFeature.class).getBuilderModules() : null;
     }
 
     /**
