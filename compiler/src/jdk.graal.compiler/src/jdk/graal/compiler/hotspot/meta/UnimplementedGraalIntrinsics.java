@@ -153,8 +153,7 @@ public final class UnimplementedGraalIntrinsics {
 
         if (jdk >= 24) {
             add(toBeInvestigated, // @formatter:off
-                        "jdk/internal/vm/vector/VectorSupport.selectFromOp(Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$VectorMask;Ljdk/internal/vm/vector/VectorSupport$VectorSelectFromOp;)Ljdk/internal/vm/vector/VectorSupport$Vector;",
-                        "jdk/internal/vm/vector/VectorSupport.wrapShuffleIndexes(Ljava/lang/Class;Ljava/lang/Class;Ljdk/internal/vm/vector/VectorSupport$VectorShuffle;ILjdk/internal/vm/vector/VectorSupport$WrapShuffleIndexesOperation;)Ljdk/internal/vm/vector/VectorSupport$VectorShuffle;");
+                        "jdk/internal/vm/vector/VectorSupport.selectFromOp(Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$VectorMask;Ljdk/internal/vm/vector/VectorSupport$VectorSelectFromOp;)Ljdk/internal/vm/vector/VectorSupport$Vector;");
                         // @formatter:on
         }
 
@@ -201,6 +200,12 @@ public final class UnimplementedGraalIntrinsics {
                         "jdk/internal/vm/vector/VectorSupport.unaryOp(ILjava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$VectorMask;Ljdk/internal/vm/vector/VectorSupport$UnaryOperation;)Ljdk/internal/vm/vector/VectorSupport$Vector;"
                         // @formatter:on
         );
+
+        if (jdk >= 24) {
+            add(enterprise, // @formatter:off
+                           "jdk/internal/vm/vector/VectorSupport.wrapShuffleIndexes(Ljava/lang/Class;Ljava/lang/Class;Ljdk/internal/vm/vector/VectorSupport$VectorShuffle;ILjdk/internal/vm/vector/VectorSupport$WrapShuffleIndexesOperation;)Ljdk/internal/vm/vector/VectorSupport$VectorShuffle;");
+                            // @formatter:on
+        }
     }
 
     /**
