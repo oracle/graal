@@ -33,7 +33,7 @@ from glob import glob
 from contextlib import contextmanager
 from itertools import islice
 from os.path import join, exists, dirname
-import pipes
+import shlex
 from argparse import ArgumentParser
 import fnmatch
 import collections
@@ -684,7 +684,7 @@ def _native_junit(native_image, unittest_args, build_args=None, run_args=None, b
         unittest_image = native_image(['-ea', '-esa'] + build_args + extra_image_args + [macro_junit + '=' + unittest_file] + svm_experimental_options(['-H:Path=' + junit_test_dir]), env=custom_env)
         image_pattern_replacement = unittest_image + ".exe" if mx.is_windows() else unittest_image
         run_args = [arg.replace('${unittest.image}', image_pattern_replacement) for arg in run_args]
-        mx.log('Running: ' + ' '.join(map(pipes.quote, [unittest_image] + run_args)))
+        mx.log('Running: ' + ' '.join(map(shlex.quote, [unittest_image] + run_args)))
 
         if not test_classes_per_run:
             # Run all tests in one go. The default behavior.
