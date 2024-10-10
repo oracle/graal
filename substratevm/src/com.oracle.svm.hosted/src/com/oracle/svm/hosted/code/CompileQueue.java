@@ -426,6 +426,7 @@ public class CompileQueue {
             createSuites();
             try (ProgressReporter.ReporterClosable ac = reporter.printCompiling()) {
                 compileAll();
+                notifyAfterCompile();
             }
 
             metricValues.print(universe.getBigBang().getOptions());
@@ -903,8 +904,6 @@ public class CompileQueue {
         runOnExecutor(this::scheduleEntryPoints);
 
         runOnExecutor(this::scheduleDeoptTargets);
-
-        notifyAfterCompile();
     }
 
     private void notifyAfterCompile() {
