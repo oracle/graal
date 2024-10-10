@@ -3744,7 +3744,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 result.append(" -> void/Object");
             } else if (operation.isVoid || operation.kind == OperationKind.RETURN) {
                 result.append(" -> void");
-            } else if (operation.kind == OperationKind.CUSTOM) {
+            } else if (operation.isCustom()) {
                 result.append(" -> ");
                 result.append(ElementUtils.getSimpleName(
                                 operation.instruction.signature.returnType));
@@ -4472,6 +4472,12 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                          * conversion.
                          */
                         buildEmitBooleanConverterInstruction(b, shortCircuitInstruction);
+                    } else if (!shortCircuitInstruction.shortCircuitModel.convertsOperands()) {
+                        /*
+                         * All operands except the last have been verified to produce booleans. For
+                         * the last operand we need to insert a check.
+                         */
+                        buildEmitInstruction(b, model.checkBooleanInstruction);
                     }
                     // Go through the work list and fill in the branch target for each branch.
                     b.startFor().string("int site : operationData.branchFixupBcis").end().startBlock();
@@ -4650,11 +4656,12 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             } else if (operation.kind == OperationKind.CUSTOM_SHORT_CIRCUIT) {
                 b.startStatement().startCall("afterChild");
                 b.string("true");
-                if (operation.instruction.shortCircuitModel.returnConvertedBoolean()) {
-                    // child bci is location of boolean converter instruction
-                    b.string("bci - " + operation.instruction.shortCircuitModel.booleanConverterInstruction().getInstructionLength());
+                ShortCircuitInstructionModel shortCircuitModel = operation.instruction.shortCircuitModel;
+                if (shortCircuitModel.returnConvertedBoolean()) {
+                    // We emit a boolean converter instruction above. Compute its bci.
+                    b.string("bci - " + shortCircuitModel.booleanConverterInstruction().getInstructionLength());
                 } else {
-                    // child bci is location of instruction producing "fall through" value
+                    // The child bci points to the instruction producing this last value.
                     b.string("operationData.childBci");
                 }
                 b.end(2);
@@ -5753,21 +5760,29 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 for (OperationModel op : groupedOperations.get(BeforeChildKind.SHORT_CIRCUIT)) {
                     b.startCase().tree(createOperationConstant(op)).end().startBlock();
 
+                    ShortCircuitInstructionModel shortCircuitModel = op.instruction.shortCircuitModel;
+
                     emitCastOperationData(b, op, "operationSp - 1");
+                    // Only emit the boolean check between consecutive children.
                     b.startIf().string("childIndex != 0").end().startBlock();
-                    if (!op.instruction.shortCircuitModel.returnConvertedBoolean()) {
-                        // DUP so the boolean converter doesn't clobber the original value.
-                        buildEmitInstruction(b, model.dupInstruction);
+
+                    // If this operation has a converter, convert the value.
+                    if (shortCircuitModel.convertsOperands()) {
+                        if (shortCircuitModel.duplicatesOperandOnStack()) {
+                            buildEmitInstruction(b, model.dupInstruction);
+                        }
+                        buildEmitBooleanConverterInstruction(b, op.instruction);
                     }
 
-                    b.declaration(type(int.class), "converterBci", "bci");
-
-                    buildEmitBooleanConverterInstruction(b, op.instruction);
+                    // Remember the short circuit instruction's bci so we can patch the branch bci.
                     b.startIf().string("this.reachable").end().startBlock();
                     b.statement("operationData.branchFixupBcis.add(bci + " + op.instruction.getImmediate("branch_target").offset() + ")");
                     b.end();
+
+                    // Emit the boolean check.
                     buildEmitInstruction(b, op.instruction, emitShortCircuitArguments(op.instruction));
-                    b.end(); // fallthrough
+
+                    b.end(); // childIndex != 0
 
                     b.statement("break");
                     b.end();
@@ -5843,7 +5858,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 InstructionImmediate immediate = immediates.get(i);
                 args[i] = switch (immediate.kind()) {
                     case BYTECODE_INDEX -> {
-                        if (shortCircuitInstruction.shortCircuitModel.returnConvertedBoolean()) {
+                        if (shortCircuitInstruction.shortCircuitModel.producesBoolean()) {
                             b.statement("int childBci = operationData.childBci");
                             b.startAssert();
                             b.string("childBci != " + UNINIT);
@@ -6172,7 +6187,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             for (int index = 0; index < branchArguments.length; index++) {
                 InstructionImmediate immediate = immedates.get(index);
                 branchArguments[index] = switch (immediate.kind()) {
-                    case BYTECODE_INDEX -> (index == 0) ? UNINIT : "converterBci";
+                    case BYTECODE_INDEX -> UNINIT;
                     case BRANCH_PROFILE -> "allocateBranchProfile()";
                     default -> throw new AssertionError("Unexpected immediate: " + immediate);
                 };
@@ -6501,7 +6516,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             int stackEffect = switch (instr.kind) {
                 case BRANCH, BRANCH_BACKWARD, //
                                 TAG_ENTER, TAG_LEAVE, TAG_LEAVE_VOID, TAG_RESUME, TAG_YIELD, //
-                                LOAD_LOCAL_MATERIALIZED, CLEAR_LOCAL, YIELD -> 0;
+                                LOAD_LOCAL_MATERIALIZED, CLEAR_LOCAL, CHECK_BOOLEAN, YIELD -> 0;
                 case STORE_NULL, LOAD_VARIADIC, MERGE_VARIADIC -> {
                     /*
                      * NB: These instructions *do* have stack effects. However, they are only used
@@ -6525,12 +6540,12 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                      * leaves a single value on the stack.
                      */
                     ShortCircuitInstructionModel shortCircuitInstruction = instr.shortCircuitModel;
-                    if (shortCircuitInstruction.returnConvertedBoolean()) {
-                        // Stack: [..., convertedValue]
-                        yield -1;
-                    } else {
-                        // Stack: [..., value, convertedValue]
+                    if (shortCircuitInstruction.duplicatesOperandOnStack()) {
+                        // Consume the boolean value and pop the DUP'd original value.
                         yield -2;
+                    } else {
+                        // Consume the boolean value.
+                        yield -1;
                     }
                 }
                 default -> throw new UnsupportedOperationException();
@@ -11442,6 +11457,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 if (model.interceptControlFlowException != null) {
                     this.add(createResolveControlFlowException());
                 }
+                if (model.checkBooleanInstruction != null) {
+                    this.add(createDoCheckBoolean());
+                }
             }
 
             if (model.usesBoxingElimination()) {
@@ -13045,7 +13063,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     b.statement("break");
                     break;
                 case BRANCH_FALSE:
-                    String booleanValue = "(Boolean) " + uncheckedGetFrameObject("sp - 1") + " == Boolean.TRUE";
+                    String booleanValue = "(boolean) " + uncheckedGetFrameObject("sp - 1");
                     b.startIf();
                     if (tier.isUncached()) {
                         b.string(booleanValue);
@@ -13101,7 +13119,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     b.string("(boolean) ").string(uncheckedGetFrameObject("sp - 1"));
 
                     b.end().startBlock();
-                    if (shortCircuitInstruction.returnConvertedBoolean()) {
+                    if (shortCircuitInstruction.producesBoolean()) {
                         // Stack: [..., convertedValue]
                         // leave convertedValue on the top of stack
                     } else {
@@ -13113,7 +13131,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     b.startAssign("bci").tree(readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX))).end();
                     b.statement("break");
                     b.end().startElseBlock();
-                    if (shortCircuitInstruction.returnConvertedBoolean()) {
+                    if (shortCircuitInstruction.producesBoolean()) {
                         // Stack: [..., convertedValue]
                         // clear convertedValue
                         b.statement(clearFrame("frame", "sp - 1"));
@@ -13128,6 +13146,11 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     b.statement("bci += " + instr.getInstructionLength());
                     b.statement("break");
                     b.end();
+                    break;
+                case CHECK_BOOLEAN:
+                    b.startStatement().startCall("doCheckBoolean");
+                    b.string("(boolean) ", uncheckedGetFrameObject("sp - 1"));
+                    b.end(2);
                     break;
                 case TAG_RESUME:
                     b.startStatement();
@@ -13557,6 +13580,20 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.statement(setFrameObject("$root.maxLocals", "result"));
             b.startDeclaration(type(int.class), "sp").string("$root.maxLocals + 1").end();
             emitReturnTopOfStack(b);
+            return method;
+
+        }
+
+        private CodeExecutableElement createDoCheckBoolean() {
+            CodeExecutableElement method = new CodeExecutableElement(
+                            Set.of(PRIVATE),
+                            type(void.class), "doCheckBoolean");
+
+            method.addParameter(new CodeVariableElement(type(boolean.class), "booleanValue"));
+
+            CodeTreeBuilder b = method.createBuilder();
+            b.lineComment("A cast is not a valid Java statement, so we cast and pass the result to this trivial method.");
+
             return method;
 
         }

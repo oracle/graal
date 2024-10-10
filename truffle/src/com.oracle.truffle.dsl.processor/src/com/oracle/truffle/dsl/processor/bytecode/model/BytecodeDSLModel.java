@@ -174,6 +174,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public InstructionModel[] loadVariadicInstruction;
     public InstructionModel mergeVariadicInstruction;
     public InstructionModel storeNullInstruction;
+    public InstructionModel checkBooleanInstruction;
     public InstructionModel tagEnterInstruction;
     public InstructionModel tagLeaveValueInstruction;
     public InstructionModel tagLeaveVoidInstruction;
@@ -334,8 +335,8 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         return operation;
     }
 
-    public CustomOperationModel customShortCircuitOperation(OperationKind kind, String name, String javadoc, AnnotationMirror mirror) {
-        OperationModel op = operation(kind, name, javadoc);
+    public CustomOperationModel customShortCircuitOperation(String name, String javadoc, AnnotationMirror mirror) {
+        OperationModel op = operation(OperationKind.CUSTOM_SHORT_CIRCUIT, name, javadoc);
         if (op == null) {
             return null;
         }
@@ -383,14 +384,22 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         if (instructions.containsKey(name)) {
             throw new AssertionError(String.format("Multiple instructions declared with name %s. Instruction names must be distinct.", name));
         }
-        Signature signature = shortCircuitModel.operator().returnConvertedBoolean ? signature(Object.class, boolean.class, boolean.class) : signature(boolean.class, boolean.class, boolean.class);
+        Signature signature = signature(shortCircuitModel.producesBoolean() ? boolean.class : Object.class, boolean.class, boolean.class);
         InstructionModel instr = instruction(InstructionKind.CUSTOM_SHORT_CIRCUIT, name, signature);
         instr.shortCircuitModel = shortCircuitModel;
 
-        // may be null only for error declarations
-        if (shortCircuitModel.booleanConverterInstruction() != null) {
-            shortCircuitModel.booleanConverterInstruction().shortCircuitInstructions.add(instr);
+        InstructionModel booleanConverterInstruction = shortCircuitModel.booleanConverterInstruction();
+        if (booleanConverterInstruction == null) {
+            /*
+             * In a short-circuit operation with no converter, the short-circuit instruction casts
+             * each operand -- except the last -- to boolean, causing a ClassCastException when the
+             * operand is invalid. To be consistent, the last operand also needs to be checked.
+             */
+            BytecodeDSLBuiltins.addCheckBooleanInstruction(this);
+        } else {
+            booleanConverterInstruction.shortCircuitInstructions.add(instr);
         }
+
         return instr;
     }
 
@@ -400,7 +409,6 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     }
 
     public void finalizeInstructions() {
-
         if (isBytecodeUpdatable()) {
             addInvalidateInstructions();
         }

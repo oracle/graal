@@ -860,11 +860,11 @@ import java.util.function.Supplier;
  *   - Instruction sc.ScAnd
  *     kind: CUSTOM_SHORT_CIRCUIT
  *     encoding: [140 : short, branch_target (bci) : int, branch_profile : int]
- *     signature: boolean (boolean, boolean)
+ *     signature: Object (boolean, boolean)
  *   - Instruction sc.ScOr
  *     kind: CUSTOM_SHORT_CIRCUIT
  *     encoding: [141 : short, branch_target (bci) : int, branch_profile : int]
- *     signature: boolean (boolean, boolean)
+ *     signature: Object (boolean, boolean)
  *   - Instruction merge.conditional
  *     kind: MERGE_CONDITIONAL
  *     encoding: [142 : short, child0 (bci) : int, child1 (bci) : int]
@@ -11825,7 +11825,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         /**
          * Begins a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.IncrementValue IncrementValue} operation.
          * <p>
-         * Signature: IncrementValue(value) -> Object
+         * Signature: IncrementValue(value) -> long
          * <p>
          * Increments the instrumented value by 1.
          * <p>
@@ -11853,7 +11853,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         /**
          * Ends a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.IncrementValue IncrementValue} operation.
          * <p>
-         * Signature: IncrementValue(value) -> Object
+         * Signature: IncrementValue(value) -> long
          *
          * @see #beginIncrementValue
          */
@@ -11885,7 +11885,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         /**
          * Begins a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.DoubleValue DoubleValue} operation.
          * <p>
-         * Signature: DoubleValue(value) -> Object
+         * Signature: DoubleValue(value) -> long
          * <p>
          * A corresponding call to {@link #endDoubleValue} is required to end the operation.
          */
@@ -11911,7 +11911,7 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
         /**
          * Ends a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.DoubleValue DoubleValue} operation.
          * <p>
-         * Signature: DoubleValue(value) -> Object
+         * Signature: DoubleValue(value) -> long
          *
          * @see #beginDoubleValue
          */
@@ -12639,7 +12639,6 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
                     }
                     if (childIndex != 0) {
                         doEmitInstruction(Instructions.DUP, 1);
-                        int converterBci = bci;
                         // Boxing elimination not supported for converter operations if the value is returned.
                         int childBci = -1;
                         doEmitInstructionII(Instructions.TO_BOOLEAN_, 0, allocateNode(), childBci);
@@ -12657,7 +12656,6 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
                     }
                     if (childIndex != 0) {
                         doEmitInstruction(Instructions.DUP, 1);
-                        int converterBci = bci;
                         // Boxing elimination not supported for converter operations if the value is returned.
                         int childBci = -1;
                         doEmitInstructionII(Instructions.TO_BOOLEAN_, 0, allocateNode(), childBci);
@@ -17033,14 +17031,14 @@ public final class BasicInterpreterWithBE extends BasicInterpreter {
          * Instruction sc.ScAnd
          * kind: CUSTOM_SHORT_CIRCUIT
          * encoding: [140 : short, branch_target (bci) : int, branch_profile : int]
-         * signature: boolean (boolean, boolean)
+         * signature: Object (boolean, boolean)
          */
         private static final short SC_AND_ = 140;
         /*
          * Instruction sc.ScOr
          * kind: CUSTOM_SHORT_CIRCUIT
          * encoding: [141 : short, branch_target (bci) : int, branch_profile : int]
-         * signature: boolean (boolean, boolean)
+         * signature: Object (boolean, boolean)
          */
         private static final short SC_OR_ = 141;
         /*

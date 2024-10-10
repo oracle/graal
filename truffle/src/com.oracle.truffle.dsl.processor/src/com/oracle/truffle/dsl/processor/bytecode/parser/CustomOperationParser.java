@@ -64,7 +64,6 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
@@ -86,6 +85,7 @@ import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.ConstantOp
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationArgument;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.ShortCircuitInstructionModel;
+import com.oracle.truffle.dsl.processor.bytecode.model.ShortCircuitInstructionModel.Operator;
 import com.oracle.truffle.dsl.processor.bytecode.model.Signature;
 import com.oracle.truffle.dsl.processor.bytecode.parser.SpecializationSignatureParser.SpecializationSignature;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory;
@@ -154,7 +154,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
     protected CustomOperationModel parse(Element element, List<AnnotationMirror> annotationMirrors) {
         /**
          * This entrypoint is only invoked by the TruffleProcessor to validate Proxyable nodes. We
-         * directly invoke {@link parseCustomOperation} for code gen use cases.
+         * directly invoke {@link parseCustomRegularOperation} for code gen use cases.
          */
         if (!ElementUtils.typeEquals(annotationType, context.getTypes().OperationProxy_Proxyable)) {
             throw new AssertionError();
@@ -165,26 +165,18 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             throw new IllegalArgumentException(String.format("Expected element %s to have one %s annotation, but %d found.", typeElement.getSimpleName(), annotationType, annotationMirrors.size()));
         }
         AnnotationMirror mirror = annotationMirrors.get(0);
-        return parseImpl(typeElement, mirror);
+        return parseCustomRegularOperation(mirror, typeElement, null);
     }
 
-    public CustomOperationModel parseCustomOperation(TypeElement typeElement, AnnotationMirror mirror) {
-        return parseImpl(typeElement, mirror);
-    }
-
-    private CustomOperationModel parseImpl(TypeElement typeElement, AnnotationMirror mirror) {
+    CustomOperationModel parseCustomRegularOperation(AnnotationMirror mirror, TypeElement typeElement, String explicitName) {
         if (forProxyValidation) {
             this.uncachedProxyValidation = ElementUtils.getAnnotationValue(Boolean.class, mirror, "allowUncached");
         }
         if (isShortCircuit()) {
-            return parseCustomShortCircuitOperation(typeElement, mirror);
-        } else {
-            return parseCustomRegularOperation(typeElement, mirror);
+            throw new AssertionError();
         }
-    }
 
-    private CustomOperationModel parseCustomRegularOperation(TypeElement typeElement, AnnotationMirror mirror) {
-        String name = getCustomOperationName(typeElement, mirror);
+        String name = getCustomOperationName(typeElement, explicitName);
         String javadoc = ElementUtils.getAnnotationValue(String.class, mirror, "javadoc");
         boolean isInstrumentation = ElementUtils.typeEquals(mirror.getAnnotationType(), types.Instrumentation);
         OperationKind kind = isInstrumentation ? OperationKind.CUSTOM_INSTRUMENTATION : OperationKind.CUSTOM;
@@ -471,10 +463,9 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         return name + "Value";
     }
 
-    private CustomOperationModel parseCustomShortCircuitOperation(TypeElement typeElement, AnnotationMirror mirror) {
-        String name = getCustomOperationName(typeElement, mirror);
+    CustomOperationModel parseCustomShortCircuitOperation(AnnotationMirror mirror, String name, Operator operator, TypeElement booleanConverterTypeElement) {
         String javadoc = ElementUtils.getAnnotationValue(String.class, mirror, "javadoc");
-        CustomOperationModel customOperation = parent.customShortCircuitOperation(OperationKind.CUSTOM_SHORT_CIRCUIT, name, javadoc, mirror);
+        CustomOperationModel customOperation = parent.customShortCircuitOperation(name, javadoc, mirror);
         if (customOperation == null) {
             return null;
         }
@@ -489,9 +480,11 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
          * NB: This creates a new operation for the boolean converter (or reuses one if such an
          * operation already exists).
          */
-        InstructionModel booleanConverterInstruction = getOrCreateBooleanConverterInstruction(typeElement, mirror);
-        String operatorName = ElementUtils.getAnnotationValue(VariableElement.class, customOperation.getTemplateTypeAnnotation(), "operator").getSimpleName().toString();
-        InstructionModel instruction = parent.shortCircuitInstruction("sc." + name, ShortCircuitInstructionModel.parse(operatorName, booleanConverterInstruction));
+        InstructionModel booleanConverterInstruction = null;
+        if (booleanConverterTypeElement != null) {
+            booleanConverterInstruction = getOrCreateBooleanConverterInstruction(booleanConverterTypeElement, mirror);
+        }
+        InstructionModel instruction = parent.shortCircuitInstruction("sc." + name, new ShortCircuitInstructionModel(operator, booleanConverterInstruction));
         operation.instruction = instruction;
 
         instruction.addImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target");
@@ -503,7 +496,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
     private InstructionModel getOrCreateBooleanConverterInstruction(TypeElement typeElement, AnnotationMirror mirror) {
         CustomOperationModel result = parent.getCustomOperationForType(typeElement);
         if (result == null) {
-            result = CustomOperationParser.forCodeGeneration(parent, types.Operation).parseCustomOperation(typeElement, mirror);
+            result = CustomOperationParser.forCodeGeneration(parent, types.Operation).parseCustomRegularOperation(mirror, typeElement, null);
         }
         if (result == null || result.hasErrors()) {
             parent.addError(mirror, ElementUtils.getAnnotationValue(mirror, "booleanConverter"),
@@ -532,14 +525,10 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         return result.operation.instruction;
     }
 
-    private String getCustomOperationName(TypeElement typeElement, AnnotationMirror mirror) {
-        if (mirror != null && (isProxy() || isShortCircuit())) {
-            AnnotationValue nameValue = ElementUtils.getAnnotationValue(mirror, "name", false);
-            if (nameValue != null) {
-                return (String) nameValue.getValue();
-            }
+    private static String getCustomOperationName(TypeElement typeElement, String explicitName) {
+        if (explicitName != null && !explicitName.isEmpty()) {
+            return explicitName;
         }
-
         String name = typeElement.getSimpleName().toString();
         if (name.endsWith("Node")) {
             name = name.substring(0, name.length() - 4);

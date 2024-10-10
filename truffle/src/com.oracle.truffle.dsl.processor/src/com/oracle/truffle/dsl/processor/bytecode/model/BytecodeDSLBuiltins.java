@@ -362,6 +362,16 @@ public class BytecodeDSLBuiltins {
         m.clearLocalInstruction.addImmediate(ImmediateKind.LOCAL_OFFSET, "local_offset");
     }
 
+    /*
+     * check.boolean is only needed if a short-circuit operation without a boolean converter is
+     * declared, so we initialize it on demand.
+     */
+    public static void addCheckBooleanInstruction(BytecodeDSLModel m) {
+        if (m.checkBooleanInstruction == null) {
+            m.checkBooleanInstruction = m.instruction(InstructionKind.CHECK_BOOLEAN, "check.boolean", m.signature(void.class));
+        }
+    }
+
     private static DynamicOperandModel child(String name) {
         return new DynamicOperandModel(List.of(name), false, false);
     }

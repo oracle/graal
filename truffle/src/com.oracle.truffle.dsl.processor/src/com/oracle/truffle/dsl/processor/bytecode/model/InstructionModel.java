@@ -81,6 +81,7 @@ public final class InstructionModel implements PrettyPrintable {
         LOAD_VARIADIC,
         MERGE_VARIADIC,
         STORE_NULL,
+        CHECK_BOOLEAN,
 
         RETURN,
         YIELD,
