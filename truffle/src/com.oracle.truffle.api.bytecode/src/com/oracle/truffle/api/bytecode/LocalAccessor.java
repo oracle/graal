@@ -130,8 +130,6 @@ public final class LocalAccessor {
     /**
      * Stores a short into the local.
      *
-     * @see #setObject(BytecodeNode, VirtualFrame, Object) the set method for an example on how to
-     *      use it.
      * @since 24.2
      */
     public void setBoolean(BytecodeNode node, VirtualFrame frame, boolean value) {
@@ -143,8 +141,6 @@ public final class LocalAccessor {
     /**
      * Stores a short into the local.
      *
-     * @see #setObject(BytecodeNode, VirtualFrame, Object) the set method for an example on how to
-     *      use it.
      * @since 24.2
      */
     public void setByte(BytecodeNode node, VirtualFrame frame, byte value) {

@@ -550,11 +550,11 @@ import java.util.function.Supplier;
  *   - Instruction sc.ScAnd
  *     kind: CUSTOM_SHORT_CIRCUIT
  *     encoding: [71 : short, branch_target (bci) : int, branch_profile : int]
- *     signature: boolean (boolean, boolean)
+ *     signature: Object (boolean, boolean)
  *   - Instruction sc.ScOr
  *     kind: CUSTOM_SHORT_CIRCUIT
  *     encoding: [72 : short, branch_target (bci) : int, branch_profile : int]
- *     signature: boolean (boolean, boolean)
+ *     signature: Object (boolean, boolean)
  *   - Instruction invalidate0
  *     kind: INVALIDATE
  *     encoding: [73 : short]
@@ -3292,7 +3292,7 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
                         }
                         case Instructions.BRANCH_FALSE :
                         {
-                            if (profileBranch(branchProfiles, BYTES.getIntUnaligned(bc, bci + 6 /* imm branch_profile */), (Boolean) FRAMES.uncheckedGetObject(frame, sp - 1) == Boolean.TRUE)) {
+                            if (profileBranch(branchProfiles, BYTES.getIntUnaligned(bc, bci + 6 /* imm branch_profile */), (boolean) FRAMES.uncheckedGetObject(frame, sp - 1))) {
                                 sp -= 1;
                                 bci += 10;
                                 break;
@@ -4782,7 +4782,7 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
                             }
                             case Instructions.BRANCH_FALSE :
                             {
-                                if ((Boolean) FRAMES.uncheckedGetObject(frame, sp - 1) == Boolean.TRUE) {
+                                if ((boolean) FRAMES.uncheckedGetObject(frame, sp - 1)) {
                                     sp -= 1;
                                     bci += 10;
                                     break;
@@ -8807,7 +8807,7 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
         /**
          * Begins a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.IncrementValue IncrementValue} operation.
          * <p>
-         * Signature: IncrementValue(value) -> Object
+         * Signature: IncrementValue(value) -> long
          * <p>
          * Increments the instrumented value by 1.
          * <p>
@@ -8835,7 +8835,7 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
         /**
          * Ends a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.IncrementValue IncrementValue} operation.
          * <p>
-         * Signature: IncrementValue(value) -> Object
+         * Signature: IncrementValue(value) -> long
          *
          * @see #beginIncrementValue
          */
@@ -8866,7 +8866,7 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
         /**
          * Begins a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.DoubleValue DoubleValue} operation.
          * <p>
-         * Signature: DoubleValue(value) -> Object
+         * Signature: DoubleValue(value) -> long
          * <p>
          * A corresponding call to {@link #endDoubleValue} is required to end the operation.
          */
@@ -8892,7 +8892,7 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
         /**
          * Ends a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.DoubleValue DoubleValue} operation.
          * <p>
-         * Signature: DoubleValue(value) -> Object
+         * Signature: DoubleValue(value) -> long
          *
          * @see #beginDoubleValue
          */
@@ -9613,7 +9613,6 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
                     }
                     if (childIndex != 0) {
                         doEmitInstruction(Instructions.DUP, 1);
-                        int converterBci = bci;
                         doEmitInstructionI(Instructions.TO_BOOLEAN_, 0, allocateNode());
                         if (this.reachable) {
                             operationData.branchFixupBcis.add(bci + 2);
@@ -9629,7 +9628,6 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
                     }
                     if (childIndex != 0) {
                         doEmitInstruction(Instructions.DUP, 1);
-                        int converterBci = bci;
                         doEmitInstructionI(Instructions.TO_BOOLEAN_, 0, allocateNode());
                         if (this.reachable) {
                             operationData.branchFixupBcis.add(bci + 2);
@@ -13274,14 +13272,14 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
          * Instruction sc.ScAnd
          * kind: CUSTOM_SHORT_CIRCUIT
          * encoding: [71 : short, branch_target (bci) : int, branch_profile : int]
-         * signature: boolean (boolean, boolean)
+         * signature: Object (boolean, boolean)
          */
         private static final short SC_AND_ = 71;
         /*
          * Instruction sc.ScOr
          * kind: CUSTOM_SHORT_CIRCUIT
          * encoding: [72 : short, branch_target (bci) : int, branch_profile : int]
-         * signature: boolean (boolean, boolean)
+         * signature: Object (boolean, boolean)
          */
         private static final short SC_OR_ = 72;
         /*

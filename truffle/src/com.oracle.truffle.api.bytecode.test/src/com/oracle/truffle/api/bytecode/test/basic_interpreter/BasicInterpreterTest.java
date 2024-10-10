@@ -314,6 +314,56 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
+    public void testBadConditionValues() {
+        RootCallTarget badIfThen = parse("badConditionIfThen", b -> {
+            b.beginRoot();
+            b.beginIfThen();
+            b.emitLoadArgument(0);
+            b.emitLoadConstant(42L);
+            b.endIfThen();
+            b.endRoot();
+        });
+        RootCallTarget badIfThenElse = parse("badConditionIfThenElse", b -> {
+            b.beginRoot();
+            b.beginIfThenElse();
+            b.emitLoadArgument(0);
+            b.emitLoadConstant(42L);
+            b.emitLoadConstant(42L);
+            b.endIfThenElse();
+            b.endRoot();
+        });
+        RootCallTarget badWhile = parse("badConditionWhile", b -> {
+            b.beginRoot();
+            b.beginWhile();
+            b.emitLoadArgument(0);
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+            b.endWhile();
+            b.endRoot();
+        });
+        RootCallTarget badConditional = parse("badConditional", b -> {
+            b.beginRoot();
+            b.beginConditional();
+            b.emitLoadArgument(0);
+            b.emitLoadConstant(42L);
+            b.emitLoadConstant(42L);
+            b.endConditional();
+            b.endRoot();
+        });
+
+        assertThrows(ClassCastException.class, () -> badIfThen.call(0));
+        assertThrows(ClassCastException.class, () -> badIfThenElse.call("not a boolean"));
+        assertThrows(ClassCastException.class, () -> badWhile.call(42L));
+        assertThrows(ClassCastException.class, () -> badConditional.call(3.14f));
+
+        assertThrows(NullPointerException.class, () -> badIfThen.call(new Object[]{null}));
+        assertThrows(NullPointerException.class, () -> badIfThenElse.call(new Object[]{null}));
+        assertThrows(NullPointerException.class, () -> badWhile.call(new Object[]{null}));
+        assertThrows(NullPointerException.class, () -> badConditional.call(new Object[]{null}));
+    }
+
+    @Test
     public void testConditionalBranchSpBalancing() {
         // For conditionals, we use a special merge instruction for BE. The builder needs to
         // correctly update the stack height at the merge. Currently, we only validate that the sp

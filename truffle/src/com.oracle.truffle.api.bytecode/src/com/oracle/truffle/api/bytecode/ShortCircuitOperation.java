@@ -148,8 +148,10 @@ public @interface ShortCircuitOperation {
 
     /**
      * A node or operation class. The short-circuit operation uses this class to convert each
-     * operand value to a {@code boolean} value used by the boolean operation.
-     *
+     * operand value to a {@code boolean} value used by the boolean operation. If no class is
+     * provided, the short circuit operation performs no conversion (the operands must already be
+     * booleans, or the interpreter will throw an exception at run time).
+     * <p>
      * The class can be (but does not need to be) declared as an {@link Operation} or
      * {@link OperationProxy}. If it is not declared as either, it will undergo the same validation
      * as an {@link Operation} (see the Javadoc for the specific requirements). In addition, such a
@@ -161,7 +163,7 @@ public @interface ShortCircuitOperation {
      *
      * @since 24.2
      */
-    Class<?> booleanConverter();
+    Class<?> booleanConverter() default void.class;
 
     /**
      * Optional documentation for the short circuit operation. This documentation is included in the

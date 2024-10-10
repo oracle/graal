@@ -723,11 +723,11 @@ import java.util.function.Supplier;
  *   - Instruction sc.SLAnd
  *     kind: CUSTOM_SHORT_CIRCUIT
  *     encoding: [113 : short, branch_target (bci) : int, branch_profile : int]
- *     signature: Object (boolean, boolean)
+ *     signature: boolean (boolean, boolean)
  *   - Instruction sc.SLOr
  *     kind: CUSTOM_SHORT_CIRCUIT
  *     encoding: [114 : short, branch_target (bci) : int, branch_profile : int]
- *     signature: Object (boolean, boolean)
+ *     signature: boolean (boolean, boolean)
  *   - Instruction merge.conditional
  *     kind: MERGE_CONDITIONAL
  *     encoding: [115 : short, child0 (bci) : int, child1 (bci) : int]
@@ -7661,7 +7661,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                             case Instructions.BRANCH_FALSE$GENERIC :
                             case Instructions.BRANCH_FALSE$BOOLEAN :
                             {
-                                if ((Boolean) FRAMES.uncheckedGetObject(frame, sp - 1) == Boolean.TRUE) {
+                                if ((boolean) FRAMES.uncheckedGetObject(frame, sp - 1)) {
                                     sp -= 1;
                                     bci += 14;
                                     break;
@@ -11066,7 +11066,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         /**
          * Begins a custom SLAnd operation.
          * <p>
-         * Signature: SLAnd(value) -> Object
+         * Signature: SLAnd(value) -> boolean
          * <p>
          * A corresponding call to {@link #endSLAnd} is required to end the operation.
          */
@@ -11088,7 +11088,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         /**
          * Ends a custom SLAnd operation.
          * <p>
-         * Signature: SLAnd(value) -> Object
+         * Signature: SLAnd(value) -> boolean
          *
          * @see #beginSLAnd
          */
@@ -11120,7 +11120,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         /**
          * Begins a custom SLOr operation.
          * <p>
-         * Signature: SLOr(value) -> Object
+         * Signature: SLOr(value) -> boolean
          * <p>
          * A corresponding call to {@link #endSLOr} is required to end the operation.
          */
@@ -11142,7 +11142,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         /**
          * Ends a custom SLOr operation.
          * <p>
-         * Signature: SLOr(value) -> Object
+         * Signature: SLOr(value) -> boolean
          *
          * @see #beginSLOr
          */
@@ -11518,7 +11518,6 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                         throw assertionFailed("Data class CustomShortCircuitOperationData expected, but was " + operationStack[operationSp - 1].data);
                     }
                     if (childIndex != 0) {
-                        int converterBci = bci;
                         int childBci = operationData.childBci;
                         assert childBci != UNINITIALIZED;
                         doEmitInstructionII(Instructions.SL_TO_BOOLEAN_, 0, allocateNode(), childBci);
@@ -11535,7 +11534,6 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                         throw assertionFailed("Data class CustomShortCircuitOperationData expected, but was " + operationStack[operationSp - 1].data);
                     }
                     if (childIndex != 0) {
-                        int converterBci = bci;
                         int childBci = operationData.childBci;
                         assert childBci != UNINITIALIZED;
                         doEmitInstructionII(Instructions.SL_TO_BOOLEAN_, 0, allocateNode(), childBci);
@@ -15346,14 +15344,14 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
          * Instruction sc.SLAnd
          * kind: CUSTOM_SHORT_CIRCUIT
          * encoding: [113 : short, branch_target (bci) : int, branch_profile : int]
-         * signature: Object (boolean, boolean)
+         * signature: boolean (boolean, boolean)
          */
         private static final short SL_AND_ = 113;
         /*
          * Instruction sc.SLOr
          * kind: CUSTOM_SHORT_CIRCUIT
          * encoding: [114 : short, branch_target (bci) : int, branch_profile : int]
-         * signature: Object (boolean, boolean)
+         * signature: boolean (boolean, boolean)
          */
         private static final short SL_OR_ = 114;
         /*

@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.bytecode.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 
 import java.util.List;
 
@@ -201,6 +202,100 @@ public class ShortCircuitTest {
     }
 
     @Test
+    public void testBooleanAndNoConversion() {
+        // true -> true
+        BytecodeNodeWithShortCircuit root = parseNode(b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.beginBoolAndNoConversion();
+            b.emitLoadConstant(true);
+            b.endBoolAndNoConversion();
+            b.endReturn();
+            b.endRoot();
+        });
+        assertEquals(true, root.getCallTarget().call());
+
+        // false -> false
+        root = parseNode(b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.beginBoolAndNoConversion();
+            b.emitLoadConstant(false);
+            b.endBoolAndNoConversion();
+            b.endReturn();
+            b.endRoot();
+        });
+        assertEquals(false, root.getCallTarget().call());
+
+        // true && true && true -> true
+        root = parseNode(b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.beginBoolAndNoConversion();
+            b.emitLoadConstant(true);
+            b.emitLoadConstant(true);
+            b.emitLoadConstant(true);
+            b.endBoolAndNoConversion();
+            b.endReturn();
+            b.endRoot();
+        });
+        assertEquals(true, root.getCallTarget().call());
+
+        // true && false && true -> false
+        root = parseNode(b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.beginBoolAndNoConversion();
+            b.emitLoadConstant(true);
+            b.emitLoadConstant(false);
+            b.emitLoadConstant(true);
+            b.endBoolAndNoConversion();
+            b.endReturn();
+            b.endRoot();
+        });
+        assertEquals(false, root.getCallTarget().call());
+
+        // 0 && true -> class cast exception
+        BytecodeNodeWithShortCircuit badRoot = parseNode(b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.beginBoolAndNoConversion();
+            b.emitLoadConstant(0);
+            b.emitLoadConstant(true);
+            b.endBoolAndNoConversion();
+            b.endReturn();
+            b.endRoot();
+        });
+        assertThrows(ClassCastException.class, () -> badRoot.getCallTarget().call());
+
+        // null && true -> null pointer exception
+        BytecodeNodeWithShortCircuit badRoot2 = parseNode(b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.beginBoolAndNoConversion();
+            b.emitLoadNull();
+            b.emitLoadConstant(true);
+            b.endBoolAndNoConversion();
+            b.endReturn();
+            b.endRoot();
+        });
+        assertThrows(NullPointerException.class, () -> badRoot2.getCallTarget().call());
+
+        // true && 0 -> class cast exception
+        BytecodeNodeWithShortCircuit badRoot3 = parseNode(b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.beginBoolAndNoConversion();
+            b.emitLoadConstant(true);
+            b.emitLoadConstant(0);
+            b.endBoolAndNoConversion();
+            b.endReturn();
+            b.endRoot();
+        });
+        assertThrows(ClassCastException.class, () -> badRoot3.getCallTarget().call());
+    }
+
+    @Test
     public void testObjectOr() {
         Object foo = new Object();
 
@@ -314,6 +409,100 @@ public class ShortCircuitTest {
         assertEquals(true, root.getCallTarget().call());
     }
 
+    @Test
+    public void testBooleanOrNoConversion() {
+        // true -> true
+        BytecodeNodeWithShortCircuit root = parseNode(b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.beginBoolOrNoConversion();
+            b.emitLoadConstant(true);
+            b.endBoolOrNoConversion();
+            b.endReturn();
+            b.endRoot();
+        });
+        assertEquals(true, root.getCallTarget().call());
+
+        // false -> false
+        root = parseNode(b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.beginBoolOrNoConversion();
+            b.emitLoadConstant(false);
+            b.endBoolOrNoConversion();
+            b.endReturn();
+            b.endRoot();
+        });
+        assertEquals(false, root.getCallTarget().call());
+
+        // false || false || true -> true
+        root = parseNode(b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.beginBoolOrNoConversion();
+            b.emitLoadConstant(false);
+            b.emitLoadConstant(false);
+            b.emitLoadConstant(true);
+            b.endBoolOrNoConversion();
+            b.endReturn();
+            b.endRoot();
+        });
+        assertEquals(true, root.getCallTarget().call());
+
+        // false || false || false -> false
+        root = parseNode(b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.beginBoolOrNoConversion();
+            b.emitLoadConstant(false);
+            b.emitLoadConstant(false);
+            b.emitLoadConstant(false);
+            b.endBoolOrNoConversion();
+            b.endReturn();
+            b.endRoot();
+        });
+        assertEquals(false, root.getCallTarget().call());
+
+        // 1 || true -> class cast exception
+        BytecodeNodeWithShortCircuit badRoot1 = parseNode(b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.beginBoolOrNoConversion();
+            b.emitLoadConstant(1);
+            b.emitLoadConstant(true);
+            b.endBoolOrNoConversion();
+            b.endReturn();
+            b.endRoot();
+        });
+        assertThrows(ClassCastException.class, () -> badRoot1.getCallTarget().call());
+
+        // null || true -> null pointer exception
+        BytecodeNodeWithShortCircuit badRoot2 = parseNode(b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.beginBoolOrNoConversion();
+            b.emitLoadNull();
+            b.emitLoadConstant(true);
+            b.endBoolOrNoConversion();
+            b.endReturn();
+            b.endRoot();
+        });
+        assertThrows(NullPointerException.class, () -> badRoot2.getCallTarget().call());
+
+        // false || 1 -> class cast exception
+        BytecodeNodeWithShortCircuit badRoot3 = parseNode(b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.beginBoolOrNoConversion();
+            b.emitLoadConstant(false);
+            b.emitLoadConstant(1);
+            b.endBoolOrNoConversion();
+            b.endReturn();
+            b.endRoot();
+        });
+        assertThrows(ClassCastException.class, () -> badRoot3.getCallTarget().call());
+    }
+
 }
 
 @GenerateBytecodeTestVariants({
@@ -332,6 +521,8 @@ public class ShortCircuitTest {
 @ShortCircuitOperation(name = "ObjectOr", operator = Operator.OR_RETURN_VALUE, booleanConverter = BooleanConverterOperationProxy.class)
 @ShortCircuitOperation(name = "BoolAnd", operator = Operator.AND_RETURN_CONVERTED, booleanConverter = BytecodeNodeWithShortCircuit.BooleanConverterNonOperation.class)
 @ShortCircuitOperation(name = "BoolOr", operator = Operator.OR_RETURN_CONVERTED, booleanConverter = BytecodeNodeWithShortCircuit.BooleanConverterNonOperation.class)
+@ShortCircuitOperation(name = "BoolAndNoConversion", operator = Operator.AND_RETURN_VALUE)
+@ShortCircuitOperation(name = "BoolOrNoConversion", operator = Operator.OR_RETURN_VALUE)
 abstract class BytecodeNodeWithShortCircuit extends RootNode implements BytecodeRootNode {
     protected BytecodeNodeWithShortCircuit(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);

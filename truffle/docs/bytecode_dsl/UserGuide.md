@@ -345,7 +345,7 @@ Consider enabling the flag temporarily if you encounter unexpected behaviour wit
 ## Control flow
 
 The `IfThen`, `IfThenElse`, `Conditional`, and `While` operations can be used for structured control flow.
-Their behaviour is as you would expect.
+They take a `boolean` condition for their first child, and conditionally execute their other child operation(s) as you would expect.
 `Conditional` produces a value; the rest do not.
 
 For example, the following if-then block:

@@ -81,6 +81,7 @@ import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.OptimizationDecisionsModel.QuickenDecision;
 import com.oracle.truffle.dsl.processor.bytecode.model.OptimizationDecisionsModel.ResolvedQuickenDecision;
+import com.oracle.truffle.dsl.processor.bytecode.model.ShortCircuitInstructionModel.Operator;
 import com.oracle.truffle.dsl.processor.bytecode.model.Signature;
 import com.oracle.truffle.dsl.processor.bytecode.parser.SpecializationSignatureParser.SpecializationSignature;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression;
@@ -466,7 +467,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                 continue;
             }
             customOperationDeclared = true;
-            CustomOperationParser.forCodeGeneration(model, types.Operation).parseCustomOperation(te, mir);
+            CustomOperationParser.forCodeGeneration(model, types.Operation).parseCustomRegularOperation(mir, te, null);
         }
 
         if (model.getInstrumentations().size() > MAX_INSTRUMENTATIONS) {
@@ -482,6 +483,8 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
             customOperationDeclared = true;
             AnnotationValue mirrorValue = ElementUtils.getAnnotationValue(mir, "value");
             TypeMirror proxiedType = getTypeMirror(mirrorValue);
+
+            String name = ElementUtils.getAnnotationValue(String.class, mir, "name");
 
             if (proxiedType.getKind() != TypeKind.DECLARED) {
                 model.addError(mir, mirrorValue, "Could not proxy operation: the proxied type must be a class, not %s.", proxiedType);
@@ -501,7 +504,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                                 getSimpleName(types.OperationProxy_Proxyable));
             }
 
-            CustomOperationModel customOperation = CustomOperationParser.forCodeGeneration(model, types.OperationProxy_Proxyable).parseCustomOperation(te, mir);
+            CustomOperationModel customOperation = CustomOperationParser.forCodeGeneration(model, types.OperationProxy_Proxyable).parseCustomRegularOperation(mir, te, name);
             if (customOperation != null && customOperation.hasErrors()) {
                 model.addError(mir, mirrorValue, "Encountered errors using %s as an OperationProxy. These errors must be resolved before the DSL can proceed.", te.getQualifiedName());
             }
@@ -509,16 +512,35 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
 
         for (AnnotationMirror mir : ElementUtils.getRepeatedAnnotation(typeElement.getAnnotationMirrors(), types.ShortCircuitOperation)) {
             customOperationDeclared = true;
-            AnnotationValue mirrorValue = ElementUtils.getAnnotationValue(mir, "booleanConverter");
-            TypeMirror proxiedType = getTypeMirror(ElementUtils.getAnnotationValue(mir, "booleanConverter"));
-            if (proxiedType.getKind() != TypeKind.DECLARED) {
-                model.addError(mir, mirrorValue, "Could not use class as boolean converter: the converter type must be a declared type, not %s.", proxiedType);
-                continue;
-            }
 
-            TypeElement te = (TypeElement) ((DeclaredType) proxiedType).asElement();
+            String name = ElementUtils.getAnnotationValue(String.class, mir, "name");
 
-            CustomOperationParser.forCodeGeneration(model, types.ShortCircuitOperation).parseCustomOperation(te, mir);
+            AnnotationValue operatorValue = ElementUtils.getAnnotationValue(mir, "operator");
+            Operator operator = Operator.parse(((VariableElement) operatorValue.getValue()).getSimpleName().toString());
+
+            AnnotationValue booleanConverterValue = ElementUtils.getAnnotationValue(mir, "booleanConverter");
+            TypeMirror booleanConverter = getTypeMirror(booleanConverterValue);
+
+            TypeElement booleanConverterTypeElement = switch (booleanConverter.getKind()) {
+                case DECLARED -> (TypeElement) ((DeclaredType) booleanConverter).asElement();
+                case VOID -> {
+                    if (operator.returnConvertedBoolean) {
+                        Operator alternative = switch (operator) {
+                            case AND_RETURN_CONVERTED -> Operator.AND_RETURN_VALUE;
+                            case OR_RETURN_CONVERTED -> Operator.OR_RETURN_VALUE;
+                            default -> throw new AssertionError();
+                        };
+                        model.addError(mir, operatorValue, "Short circuit operation uses %s but no boolean converter was declared. Use %s or specify a boolean converter.", operator, alternative);
+                        continue;
+                    }
+                    yield null;
+                }
+                default -> {
+                    model.addError(mir, booleanConverterValue, "Could not use class as boolean converter: the converter type must be a declared type, not %s.", booleanConverter);
+                    continue;
+                }
+            };
+            CustomOperationParser.forCodeGeneration(model, types.ShortCircuitOperation).parseCustomShortCircuitOperation(mir, name, operator, booleanConverterTypeElement);
         }
 
         if (!customOperationDeclared) {

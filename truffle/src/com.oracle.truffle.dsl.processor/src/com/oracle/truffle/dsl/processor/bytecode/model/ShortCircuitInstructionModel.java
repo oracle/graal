@@ -47,21 +47,21 @@ public record ShortCircuitInstructionModel(Operator operator,
      * The processor cannot directly depend on the module containing
      * ShortCircuitOperation.Operation, so the definition is mirrored here.
      */
-    enum Operator {
+    public enum Operator {
         AND_RETURN_VALUE(true, false),
         AND_RETURN_CONVERTED(true, true),
         OR_RETURN_VALUE(false, false),
         OR_RETURN_CONVERTED(false, true);
 
-        boolean continueWhen;
-        boolean returnConvertedBoolean;
+        public boolean continueWhen;
+        public boolean returnConvertedBoolean;
 
         Operator(boolean continueWhen, boolean returnConvertedBoolean) {
             this.continueWhen = continueWhen;
             this.returnConvertedBoolean = returnConvertedBoolean;
         }
 
-        static Operator parse(String value) {
+        public static Operator parse(String value) {
             return switch (value) {
                 case "AND_RETURN_VALUE" -> AND_RETURN_VALUE;
                 case "AND_RETURN_CONVERTED" -> AND_RETURN_CONVERTED;
@@ -80,7 +80,24 @@ public record ShortCircuitInstructionModel(Operator operator,
         return operator.returnConvertedBoolean;
     }
 
-    public static ShortCircuitInstructionModel parse(String operator, InstructionModel booleanConverterInstruction) {
-        return new ShortCircuitInstructionModel(Operator.parse(operator), booleanConverterInstruction);
+    public boolean convertsOperands() {
+        return booleanConverterInstruction != null;
     }
+
+    /**
+     * If the operation doesn't convert its value, or it returns a converted boolean, it produces a
+     * boolean result.
+     */
+    public boolean producesBoolean() {
+        return !convertsOperands() || returnConvertedBoolean();
+    }
+
+    /**
+     * If the operation doesn't produce a boolean, it must DUP the operand so it can pass it to the
+     * converter and also produce it as a result.
+     */
+    public boolean duplicatesOperandOnStack() {
+        return !producesBoolean();
+    }
+
 }

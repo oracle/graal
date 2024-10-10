@@ -714,11 +714,15 @@ public class ErrorTests {
     @ExpectError({
                     "Specializations for boolean converter ToBooleanBadReturn must only take one dynamic operand and return boolean.",
                     "Encountered errors using ToBooleanBadOperation as a boolean converter. These errors must be resolved before the DSL can proceed.",
-                    "Could not use class as boolean converter: the converter type must be a declared type, not int."
+                    "Could not use class as boolean converter: the converter type must be a declared type, not int.",
+                    "Short circuit operation uses AND_RETURN_CONVERTED but no boolean converter was declared. Use AND_RETURN_VALUE or specify a boolean converter.",
+                    "Short circuit operation uses OR_RETURN_CONVERTED but no boolean converter was declared. Use OR_RETURN_VALUE or specify a boolean converter.",
     })
     @ShortCircuitOperation(name = "Foo", operator = Operator.AND_RETURN_VALUE, booleanConverter = BadBooleanConverterTest.ToBooleanBadReturn.class)
     @ShortCircuitOperation(name = "Bar", operator = Operator.AND_RETURN_VALUE, booleanConverter = BadBooleanConverterTest.ToBooleanBadOperation.class)
     @ShortCircuitOperation(name = "Baz", operator = Operator.AND_RETURN_VALUE, booleanConverter = int.class)
+    @ShortCircuitOperation(name = "BoolAnd", operator = Operator.AND_RETURN_CONVERTED)
+    @ShortCircuitOperation(name = "BoolOr", operator = Operator.OR_RETURN_CONVERTED)
     public abstract static class BadBooleanConverterTest extends RootNode implements BytecodeRootNode {
         protected BadBooleanConverterTest(ErrorLanguage language, FrameDescriptor builder) {
             super(language, builder);
