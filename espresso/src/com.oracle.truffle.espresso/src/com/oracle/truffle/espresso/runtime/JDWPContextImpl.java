@@ -751,11 +751,6 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
-    public void abort(int exitCode) {
-        context.doExit(197);
-    }
-
-    @Override
     public Class<? extends TruffleLanguage<?>> getLanguageClass() {
         return EspressoLanguage.class;
     }
