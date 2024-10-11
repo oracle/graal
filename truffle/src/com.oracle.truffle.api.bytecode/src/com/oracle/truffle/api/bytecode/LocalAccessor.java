@@ -49,14 +49,23 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
 /**
- * Operation parameter that allows an operation to get and set the value of a local. This class is
- * intended to be used in combination with the {@link ConstantOperand} annotation.
+ * Operation parameter that allows an operation to get, set, and clear the value of a local.
  * <p>
- * When a local accessor is declared as a constant operand, the corresponding builder method will
- * take a {@link BytecodeLocal} argument representing the local to be updated. Whenever possible
- * using {@link LocalAccessor} should be preferred over
- * {@link BytecodeNode#getLocalValue(int, Frame, int)} and builtin operations should be preferred
- * over using {@link LocalAccessor}.
+ * To use a local accessor, declare a {@link ConstantOperand} on the operation. The corresponding
+ * builder method for the operation will take a {@link BytecodeLocal} argument for the local to be
+ * accessed. At run time, a {@link LocalAccessor} for the local will be supplied as a parameter to
+ * the operation.
+ * <p>
+ * Local accessors are useful to implement behaviour that cannot be implemented with the builtin
+ * local operations (like StoreLocal). For example, if an operation produces multiple outputs, it
+ * can write one of the outputs to a local using a local accessor. Prefer builtin operations when
+ * possible, since they automatically work with {@link GenerateBytecode#boxingEliminationTypes()
+ * boxing elimination}. Local accessors should be preferred over {@link BytecodeNode} helpers like
+ * {@link BytecodeNode#getLocalValue(int, Frame, int)}, since the helpers use extra indirection.
+ * <p>
+ * All of the accessor methods take a {@link BytecodeNode} and the current {@link Frame}. The
+ * bytecode node should be the node declaring the local, and it should be compilation-final. The
+ * local should belong to the {@link Frame}.
  * <p>
  * Example usage:
  *
@@ -99,10 +108,10 @@ public final class LocalAccessor {
      *
      * @since 24.2
      */
-    public void setObject(BytecodeNode node, VirtualFrame frame, Object value) {
+    public void setObject(BytecodeNode bytecodeNode, VirtualFrame frame, Object value) {
         CompilerAsserts.partialEvaluationConstant(this);
-        CompilerAsserts.partialEvaluationConstant(node);
-        node.setLocalValueInternal(frame, localOffset, localIndex, value);
+        CompilerAsserts.partialEvaluationConstant(bytecodeNode);
+        bytecodeNode.setLocalValueInternal(frame, localOffset, localIndex, value);
     }
 
     /**
@@ -110,10 +119,10 @@ public final class LocalAccessor {
      *
      * @since 24.2
      */
-    public void setInt(BytecodeNode node, VirtualFrame frame, int value) {
+    public void setInt(BytecodeNode bytecodeNode, VirtualFrame frame, int value) {
         CompilerAsserts.partialEvaluationConstant(this);
-        CompilerAsserts.partialEvaluationConstant(node);
-        node.setLocalValueInternalInt(frame, localOffset, localIndex, value);
+        CompilerAsserts.partialEvaluationConstant(bytecodeNode);
+        bytecodeNode.setLocalValueInternalInt(frame, localOffset, localIndex, value);
     }
 
     /**
@@ -121,10 +130,10 @@ public final class LocalAccessor {
      *
      * @since 24.2
      */
-    public void setLong(BytecodeNode node, VirtualFrame frame, long value) {
+    public void setLong(BytecodeNode bytecodeNode, VirtualFrame frame, long value) {
         CompilerAsserts.partialEvaluationConstant(this);
-        CompilerAsserts.partialEvaluationConstant(node);
-        node.setLocalValueInternalLong(frame, localOffset, localIndex, value);
+        CompilerAsserts.partialEvaluationConstant(bytecodeNode);
+        bytecodeNode.setLocalValueInternalLong(frame, localOffset, localIndex, value);
     }
 
     /**
@@ -132,10 +141,10 @@ public final class LocalAccessor {
      *
      * @since 24.2
      */
-    public void setBoolean(BytecodeNode node, VirtualFrame frame, boolean value) {
+    public void setBoolean(BytecodeNode bytecodeNode, VirtualFrame frame, boolean value) {
         CompilerAsserts.partialEvaluationConstant(this);
-        CompilerAsserts.partialEvaluationConstant(node);
-        node.setLocalValueInternalBoolean(frame, localOffset, localIndex, value);
+        CompilerAsserts.partialEvaluationConstant(bytecodeNode);
+        bytecodeNode.setLocalValueInternalBoolean(frame, localOffset, localIndex, value);
     }
 
     /**
@@ -143,10 +152,10 @@ public final class LocalAccessor {
      *
      * @since 24.2
      */
-    public void setByte(BytecodeNode node, VirtualFrame frame, byte value) {
+    public void setByte(BytecodeNode bytecodeNode, VirtualFrame frame, byte value) {
         CompilerAsserts.partialEvaluationConstant(this);
-        CompilerAsserts.partialEvaluationConstant(node);
-        node.setLocalValueInternalByte(frame, localOffset, localIndex, value);
+        CompilerAsserts.partialEvaluationConstant(bytecodeNode);
+        bytecodeNode.setLocalValueInternalByte(frame, localOffset, localIndex, value);
     }
 
     /**
@@ -154,10 +163,10 @@ public final class LocalAccessor {
      *
      * @since 24.2
      */
-    public void setFloat(BytecodeNode node, VirtualFrame frame, float value) {
+    public void setFloat(BytecodeNode bytecodeNode, VirtualFrame frame, float value) {
         CompilerAsserts.partialEvaluationConstant(this);
-        CompilerAsserts.partialEvaluationConstant(node);
-        node.setLocalValueInternalFloat(frame, localOffset, localIndex, value);
+        CompilerAsserts.partialEvaluationConstant(bytecodeNode);
+        bytecodeNode.setLocalValueInternalFloat(frame, localOffset, localIndex, value);
     }
 
     /**
@@ -165,87 +174,117 @@ public final class LocalAccessor {
      *
      * @since 24.2
      */
-    public void setDouble(BytecodeNode node, VirtualFrame frame, double value) {
+    public void setDouble(BytecodeNode bytecodeNode, VirtualFrame frame, double value) {
         CompilerAsserts.partialEvaluationConstant(this);
-        CompilerAsserts.partialEvaluationConstant(node);
-        node.setLocalValueInternalDouble(frame, localOffset, localIndex, value);
+        CompilerAsserts.partialEvaluationConstant(bytecodeNode);
+        bytecodeNode.setLocalValueInternalDouble(frame, localOffset, localIndex, value);
     }
 
     /**
-     * Loads an Object from a local.
+     * Loads an Object from the local.
      *
      * @since 24.2
      */
-    public Object getObject(BytecodeNode node, VirtualFrame frame) {
+    public Object getObject(BytecodeNode bytecodeNode, VirtualFrame frame) {
         CompilerAsserts.partialEvaluationConstant(this);
-        CompilerAsserts.partialEvaluationConstant(node);
-        return node.getLocalValueInternal(frame, localOffset, localIndex);
+        CompilerAsserts.partialEvaluationConstant(bytecodeNode);
+        return bytecodeNode.getLocalValueInternal(frame, localOffset, localIndex);
     }
 
     /**
-     * Loads a boolean from a local.
+     * Loads a boolean from the local.
      *
      * @since 24.2
      */
-    public boolean getBoolean(BytecodeNode node, VirtualFrame frame) throws UnexpectedResultException {
+    public boolean getBoolean(BytecodeNode bytecodeNode, VirtualFrame frame) throws UnexpectedResultException {
         CompilerAsserts.partialEvaluationConstant(this);
-        CompilerAsserts.partialEvaluationConstant(node);
-        return node.getLocalValueInternalBoolean(frame, localOffset, localIndex);
+        CompilerAsserts.partialEvaluationConstant(bytecodeNode);
+        return bytecodeNode.getLocalValueInternalBoolean(frame, localOffset, localIndex);
     }
 
     /**
-     * Loads a byte from a local.
+     * Loads a byte from the local.
      *
      * @since 24.2
      */
-    public byte getByte(BytecodeNode node, VirtualFrame frame) throws UnexpectedResultException {
+    public byte getByte(BytecodeNode bytecodeNode, VirtualFrame frame) throws UnexpectedResultException {
         CompilerAsserts.partialEvaluationConstant(this);
-        CompilerAsserts.partialEvaluationConstant(node);
-        return node.getLocalValueInternalByte(frame, localOffset, localIndex);
+        CompilerAsserts.partialEvaluationConstant(bytecodeNode);
+        return bytecodeNode.getLocalValueInternalByte(frame, localOffset, localIndex);
     }
 
     /**
-     * Loads an int from a local.
+     * Loads an int from the local.
      *
      * @since 24.2
      */
-    public int getInt(BytecodeNode node, VirtualFrame frame) throws UnexpectedResultException {
+    public int getInt(BytecodeNode bytecodeNode, VirtualFrame frame) throws UnexpectedResultException {
         CompilerAsserts.partialEvaluationConstant(this);
-        CompilerAsserts.partialEvaluationConstant(node);
-        return node.getLocalValueInternalInt(frame, localOffset, localIndex);
+        CompilerAsserts.partialEvaluationConstant(bytecodeNode);
+        return bytecodeNode.getLocalValueInternalInt(frame, localOffset, localIndex);
     }
 
     /**
-     * Loads a long from a local.
+     * Loads a long from the local.
      *
      * @since 24.2
      */
-    public long getLong(BytecodeNode node, VirtualFrame frame) throws UnexpectedResultException {
+    public long getLong(BytecodeNode bytecodeNode, VirtualFrame frame) throws UnexpectedResultException {
         CompilerAsserts.partialEvaluationConstant(this);
-        CompilerAsserts.partialEvaluationConstant(node);
-        return node.getLocalValueInternalLong(frame, localOffset, localIndex);
+        CompilerAsserts.partialEvaluationConstant(bytecodeNode);
+        return bytecodeNode.getLocalValueInternalLong(frame, localOffset, localIndex);
     }
 
     /**
-     * Loads a float from a local.
+     * Loads a float from the local.
      *
      * @since 24.2
      */
-    public float getFloat(BytecodeNode node, VirtualFrame frame) throws UnexpectedResultException {
+    public float getFloat(BytecodeNode bytecodeNode, VirtualFrame frame) throws UnexpectedResultException {
         CompilerAsserts.partialEvaluationConstant(this);
-        CompilerAsserts.partialEvaluationConstant(node);
-        return node.getLocalValueInternalFloat(frame, localOffset, localIndex);
+        CompilerAsserts.partialEvaluationConstant(bytecodeNode);
+        return bytecodeNode.getLocalValueInternalFloat(frame, localOffset, localIndex);
     }
 
     /**
-     * Loads a double from a local.
+     * Loads a double from the local.
      *
      * @since 24.2
      */
-    public double getDouble(BytecodeNode node, VirtualFrame frame) throws UnexpectedResultException {
+    public double getDouble(BytecodeNode bytecodeNode, VirtualFrame frame) throws UnexpectedResultException {
         CompilerAsserts.partialEvaluationConstant(this);
-        CompilerAsserts.partialEvaluationConstant(node);
-        return node.getLocalValueInternalDouble(frame, localOffset, localIndex);
+        CompilerAsserts.partialEvaluationConstant(bytecodeNode);
+        return bytecodeNode.getLocalValueInternalDouble(frame, localOffset, localIndex);
+    }
+
+    /**
+     * Clears the local from the frame.
+     * <p>
+     * Clearing the slot marks the frame slot as
+     * {@link com.oracle.truffle.api.frame.FrameSlotKind#Illegal illegal}. An exception will be
+     * thrown if it is read before being set. Clearing does <i>not</i> insert a
+     * {@link GenerateBytecode#defaultLocalValue() default local value}, if specified.
+     *
+     * @since 24.2
+     */
+    public void clear(BytecodeNode bytecodeNode, VirtualFrame frame) {
+        CompilerAsserts.partialEvaluationConstant(this);
+        CompilerAsserts.partialEvaluationConstant(bytecodeNode);
+        bytecodeNode.clearLocalValueInternal(frame, localOffset, localIndex);
+    }
+
+    /**
+     * Checks whether the local has been {@link #clear cleared} (and a new value has not been set).
+     * <p>
+     * This method also returns {@code true} if a local has not been initialized and no
+     * {@link GenerateBytecode#defaultLocalValue() default local value} is specified.
+     *
+     * @since 24.2
+     */
+    public boolean isCleared(BytecodeNode bytecodeNode, VirtualFrame frame) {
+        CompilerAsserts.partialEvaluationConstant(this);
+        CompilerAsserts.partialEvaluationConstant(bytecodeNode);
+        return bytecodeNode.isLocalClearedInternal(frame, localOffset, localIndex);
     }
 
     private static final int CACHE_SIZE = 64;
@@ -261,7 +300,7 @@ public final class LocalAccessor {
     }
 
     /**
-     * Obtains an existing {@link LocalAccessor}.
+     * Obtains a {@link LocalAccessor}.
      *
      * This method is invoked by the generated code and should not be called directly.
      *

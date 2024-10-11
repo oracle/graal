@@ -1137,6 +1137,203 @@ public class LocalHelpersTest {
         }
     }
 
+    @Test
+    public void testClearAccessor() {
+        // @formatter:off
+        // var l0
+        // l0 = 42
+        // clear l0
+        // return l0
+        // @formatter:on
+
+        BytecodeNodeWithLocalIntrospection root = parseNode(b -> {
+            b.beginRoot();
+
+            BytecodeLocal l = makeLocal(b, "l0");
+            b.beginStoreLocal(l);
+            b.emitLoadConstant(42);
+            b.endStoreLocal();
+
+            b.emitClearLocalAccessor(l);
+
+            b.beginReturn();
+            b.emitLoadLocal(l);
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertThrows(FrameSlotTypeException.class, () -> root.getCallTarget().call());
+    }
+
+    @Test
+    public void testClearAccessorRange() {
+        // @formatter:off
+        // var l0, l1
+        // l0, l1 = 42, 123
+        // clear l[arg0]
+        // return arg1 ? l0 : l1
+        // @formatter:on
+
+        BytecodeNodeWithLocalIntrospection root = parseNode(b -> {
+            b.beginRoot();
+
+            BytecodeLocal l0 = makeLocal(b, "l0");
+            BytecodeLocal l1 = makeLocal(b, "l1");
+            b.beginStoreLocal(l0);
+            b.emitLoadConstant(42);
+            b.endStoreLocal();
+
+            b.beginStoreLocal(l1);
+            b.emitLoadConstant(123);
+            b.endStoreLocal();
+
+            b.beginClearLocalRangeAccessor(new BytecodeLocal[]{l0, l1});
+            b.emitLoadArgument(0);
+            b.endClearLocalRangeAccessor();
+
+            b.beginReturn();
+            b.beginConditional();
+            b.emitLoadArgument(1);
+            b.emitLoadLocal(l0);
+            b.emitLoadLocal(l1);
+            b.endConditional();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertThrows(FrameSlotTypeException.class, () -> root.getCallTarget().call(0, true));
+        assertEquals(123, root.getCallTarget().call(0, false));
+        assertEquals(42, root.getCallTarget().call(1, true));
+        assertThrows(FrameSlotTypeException.class, () -> root.getCallTarget().call(1, false));
+        assertThrows(ArrayIndexOutOfBoundsException.class, () -> root.getCallTarget().call(-1, true));
+        assertThrows(ArrayIndexOutOfBoundsException.class, () -> root.getCallTarget().call(2, true));
+    }
+
+    @Test
+    public void testIsClearedAccessor() {
+        // @formatter:off
+        // var l0
+        // l0 = 42
+        // if (arg0) clear l0
+        // return isCleared l0
+        // @formatter:on
+
+        BytecodeNodeWithLocalIntrospection root = parseNode(b -> {
+            b.beginRoot();
+
+            BytecodeLocal l = makeLocal(b, "l0");
+            b.beginStoreLocal(l);
+            b.emitLoadConstant(42);
+            b.endStoreLocal();
+
+            b.beginIfThen();
+            b.emitLoadArgument(0);
+            b.emitClearLocalAccessor(l);
+            b.endIfThen();
+
+            b.beginReturn();
+            b.emitIsClearedLocalAccessor(l);
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertEquals(true, root.getCallTarget().call(true));
+        assertEquals(false, root.getCallTarget().call(false));
+    }
+
+    @Test
+    public void testIsClearedAccessorDefaultValues() {
+        // @formatter:off
+        // {
+        //   var l0
+        //   if (arg0) return isCleared l0
+        // }
+        // {
+        //   var l1  // with block scoping, l0 cleared and reused
+        //   return isCleared l1
+        // }
+        // @formatter:on
+
+        BytecodeNodeWithLocalIntrospection root = parseNode(b -> {
+            b.beginRoot();
+
+            b.beginBlock();
+            BytecodeLocal l0 = makeLocal(b, "l0");
+
+            b.beginIfThen();
+            b.emitLoadArgument(0);
+            b.beginReturn();
+            b.emitIsClearedLocalAccessor(l0);
+            b.endReturn();
+            b.endIfThen();
+            b.endBlock();
+
+            b.beginBlock();
+            BytecodeLocal l1 = makeLocal(b, "l1");
+            b.beginReturn();
+            b.emitIsClearedLocalAccessor(l1);
+            b.endReturn();
+            b.endBlock();
+
+            b.endRoot();
+        });
+
+        // The local should be cleared unless there's a default value.
+        assertEquals(!hasLocalDefaultValue(), root.getCallTarget().call(true));
+        assertEquals(!hasLocalDefaultValue(), root.getCallTarget().call(false));
+    }
+
+    @Test
+    public void testIsClearedAccessorRange() {
+        // @formatter:off
+        // var l0, l1
+        // l0, l1 = 42, 123
+        // if (arg0) {
+        //   clear l0
+        // } else {
+        //   clear l1
+        // }
+        // return isCleared l[arg1]
+        // @formatter:on
+
+        BytecodeNodeWithLocalIntrospection root = parseNode(b -> {
+            b.beginRoot();
+
+            BytecodeLocal l0 = makeLocal(b, "l0");
+            BytecodeLocal l1 = makeLocal(b, "l1");
+            b.beginStoreLocal(l0);
+            b.emitLoadConstant(42);
+            b.endStoreLocal();
+
+            b.beginStoreLocal(l1);
+            b.emitLoadConstant(123);
+            b.endStoreLocal();
+
+            b.beginIfThenElse();
+            b.emitLoadArgument(0);
+            b.emitClearLocalAccessor(l0);
+            b.emitClearLocalAccessor(l1);
+            b.endIfThenElse();
+
+            b.beginReturn();
+            b.beginIsClearedLocalRangeAccessor(new BytecodeLocal[]{l0, l1});
+            b.emitLoadArgument(1);
+            b.endIsClearedLocalRangeAccessor();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertEquals(true, root.getCallTarget().call(true, 0));
+        assertEquals(false, root.getCallTarget().call(true, 1));
+        assertEquals(false, root.getCallTarget().call(false, 0));
+        assertEquals(true, root.getCallTarget().call(false, 1));
+        assertThrows(ArrayIndexOutOfBoundsException.class, () -> root.getCallTarget().call(true, -1));
+        assertThrows(ArrayIndexOutOfBoundsException.class, () -> root.getCallTarget().call(true, 2));
+    }
 }
 
 @GenerateBytecodeTestVariants({
@@ -1348,6 +1545,46 @@ abstract class BytecodeNodeWithLocalIntrospection extends DebugBytecodeRootNode 
     }
 
     @Operation
+    @ConstantOperand(type = LocalAccessor.class)
+    public static final class ClearLocalAccessor {
+        @Specialization
+        public static void perform(VirtualFrame frame, LocalAccessor accessor,
+                        @Bind BytecodeNode node) {
+            accessor.clear(node, frame);
+        }
+    }
+
+    @Operation
+    @ConstantOperand(type = LocalRangeAccessor.class)
+    public static final class ClearLocalRangeAccessor {
+        @Specialization
+        public static void perform(VirtualFrame frame, LocalRangeAccessor accessor, int offset,
+                        @Bind BytecodeNode node) {
+            accessor.clear(node, frame, offset);
+        }
+    }
+
+    @Operation
+    @ConstantOperand(type = LocalAccessor.class)
+    public static final class IsClearedLocalAccessor {
+        @Specialization
+        public static boolean perform(VirtualFrame frame, LocalAccessor accessor,
+                        @Bind BytecodeNode node) {
+            return accessor.isCleared(node, frame);
+        }
+    }
+
+    @Operation
+    @ConstantOperand(type = LocalRangeAccessor.class)
+    public static final class IsClearedLocalRangeAccessor {
+        @Specialization
+        public static boolean perform(VirtualFrame frame, LocalRangeAccessor accessor, int offset,
+                        @Bind BytecodeNode node) {
+            return accessor.isCleared(node, frame, offset);
+        }
+    }
+
+    @Operation
     public static final class GetLocalUsingBytecodeLocalIndex {
         @Specialization
         public static Object perform(VirtualFrame frame,
@@ -1370,14 +1607,6 @@ abstract class BytecodeNodeWithLocalIntrospection extends DebugBytecodeRootNode 
     }
 
     @Operation
-    public static final class Same {
-        @Specialization
-        public static boolean doDefault(int a, int b) {
-            return a == b;
-        }
-    }
-
-    @Operation
     public static final class SetLocalUsingBytecodeLocalIndex {
         @Specialization
         public static void perform(VirtualFrame frame, Object value,
@@ -1386,6 +1615,14 @@ abstract class BytecodeNodeWithLocalIntrospection extends DebugBytecodeRootNode 
                         @Bind("$bytecodeIndex") int bci) {
             assert root.reservedLocalIndex != -1;
             node.setLocalValue(bci, frame, root.reservedLocalIndex, value);
+        }
+    }
+
+    @Operation
+    public static final class Same {
+        @Specialization
+        public static boolean doDefault(int a, int b) {
+            return a == b;
         }
     }
 
