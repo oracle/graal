@@ -256,6 +256,9 @@ public abstract class StrengthenGraphs {
         if (afterCounters != null) {
             afterCounters.collect(graph);
         }
+
+        postStrengthenGraphs(graph, method);
+
         method.setAnalyzedGraph(GraphEncoder.encodeSingleGraph(graph, AnalysisParsedGraph.HOST_ARCHITECTURE));
 
         persistStrengthenGraph(method);
@@ -267,6 +270,8 @@ public abstract class StrengthenGraphs {
             }
         }
     }
+
+    protected abstract void postStrengthenGraphs(StructuredGraph graph, AnalysisMethod method);
 
     protected abstract void useSharedLayerGraph(AnalysisMethod method);
 
