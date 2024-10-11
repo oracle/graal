@@ -295,8 +295,11 @@ b.endBlock();
 
 All local accesses must be (directly or indirectly) nested within the operation that created the local.
 
-`LoadLocal` and `StoreLocal` are the preferred way to access locals because they are efficient and can be quickened to [avoid boxing](Optimization.md#boxing-elimination).
-You can also access locals using [`LocalAccessor`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/LocalAccessor.java), [`LocalAccessorRange`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/LocalAccessorRange.java), or the various helper methods on the [`BytecodeNode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeNode.java).
+The `LoadLocal` and `StoreLocal` operations are the preferred way to access locals because they are efficient and can be quickened to [avoid boxing](Optimization.md#boxing-elimination).
+Some behaviour cannot be easily implemented using only these operations, in which case an operation can declare a [`LocalAccessor`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/LocalAccessor.java) or [`LocalAccessorRange`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/LocalAccessorRange.java) operand to perform local accesses.
+For example, an operation producing multiple values cannot "return" both values, and may instead use a local accessor to write one of the values back to a local.
+The [`BytecodeNode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeNode.java) class also declares a variety of helper methods for accessing locals.
+These helpers often have extra indirection, so the built-in operations and accessors are preferred.
 
 Local reads/writes should always use these abstractions; **you should not directly read from or write to the frame**.
 

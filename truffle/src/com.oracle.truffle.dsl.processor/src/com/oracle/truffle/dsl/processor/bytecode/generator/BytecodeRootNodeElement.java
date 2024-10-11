@@ -9954,6 +9954,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             this.add(createGetLocalCount());
 
+            this.add(createClearLocalValueInternal());
+            this.add(createIsLocalClearedInternal());
             if (model.usesBoxingElimination()) {
                 // Local getters generated in subclass
                 this.add(createGetCachedLocalKindInternal());
@@ -10014,6 +10016,36 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             } else {
                 b.statement("return locals.length / LOCALS_LENGTH");
             }
+            return ex;
+        }
+
+        private CodeExecutableElement createClearLocalValueInternal() {
+            CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "clearLocalValueInternal",
+                            new String[]{"frame", "localOffset", "localIndex"},
+                            new TypeMirror[]{types.Frame, type(int.class), type(int.class)});
+            ex.getModifiers().add(FINAL);
+
+            CodeTreeBuilder b = ex.createBuilder();
+            buildVerifyFrameDescriptor(b);
+            b.declaration(type(int.class), "frameIndex", "USER_LOCALS_START_INDEX + localOffset");
+            b.statement("FRAMES.clear(frame, frameIndex)");
+
+            return ex;
+        }
+
+        private CodeExecutableElement createIsLocalClearedInternal() {
+            CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "isLocalClearedInternal",
+                            new String[]{"frame", "localOffset", "localIndex"},
+                            new TypeMirror[]{types.Frame, type(int.class), type(int.class)});
+            ex.getModifiers().add(FINAL);
+
+            CodeTreeBuilder b = ex.createBuilder();
+            buildVerifyFrameDescriptor(b);
+            b.declaration(type(int.class), "frameIndex", "USER_LOCALS_START_INDEX + localOffset");
+            b.startReturn();
+            b.string("FRAMES.getTag(frame, frameIndex) == FrameSlotKind.Illegal.tag");
+            b.end();
+
             return ex;
         }
 

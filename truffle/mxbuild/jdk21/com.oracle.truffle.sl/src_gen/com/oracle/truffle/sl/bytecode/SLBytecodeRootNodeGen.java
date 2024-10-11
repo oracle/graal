@@ -3514,6 +3514,20 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             return count;
         }
 
+        @Override
+        protected final void clearLocalValueInternal(Frame frame, int localOffset, int localIndex) {
+            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
+            int frameIndex = USER_LOCALS_START_INDEX + localOffset;
+            FRAMES.clear(frame, frameIndex);
+        }
+
+        @Override
+        protected final boolean isLocalClearedInternal(Frame frame, int localOffset, int localIndex) {
+            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
+            int frameIndex = USER_LOCALS_START_INDEX + localOffset;
+            return FRAMES.getTag(frame, frameIndex) == FrameSlotKind.Illegal.tag;
+        }
+
         abstract FrameSlotKind getCachedLocalKindInternal(int localIndex);
 
         abstract void setCachedLocalKindInternal(int frameIndex, FrameSlotKind kind, int localIndex);

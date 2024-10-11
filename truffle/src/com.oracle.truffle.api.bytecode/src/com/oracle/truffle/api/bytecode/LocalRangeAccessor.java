@@ -45,15 +45,23 @@ import java.util.Objects;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
 /**
- * Operation parameter that allows an operation to update a contiguous range of locals. This class
- * is intended to be used in combination with the {@link ConstantOperand} annotation.
+ * Operation parameter that allows an operation to get, set, or clear locals declared in a
+ * contiguous range.
  * <p>
- * When a local setter range is declared as a constant operand, the corresponding builder method
- * will take a {@link BytecodeLocal} array argument representing the locals to be updated.
+ * To use a local range accessor, declare a {@link ConstantOperand} on the operation. The
+ * corresponding builder method for the operation will take a {@link BytecodeLocal} array argument
+ * for the locals to be accessed. These locals must be allocated sequentially during building. At
+ * run time, a {@link LocalRangeAccessor} for the locals will be supplied as a parameter to the
+ * operation.
+ * <p>
+ * All of the accessor methods take a {@link BytecodeNode}, the current {@link Frame}, and an
+ * offset. The offset should be a valid compilation-final index into the array of locals. See the
+ * {@link LocalAccessor} javadoc for restrictions on the other parameters and usage recommendations.
  *
  * @since 24.2
  */
@@ -111,87 +119,94 @@ public final class LocalRangeAccessor {
     }
 
     /**
-     * Loads an object from a local at the given offset into the range.
+     * Loads an object from the local at the given offset into the range.
      *
      * @since 24.2
      */
-    public Object getObject(BytecodeNode bytecode, VirtualFrame frame, int offset) {
+    public Object getObject(BytecodeNode bytecodeNode, VirtualFrame frame, int offset) {
         CompilerAsserts.partialEvaluationConstant(this);
+        CompilerAsserts.partialEvaluationConstant(bytecodeNode);
         CompilerAsserts.partialEvaluationConstant(offset);
         checkBounds(offset);
-        return bytecode.getLocalValueInternal(frame, startOffset + offset, startIndex + offset);
+        return bytecodeNode.getLocalValueInternal(frame, startOffset + offset, startIndex + offset);
     }
 
     /**
-     * Loads a boolean from a local at the given offset into the range.
+     * Loads a boolean from the local at the given offset into the range.
      *
      * @since 24.2
      */
-    public boolean getBoolean(BytecodeNode bytecode, VirtualFrame frame, int offset) throws UnexpectedResultException {
+    public boolean getBoolean(BytecodeNode bytecodeNode, VirtualFrame frame, int offset) throws UnexpectedResultException {
         CompilerAsserts.partialEvaluationConstant(this);
+        CompilerAsserts.partialEvaluationConstant(bytecodeNode);
         CompilerAsserts.partialEvaluationConstant(offset);
         checkBounds(offset);
-        return bytecode.getLocalValueInternalBoolean(frame, startOffset + offset, startIndex + offset);
+        return bytecodeNode.getLocalValueInternalBoolean(frame, startOffset + offset, startIndex + offset);
     }
 
     /**
-     * Loads a byte from a local at the given offset into the range.
+     * Loads a byte from the local at the given offset into the range.
      *
      * @since 24.2
      */
-    public byte getByte(BytecodeNode bytecode, VirtualFrame frame, int offset) throws UnexpectedResultException {
+    public byte getByte(BytecodeNode bytecodeNode, VirtualFrame frame, int offset) throws UnexpectedResultException {
         CompilerAsserts.partialEvaluationConstant(this);
+        CompilerAsserts.partialEvaluationConstant(bytecodeNode);
         CompilerAsserts.partialEvaluationConstant(offset);
         checkBounds(offset);
-        return bytecode.getLocalValueInternalByte(frame, startOffset + offset, startIndex + offset);
+        return bytecodeNode.getLocalValueInternalByte(frame, startOffset + offset, startIndex + offset);
     }
 
     /**
-     * Loads an int from a local at the given offset into the range.
+     * Loads an int from the local at the given offset into the range.
      *
      * @since 24.2
      */
-    public int getInt(BytecodeNode bytecode, VirtualFrame frame, int offset) throws UnexpectedResultException {
+    public int getInt(BytecodeNode bytecodeNode, VirtualFrame frame, int offset) throws UnexpectedResultException {
         CompilerAsserts.partialEvaluationConstant(this);
+        CompilerAsserts.partialEvaluationConstant(bytecodeNode);
         CompilerAsserts.partialEvaluationConstant(offset);
         checkBounds(offset);
-        return bytecode.getLocalValueInternalInt(frame, startOffset + offset, startIndex + offset);
+        return bytecodeNode.getLocalValueInternalInt(frame, startOffset + offset, startIndex + offset);
     }
 
     /**
-     * Loads a long from a local at the given offset into the range.
+     * Loads a long from the local at the given offset into the range.
      *
      * @since 24.2
      */
-    public long getLong(BytecodeNode bytecode, VirtualFrame frame, int offset) throws UnexpectedResultException {
+    public long getLong(BytecodeNode bytecodeNode, VirtualFrame frame, int offset) throws UnexpectedResultException {
         CompilerAsserts.partialEvaluationConstant(this);
+        CompilerAsserts.partialEvaluationConstant(bytecodeNode);
         CompilerAsserts.partialEvaluationConstant(offset);
         checkBounds(offset);
-        return bytecode.getLocalValueInternalLong(frame, startOffset + offset, startIndex + offset);
+        return bytecodeNode.getLocalValueInternalLong(frame, startOffset + offset, startIndex + offset);
     }
 
     /**
-     * Loads a float from a local at the given offset into the range.
+     * Loads a float from the local at the given offset into the range.
      *
      * @since 24.2
      */
-    public float getFloat(BytecodeNode bytecode, VirtualFrame frame, int offset) throws UnexpectedResultException {
+    public float getFloat(BytecodeNode bytecodeNode, VirtualFrame frame, int offset) throws UnexpectedResultException {
         CompilerAsserts.partialEvaluationConstant(this);
+        CompilerAsserts.partialEvaluationConstant(bytecodeNode);
         CompilerAsserts.partialEvaluationConstant(offset);
         checkBounds(offset);
-        return bytecode.getLocalValueInternalFloat(frame, startOffset + offset, startIndex + offset);
+        return bytecodeNode.getLocalValueInternalFloat(frame, startOffset + offset, startIndex + offset);
     }
 
     /**
-     * Loads a double from a local at the given offset into the range.
+     * Loads a double from the local at the given offset into the range.
      *
      * @since 24.2
      */
-    public double getDouble(BytecodeNode bytecode, VirtualFrame frame, int offset) throws UnexpectedResultException {
+    public double getDouble(BytecodeNode bytecodeNode, VirtualFrame frame, int offset) throws UnexpectedResultException {
         CompilerAsserts.partialEvaluationConstant(this);
+        CompilerAsserts.partialEvaluationConstant(bytecodeNode);
         CompilerAsserts.partialEvaluationConstant(offset);
         checkBounds(offset);
-        return bytecode.getLocalValueInternalDouble(frame, startOffset + offset, startIndex + offset);
+        return bytecodeNode.getLocalValueInternalDouble(frame, startOffset + offset, startIndex + offset);
     }
 
     /**
@@ -199,11 +214,12 @@ public final class LocalRangeAccessor {
      *
      * @since 24.2
      */
-    public void setObject(BytecodeNode bytecode, VirtualFrame frame, int offset, Object value) {
+    public void setObject(BytecodeNode bytecodeNode, VirtualFrame frame, int offset, Object value) {
         CompilerAsserts.partialEvaluationConstant(this);
+        CompilerAsserts.partialEvaluationConstant(bytecodeNode);
         CompilerAsserts.partialEvaluationConstant(offset);
         checkBounds(offset);
-        bytecode.setLocalValueInternal(frame, startOffset + offset, startIndex + offset, value);
+        bytecodeNode.setLocalValueInternal(frame, startOffset + offset, startIndex + offset, value);
     }
 
     /**
@@ -211,10 +227,12 @@ public final class LocalRangeAccessor {
      *
      * @since 24.2
      */
-    public void setInt(BytecodeNode bytecode, VirtualFrame frame, int offset, int value) {
+    public void setInt(BytecodeNode bytecodeNode, VirtualFrame frame, int offset, int value) {
         CompilerAsserts.partialEvaluationConstant(this);
+        CompilerAsserts.partialEvaluationConstant(bytecodeNode);
+        CompilerAsserts.partialEvaluationConstant(offset);
         checkBounds(offset);
-        bytecode.setLocalValueInternalInt(frame, startOffset + offset, startIndex + offset, value);
+        bytecodeNode.setLocalValueInternalInt(frame, startOffset + offset, startIndex + offset, value);
     }
 
     /**
@@ -222,10 +240,12 @@ public final class LocalRangeAccessor {
      *
      * @since 24.2
      */
-    public void setLong(BytecodeNode bytecode, VirtualFrame frame, int offset, long value) {
+    public void setLong(BytecodeNode bytecodeNode, VirtualFrame frame, int offset, long value) {
         CompilerAsserts.partialEvaluationConstant(this);
+        CompilerAsserts.partialEvaluationConstant(bytecodeNode);
+        CompilerAsserts.partialEvaluationConstant(offset);
         checkBounds(offset);
-        bytecode.setLocalValueInternalLong(frame, startOffset + offset, startIndex + offset, value);
+        bytecodeNode.setLocalValueInternalLong(frame, startOffset + offset, startIndex + offset, value);
     }
 
     /**
@@ -233,10 +253,12 @@ public final class LocalRangeAccessor {
      *
      * @since 24.2
      */
-    public void setBoolean(BytecodeNode bytecode, VirtualFrame frame, int offset, boolean value) {
+    public void setBoolean(BytecodeNode bytecodeNode, VirtualFrame frame, int offset, boolean value) {
         CompilerAsserts.partialEvaluationConstant(this);
+        CompilerAsserts.partialEvaluationConstant(bytecodeNode);
+        CompilerAsserts.partialEvaluationConstant(offset);
         checkBounds(offset);
-        bytecode.setLocalValueInternalBoolean(frame, startOffset + offset, startIndex + offset, value);
+        bytecodeNode.setLocalValueInternalBoolean(frame, startOffset + offset, startIndex + offset, value);
     }
 
     /**
@@ -244,10 +266,12 @@ public final class LocalRangeAccessor {
      *
      * @since 24.2
      */
-    public void setByte(BytecodeNode bytecode, VirtualFrame frame, int offset, byte value) {
+    public void setByte(BytecodeNode bytecodeNode, VirtualFrame frame, int offset, byte value) {
         CompilerAsserts.partialEvaluationConstant(this);
+        CompilerAsserts.partialEvaluationConstant(bytecodeNode);
+        CompilerAsserts.partialEvaluationConstant(offset);
         checkBounds(offset);
-        bytecode.setLocalValueInternalByte(frame, startOffset + offset, startIndex + offset, value);
+        bytecodeNode.setLocalValueInternalByte(frame, startOffset + offset, startIndex + offset, value);
     }
 
     /**
@@ -255,10 +279,12 @@ public final class LocalRangeAccessor {
      *
      * @since 24.2
      */
-    public void setFloat(BytecodeNode bytecode, VirtualFrame frame, int offset, float value) {
+    public void setFloat(BytecodeNode bytecodeNode, VirtualFrame frame, int offset, float value) {
         CompilerAsserts.partialEvaluationConstant(this);
+        CompilerAsserts.partialEvaluationConstant(bytecodeNode);
+        CompilerAsserts.partialEvaluationConstant(offset);
         checkBounds(offset);
-        bytecode.setLocalValueInternalFloat(frame, startOffset + offset, startIndex + offset, value);
+        bytecodeNode.setLocalValueInternalFloat(frame, startOffset + offset, startIndex + offset, value);
     }
 
     /**
@@ -266,10 +292,41 @@ public final class LocalRangeAccessor {
      *
      * @since 24.2
      */
-    public void setDouble(BytecodeNode bytecode, VirtualFrame frame, int offset, double value) {
+    public void setDouble(BytecodeNode bytecodeNode, VirtualFrame frame, int offset, double value) {
         CompilerAsserts.partialEvaluationConstant(this);
+        CompilerAsserts.partialEvaluationConstant(bytecodeNode);
+        CompilerAsserts.partialEvaluationConstant(offset);
         checkBounds(offset);
-        bytecode.setLocalValueInternalDouble(frame, startOffset + offset, startIndex + offset, value);
+        bytecodeNode.setLocalValueInternalDouble(frame, startOffset + offset, startIndex + offset, value);
+    }
+
+    /**
+     * Clears the local at the given offset into the range.
+     *
+     * @since 24.2
+     * @see LocalAccessor#clear
+     */
+    public void clear(BytecodeNode bytecodeNode, VirtualFrame frame, int offset) {
+        CompilerAsserts.partialEvaluationConstant(this);
+        CompilerAsserts.partialEvaluationConstant(bytecodeNode);
+        CompilerAsserts.partialEvaluationConstant(offset);
+        checkBounds(offset);
+        bytecodeNode.clearLocalValueInternal(frame, startOffset + offset, startIndex + offset);
+    }
+
+    /**
+     * Checks whether the local at the given offset into the range has been {@link #clear cleared}
+     * (and a new value has not been set).
+     *
+     * @since 24.2
+     * @see LocalAccessor#isCleared
+     */
+    public boolean isCleared(BytecodeNode bytecodeNode, VirtualFrame frame, int offset) {
+        CompilerAsserts.partialEvaluationConstant(this);
+        CompilerAsserts.partialEvaluationConstant(bytecodeNode);
+        CompilerAsserts.partialEvaluationConstant(offset);
+        checkBounds(offset);
+        return bytecodeNode.isLocalClearedInternal(frame, startOffset + offset, startIndex + offset);
     }
 
     private void checkBounds(int offset) {
@@ -295,9 +352,9 @@ public final class LocalRangeAccessor {
     }
 
     /**
-     * Creates a local setter range given an array of bytecode locals created by the builder. The
-     * array of bytecode locals must locals with consective localOffset. The returned value may
-     * return an interned instance of {@link LocalRangeAccessor} to improve memory footprint.
+     * Obtains a {@link LocalAccessorRange}.
+     *
+     * This method is invoked by the generated code and should not be called directly.
      *
      * @since 24.2
      */
