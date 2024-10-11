@@ -26,54 +26,62 @@
 
 package com.oracle.svm.core.genscavenge.service;
 
-import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.Uninterruptible;
-import jdk.graal.compiler.api.replacements.Fold;
-import org.graalvm.nativeimage.ImageSingletons;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.core.locks.VMSemaphore;
+import com.oracle.svm.core.log.Log;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.UnsignedWord;
 
-public class ServiceSupport {
-    private GcNotifier gcNotifier;
-    private ServiceThread serviceThread;
+/**
+ * This class is the dedicated thread that handles services. For now, the only service is GC
+ * notifications.
+ */
+public class NotificationThread extends Thread {
+    private final UninterruptibleUtils.AtomicBoolean atomicNotify;
+    private final VMSemaphore semaphore;
+    private volatile boolean stopped;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public ServiceSupport() {
-        gcNotifier = new GcNotifier();
-        serviceThread = new ServiceThread(gcNotifier);
+    @SuppressWarnings("this-escape")
+    public NotificationThread() {
+        this.semaphore = new VMSemaphore("serviceThread");
+        this.atomicNotify = new UninterruptibleUtils.AtomicBoolean(false);
+        setDaemon(true);
     }
 
-    @Fold
-    public static ServiceSupport singleton() {
-        return ImageSingletons.lookup(ServiceSupport.class);
+    /** Awakens to send notifications asynchronously. */
+    @Override
+    public void run() {
+        while (!stopped) {
+            if (await()) {
+                if (HasGcNotificationSupport.get()) {
+                    GcNotifier.singleton().sendNotification();
+                }
+                // In the future, we may want to do other things here too.
+            }
+        }
     }
 
-    void initialize() {
-        serviceThread.start();
-    }
-
-    /**
-     * Called from GC code. Allocation Free.
-     */
-    public void beforeCollection(long startTime) {
-        gcNotifier.beforeCollection(startTime);
-    }
-
-    /**
-     * Called from GC code. Allocation Free.
-     */
-    public void afterCollection(boolean isIncremental, GCCause cause, UnsignedWord collectionEpoch, long endTime) {
-        gcNotifier.afterCollection(isIncremental, cause, collectionEpoch.rawValue(), endTime);
-        signalServiceThread();
+    private boolean await() {
+        semaphore.await();
+        return atomicNotify.compareAndSet(true, false);
     }
 
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    void signalServiceThread() {
-        serviceThread.signal();
+    public void signal() {
+        atomicNotify.set(true);
+        semaphore.signal();
     }
 
-    void teardown() {
-        serviceThread.shutdown();
+    public void shutdown() {
+        this.stopped = true;
+        this.signal();
+        // Wait until the NotificationThread finishes.
+        try {
+            this.join();
+        } catch (InterruptedException e) {
+            Log.log().string("Service thread could not shutdown correctly.");
+        }
     }
 }

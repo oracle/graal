@@ -26,9 +26,11 @@
 
 package com.oracle.svm.core.genscavenge.service;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.Platform;
 import com.oracle.svm.core.Uninterruptible;
+import jdk.graal.compiler.api.replacements.Fold;
 import com.oracle.svm.core.genscavenge.AbstractMemoryPoolMXBean;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.genscavenge.GenScavengeMemoryPoolMXBeans;
@@ -52,8 +54,8 @@ import static com.oracle.svm.core.genscavenge.GenScavengeMemoryPoolMXBeans.YOUNG
 public class GcNotifier {
     // 5 is probably more than enough, although making the queue larger isn't a problem either.
     private static final int QUEUE_SIZE = 5;
-    private static volatile int rear;
-    private static volatile int front;
+    private static int rear;
+    private static int front;
 
     GcNotificationRequest[] requests;
     GcNotificationRequest currentRequest;
@@ -70,8 +72,13 @@ public class GcNotifier {
         front = 0;
     }
 
+    @Fold
+    public static GcNotifier singleton() {
+        return ImageSingletons.lookup(GcNotifier.class);
+    }
+
     /** Called during GC. */
-    void beforeCollection(long startTime) {
+    public void beforeCollection(long startTime) {
         assert VMOperation.isInProgressAtSafepoint();
 
         AbstractMemoryPoolMXBean[] beans = GenScavengeMemoryPoolMXBeans.singleton().getMXBeans();
@@ -86,7 +93,7 @@ public class GcNotifier {
     }
 
     /** Called during GC. */
-    void afterCollection(boolean isIncremental, GCCause cause, long epoch, long endTime) {
+    public void afterCollection(boolean isIncremental, GCCause cause, long epoch, long endTime) {
         assert VMOperation.isInProgressAtSafepoint();
 
         AbstractMemoryPoolMXBean[] beans = GenScavengeMemoryPoolMXBeans.singleton().getMXBeans();
@@ -108,6 +115,7 @@ public class GcNotifier {
         if (front == rear) {
             front = incremented(front);
         }
+        org.graalvm.nativeimage.ImageSingletons.lookup(NotificationThreadSupport.class).signalServiceThread();
     }
 
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -136,8 +144,9 @@ public class GcNotifier {
          * NotificationRequest class that was dequeued.
          */
         GarbageCollectorMXBean gcBean = null;
+        String targetBeanName = currentRequest.isIncremental ? YOUNG_GEN_SCAVENGER : COMPLETE_SCAVENGER;
         for (GarbageCollectorMXBean bean : ManagementFactory.getGarbageCollectorMXBeans()) {
-            if ((currentRequest.isIncremental && bean.getName().equals(YOUNG_GEN_SCAVENGER)) || (!currentRequest.isIncremental && bean.getName().equals(COMPLETE_SCAVENGER))) {
+            if (bean.getName().equals(targetBeanName)) {
                 gcBean = bean;
                 break;
             }
@@ -155,7 +164,10 @@ public class GcNotifier {
             return false;
         }
         // Copy the data to avoid data being overwritten by new writes to the queue.
-        requests[front].copyTo(currentRequest);
+        GcNotificationRequest temp = currentRequest;
+        currentRequest = requests[front];
+        requests[front] = temp;
+
         front = incremented(front);
         return true;
     }

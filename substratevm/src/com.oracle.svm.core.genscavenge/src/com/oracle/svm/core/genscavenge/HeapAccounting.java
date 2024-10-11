@@ -79,7 +79,7 @@ public final class HeapAccounting {
         invalidData = false;
     }
 
-    public HeapSizes getHeapSizesBeforeGc() {
+    HeapSizes getHeapSizesBeforeGc() {
         return beforeGc;
     }
 

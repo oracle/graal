@@ -29,7 +29,6 @@ package com.oracle.svm.core.genscavenge.service;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.sun.management.GcInfo;
-import com.sun.management.internal.GcInfoBuilder;
 
 import java.lang.management.MemoryUsage;
 
@@ -38,7 +37,7 @@ import java.lang.management.MemoryUsage;
 public final class Target_com_sun_management_GcInfo {
     @SuppressWarnings("unused") //
     @Alias
-    public Target_com_sun_management_GcInfo(GcInfoBuilder builder,
+    public Target_com_sun_management_GcInfo(Target_com_sun_management_internal_GcInfoBuilder builder,
                     long index, long startTime, long endTime,
                     MemoryUsage[] muBeforeGc,
                     MemoryUsage[] muAfterGc,

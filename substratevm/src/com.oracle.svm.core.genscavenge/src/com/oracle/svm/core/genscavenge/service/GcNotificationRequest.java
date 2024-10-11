@@ -36,8 +36,8 @@ import com.oracle.svm.core.Uninterruptible;
  * a point in the future.
  */
 public class GcNotificationRequest {
-    private PoolMemoryUsage[] before;
-    private PoolMemoryUsage[] after;
+    private final PoolMemoryUsage[] before;
+    private final PoolMemoryUsage[] after;
 
     // Times since the VM started.
     public long startTime;
@@ -81,24 +81,6 @@ public class GcNotificationRequest {
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public PoolMemoryUsage getPoolAfter(int i) {
         return after[i];
-    }
-
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    void copyTo(GcNotificationRequest other) {
-        other.startTime = startTime;
-        other.epoch = epoch;
-        other.endTime = endTime;
-        other.cause = cause;
-        other.timestamp = timestamp;
-        other.isIncremental = isIncremental;
-
-        for (int index = 0; index < before.length; index++) {
-            other.setPoolBefore(index, before[index].used, before[index].committed, before[index].name);
-        }
-
-        for (int index = 0; index < after.length; index++) {
-            other.setPoolAfter(index, after[index].used, after[index].committed, after[index].name);
-        }
     }
 
 }

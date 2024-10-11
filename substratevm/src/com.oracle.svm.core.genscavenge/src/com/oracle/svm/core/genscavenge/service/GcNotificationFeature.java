@@ -26,19 +26,20 @@
 
 package com.oracle.svm.core.genscavenge.service;
 
-import java.util.function.BooleanSupplier;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.VMInspectionOptions;
-import jdk.graal.compiler.api.replacements.Fold;
+@AutomaticallyRegisteredFeature
+public class GcNotificationFeature implements InternalFeature {
 
-public class HasGcNotificationSupport implements BooleanSupplier {
     @Override
-    public boolean getAsBoolean() {
-        return get();
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return HasGcNotificationSupport.get();
     }
 
-    @Fold
-    public static boolean get() {
-        return VMInspectionOptions.hasGcNotificationSupport();
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        ImageSingletons.add(GcNotifier.class, new GcNotifier());
     }
 }

@@ -26,19 +26,33 @@
 
 package com.oracle.svm.core.genscavenge.service;
 
-import java.util.function.BooleanSupplier;
-
-import com.oracle.svm.core.VMInspectionOptions;
 import jdk.graal.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-public class HasGcNotificationSupport implements BooleanSupplier {
-    @Override
-    public boolean getAsBoolean() {
-        return get();
+public class NotificationThreadSupport {
+    private final NotificationThread notificationThread;
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public NotificationThreadSupport() {
+        notificationThread = new NotificationThread();
     }
 
     @Fold
-    public static boolean get() {
-        return VMInspectionOptions.hasGcNotificationSupport();
+    public static NotificationThreadSupport singleton() {
+        return ImageSingletons.lookup(NotificationThreadSupport.class);
+    }
+
+    void initialize() {
+        notificationThread.start();
+    }
+
+    public void signalServiceThread() {
+        notificationThread.signal();
+    }
+
+    void teardown() {
+        notificationThread.shutdown();
     }
 }

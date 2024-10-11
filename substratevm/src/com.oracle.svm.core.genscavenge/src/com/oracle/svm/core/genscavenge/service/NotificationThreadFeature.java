@@ -29,37 +29,34 @@ package com.oracle.svm.core.genscavenge.service;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.RuntimeSupport;
-import com.oracle.svm.core.VMInspectionOptions;
 import org.graalvm.nativeimage.ImageSingletons;
 
 @AutomaticallyRegisteredFeature
-public class ServiceFeature implements InternalFeature {
+public class NotificationThreadFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return VMInspectionOptions.hasGcNotificationSupport();
+        return HasGcNotificationSupport.get(); // Can extend this list later.
     }
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        RuntimeSupport.getRuntimeSupport().addStartupHook(new ServiceStartupHook());
-        RuntimeSupport.getRuntimeSupport().addShutdownHook(new ServiceShutdownHook());
-        ImageSingletons.add(ServiceSupport.class, new ServiceSupport());
+            ImageSingletons.add(NotificationThreadSupport.class, new NotificationThreadSupport());
+            RuntimeSupport.getRuntimeSupport().addStartupHook(new NotificationThreadStartupHook());
+            RuntimeSupport.getRuntimeSupport().addShutdownHook(new NotificationThreadShutdownHook());
     }
 }
 
-final class ServiceStartupHook implements RuntimeSupport.Hook {
+final class NotificationThreadStartupHook implements RuntimeSupport.Hook {
     @Override
     public void execute(boolean isFirstIsolate) {
-        if (isFirstIsolate) {
-            ServiceSupport.singleton().initialize();
-        }
+        NotificationThreadSupport.singleton().initialize();
     }
 }
 
-final class ServiceShutdownHook implements RuntimeSupport.Hook {
+final class NotificationThreadShutdownHook implements RuntimeSupport.Hook {
     @Override
     public void execute(boolean isFirstIsolate) {
-        ServiceSupport.singleton().teardown();
+        NotificationThreadSupport.singleton().teardown();
     }
 }

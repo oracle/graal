@@ -36,7 +36,6 @@ import com.oracle.svm.core.genscavenge.service.Target_com_sun_management_interna
 import com.sun.management.GarbageCollectionNotificationInfo;
 import com.sun.management.GcInfo;
 import com.sun.management.internal.GarbageCollectionNotifInfoCompositeData;
-import com.sun.management.internal.GcInfoBuilder;
 import sun.management.NotificationEmitterSupport;
 
 import javax.management.MBeanNotificationInfo;
@@ -54,17 +53,9 @@ public abstract class AbstractGarbageCollectorMXBean extends NotificationEmitter
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+14/src/hotspot/share/gc/serial/serialHeap.cpp#L718") //
     private static final String ACTION_MAJOR = "end of major GC";
 
-    private GcInfoBuilder gcInfoBuilder;
+    private Target_com_sun_management_internal_GcInfoBuilder gcInfoBuilder;
     private volatile GcInfo gcInfo;
     private long seqNumber = 0;
-
-    private synchronized GcInfoBuilder getGcInfoBuilder() {
-        if (gcInfoBuilder == null) {
-            Target_com_sun_management_internal_GcInfoBuilder gib = new Target_com_sun_management_internal_GcInfoBuilder(this, getMemoryPoolNames());
-            gcInfoBuilder = SubstrateUtil.cast(gib, GcInfoBuilder.class);
-        }
-        return gcInfoBuilder;
-    }
 
     /**
      * Use the data taken from the request queue to populate MemoryUsage. The service thread calls
@@ -89,8 +80,8 @@ public abstract class AbstractGarbageCollectorMXBean extends NotificationEmitter
             }
         }
 
-        // Number of GC threads.
-        Object[] extAttribute = new Object[]{Integer.valueOf(1)};
+        Object[] extAttribute = new Object[1];
+        extAttribute[0] = 1; // Number of GC threads.
 
         Target_com_sun_management_GcInfo targetGcInfo = new Target_com_sun_management_GcInfo(getGcInfoBuilder(), request.epoch, request.startTime, request.endTime, before, after, extAttribute);
         gcInfo = SubstrateUtil.cast(targetGcInfo, GcInfo.class);
@@ -111,6 +102,13 @@ public abstract class AbstractGarbageCollectorMXBean extends NotificationEmitter
         notif.setUserData(cd);
 
         sendNotification(notif);
+    }
+
+    private Target_com_sun_management_internal_GcInfoBuilder getGcInfoBuilder() {
+        if (gcInfoBuilder == null) {
+            gcInfoBuilder = new Target_com_sun_management_internal_GcInfoBuilder(this, getMemoryPoolNames());
+        }
+        return gcInfoBuilder;
     }
 
     private long getNextSeqNumber() {
