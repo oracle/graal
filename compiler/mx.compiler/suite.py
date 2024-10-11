@@ -1,5 +1,5 @@
 suite = {
-  "mxversion": "7.28.0",
+  "mxversion": "7.33.0",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
@@ -182,11 +182,13 @@ suite = {
           "jdk.vm.ci.common",
           "jdk.vm.ci.amd64",
           "jdk.vm.ci.aarch64",
+          "jdk.vm.ci.riscv64",
           "jdk.vm.ci.services",
           "jdk.vm.ci.runtime",
           "jdk.vm.ci.hotspot",
           "jdk.vm.ci.hotspot.amd64",
           "jdk.vm.ci.hotspot.aarch64",
+          "jdk.vm.ci.hotspot.riscv64",
         ],
       },
       "uses" : [
@@ -346,6 +348,7 @@ suite = {
           "sun.security.util.math.intpoly",
         ],
         "jdk.internal.vm.ci" : [
+          "jdk.vm.ci.code",
           "jdk.vm.ci.meta",
         ],
       },
@@ -381,6 +384,7 @@ suite = {
       "requiresConcealed" : {
         "jdk.internal.vm.ci" : [
           "jdk.vm.ci.meta",
+          "jdk.vm.ci.code"
         ],
       },
       "checkstyle" : "jdk.graal.compiler",

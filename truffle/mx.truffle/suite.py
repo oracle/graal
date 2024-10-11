@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "7.28.0",
+  "mxversion": "7.33.0",
   "name" : "truffle",
   "version" : "24.2.0",
   "release" : False,
@@ -322,6 +322,9 @@ suite = {
           "jdk.vm.ci.services",
           "jdk.vm.ci.code",
           "jdk.vm.ci.code.stack",
+          "jdk.vm.ci.common",
+          "jdk.vm.ci.hotspot",
+          "jdk.vm.ci.runtime"
         ],
         "java.base" : [
           "jdk.internal.module",
