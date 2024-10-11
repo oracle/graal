@@ -521,25 +521,24 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
             AnnotationValue booleanConverterValue = ElementUtils.getAnnotationValue(mir, "booleanConverter");
             TypeMirror booleanConverter = getTypeMirror(booleanConverterValue);
 
-            TypeElement booleanConverterTypeElement = switch (booleanConverter.getKind()) {
-                case DECLARED -> (TypeElement) ((DeclaredType) booleanConverter).asElement();
-                case VOID -> {
-                    if (operator.returnConvertedBoolean) {
-                        Operator alternative = switch (operator) {
-                            case AND_RETURN_CONVERTED -> Operator.AND_RETURN_VALUE;
-                            case OR_RETURN_CONVERTED -> Operator.OR_RETURN_VALUE;
-                            default -> throw new AssertionError();
-                        };
-                        model.addError(mir, operatorValue, "Short circuit operation uses %s but no boolean converter was declared. Use %s or specify a boolean converter.", operator, alternative);
-                        continue;
-                    }
-                    yield null;
-                }
-                default -> {
-                    model.addError(mir, booleanConverterValue, "Could not use class as boolean converter: the converter type must be a declared type, not %s.", booleanConverter);
+            TypeElement booleanConverterTypeElement;
+            if (booleanConverter.getKind() == TypeKind.DECLARED) {
+                booleanConverterTypeElement = (TypeElement) ((DeclaredType) booleanConverter).asElement();
+            } else if (booleanConverter.getKind() == TypeKind.VOID) {
+                if (operator.returnConvertedBoolean) {
+                    Operator alternative = switch (operator) {
+                        case AND_RETURN_CONVERTED -> Operator.AND_RETURN_VALUE;
+                        case OR_RETURN_CONVERTED -> Operator.OR_RETURN_VALUE;
+                        default -> throw new AssertionError();
+                    };
+                    model.addError(mir, operatorValue, "Short circuit operation uses %s but no boolean converter was declared. Use %s or specify a boolean converter.", operator, alternative);
                     continue;
                 }
-            };
+                booleanConverterTypeElement = null;
+            } else {
+                model.addError(mir, booleanConverterValue, "Could not use class as boolean converter: the converter type must be a declared type, not %s.", booleanConverter);
+                continue;
+            }
             CustomOperationParser.forCodeGeneration(model, types.ShortCircuitOperation).parseCustomShortCircuitOperation(mir, name, operator, booleanConverterTypeElement);
         }
 
