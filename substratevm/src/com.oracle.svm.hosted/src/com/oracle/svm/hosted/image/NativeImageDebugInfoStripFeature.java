@@ -25,7 +25,6 @@
 package com.oracle.svm.hosted.image;
 
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
@@ -114,19 +113,18 @@ public class NativeImageDebugInfoStripFeature implements InternalFeature {
                     BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, debugInfoFilePath);
                     FileUtils.executeCommand(objcopyExe, "--add-gnu-debuglink=" + debugInfoFilePath, imageFilePath);
                 }
-                Path exportedSymbolsPath = createKeepSymbolsListFile(accessImpl);
-                FileUtils.executeCommand(objcopyExe, "--strip-all", "--keep-symbols=" + exportedSymbolsPath, imageFilePath);
+                if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
+                    /* Strip debug info and local symbols. */
+                    FileUtils.executeCommand(objcopyExe, "--strip-all", imageFilePath);
+                } else {
+                    /* Strip debug info only. */
+                    FileUtils.executeCommand(objcopyExe, "--strip-debug", imageFilePath);
+                }
             } catch (IOException e) {
                 throw UserError.abort("Generation of separate debuginfo file failed", e);
             } catch (InterruptedException e) {
                 throw new InterruptImageBuilding("Interrupted during debuginfo file splitting of image " + imageName);
             }
         }
-    }
-
-    private static Path createKeepSymbolsListFile(AfterImageWriteAccessImpl accessImpl) throws IOException {
-        Path exportedSymbolsPath = accessImpl.getTempDirectory().resolve("keep-symbols.list").toAbsolutePath();
-        Files.write(exportedSymbolsPath, accessImpl.getImageSymbols(true));
-        return exportedSymbolsPath;
     }
 }
