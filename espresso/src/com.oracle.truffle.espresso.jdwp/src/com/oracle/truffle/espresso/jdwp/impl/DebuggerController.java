@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -30,6 +32,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.regex.Pattern;
@@ -91,6 +94,13 @@ public final class DebuggerController implements ContextsListener {
     private TruffleContext truffleContext;
     private Object initialThread;
     private final TruffleLogger jdwpLogger;
+    private DebuggerConnection connection;
+    private volatile SetupState setupState = null;
+
+    // Field used to signal a fatal startup error that can happen e.g. if the handshake with the
+    // debugger fails. This field is only used when suspend=y. Before the main thread suspends
+    // itself, it must check this field and exit the context if set.
+    private volatile Throwable lateStartupError;
 
     public DebuggerController(JDWPInstrument instrument, TruffleLogger logger) {
         this.instrument = instrument;
@@ -109,7 +119,7 @@ public final class DebuggerController implements ContextsListener {
         this.eventListener = vmEventListener;
         this.initialThread = thread;
 
-        // setup the debug session object early to make sure instrumentable nodes are materialized
+        // set up the debug session object early to make sure instrumentable nodes are materialized
         debuggerSession = debug.startSession(new SuspendedCallbackImpl(), SourceElement.ROOT, SourceElement.STATEMENT);
         debuggerSession.setSteppingFilter(SuspensionFilter.newBuilder().ignoreLanguageContextInitialization(true).build());
 
@@ -118,6 +128,48 @@ public final class DebuggerController implements ContextsListener {
 
     public void reInitialize() {
         initialize(debugger, options, context, initialThread, eventListener);
+        assert setupState != null;
+
+        if (setupState.fatalConnectionError) {
+            System.err.println("ERROR: Debuggers will not be able to connect to this context again!");
+            // OK, give up on trying to reconnect
+            return;
+        }
+        DebuggerConnection.reconnectDebuggerConnection(this, setupState);
+    }
+
+    void setDebuggerConnection(DebuggerConnection connection) {
+        this.connection = connection;
+    }
+
+    void setSetupState(SetupState state) {
+        this.setupState = state;
+    }
+
+    public void closeConnection() {
+        if (connection != null) {
+            connection.close();
+        }
+    }
+
+    public void addDebuggerThread(Thread thread) {
+        instrument.addDebuggerThread(thread);
+    }
+
+    public void markLateStartupError(Throwable t) {
+        lateStartupError = t;
+    }
+
+    static final class SetupState {
+        final Socket socket;
+        final ServerSocket serverSocket;
+        private boolean fatalConnectionError;
+
+        SetupState(Socket socket, ServerSocket serverSocket, boolean fatalConnectionError) {
+            this.socket = socket;
+            this.serverSocket = serverSocket;
+            this.fatalConnectionError = fatalConnectionError;
+        }
     }
 
     public JDWPContext getContext() {
@@ -326,11 +378,11 @@ public final class DebuggerController implements ContextsListener {
         Object[] allThreads = context.getAllGuestThreads();
         ArrayList<Object> visibleThreads = new ArrayList<>(allThreads.length);
         for (Object thread : allThreads) {
-            if (!instrument.isVMThread(context.asHostThread(thread))) {
+            if (!instrument.isDebuggerThread(context.asHostThread(thread))) {
                 visibleThreads.add(thread);
             }
         }
-        return visibleThreads.toArray(new Object[visibleThreads.size()]);
+        return visibleThreads.toArray(new Object[0]);
     }
 
     void forceResumeAll() {
@@ -509,6 +561,52 @@ public final class DebuggerController implements ContextsListener {
     @Override
     public void onLanguageContextInitialized(TruffleContext con, @SuppressWarnings("unused") LanguageInfo language) {
         truffleContext = con;
+
+        // With the Espresso context initialized, we can now complete the JDWP setup and establish
+        // the connection.
+        assert setupState != null;
+
+        if (setupState.fatalConnectionError) {
+            // OK, during JDWP initialization we failed to establish a connection,
+            // so we have to abort the context
+            System.err.println("JDWP exit error AGENT_ERROR_TRANSPORT_INIT(197): No transports initialized");
+            context.exit(2);
+            return; // return here for readability. Context.exit will terminate this thread.
+        }
+        CountDownLatch latch = new CountDownLatch(1);
+        DebuggerConnection.establishDebuggerConnection(this, setupState, false, latch);
+
+        // If we're told to suspend, or we're not operating in server mode, we wait until we're
+        // sure that we have either established a working connection or failed to set one up.
+        if (isSuspend() || !isServer()) {
+            try {
+                latch.await();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                System.err.println("JDWP exit error AGENT_ERROR_TRANSPORT_INIT(197): No transports initialized");
+                context.exit(2);
+                return; // return here for readability. Context.exit will terminate this thread.
+            }
+        }
+        // make sure we have a working connection. If not, we exit the context.
+        if (lateStartupError != null) {
+            System.err.println("ERROR: transport error 202: connect failed: " + lateStartupError.getMessage());
+            System.err.println("ERROR: JDWP Transport dt_socket failed to initialize, TRANSPORT_INIT(510)");
+            System.err.println("JDWP exit error AGENT_ERROR_TRANSPORT_INIT(197): No transports initialized");
+            context.exit(2);
+            return; // return here for readability. Context.exit will terminate this thread.
+        }
+        if (isSuspend()) {
+            // only a JDWP resume/resumeAll command can resume this thread
+            suspend(context.asGuestThread(Thread.currentThread()), SuspendStrategy.EVENT_THREAD, Collections.singletonList(() -> {
+                // By passing this as a job to the suspend method, we're making sure we only
+                // send the vm started event after the thread suspension has been bumped.
+                // For the suspend=n case the VM started event is sent as soon as a debugger
+                // connection has been established, which might be long after this method returns.
+                getEventListener().vmStarted(true);
+                return null;
+            }), true);
+        }
     }
 
     public void suspend(Object thread, byte suspendPolicy, List<Callable<Void>> jobs, boolean forceSuspend) {
@@ -724,12 +822,12 @@ public final class DebuggerController implements ContextsListener {
         @Override
         public void onSuspend(SuspendedEvent event) {
             Thread hostThread = Thread.currentThread();
-            if (instrument.isVMThread(hostThread)) {
+            if (instrument.isDebuggerThread(hostThread)) {
                 // always allow VM threads to run guest code without
                 // the risk of being suspended
                 return;
             }
-            if (!instrument.hasConnection()) {
+            if (connection == null || !connection.isOpen()) {
                 return;
             }
 
