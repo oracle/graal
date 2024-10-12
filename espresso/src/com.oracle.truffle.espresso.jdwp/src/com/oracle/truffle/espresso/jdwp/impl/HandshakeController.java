@@ -29,9 +29,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
-import java.util.Collection;
 
-public final class HandshakeController {
+final class HandshakeController {
 
     private static final String JDWP_HANDSHAKE = "JDWP-Handshake";
     private ServerSocket currentServerSocket;
@@ -41,15 +40,15 @@ public final class HandshakeController {
      *
      * @throws IOException
      */
-    public SocketConnection createSocketConnection(boolean server, DebuggerController controller, Collection<Thread> activeThreads) throws IOException {
+    void setupInitialConnection(DebuggerController controller) throws IOException {
+        DebuggerController.SetupState result;
         String connectionHost = controller.getHost();
         int port = controller.getListeningPort();
         if (connectionHost == null) {
             // only allow local host if nothing specified
             connectionHost = "localhost";
         }
-        Socket connectionSocket;
-        if (server) {
+        if (controller.isServer()) {
             ServerSocket serverSocket = new ServerSocket();
             serverSocket.setSoTimeout(0); // no timeout
             serverSocket.setReuseAddress(true);
@@ -68,25 +67,14 @@ public final class HandshakeController {
                 assert currentServerSocket == null;
                 currentServerSocket = serverSocket;
             }
-            // block until a debugger has accepted the socket
-            connectionSocket = serverSocket.accept();
+            result = new DebuggerController.SetupState(null, serverSocket, false);
         } else {
-            connectionSocket = new Socket(connectionHost, port);
+            result = new DebuggerController.SetupState(new Socket(connectionHost, port), null, false);
         }
-
-        if (!handshake(connectionSocket)) {
-            throw new IOException("Unable to handshake with debubgger");
-        }
-        SocketConnection connection = new SocketConnection(connectionSocket);
-        controller.getEventListener().setConnection(connection);
-        Thread jdwpSender = new Thread(connection, "jdwp-transmitter");
-        jdwpSender.setDaemon(true);
-        jdwpSender.start();
-        activeThreads.add(jdwpSender);
-        return connection;
+        controller.setSetupState(result);
     }
 
-    public synchronized void close() {
+    synchronized void close() {
         if (currentServerSocket != null) {
             if (!currentServerSocket.isClosed()) {
                 try {
@@ -102,7 +90,7 @@ public final class HandshakeController {
     /**
      * Handshake with the debugger.
      */
-    private static boolean handshake(Socket s) throws IOException {
+    static boolean handshake(Socket s) throws IOException {
 
         byte[] hello = JDWP_HANDSHAKE.getBytes(StandardCharsets.UTF_8);
 
@@ -117,7 +105,7 @@ public final class HandshakeController {
             }
             if (n < 0) {
                 s.close();
-                throw new IOException("handshake failed - connection prematurally closed");
+                throw new IOException("handshake failed - connection prematurely closed");
             }
             received += n;
         }
