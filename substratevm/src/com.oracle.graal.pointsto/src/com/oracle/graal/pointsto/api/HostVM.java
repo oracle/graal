@@ -336,6 +336,10 @@ public abstract class HostVM {
         return true;
     }
 
+    public boolean isFromJavaAgent(@SuppressWarnings("unused") Class<?> clazz) {
+        return false;
+    }
+
     /**
      * Helpers to determine what analysis actions should be taken for a given Multi-Method version.
      */
