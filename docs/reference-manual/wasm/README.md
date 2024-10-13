@@ -223,6 +223,6 @@ wasm [OPTION...] [--entry-point=FN] FILE [ARG...]
 
 ### Related Documentation
 
-- [Embed C in Java Using GraalWasm](guides/embed-c-in-java.md)
+- [Embed C in Java Using GraalWasm](https://github.com/graalvm/graal-languages-demos/tree/main/graalwasm/graalwasm-embed-c-code-guide){:target="_blank"}
 - [Embedding Languages documentation](../embedding/embed-languages.md)
-- [GraalWasm](https://github.com/oracle/graal/tree/master/wasm)
+- [GraalWasm](https://github.com/oracle/graal/tree/master/wasm){:target="_blank"}
