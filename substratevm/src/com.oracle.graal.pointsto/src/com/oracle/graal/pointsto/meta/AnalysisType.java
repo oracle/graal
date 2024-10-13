@@ -1321,11 +1321,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
             return dispatchTableMethods;
         }
         if (getWrapped() instanceof BaseLayerType) {
-            var result = universe.hostVM.loadOpenTypeWorldDispatchTableMethods(this);
-
-            // ensure result is fully visible across threads
-            VarHandle.storeStoreFence();
-            dispatchTableMethods = result;
+            // GR-58587 implement proper support.
+            dispatchTableMethods = Set.of();
             return dispatchTableMethods;
         }
 

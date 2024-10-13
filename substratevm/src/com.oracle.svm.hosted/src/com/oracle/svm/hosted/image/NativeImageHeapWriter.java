@@ -51,11 +51,13 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.hosted.code.CEntryPointLiteralFeature;
 import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
+import com.oracle.svm.hosted.imagelayer.LayeredDispatchTableSupport;
 import com.oracle.svm.hosted.meta.HostedClass;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
@@ -80,6 +82,7 @@ public final class NativeImageHeapWriter {
     private final NativeImageHeap heap;
     private final ImageHeapLayoutInfo heapLayout;
     private long sectionOffsetOfARelocatablePointer;
+    private final boolean imageLayer = ImageLayerBuildingSupport.buildingImageLayer();
 
     public NativeImageHeapWriter(NativeImageHeap heap, ImageHeapLayoutInfo heapLayout) {
         this.heap = heap;
@@ -391,6 +394,10 @@ public final class NativeImageHeapWriter {
 
                 idHashOffset = dynamicHubLayout.getIdentityHashOffset(vtableLength);
                 instanceFields = instanceFields.filter(field -> !dynamicHubLayout.isIgnoredField(field));
+
+                if (imageLayer) {
+                    LayeredDispatchTableSupport.singleton().registerWrittenDynamicHub((DynamicHub) info.getObject(), heap.aUniverse, heap.hUniverse, vTable);
+                }
 
             } else if (heap.getHybridLayout(clazz) != null) {
                 HybridLayout hybridLayout = heap.getHybridLayout(clazz);

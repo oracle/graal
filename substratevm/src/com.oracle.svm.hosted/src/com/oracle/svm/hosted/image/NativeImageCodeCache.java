@@ -199,7 +199,7 @@ public abstract class NativeImageCodeCache {
 
     public abstract int codeSizeFor(HostedMethod method);
 
-    protected CompilationResult compilationResultFor(HostedMethod method) {
+    public CompilationResult compilationResultFor(HostedMethod method) {
         return compilations.get(method);
     }
 

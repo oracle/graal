@@ -33,7 +33,6 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
@@ -440,9 +439,5 @@ public abstract class HostVM {
          * support it within deoptimization targets and runtime-compiled methods.
          */
         return method.isOriginalMethod();
-    }
-
-    public Set<AnalysisMethod> loadOpenTypeWorldDispatchTableMethods(@SuppressWarnings("unused") AnalysisType type) {
-        return Set.of();
     }
 }

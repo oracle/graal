@@ -109,6 +109,7 @@ import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.image.RelocatableBuffer.Info;
 import com.oracle.svm.hosted.imagelayer.HostedDynamicLayerInfo;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
+import com.oracle.svm.hosted.imagelayer.LayeredDispatchTableSupport;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
@@ -512,6 +513,9 @@ public abstract class NativeImage extends AbstractImage {
             if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
                 HostedDynamicLayerInfo.singleton().defineSymbolsForPriorLayerMethods(objectFile);
             }
+            if (ImageLayerBuildingSupport.buildingImageLayer()) {
+                LayeredDispatchTableSupport.singleton().defineDispatchTableSlotSymbols(objectFile, textSection, codeCache, metaAccess);
+            }
 
             // Mark the sections with the relocations from the maps.
             markRelocationSitesFromBuffer(textBuffer, textImpl);
@@ -627,13 +631,15 @@ public abstract class NativeImage extends AbstractImage {
         MethodPointer methodPointer = (MethodPointer) info.getTargetObject();
         ResolvedJavaMethod method = methodPointer.getMethod();
         HostedMethod target = (method instanceof HostedMethod) ? (HostedMethod) method : heap.hUniverse.lookup(method);
+        boolean injectedNotCompiled = false;
         if (!target.isCompiled() && !target.isCompiledInPriorLayer()) {
             target = metaAccess.lookupJavaMethod(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD);
+            injectedNotCompiled = true;
         }
 
         assert checkMethodPointerRelocationKind(info);
         // A reference to a method. Mark the relocation site using the symbol name.
-        relocationProvider.markMethodPointerRelocation(sectionImpl, offset, info.getRelocationKind(), target, info.getAddend(), methodPointer.isAbsolute());
+        relocationProvider.markMethodPointerRelocation(sectionImpl, offset, info.getRelocationKind(), target, info.getAddend(), methodPointer, injectedNotCompiled);
     }
 
     private static boolean isAddendAligned(Architecture arch, long addend, RelocationKind kind) {
