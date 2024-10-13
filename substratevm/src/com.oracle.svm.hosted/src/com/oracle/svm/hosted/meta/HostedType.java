@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted.meta;
 
-import java.util.Arrays;
-
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
@@ -34,11 +32,8 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.OpenTypeWorldFeature;
-import com.oracle.svm.hosted.image.NativeImage;
 
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaConstant;
@@ -101,11 +96,15 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
 
     protected HostedType[] typeCheckInterfaceOrder;
     /**
-     * Flattened array of all dispatch tables installed in the hub for this type.
+     * Flattened array of all dispatch tables methods installed in the hub for this type.
      */
     protected HostedMethod[] openTypeWorldDispatchTables;
     /**
-     * Used for debugging to ensure the dispatch call resolution is correct.
+     * Used for tracking original call targets contained within the dispatch table. This is in
+     * contrast with {@link #openTypeWorldDispatchTables}, which contains the resolved methods for
+     * each of the targets for this given type. In other words,
+     *
+     * <code> openTypeWorldDispatchTables[i] = resolveMethod(openTypeWorldDispatchTableSlotTargets[i], [HostedType]) </code>
      */
     protected HostedMethod[] openTypeWorldDispatchTableSlotTargets;
     protected int[] itableStartingOffsets;
@@ -161,9 +160,14 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
         return closedTypeWorldVTable;
     }
 
-    protected HostedMethod[] getOpenTypeWorldDispatchTables() {
+    public HostedMethod[] getOpenTypeWorldDispatchTables() {
         assert openTypeWorldDispatchTables != null;
         return openTypeWorldDispatchTables;
+    }
+
+    public HostedMethod[] getOpenTypeWorldDispatchTableSlotTargets() {
+        assert openTypeWorldDispatchTableSlotTargets != null;
+        return openTypeWorldDispatchTableSlotTargets;
     }
 
     public HostedMethod[] getVTable() {
@@ -557,13 +561,4 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     public Class<?> getJavaClass() {
         return OriginalClassProvider.getJavaClass(this);
     }
-
-    public OpenTypeWorldFeature.DispatchInfo generateDispatchInfo() {
-        assert ImageLayerBuildingSupport.buildingImageLayer();
-
-        int[] interfaceOrder = Arrays.stream(typeCheckInterfaceOrder).mapToInt(t -> t.getWrapped().getId()).toArray();
-        String[] dispatchTables = Arrays.stream(openTypeWorldDispatchTables).map(NativeImage::localSymbolNameForMethod).toArray(String[]::new);
-        return new OpenTypeWorldFeature.DispatchInfo(interfaceOrder, itableStartingOffsets, dispatchTables);
-    }
-
 }

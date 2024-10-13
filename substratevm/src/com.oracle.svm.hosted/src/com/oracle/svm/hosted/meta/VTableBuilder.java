@@ -39,7 +39,8 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.hosted.OpenTypeWorldFeature;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.hosted.imagelayer.LayeredDispatchTableSupport;
 
 import jdk.graal.compiler.debug.Assertions;
 
@@ -47,6 +48,7 @@ public final class VTableBuilder {
     private final HostedUniverse hUniverse;
     private final HostedMetaAccess hMetaAccess;
     private final boolean closedTypeWorldHubLayout;
+    private final boolean imageLayer = ImageLayerBuildingSupport.buildingImageLayer();
 
     private VTableBuilder(HostedUniverse hUniverse, HostedMetaAccess hMetaAccess) {
         this.hUniverse = hUniverse;
@@ -61,8 +63,6 @@ public final class VTableBuilder {
         } else {
             builder.buildOpenTypeWorldDispatchTables();
             assert builder.verifyOpenTypeWorldDispatchTables();
-            OpenTypeWorldFeature.persistDispatchInfo(hUniverse.getTypes());
-            OpenTypeWorldFeature.persistMethodInfo(hUniverse.methods.values());
         }
     }
 
@@ -137,7 +137,9 @@ public final class VTableBuilder {
             index++;
         }
 
-        OpenTypeWorldFeature.persistDispatchTable(type, table);
+        if (imageLayer) {
+            LayeredDispatchTableSupport.singleton().registerDeclaredDispatchInfo(type, table);
+        }
 
         return table;
     }
@@ -175,6 +177,7 @@ public final class VTableBuilder {
             }
             type.openTypeWorldDispatchTables = new HostedMethod[aggregatedTable.size()];
             type.openTypeWorldDispatchTableSlotTargets = aggregatedTable.toArray(HostedMethod[]::new);
+            boolean[] validTarget = new boolean[aggregatedTable.size()];
             for (int i = 0; i < aggregatedTable.size(); i++) {
                 HostedMethod method = aggregatedTable.get(i);
                 /*
@@ -186,6 +189,7 @@ public final class VTableBuilder {
                     var resolvedMethod = (HostedMethod) type.resolveConcreteMethod(method, type);
                     if (resolvedMethod != null) {
                         targetMethod = resolvedMethod;
+                        validTarget[i] = true;
                     }
 
                     if (SubstrateUtil.assertionsEnabled()) {
@@ -199,6 +203,10 @@ public final class VTableBuilder {
                 }
 
                 type.openTypeWorldDispatchTables[i] = targetMethod;
+            }
+
+            if (imageLayer) {
+                LayeredDispatchTableSupport.singleton().registerNonArrayDispatchTable(type, validTarget);
             }
         }
 
@@ -228,10 +236,13 @@ public final class VTableBuilder {
         int[] emptyITableOffsets = new int[0];
         var objectType = hUniverse.getObjectClass();
         for (HostedType type : hUniverse.getTypes()) {
-            if (type.isArray()) {
+            if (type.isArray() && type.getWrapped().isReachable()) {
                 type.openTypeWorldDispatchTables = objectType.openTypeWorldDispatchTables;
                 type.openTypeWorldDispatchTableSlotTargets = objectType.openTypeWorldDispatchTableSlotTargets;
                 type.itableStartingOffsets = objectType.itableStartingOffsets;
+                if (imageLayer) {
+                    LayeredDispatchTableSupport.singleton().registerArrayDispatchTable(type, objectType);
+                }
             }
             if (type.openTypeWorldDispatchTables == null) {
                 assert !needsDispatchTable(type) : type;
