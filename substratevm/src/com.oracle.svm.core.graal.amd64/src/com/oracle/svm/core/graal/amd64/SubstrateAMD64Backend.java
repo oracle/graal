@@ -46,6 +46,7 @@ import java.util.Collection;
 import java.util.EnumSet;
 import java.util.function.BiConsumer;
 
+import com.oracle.svm.core.pltgot.PLTGOTConfiguration;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -746,6 +747,14 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         @Override
         public void emitInstructionSynchronizationBarrier() {
             throw shouldNotReachHere("AMD64 does not need instruction synchronization");
+        }
+
+        @Override
+        public void emitExitMethodAddressResolution(Value ip) {
+            PLTGOTConfiguration configuration = PLTGOTConfiguration.singleton();
+            RegisterValue exitThroughRegisterValue = configuration.getExitMethodAddressResolutionRegister(getRegisterConfig()).asValue(ip.getValueKind());
+            emitMove(exitThroughRegisterValue, ip);
+            append(configuration.createExitMethodAddressResolutionOp(exitThroughRegisterValue));
         }
 
         @Override
@@ -1813,7 +1822,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         }
     }
 
-    private AMD64Assembler createAssemblerNoOptions() {
+    public AMD64Assembler createAssemblerNoOptions() {
         OptionValues o = new OptionValues(EconomicMap.create());
         return createAssembler(o);
     }
