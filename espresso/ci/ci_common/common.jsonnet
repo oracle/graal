@@ -237,7 +237,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
       self.dacapo_stable(env),
       guest_jvm_config=guest_jvm_config,
       extra_args=extra_args,
-      timelimit=if std.endsWith(_base_env(env), 'ce') then '7:30:00' else '3:00:00'
+      timelimit=if std.endsWith(_base_env(env), 'ce') then '1:10:00' else '1:00:00'
     ),
 
 
@@ -262,14 +262,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   # Excluding factorie (too slow). kiama and scalariform have transient issues with compilation enabled.
   scala_dacapo_jvm_warmup: 'scala-dacapo-warmup:*[scalap,scalac,scaladoc,scalaxb]',
 
-  dacapo_stable(env): if std.startsWith(env, 'jvm')
-    # exclude pmd and lusearch
-    then 'dacapo:*[h2,fop,jython,luindex,sunflow,xalan]'
-    # exclude fop on native
-    else if env == 'native-ce'
-      # additionally exclude luindex on native-ce: it gets stuck on the first interation
-      then 'dacapo:*[h2,jython,lusearch,pmd,sunflow,xalan]'
-      else 'dacapo:*[h2,jython,luindex,lusearch,pmd,sunflow,xalan]',
+  dacapo_stable(env): 'dacapo:*[fop,lusearch,luindex,sunflow,xalan]',
 
   # exclude scalatest, which goes into deopt loop and becomes slower on every subsequent operation
   scala_dacapo_fast: 'scala-dacapo:*[apparat,factorie,kiama,scalac,scaladoc,scalap,scalariform,scalaxb,tmt]',
