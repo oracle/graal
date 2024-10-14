@@ -458,7 +458,7 @@ public final class NativeEnvProcessor extends EspressoProcessor {
                         .withOverrideAnnotation() //
                         .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
                         .withReturnType("Object") //
-                        .withParams("Object " + ENV_ARG_NAME, "Object[] " + ARGS_NAME);
+                        .withParams("com.oracle.truffle.espresso.jni.NativeEnv " + ENV_ARG_NAME, "Object[] " + ARGS_NAME);
         if (!h.skipSafepoint) {
             invoke.addBodyLine(EspressoProcessor.SAFEPOINT_POLL);
         }
