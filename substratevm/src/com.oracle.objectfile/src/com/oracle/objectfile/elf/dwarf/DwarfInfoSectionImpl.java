@@ -1133,7 +1133,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             abbrevCode = AbbrevCode.INDIRECT_POINTER;
             log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
             pos = writeAbbrevCode(abbrevCode, buffer, pos);
-            int oopReferenceSize = dwarfSections.oopReferenceSize();
+            int oopReferenceSize = dwarfSections.referenceSize();
             log(context, "  [0x%08x]     byte_size 0x%x", pos, oopReferenceSize);
             pos = writeAttrData1((byte) oopReferenceSize, buffer, pos);
             layoutOffset = getIndirectLayoutIndex(classEntry);
@@ -1170,7 +1170,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             abbrevCode = AbbrevCode.INDIRECT_POINTER;
             log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
             pos = writeAbbrevCode(abbrevCode, buffer, pos);
-            int byteSize = dwarfSections.oopReferenceSize();
+            int byteSize = dwarfSections.referenceSize();
             log(context, "  [0x%08x]     byte_size 0x%x", pos, byteSize);
             pos = writeAttrData1((byte) byteSize, buffer, pos);
             layoutOffset = getIndirectLayoutIndex(interfaceClassEntry);
@@ -1504,7 +1504,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             abbrevCode = AbbrevCode.INDIRECT_POINTER;
             log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
             pos = writeAbbrevCode(abbrevCode, buffer, pos);
-            int byteSize = dwarfSections.oopReferenceSize();
+            int byteSize = dwarfSections.referenceSize();
             log(context, "  [0x%08x]     byte_size  0x%x", pos, byteSize);
             pos = writeAttrData1((byte) byteSize, buffer, pos);
             log(context, "  [0x%08x]     type (pointer) 0x%x (%s)", pos, indirectLayoutOffset, name);
@@ -1878,136 +1878,85 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
          * n.b.
          *
          * The setting for option -H:+/-SpawnIsolates is determined by useHeapBase == true/false.
+         * The setting for option -H:+/-UseCompressedReferences is determined by compressionShift >
+         * 0.
          *
          */
 
         boolean useHeapBase = dwarfSections.useHeapBase();
-        int oopCompressShift = dwarfSections.oopCompressShift();
-        int oopTagsShift = dwarfSections.oopTagsShift();
-        int oopAlignShift = dwarfSections.oopAlignShift();
-        /* we may be able to use a mask or a right shift then a left shift or just a left shift */
-        int mask = 0;
-        int rightShift = 0;
-        int leftShift = 0;
-        int exprSize = 0;
+        int reservedBitsMask = dwarfSections.reservedBitsMask();
+        int numReservedBits = dwarfSections.numReservedBits();
+        int compressionShift = dwarfSections.compressionShift();
+        int numAlignmentBits = dwarfSections.numAlignmentBits();
 
         /*
          * First we compute the size of the locexpr and decide how to do any required bit-twiddling
+         *
+         * The required expression will be one of these paths:
+         *
+         * push object address ................................ (1 byte) ..... [offset] ............
+         * IF reservedBitsMask != 0 ................................................................
+         * . push reservedBitsMask ............................ (1 byte) ..... [offset, mask] ......
+         * . NOT .............................................. (1 byte) ..... [offset, ~mask] .....
+         * . AND .............................................. (1 byte) ..... [offset] ............
+         * . IF numReservedBits == numAlignmentBits && compressionShift == 0 .......................
+         * ... push numReservedBits ........................... (1 byte) ..... [offset, right shift]
+         * ... LSHR ........................................... (1 byte) ..... [offset] ............
+         * ... IF compressionShift != numAlignmentBits .............................................
+         * ..... push numAlignmentBits - compressionShift ..... (1 byte) ..... [offset, left shift]
+         * ..... LSHL ......................................... (1 byte) ..... [offset] ............
+         * ... END IF ..............................................................................
+         * . END IF ................................................................................
+         * END IF ..................................................................................
+         * IF useHeapBase ..........................................................................
+         * . IF compressionShift != 0 ..............................................................
+         * ... push compressionShift .......................... (1 byte) ..... [offset, left shift]
+         * ... LSHL ........................................... (1 byte) ..... [offset] ............
+         * . END IF ................................................................................
+         * . push rheap+0 ..................................... (2 bytes) .... [offset, rheap] .....
+         * . ADD .............................................. (1 byte) ..... [oop] ...............
+         * ELSE ....................................................................................
+         * ................................................................... [offset == oop] .....
+         * END IF ..................................................................................
+         * end: .............................................................. [oop] ...............
          */
-        if (!useHeapBase) {
-            /* We must be compressing for a hub otherwise this call would not be needed. */
-            assert isHub == true;
-            mask = dwarfSections.oopTagsMask();
-            assert mask != 0;
-            /*-
-             * We don't need to care about zero oops just mask off the tag bits.
-             *
-             * required expression is
-             *
-             *  .... push object address .. (1 byte) ..... [tagged oop]
-             *  .... push mask ............ (1 byte) ..... [tagged oop, mask]
-             *  .... NOT .................. (1 byte) ..... [tagged oop, ~mask]
-             *  .... AND .................. (1 byte) ..... [raw oop]
-             */
-            exprSize += 4;
-        } else {
-            /*-
-             * required expression will be one of these paths
-             *
-             *  .... push object address .. (1 byte) ..... [offset]
-             *  .... duplicate object base  (1 byte) ..... [offset, offset]
-             *  .... push 0 ............... (1 byte) ..... [offset, offset, 0]
-             *  .... eq ................... (1 byte) ..... [offset]
-             *  .... brtrue end ........... (3 bytes) .... [offset == oop == 0 if taken]
-             *  IF mask != 0
-             *  .... push mask ............ (1 byte) ..... [offset, mask]
-             *  .... NOT .................. (1 byte) ..... [offset, ~mask]
-             *  .... AND .................. (1 byte) ..... [offset]
-             *  ELSE
-             *    IF rightShift != 0
-             *  .... push rightShift ...... (1 byte) ..... [offset, right shift]
-             *  .... LSHR ................. (1 byte) ..... [offset]
-             *    END IF
-             *    IF leftShift != 0
-             *  .... push leftShift ....... (1 byte) ..... [offset, left shift]
-             *  .... LSHL ................. (1 byte) ..... [offset]
-             *    END IF
-             *  END IF
-             *  .... push rheap+0 ......... (2 bytes) .... [offset, rheap]
-             *  .... ADD .................. (1 byte) ..... [oop]
-             * end: ...................................... [oop]
-             *
-             */
-            /* Count all bytes in common path */
-            exprSize += 10;
-            if (isHub) {
-                if (oopCompressShift == 0) {
-                    /* We need to use oopAlignment for the shift. */
-                    oopCompressShift = oopAlignShift;
-                }
-                if (oopCompressShift == oopTagsShift) {
-                    /* We can use a mask to remove the bits. */
-                    mask = dwarfSections.oopTagsMask();
-                    exprSize += 3;
-                } else {
-                    /* We need one or two shifts to remove the bits. */
-                    if (oopTagsShift != 0) {
-                        rightShift = oopTagsShift;
-                        exprSize += 2;
-                    }
-                    leftShift = oopCompressShift;
-                    exprSize += 2;
-                }
-            } else {
-                /* No flags to deal with, so we need either an uncompress or nothing. */
-                if (oopCompressShift != 0) {
-                    leftShift = oopCompressShift;
-                    exprSize += 2;
-                }
-            }
-        }
-        /* Write size followed by the expression and check the size comes out correct. */
-        pos = writeULEB(exprSize, buffer, pos);
+
+        int lengthPos = pos;
+        /*
+         * write dummy expr length (max expression size is 10 -> 1 byte is enough)
+         */
+        pos = writeULEB(0, buffer, pos);
         int exprStart = pos;
-        if (!useHeapBase) {
-            pos = writeExprOpcode(DwarfExpressionOpcode.DW_OP_push_object_address, buffer, pos);
-            pos = writeExprOpcodeLiteral(mask, buffer, pos);
-            pos = writeExprOpcode(DwarfExpressionOpcode.DW_OP_not, buffer, pos);
-            pos = writeExprOpcode(DwarfExpressionOpcode.DW_OP_and, buffer, pos);
-        } else {
-            pos = writeExprOpcode(DwarfExpressionOpcode.DW_OP_push_object_address, buffer, pos);
-            /* skip to end if oop is null */
-            pos = writeExprOpcode(DwarfExpressionOpcode.DW_OP_dup, buffer, pos);
-            pos = writeExprOpcode(DwarfExpressionOpcode.DW_OP_lit0, buffer, pos);
-            pos = writeExprOpcode(DwarfExpressionOpcode.DW_OP_eq, buffer, pos);
-            int skipStart = pos + 3; /* offset excludes BR op + 2 operand bytes */
-            short offsetToEnd = (short) (exprSize - (skipStart - exprStart));
-            pos = writeExprOpcode(DwarfExpressionOpcode.DW_OP_bra, buffer, pos);
-            pos = writeShort(offsetToEnd, buffer, pos);
-            /* insert mask or shifts as necessary */
-            if (mask != 0) {
-                pos = writeExprOpcodeLiteral(mask, buffer, pos);
+        pos = writeExprOpcode(DwarfExpressionOpcode.DW_OP_push_object_address, buffer, pos);
+        if (isHub && reservedBitsMask != 0) {
+            if (numReservedBits == numAlignmentBits && compressionShift == 0) {
+                pos = writeExprOpcodeLiteral(reservedBitsMask, buffer, pos);
                 pos = writeExprOpcode(DwarfExpressionOpcode.DW_OP_not, buffer, pos);
                 pos = writeExprOpcode(DwarfExpressionOpcode.DW_OP_and, buffer, pos);
             } else {
-                if (rightShift != 0) {
-                    pos = writeExprOpcodeLiteral(rightShift, buffer, pos);
-                    pos = writeExprOpcode(DwarfExpressionOpcode.DW_OP_shr, buffer, pos);
-                }
-                if (leftShift != 0) {
-                    pos = writeExprOpcodeLiteral(leftShift, buffer, pos);
+                pos = writeExprOpcodeLiteral(numReservedBits, buffer, pos);
+                pos = writeExprOpcode(DwarfExpressionOpcode.DW_OP_shr, buffer, pos);
+                if (compressionShift != numAlignmentBits) {
+                    pos = writeExprOpcodeLiteral(numAlignmentBits - compressionShift, buffer, pos);
                     pos = writeExprOpcode(DwarfExpressionOpcode.DW_OP_shl, buffer, pos);
                 }
+            }
+        }
+        if (useHeapBase) {
+            if (compressionShift != 0) {
+                pos = writeExprOpcodeLiteral(compressionShift, buffer, pos);
+                pos = writeExprOpcode(DwarfExpressionOpcode.DW_OP_shl, buffer, pos);
             }
             /* add the resulting offset to the heapbase register */
             pos = writeExprOpcodeBReg(dwarfSections.getHeapbaseRegister(), buffer, pos);
             pos = writeSLEB(0, buffer, pos); /* 1 byte. */
             pos = writeExprOpcode(DwarfExpressionOpcode.DW_OP_plus, buffer, pos);
-            assert pos == skipStart + offsetToEnd;
-
-            /* make sure we added up correctly */
-            assert pos == exprStart + exprSize;
         }
+
+        int exprSize = pos - exprStart;
+        assert exprSize > 0 && exprSize <= 10;
+        writeULEB(exprSize, buffer, lengthPos);  // fixup expression length
+
         return pos;
     }
 }
