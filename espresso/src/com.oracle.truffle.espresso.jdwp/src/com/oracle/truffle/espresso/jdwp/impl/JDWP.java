@@ -1806,6 +1806,8 @@ public final class JDWP {
                     ThreadJob<Object> job = new ThreadJob<>(thread, () -> {
                         if (Modifier.isPrivate(method.getModifiers())) {
                             return method.invokeMethodSpecial(args);
+                        } else if (method.getDeclaringKlassRef().isInterface()) {
+                            return method.invokeInterfaceMethod(args);
                         } else {
                             return method.invokeMethodVirtual(args);
                         }
