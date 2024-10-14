@@ -149,6 +149,14 @@ public interface MethodRef {
     Object invokeMethodSpecial(Object... args);
 
     /**
+     * Invokes an interface method with input arguments. The first argument must be the self object.
+     *
+     * @param args guest-language arguments used when calling the method
+     * @return the guest-language return value
+     */
+    Object invokeInterfaceMethod(Object... args);
+
+    /**
      * Determines if the declaring class has a source file attribute.
      *
      * @return true if a source file attribute is present, false otherwise

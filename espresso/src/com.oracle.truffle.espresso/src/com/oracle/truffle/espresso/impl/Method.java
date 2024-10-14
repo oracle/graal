@@ -1707,6 +1707,12 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             return invokeDirectSpecial(args);
         }
 
+        @Override
+        public Object invokeInterfaceMethod(Object... args) {
+            checkRemovedByRedefinition();
+            return invokeDirectInterface(args);
+        }
+
         private void checkRemovedByRedefinition() {
             if (getMethod().isRemovedByRedefinition()) {
                 Meta meta = getMeta();
