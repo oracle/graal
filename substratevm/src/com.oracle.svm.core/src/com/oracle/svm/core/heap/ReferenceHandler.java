@@ -36,7 +36,7 @@ import com.oracle.svm.core.util.VMError;
 public final class ReferenceHandler {
     public static boolean useDedicatedThread() {
         int automaticReferenceHandling = IsolateArgumentParser.getOptionIndex(SubstrateOptions.ConcealedOptions.AutomaticReferenceHandling);
-        return ReferenceHandlerThread.isSupported() && IsolateArgumentParser.getBooleanOptionValue(automaticReferenceHandling);
+        return ReferenceHandlerThread.isSupported() && IsolateArgumentParser.singleton().getBooleanOptionValue(automaticReferenceHandling);
     }
 
     public static boolean isExecutedManually() {
