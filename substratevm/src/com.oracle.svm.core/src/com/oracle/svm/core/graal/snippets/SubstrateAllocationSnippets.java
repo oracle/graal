@@ -406,6 +406,9 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
     @Override
     protected final int getPrefetchStyle() {
+        if (SubstrateOptions.useSerialGC()) {
+            return 0;
+        }
         return SubstrateOptions.AllocatePrefetchStyle.getValue();
     }
 

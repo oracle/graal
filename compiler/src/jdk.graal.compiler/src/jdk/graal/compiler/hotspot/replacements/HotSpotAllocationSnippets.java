@@ -320,6 +320,9 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
 
     @Override
     protected final int getPrefetchStyle() {
+        if (HotSpotReplacementsUtil.useSerialGC(INJECTED_VMCONFIG)) {
+            return 0;
+        }
         return HotSpotReplacementsUtil.allocatePrefetchStyle(INJECTED_VMCONFIG);
     }
 
