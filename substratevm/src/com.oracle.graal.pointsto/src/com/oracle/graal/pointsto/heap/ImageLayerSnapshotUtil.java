@@ -51,8 +51,9 @@ import jdk.graal.compiler.util.ObjectCopierOutputStream;
 
 public class ImageLayerSnapshotUtil {
     public static final String FILE_NAME_PREFIX = "layer-snapshot-";
-    public static final String GRAPHS_FILE_NAME_PREFIX = "layer-snapshot-graphs-";
     public static final String FILE_EXTENSION = ".json";
+    public static final String GRAPHS_FILE_NAME_PREFIX = "layer-snapshot-graphs-";
+    public static final String GRAPHS_FILE_EXTENSION = ".big";
 
     public static final String CONSTRUCTOR_NAME = "<init>";
 
@@ -190,7 +191,7 @@ public class ImageLayerSnapshotUtil {
     }
 
     public static String snapshotGraphsFileName(String imageName) {
-        return GRAPHS_FILE_NAME_PREFIX + imageName + FILE_EXTENSION;
+        return GRAPHS_FILE_NAME_PREFIX + imageName + GRAPHS_FILE_EXTENSION;
     }
 
     public String getTypeIdentifier(AnalysisType type) {
