@@ -56,6 +56,8 @@ public class AMD64MathStub extends SnippetStub {
                 return "cos";
             case TAN:
                 return "tan";
+            case TANH:
+                return "tanh";
             case EXP:
                 return "exp";
             case LOG:
@@ -97,6 +99,11 @@ public class AMD64MathStub extends SnippetStub {
     @Snippet
     private static double tan(double value) {
         return UnaryMathIntrinsicNode.compute(value, UnaryOperation.TAN);
+    }
+
+    @Snippet
+    private static double tanh(double value) {
+        return UnaryMathIntrinsicNode.compute(value, UnaryOperation.TANH);
     }
 
     @Snippet
