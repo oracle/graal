@@ -410,7 +410,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         initializeExecutableTypes(node);
 
         List<Element> allMembers = new ArrayList<>(declaredMembers);
-        initializeImportGuards(node, lookupTypes, allMembers);
+        initializeStaticImports(node, lookupTypes, allMembers);
         initializeChildren(node);
 
         if (node.hasErrors()) {
@@ -1788,31 +1788,41 @@ public final class NodeParser extends AbstractParser<NodeData> {
         }
     }
 
-    private void initializeImportGuards(NodeData node, List<TypeElement> lookupTypes, List<Element> elements) {
+    private void initializeStaticImports(NodeData node, List<TypeElement> lookupTypes, List<Element> elements) {
         for (TypeElement lookupType : lookupTypes) {
-            AnnotationMirror importAnnotation = findAnnotationMirror(lookupType, types.ImportStatic);
-            if (importAnnotation == null) {
-                continue;
-            }
-            AnnotationValue importClassesValue = getAnnotationValue(importAnnotation, "value");
-            List<TypeMirror> importClasses = getAnnotationValueList(TypeMirror.class, importAnnotation, "value");
-            if (importClasses.isEmpty()) {
-                node.addError(importAnnotation, importClassesValue, "At least one import class must be specified.");
-                continue;
-            }
-            for (TypeMirror importClass : importClasses) {
-                if (importClass.getKind() != TypeKind.DECLARED) {
-                    node.addError(importAnnotation, importClassesValue, "The specified static import class '%s' is not a declared type.", getQualifiedName(importClass));
-                    continue;
-                }
+            initializeStaticImport(node, lookupType, elements);
+        }
 
-                TypeElement importClassElement = fromTypeMirror(context.reloadType(importClass));
-                if (!ElementUtils.isVisible(getVisibiltySource(node), importClassElement)) {
-                    node.addError(importAnnotation, importClassesValue, "The specified static import class '%s' is not visible.",
-                                    getQualifiedName(importClass));
-                }
-                elements.addAll(importVisibleStaticMembersImpl(node.getTemplateType(), importClassElement, false));
+        if (mode == ParseMode.OPERATION) {
+            // Operations can inherit static imports from the root node. Add root node imports after
+            // operation imports so that operation imports take precedence.
+            initializeStaticImport(node, bytecodeRootNodeType, elements);
+        }
+    }
+
+    private void initializeStaticImport(NodeData node, TypeElement lookupType, List<Element> elements) {
+        AnnotationMirror importAnnotation = findAnnotationMirror(lookupType, types.ImportStatic);
+        if (importAnnotation == null) {
+            return;
+        }
+        AnnotationValue importClassesValue = getAnnotationValue(importAnnotation, "value");
+        List<TypeMirror> importClasses = getAnnotationValueList(TypeMirror.class, importAnnotation, "value");
+        if (importClasses.isEmpty()) {
+            node.addError(importAnnotation, importClassesValue, "At least one import class must be specified.");
+            return;
+        }
+        for (TypeMirror importClass : importClasses) {
+            if (importClass.getKind() != TypeKind.DECLARED) {
+                node.addError(importAnnotation, importClassesValue, "The specified static import class '%s' is not a declared type.", getQualifiedName(importClass));
+                continue;
             }
+
+            TypeElement importClassElement = fromTypeMirror(context.reloadType(importClass));
+            if (!ElementUtils.isVisible(getVisibiltySource(node), importClassElement)) {
+                node.addError(importAnnotation, importClassesValue, "The specified static import class '%s' is not visible.",
+                                getQualifiedName(importClass));
+            }
+            elements.addAll(importVisibleStaticMembersImpl(node.getTemplateType(), importClassElement, false));
         }
     }
 
