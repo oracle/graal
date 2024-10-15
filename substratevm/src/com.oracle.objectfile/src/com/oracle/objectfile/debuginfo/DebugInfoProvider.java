@@ -129,6 +129,11 @@ public interface DebugInfoProvider {
          */
         String typeName();
 
+        /**
+         * @return a 64bit type signature to uniquely identify the type
+         */
+        long typeSignature(String prefix);
+
         DebugTypeKind typeKind();
 
         /**

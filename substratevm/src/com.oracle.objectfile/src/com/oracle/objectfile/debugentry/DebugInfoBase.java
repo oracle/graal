@@ -737,8 +737,8 @@ public abstract class DebugInfoBase {
         return cachePath;
     }
 
-    public boolean isHubClassEntry(ClassEntry classEntry) {
-        return classEntry.getTypeName().equals(DwarfDebugInfo.HUB_TYPE_NAME);
+    public boolean isHubClassEntry(StructureTypeEntry typeEntry) {
+        return typeEntry.getTypeName().equals(DwarfDebugInfo.HUB_TYPE_NAME);
     }
 
     public ClassEntry getHubClassEntry() {

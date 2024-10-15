@@ -36,7 +36,8 @@ public enum DwarfVersion {
      * still need to be generated as version 2.
      */
     DW_VERSION_2((short) 2),
-    DW_VERSION_4((short) 4);
+    DW_VERSION_4((short) 4),
+    DW_VERSION_5((short) 5);
 
     private final short value;
 
