@@ -12816,6 +12816,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.statement("FRAMES.setInt(" + localFrame() + ", " + BCI_INDEX + ", -1)");
             }
 
+            b.startStatement().startStaticCall(types.CompilerAsserts, "partialEvaluationConstant").string("bci").end().end();
+
             b.string("loop: ").startWhile().string("true").end().startBlock();
 
             // filtered instructions

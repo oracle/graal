@@ -303,7 +303,8 @@ These helpers often have extra indirection, so the built-in operations and acces
 
 Local reads/writes should always use these abstractions; **you should not directly read from or write to the frame**.
 
-It is undefined behaviour to load a local before a value is stored into it.
+Loading a local before a value is stored into it throws a [`FrameSlotTypeException`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api/src/com/oracle/truffle/api/frame/FrameSlotTypeException.java).
+You can specify a `defaultLocalValue` in [`@GenerateBytecode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/GenerateBytecode.java) to instead give uninitialized locals a default value.
 
 
 ### Scoping

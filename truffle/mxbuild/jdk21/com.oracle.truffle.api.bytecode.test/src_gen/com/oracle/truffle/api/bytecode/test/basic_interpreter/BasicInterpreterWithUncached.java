@@ -3261,6 +3261,7 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
             long temp;
             LoopCounter loopCounter = new LoopCounter();
             FRAMES.setInt(localFrame, BCI_INDEX, -1);
+            CompilerAsserts.partialEvaluationConstant(bci);
             loop: while (true) {
                 op = BYTES.getShort(bc, bci);
                 try {
@@ -4743,6 +4744,7 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
                 int sp = (short) (startState >>> 32);
                 int op;
                 long temp;
+                CompilerAsserts.partialEvaluationConstant(bci);
                 loop: while (true) {
                     op = BYTES.getShort(bc, bci);
                     try {
@@ -7033,7 +7035,7 @@ public final class BasicInterpreterWithUncached extends BasicInterpreter {
          * Signature: LoadLocal() -> Object
          * <p>
          * LoadLocal reads {@code local} from the current frame.
-         * If a value has not been written to the local, LoadLocal produces the default value as defined in the {@link FrameDescriptor} ({@code null} by default).
+         * If a value has not been written to the local, LoadLocal throws a {@link com.oracle.truffle.api.frame.FrameSlotTypeException}.
          *
          * @param local the local to load.
          */
