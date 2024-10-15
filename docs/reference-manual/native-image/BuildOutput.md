@@ -9,7 +9,10 @@ redirect_from: /reference-manual/native-image/BuildOutput/
 # Native Image Build Output
 
 * [Build Stages](#build-stages)
+* [Security Report](#security-report)
+* [Recommendations](#recommendations)
 * [Resource Usage Statistics](#resource-usage-statistics)
+* [Build Artifacts](#build-artifacts)
 * [Machine-Readable Build Output](#machine-readable-build-output)
 
 Here you will find information about the build output of GraalVM Native Image.

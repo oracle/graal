@@ -32,7 +32,7 @@ For this, perform the following steps:
 
 1. Build your application with `--pgo-instrument`.
 2. Run your instrumented application with a representative workload to generate profiling information. Profiles collected from this run are stored by default in the _default.iprof_ file.
-3. Re-build your application and pass in the profiling information with `--pgo=<your>.iprof` to generate an optimized version of your application. If the profile file has the default name, it will be picked up automatically.
+3. Rebuild your application with the `--pgo` option. You can pass a custom _.iprof_ file with `--pgo=<your>.iprof`, otherwise _default.iprof_ is used. This will rebuild your image and generate an optimized version of your application.
 
 Find more information on this topic in [Basic Usage of Profile-Guided Optimization](../PGO-Basic-Usage.md).
 
