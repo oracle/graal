@@ -244,10 +244,10 @@ public class BytecodeDSLBuiltins {
                         .setInstruction(m.instruction(InstructionKind.LOAD_EXCEPTION, "load.exception", m.signature(Object.class))//
                                         .addImmediate(ImmediateKind.STACK_POINTER, "exception_sp"));
         m.loadLocalOperation = m.operation(OperationKind.LOAD_LOCAL, "LoadLocal",
-                        """
+                        String.format("""
                                         LoadLocal reads {@code local} from the current frame.
-                                        If a value has not been written to the local, LoadLocal produces the default value as defined in the {@link FrameDescriptor} ({@code null} by default).
-                                        """) //
+                                        If a value has not been written to the local, LoadLocal %s.
+                                        """, loadLocalUndefinedBehaviour(m))) //
                         .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "local", "the local to load")) //
                         .setInstruction(m.instruction(InstructionKind.LOAD_LOCAL, "load.local", m.signature(Object.class)) //
                                         .addImmediate(ImmediateKind.LOCAL_OFFSET, "local_offset"));
@@ -369,6 +369,14 @@ public class BytecodeDSLBuiltins {
     public static void addCheckBooleanInstruction(BytecodeDSLModel m) {
         if (m.checkBooleanInstruction == null) {
             m.checkBooleanInstruction = m.instruction(InstructionKind.CHECK_BOOLEAN, "check.boolean", m.signature(void.class));
+        }
+    }
+
+    private static String loadLocalUndefinedBehaviour(BytecodeDSLModel m) {
+        if (m.defaultLocalValue == null || m.defaultLocalValue.isEmpty()) {
+            return "throws a {@link com.oracle.truffle.api.frame.FrameSlotTypeException}";
+        } else {
+            return String.format("produces the default local value (%s)", m.defaultLocalValue);
         }
     }
 
