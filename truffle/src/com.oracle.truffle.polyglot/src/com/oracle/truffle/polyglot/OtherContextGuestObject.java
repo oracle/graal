@@ -156,6 +156,9 @@ final class OtherContextGuestObject implements TruffleObject {
                     } else {
                         returnValue = delegateLibrary.send(receiver, message, migratedArgs);
                     }
+                    if (message.getReturnType() == void.class) {
+                        return null;
+                    }
                     return migrateReturn(returnValue, receiverContext, delegateContext);
                 } catch (Throwable e) {
                     seenError.enter(node);
