@@ -15,7 +15,7 @@ This guide presents the conceptual details of the Bytecode DSL; for more concret
   - [Built-in operations](#built-in-operations)
   - [Custom operations](#custom-operations)
     - [Specializations](#specializations)
-    - [Bind parameters](#bind-parameters)
+    - [Expressions in operations](#expressions-in-operations)
     - [Advanced use cases](#advanced-use-cases)
 - [Locals](#locals)
   - [Accessing locals](#accessing-locals)
@@ -239,17 +239,16 @@ All specializations must have the same number of dynamic operands and must all b
 The value of each dynamic operand is supplied by a child operation; thus, the number of dynamic operands defines the number of child operations.
 For example, `OperationA` above has one dynamic operand, so it requires one child operation; `OperationB` has two dynamic operands, so it requires two children.
 
-#### Bind parameters
+#### Expressions in operations
 
-Specializations can use [`@Bind`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.dsl/src/com/oracle/truffle/api/dsl/Bind.java) to bind and execute expressions.
-The values produced by these expressions are passed as specialization arguments.
-Bytecode DSL interpreters have special bind variables that can be used to reference interpreter state:
+Like Truffle nodes, Bytecode DSL operations encode the behaviour of specialization guards, [`@Cached`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.dsl/src/com/oracle/truffle/api/dsl/Cached.java) initializers, [`@Bind`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.dsl/src/com/oracle/truffle/api/dsl/Bind.java) expressions, and more using Truffle DSL _expressions_.
+Expressions used in operations can access special variables that capture the current interpreter state:
 
 - `$rootNode` evaluates to the bytecode root node
 - `$bytecode` evaluates to the current `BytecodeNode`
-- `$bytecodeIndex` evaluates to the current bytecode index (as `int`)
+- `$bytecodeIndex` evaluates to the current bytecode index (as an `int`)
 
-To bind certain Bytecode DSL state directly, you can often omit the expression and rely on the default bind expressions for their types:
+When using [`@Bind`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.dsl/src/com/oracle/truffle/api/dsl/Bind.java) to bind interpreter state, you can often omit the expressions and rely on default bind expressions:
 
 - `@Bind MyBytecodeRootNode` binds the bytecode root node
 - `@Bind BytecodeNode` binds the current `BytecodeNode`
@@ -258,6 +257,9 @@ To bind certain Bytecode DSL state directly, you can often omit the expression a
 - `@Bind BytecodeTier` binds the current `BytecodeTier`.
 
 These values are partial evaluation constants.
+
+It is also possible to access additional helper methods/fields from expressions using [`@ImportStatic`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.dsl/src/com/oracle/truffle/api/dsl/ImportStatic.java).
+These static imports can be declared on the root node and on individual operations (operation imports take precedence over root node imports).
 
 #### Advanced use cases
 
