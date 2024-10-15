@@ -29,7 +29,7 @@
 #
 import sys
 import os
-import pipes
+import shlex
 import tempfile
 from os.path import join
 import shutil
@@ -166,7 +166,7 @@ mx_subst.path_substitutions.register_no_arg('jacoco', get_jacoco_setting)
 def _subst_get_jvm_args(dep):
     java = mx.get_jdk().java
     main_class = mx.distribution(dep).mainClass
-    jvm_args = [pipes.quote(arg) for arg in mx.get_runtime_jvm_args([dep])]
+    jvm_args = [shlex.quote(arg) for arg in mx.get_runtime_jvm_args([dep])]
     cmd = [java] + jvm_args + [main_class]
     return " ".join(cmd)
 
