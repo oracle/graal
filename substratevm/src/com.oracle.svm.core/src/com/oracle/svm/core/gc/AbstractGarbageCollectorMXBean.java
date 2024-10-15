@@ -23,15 +23,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.genscavenge;
+package com.oracle.svm.core.gc;
 
 import com.oracle.svm.core.util.BasedOnJDKFile;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.genscavenge.service.GcNotificationRequest;
-import com.oracle.svm.core.genscavenge.service.PoolMemoryUsage;
-import com.oracle.svm.core.genscavenge.service.Target_com_sun_management_GcInfo;
-import com.oracle.svm.core.genscavenge.service.Target_com_sun_management_internal_GcInfoBuilder;
+import com.oracle.svm.core.notification.GcNotificationRequest;
+import com.oracle.svm.core.notification.PoolMemoryUsage;
+import com.oracle.svm.core.notification.Target_com_sun_management_GcInfo;
+import com.oracle.svm.core.notification.Target_com_sun_management_internal_GcInfoBuilder;
 
 import com.sun.management.GarbageCollectionNotificationInfo;
 import com.sun.management.GcInfo;
@@ -58,11 +58,11 @@ public abstract class AbstractGarbageCollectorMXBean extends NotificationEmitter
     private long seqNumber = 0;
 
     /**
-     * Use the data taken from the request queue to populate MemoryUsage. The service thread calls
-     * this method.
+     * Use the data taken from the request queue to populate MemoryUsage. The notification thread
+     * calls this method.
      */
     public void createNotification(GcNotificationRequest request) {
-        AbstractMemoryPoolMXBean[] beans = GenScavengeMemoryPoolMXBeans.singleton().getMXBeans();
+        AbstractMemoryPoolMXBean[] beans = MemoryPoolMXBeansProvider.get().getMXBeans();
 
         String[] poolNames = getMemoryPoolNames();
         MemoryUsage[] before = new MemoryUsage[poolNames.length];

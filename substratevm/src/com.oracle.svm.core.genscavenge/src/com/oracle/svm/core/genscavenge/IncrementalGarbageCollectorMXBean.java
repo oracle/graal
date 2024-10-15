@@ -31,6 +31,7 @@ import javax.management.ObjectName;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.gc.AbstractGarbageCollectorMXBean;
 import com.oracle.svm.core.util.TimeUtils;
 
 import sun.management.Util;

@@ -24,21 +24,23 @@
  * questions.
  */
 
-package com.oracle.svm.core.genscavenge.service;
+package com.oracle.svm.core.notification;
 
-import java.util.function.BooleanSupplier;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.sun.management.GcInfo;
 
-import com.oracle.svm.core.VMInspectionOptions;
-import jdk.graal.compiler.api.replacements.Fold;
+import java.lang.management.MemoryUsage;
 
-public class HasGcNotificationSupport implements BooleanSupplier {
-    @Override
-    public boolean getAsBoolean() {
-        return get();
-    }
-
-    @Fold
-    public static boolean get() {
-        return VMInspectionOptions.hasGcNotificationSupport();
+@TargetClass(value = GcInfo.class, onlyWith = HasGcNotificationSupport.class)
+@SuppressWarnings("static-method")
+public final class Target_com_sun_management_GcInfo {
+    @SuppressWarnings("unused") //
+    @Alias
+    public Target_com_sun_management_GcInfo(Target_com_sun_management_internal_GcInfoBuilder builder,
+                    long index, long startTime, long endTime,
+                    MemoryUsage[] muBeforeGc,
+                    MemoryUsage[] muAfterGc,
+                    Object[] extAttributes) {
     }
 }

@@ -23,7 +23,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.genscavenge;
+package com.oracle.svm.core.gc;
 
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryPoolMXBean;
@@ -72,17 +72,17 @@ public abstract class AbstractMemoryPoolMXBean extends AbstractMXBean implements
         return getUsedBytes();
     }
 
-    abstract UnsignedWord computeInitialValue();
+    protected abstract UnsignedWord computeInitialValue();
 
-    abstract void beforeCollection();
+    public abstract void beforeCollection();
 
-    abstract void afterCollection();
+    public abstract void afterCollection();
 
-    MemoryUsage memoryUsage(UnsignedWord usedAndCommitted) {
+    protected MemoryUsage memoryUsage(UnsignedWord usedAndCommitted) {
         return memoryUsage(usedAndCommitted, usedAndCommitted);
     }
 
-    MemoryUsage memoryUsage(UnsignedWord used, UnsignedWord committed) {
+    protected MemoryUsage memoryUsage(UnsignedWord used, UnsignedWord committed) {
         return memoryUsage(used.rawValue(), committed.rawValue());
     }
 
@@ -170,7 +170,7 @@ public abstract class AbstractMemoryPoolMXBean extends AbstractMXBean implements
         peakUsage.set(WordFactory.zero());
     }
 
-    void updatePeakUsage(UnsignedWord value) {
+    protected void updatePeakUsage(UnsignedWord value) {
         UnsignedWord current;
         do {
             current = peakUsage.get();

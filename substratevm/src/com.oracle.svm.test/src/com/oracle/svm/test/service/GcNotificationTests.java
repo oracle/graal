@@ -26,7 +26,7 @@
 
 package com.oracle.svm.test.service;
 
-import com.oracle.svm.core.genscavenge.AbstractGarbageCollectorMXBean;
+import com.oracle.svm.core.gc.AbstractGarbageCollectorMXBean;
 import com.sun.management.GarbageCollectionNotificationInfo;
 import com.sun.management.GcInfo;
 

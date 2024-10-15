@@ -24,7 +24,7 @@
  * questions.
  */
 
-package com.oracle.svm.core.genscavenge.service;
+package com.oracle.svm.core.notification;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
@@ -34,7 +34,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 /**
- * This class is the dedicated thread that handles services. For now, the only service is GC
+ * This class is the dedicated thread that handles services. For now, the only notification is GC
  * notifications.
  */
 public class NotificationThread extends Thread {

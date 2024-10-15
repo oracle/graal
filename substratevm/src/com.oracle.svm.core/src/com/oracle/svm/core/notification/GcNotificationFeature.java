@@ -24,35 +24,22 @@
  * questions.
  */
 
-package com.oracle.svm.core.genscavenge.service;
+package com.oracle.svm.core.notification;
 
-import jdk.graal.compiler.api.replacements.Fold;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
-public class NotificationThreadSupport {
-    private final NotificationThread notificationThread;
+@AutomaticallyRegisteredFeature
+public class GcNotificationFeature implements InternalFeature {
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public NotificationThreadSupport() {
-        notificationThread = new NotificationThread();
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return HasGcNotificationSupport.get();
     }
 
-    @Fold
-    public static NotificationThreadSupport singleton() {
-        return ImageSingletons.lookup(NotificationThreadSupport.class);
-    }
-
-    void initialize() {
-        notificationThread.start();
-    }
-
-    public void signalServiceThread() {
-        notificationThread.signal();
-    }
-
-    void teardown() {
-        notificationThread.shutdown();
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        ImageSingletons.add(GcNotifier.class, new GcNotifier());
     }
 }

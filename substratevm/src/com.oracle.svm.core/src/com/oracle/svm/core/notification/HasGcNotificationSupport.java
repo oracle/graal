@@ -24,22 +24,21 @@
  * questions.
  */
 
-package com.oracle.svm.core.genscavenge.service;
+package com.oracle.svm.core.notification;
 
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
-import org.graalvm.nativeimage.ImageSingletons;
+import java.util.function.BooleanSupplier;
 
-@AutomaticallyRegisteredFeature
-public class GcNotificationFeature implements InternalFeature {
+import com.oracle.svm.core.VMInspectionOptions;
+import jdk.graal.compiler.api.replacements.Fold;
 
+public class HasGcNotificationSupport implements BooleanSupplier {
     @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return HasGcNotificationSupport.get();
+    public boolean getAsBoolean() {
+        return get();
     }
 
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        ImageSingletons.add(GcNotifier.class, new GcNotifier());
+    @Fold
+    public static boolean get() {
+        return VMInspectionOptions.hasGcNotificationSupport();
     }
 }

@@ -24,23 +24,22 @@
  * questions.
  */
 
-package com.oracle.svm.core.genscavenge.service;
+package com.oracle.svm.core.gc;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.sun.management.GcInfo;
+import jdk.graal.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.ImageSingletons;
 
-import java.lang.management.MemoryUsage;
-
-@TargetClass(value = GcInfo.class, onlyWith = HasGcNotificationSupport.class)
-@SuppressWarnings("static-method")
-public final class Target_com_sun_management_GcInfo {
-    @SuppressWarnings("unused") //
-    @Alias
-    public Target_com_sun_management_GcInfo(Target_com_sun_management_internal_GcInfoBuilder builder,
-                    long index, long startTime, long endTime,
-                    MemoryUsage[] muBeforeGc,
-                    MemoryUsage[] muAfterGc,
-                    Object[] extAttributes) {
+public interface MemoryPoolMXBeansProvider {
+    @Fold
+    static MemoryPoolMXBeansProvider get() {
+        return ImageSingletons.lookup(MemoryPoolMXBeansProvider.class);
     }
+
+    AbstractMemoryPoolMXBean[] getMXBeans();
+
+    String getCollectorName(boolean isIncremental);
+
+    void notifyBeforeCollection();
+
+    void notifyAfterCollection();
 }

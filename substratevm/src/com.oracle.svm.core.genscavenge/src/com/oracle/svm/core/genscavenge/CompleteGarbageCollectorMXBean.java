@@ -28,6 +28,7 @@ import java.lang.management.ManagementFactory;
 
 import javax.management.ObjectName;
 
+import com.oracle.svm.core.gc.AbstractGarbageCollectorMXBean;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 

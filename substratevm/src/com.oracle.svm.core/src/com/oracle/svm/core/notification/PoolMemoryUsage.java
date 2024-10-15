@@ -24,7 +24,7 @@
  * questions.
  */
 
-package com.oracle.svm.core.genscavenge.service;
+package com.oracle.svm.core.notification;
 
 /** Used from allocation free code and later converted to MemoryUsage. */
 public class PoolMemoryUsage {

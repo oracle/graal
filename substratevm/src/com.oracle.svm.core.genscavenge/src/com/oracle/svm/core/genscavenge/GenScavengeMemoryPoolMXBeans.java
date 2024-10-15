@@ -27,7 +27,9 @@ package com.oracle.svm.core.genscavenge;
 
 import java.lang.management.MemoryUsage;
 
-import org.graalvm.nativeimage.ImageSingletons;
+
+import com.oracle.svm.core.gc.AbstractMemoryPoolMXBean;
+import com.oracle.svm.core.gc.MemoryPoolMXBeansProvider;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
@@ -36,9 +38,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.util.VMError;
 
-import jdk.graal.compiler.api.replacements.Fold;
-
-public class GenScavengeMemoryPoolMXBeans {
+public class GenScavengeMemoryPoolMXBeans implements MemoryPoolMXBeansProvider {
     public static final String YOUNG_GEN_SCAVENGER = "young generation scavenger";
     public static final String COMPLETE_SCAVENGER = "complete scavenger";
     static final String EPSILON_SCAVENGER = "epsilon scavenger";
@@ -66,21 +66,24 @@ public class GenScavengeMemoryPoolMXBeans {
         }
     }
 
-    @Fold
-    public static GenScavengeMemoryPoolMXBeans singleton() {
-        return ImageSingletons.lookup(GenScavengeMemoryPoolMXBeans.class);
-    }
-
+    @Override
     public AbstractMemoryPoolMXBean[] getMXBeans() {
         return mxBeans;
     }
 
+    @Override
+    public String getCollectorName(boolean isIncremental) {
+        return isIncremental ? YOUNG_GEN_SCAVENGER : COMPLETE_SCAVENGER;
+    }
+
+    @Override
     public void notifyBeforeCollection() {
         for (AbstractMemoryPoolMXBean mxBean : mxBeans) {
             mxBean.beforeCollection();
         }
     }
 
+    @Override
     public void notifyAfterCollection() {
         for (AbstractMemoryPoolMXBean mxBean : mxBeans) {
             mxBean.afterCollection();
@@ -95,17 +98,17 @@ public class GenScavengeMemoryPoolMXBeans {
         }
 
         @Override
-        void beforeCollection() {
+        public void beforeCollection() {
             updatePeakUsage(HeapImpl.getAccounting().getEdenUsedBytes());
         }
 
         @Override
-        void afterCollection() {
+        public void afterCollection() {
             /* Nothing to do. */
         }
 
         @Override
-        UnsignedWord computeInitialValue() {
+        protected UnsignedWord computeInitialValue() {
             return GCImpl.getPolicy().getInitialEdenSize();
         }
 
@@ -139,17 +142,17 @@ public class GenScavengeMemoryPoolMXBeans {
         }
 
         @Override
-        void beforeCollection() {
+        public void beforeCollection() {
             /* Nothing to do. */
         }
 
         @Override
-        void afterCollection() {
+        public void afterCollection() {
             updatePeakUsage(HeapImpl.getAccounting().getSurvivorUsedBytes());
         }
 
         @Override
-        UnsignedWord computeInitialValue() {
+        protected UnsignedWord computeInitialValue() {
             return GCImpl.getPolicy().getInitialSurvivorSize();
         }
 
@@ -182,17 +185,17 @@ public class GenScavengeMemoryPoolMXBeans {
         }
 
         @Override
-        void beforeCollection() {
+        public void beforeCollection() {
             /* Nothing to do. */
         }
 
         @Override
-        void afterCollection() {
+        public void afterCollection() {
             updatePeakUsage(HeapImpl.getAccounting().getOldUsedBytes());
         }
 
         @Override
-        UnsignedWord computeInitialValue() {
+        protected UnsignedWord computeInitialValue() {
             return GCImpl.getPolicy().getInitialOldSize();
         }
 
@@ -225,17 +228,17 @@ public class GenScavengeMemoryPoolMXBeans {
         }
 
         @Override
-        void beforeCollection() {
+        public void beforeCollection() {
             throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
-        void afterCollection() {
+        public void afterCollection() {
             throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
-        UnsignedWord computeInitialValue() {
+        protected UnsignedWord computeInitialValue() {
             return GCImpl.getPolicy().getMinimumHeapSize();
         }
 

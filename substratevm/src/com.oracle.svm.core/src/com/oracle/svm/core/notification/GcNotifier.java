@@ -24,32 +24,29 @@
  * questions.
  */
 
-package com.oracle.svm.core.genscavenge.service;
+package com.oracle.svm.core.notification;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.Platform;
 import com.oracle.svm.core.Uninterruptible;
 import jdk.graal.compiler.api.replacements.Fold;
-import com.oracle.svm.core.genscavenge.AbstractMemoryPoolMXBean;
+import com.oracle.svm.core.gc.AbstractMemoryPoolMXBean;
+import com.oracle.svm.core.gc.MemoryPoolMXBeansProvider;
 import com.oracle.svm.core.heap.GCCause;
-import com.oracle.svm.core.genscavenge.GenScavengeMemoryPoolMXBeans;
-import com.oracle.svm.core.genscavenge.AbstractGarbageCollectorMXBean;
+import com.oracle.svm.core.gc.AbstractGarbageCollectorMXBean;
 import com.oracle.svm.core.thread.VMOperation;
 
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
-
-import static com.oracle.svm.core.genscavenge.GenScavengeMemoryPoolMXBeans.COMPLETE_SCAVENGER;
-import static com.oracle.svm.core.genscavenge.GenScavengeMemoryPoolMXBeans.OLD_GEN_SPACE;
-import static com.oracle.svm.core.genscavenge.GenScavengeMemoryPoolMXBeans.YOUNG_GEN_SCAVENGER;
 
 /**
  * This class keeps a circular queue of requests to later use when emitting GC notifications. The
  * requests are pre-allocated so that they can be used during a GC.
  *
  * This class is responsible for enqueuing requests during GC safepoints and later dequeuing
- * requests to generate notifications when the service thread handles signals outside of safepoints.
+ * requests to generate notifications when the notification thread handles signals outside of
+ * safepoints.
  */
 public class GcNotifier {
     // 5 is probably more than enough, although making the queue larger isn't a problem either.
@@ -65,9 +62,9 @@ public class GcNotifier {
         // Pre-allocate the queue so we can use it later from allocation free code.
         requests = new GcNotificationRequest[QUEUE_SIZE];
         for (int i = 0; i < QUEUE_SIZE; i++) {
-            requests[i] = new GcNotificationRequest(GenScavengeMemoryPoolMXBeans.singleton().getMXBeans().length);
+            requests[i] = new GcNotificationRequest(MemoryPoolMXBeansProvider.get().getMXBeans().length);
         }
-        currentRequest = new GcNotificationRequest(GenScavengeMemoryPoolMXBeans.singleton().getMXBeans().length);
+        currentRequest = new GcNotificationRequest(MemoryPoolMXBeansProvider.get().getMXBeans().length);
         rear = 0;
         front = 0;
     }
@@ -81,7 +78,7 @@ public class GcNotifier {
     public void beforeCollection(long startTime) {
         assert VMOperation.isInProgressAtSafepoint();
 
-        AbstractMemoryPoolMXBean[] beans = GenScavengeMemoryPoolMXBeans.singleton().getMXBeans();
+        AbstractMemoryPoolMXBean[] beans = MemoryPoolMXBeansProvider.get().getMXBeans();
         for (int i = 0; i < beans.length; i++) {
             /*
              * Always add the old generation pool even if we don't end up using it (since we don't
@@ -96,11 +93,11 @@ public class GcNotifier {
     public void afterCollection(boolean isIncremental, GCCause cause, long epoch, long endTime) {
         assert VMOperation.isInProgressAtSafepoint();
 
-        AbstractMemoryPoolMXBean[] beans = GenScavengeMemoryPoolMXBeans.singleton().getMXBeans();
+        AbstractMemoryPoolMXBean[] beans = MemoryPoolMXBeansProvider.get().getMXBeans();
         for (int i = 0; i < beans.length; i++) {
-            if (isIncremental && beans[i].getName().equals(OLD_GEN_SPACE)) {
-                continue;
-            }
+// if (isIncremental && beans[i].getName().equals(OLD_GEN_SPACE)) {
+// continue;
+// }
             requests[rear].setPoolAfter(i, beans[i].getUsedBytes().rawValue(), beans[i].getCommittedBytes().rawValue(), beans[i].getName());
         }
         requests[rear].endTime = endTime;
@@ -124,8 +121,8 @@ public class GcNotifier {
     }
 
     /**
-     * Called by the service thread. Sends a notification if any are queued. If none are queued,
-     * then return immediately.
+     * Called by the notification thread. Sends a notification if any are queued. If none are
+     * queued, then return immediately.
      */
     public void sendNotification() {
         assert !VMOperation.isInProgressAtSafepoint();
@@ -144,7 +141,7 @@ public class GcNotifier {
          * NotificationRequest class that was dequeued.
          */
         GarbageCollectorMXBean gcBean = null;
-        String targetBeanName = currentRequest.isIncremental ? YOUNG_GEN_SCAVENGER : COMPLETE_SCAVENGER;
+        String targetBeanName = MemoryPoolMXBeansProvider.get().getCollectorName(currentRequest.isIncremental);
         for (GarbageCollectorMXBean bean : ManagementFactory.getGarbageCollectorMXBeans()) {
             if (bean.getName().equals(targetBeanName)) {
                 gcBean = bean;
@@ -156,7 +153,7 @@ public class GcNotifier {
         ((AbstractGarbageCollectorMXBean) gcBean).createNotification(currentRequest);
     }
 
-    /** Called by the service thread. */
+    /** Called by the notification thread. */
     @Uninterruptible(reason = "Avoid pausing for a GC safepoint with could cause races with pushes to the request queue.")
     private boolean updateCurrentRequest() {
         // If there's nothing to read, return immediately.

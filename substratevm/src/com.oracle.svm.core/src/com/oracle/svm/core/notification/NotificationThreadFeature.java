@@ -24,7 +24,7 @@
  * questions.
  */
 
-package com.oracle.svm.core.genscavenge.service;
+package com.oracle.svm.core.notification;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -41,9 +41,9 @@ public class NotificationThreadFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-            ImageSingletons.add(NotificationThreadSupport.class, new NotificationThreadSupport());
-            RuntimeSupport.getRuntimeSupport().addStartupHook(new NotificationThreadStartupHook());
-            RuntimeSupport.getRuntimeSupport().addShutdownHook(new NotificationThreadShutdownHook());
+        ImageSingletons.add(NotificationThreadSupport.class, new NotificationThreadSupport());
+        RuntimeSupport.getRuntimeSupport().addStartupHook(new NotificationThreadStartupHook());
+        RuntimeSupport.getRuntimeSupport().addShutdownHook(new NotificationThreadShutdownHook());
     }
 }
 
