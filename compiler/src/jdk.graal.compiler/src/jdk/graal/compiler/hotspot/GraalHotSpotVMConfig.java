@@ -83,6 +83,10 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
         return gc == HotSpotGraalRuntime.HotSpotGC.G1;
     }
 
+    public boolean useXGC() {
+        return gc == HotSpotGraalRuntime.HotSpotGC.X;
+    }
+
     public final HotSpotGraalRuntime.HotSpotGC gc = getSelectedGC();
 
     private HotSpotGraalRuntime.HotSpotGC getSelectedGC() throws GraalError {
@@ -585,6 +589,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
                     "ZBarrierSetRuntime::no_keepalive_load_barrier_on_weak_oop_field_preloaded");
     public final long zBarrierSetRuntimeNoKeepaliveLoadBarrierOnPhantomOopFieldPreloaded = getZGCAddressField(
                     "ZBarrierSetRuntime::no_keepalive_load_barrier_on_phantom_oop_field_preloaded");
+    public final long zBarrierSetRuntimeNoKeepaliveStoreBarrierOnOopFieldWithoutHealing = getZGCAddressField(
+                    "ZBarrierSetRuntime::no_keepalive_store_barrier_on_oop_field_without_healing");
     public final long zBarrierSetRuntimeStoreBarrierOnNativeOopFieldWithoutHealing = getZGCAddressField("ZBarrierSetRuntime::store_barrier_on_native_oop_field_without_healing");
     public final long zBarrierSetRuntimeStoreBarrierOnOopFieldWithHealing = getZGCAddressField("ZBarrierSetRuntime::store_barrier_on_oop_field_with_healing");
     public final long zBarrierSetRuntimeStoreBarrierOnOopFieldWithoutHealing = getZGCAddressField("ZBarrierSetRuntime::store_barrier_on_oop_field_without_healing");
