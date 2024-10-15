@@ -46,7 +46,7 @@ import jdk.graal.compiler.replacements.IdentityHashCodeSnippets;
 import jdk.graal.compiler.word.Word;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/7fa2f229fbee68112cbdd18b811d95721adfe2ec/src/hotspot/share/opto/library_call.cpp#L4669-L4803",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/dcac4b0a532f2ca6cb374da7ece331e8266ab351/src/hotspot/share/opto/library_call.cpp#L4671-L4805",
           sha1 = "c212d1dbff26d02d4d749e085263d4104895f1ba")
 // @formatter:on
 public class HotSpotHashCodeSnippets extends IdentityHashCodeSnippets {
