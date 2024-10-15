@@ -132,6 +132,11 @@ public class GenScavengeMemoryPoolMXBeans implements MemoryPoolMXBeansProvider {
         public UnsignedWord getUsedBytes() {
             return HeapImpl.getAccounting().getEdenUsedBytes();
         }
+
+        @Override
+        public UnsignedWord getCommittedBytes() {
+            return HeapImpl.getAccounting().getEdenUsedBytes().add(HeapImpl.getAccounting().getBytesInUnusedChunks());
+        }
     }
 
     static final class SurvivorMemoryPoolMXBean extends AbstractMemoryPoolMXBean {

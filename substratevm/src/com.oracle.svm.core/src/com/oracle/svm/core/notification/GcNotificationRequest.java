@@ -26,10 +26,11 @@
 
 package com.oracle.svm.core.notification;
 
+import com.oracle.svm.core.gc.AbstractMemoryPoolMXBean;
+import com.oracle.svm.core.gc.MemoryPoolMXBeansProvider;
 import com.oracle.svm.core.heap.GCCause;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import com.oracle.svm.core.Uninterruptible;
 
 /**
  * This class stashes GC info during a safepoint until it can be dequeued to emit a notification at
@@ -40,14 +41,14 @@ public class GcNotificationRequest {
     private final PoolMemoryUsage[] after;
 
     // Times since the VM started.
-    public long startTime;
-    public long endTime;
+    private long startTime;
+    private long endTime;
 
     // This is the system time that the request was sent.
-    public long timestamp;
-    public boolean isIncremental;
-    public GCCause cause;
-    public long epoch;
+    private long timestamp;
+    private boolean isIncremental;
+    private GCCause cause;
+    private long epoch;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     GcNotificationRequest(int poolCount) {
@@ -59,28 +60,68 @@ public class GcNotificationRequest {
         }
     }
 
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static void beforeCollection(long startTime, GcNotificationRequest[] requests, int index) {
+        AbstractMemoryPoolMXBean[] beans = MemoryPoolMXBeansProvider.get().getMXBeans();
+        for (int i = 0; i < beans.length; i++) {
+            /*
+             * Always add the old generation pool even if we don't end up using it (since we don't
+             * know what type of collection will happen yet)
+             */
+            requests[index].setPoolBefore(i, beans[i].getUsedBytes().rawValue(), beans[i].getCommittedBytes().rawValue(), beans[i].getName());
+        }
+        requests[index].startTime = startTime;
+    }
+
+    public static void afterCollection(boolean isIncremental, GCCause cause, long epoch, long endTime, GcNotificationRequest[] requests, int index) {
+        AbstractMemoryPoolMXBean[] beans = MemoryPoolMXBeansProvider.get().getMXBeans();
+        for (int i = 0; i < beans.length; i++) {
+            requests[index].setPoolAfter(i, beans[i].getUsedBytes().rawValue(), beans[i].getCommittedBytes().rawValue(), beans[i].getName());
+        }
+        requests[index].endTime = endTime;
+        requests[index].isIncremental = isIncremental;
+        requests[index].cause = cause;
+        requests[index].epoch = epoch;
+        requests[index].timestamp = System.currentTimeMillis();
+
+    }
+
     void setPoolBefore(int index, long used, long committed, String name) {
-        before[index].used = used;
-        before[index].committed = committed;
-        before[index].name = name;
+        before[index].set(used, committed, name);
     }
 
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     void setPoolAfter(int index, long used, long committed, String name) {
-        after[index].used = used;
-        after[index].committed = committed;
-        after[index].name = name;
+        after[index].set(used, committed, name);
     }
 
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public PoolMemoryUsage getPoolBefore(int i) {
         return before[i];
     }
 
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public PoolMemoryUsage getPoolAfter(int i) {
         return after[i];
     }
 
+    public boolean isIncremental() {
+        return isIncremental;
+    }
+
+    public GCCause getCause() {
+        return cause;
+    }
+
+    public long getEndTime() {
+        return endTime;
+    }
+
+    public long getStartTime() {
+        return startTime;
+    }
+
+    public long getTimestamp() {
+        return timestamp;
+    }
+
+    public long getEpoch() {
+        return epoch;
+    }
 }

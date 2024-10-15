@@ -76,4 +76,9 @@ public final class IncrementalGarbageCollectorMXBean extends AbstractGarbageColl
     public ObjectName getObjectName() {
         return Util.newObjectName(ManagementFactory.GARBAGE_COLLECTOR_MXBEAN_DOMAIN_TYPE, getName());
     }
+
+    @Override
+    protected int gcThreadCount() {
+        return 1;
+    }
 }

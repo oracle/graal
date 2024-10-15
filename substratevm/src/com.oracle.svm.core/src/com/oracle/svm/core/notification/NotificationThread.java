@@ -30,6 +30,9 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.locks.VMSemaphore;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.thread.PlatformThreads;
+import com.oracle.svm.core.util.BasedOnJDKFile;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -38,6 +41,8 @@ import org.graalvm.nativeimage.Platforms;
  * notifications.
  */
 public class NotificationThread extends Thread {
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+19/src/hotspot/share/runtime/notificationThread.cpp#L41") \\
+    private static final String THREAD_NAME = "Notification Thread";
     private final UninterruptibleUtils.AtomicBoolean atomicNotify;
     private final VMSemaphore semaphore;
     private volatile boolean stopped;
@@ -45,6 +50,8 @@ public class NotificationThread extends Thread {
     @Platforms(Platform.HOSTED_ONLY.class)
     @SuppressWarnings("this-escape")
     public NotificationThread() {
+        // Hotspot sets the notification thread to the system thread group.
+        super(PlatformThreads.singleton().systemGroup, THREAD_NAME);
         this.semaphore = new VMSemaphore("serviceThread");
         this.atomicNotify = new UninterruptibleUtils.AtomicBoolean(false);
         setDaemon(true);

@@ -31,7 +31,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.Platform;
 import com.oracle.svm.core.Uninterruptible;
 import jdk.graal.compiler.api.replacements.Fold;
-import com.oracle.svm.core.gc.AbstractMemoryPoolMXBean;
 import com.oracle.svm.core.gc.MemoryPoolMXBeansProvider;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.gc.AbstractGarbageCollectorMXBean;
@@ -77,42 +76,20 @@ public class GcNotifier {
     /** Called during GC. */
     public void beforeCollection(long startTime) {
         assert VMOperation.isInProgressAtSafepoint();
-
-        AbstractMemoryPoolMXBean[] beans = MemoryPoolMXBeansProvider.get().getMXBeans();
-        for (int i = 0; i < beans.length; i++) {
-            /*
-             * Always add the old generation pool even if we don't end up using it (since we don't
-             * know what type of collection will happen yet)
-             */
-            requests[rear].setPoolBefore(i, beans[i].getUsedBytes().rawValue(), beans[i].getCommittedBytes().rawValue(), beans[i].getName());
-        }
-        requests[rear].startTime = startTime;
+        GcNotificationRequest.beforeCollection(startTime, requests, rear);
     }
 
     /** Called during GC. */
     public void afterCollection(boolean isIncremental, GCCause cause, long epoch, long endTime) {
         assert VMOperation.isInProgressAtSafepoint();
-
-        AbstractMemoryPoolMXBean[] beans = MemoryPoolMXBeansProvider.get().getMXBeans();
-        for (int i = 0; i < beans.length; i++) {
-// if (isIncremental && beans[i].getName().equals(OLD_GEN_SPACE)) {
-// continue;
-// }
-            requests[rear].setPoolAfter(i, beans[i].getUsedBytes().rawValue(), beans[i].getCommittedBytes().rawValue(), beans[i].getName());
-        }
-        requests[rear].endTime = endTime;
-        requests[rear].isIncremental = isIncremental;
-        requests[rear].cause = cause;
-        requests[rear].epoch = epoch;
-        requests[rear].timestamp = System.currentTimeMillis();
-
+        GcNotificationRequest.afterCollection(isIncremental, cause, epoch, endTime, requests, rear);
         rear = incremented(rear);
 
         // If rear is now lapping front, then increment front to prevent overlap. Accept data loss.
         if (front == rear) {
             front = incremented(front);
         }
-        org.graalvm.nativeimage.ImageSingletons.lookup(NotificationThreadSupport.class).signalServiceThread();
+        ImageSingletons.lookup(NotificationThreadSupport.class).signalServiceThread();
     }
 
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -141,7 +118,7 @@ public class GcNotifier {
          * NotificationRequest class that was dequeued.
          */
         GarbageCollectorMXBean gcBean = null;
-        String targetBeanName = MemoryPoolMXBeansProvider.get().getCollectorName(currentRequest.isIncremental);
+        String targetBeanName = MemoryPoolMXBeansProvider.get().getCollectorName(currentRequest.isIncremental());
         for (GarbageCollectorMXBean bean : ManagementFactory.getGarbageCollectorMXBeans()) {
             if (bean.getName().equals(targetBeanName)) {
                 gcBean = bean;

@@ -28,7 +28,25 @@ package com.oracle.svm.core.notification;
 
 /** Used from allocation free code and later converted to MemoryUsage. */
 public class PoolMemoryUsage {
-    public long used;
-    public long committed;
-    public String name;
+    private long used;
+    private long committed;
+    private String name;
+
+    public void set(long used, long committed, String name) {
+        this.used = used;
+        this.committed = committed;
+        this.name = name;
+    }
+
+    public long getUsed() {
+        return used;
+    }
+
+    public long getCommitted() {
+        return committed;
+    }
+
+    public String getName() {
+        return name;
+    }
 }

@@ -34,6 +34,7 @@ import com.oracle.svm.core.notification.Target_com_sun_management_GcInfo;
 import com.oracle.svm.core.notification.Target_com_sun_management_internal_GcInfoBuilder;
 
 import com.sun.management.GarbageCollectionNotificationInfo;
+import com.sun.management.GarbageCollectorMXBean;
 import com.sun.management.GcInfo;
 import com.sun.management.internal.GarbageCollectionNotifInfoCompositeData;
 import sun.management.NotificationEmitterSupport;
@@ -45,7 +46,7 @@ import javax.management.openmbean.CompositeData;
 import java.lang.management.MemoryUsage;
 
 public abstract class AbstractGarbageCollectorMXBean extends NotificationEmitterSupport
-                implements com.sun.management.GarbageCollectorMXBean, NotificationEmitter {
+                implements GarbageCollectorMXBean, NotificationEmitter {
 
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+14/src/hotspot/share/gc/serial/serialHeap.cpp#L451") //
     private static final String ACTION_MINOR = "end of minor GC";
@@ -72,24 +73,25 @@ public abstract class AbstractGarbageCollectorMXBean extends NotificationEmitter
         for (int i = 0; i < poolNames.length; i++) {
             for (int j = 0; j < beans.length; j++) {
                 PoolMemoryUsage pmu = request.getPoolBefore(j);
-                if (pmu.name != null && pmu.name.equals(poolNames[i])) {
-                    before[i] = beans[j].memoryUsage(pmu.used, pmu.committed);
+                if (pmu.getName() != null && pmu.getName().equals(poolNames[i])) {
+                    before[i] = beans[j].memoryUsage(pmu.getUsed(), pmu.getCommitted());
                     pmu = request.getPoolAfter(j);
-                    after[i] = beans[j].memoryUsage(pmu.used, pmu.committed);
+                    after[i] = beans[j].memoryUsage(pmu.getUsed(), pmu.getCommitted());
                 }
             }
         }
 
         Object[] extAttribute = new Object[1];
-        extAttribute[0] = 1; // Number of GC threads.
+        extAttribute[0] = gcThreadCount();
 
-        Target_com_sun_management_GcInfo targetGcInfo = new Target_com_sun_management_GcInfo(getGcInfoBuilder(), request.epoch, request.startTime, request.endTime, before, after, extAttribute);
+        Target_com_sun_management_GcInfo targetGcInfo = new Target_com_sun_management_GcInfo(getGcInfoBuilder(), request.getEpoch(), request.getStartTime(), request.getEndTime(), before, after,
+                        extAttribute);
         gcInfo = SubstrateUtil.cast(targetGcInfo, GcInfo.class);
 
         GarbageCollectionNotificationInfo info = new GarbageCollectionNotificationInfo(
                         getName(),
-                        request.isIncremental ? ACTION_MINOR : ACTION_MAJOR,
-                        request.cause.getName(),
+                        request.isIncremental() ? ACTION_MINOR : ACTION_MAJOR,
+                        request.getCause().getName(),
                         gcInfo);
 
         CompositeData cd = GarbageCollectionNotifInfoCompositeData.toCompositeData(info);
@@ -97,7 +99,7 @@ public abstract class AbstractGarbageCollectorMXBean extends NotificationEmitter
         Notification notif = new Notification(GarbageCollectionNotificationInfo.GARBAGE_COLLECTION_NOTIFICATION,
                         getObjectName(),
                         getNextSeqNumber(),
-                        request.timestamp,
+                        request.getTimestamp(),
                         getName());
         notif.setUserData(cd);
 
@@ -129,4 +131,6 @@ public abstract class AbstractGarbageCollectorMXBean extends NotificationEmitter
     public GcInfo getLastGcInfo() {
         return gcInfo;
     }
+
+    protected abstract int gcThreadCount();
 }
