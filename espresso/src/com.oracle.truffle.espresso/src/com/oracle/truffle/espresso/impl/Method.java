@@ -1708,9 +1708,15 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
 
         @Override
-        public Object invokeInterfaceMethod(Object... args) {
+        public Object invokeMethodInterface(Object... args) {
             checkRemovedByRedefinition();
             return invokeDirectInterface(args);
+        }
+
+        @Override
+        public Object invokeMethodNonVirtual(Object... args) {
+            checkRemovedByRedefinition();
+            return invokeDirect(args);
         }
 
         private void checkRemovedByRedefinition() {
