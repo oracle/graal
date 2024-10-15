@@ -88,6 +88,7 @@ public class LLVMGraphBuilderPlugins implements TargetGraphBuilderPlugins {
         registerUnaryMath(r, "sin", UnaryOperation.SIN);
         registerUnaryMath(r, "cos", UnaryOperation.COS);
         registerUnaryMath(r, "tan", UnaryOperation.TAN);
+        registerUnaryMath(r, "tanh", UnaryOperation.TANH);
 
         registerUnaryLLVMIntrinsic(r, "ceil", LLVMIntrinsicOperation.CEIL, JavaKind.Double, double.class);
         registerUnaryLLVMIntrinsic(r, "floor", LLVMIntrinsicOperation.FLOOR, JavaKind.Double, double.class);
