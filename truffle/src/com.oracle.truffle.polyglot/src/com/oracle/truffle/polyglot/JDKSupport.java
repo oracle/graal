@@ -71,7 +71,7 @@ import java.util.stream.Stream;
 import com.oracle.truffle.api.InternalResource;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.impl.Accessor;
-import com.oracle.truffle.api.impl.Accessor.JavaLangAccessor;
+import com.oracle.truffle.api.impl.Accessor.JavaLangSupport;
 import com.oracle.truffle.api.impl.Accessor.ModulesAccessor;
 import com.oracle.truffle.api.impl.asm.ClassWriter;
 import com.oracle.truffle.api.impl.asm.FieldVisitor;
@@ -116,15 +116,20 @@ final class JDKSupport {
                 Path libAttach = truffleAttachRoot.resolve("bin").resolve(System.mapLibraryName("truffleattach"));
                 attachLibPath = libAttach.toString();
             } catch (IOException ioe) {
-                warnTruffleAttachLoadFailure("The Truffle API JAR is missing the 'truffleattach' resource, likely due to issues when repackaged into a fat JAR.", ioe);
+                performTruffleAttachLoadFailureAction("The Truffle API JAR is missing the 'truffleattach' resource, likely due to issues when Truffle was repackaged into a fat JAR.", ioe);
                 return null;
             }
         }
         try {
             try {
                 System.load(attachLibPath);
-            } catch (UnsatisfiedLinkError | IllegalCallerException failedToLoad) {
-                warnTruffleAttachLoadFailure("Unable to load the TruffleAttach library.", failedToLoad);
+            } catch (UnsatisfiedLinkError failedToLoad) {
+                performTruffleAttachLoadFailureAction("Unable to load the TruffleAttach library.", failedToLoad);
+                return null;
+            } catch (IllegalCallerException illegalCaller) {
+                String vmOption = "--enable-native-access=" + (JDKSupport.class.getModule().isNamed() ? "org.graalvm.truffle" : "ALL-UNNAMED");
+                performTruffleAttachLoadFailureAction(String.format("Failed to load the TruffleAttach library. The Truffle module does not have native access enabled. " +
+                                "To resolve this, pass the following VM option: %s.", vmOption), illegalCaller);
                 return null;
             }
             ModulesAccessor accessor;
@@ -144,7 +149,7 @@ final class JDKSupport {
 
     private static native void addExports0(Module m1, String pn, Module m2);
 
-    private static void warnTruffleAttachLoadFailure(String reason, Throwable t) {
+    private static void performTruffleAttachLoadFailureAction(String reason, Throwable t) {
         String action = System.getProperty("polyglotimpl.AttachLibraryFailureAction", "warn");
         switch (action) {
             case "ignore" -> {
@@ -393,16 +398,16 @@ final class JDKSupport {
         }
 
         @Override
-        public JavaLangAccessor getJavaLangAccessor() {
-            return JavaLangAccessorImpl.INSTANCE;
+        public JavaLangSupport getJavaLangSupport() {
+            return JavaLangSupportImpl.INSTANCE;
         }
 
-        private static final class JavaLangAccessorImpl extends JavaLangAccessor {
+        private static final class JavaLangSupportImpl extends JavaLangSupport {
 
             private static final JavaLangAccess JAVA_LANG_ACCESS = SharedSecrets.getJavaLangAccess();
-            static final JavaLangAccessor INSTANCE = new JavaLangAccessorImpl();
+            static final JavaLangSupport INSTANCE = new JavaLangSupportImpl();
 
-            private JavaLangAccessorImpl() {
+            private JavaLangSupportImpl() {
             }
 
             @Override
@@ -668,11 +673,11 @@ final class JDKSupport {
         }
 
         @Override
-        public JavaLangAccessor getJavaLangAccessor() {
-            return JavaLangAccessorImpl.INSTANCE;
+        public JavaLangSupport getJavaLangSupport() {
+            return JavaLangSupportImpl.INSTANCE;
         }
 
-        private static final class JavaLangAccessorImpl extends JavaLangAccessor {
+        private static final class JavaLangSupportImpl extends JavaLangSupport {
 
             /*
              * For performance reasons, it is necessary for CURRENT_CARRIER_THREAD to be declared as
@@ -689,9 +694,9 @@ final class JDKSupport {
                 }
             }
 
-            private static final JavaLangAccessor INSTANCE = new JavaLangAccessorImpl();
+            private static final JavaLangSupport INSTANCE = new JavaLangSupportImpl();
 
-            private JavaLangAccessorImpl() {
+            private JavaLangSupportImpl() {
                 /*
                  * Ensure the CURRENT_CARRIER_THREAD method handle is initialized by invoking it.
                  * This prevents the interpreter from triggering class initialization during the

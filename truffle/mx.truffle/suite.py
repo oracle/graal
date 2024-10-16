@@ -1789,7 +1789,7 @@ suite = {
       "layout" : {
         "META-INF/resources/engine/libtruffleattach/<os>/<arch>/bin/" : "dependency:com.oracle.truffle.attach",
       },
-      "description" : "Contains a library to provide access for the Truffle to JDK internal classes.",
+      "description" : "Contains a library to provide access for Truffle to JDK internal classes.",
       "maven": False,
       "graalCompilerSourceEdition": "ignore",
     },
