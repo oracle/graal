@@ -256,7 +256,7 @@ public class ErrorTypeTest {
                     } else {
                         throw new AssertionError(
                                         TestUtil.formatErrorMessage(
-                                                        "Unexpected Exception: " + e.getMessage() + ", expected: " + polyglotException.getMessage(),
+                                                        "Unexpected Exception: " + e + ", expected: " + polyglotException,
                                                         testRun,
                                                         context, null, polyglotException),
                                         e);
