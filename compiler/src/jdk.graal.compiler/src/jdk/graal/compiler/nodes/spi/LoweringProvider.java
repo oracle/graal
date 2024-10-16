@@ -33,7 +33,6 @@ import jdk.graal.compiler.nodes.gc.BarrierSet;
 import jdk.graal.compiler.nodes.memory.ExtendableMemoryAccess;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
 
@@ -60,9 +59,20 @@ public interface LoweringProvider {
     Integer smallestCompareWidth();
 
     /**
-     * Indicates whether this target platform supports bulk zeroing of arbitrary size.
+     * Indicates whether this target platform supports bulk zeroing of arbitrary size. This applies
+     * only to newly allocated memory.
      */
     boolean supportsBulkZeroing();
+
+    /**
+     * Indicates whether this target platform supports bulk zeroing arrays of arbitrary size that
+     * might not be newly allocated.
+     *
+     * @param kind the kind of the array elements
+     */
+    default boolean supportsBulkClearArray(JavaKind kind) {
+        return supportsBulkZeroing();
+    }
 
     /**
      * Indicates whether this target platform supports optimized filling of memory regions with

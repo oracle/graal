@@ -27,6 +27,7 @@ package jdk.graal.compiler.hotspot.meta;
 import static jdk.graal.compiler.core.common.GraalOptions.AlwaysInlineVTableStubs;
 import static jdk.graal.compiler.core.common.GraalOptions.InlineVTableStubs;
 import static jdk.graal.compiler.core.common.GraalOptions.OmitHotExceptionStacktrace;
+import static jdk.graal.compiler.hotspot.HotSpotGraalRuntime.HotSpotGC;
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.OSR_MIGRATION_END;
 import static jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider.GENERIC_ARRAYCOPY;
 import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
@@ -352,6 +353,15 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
                 ext.initialize(providers, options, config, (HotSpotHostForeignCallsProvider) foreignCalls, factories);
             }
         }
+    }
+
+    @Override
+    public boolean supportsBulkClearArray(JavaKind kind) {
+        if (!supportsBulkZeroing()) {
+            return false;
+        }
+        // ZeroMemoryNode can't be used with Object[] unless it's known to be in eden
+        return getVMConfig().gc != HotSpotGC.Z || !kind.isObject();
     }
 
     @Override
