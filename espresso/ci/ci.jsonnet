@@ -37,14 +37,14 @@
     // Scala DaCapo benchmarks
     common.jdk21_on_demand_bench_linux + common.scala_dacapo_benchmark('jvm-ce-llvm'          , guest_jvm_config='single-tier'    , extra_args=['--vm.XX:ReservedCodeCacheSize=1g']) + {name: 'ondemand-bench-espresso-jvm-ce-scala_dacapo-single_tier-jdk21-linux-amd64'},
     common.jdk21_on_demand_bench_linux + common.scala_dacapo_benchmark('native-ce-llvm'       , guest_jvm_config='single-tier')                                                      + {name: 'ondemand-bench-espresso-native-ce-scala_dacapo-single_tier-jdk21-linux-amd64'},
-    common.jdk21_weekly_bench_linux + common.scala_dacapo_benchmark('jvm-ce-llvm'             , guest_jvm_config='multi-tier'     , extra_args=['--vm.XX:ReservedCodeCacheSize=1g']) + {name: 'weekly-bench-espresso-jvm-ce-scala_dacapo-multi_tier-jdk21-linux-amd64'},
-    common.jdk21_weekly_bench_linux + common.scala_dacapo_benchmark('native-ce-llvm'          , guest_jvm_config='multi-tier')                                                       + {name: 'weekly-bench-espresso-native-ce-scala_dacapo-multi_tier-jdk21-linux-amd64'},
+    common.jdk21_monthly_bench_linux   + common.scala_dacapo_benchmark('jvm-ce-llvm'          , guest_jvm_config='multi-tier'     , extra_args=['--vm.XX:ReservedCodeCacheSize=1g']) + {name: 'monthly-bench-espresso-jvm-ce-scala_dacapo-multi_tier-jdk21-linux-amd64'},
+    common.jdk21_monthly_bench_linux   + common.scala_dacapo_benchmark('native-ce-llvm'       , guest_jvm_config='multi-tier')                                                       + {name: 'monthly-bench-espresso-native-ce-scala_dacapo-multi_tier-jdk21-linux-amd64'},
 
     // DaCapo benchmarks
     common.jdk21_on_demand_bench_linux + common.dacapo_benchmark('jvm-ce-llvm'                , guest_jvm_config='single-tier'    , extra_args=['--vm.XX:ReservedCodeCacheSize=1g']) + {name: 'ondemand-bench-espresso-jvm-ce-dacapo-single_tier-jdk21-linux-amd64'},
     common.jdk21_on_demand_bench_linux + common.dacapo_benchmark('native-ce-llvm'             , guest_jvm_config='single-tier')                                                      + {name: 'ondemand-bench-espresso-native-ce-dacapo-single_tier-jdk21-linux-amd64'},
-    common.jdk21_weekly_bench_linux + common.dacapo_benchmark('jvm-ce-llvm'                   , guest_jvm_config='multi-tier'     , extra_args=['--vm.XX:ReservedCodeCacheSize=1g']) + {name: 'weekly-bench-espresso-jvm-ce-dacapo-multi_tier-jdk21-linux-amd64'},
-    common.jdk21_weekly_bench_linux + common.dacapo_benchmark('native-ce-llvm'                , guest_jvm_config='multi-tier')                                                       + {name: 'weekly-bench-espresso-native-ce-dacapo-multi_tier-jdk21-linux-amd64'},
+    common.jdk21_monthly_bench_linux   + common.dacapo_benchmark('jvm-ce-llvm'                , guest_jvm_config='multi-tier'     , extra_args=['--vm.XX:ReservedCodeCacheSize=1g']) + {name: 'monthly-bench-espresso-jvm-ce-dacapo-multi_tier-jdk21-linux-amd64'},
+    common.jdk21_monthly_bench_linux   + common.dacapo_benchmark('native-ce-llvm'             , guest_jvm_config='multi-tier')                                                       + {name: 'monthly-bench-espresso-native-ce-dacapo-multi_tier-jdk21-linux-amd64'},
 
     // Memory footprint
     common.jdk21_on_demand_linux       + common.espresso_minheap_benchmark('jvm-ce-llvm', 'awfy:*', 'infinite-overhead')                                                             + {name: 'ondemand-bench-espresso-jvm-ce-awfy-minheap-infinite-ovh-jdk21-linux-amd64'},
