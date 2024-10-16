@@ -1,65 +1,56 @@
 package com.oracle.svm.hosted.analysis.ai;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.svm.hosted.ProgressReporter;
-import com.oracle.svm.hosted.analysis.Inflation;
-import com.oracle.svm.hosted.analysis.ai.analyzer.AnalyzerManager;
-import com.oracle.svm.hosted.analysis.ai.example.leaks.set.intra.LeaksIdSetIntraAnalyzerWrapper;
-import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
-import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
+
 import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.StructuredGraph;
 
-import java.io.IOException;
-
-/**
- * The entry point of the abstract interpretation framework.
- * This class is responsible for all the necessary setup and configuration of the framework, which will then be executed
- * by the {@link AbstractInterpretationEngine}.
- */
 public class AbstractInterpretationDriver {
-
     private final DebugContext debug;
-    private final AnalyzerManager analyzerManager;
-    private final AbstractInterpretationEngine engine;
+    private final AnalysisMethod root;
 
-    public AbstractInterpretationDriver(DebugContext debug, Inflation inflation) {
+    public AbstractInterpretationDriver(DebugContext debug, AnalysisMethod root) {
         this.debug = debug;
-        this.analyzerManager = new AnalyzerManager();
-        this.engine = new AbstractInterpretationEngine(analyzerManager, inflation);
+        this.root = root;
     }
 
-    /* To see the output of the abstract interpretation, run with -H:Log=AbstractInterpretation */
     @SuppressWarnings("try")
     public void run() {
         try (ProgressReporter.ReporterClosable c = ProgressReporter.singleton().printAbstractInterpretation()) {
+            /*
+             * Make a new scope for logging, run with -H:Log=AbstractInterpretation to activate it
+             */
             try (var scope = debug.scope("AbstractInterpretation")) {
-                setupFramework();
-                engine.execute();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+                debug.log("Starting the analysis");
+                doRun();
+                debug.log("Analysis finished");
             }
         }
     }
 
     /**
-     * This is the entry method for setting up the abstract interpretation framework.
-     * We can:
-     * 1. Provide the {@link com.oracle.svm.hosted.analysis.ai.analyzer.Analyzer} to the {@link AnalyzerManager}.
-     * These analyzers will then run as a part of the Native Image compilation process.
-     * 2. Create and configure the {@link AbstractInterpretationLogger}, most importantly the name of the dump-file and verbosity.
-     *
-     * @throws IOException in case of I/O errors during logger initialization.
+     * TODO this is where the actual analyses will start
      */
-    private void setupFramework() throws IOException {
-        /** We can creat the {@link AbstractInterpretationLogger} instance here. */
-        AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance(debug, "myLogger", LoggerVerbosity.INFO);
-        logger.log("Hello from the abstract interpretation", LoggerVerbosity.INFO);
-        var analyzer = new LeaksIdSetIntraAnalyzerWrapper().getAnalyzer();
-        analyzerManager.registerAnalyzer(analyzer);
+    private void doRun() {
+        debug.log("Printing the graph");
+        var rootGraph = getGraph(root);
+        for (Node node : rootGraph.getNodes()) {
+            debug.log("\t" + node);
+        }
 
-        // TODO: this kinda smells iffy
-        /* We can set what methods we want to analyze by engine.setAnalyzeMainOnly(); */
-        engine.setAnalyzeMainOnly(true);
+        debug.log("Printing the invokes");
+        for (InvokeInfo invoke : root.getInvokes()) {
+            debug.log("Has invoke: " + invoke);
+            for (AnalysisMethod callee : invoke.getOriginalCallees()) {
+                debug.log("\tCallee: " + callee);
+            }
+        }
+    }
+
+    private StructuredGraph getGraph(AnalysisMethod method) {
+        return method.decodeAnalyzedGraph(debug, null);
     }
 }
