@@ -122,6 +122,10 @@ public abstract class BasicInterpreterBuilder extends BytecodeBuilder {
 
     public abstract void endAddOperation();
 
+    public abstract void beginToString();
+
+    public abstract void endToString();
+
     public abstract void beginCall(BasicInterpreter interpreterValue);
 
     public abstract void endCall();

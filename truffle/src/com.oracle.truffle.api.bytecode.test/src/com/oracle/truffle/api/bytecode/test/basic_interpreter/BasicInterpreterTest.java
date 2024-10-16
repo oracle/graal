@@ -3211,7 +3211,6 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         BytecodeNode contBytecode = cont.getBytecodeLocation().getBytecodeNode();
         assertThrows(IllegalArgumentException.class, () -> contBytecode.getLocalValues(-1, frame));
         assertThrows(IllegalArgumentException.class, () -> contBytecode.getLocalValue(-1, frame, localOffset));
-        assertThrows(IllegalArgumentException.class, () -> contBytecode.getLocalValueBoolean(-1, frame, localOffset));
 
         assertThrows(IllegalArgumentException.class, () -> contBytecode.setLocalValues(-1, frame, new Object[]{"hello"}));
         assertThrows(IllegalArgumentException.class, () -> contBytecode.setLocalValue(-1, frame, localOffset, "hello"));

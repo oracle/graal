@@ -553,19 +553,20 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
             return;
         }
 
+        if (model.localAccessesNeedLocalIndex()) {
+            // clearLocal never looks up the tag, so it does not need a local index.
+            model.loadLocalOperation.instruction.addImmediate(ImmediateKind.LOCAL_INDEX, "local_index");
+            model.storeLocalOperation.instruction.addImmediate(ImmediateKind.LOCAL_INDEX, "local_index");
+        }
+        if (model.materializedLocalAccessesNeedLocalIndex()) {
+            model.loadLocalMaterializedOperation.instruction.addImmediate(ImmediateKind.LOCAL_INDEX, "local_index");
+            model.storeLocalMaterializedOperation.instruction.addImmediate(ImmediateKind.LOCAL_INDEX, "local_index");
+        }
+
         // parse force quickenings
         List<QuickenDecision> manualQuickenings = parseForceQuickenings(model);
 
         // TODO GR-57220
-
-        /*
-         * Materialized accesses need a local index if using BE (for tag tracking) or if storing the
-         * bci in the frame (for dynamic scope validation)
-         */
-        if (model.enableBlockScoping && (model.usesBoxingElimination() || model.storeBciInFrame)) {
-            model.loadLocalMaterializedOperation.instruction.addImmediate(ImmediateKind.LOCAL_INDEX, "local_index");
-            model.storeLocalMaterializedOperation.instruction.addImmediate(ImmediateKind.LOCAL_INDEX, "local_index");
-        }
 
         /*
          * If boxing elimination is enabled and the language uses operations with statically known
@@ -574,13 +575,6 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
          */
         List<ResolvedQuickenDecision> boxingEliminationQuickenings = new ArrayList<>();
         if (model.usesBoxingElimination()) {
-
-            if (model.enableBlockScoping) {
-                // clearLocal never looks up the tag, so it does not need a local index.
-                model.loadLocalOperation.instruction.addImmediate(ImmediateKind.LOCAL_INDEX, "local_index");
-                model.storeLocalOperation.instruction.addImmediate(ImmediateKind.LOCAL_INDEX, "local_index");
-            }
-
             for (OperationModel operation : model.getOperations()) {
                 if (operation.kind != OperationKind.CUSTOM && operation.kind != OperationKind.CUSTOM_INSTRUMENTATION) {
                     continue;

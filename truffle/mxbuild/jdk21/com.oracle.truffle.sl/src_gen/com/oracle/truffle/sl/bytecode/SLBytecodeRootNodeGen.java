@@ -791,8 +791,6 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
     private static final FrameExtensions FRAMES = ACCESS.getFrameExtensions();
     private static final int BCI_INDEX = 0;
     private static final int USER_LOCALS_START_INDEX = 1;
-    private static final int TAG_LONG = 1 /* FrameSlotKind.Long.tag */;
-    private static final int TAG_BOOLEAN = 5 /* FrameSlotKind.Boolean.tag */;
     private static final AtomicReferenceFieldUpdater<SLBytecodeRootNodeGen, AbstractBytecodeNode> BYTECODE_UPDATER = AtomicReferenceFieldUpdater.newUpdater(SLBytecodeRootNodeGen.class, AbstractBytecodeNode.class, "bytecode");
     private static final int EXCEPTION_HANDLER_OFFSET_START_BCI = 0;
     private static final int EXCEPTION_HANDLER_OFFSET_END_BCI = 1;
@@ -3378,9 +3376,13 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
 
         abstract Node[] getCachedNodes();
 
+        abstract int[] getBranchProfiles();
+
         abstract byte[] getLocalTags();
 
-        abstract int[] getBranchProfiles();
+        abstract byte getCachedLocalTagInternal(int localIndex);
+
+        abstract void setCachedLocalTagInternal(int localIndex, byte tag);
 
         @Override
         @TruffleBoundary
@@ -3527,10 +3529,6 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             int frameIndex = USER_LOCALS_START_INDEX + localOffset;
             return FRAMES.getTag(frame, frameIndex) == FrameSlotKind.Illegal.tag;
         }
-
-        abstract FrameSlotKind getCachedLocalKindInternal(int localIndex);
-
-        abstract void setCachedLocalKindInternal(int frameIndex, FrameSlotKind kind, int localIndex);
 
         @ExplodeLoop
         protected final int localIndexToTableIndex(int bci, int localIndex) {
@@ -4340,7 +4338,6 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             byte[] bc = this.bytecodes;
             Node[] cachedNodes = this.cachedNodes_;
             int[] branchProfiles = this.branchProfiles_;
-            TagNode[] tagNodes = tagRoot != null ? tagRoot.tagNodes : null;
             int bci = (int) startState;
             int sp = (short) (startState >>> 32);
             int op;
@@ -4687,50 +4684,50 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                         }
                         case Instructions.TAG_ENTER :
                         {
-                            doTagEnter(frame, bc, bci, sp, tagNodes);
+                            doTagEnter(frame, bc, bci, sp);
                             bci += 6;
                             break;
                         }
                         case Instructions.TAG_LEAVE :
                         {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
-                            doTagLeave(frame, bc, bci, sp, tagNodes);
+                            doTagLeave(frame, bc, bci, sp);
                             bci += 10;
                             break;
                         }
                         case Instructions.TAG_LEAVE$LONG :
                         {
-                            doTagLeave$Long(frame, bc, bci, sp, tagNodes);
+                            doTagLeave$Long(frame, bc, bci, sp);
                             bci += 10;
                             break;
                         }
                         case Instructions.TAG_LEAVE$LONG$UNBOXED :
                         {
-                            doTagLeave$Long$unboxed(frame, bc, bci, sp, tagNodes);
+                            doTagLeave$Long$unboxed(frame, bc, bci, sp);
                             bci += 10;
                             break;
                         }
                         case Instructions.TAG_LEAVE$BOOLEAN :
                         {
-                            doTagLeave$Boolean(frame, bc, bci, sp, tagNodes);
+                            doTagLeave$Boolean(frame, bc, bci, sp);
                             bci += 10;
                             break;
                         }
                         case Instructions.TAG_LEAVE$BOOLEAN$UNBOXED :
                         {
-                            doTagLeave$Boolean$unboxed(frame, bc, bci, sp, tagNodes);
+                            doTagLeave$Boolean$unboxed(frame, bc, bci, sp);
                             bci += 10;
                             break;
                         }
                         case Instructions.TAG_LEAVE$GENERIC :
                         {
-                            doTagLeave$generic(frame, bc, bci, sp, tagNodes);
+                            doTagLeave$generic(frame, bc, bci, sp);
                             bci += 10;
                             break;
                         }
                         case Instructions.TAG_LEAVE_VOID :
                         {
-                            doTagLeaveVoid(frame, bc, bci, sp, tagNodes);
+                            doTagLeaveVoid(frame, bc, bci, sp);
                             bci += 6;
                             break;
                         }
@@ -5246,13 +5243,50 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                         try {
                             switch (this.handlers[op + EXCEPTION_HANDLER_OFFSET_KIND]) {
                                 case HANDLER_TAG_EXCEPTIONAL :
-                                    long result = doTagExceptional($root, frame, bc, bci, throwable, this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI], this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_SP]);
-                                    temp = (short) (result >>> 32);
-                                    bci = (int) result;
-                                    if (sp < (int) temp + $root.maxLocals) {
-                                        // The instrumentation pushed a value on the stack.
-                                        assert sp == (int) temp + $root.maxLocals - 1;
-                                        sp++;
+                                    TagNode node = this.tagRoot.tagNodes[this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI]];
+                                    Object result = doTagExceptional(frame, node, this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI], bc, bci, throwable);
+                                    if (result == null) {
+                                        throw throwable;
+                                    }
+                                    temp = this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_SP] + $root.maxLocals;
+                                    if (result == ProbeNode.UNWIND_ACTION_REENTER) {
+                                        // Reenter by jumping to the begin bci.
+                                        bci = node.enterBci;
+                                    } else {
+                                        switch (readValidBytecode(bc, node.returnBci)) {
+                                            case Instructions.TAG_LEAVE :
+                                            case Instructions.TAG_LEAVE$LONG :
+                                            case Instructions.TAG_LEAVE$BOOLEAN :
+                                            case Instructions.TAG_LEAVE$GENERIC :
+                                                FRAMES.setObject(frame, (int)temp, result);
+                                                temp = temp + 1;
+                                                bci = node.returnBci + 10;
+                                                break;
+                                            case Instructions.TAG_LEAVE$LONG$UNBOXED :
+                                                try {
+                                                    FRAMES.setLong(frame, (int)temp, SLBytecodeRootNodeGen.expectLong(result));
+                                                } catch (UnexpectedResultException e) {
+                                                    FRAMES.setObject(frame, (int)temp, e.getResult());
+                                                }
+                                                temp = temp + 1;
+                                                bci = node.returnBci + 10;
+                                                break;
+                                            case Instructions.TAG_LEAVE$BOOLEAN$UNBOXED :
+                                                try {
+                                                    FRAMES.setBoolean(frame, (int)temp, SLBytecodeRootNodeGen.expectBoolean(result));
+                                                } catch (UnexpectedResultException e) {
+                                                    FRAMES.setObject(frame, (int)temp, e.getResult());
+                                                }
+                                                temp = temp + 1;
+                                                bci = node.returnBci + 10;
+                                                break;
+                                            case Instructions.TAG_LEAVE_VOID :
+                                                bci = node.returnBci + 6;
+                                                // discard return value
+                                                break;
+                                            default :
+                                                throw CompilerDirectives.shouldNotReachHere();
+                                        }
                                     }
                                     break;
                                 default :
@@ -5261,8 +5295,8 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                                     }
                                     assert throwable instanceof AbstractTruffleException;
                                     bci = this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI];
-                                    temp = this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_SP];
-                                    FRAMES.setObject(frame, ((int) temp) - 1 + $root.maxLocals, throwable);
+                                    temp = this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_SP] + $root.maxLocals;
+                                    FRAMES.setObject(frame, ((int) temp) - 1, throwable);
                                     break;
                             }
                         } catch (Throwable t) {
@@ -5271,7 +5305,6 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                             }
                             continue;
                         }
-                        temp = temp + $root.maxLocals;
                         assert sp >= temp - 1;
                         while (sp > temp) {
                             FRAMES.clear(frame, --sp);
@@ -5307,66 +5340,66 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             if (operandIndex != -1) {
                 short newOperand;
                 short operand = BYTES.getShort(bc, operandIndex);
-                FrameSlotKind oldKind = this.getCachedLocalKindInternal(localIndex);
-                FrameSlotKind newKind;
+                byte oldTag = this.getCachedLocalTagInternal(localIndex);
+                byte newTag;
                 if (local instanceof Long) {
-                    switch (oldKind) {
-                        case Long :
-                        case Illegal :
+                    switch (oldTag) {
+                        case FrameTags.LONG :
+                        case FrameTags.ILLEGAL :
                             if ((newOperand = applyQuickeningLong(operand)) != -1) {
                                 newInstruction = Instructions.STORE_LOCAL$LONG$LONG;
                             } else {
                                 newInstruction = Instructions.STORE_LOCAL$LONG;
                                 newOperand = operand;
                             }
-                            newKind = FrameSlotKind.Long;
+                            newTag = FrameTags.LONG;
                             FRAMES.setLong(frame, slot, (long) local);
                             break;
-                        case Boolean :
-                        case Object :
+                        case FrameTags.BOOLEAN :
+                        case FrameTags.OBJECT :
                             newInstruction = Instructions.STORE_LOCAL$GENERIC;
                             newOperand = undoQuickening(operand);
-                            newKind = FrameSlotKind.Object;
+                            newTag = FrameTags.OBJECT;
                             FRAMES.setObject(frame, slot, local);
                             break;
                         default :
-                            throw CompilerDirectives.shouldNotReachHere("Unexpected FrameSlotKind.");
+                            throw CompilerDirectives.shouldNotReachHere("Unexpected frame tag.");
                     }
                 } else if (local instanceof Boolean) {
-                    switch (oldKind) {
-                        case Boolean :
-                        case Illegal :
+                    switch (oldTag) {
+                        case FrameTags.BOOLEAN :
+                        case FrameTags.ILLEGAL :
                             if ((newOperand = applyQuickeningBoolean(operand)) != -1) {
                                 newInstruction = Instructions.STORE_LOCAL$BOOLEAN$BOOLEAN;
                             } else {
                                 newInstruction = Instructions.STORE_LOCAL$BOOLEAN;
                                 newOperand = operand;
                             }
-                            newKind = FrameSlotKind.Boolean;
+                            newTag = FrameTags.BOOLEAN;
                             FRAMES.setBoolean(frame, slot, (boolean) local);
                             break;
-                        case Long :
-                        case Object :
+                        case FrameTags.LONG :
+                        case FrameTags.OBJECT :
                             newInstruction = Instructions.STORE_LOCAL$GENERIC;
                             newOperand = undoQuickening(operand);
-                            newKind = FrameSlotKind.Object;
+                            newTag = FrameTags.OBJECT;
                             FRAMES.setObject(frame, slot, local);
                             break;
                         default :
-                            throw CompilerDirectives.shouldNotReachHere("Unexpected FrameSlotKind.");
+                            throw CompilerDirectives.shouldNotReachHere("Unexpected frame tag.");
                     }
                 } else {
                     newInstruction = Instructions.STORE_LOCAL$GENERIC;
                     newOperand = undoQuickening(operand);
-                    newKind = FrameSlotKind.Object;
+                    newTag = FrameTags.OBJECT;
                     FRAMES.setObject(frame, slot, local);
                 }
-                this.setCachedLocalKindInternal(slot, newKind, localIndex);
+                this.setCachedLocalTagInternal(localIndex, newTag);
                 BYTES.putShort(bc, operandIndex, newOperand);
             } else {
                 newInstruction = Instructions.STORE_LOCAL$GENERIC;
                 FRAMES.setObject(frame, slot, local);
-                this.setCachedLocalKindInternal(slot, FrameSlotKind.Object, localIndex);
+                this.setCachedLocalTagInternal(localIndex, FrameTags.OBJECT);
             }
             BYTES.putShort(bc, bci, newInstruction);
             FRAMES.clear(frame, sp - 1);
@@ -5382,8 +5415,8 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             }
             int slot = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
             int localIndex = BYTES.getShort(bc, bci + 4 /* imm local_index */);
-            FrameSlotKind kind = this.getCachedLocalKindInternal(localIndex);
-            if (kind == FrameSlotKind.Long) {
+            byte tag = this.getCachedLocalTagInternal(localIndex);
+            if (tag == FrameTags.LONG) {
                 try {
                     FRAMES.setLong(frame, slot, SLBytecodeRootNodeGen.expectLong(local));
                     if (CompilerDirectives.inCompiledCode()) {
@@ -5410,8 +5443,8 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             }
             int slot = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
             int localIndex = BYTES.getShort(bc, bci + 4 /* imm local_index */);
-            FrameSlotKind kind = this.getCachedLocalKindInternal(localIndex);
-            if (kind == FrameSlotKind.Long) {
+            byte tag = this.getCachedLocalTagInternal(localIndex);
+            if (tag == FrameTags.LONG) {
                 FRAMES.setLong(frame, slot, local);
                 if (CompilerDirectives.inCompiledCode()) {
                     // Clear primitive for compiler liveness analysis
@@ -5433,8 +5466,8 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             }
             int slot = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
             int localIndex = BYTES.getShort(bc, bci + 4 /* imm local_index */);
-            FrameSlotKind kind = this.getCachedLocalKindInternal(localIndex);
-            if (kind == FrameSlotKind.Boolean) {
+            byte tag = this.getCachedLocalTagInternal(localIndex);
+            if (tag == FrameTags.BOOLEAN) {
                 try {
                     FRAMES.setBoolean(frame, slot, SLBytecodeRootNodeGen.expectBoolean(local));
                     if (CompilerDirectives.inCompiledCode()) {
@@ -5461,8 +5494,8 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             }
             int slot = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
             int localIndex = BYTES.getShort(bc, bci + 4 /* imm local_index */);
-            FrameSlotKind kind = this.getCachedLocalKindInternal(localIndex);
-            if (kind == FrameSlotKind.Boolean) {
+            byte tag = this.getCachedLocalTagInternal(localIndex);
+            if (tag == FrameTags.BOOLEAN) {
                 FRAMES.setBoolean(frame, slot, local);
                 if (CompilerDirectives.inCompiledCode()) {
                     // Clear primitive for compiler liveness analysis
@@ -5509,26 +5542,26 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         private void doLoadLocal(Frame frame, byte[] bc, int bci, int sp) {
             int slot = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
             int localIndex = BYTES.getShort(bc, bci + 4 /* imm local_index */);
-            FrameSlotKind kind = this.getCachedLocalKindInternal(localIndex);
+            byte tag = this.getCachedLocalTagInternal(localIndex);
             Object value;
             short newInstruction;
             try {
-                switch (kind) {
-                    case Long :
+                switch (tag) {
+                    case FrameTags.LONG :
                         newInstruction = Instructions.LOAD_LOCAL$LONG;
                         value = FRAMES.expectLong(frame, slot);
                         break;
-                    case Boolean :
+                    case FrameTags.BOOLEAN :
                         newInstruction = Instructions.LOAD_LOCAL$BOOLEAN;
                         value = FRAMES.expectBoolean(frame, slot);
                         break;
-                    case Object :
-                    case Illegal :
+                    case FrameTags.OBJECT :
+                    case FrameTags.ILLEGAL :
                         newInstruction = Instructions.LOAD_LOCAL$GENERIC;
                         value = FRAMES.expectObject(frame, slot);
                         break;
                     default :
-                        throw CompilerDirectives.shouldNotReachHere("Unexpected FrameSlotKind.");
+                        throw CompilerDirectives.shouldNotReachHere("Unexpected frame tag.");
                 }
             } catch (UnexpectedResultException ex) {
                 newInstruction = Instructions.LOAD_LOCAL$GENERIC;
@@ -5583,26 +5616,26 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
             }
             AbstractBytecodeNode bytecodeNode = localRoot.getBytecodeNodeImpl();
-            FrameSlotKind kind = bytecodeNode.getCachedLocalKindInternal(localIndex);
+            byte tag = bytecodeNode.getCachedLocalTagInternal(localIndex);
             Object value;
             short newInstruction;
             try {
-                switch (kind) {
-                    case Long :
+                switch (tag) {
+                    case FrameTags.LONG :
                         newInstruction = Instructions.LOAD_LOCAL_MAT$LONG;
                         value = FRAMES.expectLong(frame, slot);
                         break;
-                    case Boolean :
+                    case FrameTags.BOOLEAN :
                         newInstruction = Instructions.LOAD_LOCAL_MAT$BOOLEAN;
                         value = FRAMES.expectBoolean(frame, slot);
                         break;
-                    case Object :
-                    case Illegal :
+                    case FrameTags.OBJECT :
+                    case FrameTags.ILLEGAL :
                         newInstruction = Instructions.LOAD_LOCAL_MAT$GENERIC;
                         value = FRAMES.expectObject(frame, slot);
                         break;
                     default :
-                        throw CompilerDirectives.shouldNotReachHere("Unexpected FrameSlotKind.");
+                        throw CompilerDirectives.shouldNotReachHere("Unexpected frame tag.");
                 }
             } catch (UnexpectedResultException ex) {
                 newInstruction = Instructions.LOAD_LOCAL_MAT$GENERIC;
@@ -5697,66 +5730,66 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             if (operandIndex != -1) {
                 short newOperand;
                 short operand = BYTES.getShort(bc, operandIndex);
-                FrameSlotKind oldKind = bytecodeNode.getCachedLocalKindInternal(localIndex);
-                FrameSlotKind newKind;
+                byte oldTag = bytecodeNode.getCachedLocalTagInternal(localIndex);
+                byte newTag;
                 if (local instanceof Long) {
-                    switch (oldKind) {
-                        case Long :
-                        case Illegal :
+                    switch (oldTag) {
+                        case FrameTags.LONG :
+                        case FrameTags.ILLEGAL :
                             if ((newOperand = applyQuickeningLong(operand)) != -1) {
                                 newInstruction = Instructions.STORE_LOCAL_MAT$LONG$LONG;
                             } else {
                                 newInstruction = Instructions.STORE_LOCAL_MAT$LONG;
                                 newOperand = operand;
                             }
-                            newKind = FrameSlotKind.Long;
+                            newTag = FrameTags.LONG;
                             FRAMES.setLong(frame, slot, (long) local);
                             break;
-                        case Boolean :
-                        case Object :
+                        case FrameTags.BOOLEAN :
+                        case FrameTags.OBJECT :
                             newInstruction = Instructions.STORE_LOCAL_MAT$GENERIC;
                             newOperand = undoQuickening(operand);
-                            newKind = FrameSlotKind.Object;
+                            newTag = FrameTags.OBJECT;
                             FRAMES.setObject(frame, slot, local);
                             break;
                         default :
-                            throw CompilerDirectives.shouldNotReachHere("Unexpected FrameSlotKind.");
+                            throw CompilerDirectives.shouldNotReachHere("Unexpected frame tag.");
                     }
                 } else if (local instanceof Boolean) {
-                    switch (oldKind) {
-                        case Boolean :
-                        case Illegal :
+                    switch (oldTag) {
+                        case FrameTags.BOOLEAN :
+                        case FrameTags.ILLEGAL :
                             if ((newOperand = applyQuickeningBoolean(operand)) != -1) {
                                 newInstruction = Instructions.STORE_LOCAL_MAT$BOOLEAN$BOOLEAN;
                             } else {
                                 newInstruction = Instructions.STORE_LOCAL_MAT$BOOLEAN;
                                 newOperand = operand;
                             }
-                            newKind = FrameSlotKind.Boolean;
+                            newTag = FrameTags.BOOLEAN;
                             FRAMES.setBoolean(frame, slot, (boolean) local);
                             break;
-                        case Long :
-                        case Object :
+                        case FrameTags.LONG :
+                        case FrameTags.OBJECT :
                             newInstruction = Instructions.STORE_LOCAL_MAT$GENERIC;
                             newOperand = undoQuickening(operand);
-                            newKind = FrameSlotKind.Object;
+                            newTag = FrameTags.OBJECT;
                             FRAMES.setObject(frame, slot, local);
                             break;
                         default :
-                            throw CompilerDirectives.shouldNotReachHere("Unexpected FrameSlotKind.");
+                            throw CompilerDirectives.shouldNotReachHere("Unexpected frame tag.");
                     }
                 } else {
                     newInstruction = Instructions.STORE_LOCAL_MAT$GENERIC;
                     newOperand = undoQuickening(operand);
-                    newKind = FrameSlotKind.Object;
+                    newTag = FrameTags.OBJECT;
                     FRAMES.setObject(frame, slot, local);
                 }
-                bytecodeNode.setCachedLocalKindInternal(slot, newKind, localIndex);
+                bytecodeNode.setCachedLocalTagInternal(localIndex, newTag);
                 BYTES.putShort(bc, operandIndex, newOperand);
             } else {
                 newInstruction = Instructions.STORE_LOCAL_MAT$GENERIC;
                 FRAMES.setObject(frame, slot, local);
-                bytecodeNode.setCachedLocalKindInternal(slot, FrameSlotKind.Object, localIndex);
+                bytecodeNode.setCachedLocalTagInternal(localIndex, FrameTags.OBJECT);
             }
             BYTES.putShort(bc, bci, newInstruction);
             FRAMES.clear(stackFrame, sp - 1);
@@ -5779,8 +5812,8 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
             }
             AbstractBytecodeNode bytecodeNode = localRoot.getBytecodeNodeImpl();
-            FrameSlotKind kind = bytecodeNode.getCachedLocalKindInternal(localIndex);
-            if (kind == FrameSlotKind.Long) {
+            byte tag = bytecodeNode.getCachedLocalTagInternal(localIndex);
+            if (tag == FrameTags.LONG) {
                 try {
                     FRAMES.setLong(frame, slot, SLBytecodeRootNodeGen.expectLong(local));
                     FRAMES.clear(stackFrame, sp - 1);
@@ -5814,8 +5847,8 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
             }
             AbstractBytecodeNode bytecodeNode = localRoot.getBytecodeNodeImpl();
-            FrameSlotKind kind = bytecodeNode.getCachedLocalKindInternal(localIndex);
-            if (kind == FrameSlotKind.Long) {
+            byte tag = bytecodeNode.getCachedLocalTagInternal(localIndex);
+            if (tag == FrameTags.LONG) {
                 FRAMES.setLong(frame, slot, local);
                 FRAMES.clear(stackFrame, sp - 1);
                 if (CompilerDirectives.inCompiledCode()) {
@@ -5844,8 +5877,8 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
             }
             AbstractBytecodeNode bytecodeNode = localRoot.getBytecodeNodeImpl();
-            FrameSlotKind kind = bytecodeNode.getCachedLocalKindInternal(localIndex);
-            if (kind == FrameSlotKind.Boolean) {
+            byte tag = bytecodeNode.getCachedLocalTagInternal(localIndex);
+            if (tag == FrameTags.BOOLEAN) {
                 try {
                     FRAMES.setBoolean(frame, slot, SLBytecodeRootNodeGen.expectBoolean(local));
                     FRAMES.clear(stackFrame, sp - 1);
@@ -5879,8 +5912,8 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
             }
             AbstractBytecodeNode bytecodeNode = localRoot.getBytecodeNodeImpl();
-            FrameSlotKind kind = bytecodeNode.getCachedLocalKindInternal(localIndex);
-            if (kind == FrameSlotKind.Boolean) {
+            byte tag = bytecodeNode.getCachedLocalTagInternal(localIndex);
+            if (tag == FrameTags.BOOLEAN) {
                 FRAMES.setBoolean(frame, slot, local);
                 FRAMES.clear(stackFrame, sp - 1);
                 if (CompilerDirectives.inCompiledCode()) {
@@ -5914,12 +5947,12 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         @InliningCutoff
-        private void doTagEnter(VirtualFrame frame, byte[] bc, int bci, int sp, TagNode[] tagNodes) {
-            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
+        private void doTagEnter(VirtualFrame frame, byte[] bc, int bci, int sp) {
+            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagRoot.tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
             tagNode.findProbe().onEnter(frame);
         }
 
-        private void doTagLeave(VirtualFrame frame, byte[] bc, int bci, int sp, TagNode[] tagNodes) {
+        private void doTagLeave(VirtualFrame frame, byte[] bc, int bci, int sp) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             short newInstruction;
             short newOperand;
@@ -5938,70 +5971,70 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             }
             BYTES.putShort(bc, operandIndex, newOperand);
             BYTES.putShort(bc, bci, newInstruction);
-            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
+            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagRoot.tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
             tagNode.findProbe().onReturnValue(frame, value);
         }
 
-        private void doTagLeave$Long(VirtualFrame frame, byte[] bc, int bci, int sp, TagNode[] tagNodes) {
+        private void doTagLeave$Long(VirtualFrame frame, byte[] bc, int bci, int sp) {
             long returnValue;
             try {
                 returnValue = FRAMES.expectLong(frame, sp - 1);
             } catch (UnexpectedResultException ex) {
-                doTagLeave(frame, bc, bci, sp, tagNodes);
+                doTagLeave(frame, bc, bci, sp);
                 return;
             }
-            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
+            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagRoot.tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
             tagNode.findProbe().onReturnValue(frame, returnValue);
             FRAMES.setObject(frame, sp - 1, returnValue);
         }
 
-        private void doTagLeave$Long$unboxed(VirtualFrame frame, byte[] bc, int bci, int sp, TagNode[] tagNodes) {
+        private void doTagLeave$Long$unboxed(VirtualFrame frame, byte[] bc, int bci, int sp) {
             long returnValue;
             try {
                 returnValue = FRAMES.expectLong(frame, sp - 1);
             } catch (UnexpectedResultException ex) {
-                doTagLeave(frame, bc, bci, sp, tagNodes);
+                doTagLeave(frame, bc, bci, sp);
                 return;
             }
-            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
+            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagRoot.tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
             tagNode.findProbe().onReturnValue(frame, returnValue);
         }
 
-        private void doTagLeave$Boolean(VirtualFrame frame, byte[] bc, int bci, int sp, TagNode[] tagNodes) {
+        private void doTagLeave$Boolean(VirtualFrame frame, byte[] bc, int bci, int sp) {
             boolean returnValue;
             try {
                 returnValue = FRAMES.expectBoolean(frame, sp - 1);
             } catch (UnexpectedResultException ex) {
-                doTagLeave(frame, bc, bci, sp, tagNodes);
+                doTagLeave(frame, bc, bci, sp);
                 return;
             }
-            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
+            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagRoot.tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
             tagNode.findProbe().onReturnValue(frame, returnValue);
             FRAMES.setObject(frame, sp - 1, returnValue);
         }
 
-        private void doTagLeave$Boolean$unboxed(VirtualFrame frame, byte[] bc, int bci, int sp, TagNode[] tagNodes) {
+        private void doTagLeave$Boolean$unboxed(VirtualFrame frame, byte[] bc, int bci, int sp) {
             boolean returnValue;
             try {
                 returnValue = FRAMES.expectBoolean(frame, sp - 1);
             } catch (UnexpectedResultException ex) {
-                doTagLeave(frame, bc, bci, sp, tagNodes);
+                doTagLeave(frame, bc, bci, sp);
                 return;
             }
-            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
+            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagRoot.tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
             tagNode.findProbe().onReturnValue(frame, returnValue);
         }
 
-        private void doTagLeave$generic(VirtualFrame frame, byte[] bc, int bci, int sp, TagNode[] tagNodes) {
+        private void doTagLeave$generic(VirtualFrame frame, byte[] bc, int bci, int sp) {
             Object returnValue;
             returnValue = FRAMES.requireObject(frame, sp - 1);
-            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
+            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagRoot.tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
             tagNode.findProbe().onReturnValue(frame, returnValue);
         }
 
         @InliningCutoff
-        private void doTagLeaveVoid(VirtualFrame frame, byte[] bc, int bci, int sp, TagNode[] tagNodes) {
-            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
+        private void doTagLeaveVoid(VirtualFrame frame, byte[] bc, int bci, int sp) {
+            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagRoot.tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
             tagNode.findProbe().onReturnValue(frame, null);
         }
 
@@ -6488,10 +6521,8 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             return -1;
         }
 
-        private long doTagExceptional(SLBytecodeRootNodeGen $root, VirtualFrame frame, byte[] bc, int bci, Throwable exception, int nodeId, int handlerSp) throws Throwable {
+        private Object doTagExceptional(VirtualFrame frame, TagNode node, int nodeId, byte[] bc, int bci, Throwable exception) throws Throwable {
             boolean wasOnReturnExecuted;
-            int nextBci;
-            int nextSp;
             switch (readValidBytecode(bc, bci)) {
                 case Instructions.TAG_LEAVE :
                 case Instructions.TAG_LEAVE$LONG :
@@ -6508,55 +6539,12 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                     wasOnReturnExecuted = false;
                     break;
             }
-            TagNode node = this.tagRoot.tagNodes[nodeId];
-            Object result = node.findProbe().onReturnExceptionalOrUnwind(frame, exception, wasOnReturnExecuted);
-            if (result == null) {
-                throw exception;
-            } else if (result == ProbeNode.UNWIND_ACTION_REENTER) {
-                // Reenter by jumping to the begin bci.
-                return ((handlerSp & 0xFFFFL) << 32) | (node.enterBci & 0xFFFFFFFFL);
-            } else {
-                // We jump to the return address which is at sp + 1.
-                int targetSp;
-                int targetBci;
-                switch (readValidBytecode(bc, node.returnBci)) {
-                    case Instructions.TAG_LEAVE :
-                    case Instructions.TAG_LEAVE$LONG :
-                    case Instructions.TAG_LEAVE$BOOLEAN :
-                    case Instructions.TAG_LEAVE$GENERIC :
-                        targetBci = node.returnBci + 10;
-                        targetSp = handlerSp + 1 ;
-                        FRAMES.setObject(frame, targetSp - 1 + $root.maxLocals, result);
-                        break;
-                    case Instructions.TAG_LEAVE$LONG$UNBOXED :
-                        targetBci = node.returnBci + 10;
-                        targetSp = handlerSp + 1 ;
-                        try {
-                            FRAMES.setLong(frame, targetSp - 1 + $root.maxLocals, SLBytecodeRootNodeGen.expectLong(result));
-                        } catch (UnexpectedResultException e) {
-                            FRAMES.setObject(frame, targetSp - 1 + $root.maxLocals, e.getResult());
-                        }
-                        break;
-                    case Instructions.TAG_LEAVE$BOOLEAN$UNBOXED :
-                        targetBci = node.returnBci + 10;
-                        targetSp = handlerSp + 1 ;
-                        try {
-                            FRAMES.setBoolean(frame, targetSp - 1 + $root.maxLocals, SLBytecodeRootNodeGen.expectBoolean(result));
-                        } catch (UnexpectedResultException e) {
-                            FRAMES.setObject(frame, targetSp - 1 + $root.maxLocals, e.getResult());
-                        }
-                        break;
-                    case Instructions.TAG_LEAVE_VOID :
-                        targetBci = node.returnBci + 6;
-                        targetSp = handlerSp ;
-                        // discard return value
-                        break;
-                    default :
-                        throw CompilerDirectives.shouldNotReachHere();
-                }
-                assert targetBci < bc.length : "returnBci must be reachable";
-                return ((targetSp & 0xFFFFL) << 32) | (targetBci & 0xFFFFFFFFL);
-            }
+            return node.findProbe().onReturnExceptionalOrUnwind(frame, exception, wasOnReturnExecuted);
+        }
+
+        @Override
+        byte[] getLocalTags() {
+            return this.localTags_;
         }
 
         @Override
@@ -6568,24 +6556,24 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
             int frameIndex = USER_LOCALS_START_INDEX + localOffset;
             try {
-                FrameSlotKind kind;
+                byte tag;
                 if (CompilerDirectives.inInterpreter()) {
                     // Resolving the local index is expensive. Don't do it in the interpreter.
-                    kind = FrameSlotKind.fromTag(frame.getTag(frameIndex));
+                    tag = frame.getTag(frameIndex);
                 } else {
-                    kind = getCachedLocalKind(frame, frameIndex, bci, localOffset);
+                    tag = getCachedLocalTag(frameIndex, bci);
                 }
-                switch (kind) {
-                    case Long :
+                switch (tag) {
+                    case FrameTags.LONG :
                         return frame.expectLong(frameIndex);
-                    case Boolean :
+                    case FrameTags.BOOLEAN :
                         return frame.expectBoolean(frameIndex);
-                    case Object :
+                    case FrameTags.OBJECT :
                         return frame.expectObject(frameIndex);
-                    case Illegal :
+                    case FrameTags.ILLEGAL :
                         return null;
                     default :
-                        throw CompilerDirectives.shouldNotReachHere("unexpected slot");
+                        throw CompilerDirectives.shouldNotReachHere("unexpected tag");
                 }
             } catch (UnexpectedResultException ex) {
                 return ex.getResult();
@@ -6600,7 +6588,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             assert localOffset >= 0 && localOffset < getLocalCount(bci) : "Invalid out-of-bounds local offset provided.";
             assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
             int frameIndex = USER_LOCALS_START_INDEX + localOffset;
-            setLocalValueImpl(frame, frameIndex, value, bci, localOffset);
+            setLocalValueImpl(frame, frameIndex, value, bci);
         }
 
         @Override
@@ -6608,18 +6596,18 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
             int frameIndex = USER_LOCALS_START_INDEX + localOffset;
             try {
-                FrameSlotKind kind = getCachedLocalKindInternal(localIndex);
-                switch (kind) {
-                    case Long :
+                byte tag = getCachedLocalTagInternal(localIndex);
+                switch (tag) {
+                    case FrameTags.LONG :
                         return frame.expectLong(frameIndex);
-                    case Boolean :
+                    case FrameTags.BOOLEAN :
                         return frame.expectBoolean(frameIndex);
-                    case Object :
+                    case FrameTags.OBJECT :
                         return frame.expectObject(frameIndex);
-                    case Illegal :
+                    case FrameTags.ILLEGAL :
                         throw new FrameSlotTypeException();
                     default :
-                        throw CompilerDirectives.shouldNotReachHere("unexpected slot");
+                        throw CompilerDirectives.shouldNotReachHere("unexpected tag");
                 }
             } catch (UnexpectedResultException ex) {
                 return ex.getResult();
@@ -6630,68 +6618,35 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         protected void setLocalValueInternal(Frame frame, int localOffset, int localIndex, Object value) {
             assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
             int frameIndex = USER_LOCALS_START_INDEX + localOffset;
-            FrameSlotKind oldKind = getCachedLocalKindInternal(localIndex);
-            FrameSlotKind newKind;
-            switch (oldKind) {
-                case Long :
+            byte oldTag = getCachedLocalTagInternal(localIndex);
+            byte newTag;
+            switch (oldTag) {
+                case FrameTags.LONG :
                     if (value instanceof Long longValue) {
                         frame.setLong(frameIndex, longValue);
                         return;
                     } else {
-                        newKind = FrameSlotKind.Object;
+                        newTag = FrameTags.OBJECT;
                     }
                     break;
-                case Boolean :
+                case FrameTags.BOOLEAN :
                     if (value instanceof Boolean booleanValue) {
                         frame.setBoolean(frameIndex, booleanValue);
                         return;
                     } else {
-                        newKind = FrameSlotKind.Object;
+                        newTag = FrameTags.OBJECT;
                     }
                     break;
-                case Object :
+                case FrameTags.OBJECT :
                     frame.setObject(frameIndex, value);
                     return;
                 default :
-                    newKind = specializeSlotKind(value);
+                    newTag = specializeSlotTag(value);
                     break;
             }
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            setCachedLocalKindInternal(frameIndex, newKind, localIndex);
+            setCachedLocalTagInternal(localIndex, newTag);
             setLocalValueInternal(frame, localOffset, localIndex, value);
-        }
-
-        private void setLocalValueImpl(Frame frame, int frameIndex, Object value, int bci, int localOffset) {
-            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
-            FrameSlotKind oldKind = getCachedLocalKind(frame, frameIndex, bci, localOffset);
-            FrameSlotKind newKind;
-            switch (oldKind) {
-                case Long :
-                    if (value instanceof Long longValue) {
-                        frame.setLong(frameIndex, longValue);
-                        return;
-                    } else {
-                        newKind = FrameSlotKind.Object;
-                    }
-                    break;
-                case Boolean :
-                    if (value instanceof Boolean booleanValue) {
-                        frame.setBoolean(frameIndex, booleanValue);
-                        return;
-                    } else {
-                        newKind = FrameSlotKind.Object;
-                    }
-                    break;
-                case Object :
-                    frame.setObject(frameIndex, value);
-                    return;
-                default :
-                    newKind = specializeSlotKind(value);
-                    break;
-            }
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            setCachedLocalKind(frameIndex, newKind, bci, localOffset);
-            setLocalValueImpl(frame, frameIndex, value, bci, localOffset);
         }
 
         @Override
@@ -6704,21 +6659,21 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         protected void setLocalValueInternalLong(Frame frame, int localOffset, int localIndex, long value) {
             assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
             int frameIndex = USER_LOCALS_START_INDEX + localOffset;
-            FrameSlotKind oldKind = getCachedLocalKindInternal(localIndex);
-            FrameSlotKind newKind;
-            switch (oldKind) {
-                case Long :
+            byte oldTag = getCachedLocalTagInternal(localIndex);
+            byte newTag;
+            switch (oldTag) {
+                case FrameTags.LONG :
                     frame.setLong(frameIndex, value);
                     return;
-                case Object :
+                case FrameTags.OBJECT :
                     frame.setObject(frameIndex, value);
                     return;
                 default :
-                    newKind = specializeSlotKind(value);
+                    newTag = specializeSlotTag(value);
                     break;
             }
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            setCachedLocalKindInternal(frameIndex, newKind, localIndex);
+            setCachedLocalTagInternal(localIndex, newTag);
             setLocalValueInternal(frame, localOffset, localIndex, value);
         }
 
@@ -6732,49 +6687,79 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         protected void setLocalValueInternalBoolean(Frame frame, int localOffset, int localIndex, boolean value) {
             assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
             int frameIndex = USER_LOCALS_START_INDEX + localOffset;
-            FrameSlotKind oldKind = getCachedLocalKindInternal(localIndex);
-            FrameSlotKind newKind;
-            switch (oldKind) {
-                case Boolean :
+            byte oldTag = getCachedLocalTagInternal(localIndex);
+            byte newTag;
+            switch (oldTag) {
+                case FrameTags.BOOLEAN :
                     frame.setBoolean(frameIndex, value);
                     return;
-                case Object :
+                case FrameTags.OBJECT :
                     frame.setObject(frameIndex, value);
                     return;
                 default :
-                    newKind = specializeSlotKind(value);
+                    newTag = specializeSlotTag(value);
                     break;
             }
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            setCachedLocalKindInternal(frameIndex, newKind, localIndex);
+            setCachedLocalTagInternal(localIndex, newTag);
             setLocalValueInternal(frame, localOffset, localIndex, value);
         }
 
-        FrameSlotKind getCachedLocalKind(Frame frame, int frameIndex, int bci, int localOffset) {
-            assert locals[localOffsetToTableIndex(bci, localOffset) + LOCALS_OFFSET_FRAME_INDEX] == frameIndex : "Inconsistent indices.";
-            int localIndex = locals[localOffsetToTableIndex(bci, localOffset) + LOCALS_OFFSET_LOCAL_INDEX];
-            return FrameSlotKind.fromTag(this.localTags_[localIndex]);
+        private void setLocalValueImpl(Frame frame, int frameIndex, Object value, int bci) {
+            assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
+            byte oldTag = getCachedLocalTag(frameIndex, bci);
+            byte newTag;
+            switch (oldTag) {
+                case FrameTags.LONG :
+                    if (value instanceof Long longValue) {
+                        frame.setLong(frameIndex, longValue);
+                        return;
+                    } else {
+                        newTag = FrameTags.OBJECT;
+                    }
+                    break;
+                case FrameTags.BOOLEAN :
+                    if (value instanceof Boolean booleanValue) {
+                        frame.setBoolean(frameIndex, booleanValue);
+                        return;
+                    } else {
+                        newTag = FrameTags.OBJECT;
+                    }
+                    break;
+                case FrameTags.OBJECT :
+                    frame.setObject(frameIndex, value);
+                    return;
+                default :
+                    newTag = specializeSlotTag(value);
+                    break;
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            setCachedLocalTag(frameIndex, newTag, bci);
+            setLocalValueImpl(frame, frameIndex, value, bci);
         }
 
-        private void setCachedLocalKind(int frameIndex, FrameSlotKind kind, int bci, int localOffset) {
-            assert locals[localOffsetToTableIndex(bci, localOffset) + LOCALS_OFFSET_FRAME_INDEX] == frameIndex : "Inconsistent indices.";
-            int localIndex = locals[localOffsetToTableIndex(bci, localOffset) + LOCALS_OFFSET_LOCAL_INDEX];
-            this.localTags_[localIndex] = kind.tag;
+        byte getCachedLocalTag(int frameIndex, int bci) {
+            int index = localOffsetToTableIndex(bci, frameIndex - USER_LOCALS_START_INDEX);
+            assert locals[index + LOCALS_OFFSET_FRAME_INDEX] == frameIndex : "Inconsistent indices.";
+            int localIndex = locals[index + LOCALS_OFFSET_LOCAL_INDEX];
+            return this.localTags_[localIndex];
+        }
+
+        private void setCachedLocalTag(int frameIndex, byte tag, int bci) {
+            int index = localOffsetToTableIndex(bci, frameIndex - USER_LOCALS_START_INDEX);
+            assert locals[index + LOCALS_OFFSET_FRAME_INDEX] == frameIndex : "Inconsistent indices.";
+            int localIndex = locals[index + LOCALS_OFFSET_LOCAL_INDEX];
+            this.localTags_[localIndex] = tag;
         }
 
         @Override
-        FrameSlotKind getCachedLocalKindInternal(int localIndex) {
-            return FrameSlotKind.fromTag(this.localTags_[localIndex]);
+        byte getCachedLocalTagInternal(int localIndex) {
+            return this.localTags_[localIndex];
         }
 
         @Override
-        void setCachedLocalKindInternal(int frameIndex, FrameSlotKind kind, int localIndex) {
-            this.localTags_[localIndex] = kind.tag;
-        }
-
-        @Override
-        byte[] getLocalTags() {
-            return this.localTags_;
+        void setCachedLocalTagInternal(int localIndex, byte tag) {
+            this.localTags_[localIndex] = tag;
         }
 
         @Override
@@ -7099,7 +7084,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 FRAMES.clear(frame, sp - 1);
                 return;
             }
-            if (frame.getTag(sp - 1) != SLBytecodeRootNodeGen.TAG_LONG) {
+            if (frame.getTag(sp - 1) != FrameTags.LONG) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 doPop(frame, bc, bci, sp);
                 return;
@@ -7113,7 +7098,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 FRAMES.clear(frame, sp - 1);
                 return;
             }
-            if (frame.getTag(sp - 1) != SLBytecodeRootNodeGen.TAG_BOOLEAN) {
+            if (frame.getTag(sp - 1) != FrameTags.BOOLEAN) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 doPop(frame, bc, bci, sp);
                 return;
@@ -7362,13 +7347,13 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             }
         }
 
-        private static FrameSlotKind specializeSlotKind(Object value) {
+        private static byte specializeSlotTag(Object value) {
             if (value instanceof Long) {
-                return FrameSlotKind.Long;
+                return FrameTags.LONG;
             } else if (value instanceof Boolean) {
-                return FrameSlotKind.Boolean;
+                return FrameTags.BOOLEAN;
             } else {
-                return FrameSlotKind.Object;
+                return FrameTags.OBJECT;
             }
         }
 
@@ -7613,7 +7598,6 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                     return startState;
                 }
                 byte[] bc = this.bytecodes;
-                TagNode[] tagNodes = tagRoot != null ? tagRoot.tagNodes : null;
                 int bci = (int) startState;
                 int sp = (short) (startState >>> 32);
                 int op;
@@ -7773,7 +7757,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                             }
                             case Instructions.TAG_ENTER :
                             {
-                                doTagEnter(frame, bc, bci, sp, tagNodes);
+                                doTagEnter(frame, bc, bci, sp);
                                 bci += 6;
                                 break;
                             }
@@ -7784,13 +7768,13 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                             case Instructions.TAG_LEAVE$BOOLEAN$UNBOXED :
                             case Instructions.TAG_LEAVE$GENERIC :
                             {
-                                doTagLeave(frame, bc, bci, sp, tagNodes);
+                                doTagLeave(frame, bc, bci, sp);
                                 bci += 10;
                                 break;
                             }
                             case Instructions.TAG_LEAVE_VOID :
                             {
-                                doTagLeaveVoid(frame, bc, bci, sp, tagNodes);
+                                doTagLeaveVoid(frame, bc, bci, sp);
                                 bci += 6;
                                 break;
                             }
@@ -8093,13 +8077,50 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                             try {
                                 switch (this.handlers[op + EXCEPTION_HANDLER_OFFSET_KIND]) {
                                     case HANDLER_TAG_EXCEPTIONAL :
-                                        long result = doTagExceptional($root, frame, bc, bci, throwable, this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI], this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_SP]);
-                                        temp = (short) (result >>> 32);
-                                        bci = (int) result;
-                                        if (sp < (int) temp + $root.maxLocals) {
-                                            // The instrumentation pushed a value on the stack.
-                                            assert sp == (int) temp + $root.maxLocals - 1;
-                                            sp++;
+                                        TagNode node = this.tagRoot.tagNodes[this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI]];
+                                        Object result = doTagExceptional(frame, node, this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI], bc, bci, throwable);
+                                        if (result == null) {
+                                            throw throwable;
+                                        }
+                                        temp = this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_SP] + $root.maxLocals;
+                                        if (result == ProbeNode.UNWIND_ACTION_REENTER) {
+                                            // Reenter by jumping to the begin bci.
+                                            bci = node.enterBci;
+                                        } else {
+                                            switch (readValidBytecode(bc, node.returnBci)) {
+                                                case Instructions.TAG_LEAVE :
+                                                case Instructions.TAG_LEAVE$LONG :
+                                                case Instructions.TAG_LEAVE$BOOLEAN :
+                                                case Instructions.TAG_LEAVE$GENERIC :
+                                                    FRAMES.setObject(frame, (int)temp, result);
+                                                    temp = temp + 1;
+                                                    bci = node.returnBci + 10;
+                                                    break;
+                                                case Instructions.TAG_LEAVE$LONG$UNBOXED :
+                                                    try {
+                                                        FRAMES.setLong(frame, (int)temp, SLBytecodeRootNodeGen.expectLong(result));
+                                                    } catch (UnexpectedResultException e) {
+                                                        FRAMES.setObject(frame, (int)temp, e.getResult());
+                                                    }
+                                                    temp = temp + 1;
+                                                    bci = node.returnBci + 10;
+                                                    break;
+                                                case Instructions.TAG_LEAVE$BOOLEAN$UNBOXED :
+                                                    try {
+                                                        FRAMES.setBoolean(frame, (int)temp, SLBytecodeRootNodeGen.expectBoolean(result));
+                                                    } catch (UnexpectedResultException e) {
+                                                        FRAMES.setObject(frame, (int)temp, e.getResult());
+                                                    }
+                                                    temp = temp + 1;
+                                                    bci = node.returnBci + 10;
+                                                    break;
+                                                case Instructions.TAG_LEAVE_VOID :
+                                                    bci = node.returnBci + 6;
+                                                    // discard return value
+                                                    break;
+                                                default :
+                                                    throw CompilerDirectives.shouldNotReachHere();
+                                            }
                                         }
                                         break;
                                     default :
@@ -8108,8 +8129,8 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                                         }
                                         assert throwable instanceof AbstractTruffleException;
                                         bci = this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI];
-                                        temp = this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_SP];
-                                        FRAMES.setObject(frame, ((int) temp) - 1 + $root.maxLocals, throwable);
+                                        temp = this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_SP] + $root.maxLocals;
+                                        FRAMES.setObject(frame, ((int) temp) - 1, throwable);
                                         break;
                                 }
                             } catch (Throwable t) {
@@ -8118,7 +8139,6 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                                 }
                                 continue;
                             }
-                            temp = temp + $root.maxLocals;
                             assert sp >= temp - 1;
                             while (sp > temp) {
                                 FRAMES.clear(frame, --sp);
@@ -8179,26 +8199,26 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         @InliningCutoff
-        private void doTagEnter(VirtualFrame frame, byte[] bc, int bci, int sp, TagNode[] tagNodes) {
-            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
+        private void doTagEnter(VirtualFrame frame, byte[] bc, int bci, int sp) {
+            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagRoot.tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
             tagNode.findProbe().onEnter(frame);
         }
 
-        private void doTagLeave(VirtualFrame frame, byte[] bc, int bci, int sp, TagNode[] tagNodes) {
+        private void doTagLeave(VirtualFrame frame, byte[] bc, int bci, int sp) {
             Object returnValue;
             try {
                 returnValue = FRAMES.expectObject(frame, sp - 1);
             } catch (UnexpectedResultException ex) {
-                doTagLeave(frame, bc, bci, sp, tagNodes);
+                doTagLeave(frame, bc, bci, sp);
                 return;
             }
-            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
+            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagRoot.tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
             tagNode.findProbe().onReturnValue(frame, returnValue);
         }
 
         @InliningCutoff
-        private void doTagLeaveVoid(VirtualFrame frame, byte[] bc, int bci, int sp, TagNode[] tagNodes) {
-            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
+        private void doTagLeaveVoid(VirtualFrame frame, byte[] bc, int bci, int sp) {
+            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagRoot.tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
             tagNode.findProbe().onReturnValue(frame, null);
         }
 
@@ -8341,10 +8361,8 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             }
         }
 
-        private long doTagExceptional(SLBytecodeRootNodeGen $root, VirtualFrame frame, byte[] bc, int bci, Throwable exception, int nodeId, int handlerSp) throws Throwable {
+        private Object doTagExceptional(VirtualFrame frame, TagNode node, int nodeId, byte[] bc, int bci, Throwable exception) throws Throwable {
             boolean wasOnReturnExecuted;
-            int nextBci;
-            int nextSp;
             switch (readValidBytecode(bc, bci)) {
                 case Instructions.TAG_LEAVE :
                 case Instructions.TAG_LEAVE$LONG :
@@ -8361,55 +8379,12 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                     wasOnReturnExecuted = false;
                     break;
             }
-            TagNode node = this.tagRoot.tagNodes[nodeId];
-            Object result = node.findProbe().onReturnExceptionalOrUnwind(frame, exception, wasOnReturnExecuted);
-            if (result == null) {
-                throw exception;
-            } else if (result == ProbeNode.UNWIND_ACTION_REENTER) {
-                // Reenter by jumping to the begin bci.
-                return ((handlerSp & 0xFFFFL) << 32) | (node.enterBci & 0xFFFFFFFFL);
-            } else {
-                // We jump to the return address which is at sp + 1.
-                int targetSp;
-                int targetBci;
-                switch (readValidBytecode(bc, node.returnBci)) {
-                    case Instructions.TAG_LEAVE :
-                    case Instructions.TAG_LEAVE$LONG :
-                    case Instructions.TAG_LEAVE$BOOLEAN :
-                    case Instructions.TAG_LEAVE$GENERIC :
-                        targetBci = node.returnBci + 10;
-                        targetSp = handlerSp + 1 ;
-                        FRAMES.setObject(frame, targetSp - 1 + $root.maxLocals, result);
-                        break;
-                    case Instructions.TAG_LEAVE$LONG$UNBOXED :
-                        targetBci = node.returnBci + 10;
-                        targetSp = handlerSp + 1 ;
-                        try {
-                            FRAMES.setLong(frame, targetSp - 1 + $root.maxLocals, SLBytecodeRootNodeGen.expectLong(result));
-                        } catch (UnexpectedResultException e) {
-                            FRAMES.setObject(frame, targetSp - 1 + $root.maxLocals, e.getResult());
-                        }
-                        break;
-                    case Instructions.TAG_LEAVE$BOOLEAN$UNBOXED :
-                        targetBci = node.returnBci + 10;
-                        targetSp = handlerSp + 1 ;
-                        try {
-                            FRAMES.setBoolean(frame, targetSp - 1 + $root.maxLocals, SLBytecodeRootNodeGen.expectBoolean(result));
-                        } catch (UnexpectedResultException e) {
-                            FRAMES.setObject(frame, targetSp - 1 + $root.maxLocals, e.getResult());
-                        }
-                        break;
-                    case Instructions.TAG_LEAVE_VOID :
-                        targetBci = node.returnBci + 6;
-                        targetSp = handlerSp ;
-                        // discard return value
-                        break;
-                    default :
-                        throw CompilerDirectives.shouldNotReachHere();
-                }
-                assert targetBci < bc.length : "returnBci must be reachable";
-                return ((targetSp & 0xFFFFL) << 32) | (targetBci & 0xFFFFFFFFL);
-            }
+            return node.findProbe().onReturnExceptionalOrUnwind(frame, exception, wasOnReturnExecuted);
+        }
+
+        @Override
+        byte[] getLocalTags() {
+            return null;
         }
 
         @Override
@@ -8484,17 +8459,12 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         @Override
-        FrameSlotKind getCachedLocalKindInternal(int localIndex) {
-            return FrameSlotKind.Object;
+        byte getCachedLocalTagInternal(int localIndex) {
+            return FrameTags.OBJECT;
         }
 
         @Override
-        void setCachedLocalKindInternal(int frameIndex, FrameSlotKind kind, int localIndex) {
-        }
-
-        @Override
-        byte[] getLocalTags() {
-            return null;
+        void setCachedLocalTagInternal(int localIndex, byte tag) {
         }
 
         @Override
@@ -15510,6 +15480,14 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         private static final int SLOR = 43;
 
     }
+    private static final class FrameTags {
+
+        private static final byte OBJECT = 0 /* FrameSlotKind.Object.tag */;
+        private static final byte LONG = 1 /* FrameSlotKind.Long.tag */;
+        private static final byte BOOLEAN = 5 /* FrameSlotKind.Boolean.tag */;
+        private static final byte ILLEGAL = 7 /* FrameSlotKind.Illegal.tag */;
+
+    }
     private static final class ExceptionHandlerImpl extends ExceptionHandler {
 
         final AbstractBytecodeNode bytecode;
@@ -15920,7 +15898,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
 
         private static void quicken(int state_0, byte[] $bc, int $bci) {
             short newInstruction;
-            if ((state_0 & 0b10) == 0 /* only-active SpecializationActive[SLBytecodeRootNode.SLLoadArgument.doLoadInBounds(VirtualFrame, int, Object[])] */) {
+            if ((state_0 & 0b10) == 0 /* only-active SpecializationActive[SLBytecodeRootNode.SLLoadArgument.doLoadInBounds(VirtualFrame, int, Object[])] */ && state_0 != 0 /* is SpecializationActive[SLBytecodeRootNode.SLLoadArgument.doLoadInBounds(VirtualFrame, int, Object[])] || SpecializationActive[SLBytecodeRootNode.SLLoadArgument.doLoadOutOfBounds(int)] */) {
                 newInstruction = Instructions.SL_LOAD_ARGUMENT$LOAD_IN_BOUNDS_;
             } else {
                 newInstruction = Instructions.SL_LOAD_ARGUMENT_;
@@ -16389,6 +16367,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                             state_0 = state_0 & 0xfffffffe /* remove SpecializationActive[SLAddNode.doLong(long, long)] */;
                             state_0 = state_0 | 0b10 /* add SpecializationExcluded  */;
                             this.state_0_ = state_0;
+                            quicken(state_0, $bc, $bci);
                             return executeAndSpecialize(child0Value__, child1Value__, $bytecode, $bc, $bci, $sp);
                         }
                     }
@@ -16474,6 +16453,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 state_0 = state_0 & 0xfffffffe /* remove SpecializationActive[SLAddNode.doLong(long, long)] */;
                 state_0 = state_0 | 0b10 /* add SpecializationExcluded  */;
                 this.state_0_ = state_0;
+                quicken(state_0, $bc, $bci);
                 return SLTypesGen.expectLong(executeAndSpecialize(child0Value_, child1Value_, $bytecode, $bc, $bci, $sp));
             }
         }
@@ -16502,6 +16482,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 state_0 = state_0 & 0xfffffffe /* remove SpecializationActive[SLAddNode.doLong(long, long)] */;
                 state_0 = state_0 | 0b10 /* add SpecializationExcluded  */;
                 this.state_0_ = state_0;
+                quicken(state_0, $bc, $bci);
                 return SLTypesGen.expectLong(executeAndSpecialize(child0Value_, child1Value_, $bytecode, $bc, $bci, $sp));
             }
         }
@@ -16555,6 +16536,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                         state_0 = state_0 & 0xfffffffe /* remove SpecializationActive[SLAddNode.doLong(long, long)] */;
                         state_0 = state_0 | 0b10 /* add SpecializationExcluded  */;
                         this.state_0_ = state_0;
+                        quicken(state_0, $bc, $bci);
                         return executeAndSpecialize(child0Value_, child1Value_, $bytecode, $bc, $bci, $sp);
                     }
                 }
@@ -16688,7 +16670,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             int oldOperandIndex1 = BYTES.getIntUnaligned($bc, $bci + 10 /* imm child1 */);
             short oldOperand1 = BYTES.getShort($bc, oldOperandIndex1);
             short newOperand1;
-            if ((state_0 & 0b1111100) == 0 /* only-active SpecializationActive[SLAddNode.doLong(long, long)] */
+            if ((state_0 & 0b1111100) == 0 /* only-active SpecializationActive[SLAddNode.doLong(long, long)] */ && (state_0 & 0b1111101) != 0 /* is SpecializationActive[SLAddNode.doLong(long, long)] || SpecializationActive[SLAddNode.doSLBigInteger(SLBigInteger, SLBigInteger)] || SpecializationActive[SLAddNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] || SpecializationActive[SLAddNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] || SpecializationActive[SLAddNode.doString(Object, Object, Node, SLToTruffleStringNode, SLToTruffleStringNode, ConcatNode)] || SpecializationActive[SLAddNode.typeError(Object, Object, Node)] */
                && (newOperand0 = applyQuickeningLong(oldOperand0)) != -1
                && (newOperand1 = applyQuickeningLong(oldOperand1)) != -1) {
                 if (isQuickeningLong(BYTES.getShort($bc, $bci))) {
@@ -16882,6 +16864,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                             state_0 = state_0 & 0xfffffffe /* remove SpecializationActive[SLDivNode.doLong(long, long)] */;
                             state_0 = state_0 | 0b10 /* add SpecializationExcluded  */;
                             this.state_0_ = state_0;
+                            quicken(state_0, $bc, $bci);
                             return executeAndSpecialize(child0Value__, child1Value__, $bytecode, $bc, $bci, $sp);
                         }
                     }
@@ -16958,6 +16941,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 state_0 = state_0 & 0xfffffffe /* remove SpecializationActive[SLDivNode.doLong(long, long)] */;
                 state_0 = state_0 | 0b10 /* add SpecializationExcluded  */;
                 this.state_0_ = state_0;
+                quicken(state_0, $bc, $bci);
                 return SLTypesGen.expectLong(executeAndSpecialize(child0Value_, child1Value_, $bytecode, $bc, $bci, $sp));
             }
         }
@@ -16986,6 +16970,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 state_0 = state_0 & 0xfffffffe /* remove SpecializationActive[SLDivNode.doLong(long, long)] */;
                 state_0 = state_0 | 0b10 /* add SpecializationExcluded  */;
                 this.state_0_ = state_0;
+                quicken(state_0, $bc, $bci);
                 return SLTypesGen.expectLong(executeAndSpecialize(child0Value_, child1Value_, $bytecode, $bc, $bci, $sp));
             }
         }
@@ -17036,6 +17021,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                         state_0 = state_0 & 0xfffffffe /* remove SpecializationActive[SLDivNode.doLong(long, long)] */;
                         state_0 = state_0 | 0b10 /* add SpecializationExcluded  */;
                         this.state_0_ = state_0;
+                        quicken(state_0, $bc, $bci);
                         return executeAndSpecialize(child0Value_, child1Value_, $bytecode, $bc, $bci, $sp);
                     }
                 }
@@ -17153,7 +17139,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             int oldOperandIndex1 = BYTES.getIntUnaligned($bc, $bci + 10 /* imm child1 */);
             short oldOperand1 = BYTES.getShort($bc, oldOperandIndex1);
             short newOperand1;
-            if ((state_0 & 0b111100) == 0 /* only-active SpecializationActive[SLDivNode.doLong(long, long)] */
+            if ((state_0 & 0b111100) == 0 /* only-active SpecializationActive[SLDivNode.doLong(long, long)] */ && (state_0 & 0b111101) != 0 /* is SpecializationActive[SLDivNode.doLong(long, long)] || SpecializationActive[SLDivNode.doSLBigInteger(SLBigInteger, SLBigInteger)] || SpecializationActive[SLDivNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] || SpecializationActive[SLDivNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] || SpecializationActive[SLDivNode.typeError(Object, Object, Node)] */
                && (newOperand0 = applyQuickeningLong(oldOperand0)) != -1
                && (newOperand1 = applyQuickeningLong(oldOperand1)) != -1) {
                 if (isQuickeningLong(BYTES.getShort($bc, $bci))) {
@@ -17730,7 +17716,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             int oldOperandIndex1 = BYTES.getIntUnaligned($bc, $bci + 10 /* imm child1 */);
             short oldOperand1 = BYTES.getShort($bc, oldOperandIndex1);
             short newOperand1;
-            if ((state_0 & 0b111111110) == 0 /* only-active SpecializationActive[SLEqualNode.doLong(long, long)] */
+            if ((state_0 & 0b111111110) == 0 /* only-active SpecializationActive[SLEqualNode.doLong(long, long)] */ && (state_0 & 0b111111111) != 0 /* is SpecializationActive[SLEqualNode.doLong(long, long)] || SpecializationActive[SLEqualNode.doBigNumber(SLBigInteger, SLBigInteger)] || SpecializationActive[SLEqualNode.doBoolean(boolean, boolean)] || SpecializationActive[SLEqualNode.doString(String, String)] || SpecializationActive[SLEqualNode.doTruffleString(TruffleString, TruffleString, EqualNode)] || SpecializationActive[SLEqualNode.doNull(SLNull, SLNull)] || SpecializationActive[SLEqualNode.doFunction(SLFunction, Object)] || SpecializationActive[SLEqualNode.doGeneric(Object, Object, InteropLibrary, InteropLibrary)] || SpecializationActive[SLEqualNode.doGeneric(Object, Object, InteropLibrary, InteropLibrary)] */
                && (newOperand0 = applyQuickeningLong(oldOperand0)) != -1
                && (newOperand1 = applyQuickeningLong(oldOperand1)) != -1) {
                 if (isQuickeningBoolean(BYTES.getShort($bc, $bci))) {
@@ -17738,7 +17724,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 } else {
                     newInstruction = Instructions.SL_EQUAL$LONG_;
                 }
-            } else if ((state_0 & 0b111111011) == 0 /* only-active SpecializationActive[SLEqualNode.doBoolean(boolean, boolean)] */
+            } else if ((state_0 & 0b111111011) == 0 /* only-active SpecializationActive[SLEqualNode.doBoolean(boolean, boolean)] */ && (state_0 & 0b111111111) != 0 /* is SpecializationActive[SLEqualNode.doLong(long, long)] || SpecializationActive[SLEqualNode.doBigNumber(SLBigInteger, SLBigInteger)] || SpecializationActive[SLEqualNode.doBoolean(boolean, boolean)] || SpecializationActive[SLEqualNode.doString(String, String)] || SpecializationActive[SLEqualNode.doTruffleString(TruffleString, TruffleString, EqualNode)] || SpecializationActive[SLEqualNode.doNull(SLNull, SLNull)] || SpecializationActive[SLEqualNode.doFunction(SLFunction, Object)] || SpecializationActive[SLEqualNode.doGeneric(Object, Object, InteropLibrary, InteropLibrary)] || SpecializationActive[SLEqualNode.doGeneric(Object, Object, InteropLibrary, InteropLibrary)] */
                && (newOperand0 = applyQuickeningBoolean(oldOperand0)) != -1
                && (newOperand1 = applyQuickeningBoolean(oldOperand1)) != -1) {
                 if (isQuickeningBoolean(BYTES.getShort($bc, $bci))) {
@@ -18279,7 +18265,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             int oldOperandIndex1 = BYTES.getIntUnaligned($bc, $bci + 10 /* imm child1 */);
             short oldOperand1 = BYTES.getShort($bc, oldOperandIndex1);
             short newOperand1;
-            if ((state_0 & 0b11110) == 0 /* only-active SpecializationActive[SLLessOrEqualNode.doLong(long, long)] */
+            if ((state_0 & 0b11110) == 0 /* only-active SpecializationActive[SLLessOrEqualNode.doLong(long, long)] */ && (state_0 & 0b11111) != 0 /* is SpecializationActive[SLLessOrEqualNode.doLong(long, long)] || SpecializationActive[SLLessOrEqualNode.doSLBigInteger(SLBigInteger, SLBigInteger)] || SpecializationActive[SLLessOrEqualNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] || SpecializationActive[SLLessOrEqualNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] || SpecializationActive[SLLessOrEqualNode.typeError(Object, Object, Node)] */
                && (newOperand0 = applyQuickeningLong(oldOperand0)) != -1
                && (newOperand1 = applyQuickeningLong(oldOperand1)) != -1) {
                 if (isQuickeningBoolean(BYTES.getShort($bc, $bci))) {
@@ -18287,7 +18273,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 } else {
                     newInstruction = Instructions.SL_LESS_OR_EQUAL$LONG_;
                 }
-            } else if ((state_0 & 0b10001) == 0 /* only-active SpecializationActive[SLLessOrEqualNode.doSLBigInteger(SLBigInteger, SLBigInteger)] && SpecializationActive[SLLessOrEqualNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] && SpecializationActive[SLLessOrEqualNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] */
+            } else if ((state_0 & 0b10001) == 0 /* only-active SpecializationActive[SLLessOrEqualNode.doSLBigInteger(SLBigInteger, SLBigInteger)] && SpecializationActive[SLLessOrEqualNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] && SpecializationActive[SLLessOrEqualNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] */ && (state_0 & 0b11111) != 0 /* is SpecializationActive[SLLessOrEqualNode.doLong(long, long)] || SpecializationActive[SLLessOrEqualNode.doSLBigInteger(SLBigInteger, SLBigInteger)] || SpecializationActive[SLLessOrEqualNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] || SpecializationActive[SLLessOrEqualNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] || SpecializationActive[SLLessOrEqualNode.typeError(Object, Object, Node)] */
                && ((state_0 & 0b1100000) >>> 5 /* get-int ImplicitCast[type=SLBigInteger, index=0] */ == 0b10)
                && ((state_0 & 0b110000000) >>> 7 /* get-int ImplicitCast[type=SLBigInteger, index=1] */ == 0b10)) {
                 newOperand0 = undoQuickening(oldOperand0);
@@ -18736,7 +18722,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             int oldOperandIndex1 = BYTES.getIntUnaligned($bc, $bci + 10 /* imm child1 */);
             short oldOperand1 = BYTES.getShort($bc, oldOperandIndex1);
             short newOperand1;
-            if ((state_0 & 0b11110) == 0 /* only-active SpecializationActive[SLLessThanNode.doLong(long, long)] */
+            if ((state_0 & 0b11110) == 0 /* only-active SpecializationActive[SLLessThanNode.doLong(long, long)] */ && (state_0 & 0b11111) != 0 /* is SpecializationActive[SLLessThanNode.doLong(long, long)] || SpecializationActive[SLLessThanNode.doSLBigInteger(SLBigInteger, SLBigInteger)] || SpecializationActive[SLLessThanNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] || SpecializationActive[SLLessThanNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] || SpecializationActive[SLLessThanNode.typeError(Object, Object, Node)] */
                && (newOperand0 = applyQuickeningLong(oldOperand0)) != -1
                && (newOperand1 = applyQuickeningLong(oldOperand1)) != -1) {
                 if (isQuickeningBoolean(BYTES.getShort($bc, $bci))) {
@@ -18927,7 +18913,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             int oldOperandIndex0 = BYTES.getIntUnaligned($bc, $bci + 6 /* imm child0 */);
             short oldOperand0 = BYTES.getShort($bc, oldOperandIndex0);
             short newOperand0;
-            if ((state_0 & 0b10) == 0 /* only-active SpecializationActive[SLLogicalNotNode.doBoolean(boolean)] */
+            if ((state_0 & 0b10) == 0 /* only-active SpecializationActive[SLLogicalNotNode.doBoolean(boolean)] */ && state_0 != 0 /* is SpecializationActive[SLLogicalNotNode.doBoolean(boolean)] || SpecializationActive[SLLogicalNotNode.typeError(Object, Node)] */
                && (newOperand0 = applyQuickeningBoolean(oldOperand0)) != -1) {
                 if (isQuickeningBoolean(BYTES.getShort($bc, $bci))) {
                     newInstruction = Instructions.SL_LOGICAL_NOT$BOOLEAN$UNBOXED_;
@@ -19029,6 +19015,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                             state_0 = state_0 & 0xfffffffe /* remove SpecializationActive[SLMulNode.doLong(long, long)] */;
                             state_0 = state_0 | 0b10 /* add SpecializationExcluded  */;
                             this.state_0_ = state_0;
+                            quicken(state_0, $bc, $bci);
                             return executeAndSpecialize(child0Value__, child1Value__, $bytecode, $bc, $bci, $sp);
                         }
                     }
@@ -19105,6 +19092,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 state_0 = state_0 & 0xfffffffe /* remove SpecializationActive[SLMulNode.doLong(long, long)] */;
                 state_0 = state_0 | 0b10 /* add SpecializationExcluded  */;
                 this.state_0_ = state_0;
+                quicken(state_0, $bc, $bci);
                 return SLTypesGen.expectLong(executeAndSpecialize(child0Value_, child1Value_, $bytecode, $bc, $bci, $sp));
             }
         }
@@ -19133,6 +19121,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 state_0 = state_0 & 0xfffffffe /* remove SpecializationActive[SLMulNode.doLong(long, long)] */;
                 state_0 = state_0 | 0b10 /* add SpecializationExcluded  */;
                 this.state_0_ = state_0;
+                quicken(state_0, $bc, $bci);
                 return SLTypesGen.expectLong(executeAndSpecialize(child0Value_, child1Value_, $bytecode, $bc, $bci, $sp));
             }
         }
@@ -19183,6 +19172,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                         state_0 = state_0 & 0xfffffffe /* remove SpecializationActive[SLMulNode.doLong(long, long)] */;
                         state_0 = state_0 | 0b10 /* add SpecializationExcluded  */;
                         this.state_0_ = state_0;
+                        quicken(state_0, $bc, $bci);
                         return executeAndSpecialize(child0Value_, child1Value_, $bytecode, $bc, $bci, $sp);
                     }
                 }
@@ -19300,7 +19290,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             int oldOperandIndex1 = BYTES.getIntUnaligned($bc, $bci + 10 /* imm child1 */);
             short oldOperand1 = BYTES.getShort($bc, oldOperandIndex1);
             short newOperand1;
-            if ((state_0 & 0b111100) == 0 /* only-active SpecializationActive[SLMulNode.doLong(long, long)] */
+            if ((state_0 & 0b111100) == 0 /* only-active SpecializationActive[SLMulNode.doLong(long, long)] */ && (state_0 & 0b111101) != 0 /* is SpecializationActive[SLMulNode.doLong(long, long)] || SpecializationActive[SLMulNode.doSLBigInteger(SLBigInteger, SLBigInteger)] || SpecializationActive[SLMulNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] || SpecializationActive[SLMulNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] || SpecializationActive[SLMulNode.typeError(Object, Object, Node)] */
                && (newOperand0 = applyQuickeningLong(oldOperand0)) != -1
                && (newOperand1 = applyQuickeningLong(oldOperand1)) != -1) {
                 if (isQuickeningLong(BYTES.getShort($bc, $bci))) {
@@ -20073,6 +20063,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                             state_0 = state_0 & 0xfffffffe /* remove SpecializationActive[SLSubNode.doLong(long, long)] */;
                             state_0 = state_0 | 0b10 /* add SpecializationExcluded  */;
                             this.state_0_ = state_0;
+                            quicken(state_0, $bc, $bci);
                             return executeAndSpecialize(child0Value__, child1Value__, $bytecode, $bc, $bci, $sp);
                         }
                     }
@@ -20149,6 +20140,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 state_0 = state_0 & 0xfffffffe /* remove SpecializationActive[SLSubNode.doLong(long, long)] */;
                 state_0 = state_0 | 0b10 /* add SpecializationExcluded  */;
                 this.state_0_ = state_0;
+                quicken(state_0, $bc, $bci);
                 return SLTypesGen.expectLong(executeAndSpecialize(child0Value_, child1Value_, $bytecode, $bc, $bci, $sp));
             }
         }
@@ -20177,6 +20169,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 state_0 = state_0 & 0xfffffffe /* remove SpecializationActive[SLSubNode.doLong(long, long)] */;
                 state_0 = state_0 | 0b10 /* add SpecializationExcluded  */;
                 this.state_0_ = state_0;
+                quicken(state_0, $bc, $bci);
                 return SLTypesGen.expectLong(executeAndSpecialize(child0Value_, child1Value_, $bytecode, $bc, $bci, $sp));
             }
         }
@@ -20227,6 +20220,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                         state_0 = state_0 & 0xfffffffe /* remove SpecializationActive[SLSubNode.doLong(long, long)] */;
                         state_0 = state_0 | 0b10 /* add SpecializationExcluded  */;
                         this.state_0_ = state_0;
+                        quicken(state_0, $bc, $bci);
                         return executeAndSpecialize(child0Value_, child1Value_, $bytecode, $bc, $bci, $sp);
                     }
                 }
@@ -20344,7 +20338,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             int oldOperandIndex1 = BYTES.getIntUnaligned($bc, $bci + 10 /* imm child1 */);
             short oldOperand1 = BYTES.getShort($bc, oldOperandIndex1);
             short newOperand1;
-            if ((state_0 & 0b111100) == 0 /* only-active SpecializationActive[SLSubNode.doLong(long, long)] */
+            if ((state_0 & 0b111100) == 0 /* only-active SpecializationActive[SLSubNode.doLong(long, long)] */ && (state_0 & 0b111101) != 0 /* is SpecializationActive[SLSubNode.doLong(long, long)] || SpecializationActive[SLSubNode.doSLBigInteger(SLBigInteger, SLBigInteger)] || SpecializationActive[SLSubNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] || SpecializationActive[SLSubNode.doInteropBigInteger(Object, Object, InteropLibrary, InteropLibrary)] || SpecializationActive[SLSubNode.typeError(Object, Object, Node)] */
                && (newOperand0 = applyQuickeningLong(oldOperand0)) != -1
                && (newOperand1 = applyQuickeningLong(oldOperand1)) != -1) {
                 if (isQuickeningLong(BYTES.getShort($bc, $bci))) {
@@ -21380,14 +21374,14 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             int oldOperandIndex0 = BYTES.getIntUnaligned($bc, $bci + 6 /* imm child0 */);
             short oldOperand0 = BYTES.getShort($bc, oldOperandIndex0);
             short newOperand0;
-            if ((state_0 & 0b111111011) == 0 /* only-active SpecializationActive[SLUnboxNode.fromBoolean(boolean)] */
+            if ((state_0 & 0b111111011) == 0 /* only-active SpecializationActive[SLUnboxNode.fromBoolean(boolean)] */ && (state_0 & 0b111111111) != 0 /* is SpecializationActive[SLUnboxNode.fromString(String, FromJavaStringNode)] || SpecializationActive[SLUnboxNode.fromTruffleString(TruffleString)] || SpecializationActive[SLUnboxNode.fromBoolean(boolean)] || SpecializationActive[SLUnboxNode.fromLong(long)] || SpecializationActive[SLUnboxNode.fromBigNumber(SLBigInteger)] || SpecializationActive[SLUnboxNode.fromFunction(SLFunction)] || SpecializationActive[SLUnboxNode.fromFunction(SLNull)] || SpecializationActive[SLUnboxNode.fromForeign(Object, InteropLibrary)] || SpecializationActive[SLUnboxNode.fromForeign(Object, InteropLibrary)] */
                && (newOperand0 = applyQuickeningBoolean(oldOperand0)) != -1) {
                 if (isQuickeningBoolean(BYTES.getShort($bc, $bci))) {
                     newInstruction = Instructions.SL_UNBOX$FROM_BOOLEAN$UNBOXED_;
                 } else {
                     newInstruction = Instructions.SL_UNBOX$FROM_BOOLEAN_;
                 }
-            } else if ((state_0 & 0b111110111) == 0 /* only-active SpecializationActive[SLUnboxNode.fromLong(long)] */
+            } else if ((state_0 & 0b111110111) == 0 /* only-active SpecializationActive[SLUnboxNode.fromLong(long)] */ && (state_0 & 0b111111111) != 0 /* is SpecializationActive[SLUnboxNode.fromString(String, FromJavaStringNode)] || SpecializationActive[SLUnboxNode.fromTruffleString(TruffleString)] || SpecializationActive[SLUnboxNode.fromBoolean(boolean)] || SpecializationActive[SLUnboxNode.fromLong(long)] || SpecializationActive[SLUnboxNode.fromBigNumber(SLBigInteger)] || SpecializationActive[SLUnboxNode.fromFunction(SLFunction)] || SpecializationActive[SLUnboxNode.fromFunction(SLNull)] || SpecializationActive[SLUnboxNode.fromForeign(Object, InteropLibrary)] || SpecializationActive[SLUnboxNode.fromForeign(Object, InteropLibrary)] */
                && (newOperand0 = applyQuickeningLong(oldOperand0)) != -1) {
                 if (isQuickeningLong(BYTES.getShort($bc, $bci))) {
                     newInstruction = Instructions.SL_UNBOX$FROM_LONG$UNBOXED_;
@@ -21847,7 +21841,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 oldOperand0 = -1;
             }
             short newOperand0;
-            if ((state_0 & 0b1110) == 0 /* only-active SpecializationActive[SLToBooleanNode.doBoolean(boolean)] */
+            if ((state_0 & 0b1110) == 0 /* only-active SpecializationActive[SLToBooleanNode.doBoolean(boolean)] */ && state_0 != 0 /* is SpecializationActive[SLToBooleanNode.doBoolean(boolean)] || SpecializationActive[SLToBooleanNode.doInterop(Object, Node, InteropLibrary)] || SpecializationActive[SLToBooleanNode.doInterop(Object, Node, InteropLibrary)] || SpecializationActive[SLToBooleanNode.doFallback(Object, Node)] */
                && (newOperand0 = applyQuickeningBoolean(oldOperand0)) != -1) {
                 if (isQuickeningBoolean(BYTES.getShort($bc, $bci))) {
                     newInstruction = Instructions.SL_TO_BOOLEAN$BOOLEAN$UNBOXED_;

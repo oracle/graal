@@ -508,23 +508,6 @@ public abstract class BytecodeNode extends Node {
     public abstract Object getLocalValue(int bytecodeIndex, Frame frame, int localOffset);
 
     /**
-     * Returns the current boolean value of the local at offset {@code localOffset} in the frame.
-     * Throws {@link UnexpectedResultException} if the value is not a boolean.
-     *
-     * @see #getLocalValue(int, Frame, int)
-     * @since 24.2
-     */
-    public boolean getLocalValueBoolean(int bytecodeIndex, Frame frame, int localOffset) throws UnexpectedResultException {
-        Object value = getLocalValue(bytecodeIndex, frame, localOffset);
-        if (value instanceof Boolean i) {
-            return i;
-        } else {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new UnexpectedResultException(value);
-        }
-    }
-
-    /**
      * Returns a new array containing the slot name of locals, as provided during bytecode building.
      * If a local is not allocated using a {@code createLocal} overload that takes a {@code name},
      * its name will be {@code null}.

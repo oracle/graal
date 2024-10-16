@@ -61,11 +61,14 @@ import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.LibraryFactory;
 import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.DenyReplace;
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.LoopNode;
@@ -151,6 +154,8 @@ import java.util.function.Supplier;
  *   - Operation EarlyReturn
  *     kind: CUSTOM
  *   - Operation AddOperation
+ *     kind: CUSTOM
+ *   - Operation ToString
  *     kind: CUSTOM
  *   - Operation Call
  *     kind: CUSTOM
@@ -369,208 +374,213 @@ import java.util.function.Supplier;
  *     encoding: [35 : short, node : int]
  *     nodeType: AddOperation
  *     signature: Object (Object, Object)
+ *   - Instruction c.ToString
+ *     kind: CUSTOM
+ *     encoding: [36 : short, node : int]
+ *     nodeType: ToString
+ *     signature: Object (Object)
  *   - Instruction c.Call
  *     kind: CUSTOM
- *     encoding: [36 : short, interpreter (const) : int, node : int]
+ *     encoding: [37 : short, interpreter (const) : int, node : int]
  *     nodeType: Call
  *     signature: Object (BasicInterpreter, Object[]...)
  *   - Instruction c.AddConstantOperation
  *     kind: CUSTOM
- *     encoding: [37 : short, constantLhs (const) : int, node : int]
+ *     encoding: [38 : short, constantLhs (const) : int, node : int]
  *     nodeType: AddConstantOperation
  *     signature: Object (long, Object)
  *   - Instruction c.AddConstantOperationAtEnd
  *     kind: CUSTOM
- *     encoding: [38 : short, constantRhs (const) : int, node : int]
+ *     encoding: [39 : short, constantRhs (const) : int, node : int]
  *     nodeType: AddConstantOperationAtEnd
  *     signature: Object (Object, long)
  *   - Instruction c.VeryComplexOperation
  *     kind: CUSTOM
- *     encoding: [39 : short, node : int]
+ *     encoding: [40 : short, node : int]
  *     nodeType: VeryComplexOperation
  *     signature: long (long, Object[]...)
  *   - Instruction c.ThrowOperation
  *     kind: CUSTOM
- *     encoding: [40 : short, node : int]
+ *     encoding: [41 : short, node : int]
  *     nodeType: ThrowOperation
  *     signature: Object (long)
  *   - Instruction c.ReadExceptionOperation
  *     kind: CUSTOM
- *     encoding: [41 : short, node : int]
+ *     encoding: [42 : short, node : int]
  *     nodeType: ReadExceptionOperation
  *     signature: long (TestException)
  *   - Instruction c.AlwaysBoxOperation
  *     kind: CUSTOM
- *     encoding: [42 : short, node : int]
+ *     encoding: [43 : short, node : int]
  *     nodeType: AlwaysBoxOperation
  *     signature: Object (Object)
  *   - Instruction c.AppenderOperation
  *     kind: CUSTOM
- *     encoding: [43 : short, node : int]
+ *     encoding: [44 : short, node : int]
  *     nodeType: AppenderOperation
  *     signature: void (List<?>, Object)
  *   - Instruction c.TeeLocal
  *     kind: CUSTOM
- *     encoding: [44 : short, setter (const) : int, node : int]
+ *     encoding: [45 : short, setter (const) : int, node : int]
  *     nodeType: TeeLocal
  *     signature: Object (LocalAccessor, Object)
  *   - Instruction c.TeeLocalRange
  *     kind: CUSTOM
- *     encoding: [45 : short, setter (const) : int, node : int]
+ *     encoding: [46 : short, setter (const) : int, node : int]
  *     nodeType: TeeLocalRange
  *     signature: Object (LocalRangeAccessor, Object)
  *   - Instruction c.Invoke
  *     kind: CUSTOM
- *     encoding: [46 : short, node : int]
+ *     encoding: [47 : short, node : int]
  *     nodeType: Invoke
  *     signature: Object (Object, Object[]...)
  *   - Instruction c.MaterializeFrame
  *     kind: CUSTOM
- *     encoding: [47 : short, node : int]
+ *     encoding: [48 : short, node : int]
  *     nodeType: MaterializeFrame
  *     signature: MaterializedFrame ()
  *   - Instruction c.CreateClosure
  *     kind: CUSTOM
- *     encoding: [48 : short, node : int]
+ *     encoding: [49 : short, node : int]
  *     nodeType: CreateClosure
  *     signature: TestClosure (BasicInterpreter)
  *   - Instruction c.VoidOperation
  *     kind: CUSTOM
- *     encoding: [49 : short, node : int]
+ *     encoding: [50 : short, node : int]
  *     nodeType: VoidOperation
  *     signature: void ()
  *   - Instruction c.ToBoolean
  *     kind: CUSTOM
- *     encoding: [50 : short, node : int]
+ *     encoding: [51 : short, node : int]
  *     nodeType: ToBoolean
  *     signature: boolean (Object)
  *   - Instruction c.GetSourcePosition
  *     kind: CUSTOM
- *     encoding: [51 : short, node : int]
+ *     encoding: [52 : short, node : int]
  *     nodeType: GetSourcePosition
  *     signature: SourceSection ()
  *   - Instruction c.EnsureAndGetSourcePosition
  *     kind: CUSTOM
- *     encoding: [52 : short, node : int]
+ *     encoding: [53 : short, node : int]
  *     nodeType: EnsureAndGetSourcePosition
  *     signature: SourceSection (boolean)
  *   - Instruction c.GetSourcePositions
  *     kind: CUSTOM
- *     encoding: [53 : short, node : int]
+ *     encoding: [54 : short, node : int]
  *     nodeType: GetSourcePositions
  *     signature: SourceSection[] ()
  *   - Instruction c.CopyLocalsToFrame
  *     kind: CUSTOM
- *     encoding: [54 : short, node : int]
+ *     encoding: [55 : short, node : int]
  *     nodeType: CopyLocalsToFrame
  *     signature: Frame (Object)
  *   - Instruction c.GetBytecodeLocation
  *     kind: CUSTOM
- *     encoding: [55 : short, node : int]
+ *     encoding: [56 : short, node : int]
  *     nodeType: GetBytecodeLocation
  *     signature: BytecodeLocation ()
  *   - Instruction c.CollectBytecodeLocations
  *     kind: CUSTOM
- *     encoding: [56 : short, node : int]
+ *     encoding: [57 : short, node : int]
  *     nodeType: CollectBytecodeLocations
  *     signature: List<BytecodeLocation> ()
  *   - Instruction c.CollectSourceLocations
  *     kind: CUSTOM
- *     encoding: [57 : short, node : int]
+ *     encoding: [58 : short, node : int]
  *     nodeType: CollectSourceLocations
  *     signature: List<SourceSection> ()
  *   - Instruction c.CollectAllSourceLocations
  *     kind: CUSTOM
- *     encoding: [58 : short, node : int]
+ *     encoding: [59 : short, node : int]
  *     nodeType: CollectAllSourceLocations
  *     signature: List<SourceSection[]> ()
  *   - Instruction c.Continue
  *     kind: CUSTOM
- *     encoding: [59 : short, node : int]
+ *     encoding: [60 : short, node : int]
  *     nodeType: ContinueNode
  *     signature: Object (ContinuationResult, Object)
  *   - Instruction c.CurrentLocation
  *     kind: CUSTOM
- *     encoding: [60 : short, node : int]
+ *     encoding: [61 : short, node : int]
  *     nodeType: CurrentLocation
  *     signature: BytecodeLocation ()
  *   - Instruction c.PrintHere
  *     kind: CUSTOM
- *     encoding: [61 : short, node : int]
+ *     encoding: [62 : short, node : int]
  *     nodeType: PrintHere
  *     signature: void ()
  *   - Instruction c.IncrementValue
  *     kind: CUSTOM
- *     encoding: [62 : short, node : int]
+ *     encoding: [63 : short, node : int]
  *     nodeType: IncrementValue
  *     signature: long (long)
  *   - Instruction c.DoubleValue
  *     kind: CUSTOM
- *     encoding: [63 : short, node : int]
+ *     encoding: [64 : short, node : int]
  *     nodeType: DoubleValue
  *     signature: long (long)
  *   - Instruction c.EnableIncrementValueInstrumentation
  *     kind: CUSTOM
- *     encoding: [64 : short, node : int]
+ *     encoding: [65 : short, node : int]
  *     nodeType: EnableIncrementValueInstrumentation
  *     signature: void ()
  *   - Instruction c.Add
  *     kind: CUSTOM
- *     encoding: [65 : short, node : int]
+ *     encoding: [66 : short, node : int]
  *     nodeType: Add
  *     signature: long (long, long)
  *   - Instruction c.Mod
  *     kind: CUSTOM
- *     encoding: [66 : short, node : int]
+ *     encoding: [67 : short, node : int]
  *     nodeType: Mod
  *     signature: long (long, long)
  *   - Instruction c.Less
  *     kind: CUSTOM
- *     encoding: [67 : short, node : int]
+ *     encoding: [68 : short, node : int]
  *     nodeType: Less
  *     signature: boolean (long, long)
  *   - Instruction c.EnableDoubleValueInstrumentation
  *     kind: CUSTOM
- *     encoding: [68 : short, node : int]
+ *     encoding: [69 : short, node : int]
  *     nodeType: EnableDoubleValueInstrumentation
  *     signature: void ()
  *   - Instruction c.ExplicitBindingsTest
  *     kind: CUSTOM
- *     encoding: [69 : short, node : int]
+ *     encoding: [70 : short, node : int]
  *     nodeType: ExplicitBindingsTest
  *     signature: Bindings ()
  *   - Instruction c.ImplicitBindingsTest
  *     kind: CUSTOM
- *     encoding: [70 : short, node : int]
+ *     encoding: [71 : short, node : int]
  *     nodeType: ImplicitBindingsTest
  *     signature: Bindings ()
  *   - Instruction sc.ScAnd
  *     kind: CUSTOM_SHORT_CIRCUIT
- *     encoding: [71 : short, branch_target (bci) : int, branch_profile : int]
+ *     encoding: [72 : short, branch_target (bci) : int, branch_profile : int]
  *     signature: Object (boolean, boolean)
  *   - Instruction sc.ScOr
  *     kind: CUSTOM_SHORT_CIRCUIT
- *     encoding: [72 : short, branch_target (bci) : int, branch_profile : int]
+ *     encoding: [73 : short, branch_target (bci) : int, branch_profile : int]
  *     signature: Object (boolean, boolean)
  *   - Instruction invalidate0
  *     kind: INVALIDATE
- *     encoding: [73 : short]
+ *     encoding: [74 : short]
  *     signature: void ()
  *   - Instruction invalidate1
  *     kind: INVALIDATE
- *     encoding: [74 : short, invalidated0 (short) : short]
+ *     encoding: [75 : short, invalidated0 (short) : short]
  *     signature: void ()
  *   - Instruction invalidate2
  *     kind: INVALIDATE
- *     encoding: [75 : short, invalidated0 (short) : short, invalidated1 (short) : short]
+ *     encoding: [76 : short, invalidated0 (short) : short, invalidated1 (short) : short]
  *     signature: void ()
  *   - Instruction invalidate3
  *     kind: INVALIDATE
- *     encoding: [76 : short, invalidated0 (short) : short, invalidated1 (short) : short, invalidated2 (short) : short]
+ *     encoding: [77 : short, invalidated0 (short) : short, invalidated1 (short) : short, invalidated2 (short) : short]
  *     signature: void ()
  *   - Instruction invalidate4
  *     kind: INVALIDATE
- *     encoding: [77 : short, invalidated0 (short) : short, invalidated1 (short) : short, invalidated2 (short) : short, invalidated3 (short) : short]
+ *     encoding: [78 : short, invalidated0 (short) : short, invalidated1 (short) : short, invalidated2 (short) : short, invalidated3 (short) : short]
  *     signature: void ()
  */
 @SuppressWarnings({"javadoc", "unused", "deprecation", "static-method"})
@@ -607,6 +617,7 @@ public final class BasicInterpreterBase extends BasicInterpreter {
     private static final int HANDLER_TAG_EXCEPTIONAL = 1;
     private static final ConcurrentHashMap<Integer, Class<? extends Tag>[]> TAG_MASK_TO_TAGS = new ConcurrentHashMap<>();
     private static final ClassValue<Integer> CLASS_TO_TAG_MASK = BasicInterpreterBase.initializeTagMaskToClass();
+    private static final LibraryFactory<InteropLibrary> INTEROP_LIBRARY_ = LibraryFactory.resolve(InteropLibrary.class);
 
     @Child private volatile AbstractBytecodeNode bytecode;
     private final BytecodeRootNodesImpl nodes;
@@ -1040,6 +1051,7 @@ public final class BasicInterpreterBase extends BasicInterpreter {
                 case Instructions.TAG_RESUME :
                 case Instructions.EARLY_RETURN_ :
                 case Instructions.ADD_OPERATION_ :
+                case Instructions.TO_STRING_ :
                 case Instructions.VERY_COMPLEX_OPERATION_ :
                 case Instructions.THROW_OPERATION_ :
                 case Instructions.READ_EXCEPTION_OPERATION_ :
@@ -1154,6 +1166,7 @@ public final class BasicInterpreterBase extends BasicInterpreter {
                         new TagNodeArgument(bytecode, "tag", bci + 2));
                 case Instructions.EARLY_RETURN_ :
                 case Instructions.ADD_OPERATION_ :
+                case Instructions.TO_STRING_ :
                 case Instructions.VERY_COMPLEX_OPERATION_ :
                 case Instructions.THROW_OPERATION_ :
                 case Instructions.READ_EXCEPTION_OPERATION_ :
@@ -1298,6 +1311,8 @@ public final class BasicInterpreterBase extends BasicInterpreter {
                     return "c.EarlyReturn";
                 case Instructions.ADD_OPERATION_ :
                     return "c.AddOperation";
+                case Instructions.TO_STRING_ :
+                    return "c.ToString";
                 case Instructions.CALL_ :
                     return "c.Call";
                 case Instructions.ADD_CONSTANT_OPERATION_ :
@@ -1419,6 +1434,7 @@ public final class BasicInterpreterBase extends BasicInterpreter {
                 case Instructions.CLEAR_LOCAL :
                 case Instructions.EARLY_RETURN_ :
                 case Instructions.ADD_OPERATION_ :
+                case Instructions.TO_STRING_ :
                 case Instructions.CALL_ :
                 case Instructions.ADD_CONSTANT_OPERATION_ :
                 case Instructions.ADD_CONSTANT_OPERATION_AT_END_ :
@@ -1946,6 +1962,7 @@ public final class BasicInterpreterBase extends BasicInterpreter {
                     case Instructions.TAG_RESUME :
                     case Instructions.EARLY_RETURN_ :
                     case Instructions.ADD_OPERATION_ :
+                    case Instructions.TO_STRING_ :
                     case Instructions.VERY_COMPLEX_OPERATION_ :
                     case Instructions.THROW_OPERATION_ :
                     case Instructions.READ_EXCEPTION_OPERATION_ :
@@ -2176,6 +2193,7 @@ public final class BasicInterpreterBase extends BasicInterpreter {
                         }
                         case Instructions.EARLY_RETURN_ :
                         case Instructions.ADD_OPERATION_ :
+                        case Instructions.TO_STRING_ :
                         case Instructions.VERY_COMPLEX_OPERATION_ :
                         case Instructions.THROW_OPERATION_ :
                         case Instructions.READ_EXCEPTION_OPERATION_ :
@@ -2440,7 +2458,7 @@ public final class BasicInterpreterBase extends BasicInterpreter {
                 throw new IllegalArgumentException("Bytecode index out of range " + bci);
             }
             int op = readValidBytecode(bc, bci);
-            if (op < 0 || op > 77) {
+            if (op < 0 || op > 78) {
                 throw new IllegalArgumentException("Invalid op at bytecode index " + op);
             }
             return true;
@@ -2708,6 +2726,7 @@ public final class BasicInterpreterBase extends BasicInterpreter {
                     case Instructions.YIELD :
                     case Instructions.EARLY_RETURN_ :
                     case Instructions.ADD_OPERATION_ :
+                    case Instructions.TO_STRING_ :
                     case Instructions.VERY_COMPLEX_OPERATION_ :
                     case Instructions.THROW_OPERATION_ :
                     case Instructions.READ_EXCEPTION_OPERATION_ :
@@ -2817,6 +2836,7 @@ public final class BasicInterpreterBase extends BasicInterpreter {
                     case Instructions.YIELD :
                     case Instructions.EARLY_RETURN_ :
                     case Instructions.ADD_OPERATION_ :
+                    case Instructions.TO_STRING_ :
                     case Instructions.VERY_COMPLEX_OPERATION_ :
                     case Instructions.THROW_OPERATION_ :
                     case Instructions.READ_EXCEPTION_OPERATION_ :
@@ -3068,6 +3088,10 @@ public final class BasicInterpreterBase extends BasicInterpreter {
                         break;
                     case Instructions.ADD_OPERATION_ :
                         result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new AddOperation_Node());
+                        bci += 6;
+                        break;
+                    case Instructions.TO_STRING_ :
+                        result[BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)] = insert(new ToString_Node());
                         bci += 6;
                         break;
                     case Instructions.VERY_COMPLEX_OPERATION_ :
@@ -3501,6 +3525,12 @@ public final class BasicInterpreterBase extends BasicInterpreter {
                             bci += 6;
                             break;
                         }
+                        case Instructions.TO_STRING_ :
+                        {
+                            doToString_(frame, localFrame, cachedNodes, bc, bci, sp);
+                            bci += 6;
+                            break;
+                        }
                         case Instructions.CALL_ :
                         {
                             doCall_(frame, localFrame, cachedNodes, bc, bci, sp);
@@ -3807,13 +3837,29 @@ public final class BasicInterpreterBase extends BasicInterpreter {
                         try {
                             switch (this.handlers[op + EXCEPTION_HANDLER_OFFSET_KIND]) {
                                 case HANDLER_TAG_EXCEPTIONAL :
-                                    long result = doTagExceptional($root, frame, bc, bci, throwable, this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI], this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_SP]);
-                                    temp = (short) (result >>> 32);
-                                    bci = (int) result;
-                                    if (sp < (int) temp + $root.maxLocals) {
-                                        // The instrumentation pushed a value on the stack.
-                                        assert sp == (int) temp + $root.maxLocals - 1;
-                                        sp++;
+                                    TagNode node = this.tagRoot.tagNodes[this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI]];
+                                    Object result = doTagExceptional(frame, node, this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI], bc, bci, throwable);
+                                    if (result == null) {
+                                        throw throwable;
+                                    }
+                                    temp = this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_SP] + $root.maxLocals;
+                                    if (result == ProbeNode.UNWIND_ACTION_REENTER) {
+                                        // Reenter by jumping to the begin bci.
+                                        bci = node.enterBci;
+                                    } else {
+                                        switch (readValidBytecode(bc, node.returnBci)) {
+                                            case Instructions.TAG_LEAVE :
+                                                FRAMES.setObject(frame, (int)temp, result);
+                                                temp = temp + 1;
+                                                bci = node.returnBci + 6;
+                                                break;
+                                            case Instructions.TAG_LEAVE_VOID :
+                                                bci = node.returnBci + 6;
+                                                // discard return value
+                                                break;
+                                            default :
+                                                throw CompilerDirectives.shouldNotReachHere();
+                                        }
                                     }
                                     break;
                                 default :
@@ -3822,8 +3868,8 @@ public final class BasicInterpreterBase extends BasicInterpreter {
                                     }
                                     assert throwable instanceof AbstractTruffleException;
                                     bci = this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI];
-                                    temp = this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_SP];
-                                    FRAMES.setObject(frame, ((int) temp) - 1 + $root.maxLocals, throwable);
+                                    temp = this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_SP] + $root.maxLocals;
+                                    FRAMES.setObject(frame, ((int) temp) - 1, throwable);
                                     break;
                             }
                         } catch (Throwable t) {
@@ -3832,7 +3878,6 @@ public final class BasicInterpreterBase extends BasicInterpreter {
                             }
                             continue;
                         }
-                        temp = temp + $root.maxLocals;
                         assert sp >= temp - 1;
                         while (sp > temp) {
                             FRAMES.clear(frame, --sp);
@@ -3944,6 +3989,12 @@ public final class BasicInterpreterBase extends BasicInterpreter {
             Object result = node.execute(localFrame, frame, this, bc, bci, sp);
             FRAMES.setObject(frame, sp - 2, result);
             FRAMES.clear(frame, sp - 1);
+        }
+
+        private void doToString_(VirtualFrame frame, VirtualFrame localFrame, Node[] cachedNodes, byte[] bc, int bci, int sp) {
+            ToString_Node node = ACCESS.uncheckedCast(ACCESS.readObject(cachedNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm node */)), ToString_Node.class);
+            Object result = node.execute(localFrame, frame, this, bc, bci, sp);
+            FRAMES.setObject(frame, sp - 1, result);
         }
 
         private void doCall_(VirtualFrame frame, VirtualFrame localFrame, Node[] cachedNodes, byte[] bc, int bci, int sp) {
@@ -4250,10 +4301,8 @@ public final class BasicInterpreterBase extends BasicInterpreter {
             return -1;
         }
 
-        private long doTagExceptional(BasicInterpreterBase $root, VirtualFrame frame, byte[] bc, int bci, Throwable exception, int nodeId, int handlerSp) throws Throwable {
+        private Object doTagExceptional(VirtualFrame frame, TagNode node, int nodeId, byte[] bc, int bci, Throwable exception) throws Throwable {
             boolean wasOnReturnExecuted;
-            int nextBci;
-            int nextSp;
             switch (readValidBytecode(bc, bci)) {
                 case Instructions.TAG_LEAVE :
                 case Instructions.TAG_LEAVE_VOID :
@@ -4263,34 +4312,7 @@ public final class BasicInterpreterBase extends BasicInterpreter {
                     wasOnReturnExecuted = false;
                     break;
             }
-            TagNode node = this.tagRoot.tagNodes[nodeId];
-            Object result = node.findProbe().onReturnExceptionalOrUnwind(frame, exception, wasOnReturnExecuted);
-            if (result == null) {
-                throw exception;
-            } else if (result == ProbeNode.UNWIND_ACTION_REENTER) {
-                // Reenter by jumping to the begin bci.
-                return ((handlerSp & 0xFFFFL) << 32) | (node.enterBci & 0xFFFFFFFFL);
-            } else {
-                // We jump to the return address which is at sp + 1.
-                int targetSp;
-                int targetBci;
-                switch (readValidBytecode(bc, node.returnBci)) {
-                    case Instructions.TAG_LEAVE :
-                        targetBci = node.returnBci + 6;
-                        targetSp = handlerSp + 1 ;
-                        FRAMES.setObject(frame, targetSp - 1 + $root.maxLocals, result);
-                        break;
-                    case Instructions.TAG_LEAVE_VOID :
-                        targetBci = node.returnBci + 6;
-                        targetSp = handlerSp ;
-                        // discard return value
-                        break;
-                    default :
-                        throw CompilerDirectives.shouldNotReachHere();
-                }
-                assert targetBci < bc.length : "returnBci must be reachable";
-                return ((targetSp & 0xFFFFL) << 32) | (targetBci & 0xFFFFFFFFL);
-            }
+            return node.findProbe().onReturnExceptionalOrUnwind(frame, exception, wasOnReturnExecuted);
         }
 
         private long resolveControlFlowException(BasicInterpreterBase $root, VirtualFrame frame, int bci, ControlFlowException cfe) throws Throwable {
@@ -4455,6 +4477,7 @@ public final class BasicInterpreterBase extends BasicInterpreter {
                     }
                     case Instructions.EARLY_RETURN_ :
                     case Instructions.ADD_OPERATION_ :
+                    case Instructions.TO_STRING_ :
                     case Instructions.VERY_COMPLEX_OPERATION_ :
                     case Instructions.THROW_OPERATION_ :
                     case Instructions.READ_EXCEPTION_OPERATION_ :
@@ -4665,6 +4688,7 @@ public final class BasicInterpreterBase extends BasicInterpreter {
                     case Instructions.READ_EXCEPTION_OPERATION_ :
                     case Instructions.THROW_OPERATION_ :
                     case Instructions.TO_BOOLEAN_ :
+                    case Instructions.TO_STRING_ :
                     case Instructions.VERY_COMPLEX_OPERATION_ :
                     case Instructions.VOID_OPERATION_ :
                     case Instructions.INVALIDATE2 :
@@ -4807,7 +4831,7 @@ public final class BasicInterpreterBase extends BasicInterpreter {
     public static final class Builder extends BasicInterpreterBuilder {
 
         private static final byte UNINITIALIZED = -1;
-        private static final String[] OPERATION_NAMES = new String[] {null, "Block", "Root", "IfThen", "IfThenElse", "Conditional", "While", "TryCatch", "TryFinally", "TryCatchOtherwise", "FinallyHandler", "Label", "Branch", "LoadConstant", "LoadNull", "LoadArgument", "LoadException", "LoadLocal", "LoadLocalMaterialized", "StoreLocal", "StoreLocalMaterialized", "Return", "Yield", "Source", "SourceSection", "Tag", "EarlyReturn", "AddOperation", "Call", "AddConstantOperation", "AddConstantOperationAtEnd", "VeryComplexOperation", "ThrowOperation", "ReadExceptionOperation", "AlwaysBoxOperation", "AppenderOperation", "TeeLocal", "TeeLocalRange", "Invoke", "MaterializeFrame", "CreateClosure", "VoidOperation", "ToBoolean", "GetSourcePosition", "EnsureAndGetSourcePosition", "GetSourcePositions", "CopyLocalsToFrame", "GetBytecodeLocation", "CollectBytecodeLocations", "CollectSourceLocations", "CollectAllSourceLocations", "Continue", "CurrentLocation", "PrintHere", "IncrementValue", "DoubleValue", "EnableIncrementValueInstrumentation", "Add", "Mod", "Less", "EnableDoubleValueInstrumentation", "ExplicitBindingsTest", "ImplicitBindingsTest", "ScAnd", "ScOr"};
+        private static final String[] OPERATION_NAMES = new String[] {null, "Block", "Root", "IfThen", "IfThenElse", "Conditional", "While", "TryCatch", "TryFinally", "TryCatchOtherwise", "FinallyHandler", "Label", "Branch", "LoadConstant", "LoadNull", "LoadArgument", "LoadException", "LoadLocal", "LoadLocalMaterialized", "StoreLocal", "StoreLocalMaterialized", "Return", "Yield", "Source", "SourceSection", "Tag", "EarlyReturn", "AddOperation", "ToString", "Call", "AddConstantOperation", "AddConstantOperationAtEnd", "VeryComplexOperation", "ThrowOperation", "ReadExceptionOperation", "AlwaysBoxOperation", "AppenderOperation", "TeeLocal", "TeeLocalRange", "Invoke", "MaterializeFrame", "CreateClosure", "VoidOperation", "ToBoolean", "GetSourcePosition", "EnsureAndGetSourcePosition", "GetSourcePositions", "CopyLocalsToFrame", "GetBytecodeLocation", "CollectBytecodeLocations", "CollectSourceLocations", "CollectAllSourceLocations", "Continue", "CurrentLocation", "PrintHere", "IncrementValue", "DoubleValue", "EnableIncrementValueInstrumentation", "Add", "Mod", "Less", "EnableDoubleValueInstrumentation", "ExplicitBindingsTest", "ImplicitBindingsTest", "ScAnd", "ScOr"};
         private static final Class<?>[] TAGS_ROOT_TAG_ROOT_BODY_TAG = new Class<?>[]{RootTag.class, RootBodyTag.class};
 
         private int operationSequenceNumber;
@@ -6722,6 +6746,59 @@ public final class BasicInterpreterBase extends BasicInterpreter {
                 throw assertionFailed("Data class CustomOperationData expected, but was " + operation.data);
             }
             doEmitInstructionI(Instructions.ADD_OPERATION_, -1, allocateNode());
+            afterChild(true, bci - 6);
+        }
+
+        /**
+         * Begins a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.ToString ToString} operation.
+         * <p>
+         * Signature: ToString(value) -> Object
+         * <p>
+         * Exercises interop on the operand.
+         * <p>
+         * A corresponding call to {@link #endToString} is required to end the operation.
+         */
+        @Override
+        public void beginToString() {
+            if (serialization != null) {
+                try {
+                    serialization.buffer.writeShort(SerializationState.CODE_BEGIN_TO_STRING);
+                } catch (IOException ex) {
+                    throw new IOError(ex);
+                }
+                return;
+            }
+            validateRootOperationBegin();
+            beforeChild();
+            CustomOperationData operationData = new CustomOperationData(EMPTY_INT_ARRAY, EMPTY_INT_ARRAY);
+            beginOperation(Operations.TOSTRING, operationData);
+        }
+
+        /**
+         * Ends a custom {@link com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.ToString ToString} operation.
+         * <p>
+         * Signature: ToString(value) -> Object
+         *
+         * @see #beginToString
+         */
+        @Override
+        public void endToString() {
+            if (serialization != null) {
+                try {
+                    serialization.buffer.writeShort(SerializationState.CODE_END_TO_STRING);
+                } catch (IOException ex) {
+                    throw new IOError(ex);
+                }
+                return;
+            }
+            OperationStackEntry operation = endOperation(Operations.TOSTRING);
+            if (operation.childCount != 1) {
+                throw failState("Operation ToString expected exactly 1 child, but " + operation.childCount + " provided. This is probably a bug in the parser.");
+            }
+            if (!(operation.data instanceof CustomOperationData operationData)) {
+                throw assertionFailed("Data class CustomOperationData expected, but was " + operation.data);
+            }
+            doEmitInstructionI(Instructions.TO_STRING_, 0, allocateNode());
             afterChild(true, bci - 6);
         }
 
@@ -8673,6 +8750,7 @@ public final class BasicInterpreterBase extends BasicInterpreter {
                 case Operations.TAG :
                 case Operations.EARLYRETURN :
                 case Operations.ADDOPERATION :
+                case Operations.TOSTRING :
                 case Operations.CALL :
                 case Operations.ADDCONSTANTOPERATION :
                 case Operations.ADDCONSTANTOPERATIONATEND :
@@ -8995,6 +9073,13 @@ public final class BasicInterpreterBase extends BasicInterpreter {
                 {
                     if (!producedValue) {
                         throw failState("Operation AddOperation expected a value-producing child at position " + childIndex + ", but a void one was provided.");
+                    }
+                    break;
+                }
+                case Operations.TOSTRING :
+                {
+                    if (!producedValue) {
+                        throw failState("Operation ToString expected a value-producing child at position " + childIndex + ", but a void one was provided.");
                     }
                     break;
                 }
@@ -10144,6 +10229,16 @@ public final class BasicInterpreterBase extends BasicInterpreter {
                         case SerializationState.CODE_END_ADD_OPERATION :
                         {
                             endAddOperation();
+                            break;
+                        }
+                        case SerializationState.CODE_BEGIN_TO_STRING :
+                        {
+                            beginToString();
+                            break;
+                        }
+                        case SerializationState.CODE_END_TO_STRING :
+                        {
+                            endToString();
                             break;
                         }
                         case SerializationState.CODE_BEGIN_CALL :
@@ -11360,66 +11455,68 @@ public final class BasicInterpreterBase extends BasicInterpreter {
             private static final short CODE_END_EARLY_RETURN = (26 << 1) | 0b1;
             private static final short CODE_BEGIN_ADD_OPERATION = 27 << 1;
             private static final short CODE_END_ADD_OPERATION = (27 << 1) | 0b1;
-            private static final short CODE_BEGIN_CALL = 28 << 1;
-            private static final short CODE_END_CALL = (28 << 1) | 0b1;
-            private static final short CODE_BEGIN_ADD_CONSTANT_OPERATION = 29 << 1;
-            private static final short CODE_END_ADD_CONSTANT_OPERATION = (29 << 1) | 0b1;
-            private static final short CODE_BEGIN_ADD_CONSTANT_OPERATION_AT_END = 30 << 1;
-            private static final short CODE_END_ADD_CONSTANT_OPERATION_AT_END = (30 << 1) | 0b1;
-            private static final short CODE_BEGIN_VERY_COMPLEX_OPERATION = 31 << 1;
-            private static final short CODE_END_VERY_COMPLEX_OPERATION = (31 << 1) | 0b1;
-            private static final short CODE_BEGIN_THROW_OPERATION = 32 << 1;
-            private static final short CODE_END_THROW_OPERATION = (32 << 1) | 0b1;
-            private static final short CODE_BEGIN_READ_EXCEPTION_OPERATION = 33 << 1;
-            private static final short CODE_END_READ_EXCEPTION_OPERATION = (33 << 1) | 0b1;
-            private static final short CODE_BEGIN_ALWAYS_BOX_OPERATION = 34 << 1;
-            private static final short CODE_END_ALWAYS_BOX_OPERATION = (34 << 1) | 0b1;
-            private static final short CODE_BEGIN_APPENDER_OPERATION = 35 << 1;
-            private static final short CODE_END_APPENDER_OPERATION = (35 << 1) | 0b1;
-            private static final short CODE_BEGIN_TEE_LOCAL = 36 << 1;
-            private static final short CODE_END_TEE_LOCAL = (36 << 1) | 0b1;
-            private static final short CODE_BEGIN_TEE_LOCAL_RANGE = 37 << 1;
-            private static final short CODE_END_TEE_LOCAL_RANGE = (37 << 1) | 0b1;
-            private static final short CODE_BEGIN_INVOKE = 38 << 1;
-            private static final short CODE_END_INVOKE = (38 << 1) | 0b1;
-            private static final short CODE_EMIT_MATERIALIZE_FRAME = 39 << 1;
-            private static final short CODE_BEGIN_CREATE_CLOSURE = 40 << 1;
-            private static final short CODE_END_CREATE_CLOSURE = (40 << 1) | 0b1;
-            private static final short CODE_EMIT_VOID_OPERATION = 41 << 1;
-            private static final short CODE_BEGIN_TO_BOOLEAN = 42 << 1;
-            private static final short CODE_END_TO_BOOLEAN = (42 << 1) | 0b1;
-            private static final short CODE_EMIT_GET_SOURCE_POSITION = 43 << 1;
-            private static final short CODE_BEGIN_ENSURE_AND_GET_SOURCE_POSITION = 44 << 1;
-            private static final short CODE_END_ENSURE_AND_GET_SOURCE_POSITION = (44 << 1) | 0b1;
-            private static final short CODE_EMIT_GET_SOURCE_POSITIONS = 45 << 1;
-            private static final short CODE_BEGIN_COPY_LOCALS_TO_FRAME = 46 << 1;
-            private static final short CODE_END_COPY_LOCALS_TO_FRAME = (46 << 1) | 0b1;
-            private static final short CODE_EMIT_GET_BYTECODE_LOCATION = 47 << 1;
-            private static final short CODE_EMIT_COLLECT_BYTECODE_LOCATIONS = 48 << 1;
-            private static final short CODE_EMIT_COLLECT_SOURCE_LOCATIONS = 49 << 1;
-            private static final short CODE_EMIT_COLLECT_ALL_SOURCE_LOCATIONS = 50 << 1;
-            private static final short CODE_BEGIN_CONTINUE = 51 << 1;
-            private static final short CODE_END_CONTINUE = (51 << 1) | 0b1;
-            private static final short CODE_EMIT_CURRENT_LOCATION = 52 << 1;
-            private static final short CODE_EMIT_PRINT_HERE = 53 << 1;
-            private static final short CODE_BEGIN_INCREMENT_VALUE = 54 << 1;
-            private static final short CODE_END_INCREMENT_VALUE = (54 << 1) | 0b1;
-            private static final short CODE_BEGIN_DOUBLE_VALUE = 55 << 1;
-            private static final short CODE_END_DOUBLE_VALUE = (55 << 1) | 0b1;
-            private static final short CODE_EMIT_ENABLE_INCREMENT_VALUE_INSTRUMENTATION = 56 << 1;
-            private static final short CODE_BEGIN_ADD = 57 << 1;
-            private static final short CODE_END_ADD = (57 << 1) | 0b1;
-            private static final short CODE_BEGIN_MOD = 58 << 1;
-            private static final short CODE_END_MOD = (58 << 1) | 0b1;
-            private static final short CODE_BEGIN_LESS = 59 << 1;
-            private static final short CODE_END_LESS = (59 << 1) | 0b1;
-            private static final short CODE_EMIT_ENABLE_DOUBLE_VALUE_INSTRUMENTATION = 60 << 1;
-            private static final short CODE_EMIT_EXPLICIT_BINDINGS_TEST = 61 << 1;
-            private static final short CODE_EMIT_IMPLICIT_BINDINGS_TEST = 62 << 1;
-            private static final short CODE_BEGIN_SC_AND = 63 << 1;
-            private static final short CODE_END_SC_AND = (63 << 1) | 0b1;
-            private static final short CODE_BEGIN_SC_OR = 64 << 1;
-            private static final short CODE_END_SC_OR = (64 << 1) | 0b1;
+            private static final short CODE_BEGIN_TO_STRING = 28 << 1;
+            private static final short CODE_END_TO_STRING = (28 << 1) | 0b1;
+            private static final short CODE_BEGIN_CALL = 29 << 1;
+            private static final short CODE_END_CALL = (29 << 1) | 0b1;
+            private static final short CODE_BEGIN_ADD_CONSTANT_OPERATION = 30 << 1;
+            private static final short CODE_END_ADD_CONSTANT_OPERATION = (30 << 1) | 0b1;
+            private static final short CODE_BEGIN_ADD_CONSTANT_OPERATION_AT_END = 31 << 1;
+            private static final short CODE_END_ADD_CONSTANT_OPERATION_AT_END = (31 << 1) | 0b1;
+            private static final short CODE_BEGIN_VERY_COMPLEX_OPERATION = 32 << 1;
+            private static final short CODE_END_VERY_COMPLEX_OPERATION = (32 << 1) | 0b1;
+            private static final short CODE_BEGIN_THROW_OPERATION = 33 << 1;
+            private static final short CODE_END_THROW_OPERATION = (33 << 1) | 0b1;
+            private static final short CODE_BEGIN_READ_EXCEPTION_OPERATION = 34 << 1;
+            private static final short CODE_END_READ_EXCEPTION_OPERATION = (34 << 1) | 0b1;
+            private static final short CODE_BEGIN_ALWAYS_BOX_OPERATION = 35 << 1;
+            private static final short CODE_END_ALWAYS_BOX_OPERATION = (35 << 1) | 0b1;
+            private static final short CODE_BEGIN_APPENDER_OPERATION = 36 << 1;
+            private static final short CODE_END_APPENDER_OPERATION = (36 << 1) | 0b1;
+            private static final short CODE_BEGIN_TEE_LOCAL = 37 << 1;
+            private static final short CODE_END_TEE_LOCAL = (37 << 1) | 0b1;
+            private static final short CODE_BEGIN_TEE_LOCAL_RANGE = 38 << 1;
+            private static final short CODE_END_TEE_LOCAL_RANGE = (38 << 1) | 0b1;
+            private static final short CODE_BEGIN_INVOKE = 39 << 1;
+            private static final short CODE_END_INVOKE = (39 << 1) | 0b1;
+            private static final short CODE_EMIT_MATERIALIZE_FRAME = 40 << 1;
+            private static final short CODE_BEGIN_CREATE_CLOSURE = 41 << 1;
+            private static final short CODE_END_CREATE_CLOSURE = (41 << 1) | 0b1;
+            private static final short CODE_EMIT_VOID_OPERATION = 42 << 1;
+            private static final short CODE_BEGIN_TO_BOOLEAN = 43 << 1;
+            private static final short CODE_END_TO_BOOLEAN = (43 << 1) | 0b1;
+            private static final short CODE_EMIT_GET_SOURCE_POSITION = 44 << 1;
+            private static final short CODE_BEGIN_ENSURE_AND_GET_SOURCE_POSITION = 45 << 1;
+            private static final short CODE_END_ENSURE_AND_GET_SOURCE_POSITION = (45 << 1) | 0b1;
+            private static final short CODE_EMIT_GET_SOURCE_POSITIONS = 46 << 1;
+            private static final short CODE_BEGIN_COPY_LOCALS_TO_FRAME = 47 << 1;
+            private static final short CODE_END_COPY_LOCALS_TO_FRAME = (47 << 1) | 0b1;
+            private static final short CODE_EMIT_GET_BYTECODE_LOCATION = 48 << 1;
+            private static final short CODE_EMIT_COLLECT_BYTECODE_LOCATIONS = 49 << 1;
+            private static final short CODE_EMIT_COLLECT_SOURCE_LOCATIONS = 50 << 1;
+            private static final short CODE_EMIT_COLLECT_ALL_SOURCE_LOCATIONS = 51 << 1;
+            private static final short CODE_BEGIN_CONTINUE = 52 << 1;
+            private static final short CODE_END_CONTINUE = (52 << 1) | 0b1;
+            private static final short CODE_EMIT_CURRENT_LOCATION = 53 << 1;
+            private static final short CODE_EMIT_PRINT_HERE = 54 << 1;
+            private static final short CODE_BEGIN_INCREMENT_VALUE = 55 << 1;
+            private static final short CODE_END_INCREMENT_VALUE = (55 << 1) | 0b1;
+            private static final short CODE_BEGIN_DOUBLE_VALUE = 56 << 1;
+            private static final short CODE_END_DOUBLE_VALUE = (56 << 1) | 0b1;
+            private static final short CODE_EMIT_ENABLE_INCREMENT_VALUE_INSTRUMENTATION = 57 << 1;
+            private static final short CODE_BEGIN_ADD = 58 << 1;
+            private static final short CODE_END_ADD = (58 << 1) | 0b1;
+            private static final short CODE_BEGIN_MOD = 59 << 1;
+            private static final short CODE_END_MOD = (59 << 1) | 0b1;
+            private static final short CODE_BEGIN_LESS = 60 << 1;
+            private static final short CODE_END_LESS = (60 << 1) | 0b1;
+            private static final short CODE_EMIT_ENABLE_DOUBLE_VALUE_INSTRUMENTATION = 61 << 1;
+            private static final short CODE_EMIT_EXPLICIT_BINDINGS_TEST = 62 << 1;
+            private static final short CODE_EMIT_IMPLICIT_BINDINGS_TEST = 63 << 1;
+            private static final short CODE_BEGIN_SC_AND = 64 << 1;
+            private static final short CODE_END_SC_AND = (64 << 1) | 0b1;
+            private static final short CODE_BEGIN_SC_OR = 65 << 1;
+            private static final short CODE_END_SC_OR = (65 << 1) | 0b1;
 
             private final DataOutput buffer;
             private final BytecodeSerializer callback;
@@ -11982,334 +12079,342 @@ public final class BasicInterpreterBase extends BasicInterpreter {
          */
         private static final short ADD_OPERATION_ = 35;
         /*
+         * Instruction c.ToString
+         * kind: CUSTOM
+         * encoding: [36 : short, node : int]
+         * nodeType: ToString
+         * signature: Object (Object)
+         */
+        private static final short TO_STRING_ = 36;
+        /*
          * Instruction c.Call
          * kind: CUSTOM
-         * encoding: [36 : short, interpreter (const) : int, node : int]
+         * encoding: [37 : short, interpreter (const) : int, node : int]
          * nodeType: Call
          * signature: Object (BasicInterpreter, Object[]...)
          */
-        private static final short CALL_ = 36;
+        private static final short CALL_ = 37;
         /*
          * Instruction c.AddConstantOperation
          * kind: CUSTOM
-         * encoding: [37 : short, constantLhs (const) : int, node : int]
+         * encoding: [38 : short, constantLhs (const) : int, node : int]
          * nodeType: AddConstantOperation
          * signature: Object (long, Object)
          */
-        private static final short ADD_CONSTANT_OPERATION_ = 37;
+        private static final short ADD_CONSTANT_OPERATION_ = 38;
         /*
          * Instruction c.AddConstantOperationAtEnd
          * kind: CUSTOM
-         * encoding: [38 : short, constantRhs (const) : int, node : int]
+         * encoding: [39 : short, constantRhs (const) : int, node : int]
          * nodeType: AddConstantOperationAtEnd
          * signature: Object (Object, long)
          */
-        private static final short ADD_CONSTANT_OPERATION_AT_END_ = 38;
+        private static final short ADD_CONSTANT_OPERATION_AT_END_ = 39;
         /*
          * Instruction c.VeryComplexOperation
          * kind: CUSTOM
-         * encoding: [39 : short, node : int]
+         * encoding: [40 : short, node : int]
          * nodeType: VeryComplexOperation
          * signature: long (long, Object[]...)
          */
-        private static final short VERY_COMPLEX_OPERATION_ = 39;
+        private static final short VERY_COMPLEX_OPERATION_ = 40;
         /*
          * Instruction c.ThrowOperation
          * kind: CUSTOM
-         * encoding: [40 : short, node : int]
+         * encoding: [41 : short, node : int]
          * nodeType: ThrowOperation
          * signature: Object (long)
          */
-        private static final short THROW_OPERATION_ = 40;
+        private static final short THROW_OPERATION_ = 41;
         /*
          * Instruction c.ReadExceptionOperation
          * kind: CUSTOM
-         * encoding: [41 : short, node : int]
+         * encoding: [42 : short, node : int]
          * nodeType: ReadExceptionOperation
          * signature: long (TestException)
          */
-        private static final short READ_EXCEPTION_OPERATION_ = 41;
+        private static final short READ_EXCEPTION_OPERATION_ = 42;
         /*
          * Instruction c.AlwaysBoxOperation
          * kind: CUSTOM
-         * encoding: [42 : short, node : int]
+         * encoding: [43 : short, node : int]
          * nodeType: AlwaysBoxOperation
          * signature: Object (Object)
          */
-        private static final short ALWAYS_BOX_OPERATION_ = 42;
+        private static final short ALWAYS_BOX_OPERATION_ = 43;
         /*
          * Instruction c.AppenderOperation
          * kind: CUSTOM
-         * encoding: [43 : short, node : int]
+         * encoding: [44 : short, node : int]
          * nodeType: AppenderOperation
          * signature: void (List<?>, Object)
          */
-        private static final short APPENDER_OPERATION_ = 43;
+        private static final short APPENDER_OPERATION_ = 44;
         /*
          * Instruction c.TeeLocal
          * kind: CUSTOM
-         * encoding: [44 : short, setter (const) : int, node : int]
+         * encoding: [45 : short, setter (const) : int, node : int]
          * nodeType: TeeLocal
          * signature: Object (LocalAccessor, Object)
          */
-        private static final short TEE_LOCAL_ = 44;
+        private static final short TEE_LOCAL_ = 45;
         /*
          * Instruction c.TeeLocalRange
          * kind: CUSTOM
-         * encoding: [45 : short, setter (const) : int, node : int]
+         * encoding: [46 : short, setter (const) : int, node : int]
          * nodeType: TeeLocalRange
          * signature: Object (LocalRangeAccessor, Object)
          */
-        private static final short TEE_LOCAL_RANGE_ = 45;
+        private static final short TEE_LOCAL_RANGE_ = 46;
         /*
          * Instruction c.Invoke
          * kind: CUSTOM
-         * encoding: [46 : short, node : int]
+         * encoding: [47 : short, node : int]
          * nodeType: Invoke
          * signature: Object (Object, Object[]...)
          */
-        private static final short INVOKE_ = 46;
+        private static final short INVOKE_ = 47;
         /*
          * Instruction c.MaterializeFrame
          * kind: CUSTOM
-         * encoding: [47 : short, node : int]
+         * encoding: [48 : short, node : int]
          * nodeType: MaterializeFrame
          * signature: MaterializedFrame ()
          */
-        private static final short MATERIALIZE_FRAME_ = 47;
+        private static final short MATERIALIZE_FRAME_ = 48;
         /*
          * Instruction c.CreateClosure
          * kind: CUSTOM
-         * encoding: [48 : short, node : int]
+         * encoding: [49 : short, node : int]
          * nodeType: CreateClosure
          * signature: TestClosure (BasicInterpreter)
          */
-        private static final short CREATE_CLOSURE_ = 48;
+        private static final short CREATE_CLOSURE_ = 49;
         /*
          * Instruction c.VoidOperation
          * kind: CUSTOM
-         * encoding: [49 : short, node : int]
+         * encoding: [50 : short, node : int]
          * nodeType: VoidOperation
          * signature: void ()
          */
-        private static final short VOID_OPERATION_ = 49;
+        private static final short VOID_OPERATION_ = 50;
         /*
          * Instruction c.ToBoolean
          * kind: CUSTOM
-         * encoding: [50 : short, node : int]
+         * encoding: [51 : short, node : int]
          * nodeType: ToBoolean
          * signature: boolean (Object)
          */
-        private static final short TO_BOOLEAN_ = 50;
+        private static final short TO_BOOLEAN_ = 51;
         /*
          * Instruction c.GetSourcePosition
          * kind: CUSTOM
-         * encoding: [51 : short, node : int]
+         * encoding: [52 : short, node : int]
          * nodeType: GetSourcePosition
          * signature: SourceSection ()
          */
-        private static final short GET_SOURCE_POSITION_ = 51;
+        private static final short GET_SOURCE_POSITION_ = 52;
         /*
          * Instruction c.EnsureAndGetSourcePosition
          * kind: CUSTOM
-         * encoding: [52 : short, node : int]
+         * encoding: [53 : short, node : int]
          * nodeType: EnsureAndGetSourcePosition
          * signature: SourceSection (boolean)
          */
-        private static final short ENSURE_AND_GET_SOURCE_POSITION_ = 52;
+        private static final short ENSURE_AND_GET_SOURCE_POSITION_ = 53;
         /*
          * Instruction c.GetSourcePositions
          * kind: CUSTOM
-         * encoding: [53 : short, node : int]
+         * encoding: [54 : short, node : int]
          * nodeType: GetSourcePositions
          * signature: SourceSection[] ()
          */
-        private static final short GET_SOURCE_POSITIONS_ = 53;
+        private static final short GET_SOURCE_POSITIONS_ = 54;
         /*
          * Instruction c.CopyLocalsToFrame
          * kind: CUSTOM
-         * encoding: [54 : short, node : int]
+         * encoding: [55 : short, node : int]
          * nodeType: CopyLocalsToFrame
          * signature: Frame (Object)
          */
-        private static final short COPY_LOCALS_TO_FRAME_ = 54;
+        private static final short COPY_LOCALS_TO_FRAME_ = 55;
         /*
          * Instruction c.GetBytecodeLocation
          * kind: CUSTOM
-         * encoding: [55 : short, node : int]
+         * encoding: [56 : short, node : int]
          * nodeType: GetBytecodeLocation
          * signature: BytecodeLocation ()
          */
-        private static final short GET_BYTECODE_LOCATION_ = 55;
+        private static final short GET_BYTECODE_LOCATION_ = 56;
         /*
          * Instruction c.CollectBytecodeLocations
          * kind: CUSTOM
-         * encoding: [56 : short, node : int]
+         * encoding: [57 : short, node : int]
          * nodeType: CollectBytecodeLocations
          * signature: List<BytecodeLocation> ()
          */
-        private static final short COLLECT_BYTECODE_LOCATIONS_ = 56;
+        private static final short COLLECT_BYTECODE_LOCATIONS_ = 57;
         /*
          * Instruction c.CollectSourceLocations
          * kind: CUSTOM
-         * encoding: [57 : short, node : int]
+         * encoding: [58 : short, node : int]
          * nodeType: CollectSourceLocations
          * signature: List<SourceSection> ()
          */
-        private static final short COLLECT_SOURCE_LOCATIONS_ = 57;
+        private static final short COLLECT_SOURCE_LOCATIONS_ = 58;
         /*
          * Instruction c.CollectAllSourceLocations
          * kind: CUSTOM
-         * encoding: [58 : short, node : int]
+         * encoding: [59 : short, node : int]
          * nodeType: CollectAllSourceLocations
          * signature: List<SourceSection[]> ()
          */
-        private static final short COLLECT_ALL_SOURCE_LOCATIONS_ = 58;
+        private static final short COLLECT_ALL_SOURCE_LOCATIONS_ = 59;
         /*
          * Instruction c.Continue
          * kind: CUSTOM
-         * encoding: [59 : short, node : int]
+         * encoding: [60 : short, node : int]
          * nodeType: ContinueNode
          * signature: Object (ContinuationResult, Object)
          */
-        private static final short CONTINUE_ = 59;
+        private static final short CONTINUE_ = 60;
         /*
          * Instruction c.CurrentLocation
          * kind: CUSTOM
-         * encoding: [60 : short, node : int]
+         * encoding: [61 : short, node : int]
          * nodeType: CurrentLocation
          * signature: BytecodeLocation ()
          */
-        private static final short CURRENT_LOCATION_ = 60;
+        private static final short CURRENT_LOCATION_ = 61;
         /*
          * Instruction c.PrintHere
          * kind: CUSTOM
-         * encoding: [61 : short, node : int]
+         * encoding: [62 : short, node : int]
          * nodeType: PrintHere
          * signature: void ()
          */
-        private static final short PRINT_HERE_ = 61;
+        private static final short PRINT_HERE_ = 62;
         /*
          * Instruction c.IncrementValue
          * kind: CUSTOM
-         * encoding: [62 : short, node : int]
+         * encoding: [63 : short, node : int]
          * nodeType: IncrementValue
          * signature: long (long)
          */
-        private static final short INCREMENT_VALUE_ = 62;
+        private static final short INCREMENT_VALUE_ = 63;
         /*
          * Instruction c.DoubleValue
          * kind: CUSTOM
-         * encoding: [63 : short, node : int]
+         * encoding: [64 : short, node : int]
          * nodeType: DoubleValue
          * signature: long (long)
          */
-        private static final short DOUBLE_VALUE_ = 63;
+        private static final short DOUBLE_VALUE_ = 64;
         /*
          * Instruction c.EnableIncrementValueInstrumentation
          * kind: CUSTOM
-         * encoding: [64 : short, node : int]
+         * encoding: [65 : short, node : int]
          * nodeType: EnableIncrementValueInstrumentation
          * signature: void ()
          */
-        private static final short ENABLE_INCREMENT_VALUE_INSTRUMENTATION_ = 64;
+        private static final short ENABLE_INCREMENT_VALUE_INSTRUMENTATION_ = 65;
         /*
          * Instruction c.Add
          * kind: CUSTOM
-         * encoding: [65 : short, node : int]
+         * encoding: [66 : short, node : int]
          * nodeType: Add
          * signature: long (long, long)
          */
-        private static final short ADD_ = 65;
+        private static final short ADD_ = 66;
         /*
          * Instruction c.Mod
          * kind: CUSTOM
-         * encoding: [66 : short, node : int]
+         * encoding: [67 : short, node : int]
          * nodeType: Mod
          * signature: long (long, long)
          */
-        private static final short MOD_ = 66;
+        private static final short MOD_ = 67;
         /*
          * Instruction c.Less
          * kind: CUSTOM
-         * encoding: [67 : short, node : int]
+         * encoding: [68 : short, node : int]
          * nodeType: Less
          * signature: boolean (long, long)
          */
-        private static final short LESS_ = 67;
+        private static final short LESS_ = 68;
         /*
          * Instruction c.EnableDoubleValueInstrumentation
          * kind: CUSTOM
-         * encoding: [68 : short, node : int]
+         * encoding: [69 : short, node : int]
          * nodeType: EnableDoubleValueInstrumentation
          * signature: void ()
          */
-        private static final short ENABLE_DOUBLE_VALUE_INSTRUMENTATION_ = 68;
+        private static final short ENABLE_DOUBLE_VALUE_INSTRUMENTATION_ = 69;
         /*
          * Instruction c.ExplicitBindingsTest
          * kind: CUSTOM
-         * encoding: [69 : short, node : int]
+         * encoding: [70 : short, node : int]
          * nodeType: ExplicitBindingsTest
          * signature: Bindings ()
          */
-        private static final short EXPLICIT_BINDINGS_TEST_ = 69;
+        private static final short EXPLICIT_BINDINGS_TEST_ = 70;
         /*
          * Instruction c.ImplicitBindingsTest
          * kind: CUSTOM
-         * encoding: [70 : short, node : int]
+         * encoding: [71 : short, node : int]
          * nodeType: ImplicitBindingsTest
          * signature: Bindings ()
          */
-        private static final short IMPLICIT_BINDINGS_TEST_ = 70;
+        private static final short IMPLICIT_BINDINGS_TEST_ = 71;
         /*
          * Instruction sc.ScAnd
-         * kind: CUSTOM_SHORT_CIRCUIT
-         * encoding: [71 : short, branch_target (bci) : int, branch_profile : int]
-         * signature: Object (boolean, boolean)
-         */
-        private static final short SC_AND_ = 71;
-        /*
-         * Instruction sc.ScOr
          * kind: CUSTOM_SHORT_CIRCUIT
          * encoding: [72 : short, branch_target (bci) : int, branch_profile : int]
          * signature: Object (boolean, boolean)
          */
-        private static final short SC_OR_ = 72;
+        private static final short SC_AND_ = 72;
+        /*
+         * Instruction sc.ScOr
+         * kind: CUSTOM_SHORT_CIRCUIT
+         * encoding: [73 : short, branch_target (bci) : int, branch_profile : int]
+         * signature: Object (boolean, boolean)
+         */
+        private static final short SC_OR_ = 73;
         /*
          * Instruction invalidate0
          * kind: INVALIDATE
-         * encoding: [73 : short]
+         * encoding: [74 : short]
          * signature: void ()
          */
-        private static final short INVALIDATE0 = 73;
+        private static final short INVALIDATE0 = 74;
         /*
          * Instruction invalidate1
          * kind: INVALIDATE
-         * encoding: [74 : short, invalidated0 (short) : short]
+         * encoding: [75 : short, invalidated0 (short) : short]
          * signature: void ()
          */
-        private static final short INVALIDATE1 = 74;
+        private static final short INVALIDATE1 = 75;
         /*
          * Instruction invalidate2
          * kind: INVALIDATE
-         * encoding: [75 : short, invalidated0 (short) : short, invalidated1 (short) : short]
+         * encoding: [76 : short, invalidated0 (short) : short, invalidated1 (short) : short]
          * signature: void ()
          */
-        private static final short INVALIDATE2 = 75;
+        private static final short INVALIDATE2 = 76;
         /*
          * Instruction invalidate3
          * kind: INVALIDATE
-         * encoding: [76 : short, invalidated0 (short) : short, invalidated1 (short) : short, invalidated2 (short) : short]
+         * encoding: [77 : short, invalidated0 (short) : short, invalidated1 (short) : short, invalidated2 (short) : short]
          * signature: void ()
          */
-        private static final short INVALIDATE3 = 76;
+        private static final short INVALIDATE3 = 77;
         /*
          * Instruction invalidate4
          * kind: INVALIDATE
-         * encoding: [77 : short, invalidated0 (short) : short, invalidated1 (short) : short, invalidated2 (short) : short, invalidated3 (short) : short]
+         * encoding: [78 : short, invalidated0 (short) : short, invalidated1 (short) : short, invalidated2 (short) : short, invalidated3 (short) : short]
          * signature: void ()
          */
-        private static final short INVALIDATE4 = 77;
+        private static final short INVALIDATE4 = 78;
 
     }
     private static final class Operations {
@@ -12341,43 +12446,44 @@ public final class BasicInterpreterBase extends BasicInterpreter {
         private static final int TAG = 25;
         private static final int EARLYRETURN = 26;
         private static final int ADDOPERATION = 27;
-        private static final int CALL = 28;
-        private static final int ADDCONSTANTOPERATION = 29;
-        private static final int ADDCONSTANTOPERATIONATEND = 30;
-        private static final int VERYCOMPLEXOPERATION = 31;
-        private static final int THROWOPERATION = 32;
-        private static final int READEXCEPTIONOPERATION = 33;
-        private static final int ALWAYSBOXOPERATION = 34;
-        private static final int APPENDEROPERATION = 35;
-        private static final int TEELOCAL = 36;
-        private static final int TEELOCALRANGE = 37;
-        private static final int INVOKE = 38;
-        private static final int MATERIALIZEFRAME = 39;
-        private static final int CREATECLOSURE = 40;
-        private static final int VOIDOPERATION = 41;
-        private static final int TOBOOLEAN = 42;
-        private static final int GETSOURCEPOSITION = 43;
-        private static final int ENSUREANDGETSOURCEPOSITION = 44;
-        private static final int GETSOURCEPOSITIONS = 45;
-        private static final int COPYLOCALSTOFRAME = 46;
-        private static final int GETBYTECODELOCATION = 47;
-        private static final int COLLECTBYTECODELOCATIONS = 48;
-        private static final int COLLECTSOURCELOCATIONS = 49;
-        private static final int COLLECTALLSOURCELOCATIONS = 50;
-        private static final int CONTINUE = 51;
-        private static final int CURRENTLOCATION = 52;
-        private static final int PRINTHERE = 53;
-        private static final int INCREMENTVALUE = 54;
-        private static final int DOUBLEVALUE = 55;
-        private static final int ENABLEINCREMENTVALUEINSTRUMENTATION = 56;
-        private static final int ADD = 57;
-        private static final int MOD = 58;
-        private static final int LESS = 59;
-        private static final int ENABLEDOUBLEVALUEINSTRUMENTATION = 60;
-        private static final int EXPLICITBINDINGSTEST = 61;
-        private static final int IMPLICITBINDINGSTEST = 62;
-        private static final int SCAND = 63;
-        private static final int SCOR = 64;
+        private static final int TOSTRING = 28;
+        private static final int CALL = 29;
+        private static final int ADDCONSTANTOPERATION = 30;
+        private static final int ADDCONSTANTOPERATIONATEND = 31;
+        private static final int VERYCOMPLEXOPERATION = 32;
+        private static final int THROWOPERATION = 33;
+        private static final int READEXCEPTIONOPERATION = 34;
+        private static final int ALWAYSBOXOPERATION = 35;
+        private static final int APPENDEROPERATION = 36;
+        private static final int TEELOCAL = 37;
+        private static final int TEELOCALRANGE = 38;
+        private static final int INVOKE = 39;
+        private static final int MATERIALIZEFRAME = 40;
+        private static final int CREATECLOSURE = 41;
+        private static final int VOIDOPERATION = 42;
+        private static final int TOBOOLEAN = 43;
+        private static final int GETSOURCEPOSITION = 44;
+        private static final int ENSUREANDGETSOURCEPOSITION = 45;
+        private static final int GETSOURCEPOSITIONS = 46;
+        private static final int COPYLOCALSTOFRAME = 47;
+        private static final int GETBYTECODELOCATION = 48;
+        private static final int COLLECTBYTECODELOCATIONS = 49;
+        private static final int COLLECTSOURCELOCATIONS = 50;
+        private static final int COLLECTALLSOURCELOCATIONS = 51;
+        private static final int CONTINUE = 52;
+        private static final int CURRENTLOCATION = 53;
+        private static final int PRINTHERE = 54;
+        private static final int INCREMENTVALUE = 55;
+        private static final int DOUBLEVALUE = 56;
+        private static final int ENABLEINCREMENTVALUEINSTRUMENTATION = 57;
+        private static final int ADD = 58;
+        private static final int MOD = 59;
+        private static final int LESS = 60;
+        private static final int ENABLEDOUBLEVALUEINSTRUMENTATION = 61;
+        private static final int EXPLICITBINDINGSTEST = 62;
+        private static final int IMPLICITBINDINGSTEST = 63;
+        private static final int SCAND = 64;
+        private static final int SCOR = 65;
 
     }
     private static final class ExceptionHandlerImpl extends ExceptionHandler {
@@ -12901,6 +13007,172 @@ public final class BasicInterpreterBase extends BasicInterpreter {
             return Provider.create(data);
         }
 
+    }
+    /**
+     * Debug Info: <pre>
+     *   Specialization {@link ToString#doForeignObject}
+     *     Activation probability: 0.65000
+     *     With/without class size: 19/4 bytes
+     *   Specialization {@link ToString#doForeignObject}
+     *     Activation probability: 0.35000
+     *     With/without class size: 8/0 bytes
+     * </pre> */
+    @SuppressWarnings("javadoc")
+    private static final class ToString_Node extends Node implements Introspection.Provider {
+
+        static final ReferenceField<ForeignObject0Data> FOREIGN_OBJECT0_CACHE_UPDATER = ReferenceField.create(MethodHandles.lookup(), "foreignObject0_cache", ForeignObject0Data.class);
+
+        /**
+         * State Info: <pre>
+         *   0: SpecializationActive {@link ToString#doForeignObject}
+         *   1: SpecializationActive {@link ToString#doForeignObject}
+         * </pre> */
+        @CompilationFinal private int state_0_;
+        @UnsafeAccessedField @Child private ForeignObject0Data foreignObject0_cache;
+
+        @ExplodeLoop
+        private Object execute(VirtualFrame frameValue, VirtualFrame $stackFrame, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
+            int state_0 = this.state_0_;
+            Object child0Value_ = FRAMES.uncheckedGetObject($stackFrame, $sp - 1);
+            if (state_0 != 0 /* is SpecializationActive[BasicInterpreter.ToString.doForeignObject(Object, InteropLibrary)] || SpecializationActive[BasicInterpreter.ToString.doForeignObject(Object, InteropLibrary)] */) {
+                if ((state_0 & 0b1) != 0 /* is SpecializationActive[BasicInterpreter.ToString.doForeignObject(Object, InteropLibrary)] */) {
+                    ForeignObject0Data s0_ = this.foreignObject0_cache;
+                    while (s0_ != null) {
+                        if ((s0_.interop_.accepts(child0Value_))) {
+                            return ToString.doForeignObject(child0Value_, s0_.interop_);
+                        }
+                        s0_ = s0_.next_;
+                    }
+                }
+                if ((state_0 & 0b10) != 0 /* is SpecializationActive[BasicInterpreter.ToString.doForeignObject(Object, InteropLibrary)] */) {
+                    EncapsulatingNodeReference encapsulating_ = EncapsulatingNodeReference.getCurrent();
+                    Node prev_ = encapsulating_.set(this);
+                    try {
+                        {
+                            InteropLibrary interop__ = (INTEROP_LIBRARY_.getUncached(child0Value_));
+                            return ToString.doForeignObject(child0Value_, interop__);
+                        }
+                    } finally {
+                        encapsulating_.set(prev_);
+                    }
+                }
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            return executeAndSpecialize(child0Value_, $stackFrame, $bytecode, $bc, $bci, $sp);
+        }
+
+        private Object executeAndSpecialize(Object child0Value, VirtualFrame $stackFrame, AbstractBytecodeNode $bytecode, byte[] $bc, int $bci, int $sp) {
+            int state_0 = this.state_0_;
+            if (((state_0 & 0b10)) == 0 /* is-not SpecializationActive[BasicInterpreter.ToString.doForeignObject(Object, InteropLibrary)] */) {
+                while (true) {
+                    int count0_ = 0;
+                    ForeignObject0Data s0_ = FOREIGN_OBJECT0_CACHE_UPDATER.getVolatile(this);
+                    ForeignObject0Data s0_original = s0_;
+                    while (s0_ != null) {
+                        if ((s0_.interop_.accepts(child0Value))) {
+                            break;
+                        }
+                        count0_++;
+                        s0_ = s0_.next_;
+                    }
+                    if (s0_ == null) {
+                        // assert (s0_.interop_.accepts(child0Value));
+                        if (count0_ < (2)) {
+                            s0_ = this.insert(new ForeignObject0Data(s0_original));
+                            InteropLibrary interop__ = s0_.insert((INTEROP_LIBRARY_.create(child0Value)));
+                            Objects.requireNonNull(interop__, "A specialization cache returned a default value. The cache initializer must never return a default value for this cache. Use @Cached(neverDefault=false) to allow default values for this cached value or make sure the cache initializer never returns the default value.");
+                            s0_.interop_ = interop__;
+                            if (!FOREIGN_OBJECT0_CACHE_UPDATER.compareAndSet(this, s0_original, s0_)) {
+                                continue;
+                            }
+                            state_0 = state_0 | 0b1 /* add SpecializationActive[BasicInterpreter.ToString.doForeignObject(Object, InteropLibrary)] */;
+                            this.state_0_ = state_0;
+                            $bytecode.getRoot().onSpecialize(new InstructionImpl($bytecode, $bci, BYTES.getShort($bc, $bci)), "ToString$ForeignObject0");
+                        }
+                    }
+                    if (s0_ != null) {
+                        return ToString.doForeignObject(child0Value, s0_.interop_);
+                    }
+                    break;
+                }
+            }
+            {
+                InteropLibrary interop__ = null;
+                {
+                    EncapsulatingNodeReference encapsulating_ = EncapsulatingNodeReference.getCurrent();
+                    Node prev_ = encapsulating_.set(this);
+                    try {
+                        interop__ = (INTEROP_LIBRARY_.getUncached(child0Value));
+                        this.foreignObject0_cache = null;
+                        state_0 = state_0 & 0xfffffffe /* remove SpecializationActive[BasicInterpreter.ToString.doForeignObject(Object, InteropLibrary)] */;
+                        state_0 = state_0 | 0b10 /* add SpecializationActive[BasicInterpreter.ToString.doForeignObject(Object, InteropLibrary)] */;
+                        this.state_0_ = state_0;
+                        $bytecode.getRoot().onSpecialize(new InstructionImpl($bytecode, $bci, BYTES.getShort($bc, $bci)), "ToString$ForeignObject1");
+                        return ToString.doForeignObject(child0Value, interop__);
+                    } finally {
+                        encapsulating_.set(prev_);
+                    }
+                }
+            }
+        }
+
+        @Override
+        public Introspection getIntrospectionData() {
+            Object[] data = new Object[3];
+            Object[] s;
+            data[0] = 0;
+            int state_0 = this.state_0_;
+            s = new Object[3];
+            s[0] = "doForeignObject";
+            if ((state_0 & 0b1) != 0 /* is SpecializationActive[BasicInterpreter.ToString.doForeignObject(Object, InteropLibrary)] */) {
+                s[1] = (byte)0b01 /* active */;
+                ArrayList<Object> cached = new ArrayList<>();
+                ForeignObject0Data s0_ = this.foreignObject0_cache;
+                while (s0_ != null) {
+                    cached.add(Arrays.<Object>asList(s0_.interop_));
+                    s0_ = s0_.next_;
+                }
+                s[2] = cached;
+            }
+            if (s[1] == null) {
+                if ((state_0 & 0b10) != 0 /* is SpecializationActive[BasicInterpreter.ToString.doForeignObject(Object, InteropLibrary)] */) {
+                    s[1] = (byte)0b10 /* excluded */;
+                } else {
+                    s[1] = (byte)0b00 /* inactive */;
+                }
+            }
+            data[1] = s;
+            s = new Object[3];
+            s[0] = "doForeignObject";
+            if ((state_0 & 0b10) != 0 /* is SpecializationActive[BasicInterpreter.ToString.doForeignObject(Object, InteropLibrary)] */) {
+                s[1] = (byte)0b01 /* active */;
+                ArrayList<Object> cached = new ArrayList<>();
+                cached.add(Arrays.<Object>asList());
+                s[2] = cached;
+            }
+            if (s[1] == null) {
+                s[1] = (byte)0b00 /* inactive */;
+            }
+            data[2] = s;
+            return Provider.create(data);
+        }
+
+        @GeneratedBy(BasicInterpreter.class)
+        @DenyReplace
+        private static final class ForeignObject0Data extends Node implements SpecializationDataNode {
+
+            @Child ForeignObject0Data next_;
+            /**
+             * Source Info: <pre>
+             *   Specialization: {@link ToString#doForeignObject}
+             *   Parameter: {@link InteropLibrary} interop</pre> */
+            @Child InteropLibrary interop_;
+
+            ForeignObject0Data(ForeignObject0Data next_) {
+                this.next_ = next_;
+            }
+
+        }
     }
     /**
      * Debug Info: <pre>
