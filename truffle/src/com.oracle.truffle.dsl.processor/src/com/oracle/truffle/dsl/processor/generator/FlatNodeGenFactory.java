@@ -4725,9 +4725,18 @@ public class FlatNodeGenFactory {
         boolean pushEncapsulatingNode = specialization.needsPushEncapsulatingNode();
         boolean extractInBoundary = specialization.needsTruffleBoundary();
 
-        if (extractInBoundary && specialization.needsVirtualFrame()) {
+        if (extractInBoundary) {
             // Cannot extract to boundary with a virtual frame.
-            extractInBoundary = false;
+            if (specialization.hasFrameParameter()) {
+                extractInBoundary = false;
+            } else {
+                for (VariableElement v : plugs.additionalArguments()) {
+                    if (ElementUtils.typeEquals(v.asType(), types.VirtualFrame) || ElementUtils.typeEquals(v.asType(), types.Frame)) {
+                        extractInBoundary = false;
+                        break;
+                    }
+                }
+            }
         }
 
         List<IfTriple> nonBoundaryGuards = new ArrayList<>();
