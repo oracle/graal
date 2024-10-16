@@ -4347,8 +4347,8 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             long temp;
             LoopCounter loopCounter = new LoopCounter();
             FRAMES.setInt(frame, BCI_INDEX, -1);
-            CompilerAsserts.partialEvaluationConstant(bci);
             loop: while (true) {
+                CompilerAsserts.partialEvaluationConstant(bci);
                 op = BYTES.getShort(bc, bci);
                 try {
                     switch (op) {
@@ -7618,8 +7618,8 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 int sp = (short) (startState >>> 32);
                 int op;
                 long temp;
-                CompilerAsserts.partialEvaluationConstant(bci);
                 loop: while (true) {
+                    CompilerAsserts.partialEvaluationConstant(bci);
                     op = BYTES.getShort(bc, bci);
                     try {
                         switch (op) {

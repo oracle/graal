@@ -3239,14 +3239,13 @@ public final class BasicInterpreterWithOptimizations extends BasicInterpreter {
             byte[] bc = this.bytecodes;
             Node[] cachedNodes = this.cachedNodes_;
             int[] branchProfiles = this.branchProfiles_;
-            TagNode[] tagNodes = tagRoot != null ? tagRoot.tagNodes : null;
             int bci = (int) startState;
             int sp = (short) (startState >>> 32);
             int op;
             long temp;
             LoopCounter loopCounter = new LoopCounter();
-            CompilerAsserts.partialEvaluationConstant(bci);
             loop: while (true) {
+                CompilerAsserts.partialEvaluationConstant(bci);
                 op = BYTES.getShort(bc, bci);
                 try {
                     switch (op) {
@@ -3375,31 +3374,31 @@ public final class BasicInterpreterWithOptimizations extends BasicInterpreter {
                         }
                         case Instructions.TAG_ENTER :
                         {
-                            doTagEnter(frame, bc, bci, sp, tagNodes);
+                            doTagEnter(frame, bc, bci, sp);
                             bci += 6;
                             break;
                         }
                         case Instructions.TAG_LEAVE :
                         {
-                            doTagLeave(this, frame, bc, bci, sp, tagNodes);
+                            doTagLeave(this, frame, bc, bci, sp);
                             bci += 6;
                             break;
                         }
                         case Instructions.TAG_LEAVE_VOID :
                         {
-                            doTagLeaveVoid(frame, bc, bci, sp, tagNodes);
+                            doTagLeaveVoid(frame, bc, bci, sp);
                             bci += 6;
                             break;
                         }
                         case Instructions.TAG_YIELD :
                         {
-                            doTagYield(frame, bc, bci, sp, tagNodes);
+                            doTagYield(frame, bc, bci, sp);
                             bci += 6;
                             break;
                         }
                         case Instructions.TAG_RESUME :
                         {
-                            doTagResume(frame, bc, bci, sp, tagNodes);
+                            doTagResume(frame, bc, bci, sp);
                             bci += 6;
                             break;
                         }
@@ -3899,34 +3898,34 @@ public final class BasicInterpreterWithOptimizations extends BasicInterpreter {
         }
 
         @InliningCutoff
-        private void doTagEnter(VirtualFrame frame, byte[] bc, int bci, int sp, TagNode[] tagNodes) {
-            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
+        private void doTagEnter(VirtualFrame frame, byte[] bc, int bci, int sp) {
+            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagRoot.tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
             tagNode.findProbe().onEnter(frame);
         }
 
-        private void doTagLeave(AbstractBytecodeNode $this, VirtualFrame frame, byte[] bc, int bci, int sp, TagNode[] tagNodes) {
+        private void doTagLeave(AbstractBytecodeNode $this, VirtualFrame frame, byte[] bc, int bci, int sp) {
             Object returnValue;
             returnValue = FRAMES.requireObject(frame, sp - 1);
-            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
+            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagRoot.tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
             tagNode.findProbe().onReturnValue(frame, returnValue);
         }
 
         @InliningCutoff
-        private void doTagLeaveVoid(VirtualFrame frame, byte[] bc, int bci, int sp, TagNode[] tagNodes) {
-            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
+        private void doTagLeaveVoid(VirtualFrame frame, byte[] bc, int bci, int sp) {
+            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagRoot.tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
             tagNode.findProbe().onReturnValue(frame, null);
         }
 
         @InliningCutoff
-        private void doTagYield(VirtualFrame frame, byte[] bc, int bci, int sp, TagNode[] tagNodes) {
+        private void doTagYield(VirtualFrame frame, byte[] bc, int bci, int sp) {
             Object returnValue = FRAMES.requireObject(frame, sp - 1);
-            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
+            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagRoot.tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
             tagNode.findProbe().onYield(frame, returnValue);
         }
 
         @InliningCutoff
-        private void doTagResume(VirtualFrame frame, byte[] bc, int bci, int sp, TagNode[] tagNodes) {
-            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
+        private void doTagResume(VirtualFrame frame, byte[] bc, int bci, int sp) {
+            TagNode tagNode = ACCESS.uncheckedCast(ACCESS.readObject(tagRoot.tagNodes, BYTES.getIntUnaligned(bc, bci + 2 /* imm tag */)), TagNode.class);
             tagNode.findProbe().onResume(frame);
         }
 
