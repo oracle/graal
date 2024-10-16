@@ -278,6 +278,15 @@ public final class SpecializationData extends TemplateMethod {
         return uncachedSpecialization;
     }
 
+    public boolean hasFrameParameter() {
+        for (Parameter p : getSignatureParameters()) {
+            if (ElementUtils.typeEquals(p.getType(), types.VirtualFrame) || ElementUtils.typeEquals(p.getType(), types.Frame)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public boolean needsVirtualFrame() {
         if (getFrame() != null && ElementUtils.typeEquals(getFrame().getType(), types.VirtualFrame)) {
             // not supported for frames
