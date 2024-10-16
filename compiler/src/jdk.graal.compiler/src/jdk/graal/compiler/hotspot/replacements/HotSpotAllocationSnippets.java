@@ -165,7 +165,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
                     @ConstantParameter boolean supportsOptimizedFilling,
                     @ConstantParameter HotSpotAllocationProfilingData profilingData,
                     @ConstantParameter boolean withException) {
-        Object result = allocateArrayImpl(hub.asWord(), length, arrayBaseOffset, log2ElementSize, fillContents, fillStartOffset, emitMemoryBarrier, maybeUnroll, supportsBulkZeroing,
+        Object result = allocateArrayImpl(hub.asWord(), length, false, arrayBaseOffset, log2ElementSize, fillContents, fillStartOffset, emitMemoryBarrier, maybeUnroll, supportsBulkZeroing,
                         supportsOptimizedFilling, profilingData, withException);
         return piArrayCastToSnippetReplaceeStamp(result, length);
     }
@@ -272,7 +272,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
         int arrayBaseOffset = (layoutHelper >> layoutHelperHeaderSizeShift(INJECTED_VMCONFIG)) & layoutHelperHeaderSizeMask(INJECTED_VMCONFIG);
         int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift(INJECTED_VMCONFIG)) & layoutHelperLog2ElementSizeMask(INJECTED_VMCONFIG);
         Object result;
-        result = allocateArrayImpl(nonNullKlass.asWord(), length, arrayBaseOffset, log2ElementSize, fillContents, arrayBaseOffset, emitMemoryBarrier, false,
+        result = allocateArrayImpl(nonNullKlass.asWord(), length, false, arrayBaseOffset, log2ElementSize, fillContents, arrayBaseOffset, emitMemoryBarrier, false,
                         supportsBulkZeroing, supportsOptimizedFilling, profilingData, withException);
         return piArrayCastToSnippetReplaceeStamp(result, length);
     }

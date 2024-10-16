@@ -223,11 +223,12 @@ public final class ThreadLocalAllocation {
             DynamicHub hub = ObjectHeaderImpl.getObjectHeaderImpl().dynamicHubFromObjectHeader(objectHeader);
 
             UnsignedWord size = LayoutEncoding.getPureInstanceAllocationSize(hub.getLayoutEncoding());
-            Object result = slowPathNewInstanceWithoutAllocating(hub, size);
-
-            runSlowPathHooks();
-            sampleSlowPathAllocation(result, size, Integer.MIN_VALUE);
-
+            Object result = allocateInstanceInCurrentTlab(hub, size);
+            if (result == null) {
+                result = slowPathNewInstanceWithoutAllocating(hub, size);
+                runSlowPathHooks();
+                sampleSlowPathAllocation(result, size, Integer.MIN_VALUE);
+            }
             return result;
         } finally {
             StackOverflowCheck.singleton().protectYellowZone();
@@ -332,6 +333,16 @@ public final class ThreadLocalAllocation {
             JfrAllocationEvents.emit(startTicks, hub, size, tlabSize);
             DeoptTester.enableDeoptTesting();
         }
+    }
+
+    @Uninterruptible(reason = "Holds uninitialized memory.")
+    private static Object allocateInstanceInCurrentTlab(DynamicHub hub, UnsignedWord size) {
+        if (size.aboveThan(availableTlabMemory(getTlab()))) {
+            return null;
+        }
+        assert size.equal(LayoutEncoding.getPureInstanceAllocationSize(hub.getLayoutEncoding()));
+        Pointer memory = allocateRawMemoryInTlab(size, getTlab());
+        return FormatObjectNode.formatObject(memory, DynamicHub.toClass(hub), false, FillContent.WITH_ZEROES, true);
     }
 
     @Uninterruptible(reason = "Holds uninitialized memory.")
