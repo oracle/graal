@@ -102,7 +102,7 @@ static void JNICALL unmount_callback(jvmtiEnv *jvmti, ...) {
     }
 }
 
-JNIEXPORT void JNICALL Java_com_oracle_truffle_api_impl_Accessor_00024JavaLangAccessor_registerJVMTIHook(JNIEnv *env, jclass clz) {
+JNIEXPORT void JNICALL Java_com_oracle_truffle_api_impl_Accessor_00024JavaLangSupport_registerJVMTIHook(JNIEnv *env, jclass clz) {
     virtualThreadHooksClass = (*env)->NewGlobalRef(env, clz);
     EXCEPTION_CHECK(env);
     CHECK_NONZERO(virtualThreadHooksClass);

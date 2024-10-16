@@ -49,7 +49,7 @@ import java.util.Set;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.impl.Accessor;
-import com.oracle.truffle.api.impl.Accessor.JavaLangAccessor;
+import com.oracle.truffle.api.impl.Accessor.JavaLangSupport;
 import com.oracle.truffle.api.impl.Accessor.ModulesAccessor;
 
 public final class ModulesSupport {
@@ -156,8 +156,8 @@ public final class ModulesSupport {
         }
     }
 
-    public static JavaLangAccessor getJavaLangAccessor() {
-        return ACCESSOR.getJavaLangAccessor();
+    public static JavaLangSupport getJavaLangSupport() {
+        return ACCESSOR.getJavaLangSupport();
     }
 
     /**

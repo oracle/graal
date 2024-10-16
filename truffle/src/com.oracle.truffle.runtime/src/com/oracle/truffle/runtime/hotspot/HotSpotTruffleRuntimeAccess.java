@@ -201,26 +201,27 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
                 throw new InternalError(e);
             }
         }
+        /*
+         * Ensure that HotSpotThreadLocalHandshake and HotSpotFastThreadLocal are loaded before the
+         * hooks are called. This prevents class initialization during the virtual thread hooks
+         * These hooks must not trigger class loading or suspend the VirtualThread (per their
+         * specification).
+         */
+        HotSpotThreadLocalHandshake.initializePendingOffset();
+        HotSpotFastThreadLocal.ensureLoaded();
         HotSpotTruffleRuntime rt = new HotSpotTruffleRuntime(compilationSupport);
-        registerVirtualThreadSupport();
+        registerVirtualThreadMountHooks();
         compilationSupport.registerRuntime(rt);
         return rt;
     }
 
-    private static void registerVirtualThreadSupport() {
-        /*
-         * Ensure that HotSpotThreadLocalHandshake and HotSpotFastThreadLocal are loaded before the
-         * hooks are called. This prevents class initialization during the virtual thread hooks
-         * which must not trigger class loading or suspend the VirtualThread.
-         */
-        HotSpotThreadLocalHandshake.initializePendingOffset();
-        HotSpotFastThreadLocal.ensureLoaded();
+    private static void registerVirtualThreadMountHooks() {
         Consumer<Thread> onMount = (t) -> {
             HotSpotFastThreadLocal.mount();
             HotSpotThreadLocalHandshake.setPendingFlagForVirtualThread();
         };
         Consumer<Thread> onUmount = (t) -> HotSpotFastThreadLocal.unmount();
-        ModulesSupport.getJavaLangAccessor().registerVirtualThreadMountHooks(onMount, onUmount);
+        ModulesSupport.getJavaLangSupport().registerVirtualThreadMountHooks(onMount, onUmount);
     }
 
     private static RuntimeException throwVersionError(String errorFormat, Object... args) {

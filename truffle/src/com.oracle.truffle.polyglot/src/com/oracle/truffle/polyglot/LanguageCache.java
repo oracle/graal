@@ -323,6 +323,9 @@ final class LanguageCache implements Comparable<LanguageCache> {
         Class<?> providerClass = providerAdapter.getProviderClass();
         Module providerModule = providerClass.getModule();
         JDKSupport.exportTransitivelyTo(providerModule);
+        /*
+         * Forward the native access capability to all loaded languages.
+         */
         JDKSupport.enableNativeAccess(providerModule);
         Registration reg = providerClass.getAnnotation(Registration.class);
         if (reg == null) {

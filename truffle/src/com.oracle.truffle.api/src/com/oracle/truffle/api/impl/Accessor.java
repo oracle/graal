@@ -1370,11 +1370,11 @@ public abstract class Accessor {
 
         public abstract Module getTargetModule();
 
-        public abstract JavaLangAccessor getJavaLangAccessor();
+        public abstract JavaLangSupport getJavaLangSupport();
 
     }
 
-    public abstract static class JavaLangAccessor {
+    public abstract static class JavaLangSupport {
 
         private static volatile Consumer<? super Thread> onMountCallBack;
         private static volatile Consumer<? super Thread> onUnmountCallBack;

@@ -42,7 +42,7 @@ package com.oracle.truffle.runtime.hotspot;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.impl.Accessor.JavaLangAccessor;
+import com.oracle.truffle.api.impl.Accessor.JavaLangSupport;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.runtime.ModulesSupport;
@@ -53,7 +53,7 @@ import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
 
     private static final sun.misc.Unsafe UNSAFE = HotSpotTruffleRuntime.UNSAFE;
-    private static final JavaLangAccessor JAVA_LANG_ACCESS = ModulesSupport.getJavaLangAccessor();
+    private static final JavaLangSupport JAVA_LANG_SUPPORT = ModulesSupport.getJavaLangSupport();
 
     static final HotSpotThreadLocalHandshake SINGLETON = new HotSpotThreadLocalHandshake();
     private static final ThreadLocal<TruffleSafepointImpl> STATE = new ThreadLocal<>();
@@ -84,7 +84,7 @@ final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
     // This is only used in interpreter, PE uses HotSpotTruffleSafepointLoweringSnippet.pollSnippet
     @Override
     public void poll(Node enclosingNode) {
-        Thread carrierThread = JAVA_LANG_ACCESS.currentCarrierThread();
+        Thread carrierThread = JAVA_LANG_SUPPORT.currentCarrierThread();
         long eetop = UNSAFE.getLong(carrierThread, THREAD_EETOP_OFFSET);
         if (UNSAFE.getInt(null, eetop + PENDING_OFFSET) != 0) {
             processHandshake(enclosingNode);
@@ -108,7 +108,7 @@ final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
 
     @Override
     protected void clearFastPending() {
-        Thread carrierThread = JAVA_LANG_ACCESS.currentCarrierThread();
+        Thread carrierThread = JAVA_LANG_SUPPORT.currentCarrierThread();
         long eetop = UNSAFE.getLongVolatile(carrierThread, THREAD_EETOP_OFFSET);
         UNSAFE.putIntVolatile(null, eetop + PENDING_OFFSET, 0);
     }
@@ -151,7 +151,7 @@ final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
     static void setPendingFlagForVirtualThread() {
         TruffleSafepointImpl safepoint = STATE.get();
         if (safepoint != null) {
-            Thread carrierThread = JAVA_LANG_ACCESS.currentCarrierThread();
+            Thread carrierThread = JAVA_LANG_SUPPORT.currentCarrierThread();
             long eetop = UNSAFE.getLongVolatile(carrierThread, THREAD_EETOP_OFFSET);
 
             /*

@@ -210,6 +210,9 @@ final class InstrumentCache {
         Class<?> providerClass = providerAdapter.getProviderClass();
         Module providerModule = providerClass.getModule();
         JDKSupport.exportTransitivelyTo(providerModule);
+        /*
+         * Forward the native access capability to all loaded tools.
+         */
         JDKSupport.enableNativeAccess(providerModule);
         Registration reg = providerClass.getAnnotation(Registration.class);
         if (reg == null) {

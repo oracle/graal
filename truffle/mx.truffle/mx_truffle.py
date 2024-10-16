@@ -195,6 +195,24 @@ def _open_module_exports_args():
         args.append('--add-exports=' + truffle_api_module_name + '/' + package + '=' + targets)
     return args
 
+def enable_truffle_native_access(vmArgs):
+    """
+    Enables native access to Truffle to allow usage of the Optimized Runtime
+    and delegation of native access to all languages and tools.
+
+    This function checks the provided VM arguments to determine if a module path
+    is used. If so, it enables the native access to `org.graalvm.truffle` module.
+    Otherwise, it enables native access to `ALL-UNNAMED`.
+
+    The function appends the appropriate `--enable-native-access` option to the list of
+    VM arguments and also returns the updated list.
+    """
+    if '-p' in vmArgs or '--module-path' in vmArgs:
+        native_access_target_module = 'org.graalvm.truffle'
+    else:
+        native_access_target_module = 'ALL-UNNAMED'
+    vmArgs.extend([f'--enable-native-access={native_access_target_module}'])
+    return vmArgs
 
 class TruffleUnittestConfig(mx_unittest.MxUnittestConfig):
 
@@ -227,12 +245,7 @@ class TruffleUnittestConfig(mx_unittest.MxUnittestConfig):
 
         # Disable VirtualThread warning
         vmArgs = vmArgs + ['-Dpolyglot.engine.WarnVirtualThreadSupport=false']
-        # Enable native access to Truffle, truffle delegates native access to languages
-        if '-p' in vmArgs or '--module-path' in vmArgs:
-            native_access_target_module = 'org.graalvm.truffle'
-        else:
-            native_access_target_module = 'ALL-UNNAMED'
-        vmArgs = vmArgs + [f'--enable-native-access={native_access_target_module}']
+        enable_truffle_native_access(vmArgs)
         return (vmArgs, mainClass, mainClassArgs)
 
 
@@ -411,6 +424,7 @@ def _native_image_sl(jdk, vm_args, target_dir, use_optimized_runtime=True, use_e
 
     # Even when Truffle is on the classpath, it is loaded as a named module due to
     # the ForceOnModulePath option in its native-image.properties
+    # GR-58290: Fixed when ForceOnModulePath is removed
     native_image_args += ["--enable-native-access=org.graalvm.truffle"]
 
     native_image_args += mx.get_runtime_jvm_args(names=dist_names, force_cp=force_cp)
