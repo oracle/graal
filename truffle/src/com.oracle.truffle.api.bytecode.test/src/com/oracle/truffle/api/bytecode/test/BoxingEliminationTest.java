@@ -1396,6 +1396,60 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
         assertStable(quickenings, node, 42, 42);
     }
 
+    @Test
+    public void testRewriteCast() {
+        BoxingEliminationTestRootNode node = parse(b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.beginRewriteCast();
+            b.emitLoadArgument(0);
+            b.endRewriteCast();
+            b.endReturn();
+            b.endRoot();
+        });
+
+        assertQuickenings(node, 0, 0);
+        assertInstructions(node,
+                        "load.argument",
+                        "c.RewriteCast",
+                        "return");
+        assertEquals(42, node.getCallTarget().call(42));
+        assertInstructions(node,
+                        "load.argument",
+                        "c.RewriteCast$Int",
+                        "return");
+
+        assertEquals(42d, node.getCallTarget().call(42d));
+
+        assertInstructions(node,
+                        "load.argument",
+                        "c.RewriteCast",
+                        "return");
+
+        assertEquals(42d, node.getCallTarget().call(42d));
+        assertInstructions(node,
+                        "load.argument",
+                        "c.RewriteCast$Double",
+                        "return");
+
+        assertEquals(42, node.getCallTarget().call(42));
+        assertInstructions(node,
+                        "load.argument",
+                        "c.RewriteCast",
+                        "return");
+
+        assertEquals(42, node.getCallTarget().call(42));
+        assertInstructions(node,
+                        "load.argument",
+                        "c.RewriteCast",
+                        "return");
+
+        var quickenings = assertQuickenings(node, 5, 5);
+        assertStable(quickenings, node, 42);
+        assertStable(quickenings, node, 42d);
+        assertStable(quickenings, node, "");
+    }
+
     private static BoxingEliminationTestRootNode parse(BytecodeParser<BoxingEliminationTestRootNodeGen.Builder> builder) {
         BytecodeRootNodes<BoxingEliminationTestRootNode> nodes = BoxingEliminationTestRootNodeGen.create(LANGUAGE, BytecodeConfig.DEFAULT, builder);
         return nodes.getNode(nodes.count() - 1);
@@ -1511,6 +1565,34 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
             @Specialization
             public static String doString(String v) {
                 return v;
+            }
+        }
+
+        @Operation
+        public static final class RewriteCast {
+
+            @ForceQuickening
+            @Specialization(rewriteOn = UnexpectedResultException.class)
+            public static int doInt(Object obj) throws UnexpectedResultException {
+                if (obj instanceof Integer i) {
+                    return i;
+                }
+                throw new UnexpectedResultException(obj);
+            }
+
+            @ForceQuickening
+            @Specialization(rewriteOn = UnexpectedResultException.class)
+            public static double doDouble(Object obj) throws UnexpectedResultException {
+                if (obj instanceof Double i) {
+                    return i;
+                }
+                throw new UnexpectedResultException(obj);
+            }
+
+            @Specialization(replaces = {"doInt", "doDouble"})
+            public static Object doObject(
+                            Object obj) {
+                return obj;
             }
         }
 
