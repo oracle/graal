@@ -209,6 +209,7 @@ import com.oracle.svm.hosted.analysis.NativeImageReachabilityAnalysisEngine;
 import com.oracle.svm.hosted.analysis.ReachabilityTracePrinter;
 import com.oracle.svm.hosted.analysis.SVMAnalysisMetaAccess;
 import com.oracle.svm.hosted.analysis.SubstrateUnsupportedFeatures;
+import com.oracle.svm.hosted.analysis.ai.AbstractInterpretationDriver;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.c.CAnnotationProcessorCache;
 import com.oracle.svm.hosted.c.CConstantValueSupportImpl;
@@ -345,6 +346,7 @@ public class NativeImageGenerator {
     protected final ImageClassLoader loader;
     protected final HostedOptionProvider optionProvider;
     protected final ProgressReporter reporter;
+    private final Method javaMainMethod;
 
     protected AnalysisUniverse aUniverse;
     protected HostedUniverse hUniverse;
@@ -355,7 +357,8 @@ public class NativeImageGenerator {
 
     protected Pair<Method, CEntryPointData> mainEntryPoint;
 
-    public NativeImageGenerator(ImageClassLoader loader, HostedOptionProvider optionProvider, Pair<Method, CEntryPointData> mainEntryPoint, ProgressReporter reporter) {
+    public NativeImageGenerator(Method javaMainMethod, ImageClassLoader loader, HostedOptionProvider optionProvider, Pair<Method, CEntryPointData> mainEntryPoint, ProgressReporter reporter) {
+        this.javaMainMethod = javaMainMethod;
         this.loader = loader;
         this.mainEntryPoint = mainEntryPoint;
         this.featureHandler = new FeatureHandler();
@@ -591,6 +594,7 @@ public class NativeImageGenerator {
             setupNativeImage(options, entryPoints, javaMainSupport, harnessSubstitutions, debug);
 
             boolean returnAfterAnalysis = runPointsToAnalysis(imageName, options, debug);
+            runAbstractInterpretation(debug);
             if (returnAfterAnalysis) {
                 return;
             }
@@ -812,6 +816,14 @@ public class NativeImageGenerator {
 
     protected void createAbstractImage(NativeImageKind k, List<HostedMethod> hostedEntryPoints, NativeImageHeap heap, HostedMetaAccess hMetaAccess, NativeImageCodeCache codeCache) {
         this.image = AbstractImage.create(k, hUniverse, hMetaAccess, nativeLibraries, heap, codeCache, hostedEntryPoints, loader.getClassLoader());
+    }
+
+    private void runAbstractInterpretation(DebugContext debug) {
+        /* TODO this is only temporary - eventually, we should start from all entry points */
+        AnalysisError.guarantee(javaMainMethod != null, "Main method not available");
+        AnalysisMethod root = bb.getMetaAccess().lookupJavaMethod(javaMainMethod);
+        var driver = new AbstractInterpretationDriver(debug, root);
+        driver.run();
     }
 
     @SuppressWarnings("try")

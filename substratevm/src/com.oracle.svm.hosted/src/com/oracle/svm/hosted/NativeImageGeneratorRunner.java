@@ -434,6 +434,7 @@ public class NativeImageGeneratorRunner {
                 }
 
                 reporter.printStart(imageName, imageKind);
+                Method javaMainMethod = null;
 
                 if (!className.isEmpty() || !moduleName.isEmpty()) {
                     Method mainEntryPoint;
@@ -477,7 +478,6 @@ public class NativeImageGeneratorRunner {
                          */
                         mainEntryPoint = mainClass.getDeclaredMethod(mainEntryPointName, int.class, CCharPointerPointer.class);
                     } catch (NoSuchMethodException ignored2) {
-                        Method javaMainMethod;
                         /*
                          * If no C-level main method was found, look for a Java-level main method
                          * and use our wrapper to invoke it.
@@ -540,7 +540,7 @@ public class NativeImageGeneratorRunner {
                     mainEntryPointData = createMainEntryPointData(imageKind, mainEntryPoint);
                 }
 
-                generator = createImageGenerator(classLoader, optionParser, mainEntryPointData, reporter);
+                generator = createImageGenerator(javaMainMethod, classLoader, optionParser, mainEntryPointData, reporter);
                 generator.run(entryPoints, javaMainSupport, imageName, imageKind, SubstitutionProcessor.IDENTITY, optionParser.getRuntimeOptionNames(), timerCollection);
                 wasSuccessfulBuild = true;
             } finally {
@@ -607,8 +607,9 @@ public class NativeImageGeneratorRunner {
         reporter.printEpilog(Optional.ofNullable(imageName), Optional.ofNullable(generator), classLoader, wasSuccessfulBuild, Optional.ofNullable(unhandledThrowable), parsedHostedOptions);
     }
 
-    protected NativeImageGenerator createImageGenerator(ImageClassLoader classLoader, HostedOptionParser optionParser, Pair<Method, CEntryPointData> mainEntryPointData, ProgressReporter reporter) {
-        return new NativeImageGenerator(classLoader, optionParser, mainEntryPointData, reporter);
+    protected NativeImageGenerator createImageGenerator(Method javaMainMethod, ImageClassLoader classLoader, HostedOptionParser optionParser, Pair<Method, CEntryPointData> mainEntryPointData,
+                    ProgressReporter reporter) {
+        return new NativeImageGenerator(javaMainMethod, classLoader, optionParser, mainEntryPointData, reporter);
     }
 
     protected Pair<Method, CEntryPointData> createMainEntryPointData(NativeImageKind imageKind, Method mainEntryPoint) {
