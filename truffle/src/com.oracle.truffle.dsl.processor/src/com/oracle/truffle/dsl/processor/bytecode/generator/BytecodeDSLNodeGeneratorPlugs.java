@@ -228,7 +228,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
             rootNode.emitOnSpecialize(builder, "$bytecode", "$bci", BytecodeRootNodeElement.readInstruction("$bc", "$bci"), specialization.getNode().getNodeId() + "$" + specialization.getId());
         }
 
-        if (instruction.hasQuickenings()) {
+        if (instruction.getQuickeningRoot().hasQuickenings()) {
             if (quickenMethod == null) {
                 quickenMethod = createQuickenMethod(nodeFactory, frameState);
             }

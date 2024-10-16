@@ -5945,6 +5945,7 @@ public class FlatNodeGenFactory {
         builder.tree(this.multiState.createSet(innerFrameState, transaction, activeQuery, false, false));
         builder.tree(this.multiState.createSet(innerFrameState, transaction, excludedQuery, true, false));
         builder.tree(this.multiState.persistTransaction(innerFrameState, transaction));
+        plugs.notifySpecialize(this, builder, frameState, specialization);
 
         for (SpecializationData removeSpecialization : specializations) {
             if (useSpecializationClass(removeSpecialization)) {
@@ -5997,6 +5998,7 @@ public class FlatNodeGenFactory {
             if (!useSpecializationClass || !specialization.hasMultipleInstances()) {
                 // single instance remove
                 builder.tree((multiState.createSet(frameState, null, StateQuery.create(SpecializationActive.class, specialization), false, true)));
+                plugs.notifySpecialize(this, builder, frameState, specialization);
                 if (useSpecializationClass) {
                     builder.startStatement();
                     builder.tree(createSpecializationFieldAccess(frameState, specialization, true, true, null, CodeTreeBuilder.singleString("null")));
@@ -8245,8 +8247,16 @@ public class FlatNodeGenFactory {
     }
 
     public CodeTree createOnlyActive(FrameState frameState, List<SpecializationData> filteredSpecializations, Collection<SpecializationData> allSpecializations) {
-        return multiState.createContainsOnly(frameState, 0, -1, StateQuery.create(SpecializationActive.class, filteredSpecializations),
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+        CodeTree tree = multiState.createContainsOnly(frameState, 0, -1, StateQuery.create(SpecializationActive.class, filteredSpecializations),
                         StateQuery.create(SpecializationActive.class, allSpecializations));
+        b.tree(tree);
+        if (!tree.isEmpty()) {
+            b.string(" && ");
+        }
+        b.tree(multiState.createContains(frameState,
+                        StateQuery.create(SpecializationActive.class, allSpecializations)));
+        return b.build();
     }
 
     public CodeTree createIsImplicitTypeStateCheck(FrameState frameState, TypeMirror targetType, TypeMirror specializationType, int signatureIndex) {
