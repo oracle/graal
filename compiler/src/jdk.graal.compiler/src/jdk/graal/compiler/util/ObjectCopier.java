@@ -27,6 +27,7 @@ package jdk.graal.compiler.util;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -368,7 +369,7 @@ public class ObjectCopier {
     public static byte[] encode(Encoder encoder, Object root) {
         encoder.makeId(root, ObjectPath.of("[root:" + root.getClass().getName() + "]"));
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        try (ObjectCopierOutputStream cos = new ObjectCopierOutputStream(baos)) {
+        try (ObjectCopierOutputStream cos = new ObjectCopierOutputStream(baos, encoder.debugOutput)) {
             encoder.encode(cos, root);
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -616,16 +617,27 @@ public class ObjectCopier {
          */
         final Map<Object, Field> externalValues;
 
+        private final PrintStream debugOutput;
+
         public Encoder(List<Field> externalValueFields) {
-            this(gatherExternalValues(externalValueFields));
+            this(externalValueFields, null);
+        }
+
+        public Encoder(List<Field> externalValueFields, PrintStream debugOutput) {
+            this(gatherExternalValues(externalValueFields), debugOutput);
         }
 
         /**
          * Use precomputed {@code externalValues} to avoid recomputing them.
          */
         public Encoder(Map<Object, Field> externalValues) {
+            this(externalValues, null);
+        }
+
+        public Encoder(Map<Object, Field> externalValues, PrintStream debugOutput) {
             objects.addObject(null);
             this.externalValues = externalValues;
+            this.debugOutput = debugOutput;
         }
 
         public static Map<Object, Field> gatherExternalValues(List<Field> externalValueFields) {
@@ -668,11 +680,13 @@ public class ObjectCopier {
         }
 
         private void encodeMap(ObjectCopierOutputStream stream, UnmodifiableEconomicMap<?, ?> map) throws IOException {
-            stream.writePackedUnsignedInt(map.size());
+            stream.internalWritePackedUnsignedInt(map.size());
 
             UnmodifiableMapCursor<?, ?> cursor = map.getEntries();
             while (cursor.advance()) {
+                debugf("%n ");
                 writeId(stream, getId(cursor.getKey()));
+                debugf(" :");
                 writeId(stream, getId(cursor.getValue()));
             }
         }
@@ -689,7 +703,10 @@ public class ObjectCopier {
 
         public void writeString(ObjectCopierOutputStream stream, String s) throws IOException {
             int id = strings.getIndex(s);
-            stream.writePackedUnsignedInt(id);
+            stream.internalWritePackedUnsignedInt(id);
+            if (debugOutput != null) {
+                debugf(" %s", escapeDebugStringValue(s));
+            }
         }
 
         public void makeStringId(String s, ObjectPath objectPath) {
@@ -772,19 +789,23 @@ public class ObjectCopier {
 
         private void encode(ObjectCopierOutputStream out, Object root) throws IOException {
             String[] encodedStrings = strings.encodeAll(new String[strings.getLength()]);
-            out.writePackedUnsignedInt(encodedStrings.length);
+            out.internalWritePackedUnsignedInt(encodedStrings.length);
             for (String s : encodedStrings) {
                 out.writeStringValue(s);
             }
             Object[] encodedObjects = objects.encodeAll(new Object[objects.getLength()]);
+            debugf("root:");
             writeId(out, getId(root));
+            debugf("%n");
             for (int id = 1; id < encodedObjects.length; id++) {
                 Object obj = encodedObjects[id];
                 Class<?> clazz = obj.getClass();
                 Builtin builtin = getBuiltin(clazz);
                 if (builtin != null) {
-                    out.writeByte('<');
+                    out.internalWriteByte('<');
+                    debugf("%d:<", id);
                     writeString(out, clazz.getName());
+                    debugf(" > =");
                     try {
                         builtin.encode(this, out, obj);
                     } catch (IOException e) {
@@ -793,28 +814,35 @@ public class ObjectCopier {
                 } else if (clazz.isArray()) {
                     Class<?> componentType = clazz.getComponentType();
                     if (!componentType.isPrimitive()) {
-                        out.writeByte(']');
+                        out.internalWriteByte(']');
+                        debugf("%d:[", id);
                         writeString(out, componentType.getName());
+                        debugf(" ] =");
                         Object[] objs = (Object[]) obj;
-                        out.writePackedUnsignedInt(objs.length);
+                        out.internalWritePackedUnsignedInt(objs.length);
                         for (Object o : objs) {
                             writeId(out, getId(o));
                         }
                     } else {
-                        out.writeByte('[');
+                        out.internalWriteByte('[');
+                        debugf("%d:[ %s ] =", id, componentType.getName());
                         out.writeTypedPrimitiveArray(obj);
                     }
                 } else if (clazz == Field.class) {
                     Field field = (Field) obj;
-                    out.writeByte('@');
+                    out.internalWriteByte('@');
+                    debugf("%d:@", id);
                     writeString(out, field.getDeclaringClass().getName());
                     writeString(out, field.getName());
                 } else {
                     ClassInfo classInfo = classInfos.get(clazz);
-                    out.writeByte('{');
+                    out.internalWriteByte('{');
+                    debugf("%d:{", id);
                     writeString(out, clazz.getName());
+                    debugf(" }");
                     for (var e : classInfo.fields().entrySet()) {
                         Field f = e.getValue();
+                        debugf("%n ");
                         Class<?> fieldType = f.getType();
                         Object fValue = readField(f, obj);
                         if (fieldType.isPrimitive()) {
@@ -822,8 +850,13 @@ public class ObjectCopier {
                         } else {
                             writeId(out, getId(fValue));
                         }
+                        debugf("\t # %s", f.getName());
+                        if (!fieldType.isPrimitive()) {
+                            debugf(" (object)");
+                        }
                     }
                 }
+                debugf("%n");
             }
         }
 
@@ -837,7 +870,16 @@ public class ObjectCopier {
                 return objects.getIndex(field);
             }
             return objects.getIndex(o);
+        }
 
+        private void debugf(String format, Object... args) {
+            if (debugOutput != null) {
+                debugOutput.printf(format, args);
+            }
+        }
+
+        static String escapeDebugStringValue(String s) {
+            return s.replace("\\", "\\\\").replace("\n", "\\n").replace("\r", "\\r");
         }
     }
 

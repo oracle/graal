@@ -29,31 +29,46 @@ import java.io.InputStream;
 import java.lang.reflect.Array;
 import java.nio.charset.StandardCharsets;
 
-public class ObjectCopierInputStream extends TypedDataInputStream {
+/**
+ * Delegates to, but does not subclass, {@link TypedDataInputStream} for symmetry with
+ * {@link ObjectCopierOutputStream}, see the reasoning there. Add methods as needed.
+ */
+public class ObjectCopierInputStream extends InputStream {
+    private final TypedDataInputStream in;
+
     public ObjectCopierInputStream(InputStream in) {
-        super(in);
+        this.in = new TypedDataInputStream(in);
     }
 
     @Override
+    public int read() throws IOException {
+        return in.read();
+    }
+
+    @Override
+    public void close() throws IOException {
+        in.close();
+    }
+
     protected Object readUntypedValue(int type) throws IOException {
         return switch (type) {
             case 'I' -> (int) readPackedSignedLong();
             case 'J' -> readPackedSignedLong();
-            default -> super.readUntypedValue(type);
+            case 'U' -> readStringValue();
+            default -> in.readUntypedValue(type);
         };
     }
 
-    @Override
     protected String readStringValue() throws IOException {
         int len = readPackedUnsignedInt();
         byte[] bytes = new byte[len];
-        readFully(bytes);
+        in.readFully(bytes);
         return new String(bytes, StandardCharsets.UTF_8);
     }
 
     public Object readTypedPrimitiveArray() throws IOException {
         int len = readPackedUnsignedInt();
-        int type = readUnsignedByte();
+        int type = in.readUnsignedByte();
         Object arr = switch (type) {
             case 'Z' -> new boolean[len];
             case 'B' -> new byte[len];
@@ -84,7 +99,7 @@ public class ObjectCopierInputStream extends TypedDataInputStream {
     }
 
     private long readPacked() throws IOException {
-        int b0 = readUnsignedByte();
+        int b0 = in.readUnsignedByte();
         if (b0 < ObjectCopierOutputStream.NUM_LOW_CODES) {
             return b0;
         }
@@ -92,7 +107,7 @@ public class ObjectCopierInputStream extends TypedDataInputStream {
         long sum = b0;
         long shift = ObjectCopierOutputStream.HIGH_WORD_SHIFT;
         for (int i = 2;; i++) {
-            long b = readUnsignedByte();
+            long b = in.readUnsignedByte();
             sum += b << shift;
             if (b < ObjectCopierOutputStream.NUM_LOW_CODES || i == ObjectCopierOutputStream.MAX_BYTES) {
                 return sum;
