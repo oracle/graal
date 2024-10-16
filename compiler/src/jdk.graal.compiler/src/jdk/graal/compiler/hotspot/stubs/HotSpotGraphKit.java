@@ -25,7 +25,7 @@
 package jdk.graal.compiler.hotspot.stubs;
 
 import static jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
+import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
 
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.debug.Assertions;
@@ -89,7 +89,7 @@ public class HotSpotGraphKit extends GraphKit {
         GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
 
         StructuredGraph calleeGraph;
-        if (IS_IN_NATIVE_IMAGE) {
+        if (inImageRuntimeCode()) {
             calleeGraph = getReplacements().getSnippet(method, null, null, null, false, null, invokeNode.getOptions());
         } else {
             calleeGraph = new StructuredGraph.Builder(invokeNode.getOptions(), invokeNode.getDebug()).method(method).trackNodeSourcePosition(

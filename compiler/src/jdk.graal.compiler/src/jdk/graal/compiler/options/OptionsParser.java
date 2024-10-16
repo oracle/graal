@@ -24,8 +24,8 @@
  */
 package jdk.graal.compiler.options;
 
-import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
+import static org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode;
+import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -75,11 +75,11 @@ public class OptionsParser {
      */
     @ExcludeFromJacocoGeneratedReport("contains libgraal-only path")
     public static Iterable<OptionDescriptors> getOptionsLoader() {
-        if (IS_IN_NATIVE_IMAGE) {
+        if (inImageRuntimeCode()) {
             return List.of(new OptionDescriptorsMap(Objects.requireNonNull(libgraalOptions.descriptors, "missing options")));
         }
         boolean inLibGraal = libgraalOptions != null;
-        if (inLibGraal && IS_BUILDING_NATIVE_IMAGE) {
+        if (inLibGraal && inImageBuildtimeCode()) {
             /*
              * Graal code is being run in the context of the LibGraalClassLoader while building
              * libgraal so use the LibGraalClassLoader to load the OptionDescriptors.
@@ -99,7 +99,7 @@ public class OptionsParser {
 
     @ExcludeFromJacocoGeneratedReport("only called when building libgraal")
     public static LibGraalOptionsInfo setLibgraalOptions(LibGraalOptionsInfo info) {
-        GraalError.guarantee(IS_BUILDING_NATIVE_IMAGE, "Can only set libgraal compiler options when building libgraal");
+        GraalError.guarantee(inImageBuildtimeCode(), "Can only set libgraal compiler options when building libgraal");
         GraalError.guarantee(libgraalOptions == null, "Libgraal compiler options must be set exactly once");
         OptionsParser.libgraalOptions = info;
         return info;
@@ -357,7 +357,7 @@ public class OptionsParser {
     }
 
     static boolean isEnterpriseOption(OptionDescriptor desc) {
-        if (IS_IN_NATIVE_IMAGE) {
+        if (inImageRuntimeCode()) {
             return Objects.requireNonNull(libgraalOptions.enterpriseOptions, "missing options").contains(desc.getName());
         }
         Class<?> declaringClass = desc.getDeclaringClass();

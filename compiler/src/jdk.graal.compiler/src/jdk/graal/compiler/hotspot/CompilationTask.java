@@ -30,7 +30,7 @@ import static jdk.graal.compiler.core.GraalCompilerOptions.CompilationBailoutAsF
 import static jdk.graal.compiler.core.GraalCompilerOptions.CompilationFailureAction;
 import static jdk.graal.compiler.core.phases.HighTier.Options.Inline;
 import static jdk.graal.compiler.java.BytecodeParserOptions.InlineDuringParsing;
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
+import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
 
 import java.io.PrintStream;
 
@@ -220,7 +220,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
          */
         private static boolean shouldExitVM(Throwable throwable) {
             // If not in libgraal, don't exit
-            if (!IS_IN_NATIVE_IMAGE) {
+            if (!inImageRuntimeCode()) {
                 return false;
             }
             // If assertions are not enabled, don't exit.

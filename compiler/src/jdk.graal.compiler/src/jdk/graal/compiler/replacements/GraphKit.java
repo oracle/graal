@@ -26,7 +26,7 @@ package jdk.graal.compiler.replacements;
 
 import static jdk.graal.compiler.nodes.CallTargetNode.InvokeKind.Static;
 import static jdk.vm.ci.code.BytecodeFrame.UNKNOWN_BCI;
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
+import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -317,7 +317,7 @@ public abstract class GraphKit extends CoreProvidersDelegate implements GraphBui
      *             {@code method}
      */
     public boolean checkArgs(ResolvedJavaMethod method, ValueNode... args) {
-        if (IS_IN_NATIVE_IMAGE) {
+        if (inImageRuntimeCode()) {
             // The dynamic lookup needed for this code is unsupported
             return true;
         }
