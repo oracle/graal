@@ -478,12 +478,15 @@ public final class ProbeNode extends Node {
                     // chain is null -> remove wrapper;
                     // Note: never set child nodes to null, can cause races
                     if (retiredNodeReference == null) {
-
-                        // eager probes cannot be removed
-                        if (!eagerProbe) {
+                        if (eagerProbe) {
+                            // eager probes cannot be removed
+                            oldChain = this.chain;
+                            this.chain = null;
+                        } else {
+                            // wrappers can just be removed for the next exection
                             InstrumentationHandler.removeWrapper(ProbeNode.this);
+                            return null;
                         }
-                        return null;
                     } else {
                         oldChain = this.chain;
                         this.chain = null;
