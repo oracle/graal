@@ -63,7 +63,7 @@ class MemoryUtil {
         if (hostFlags.hasMaxRAMPercentage()) {
             flags.add("-XX:MaxRAMPercentage=" + determineReasonableMaxRAMPercentage());
         } else if (hostFlags.hasMaximumHeapSizePercent()) {
-            flags.add("-XX:MaximumHeapSizePercent=" + determineReasonableMaxRAMPercentage());
+            flags.add("-XX:MaximumHeapSizePercent=" + (int) determineReasonableMaxRAMPercentage());
         }
         if (hostFlags.hasGCTimeRatio()) {
             /*

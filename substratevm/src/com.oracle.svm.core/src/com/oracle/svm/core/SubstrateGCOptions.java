@@ -25,6 +25,7 @@
 package com.oracle.svm.core;
 
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.Immutable;
+import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.IsolateCreationOnly;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.word.WordFactory;
@@ -46,7 +47,7 @@ import jdk.graal.compiler.options.OptionType;
 @DuplicatedInNativeCode
 public class SubstrateGCOptions {
     @Option(help = "The minimum heap size at run-time, in bytes.", type = OptionType.User)//
-    public static final RuntimeOptionKey<Long> MinHeapSize = new NotifyGCRuntimeOptionKey<>(0L, Immutable) {
+    public static final RuntimeOptionKey<Long> MinHeapSize = new NotifyGCRuntimeOptionKey<>(0L, IsolateCreationOnly) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
             if (!SubstrateUtil.HOSTED) {
@@ -57,7 +58,7 @@ public class SubstrateGCOptions {
     };
 
     @Option(help = "The maximum heap size at run-time, in bytes.", type = OptionType.User)//
-    public static final RuntimeOptionKey<Long> MaxHeapSize = new NotifyGCRuntimeOptionKey<>(0L, Immutable) {
+    public static final RuntimeOptionKey<Long> MaxHeapSize = new NotifyGCRuntimeOptionKey<>(0L, IsolateCreationOnly) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
             if (!SubstrateUtil.HOSTED) {
@@ -68,7 +69,7 @@ public class SubstrateGCOptions {
     };
 
     @Option(help = "The maximum size of the young generation at run-time, in bytes", type = OptionType.User)//
-    public static final RuntimeOptionKey<Long> MaxNewSize = new NotifyGCRuntimeOptionKey<>(0L, Immutable) {
+    public static final RuntimeOptionKey<Long> MaxNewSize = new NotifyGCRuntimeOptionKey<>(0L, IsolateCreationOnly) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
             if (!SubstrateUtil.HOSTED) {
@@ -79,7 +80,7 @@ public class SubstrateGCOptions {
     };
 
     @Option(help = "The number of bytes that should be reserved for the heap address space.", type = OptionType.Expert)//
-    public static final RuntimeOptionKey<Long> ReservedAddressSpaceSize = new RuntimeOptionKey<>(0L);
+    public static final RuntimeOptionKey<Long> ReservedAddressSpaceSize = new RuntimeOptionKey<>(0L, IsolateCreationOnly);
 
     @Option(help = "Exit on the first occurrence of an out-of-memory error that is thrown because the Java heap is out of memory.", type = OptionType.Expert)//
     public static final RuntimeOptionKey<Boolean> ExitOnOutOfMemoryError = new NotifyGCRuntimeOptionKey<>(false, Immutable);

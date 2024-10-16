@@ -68,8 +68,16 @@ import jdk.graal.compiler.api.replacements.Fold;
  */
 @AutomaticallyRegisteredImageSingleton
 public class IsolateArgumentParser {
-    private static final RuntimeOptionKey<?>[] OPTIONS = {SubstrateGCOptions.MinHeapSize, SubstrateGCOptions.MaxHeapSize, SubstrateGCOptions.MaxNewSize, SubstrateGCOptions.ReservedAddressSpaceSize,
-                    SubstrateOptions.ConcealedOptions.AutomaticReferenceHandling, SubstrateOptions.ConcealedOptions.UsePerfData, SubstrateOptions.ConcealedOptions.MaxRAM};
+    private static final RuntimeOptionKey<?>[] OPTIONS = {
+                    SubstrateGCOptions.MinHeapSize,
+                    SubstrateGCOptions.MaxHeapSize,
+                    SubstrateGCOptions.MaxNewSize,
+                    SubstrateGCOptions.ReservedAddressSpaceSize,
+                    SubstrateOptions.ActiveProcessorCount,
+                    SubstrateOptions.ConcealedOptions.AutomaticReferenceHandling,
+                    SubstrateOptions.ConcealedOptions.UsePerfData,
+                    SubstrateOptions.ConcealedOptions.MaxRAM
+    };
     private static final CGlobalData<CCharPointer> OPTION_NAMES = CGlobalDataFactory.createBytes(IsolateArgumentParser::createOptionNames);
     private static final CGlobalData<CIntPointer> OPTION_NAME_POSITIONS = CGlobalDataFactory.createBytes(IsolateArgumentParser::createOptionNamePosition);
     private static final CGlobalData<CCharPointer> OPTION_TYPES = CGlobalDataFactory.createBytes(IsolateArgumentParser::createOptionTypes);
@@ -141,7 +149,9 @@ public class IsolateArgumentParser {
         byte[] result = new byte[Long.BYTES * getOptionCount()];
         ByteBuffer buffer = ByteBuffer.wrap(result).order(ByteOrder.nativeOrder());
         for (int i = 0; i < getOptionCount(); i++) {
-            long value = toLong(getOptions()[i].getHostedValue(), getOptions()[i].getDescriptor().getOptionValueType());
+            RuntimeOptionKey<?> option = getOptions()[i];
+            VMError.guarantee(option.isIsolateCreationOnly(), "Options parsed by IsolateArgumentParser should all have the IsolateCreationOnly flag. %s doesn't", option);
+            long value = toLong(option.getHostedValue(), option.getDescriptor().getOptionValueType());
             buffer.putLong(value);
         }
         return result;
