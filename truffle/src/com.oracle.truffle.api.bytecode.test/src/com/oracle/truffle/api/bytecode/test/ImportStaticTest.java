@@ -170,7 +170,7 @@ public class ImportStaticTest {
 
     @OperationProxy.Proxyable
     @ImportStatic(FooImport.class)
-    @SuppressWarnings("truffle-node-inlining")
+    @SuppressWarnings("truffle-inlining")
     public abstract static class FooNode extends Node {
         abstract Object execute();
 
@@ -182,7 +182,7 @@ public class ImportStaticTest {
 
     @OperationProxy.Proxyable
     @ImportStatic(OtherBarImport.class)
-    @SuppressWarnings("truffle-node-inlining")
+    @SuppressWarnings("truffle-inlining")
     public abstract static class OtherBarNode extends Node {
         abstract Object execute();
 
