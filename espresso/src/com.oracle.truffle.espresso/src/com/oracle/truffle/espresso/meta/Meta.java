@@ -2376,7 +2376,7 @@ public final class Meta extends ContextAccessImpl {
 
     /**
      * Same as {@link #loadKlassOrFail(Symbol, StaticObject, StaticObject)}, except this method
-     * returns null instead of throwing if class is not found. Note that this mthod can still throw
+     * returns null instead of throwing if class is not found. Note that this method can still throw
      * due to other errors (class file malformed, etc...)
      *
      * @see #loadKlassOrFail(Symbol, StaticObject, StaticObject)

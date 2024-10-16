@@ -761,7 +761,7 @@ public final class NativeImageHeap implements ImageHeap {
         boolean relocatable = otherFieldsRelocatable;
         for (int idx = 0; idx < length; idx++) {
             JavaConstant value = hConstantReflection.readArrayElement(array, idx);
-            /* Object replacement is done as part as constant refection. */
+            /* Object replacement is done as part as constant reflection. */
             if (spawnIsolates()) {
                 relocatable = relocatable || value instanceof RelocatableConstant;
             }

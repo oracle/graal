@@ -181,7 +181,7 @@ final class OperandStack {
 
     void procSize(int modif) {
         size += modif;
-        verifyGuarantee(size <= stack.length, "insufficent stack size: " + stack.length);
+        verifyGuarantee(size <= stack.length, "insufficient stack size: " + stack.length);
         verifyGuarantee(size >= 0, "invalid stack access: " + size);
     }
 
