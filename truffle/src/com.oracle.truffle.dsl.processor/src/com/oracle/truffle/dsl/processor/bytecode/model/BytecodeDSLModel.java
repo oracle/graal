@@ -509,10 +509,15 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         return enableUncachedInterpreter || storeBciInFrame;
     }
 
-    public boolean materializedAccessesNeedLocalIndex() {
-        // We need the local index to validate accesses at run time. We can only do this when the
-        // bci is stored in the frame.
-        return enableBlockScoping && storeBciInFrame;
+    public boolean localAccessesNeedLocalIndex() {
+        // With block scoping, we need a local index to resolve boxing elimination tags.
+        return enableBlockScoping && usesBoxingElimination();
+    }
+
+    public boolean materializedLocalAccessesNeedLocalIndex() {
+        // With block scoping, we need a local index to resolve boxing elimination tags. We also use
+        // it to do liveness checks when the bci is stored in the frame.
+        return enableBlockScoping && (usesBoxingElimination() || storeBciInFrame);
     }
 
     @Override

@@ -204,9 +204,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
     // Implementations of public classes that Truffle interpreters interact with.
     private final BytecodeRootNodesImplElement bytecodeRootNodesImpl = new BytecodeRootNodesImplElement();
 
-    // Helper classes that map instructions/operations to constant integral values.
+    // Helper classes that map instructions/operations/tags to constant integral values.
     private final InstructionConstantsElement instructionsElement = new InstructionConstantsElement();
     private final OperationConstantsElement operationsElement = new OperationConstantsElement();
+    private final FrameTagConstantsElement frameTagsElement;
 
     // Helper class that tracks the number of guest-language loop iterations. The count must be
     // wrapped in an object, otherwise the loop unrolling logic of ExplodeLoop.MERGE_EXPLODE
@@ -220,8 +221,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
     private TagRootNodeElement tagRootNode;
     private InstructionImplElement instructionImpl;
     private SerializationRootNodeElement serializationRootNode;
-
-    private final Map<TypeMirror, VariableElement> frameSlotKindConstant = new HashMap<>();
 
     private Map<TypeMirror, CodeExecutableElement> expectMethods = new HashMap<>();
 
@@ -260,12 +259,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         this.addAll(createFrameLayoutConstants());
 
         if (model.usesBoxingElimination()) {
-            for (TypeMirror boxingEliminatedType : model.boxingEliminatedTypes) {
-                String frameSlotKind = ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(boxingEliminatedType));
-                CodeVariableElement tag = createFrameSlotKindConstant(frameSlotKind);
-                frameSlotKindConstant.put(boxingEliminatedType, tag);
-                this.add(tag);
-            }
+            frameTagsElement = new FrameTagConstantsElement();
+        } else {
+            frameTagsElement = null;
         }
 
         this.instructionImpl = this.add(new InstructionImplElement());
@@ -284,7 +280,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         this.add(child(bytecodeNode));
         this.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), bytecodeRootNodesImpl.asType(), "nodes"));
         addJavadoc(this.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), type(int.class), "maxLocals")), "The number of frame slots required for locals.");
-        if (usesLocalTags()) {
+        if (model.usesBoxingElimination()) {
             addJavadoc(this.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), type(int.class), "numLocals")), "The total number of locals created.");
         }
         this.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), type(int.class), "buildIndex"));
@@ -327,6 +323,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
         operationsElement.lazyInit();
         this.add(operationsElement);
+
+        if (model.usesBoxingElimination()) {
+            this.add(frameTagsElement);
+        }
 
         this.add(new ExceptionHandlerImplElement());
         this.add(new ExceptionHandlerListElement());
@@ -481,7 +481,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         ctor.addParameter(new CodeVariableElement(types.FrameDescriptor_Builder, "builder"));
         ctor.addParameter(new CodeVariableElement(bytecodeRootNodesImpl.asType(), "nodes"));
         ctor.addParameter(new CodeVariableElement(type(int.class), "maxLocals"));
-        if (usesLocalTags()) {
+        if (model.usesBoxingElimination()) {
             ctor.addParameter(new CodeVariableElement(type(int.class), "numLocals"));
         }
         ctor.addParameter(new CodeVariableElement(type(int.class), "buildIndex"));
@@ -504,7 +504,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
         b.statement("this.nodes = nodes");
         b.statement("this.maxLocals = maxLocals");
-        if (usesLocalTags()) {
+        if (model.usesBoxingElimination()) {
             b.statement("this.numLocals = numLocals");
         }
         b.statement("this.buildIndex = buildIndex");
@@ -780,23 +780,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         bytecodeUpdater.createInitBuilder().startStaticCall(type(AtomicReferenceFieldUpdater.class), "newUpdater").typeLiteral(this.asType()).typeLiteral(
                         abstractBytecodeNode.asType()).doubleQuote("bytecode").end();
         return bytecodeUpdater;
-    }
-
-    private CodeVariableElement createFrameSlotKindConstant(String frameSlotKind) {
-        CodeVariableElement tag = new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "TAG_" + frameSlotKind.toUpperCase());
-        TypeElement type = ElementUtils.castTypeElement(types.FrameSlotKind);
-        int index = 0;
-        for (VariableElement var : ElementFilter.fieldsIn(CompilerFactory.getCompiler(type).getAllMembersInDeclarationOrder(context.getEnvironment(), type))) {
-            if (var.getKind() != ElementKind.ENUM_CONSTANT) {
-                continue;
-            }
-            if (var.getSimpleName().toString().equals(frameSlotKind)) {
-                tag.createInitBuilder().string(index + " /* FrameSlotKind." + frameSlotKind + ".tag */");
-                return tag;
-            }
-            index++;
-        }
-        throw new AssertionError("Invalid frame slot kind " + frameSlotKind);
     }
 
     private CodeExecutableElement createUndoQuickening() {
@@ -1357,7 +1340,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         b.startDoBlock();
         b.statement("oldBytecode = this.bytecode");
         b.startAssign("newBytecode").startCall("insert").startCall("oldBytecode.toCached");
-        if (usesLocalTags()) {
+        if (model.usesBoxingElimination()) {
             b.string("this.numLocals");
         }
         b.end(3);
@@ -1710,10 +1693,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
     private static String executeMethodName(InstructionModel instruction) {
         return "execute" + instruction.getQualifiedQuickeningName();
-    }
-
-    private boolean usesLocalTags() {
-        return model.enableBlockScoping && model.usesBoxingElimination();
     }
 
     private void serializationWrapException(CodeTreeBuilder b, Runnable r) {
@@ -4930,7 +4909,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.string("frameDescriptorBuilder");
             b.string("nodes"); // BytecodeRootNodesImpl
             b.string(maxLocals());
-            if (usesLocalTags()) {
+            if (model.usesBoxingElimination()) {
                 b.string("numLocals");
             }
             b.string("operationData.index");
@@ -5203,21 +5182,25 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         private void buildEmitOperationInstruction(CodeTreeBuilder b, OperationModel operation, String customChildBci, String sp, List<String> constantOperandIndices) {
             String[] args = switch (operation.kind) {
                 case LOAD_LOCAL -> {
-                    if (usesLocalTags()) {
-                        yield new String[]{
-                                        "((BytecodeLocalImpl) " + operation.getOperationBeginArgumentName(0) + ").frameIndex",
-                                        "((BytecodeLocalImpl) " + operation.getOperationBeginArgumentName(0) + ").localIndex"};
-                    } else {
-                        yield new String[]{"((BytecodeLocalImpl) " + operation.getOperationBeginArgumentName(0) + ").frameIndex"};
+                    List<String> immediates = new ArrayList<>();
+                    immediates.add("((BytecodeLocalImpl) " + operation.getOperationBeginArgumentName(0) + ").frameIndex");
+                    if (model.localAccessesNeedLocalIndex()) {
+                        immediates.add("((BytecodeLocalImpl) " + operation.getOperationBeginArgumentName(0) + ").localIndex");
                     }
+                    yield immediates.toArray(String[]::new);
                 }
                 case STORE_LOCAL -> {
                     emitCastCurrentOperationData(b, operation);
-                    if (model.usesBoxingElimination()) {
-                        yield createStoreLocalArgsWithBE("operationData.local", "operationData.childBci");
-                    } else {
-                        yield createStoreLocalArgs("operationData.frameIndex");
+                    String local = model.usesBoxingElimination() ? "operationData.local" : "operationData";
+                    List<String> immediates = new ArrayList<>();
+                    immediates.add(local + ".frameIndex");
+                    if (model.localAccessesNeedLocalIndex()) {
+                        immediates.add(local + ".localIndex");
                     }
+                    if (model.usesBoxingElimination()) {
+                        immediates.add("operationData.childBci");
+                    }
+                    yield immediates.toArray(String[]::new);
                 }
                 case STORE_LOCAL_MATERIALIZED -> {
                     emitCastCurrentOperationData(b, operation);
@@ -5225,7 +5208,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     List<String> immediates = new ArrayList<>();
                     immediates.add(local + ".frameIndex");
                     immediates.add(local + ".rootIndex");
-                    if (operation.instruction.hasImmediate(ImmediateKind.LOCAL_INDEX)) {
+                    if (model.materializedLocalAccessesNeedLocalIndex()) {
                         immediates.add(local + ".localIndex");
                     }
                     if (model.usesBoxingElimination()) {
@@ -5238,7 +5221,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     List<String> immediates = new ArrayList<>();
                     immediates.add("operationData.frameIndex");
                     immediates.add("operationData.rootIndex");
-                    if (operation.instruction.hasImmediate(ImmediateKind.LOCAL_INDEX)) {
+                    if (model.materializedLocalAccessesNeedLocalIndex()) {
                         immediates.add("operationData.localIndex");
                     }
                     yield immediates.toArray(String[]::new);
@@ -5267,22 +5250,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 default -> throw new AssertionError("Reached an operation " + operation.name + " that cannot be initialized. This is a bug in the Bytecode DSL processor.");
             };
             buildEmitInstruction(b, operation.instruction, args);
-        }
-
-        private String[] createStoreLocalArgs(String frameIndex) {
-            return new String[]{frameIndex};
-        }
-
-        private String[] createStoreLocalArgsWithBE(String local, String childBci) {
-            if (model.enableBlockScoping) {
-                return new String[]{
-                                local + ".frameIndex",
-                                local + ".localIndex",
-                                childBci};
-            } else {
-                return new String[]{local + ".frameIndex",
-                                childBci};
-            }
         }
 
         private void buildEmitLabel(CodeTreeBuilder b, OperationModel operation) {
@@ -8555,6 +8522,56 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
     }
 
+    final class FrameTagConstantsElement extends CodeTypeElement {
+        private final Map<TypeMirror, VariableElement> mapping;
+
+        FrameTagConstantsElement() {
+            super(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "FrameTags");
+
+            // List of FrameSlotKinds we need to declare constants for.
+            Map<String, TypeMirror> frameTypes = new HashMap<>();
+            for (TypeMirror boxingEliminatedType : model.boxingEliminatedTypes) {
+                frameTypes.put(ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(boxingEliminatedType)), boxingEliminatedType);
+            }
+            frameTypes.put("Object", declaredType(Object.class));
+            frameTypes.put("Illegal", null);
+
+            // Construct the constants, iterating over the enum fields to find the tag values.
+            Map<TypeMirror, VariableElement> result = new HashMap<>();
+            TypeElement frameSlotKindType = ElementUtils.castTypeElement(types.FrameSlotKind);
+            int index = 0;
+            for (VariableElement var : ElementFilter.fieldsIn(CompilerFactory.getCompiler(frameSlotKindType).getAllMembersInDeclarationOrder(context.getEnvironment(), frameSlotKindType))) {
+                if (var.getKind() != ElementKind.ENUM_CONSTANT) {
+                    continue;
+                }
+                String frameSlotKind = var.getSimpleName().toString();
+                if (frameTypes.containsKey(frameSlotKind)) {
+                    CodeVariableElement fld = new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(byte.class), frameSlotKind.toUpperCase());
+                    fld.createInitBuilder().string(index + " /* FrameSlotKind." + frameSlotKind + ".tag */");
+                    this.add(fld);
+                    result.put(frameTypes.remove(frameSlotKind), fld);
+                }
+                index++;
+            }
+            if (!frameTypes.isEmpty()) {
+                throw new AssertionError(String.format("Could not find a FrameSlotKind for some types: %s", frameTypes.keySet()));
+            }
+            mapping = result;
+        }
+
+        private VariableElement get(TypeMirror type) {
+            return mapping.get(type);
+        }
+
+        private VariableElement getObject() {
+            return mapping.get(declaredType(Object.class));
+        }
+
+        private VariableElement getIllegal() {
+            return mapping.get(null);
+        }
+    }
+
     // Generates an Instructions class with constants for each instruction.
     final class InstructionConstantsElement extends CodeTypeElement {
         InstructionConstantsElement() {
@@ -9036,19 +9053,11 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             CodeTreeBuilder b = ex.createBuilder();
 
             if (model.usesBoxingElimination()) {
-                if (model.enableBlockScoping) {
-                    b.declaration(type(byte[].class), "localTags", "bytecode.getLocalTags()");
-                    b.startIf().string("localTags == null").end().startBlock();
-                    b.returnNull();
-                    b.end();
-                    b.statement("return FrameSlotKind.fromTag(localTags[getLocalIndex()])");
-                } else {
-                    b.startIf().string("bytecode instanceof CachedBytecodeNode").end().startBlock();
-                    b.statement("return bytecode.getRoot().getFrameDescriptor().getSlotKind(getLocalOffset() + USER_LOCALS_START_INDEX)");
-                    b.end().startElseBlock();
-                    b.returnNull();
-                    b.end();
-                }
+                b.declaration(type(byte[].class), "localTags", "bytecode.getLocalTags()");
+                b.startIf().string("localTags == null").end().startBlock();
+                b.returnNull();
+                b.end();
+                b.statement("return FrameSlotKind.fromTag(localTags[getLocalIndex()])");
             } else {
                 b.returnNull();
             }
@@ -9847,6 +9856,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
     final class AbstractBytecodeNodeElement extends CodeTypeElement {
 
         private final CodeExecutableElement continueAt;
+        private final CodeExecutableElement getCachedLocalTagInternal;
+        private final CodeExecutableElement setCachedLocalTagInternal;
 
         AbstractBytecodeNodeElement() {
             super(Set.of(PRIVATE, STATIC, ABSTRACT, SEALED), ElementKind.CLASS, null, "AbstractBytecodeNode");
@@ -9911,7 +9922,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.startReturn().startCall("node.findLocation").string("bci").end().end();
 
             var toCached = this.add(new CodeExecutableElement(Set.of(ABSTRACT), this.asType(), "toCached"));
-            if (usesLocalTags()) {
+            if (model.usesBoxingElimination()) {
                 toCached.addParameter(new CodeVariableElement(type(int.class), "numLocals"));
             }
 
@@ -9932,12 +9943,21 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             this.add(createDumpInvalid());
 
             this.add(new CodeExecutableElement(Set.of(ABSTRACT), this.asType(), "cloneUninitialized"));
-
             this.add(new CodeExecutableElement(Set.of(ABSTRACT), arrayOf(types.Node), "getCachedNodes"));
-            if (model.usesBoxingElimination() && model.enableBlockScoping) {
-                this.add(new CodeExecutableElement(Set.of(ABSTRACT), arrayOf(type(byte.class)), "getLocalTags"));
-            }
             this.add(new CodeExecutableElement(Set.of(ABSTRACT), arrayOf(type(int.class)), "getBranchProfiles"));
+            if (model.usesBoxingElimination()) {
+                this.add(new CodeExecutableElement(Set.of(ABSTRACT), arrayOf(type(byte.class)), "getLocalTags"));
+                /**
+                 * Even though tags are only cached on cached nodes, all nodes need to implement
+                 * these methods. For materialized local accesses, the CachedBytecodeNode will call
+                 * these methods on the local's bytecode node, and that node may not be cached.
+                 */
+                getCachedLocalTagInternal = this.add(createGetCachedLocalTagInternal());
+                setCachedLocalTagInternal = this.add(createSetCachedLocalTagInternal());
+            } else {
+                getCachedLocalTagInternal = null;
+                setCachedLocalTagInternal = null;
+            }
 
             // Define methods for introspecting the bytecode and source.
             this.add(createGetSourceSection());
@@ -9953,14 +9973,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             this.add(createGetTagTree());
 
             this.add(createGetLocalCount());
-
             this.add(createClearLocalValueInternal());
             this.add(createIsLocalClearedInternal());
-            if (model.usesBoxingElimination()) {
-                // Local getters generated in subclass
-                this.add(createGetCachedLocalKindInternal());
-                this.add(createSetCachedLocalKindInternal());
-            } else {
+
+            if (!model.usesBoxingElimination()) {
                 this.add(createGetLocalValue());
                 this.add(createSetLocalValue());
                 this.add(createGetLocalValueInternal());
@@ -10186,32 +10202,24 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             return ex;
         }
 
-        private CodeExecutableElement createGetCachedLocalKindInternal() {
+        private CodeExecutableElement createGetCachedLocalTagInternal() {
             if (!model.usesBoxingElimination()) {
                 throw new AssertionError("Not supported.");
             }
 
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(ABSTRACT), types.FrameSlotKind, "getCachedLocalKindInternal");
-
-            if (model.enableBlockScoping) {
-                ex.addParameter(new CodeVariableElement(type(int.class), "localIndex"));
-            } else {
-                ex.addParameter(new CodeVariableElement(type(int.class), "frameIndex"));
-            }
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(ABSTRACT), type(byte.class), "getCachedLocalTagInternal");
+            ex.addParameter(new CodeVariableElement(type(int.class), model.enableBlockScoping ? "localIndex" : "frameIndex"));
             return ex;
         }
 
-        private CodeExecutableElement createSetCachedLocalKindInternal() {
+        private CodeExecutableElement createSetCachedLocalTagInternal() {
             if (!model.usesBoxingElimination()) {
                 throw new AssertionError("Not supported.");
             }
 
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(ABSTRACT), type(void.class), "setCachedLocalKindInternal");
-            ex.addParameter(new CodeVariableElement(type(int.class), "frameIndex"));
-            ex.addParameter(new CodeVariableElement(types.FrameSlotKind, "kind"));
-            if (model.enableBlockScoping) {
-                ex.addParameter(new CodeVariableElement(type(int.class), "localIndex"));
-            }
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(ABSTRACT), type(void.class), "setCachedLocalTagInternal");
+            ex.addParameter(new CodeVariableElement(type(int.class), model.enableBlockScoping ? "localIndex" : "frameIndex"));
+            ex.addParameter(new CodeVariableElement(type(byte.class), "tag"));
 
             return ex;
         }
@@ -10389,7 +10397,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                              * frame, in which case the local index is validated at run time with an
                              * assertion anyway.
                              */
-                            boolean hasNumLocals = usesLocalTags();
+                            boolean hasNumLocals = model.usesBoxingElimination();
                             if (!rootNodeAvailable && hasNumLocals) {
                                 rootNodeAvailable = tryEmitRootNodeForLocalInstruction(b, group);
                             }
@@ -11449,7 +11457,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     this.add(child(new CodeVariableElement(Set.of(PRIVATE), getCachedDataClassType(model.epilogExceptional.operation.instruction), "epilogExceptionalNode_")));
                 }
 
-                if (usesLocalTags()) {
+                if (model.usesBoxingElimination()) {
                     this.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE, FINAL), arrayOf(type(byte.class)), "localTags_")));
                 }
 
@@ -11495,15 +11503,12 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             }
 
             if (model.usesBoxingElimination()) {
+                this.add(createGetLocalTags());
                 this.add(createGetLocalValue());
                 this.add(createSetLocalValue());
 
                 this.add(createGetLocalValueInternal(type(Object.class)));
                 this.add(createSetLocalValueInternal(type(Object.class)));
-
-                if (tier.isCached()) {
-                    this.add(createSetLocalValueImpl());
-                }
 
                 for (TypeMirror boxingType : model.boxingEliminatedTypes) {
                     this.add(createGetLocalValueInternal(boxingType));
@@ -11511,18 +11516,15 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 }
 
                 if (tier.isCached()) {
-                    this.add(createSpecializeSlotKind());
-                    this.add(createGetCachedLocalKind());
-                    this.add(createSetCachedLocalKind());
+                    this.add(createSetLocalValueImpl());
+                    this.add(createSpecializeSlotTag());
+                    this.add(createGetCachedLocalTag());
+                    this.add(createSetCachedLocalTag());
                 }
-                this.add(createGetCachedLocalKindInternal());
-                this.add(createSetCachedLocalKindInternal());
+                this.add(createGetCachedLocalTagInternal());
+                this.add(createSetCachedLocalTagInternal());
             } else {
                 // generated in AbstractBytecodeNode
-            }
-
-            if (usesLocalTags()) {
-                this.add(createGetLocalTags());
             }
 
             this.add(createToCached());
@@ -11661,25 +11663,25 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.declaration(type(int.class), "frameIndex", "USER_LOCALS_START_INDEX + localOffset");
             if (model.usesBoxingElimination() && tier.isCached()) {
                 b.startTryBlock();
-                b.declaration(types.FrameSlotKind, "kind");
+                b.declaration(type(byte.class), "tag");
                 b.startIf().startStaticCall(types.CompilerDirectives, "inInterpreter").end().end().startBlock();
                 b.lineComment("Resolving the local index is expensive. Don't do it in the interpreter.");
-                b.startAssign("kind").startStaticCall(types.FrameSlotKind, "fromTag");
+                b.startAssign("tag");
                 b.string("frame.getTag(frameIndex)");
-                b.end().end();
+                b.end();
 
                 b.end().startElseBlock();
 
                 if (model.enableBlockScoping) {
-                    b.startAssign("kind").string("getCachedLocalKind(frame, frameIndex, bci, localOffset)").end();
+                    b.startAssign("tag").string("getCachedLocalTag(frameIndex, bci)").end();
                 } else {
-                    b.startAssign("kind").string("getCachedLocalKind(frame, frameIndex)").end();
+                    b.startAssign("tag").string("getCachedLocalTag(frameIndex)").end();
                 }
                 b.end();
 
-                b.startSwitch().string("kind").end().startBlock();
+                b.startSwitch().string("tag").end().startBlock();
                 for (TypeMirror boxingType : model.boxingEliminatedTypes) {
-                    b.startCase().string(ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(boxingType))).end();
+                    b.startCase().staticReference(frameTagsElement.get(boxingType)).end();
                     b.startCaseBlock();
 
                     b.startReturn();
@@ -11688,14 +11690,14 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     b.end(); // case block
                 }
 
-                b.startCase().string("Object").end();
+                b.startCase().staticReference(frameTagsElement.getObject()).end();
                 b.startCaseBlock();
                 b.startReturn();
                 startExpectFrame(b, "frame", type(Object.class), false).string("frameIndex").end();
                 b.end();
                 b.end(); // case block
 
-                b.startCase().string("Illegal").end();
+                b.startCase().staticReference(frameTagsElement.getIllegal()).end();
                 b.startCaseBlock();
                 b.startReturn();
                 if (model.defaultLocalValueExpression != null) {
@@ -11707,7 +11709,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.end(); // case block
 
                 b.caseDefault().startCaseBlock();
-                b.tree(GeneratorUtils.createShouldNotReachHere("unexpected slot"));
+                b.tree(GeneratorUtils.createShouldNotReachHere("unexpected tag"));
                 b.end();
 
                 b.end(); // switch block
@@ -11737,7 +11739,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.startStatement().startCall("setLocalValueImpl");
                 b.string("frame").string("frameIndex").string("value");
                 if (model.enableBlockScoping) {
-                    b.string("bci").string("localOffset");
+                    b.string("bci");
                 }
                 b.end().end(); // call, statement
             } else {
@@ -11766,17 +11768,16 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             if (model.enableBlockScoping) {
                 ex.addParameter(new CodeVariableElement(type(int.class), "bci"));
-                ex.addParameter(new CodeVariableElement(type(int.class), "localOffset"));
-                b.declaration(types.FrameSlotKind, "oldKind", "getCachedLocalKind(frame, frameIndex, bci, localOffset)");
+                b.declaration(type(byte.class), "oldTag", "getCachedLocalTag(frameIndex, bci)");
             } else {
-                b.declaration(types.FrameSlotKind, "oldKind", "getCachedLocalKind(frame, frameIndex)");
+                b.declaration(type(byte.class), "oldTag", "getCachedLocalTag(frameIndex)");
             }
-            b.declaration(types.FrameSlotKind, "newKind");
+            b.declaration(type(byte.class), "newTag");
 
-            b.startSwitch().string("oldKind").end().startBlock();
+            b.startSwitch().string("oldTag").end().startBlock();
 
             for (TypeMirror boxingType : model.boxingEliminatedTypes) {
-                b.startCase().string(ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(boxingType))).end();
+                b.startCase().staticReference(frameTagsElement.get(boxingType)).end();
                 b.startCaseBlock();
                 String primitiveValue = boxingType.toString().toLowerCase() + "Value";
                 b.startIf().instanceOf("value", ElementUtils.boxType(boxingType), primitiveValue).end().startBlock();
@@ -11786,13 +11787,13 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.statement("return");
                 b.end(); // if block
                 b.startElseBlock();
-                b.startAssign("newKind").staticReference(types.FrameSlotKind, "Object").end();
+                b.startAssign("newTag").staticReference(frameTagsElement.getObject()).end();
                 b.end();
                 b.statement("break");
                 b.end(); // case block
             }
 
-            b.startCase().string(ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(type(Object.class)))).end();
+            b.startCase().staticReference(frameTagsElement.getObject()).end();
             b.startCaseBlock();
             b.startStatement();
             b.startCall("frame", getSetMethod(type(Object.class))).string("frameIndex").string("value").end();
@@ -11800,17 +11801,17 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.statement("return");
             b.end(); // case block
             b.caseDefault().startCaseBlock();
-            b.startAssign("newKind").string("specializeSlotKind(value)").end();
+            b.startAssign("newTag").string("specializeSlotTag(value)").end();
             b.statement("break");
             b.end();
             b.end(); // switch block
 
             b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
             if (model.enableBlockScoping) {
-                b.statement("setCachedLocalKind(frameIndex, newKind, bci, localOffset)");
-                b.statement("setLocalValueImpl(frame, frameIndex, value, bci, localOffset)");
+                b.statement("setCachedLocalTag(frameIndex, newTag, bci)");
+                b.statement("setLocalValueImpl(frame, frameIndex, value, bci)");
             } else {
-                b.statement("setCachedLocalKind(frameIndex, newKind)");
+                b.statement("setCachedLocalTag(frameIndex, newTag)");
                 b.statement("setLocalValueImpl(frame, frameIndex, value)");
             }
 
@@ -11837,8 +11838,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             if (tier.isCached()) {
                 b.declaration(type(int.class), "frameIndex", "USER_LOCALS_START_INDEX + localOffset");
 
-                b.startDeclaration(types.FrameSlotKind, "oldKind");
-                b.startCall("getCachedLocalKindInternal");
+                b.startDeclaration(type(byte.class), "oldTag");
+                b.startCall("getCachedLocalTagInternal");
                 if (model.enableBlockScoping) {
                     b.string("localIndex");
                 } else {
@@ -11847,16 +11848,16 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.end(); // call
                 b.end(); // declaration
 
-                b.declaration(types.FrameSlotKind, "newKind");
+                b.declaration(type(byte.class), "newTag");
 
-                b.startSwitch().string("oldKind").end().startBlock();
+                b.startSwitch().string("oldTag").end().startBlock();
 
                 for (TypeMirror boxingType : model.boxingEliminatedTypes) {
                     if (!generic && !ElementUtils.typeEquals(boxingType, specializedType)) {
                         continue;
                     }
 
-                    b.startCase().string(ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(boxingType))).end();
+                    b.startCase().staticReference(frameTagsElement.get(boxingType)).end();
                     b.startCaseBlock();
 
                     if (generic) {
@@ -11868,7 +11869,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         b.statement("return");
                         b.end(); // if block
                         b.startElseBlock();
-                        b.startAssign("newKind").staticReference(types.FrameSlotKind, "Object").end();
+                        b.startAssign("newTag").staticReference(frameTagsElement.getObject()).end();
                         b.end();
                         b.statement("break");
                     } else {
@@ -11880,7 +11881,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     b.end(); // case block
                 }
 
-                b.startCase().string(ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(type(Object.class)))).end();
+                b.startCase().staticReference(frameTagsElement.getObject()).end();
                 b.startCaseBlock();
                 b.startStatement();
                 b.startCall("frame", getSetMethod(type(Object.class))).string("frameIndex").string("value").end();
@@ -11888,19 +11889,21 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.statement("return");
                 b.end(); // case block
                 b.caseDefault().startCaseBlock();
-                b.startAssign("newKind").string("specializeSlotKind(value)").end();
+                b.startAssign("newTag").string("specializeSlotTag(value)").end();
                 b.statement("break");
                 b.end();
                 b.end(); // switch block
 
                 b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+                b.startStatement().startCall("setCachedLocalTagInternal");
                 if (model.enableBlockScoping) {
-                    b.statement("setCachedLocalKindInternal(frameIndex, newKind, localIndex)");
-                    b.statement("setLocalValueInternal(frame, localOffset, localIndex, value)");
+                    b.string("localIndex");
                 } else {
-                    b.statement("setCachedLocalKindInternal(frameIndex, newKind)");
-                    b.statement("setLocalValueInternal(frame, localOffset, localIndex, value)");
+                    b.string("frameIndex");
                 }
+                b.string("newTag");
+                b.end(2);
+                b.statement("setLocalValueInternal(frame, localOffset, localIndex, value)");
 
             } else {
                 b.startStatement();
@@ -11935,11 +11938,11 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 if (generic) {
                     b.declaration(type(int.class), "frameIndex", "USER_LOCALS_START_INDEX + localOffset");
                     b.startTryBlock();
-                    b.startDeclaration(types.FrameSlotKind, "kind").string("getCachedLocalKindInternal(localIndex)").end();
+                    b.startDeclaration(type(byte.class), "tag").string("getCachedLocalTagInternal(localIndex)").end();
 
-                    b.startSwitch().string("kind").end().startBlock();
+                    b.startSwitch().string("tag").end().startBlock();
                     for (TypeMirror boxingType : model.boxingEliminatedTypes) {
-                        b.startCase().string(ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(boxingType))).end();
+                        b.startCase().staticReference(frameTagsElement.get(boxingType)).end();
                         b.startCaseBlock();
 
                         b.startReturn();
@@ -11948,14 +11951,14 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         b.end(); // case block
                     }
 
-                    b.startCase().string("Object").end();
+                    b.startCase().staticReference(frameTagsElement.getObject()).end();
                     b.startCaseBlock();
                     b.startReturn();
                     startExpectFrame(b, "frame", type(Object.class), false).string("frameIndex").end();
                     b.end();
                     b.end(); // case block
 
-                    b.startCase().string("Illegal").end();
+                    b.startCase().staticReference(frameTagsElement.getIllegal()).end();
                     b.startCaseBlock();
                     if (model.defaultLocalValueExpression != null) {
                         b.startReturn();
@@ -11967,7 +11970,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     b.end(); // case block
 
                     b.caseDefault().startCaseBlock();
-                    b.tree(GeneratorUtils.createShouldNotReachHere("unexpected slot"));
+                    b.tree(GeneratorUtils.createShouldNotReachHere("unexpected tag"));
                     b.end();
 
                     b.end(); // switch block
@@ -11995,122 +11998,115 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             return ex;
         }
 
-        private CodeExecutableElement createSetCachedLocalKind() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "setCachedLocalKind");
+        private CodeExecutableElement createSetCachedLocalTag() {
+            if (!model.usesBoxingElimination() || !tier.isCached()) {
+                throw new AssertionError("Not supported.");
+            }
+
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "setCachedLocalTag");
             ex.addParameter(new CodeVariableElement(type(int.class), "frameIndex"));
-            ex.addParameter(new CodeVariableElement(types.FrameSlotKind, "kind"));
+            ex.addParameter(new CodeVariableElement(type(byte.class), "tag"));
             CodeTreeBuilder b = ex.createBuilder();
             if (model.enableBlockScoping) {
                 ex.addParameter(new CodeVariableElement(type(int.class), "bci"));
-                ex.addParameter(new CodeVariableElement(type(int.class), "localOffset"));
-                b.startAssert().string("locals[localOffsetToTableIndex(bci, localOffset) + LOCALS_OFFSET_FRAME_INDEX] == frameIndex : ").doubleQuote("Inconsistent indices.").end();
-                b.declaration(type(int.class), "localIndex", "locals[localOffsetToTableIndex(bci, localOffset) + LOCALS_OFFSET_LOCAL_INDEX]");
-                b.statement("this.localTags_[localIndex] = kind.tag");
+                b.declaration(type(int.class), "index", "localOffsetToTableIndex(bci, frameIndex - USER_LOCALS_START_INDEX)");
+                b.startAssert().string("locals[index + LOCALS_OFFSET_FRAME_INDEX] == frameIndex : ").doubleQuote("Inconsistent indices.").end();
+                b.declaration(type(int.class), "localIndex", "locals[index + LOCALS_OFFSET_LOCAL_INDEX]");
+                b.statement("this.localTags_[localIndex] = tag");
             } else {
-                b.statement("getRoot().getFrameDescriptor().setSlotKind(frameIndex, kind)");
+                b.statement("this.localTags_[frameIndex - USER_LOCALS_START_INDEX] = tag");
             }
 
             return ex;
         }
 
-        private CodeExecutableElement createSetCachedLocalKindInternal() {
+        private CodeExecutableElement createGetCachedLocalTag() {
+            if (!model.usesBoxingElimination() || !tier.isCached()) {
+                throw new AssertionError("Not supported.");
+            }
+
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(FINAL), type(byte.class), "getCachedLocalTag");
+            ex.addParameter(new CodeVariableElement(type(int.class), "frameIndex"));
+
+            CodeTreeBuilder b = ex.createBuilder();
+
+            if (model.enableBlockScoping) {
+                ex.addParameter(new CodeVariableElement(type(int.class), "bci"));
+                b.declaration(type(int.class), "index", "localOffsetToTableIndex(bci, frameIndex - USER_LOCALS_START_INDEX)");
+                b.startAssert().string("locals[index + LOCALS_OFFSET_FRAME_INDEX] == frameIndex : ").doubleQuote("Inconsistent indices.").end();
+                b.declaration(type(int.class), "localIndex", "locals[index + LOCALS_OFFSET_LOCAL_INDEX]");
+                b.startReturn().string("this.localTags_[localIndex]").end();
+            } else {
+                b.startReturn().string("this.localTags_[frameIndex - USER_LOCALS_START_INDEX]").end();
+            }
+            return ex;
+        }
+
+        private CodeExecutableElement createSetCachedLocalTagInternal() {
             if (!model.usesBoxingElimination()) {
                 throw new AssertionError("Not supported.");
             }
 
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(FINAL), type(void.class), "setCachedLocalKindInternal");
-            ex.addParameter(new CodeVariableElement(type(int.class), "frameIndex"));
-            ex.addParameter(new CodeVariableElement(types.FrameSlotKind, "kind"));
-            if (model.enableBlockScoping) {
-                ex.addParameter(new CodeVariableElement(type(int.class), "localIndex"));
-            }
-
+            CodeExecutableElement ex = GeneratorUtils.override(abstractBytecodeNode.setCachedLocalTagInternal);
             CodeTreeBuilder b = ex.createBuilder();
+
             if (tier.isCached()) {
+                b.startStatement();
+                b.string("this.localTags_[");
                 if (model.enableBlockScoping) {
-                    b.statement("this.localTags_[localIndex] = kind.tag");
+                    b.string("localIndex");
                 } else {
-                    b.statement("getRoot().getFrameDescriptor().setSlotKind(frameIndex, kind)");
+                    b.string("frameIndex - USER_LOCALS_START_INDEX");
                 }
+                b.string("] = tag");
+                b.end();
             } else {
                 // nothing to do
             }
-
             return ex;
         }
 
-        private CodeExecutableElement createGetCachedLocalKind() {
-            if (!model.usesBoxingElimination()) {
-                throw new AssertionError("Not supported.");
-            }
-            if (!tier.isCached()) {
-                throw new AssertionError("Not supported.");
-            }
-
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(FINAL), types.FrameSlotKind, "getCachedLocalKind");
-            ex.addParameter(new CodeVariableElement(types.Frame, "frame"));
-            ex.addParameter(new CodeVariableElement(type(int.class), "frameIndex"));
-
-            CodeTreeBuilder b = ex.createBuilder();
-            if (model.enableBlockScoping) {
-                ex.addParameter(new CodeVariableElement(type(int.class), "bci"));
-                ex.addParameter(new CodeVariableElement(type(int.class), "localOffset"));
-                b.startAssert().string("locals[localOffsetToTableIndex(bci, localOffset) + LOCALS_OFFSET_FRAME_INDEX] == frameIndex : ").doubleQuote("Inconsistent indices.").end();
-
-                b.declaration(type(int.class), "localIndex", "locals[localOffsetToTableIndex(bci, localOffset) + LOCALS_OFFSET_LOCAL_INDEX]");
-                b.startReturn().startStaticCall(types.FrameSlotKind, "fromTag").string("this.localTags_[localIndex]").end().end();
-            } else {
-                b.statement("return getRoot().getFrameDescriptor().getSlotKind(frameIndex)");
-            }
-            return ex;
-        }
-
-        private CodeExecutableElement createGetCachedLocalKindInternal() {
+        private CodeExecutableElement createGetCachedLocalTagInternal() {
             if (!model.usesBoxingElimination()) {
                 throw new AssertionError("Not supported.");
             }
 
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(FINAL), types.FrameSlotKind, "getCachedLocalKindInternal");
+            CodeExecutableElement ex = GeneratorUtils.override(abstractBytecodeNode.getCachedLocalTagInternal);
             CodeTreeBuilder b = ex.createBuilder();
-
-            if (model.enableBlockScoping) {
-                ex.addParameter(new CodeVariableElement(type(int.class), "localIndex"));
-            } else {
-                ex.addParameter(new CodeVariableElement(type(int.class), "frameIndex"));
-            }
 
             if (tier.isCached()) {
+                b.startReturn();
+                b.startGroup().string("this.localTags_[");
                 if (model.enableBlockScoping) {
-                    b.startReturn().startStaticCall(types.FrameSlotKind, "fromTag").string("this.localTags_[localIndex]").end().end();
+                    b.string("localIndex");
                 } else {
-                    b.statement("return getRoot().getFrameDescriptor().getSlotKind(frameIndex)");
+                    b.string("frameIndex - USER_LOCALS_START_INDEX");
                 }
+                b.string("]").end();
+                b.end();
             } else {
-                b.startReturn().staticReference(types.FrameSlotKind, "Object").end().end();
+                b.startReturn().staticReference(frameTagsElement.getObject()).end();
             }
             return ex;
         }
 
-        private CodeExecutableElement createSpecializeSlotKind() {
-            if (!model.usesBoxingElimination()) {
-                throw new AssertionError("Not supported.");
-            }
-            if (!tier.isCached()) {
+        private CodeExecutableElement createSpecializeSlotTag() {
+            if (!model.usesBoxingElimination() || !tier.isCached()) {
                 throw new AssertionError("Not supported.");
             }
 
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), types.FrameSlotKind, "specializeSlotKind");
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), type(byte.class), "specializeSlotTag");
             ex.addParameter(new CodeVariableElement(type(Object.class), "value"));
             CodeTreeBuilder b = ex.createBuilder();
             boolean elseIf = false;
             for (TypeMirror boxingType : model.boxingEliminatedTypes) {
                 elseIf = b.startIf(elseIf);
                 b.string("value instanceof ").type(ElementUtils.boxType(boxingType)).end().startBlock();
-                b.startReturn().staticReference(types.FrameSlotKind, ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(boxingType))).end();
+                b.startReturn().staticReference(frameTagsElement.get(boxingType)).end();
                 b.end();
             }
             b.startElseBlock();
-            b.startReturn().staticReference(types.FrameSlotKind, "Object").end();
+            b.startReturn().staticReference(frameTagsElement.getObject()).end();
             b.end();
 
             return ex;
@@ -12277,7 +12273,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 }
                 b.end();
             }
-            if (tier.isCached() && usesLocalTags()) {
+            if (tier.isCached() && model.usesBoxingElimination()) {
                 b.string("this.localTags_.length");
             }
             b.end();
@@ -12361,7 +12357,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     for (VariableElement var : ElementFilter.fieldsIn(abstractBytecodeNode.getEnclosedElements())) {
                         b.string("this.", var.getSimpleName().toString());
                     }
-                    if (usesLocalTags()) {
+                    if (model.usesBoxingElimination()) {
                         b.string("numLocals");
                     }
                     b.end();
@@ -12460,7 +12456,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     }
                     b.string(e.getSimpleName().toString() + "__");
                 }
-                if (usesLocalTags()) {
+                if (model.usesBoxingElimination()) {
                     b.string("this.localTags_.length");
                 }
                 b.end();
@@ -12656,7 +12652,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             }
 
             CodeExecutableElement ex = GeneratorUtils.createConstructorUsingFields(Set.of(), this);
-            if (usesLocalTags()) {
+            if (model.usesBoxingElimination()) {
                 // The cached node needs numLocals to allocate the tags array (below).
                 ex.addParameter(new CodeVariableElement(type(int.class), "numLocals"));
             }
@@ -12725,7 +12721,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.startAssign("this.epilogExceptionalNode_").startCall("insert").startNew(getCachedDataClassType(model.epilogExceptional.operation.instruction)).end().end().end();
             }
 
-            if (usesLocalTags()) {
+            if (model.usesBoxingElimination()) {
                 b.declaration(type(byte[].class), "localTags", "new byte[numLocals]");
                 b.statement("Arrays.fill(localTags, FrameSlotKind.Illegal.tag)");
                 b.startAssign("this.localTags_").string("localTags").end();
@@ -14332,7 +14328,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.returnDefault();
                 b.end();
 
-                b.startIf().string("frame.getTag(sp - 1) != ").staticReference(frameSlotKindConstant.get(inputType)).end().startBlock();
+                b.startIf().string("frame.getTag(sp - 1) != ").staticReference(frameTagsElement.get(inputType)).end().startBlock();
                 b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
                 b.startStatement().startCall(lookupDoSpecializeBranch(instr.getQuickeningRoot()).getSimpleName().toString());
                 if (model.specializationDebugListener) {
@@ -14691,8 +14687,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 bytecodeNode = "this";
             }
 
-            b.startDeclaration(types.FrameSlotKind, "kind");
-            b.startCall(bytecodeNode, "getCachedLocalKindInternal");
+            b.startDeclaration(type(byte.class), "tag");
+            b.startCall(bytecodeNode, "getCachedLocalTagInternal");
             if (model.enableBlockScoping) {
                 b.string("localIndex");
             } else {
@@ -14707,11 +14703,11 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             b.startTryBlock();
 
-            b.startSwitch().string("kind").end().startBlock();
+            b.startSwitch().string("tag").end().startBlock();
             for (TypeMirror boxingType : model.boxingEliminatedTypes) {
                 InstructionModel boxedInstruction = typeToSpecialization.get(boxingType);
 
-                b.startCase().string(ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(boxingType))).end();
+                b.startCase().staticReference(frameTagsElement.get(boxingType)).end();
                 b.startCaseBlock();
                 b.startStatement().string("newInstruction = ").tree(createInstructionConstant(boxedInstruction)).end();
                 emitOnSpecialize(b, "$this", "bci", readInstruction("bc", "bci"), "LoadLocal$" + boxedInstruction.getQuickeningName());
@@ -14723,8 +14719,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.end();
             }
 
-            b.startCase().string("Object").end();
-            b.startCase().string("Illegal").end();
+            b.startCase().staticReference(frameTagsElement.getObject()).end();
+            b.startCase().staticReference(frameTagsElement.getIllegal()).end();
             b.startCaseBlock();
             b.startStatement().string("newInstruction = ").tree(createInstructionConstant(genericInstruction)).end();
             emitOnSpecialize(b, "$this", "bci", readInstruction("bc", "bci"), "LoadLocal$" + genericInstruction.getQuickeningName());
@@ -14736,7 +14732,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.end();
 
             b.caseDefault().startCaseBlock();
-            b.tree(GeneratorUtils.createShouldNotReachHere("Unexpected FrameSlotKind."));
+            b.tree(GeneratorUtils.createShouldNotReachHere("Unexpected frame tag."));
             b.end();
 
             b.end(); // switch
@@ -15036,8 +15032,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     bytecodeNode = "this";
                 }
 
-                b.startDeclaration(types.FrameSlotKind, "kind");
-                b.startCall(bytecodeNode, "getCachedLocalKindInternal");
+                b.startDeclaration(type(byte.class), "tag");
+                b.startCall(bytecodeNode, "getCachedLocalTagInternal");
                 if (model.enableBlockScoping) {
                     b.string("localIndex");
                 } else {
@@ -15046,7 +15042,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.end(); // call
                 b.end(); // declaration
 
-                b.startIf().string("kind == ").staticReference(types.FrameSlotKind, ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(slotType)));
+                b.startIf().string("tag == ").staticReference(frameTagsElement.get(slotType));
                 b.end().startBlock();
                 if (needsCast) {
                     b.startTryBlock();
@@ -15148,8 +15144,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.declaration(type(short.class), "newOperand");
             b.declaration(type(short.class), "operand", readInstruction("bc", "operandIndex"));
 
-            b.startDeclaration(types.FrameSlotKind, "oldKind");
-            b.startCall(bytecodeNode, "getCachedLocalKindInternal");
+            b.startDeclaration(type(byte.class), "oldTag");
+            b.startCall(bytecodeNode, "getCachedLocalTagInternal");
             if (model.enableBlockScoping) {
                 b.string("localIndex");
             } else {
@@ -15157,7 +15153,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             }
             b.end(); // call
             b.end(); // declaration
-            b.declaration(types.FrameSlotKind, "newKind");
+            b.declaration(type(byte.class), "newTag");
 
             Map<TypeMirror, InstructionModel> typeToSpecialization = new HashMap<>();
             List<InstructionModel> specializations = instr.quickenedInstructions;
@@ -15181,11 +15177,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 // instruction for successful operand quickening
                 InstructionModel unboxedInstruction = boxedInstruction.quickenedInstructions.get(0);
 
-                b.startSwitch().string("oldKind").end().startBlock();
+                b.startSwitch().string("oldTag").end().startBlock();
 
-                String kindName = ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(boxingType));
-                b.startCase().string(kindName).end();
-                b.startCase().string("Illegal").end();
+                b.startCase().staticReference(frameTagsElement.get(boxingType)).end();
+                b.startCase().staticReference(frameTagsElement.getIllegal()).end();
                 b.startCaseBlock();
 
                 b.startIf().string("(newOperand = ").startCall(createApplyQuickeningName(boxingType)).string("operand").end().string(") != -1").end().startBlock();
@@ -15194,8 +15189,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.startStatement().string("newInstruction = ").tree(createInstructionConstant(boxedInstruction)).end();
                 b.startStatement().string("newOperand = operand").end();
                 b.end(); // else block
+                String kindName = ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(boxingType));
                 emitOnSpecialize(b, "this", "bci", readInstruction("bc", "bci"), "StoreLocal$" + kindName);
-                b.startStatement().string("newKind = ").staticReference(types.FrameSlotKind, kindName).end();
+                b.startStatement().string("newTag = ").staticReference(frameTagsElement.get(boxingType)).end();
                 b.startStatement();
                 startSetFrame(b, boxingType).string("frame").string("slot").startGroup().cast(boxingType).string("local").end().end();
                 b.end();
@@ -15206,14 +15202,14 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     if (ElementUtils.typeEquals(otherType, boxingType)) {
                         continue;
                     }
-                    b.startCase().string(ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(otherType))).end();
+                    b.startCase().staticReference(frameTagsElement.get(otherType)).end();
                 }
 
-                b.startCase().string("Object").end();
+                b.startCase().staticReference(frameTagsElement.getObject()).end();
                 b.startCaseBlock();
                 b.startStatement().string("newInstruction = ").tree(createInstructionConstant(genericInstruction)).end();
                 b.startStatement().string("newOperand = ").startCall("undoQuickening").string("operand").end().end();
-                b.startStatement().string("newKind = ").staticReference(types.FrameSlotKind, "Object").end();
+                b.startStatement().string("newTag = ").staticReference(frameTagsElement.getObject()).end();
                 emitOnSpecialize(b, "this", "bci", readInstruction("bc", "bci"), "StoreLocal$" + genericInstruction.getQualifiedQuickeningName());
                 b.startStatement();
                 startSetFrame(b, type(Object.class)).string("frame").string("slot").string("local").end();
@@ -15222,7 +15218,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.end();
 
                 b.caseDefault().startCaseBlock();
-                b.tree(GeneratorUtils.createShouldNotReachHere("Unexpected FrameSlotKind."));
+                b.tree(GeneratorUtils.createShouldNotReachHere("Unexpected frame tag."));
                 b.end();
 
                 b.end(); // switch
@@ -15232,19 +15228,20 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.startElseBlock(elseIf);
             b.startStatement().string("newInstruction = ").tree(createInstructionConstant(genericInstruction)).end();
             b.startStatement().string("newOperand = ").startCall("undoQuickening").string("operand").end().end();
-            b.startStatement().string("newKind = ").staticReference(types.FrameSlotKind, "Object").end();
+            b.startStatement().string("newTag = ").staticReference(frameTagsElement.getObject()).end();
             emitOnSpecialize(b, "this", "bci", readInstruction("bc", "bci"), "StoreLocal$" + genericInstruction.getQualifiedQuickeningName());
             b.startStatement();
             startSetFrame(b, type(Object.class)).string("frame").string("slot").string("local").end();
             b.end();
             b.end(); // else
 
-            b.startStatement().startCall(bytecodeNode, "setCachedLocalKindInternal");
-            b.string("slot");
-            b.string("newKind");
+            b.startStatement().startCall(bytecodeNode, "setCachedLocalTagInternal");
             if (model.enableBlockScoping) {
                 b.string("localIndex");
+            } else {
+                b.string("slot");
             }
+            b.string("newTag");
             b.end().end();
 
             emitQuickeningOperand(b, "this", "bc", "bci", null, 0, "operandIndex", "operand", "newOperand");
@@ -15253,12 +15250,14 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.startElseBlock();
             b.startStatement().string("newInstruction = ").tree(createInstructionConstant(genericInstruction)).end();
             b.statement(setFrameObject("slot", "local"));
-            b.startStatement().startCall(bytecodeNode, "setCachedLocalKindInternal");
-            b.string("slot");
-            b.staticReference(types.FrameSlotKind, "Object");
+            b.startStatement().startCall(bytecodeNode, "setCachedLocalTagInternal");
             if (model.enableBlockScoping) {
                 b.string("localIndex");
+            } else {
+                b.string("slot");
             }
+            b.staticReference(frameTagsElement.getObject());
+
             b.end().end();
 
             b.end(); // case operandIndex == -1
