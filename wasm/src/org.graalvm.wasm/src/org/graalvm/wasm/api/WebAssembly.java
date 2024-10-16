@@ -45,6 +45,7 @@ import static org.graalvm.wasm.WasmMath.minUnsigned;
 import static org.graalvm.wasm.api.JsConstants.JS_LIMITS;
 
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -82,6 +83,7 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.source.Source;
 
 public class WebAssembly extends Dictionary {
@@ -300,7 +302,15 @@ public class WebAssembly extends Dictionary {
                 long size = interop.getBufferSize(source);
                 if (size == (int) size) {
                     byte[] bytes = new byte[(int) size];
-                    interop.readBuffer(source, 0, bytes, 0, (int) size);
+                    // 23.1: cannot use readBuffer message yet, so read 8 bytes at once instead.
+                    // The actual reads may not be 8-byte aligned.
+                    int longEnd = bytes.length & -Long.BYTES;
+                    for (int i = 0; i < longEnd; i += Long.BYTES) {
+                        ByteArraySupport.littleEndian().putLong(bytes, i, interop.readBufferLong(source, ByteOrder.LITTLE_ENDIAN, i));
+                    }
+                    for (int i = longEnd; i < bytes.length; i++) {
+                        bytes[i] = interop.readBufferByte(source, i);
+                    }
                     return bytes;
                 }
             } else if (interop.hasArrayElements(source)) {
