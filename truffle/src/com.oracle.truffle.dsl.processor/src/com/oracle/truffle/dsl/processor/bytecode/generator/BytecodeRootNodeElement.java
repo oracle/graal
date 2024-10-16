@@ -12935,14 +12935,84 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 }
                 if (model.enableTagInstrumentation) {
                     b.startCase().string("HANDLER_TAG_EXCEPTIONAL").end().startCaseBlock();
-                    b.statement("long result = doTagExceptional($root, frame, bc, bci, throwable, this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI], this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_SP])");
-                    b.statement("temp = ", decodeSp("result"));
-                    b.statement("bci = ", decodeBci("result"));
-                    b.startIf().string("sp < (int) temp + $root.maxLocals").end().startBlock();
-                    b.lineComment("The instrumentation pushed a value on the stack.");
-                    b.statement("assert sp == (int) temp + $root.maxLocals - 1");
-                    b.statement("sp++");
+                    b.declaration(tagNode.asType(), "node", "this.tagRoot.tagNodes[this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI]]");
+                    b.statement("Object result = doTagExceptional(frame, node, this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI], bc, bci, throwable)");
+
+                    b.startIf().string("result == null").end().startBlock();
+                    b.startThrow().string("throwable").end();
                     b.end();
+                    b.statement("temp = this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_SP] + $root.maxLocals");
+
+                    b.startIf().string("result == ").staticReference(types.ProbeNode, "UNWIND_ACTION_REENTER").end().startBlock();
+                    b.lineComment("Reenter by jumping to the begin bci.");
+                    b.statement("bci = node.enterBci");
+                    b.end().startElseBlock();
+
+                    b.startSwitch().string("readValidBytecode(bc, node.returnBci)").end().startBlock();
+                    for (var entry : model.getInstructions().stream().filter((i) -> i.kind == InstructionKind.TAG_LEAVE).collect(deterministicGroupingBy((i) -> {
+                        if (i.isReturnTypeQuickening()) {
+                            return i.signature.returnType;
+                        } else {
+                            return type(Object.class);
+                        }
+                    })).entrySet()) {
+                        int length = -1;
+                        for (InstructionModel instruction : entry.getValue()) {
+                            b.startCase().tree(createInstructionConstant(instruction)).end();
+                            if (length != -1 && instruction.getInstructionLength() != length) {
+                                throw new AssertionError("Unexpected length.");
+                            }
+                            length = instruction.getInstructionLength();
+                        }
+                        TypeMirror targetType = entry.getKey();
+                        b.startCaseBlock();
+
+                        CodeExecutableElement expectMethod = null;
+                        if (!ElementUtils.isObject(targetType)) {
+                            expectMethod = lookupExpectMethod(parserType, targetType);
+                            b.startTryBlock();
+                        }
+
+                        b.startStatement();
+                        startSetFrame(b, targetType).string("frame").string("(int)temp");
+                        if (expectMethod == null) {
+                            b.string("result");
+                        } else {
+                            b.startStaticCall(expectMethod);
+                            b.string("result");
+                            b.end();
+                        }
+                        b.end(); // setFrame
+                        b.end(); // statement
+
+                        if (!ElementUtils.isObject(targetType)) {
+                            b.end().startCatchBlock(types.UnexpectedResultException, "e");
+                            b.startStatement();
+                            startSetFrame(b, type(Object.class)).string("frame").string("(int)temp").string("e.getResult()").end();
+                            b.end(); // statement
+                            b.end(); // catch
+                        }
+
+                        b.statement("temp = temp + 1");
+                        b.statement("bci = node.returnBci + " + length);
+
+                        b.statement("break");
+                        b.end();
+                    }
+                    for (InstructionModel instruction : model.getInstructions().stream().filter((i) -> i.kind == InstructionKind.TAG_LEAVE_VOID).toList()) {
+                        b.startCase().tree(createInstructionConstant(instruction)).end();
+                        b.startCaseBlock();
+                        b.statement("bci = node.returnBci + " + instruction.getInstructionLength());
+                        b.lineComment("discard return value");
+                        b.statement("break");
+                        b.end();
+                    }
+                    b.caseDefault().startCaseBlock();
+                    b.tree(GeneratorUtils.createShouldNotReachHere());
+                    b.end(); // case default
+                    b.end(); // switch
+                    b.end();
+
                     b.statement("break");
                     b.end();
                 }
@@ -12954,8 +13024,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.end();
             b.startAssert().string("throwable instanceof ").type(types.AbstractTruffleException).end();
             b.statement("bci = this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI]");
-            b.statement("temp = this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_SP]");
-            b.statement(setFrameObject("((int) temp) - 1 + $root.maxLocals", "throwable"));
+            b.statement("temp = this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_SP] + $root.maxLocals");
+            b.statement(setFrameObject("((int) temp) - 1", "throwable"));
 
             if (hasSpecialHandler) {
                 b.statement("break");
@@ -12970,7 +13040,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.end();
             }
 
-            b.statement("temp = temp + $root.maxLocals");
             /**
              * handlerSp - 1 is the sp before pushing the exception. The current sp should be at or
              * above this height.
@@ -13781,14 +13850,13 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         private CodeExecutableElement createDoTagExceptional() {
             CodeExecutableElement method = new CodeExecutableElement(
                             Set.of(PRIVATE),
-                            type(long.class), "doTagExceptional",
-                            new CodeVariableElement(BytecodeRootNodeElement.this.asType(), "$root"),
+                            type(Object.class), "doTagExceptional",
                             new CodeVariableElement(types.VirtualFrame, "frame"),
+                            new CodeVariableElement(tagNode.asType(), "node"),
+                            new CodeVariableElement(type(int.class), "nodeId"),
                             new CodeVariableElement(type(byte[].class), "bc"),
                             new CodeVariableElement(type(int.class), "bci"),
-                            new CodeVariableElement(type(Throwable.class), "exception"),
-                            new CodeVariableElement(type(int.class), "nodeId"),
-                            new CodeVariableElement(type(int.class), "handlerSp"));
+                            new CodeVariableElement(type(Throwable.class), "exception"));
 
             method.getThrownTypes().add(type(Throwable.class));
 
@@ -13796,8 +13864,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             CodeTreeBuilder b = method.createBuilder();
             b.declaration(type(boolean.class), "wasOnReturnExecuted");
-            b.declaration(type(int.class), "nextBci");
-            b.declaration(type(int.class), "nextSp");
 
             b.startSwitch().string("readValidBytecode(bc, bci)").end().startBlock();
             for (List<InstructionModel> instructions : groupedInstructions) {
@@ -13816,87 +13882,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.end(); // case default
             b.end(); // switch
 
-            b.declaration(tagNode.asType(), "node", "this.tagRoot.tagNodes[nodeId]");
-            b.statement("Object result = node.findProbe().onReturnExceptionalOrUnwind(frame, exception, wasOnReturnExecuted)");
-            b.startIf().string("result == null").end().startBlock();
-            b.startThrow().string("exception").end();
-            b.end();
-            b.startElseIf().string("result == ").staticReference(types.ProbeNode, "UNWIND_ACTION_REENTER").end().startBlock();
-            b.lineComment("Reenter by jumping to the begin bci.");
-            b.statement("return ", encodeState("node.enterBci", "handlerSp"));
-            b.end().startElseBlock();
-            b.lineComment("We jump to the return address which is at sp + 1.");
-
-            b.declaration(type(int.class), "targetSp");
-            b.declaration(type(int.class), "targetBci");
-
-            b.startSwitch().string("readValidBytecode(bc, node.returnBci)").end().startBlock();
-            for (var entry : model.getInstructions().stream().filter((i) -> i.kind == InstructionKind.TAG_LEAVE).collect(deterministicGroupingBy((i) -> {
-                if (i.isReturnTypeQuickening()) {
-                    return i.signature.returnType;
-                } else {
-                    return type(Object.class);
-                }
-            })).entrySet()) {
-                int length = -1;
-                for (InstructionModel instruction : entry.getValue()) {
-                    b.startCase().tree(createInstructionConstant(instruction)).end();
-                    if (length != -1 && instruction.getInstructionLength() != length) {
-                        throw new AssertionError("Unexpected length.");
-                    }
-                    length = instruction.getInstructionLength();
-                }
-                TypeMirror targetType = entry.getKey();
-                b.startCaseBlock();
-                b.statement("targetBci = node.returnBci + " + length);
-                b.statement("targetSp = handlerSp + 1 ");
-
-                CodeExecutableElement expectMethod = null;
-                if (!ElementUtils.isObject(targetType)) {
-                    expectMethod = lookupExpectMethod(parserType, targetType);
-                    b.startTryBlock();
-                }
-
-                b.startStatement();
-                startSetFrame(b, targetType).string("frame").string("targetSp - 1 + $root.maxLocals");
-                if (expectMethod == null) {
-                    b.string("result");
-                } else {
-                    b.startStaticCall(expectMethod);
-                    b.string("result");
-                    b.end();
-                }
-                b.end(); // setFrame
-                b.end(); // statement
-
-                if (!ElementUtils.isObject(targetType)) {
-                    b.end().startCatchBlock(types.UnexpectedResultException, "e");
-                    b.startStatement();
-                    startSetFrame(b, type(Object.class)).string("frame").string("targetSp - 1 + $root.maxLocals").string("e.getResult()").end();
-                    b.end(); // statement
-                    b.end(); // catch
-                }
-
-                b.statement("break");
-                b.end();
-            }
-            for (InstructionModel instruction : model.getInstructions().stream().filter((i) -> i.kind == InstructionKind.TAG_LEAVE_VOID).toList()) {
-                b.startCase().tree(createInstructionConstant(instruction)).end();
-                b.startCaseBlock();
-                b.statement("targetBci = node.returnBci + " + instruction.getInstructionLength());
-                b.statement("targetSp = handlerSp ");
-                b.lineComment("discard return value");
-                b.statement("break");
-                b.end();
-            }
-            b.caseDefault().startCaseBlock();
-            b.tree(GeneratorUtils.createShouldNotReachHere());
-            b.end(); // case default
-            b.end(); // switch
-
-            b.startAssert().string("targetBci < bc.length : ").doubleQuote("returnBci must be reachable").end();
-            b.statement("return ", encodeState("targetBci", "targetSp"));
-            b.end();
+            b.statement("return node.findProbe().onReturnExceptionalOrUnwind(frame, exception, wasOnReturnExecuted)");
 
             return method;
 

@@ -29,6 +29,7 @@ import static com.oracle.truffle.api.bytecode.test.basic_interpreter.AbstractBas
 import java.util.List;
 import java.util.function.Supplier;
 
+import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -42,7 +43,14 @@ import com.oracle.truffle.api.bytecode.test.BytecodeDSLTestLanguage;
 import com.oracle.truffle.api.bytecode.test.basic_interpreter.AbstractBasicInterpreterTest;
 import com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter;
 import com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreterBuilder;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.EventContext;
+import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.test.polyglot.ProxyInstrument;
 
 @RunWith(Parameterized.class)
 public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
@@ -391,12 +399,122 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
         assertPartialEvalEquals(RootNode.createConstantNode(3L + numVariadic), root);
     }
 
+    @Test
+    public void testEmptyTagInstrumentation() {
+        // make sure empty tag instrumentation does not cause deopts
+        try (Context c = Context.create()) {
+            c.enter();
+
+            BasicInterpreter root = parseNodeForPE(interpreterClass, "testEmptyTagInstrumentation", b -> {
+                b.beginRoot();
+
+                b.beginTag(ExpressionTag.class);
+                b.beginAdd();
+
+                b.beginTag(ExpressionTag.class);
+                b.emitLoadConstant(20L);
+                b.endTag(ExpressionTag.class);
+                b.endSourceSection();
+
+                b.beginTag(ExpressionTag.class);
+                b.emitLoadConstant(22L);
+                b.endTag(ExpressionTag.class);
+
+                b.endAdd();
+                b.endTag(ExpressionTag.class);
+
+                b.endRoot();
+            });
+
+            root.getRootNodes().ensureComplete();
+
+            assertPartialEvalEquals(RootNode.createConstantNode(42L), root);
+        }
+    }
+
+    @Test
+    public void testUnwindTagInstrumentation() {
+        // make sure an unwound value optimizes correctly in place.
+        try (Context c = Context.create()) {
+            c.initialize(BytecodeDSLTestLanguage.ID);
+            c.enter();
+
+            String text = "return 20 + 22";
+            Source s = Source.newBuilder("test", text, "testUnwindTagInstrumentation").build();
+            BasicInterpreter root = parseNodeForPE(BytecodeDSLTestLanguage.REF.get(null), interpreterClass, "testUnwindTagInstrumentation", b -> {
+                b.beginSource(s);
+                b.beginSourceSection(0, text.length());
+                b.beginRoot();
+
+                b.beginSourceSection(text.indexOf("20 + 22"), 7);
+                b.beginTag(ExpressionTag.class);
+                b.beginAdd();
+
+                b.beginSourceSection(text.indexOf("20"), 2);
+                b.beginTag(ExpressionTag.class);
+                b.emitLoadConstant(20L);
+                b.endTag(ExpressionTag.class);
+                b.endSourceSection();
+
+                b.beginSourceSection(text.indexOf("22"), 2);
+                b.beginTag(ExpressionTag.class);
+                b.emitLoadConstant(22L);
+                b.endTag(ExpressionTag.class);
+                b.endSourceSection();
+
+                b.endAdd();
+                b.endTag(ExpressionTag.class);
+                b.endSourceSection();
+
+                b.endRoot();
+                b.endSourceSection();
+                b.endSource();
+            });
+
+            ProxyInstrument.findEnv(c).getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder(). //
+                            tagIs(ExpressionTag.class).indexIn(text.indexOf("20"), 2).build(),
+                            new ExecutionEventListener() {
+
+                                @Override
+                                public void onEnter(EventContext context, VirtualFrame frame) {
+                                }
+
+                                @Override
+                                public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+                                    if (context.getInstrumentedSourceSection().getCharLength() == 2) {
+                                        throw context.createUnwind(21L);
+                                    }
+                                }
+
+                                @Override
+                                public Object onUnwind(EventContext context, VirtualFrame frame, Object info) {
+                                    // return info
+                                    return info;
+                                }
+
+                                @Override
+                                public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+                                }
+                            });
+
+            // if this is 42 the instrumentation did not trigger correctly
+            Assert.assertEquals(43L, root.getCallTarget().call());
+
+            assertPartialEvalEquals(RootNode.createConstantNode(43L), root);
+        }
+    }
+
     private static Supplier<Object> supplier(Object result) {
         return () -> result;
     }
 
     private static <T extends BasicInterpreterBuilder> BasicInterpreter parseNodeForPE(Class<? extends BasicInterpreter> interpreterClass, String rootName, BytecodeParser<T> builder) {
-        BasicInterpreter result = parseNode(interpreterClass, LANGUAGE, false, rootName, builder);
+        return parseNodeForPE(LANGUAGE, interpreterClass, rootName, builder);
+    }
+
+    private static <T extends BasicInterpreterBuilder> BasicInterpreter parseNodeForPE(BytecodeDSLTestLanguage language, Class<? extends BasicInterpreter> interpreterClass, String rootName,
+                    BytecodeParser<T> builder) {
+        BasicInterpreter result = parseNode(interpreterClass, language, false, rootName, builder);
         result.getBytecodeNode().setUncachedThreshold(0); // force interpreter to skip tier 0
         return result;
     }
