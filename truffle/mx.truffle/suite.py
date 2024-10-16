@@ -1646,7 +1646,7 @@ suite = {
         "TRUFFLE_API",
         "TRUFFLE_COMPILER",
       ],
-      "description" : "Truffle runtime distribution.",
+      "description" : "The community edition of the Truffle runtime for Graal Languages. It is not recommended to depend on this artifact directly. Instead, use a POM dependency of one or more Graal Languages (for example `org.graalvm.polyglot:js-community`) to ensure all dependencies are pulled in correctly.",
       "useModulePath": True,
       "maven": {
           "artifactId": "truffle-runtime",
