@@ -84,6 +84,10 @@ mx.update_commands(_suite, {
         lambda args: mx_benchmark.benchmark(["specjbb2015"] + args),
         '[-- [VM options] [-- [SPECjbb2015 options]]]'
     ],
+    'barista': [
+        lambda args: createBenchmarkShortcut("barista", args),
+        '[<benchmarks>|*] [-- [VM options] [-- [Barista harness options]]]'
+    ],
     'renaissance': [
         lambda args: createBenchmarkShortcut("renaissance", args),
         '[<benchmarks>|*] [-- [VM options] [-- [Renaissance options]]]'
@@ -1189,15 +1193,25 @@ _baristaConfig = {
 
 class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
     """Barista benchmark suite implementation. A collection of microservice workloads running on the Barista harness.
+
+    The run arguments are passed to the Barista harness.
+    If you want to run something like `hwloc-bind` or `taskset` prefixed before the app, you should use the '--cmd-app-prefix' Barista harness option.
+    If you want to pass options to the app, you should use the '--app-args' Barista harness option.
     """
-    def __init__(self, *args, **kwargs):
-        super(BaristaBenchmarkSuite, self).__init__(BaristaBenchmarkSuite.BaristaCommand(), *args, **kwargs)
+    def __init__(self, custom_harness_command: mx_benchmark.CustomHarnessCommand = None):
+        if custom_harness_command is None:
+            custom_harness_command = BaristaBenchmarkSuite.BaristaCommand()
+        super().__init__(custom_harness_command)
         self._version = None
         self._context = None
 
     @property
     def context(self):
         return self._context
+
+    @context.setter
+    def context(self, value):
+        self._context = value
 
     def version(self):
         if self._version is None:
@@ -1244,6 +1258,9 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
     def baristaProjectConfigurationPath(self):
         return self.baristaFilePath("pyproject.toml")
 
+    def baristaBuilderPath(self):
+        return self.baristaFilePath("build")
+
     def baristaHarnessPath(self):
         return self.baristaFilePath("barista")
 
@@ -1255,11 +1272,14 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
         if tracker_type in _baristaConfig["disable_trackers"]:
             mx.log(f"Ignoring the registration of '{name}' tracker as it was disabled for {self.__class__.__name__}.")
             return
-        super(BaristaBenchmarkSuite, self).register_tracker(name, tracker_type)
+        super().register_tracker(name, tracker_type)
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         # Pass the VM options, BaristaCommand will form the final command.
         return self.vmArgs(bmSuiteArgs)
+
+    def all_command_line_args_are_vm_args(self):
+        return True
 
     def rules(self, out, benchmarks, bmSuiteArgs):
         json_file_group_name = "barista_json_results_file_path"
@@ -1348,27 +1368,8 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
 
         return all_rules
 
-    def runAndReturnStdOut(self, benchmarks, bmSuiteArgs):
-        if benchmarks is None:
-            benchmarks = self.benchmarkList(bmSuiteArgs)
-
-        out_acc = ""
-        last_dims = None
-        # Run the benchmarks one by one
-        for benchmark in benchmarks:
-            self._currently_running_benchmark = benchmark
-            retcode, out, dims = super(BaristaBenchmarkSuite, self).runAndReturnStdOut([benchmark], bmSuiteArgs)
-            if not self.validateReturnCode(retcode):
-                self.on_fail(f"Benchmark failed, exit code: {retcode}. Benchmark: {benchmark}")
-            out_acc += out
-            if last_dims is not None and last_dims != dims:
-                self.on_fail(f"Expected equal dims\nlast: {last_dims}\ncurr: {dims}")
-            last_dims = dims
-        self._currently_running_benchmark = "".join(benchmarks)
-        return retcode, out_acc, dims
-
     def validateStdoutWithDimensions(self, out, benchmarks, bmSuiteArgs, retcode=None, dims=None, extraRules=None) -> DataPoints:
-        datapoints = super(BaristaBenchmarkSuite, self).validateStdoutWithDimensions(out, benchmarks, bmSuiteArgs, retcode=retcode, dims=dims, extraRules=extraRules)
+        datapoints = super().validateStdoutWithDimensions(out, benchmarks, bmSuiteArgs, retcode=retcode, dims=dims, extraRules=extraRules)
         for datapoint in datapoints:
             # Expand the 'load-tester' field group
             if "load-tester.command" in datapoint:
@@ -1389,9 +1390,16 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
                 del datapoint["load-tester.command"]
         return datapoints
 
-    def run(self, benchmarks, bmSuiteArgs) -> DataPoints:
-        self._context = BaristaBenchmarkSuite.RuntimeContext(self, benchmarks, bmSuiteArgs)
-        return super(BaristaBenchmarkSuite, self).run(benchmarks, bmSuiteArgs)
+    def _vmRun(self, vm, workdir, command, benchmarks, bmSuiteArgs):
+        self.enforce_single_benchmark(benchmarks)
+        self.context = BaristaBenchmarkSuite.RuntimeContext(self, vm, benchmarks[0], bmSuiteArgs)
+        return super()._vmRun(vm, workdir, command, benchmarks, bmSuiteArgs)
+
+    def enforce_single_benchmark(self, benchmarks):
+        if not isinstance(benchmarks, list):
+            raise TypeError(f"{self.__class__.__name__} expects to receive a list of benchmarks to run, instead got an instance of {benchmarks.__class__.__name__}! Please specify a single benchmark!")
+        if len(benchmarks) != 1:
+            raise ValueError(f"You have requested {benchmarks} to be run but {self.__class__.__name__} can only run a single benchmark at a time! Please specify a single benchmark!")
 
     class BaristaCommand(mx_benchmark.CustomHarnessCommand):
         """Maps a JVM command into a command tailored for the Barista harness.
@@ -1466,17 +1474,18 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
             if jvm_cmd_prefix:
                 self._updateCommandOption(barista_cmd, "--cmd-app-prefix", "-p", " ".join(jvm_cmd_prefix))
             barista_cmd += ["--mode", "jvm"]
-            barista_cmd.append(suite._currently_running_benchmark)
+            barista_cmd.append(suite.context.benchmark)
             return barista_cmd
 
     class RuntimeContext():
         """Container class for the runtime context of BaristaBenchmarkSuite.
         """
-        def __init__(self, suite, benchmarks, bmSuiteArgs):
+        def __init__(self, suite, vm, benchmark, bmSuiteArgs):
             if not isinstance(suite, BaristaBenchmarkSuite):
                 raise TypeError(f"Expected an instance of {BaristaBenchmarkSuite.__name__}, instead got an instance of {suite.__class__.__name__}")
             self._suite = suite
-            self._benchmarks = benchmarks
+            self._vm = vm
+            self._benchmark = benchmark
             self._bmSuiteArgs = bmSuiteArgs
 
         @property
@@ -1484,8 +1493,16 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
             return self._suite
 
         @property
-        def benchmarks(self):
-            return self._benchmarks
+        def vm(self):
+            return self._vm
+
+        @property
+        def benchmark(self):
+            """The currently running benchmark.
+
+            Corresponds to `benchmarks[0]` in a suite method that has a `benchmarks` argument.
+            """
+            return self._benchmark
 
         @property
         def bmSuiteArgs(self):
