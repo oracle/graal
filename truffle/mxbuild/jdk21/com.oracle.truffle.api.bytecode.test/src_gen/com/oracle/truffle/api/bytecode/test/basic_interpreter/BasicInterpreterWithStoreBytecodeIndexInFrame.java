@@ -3798,9 +3798,9 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
 
         abstract byte[] getLocalTags();
 
-        abstract byte getCachedLocalTagInternal(int localIndex);
+        abstract byte getCachedLocalTagInternal(byte[] localTags, int localIndex);
 
-        abstract void setCachedLocalTagInternal(int localIndex, byte tag);
+        abstract void setCachedLocalTagInternal(byte[] localTags, int localIndex, byte tag);
 
         @Override
         @TruffleBoundary
@@ -4991,6 +4991,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
             byte[] bc = this.bytecodes;
             Node[] cachedNodes = this.cachedNodes_;
             int[] branchProfiles = this.branchProfiles_;
+            byte[] localTags = this.localTags_;
             int bci = (int) startState;
             int sp = (short) (startState >>> 32);
             int op;
@@ -5105,7 +5106,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                         case Instructions.STORE_LOCAL :
                         {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
-                            doStoreLocal(frame, localFrame, bc, bci, sp, FRAMES.getObject(frame, sp - 1));
+                            doStoreLocal(frame, localFrame, bc, bci, sp, FRAMES.getObject(frame, sp - 1), localTags);
                             FRAMES.clear(frame, sp - 1);
                             sp -= 1;
                             bci += 10;
@@ -5113,7 +5114,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                         }
                         case Instructions.STORE_LOCAL$BOOLEAN :
                         {
-                            doStoreLocal$Boolean(frame, localFrame, bc, bci, sp);
+                            doStoreLocal$Boolean(frame, localFrame, bc, bci, sp, localTags);
                             FRAMES.clear(frame, sp - 1);
                             sp -= 1;
                             bci += 10;
@@ -5121,7 +5122,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                         }
                         case Instructions.STORE_LOCAL$BOOLEAN$BOOLEAN :
                         {
-                            doStoreLocal$Boolean$Boolean(frame, localFrame, bc, bci, sp);
+                            doStoreLocal$Boolean$Boolean(frame, localFrame, bc, bci, sp, localTags);
                             FRAMES.clear(frame, sp - 1);
                             sp -= 1;
                             bci += 10;
@@ -5129,7 +5130,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                         }
                         case Instructions.STORE_LOCAL$LONG :
                         {
-                            doStoreLocal$Long(frame, localFrame, bc, bci, sp);
+                            doStoreLocal$Long(frame, localFrame, bc, bci, sp, localTags);
                             FRAMES.clear(frame, sp - 1);
                             sp -= 1;
                             bci += 10;
@@ -5137,7 +5138,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                         }
                         case Instructions.STORE_LOCAL$LONG$LONG :
                         {
-                            doStoreLocal$Long$Long(frame, localFrame, bc, bci, sp);
+                            doStoreLocal$Long$Long(frame, localFrame, bc, bci, sp, localTags);
                             FRAMES.clear(frame, sp - 1);
                             sp -= 1;
                             bci += 10;
@@ -5145,7 +5146,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                         }
                         case Instructions.STORE_LOCAL$GENERIC :
                         {
-                            doStoreLocal$generic(frame, localFrame, bc, bci, sp);
+                            doStoreLocal$generic(frame, localFrame, bc, bci, sp, localTags);
                             FRAMES.clear(frame, sp - 1);
                             sp -= 1;
                             bci += 10;
@@ -5218,42 +5219,42 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                         case Instructions.LOAD_LOCAL :
                         {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
-                            doLoadLocal(this, frame, localFrame, bc, bci, sp);
+                            doLoadLocal(this, frame, localFrame, bc, bci, sp, localTags);
                             sp += 1;
                             bci += 6;
                             break;
                         }
                         case Instructions.LOAD_LOCAL$BOOLEAN :
                         {
-                            doLoadLocal$Boolean(this, frame, localFrame, bc, bci, sp);
+                            doLoadLocal$Boolean(this, frame, localFrame, bc, bci, sp, localTags);
                             sp += 1;
                             bci += 6;
                             break;
                         }
                         case Instructions.LOAD_LOCAL$BOOLEAN$UNBOXED :
                         {
-                            doLoadLocal$Boolean$unboxed(this, frame, localFrame, bc, bci, sp);
+                            doLoadLocal$Boolean$unboxed(this, frame, localFrame, bc, bci, sp, localTags);
                             sp += 1;
                             bci += 6;
                             break;
                         }
                         case Instructions.LOAD_LOCAL$LONG :
                         {
-                            doLoadLocal$Long(this, frame, localFrame, bc, bci, sp);
+                            doLoadLocal$Long(this, frame, localFrame, bc, bci, sp, localTags);
                             sp += 1;
                             bci += 6;
                             break;
                         }
                         case Instructions.LOAD_LOCAL$LONG$UNBOXED :
                         {
-                            doLoadLocal$Long$unboxed(this, frame, localFrame, bc, bci, sp);
+                            doLoadLocal$Long$unboxed(this, frame, localFrame, bc, bci, sp, localTags);
                             sp += 1;
                             bci += 6;
                             break;
                         }
                         case Instructions.LOAD_LOCAL$GENERIC :
                         {
-                            doLoadLocal$generic(this, frame, localFrame, bc, bci, sp);
+                            doLoadLocal$generic(this, frame, localFrame, bc, bci, sp, localTags);
                             sp += 1;
                             bci += 6;
                             break;
@@ -6184,7 +6185,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
             return -1;
         }
 
-        private void doStoreLocal(Frame stackFrame, Frame frame, byte[] bc, int bci, int sp, Object local) {
+        private void doStoreLocal(Frame stackFrame, Frame frame, byte[] bc, int bci, int sp, Object local, byte[] localTags) {
             short newInstruction;
             int slot = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
             int localIndex = BYTES.getShort(bc, bci + 4 /* imm local_index */);
@@ -6192,7 +6193,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
             if (operandIndex != -1) {
                 short newOperand;
                 short operand = BYTES.getShort(bc, operandIndex);
-                byte oldTag = this.getCachedLocalTagInternal(localIndex);
+                byte oldTag = this.getCachedLocalTagInternal(localTags, localIndex);
                 byte newTag;
                 if (local instanceof Boolean) {
                     switch (oldTag) {
@@ -6251,13 +6252,13 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                     this.getRoot().onSpecialize(new InstructionImpl(this, bci, BYTES.getShort(bc, bci)), "StoreLocal$generic");
                     FRAMES.setObject(frame, slot, local);
                 }
-                this.setCachedLocalTagInternal(localIndex, newTag);
+                this.setCachedLocalTagInternal(localTags, localIndex, newTag);
                 BYTES.putShort(bc, operandIndex, newOperand);
                 this.getRoot().onQuickenOperand(new InstructionImpl(this, bci, BYTES.getShort(bc, bci)), 0, new InstructionImpl(this, operandIndex, operand), new InstructionImpl(this, operandIndex, newOperand));
             } else {
                 newInstruction = Instructions.STORE_LOCAL$GENERIC;
                 FRAMES.setObject(frame, slot, local);
-                this.setCachedLocalTagInternal(localIndex, FrameTags.OBJECT);
+                this.setCachedLocalTagInternal(localTags, localIndex, FrameTags.OBJECT);
             }
             {
                 InstructionImpl oldInstruction = new InstructionImpl(this, bci, BYTES.getShort(bc, bci));
@@ -6267,17 +6268,17 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
             FRAMES.clear(stackFrame, sp - 1);
         }
 
-        private void doStoreLocal$Boolean(Frame stackFrame, Frame frame, byte[] bc, int bci, int sp) {
+        private void doStoreLocal$Boolean(Frame stackFrame, Frame frame, byte[] bc, int bci, int sp, byte[] localTags) {
             Object local;
             try {
                 local = FRAMES.expectObject(stackFrame, sp - 1);
             } catch (UnexpectedResultException ex) {
-                doStoreLocal(stackFrame, frame, bc, bci, sp, ex.getResult());
+                doStoreLocal(stackFrame, frame, bc, bci, sp, ex.getResult(), localTags);
                 return;
             }
             int slot = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
             int localIndex = BYTES.getShort(bc, bci + 4 /* imm local_index */);
-            byte tag = this.getCachedLocalTagInternal(localIndex);
+            byte tag = this.getCachedLocalTagInternal(localTags, localIndex);
             if (tag == FrameTags.BOOLEAN) {
                 try {
                     FRAMES.setBoolean(frame, slot, BasicInterpreterWithStoreBytecodeIndexInFrame.expectBoolean(local));
@@ -6292,20 +6293,20 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                 }
             }
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            doStoreLocal(stackFrame, frame, bc, bci, sp, local);
+            doStoreLocal(stackFrame, frame, bc, bci, sp, local, localTags);
         }
 
-        private void doStoreLocal$Boolean$Boolean(Frame stackFrame, Frame frame, byte[] bc, int bci, int sp) {
+        private void doStoreLocal$Boolean$Boolean(Frame stackFrame, Frame frame, byte[] bc, int bci, int sp, byte[] localTags) {
             boolean local;
             try {
                 local = FRAMES.expectBoolean(stackFrame, sp - 1);
             } catch (UnexpectedResultException ex) {
-                doStoreLocal(stackFrame, frame, bc, bci, sp, ex.getResult());
+                doStoreLocal(stackFrame, frame, bc, bci, sp, ex.getResult(), localTags);
                 return;
             }
             int slot = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
             int localIndex = BYTES.getShort(bc, bci + 4 /* imm local_index */);
-            byte tag = this.getCachedLocalTagInternal(localIndex);
+            byte tag = this.getCachedLocalTagInternal(localTags, localIndex);
             if (tag == FrameTags.BOOLEAN) {
                 FRAMES.setBoolean(frame, slot, local);
                 if (CompilerDirectives.inCompiledCode()) {
@@ -6315,20 +6316,20 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                 return;
             }
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            doStoreLocal(stackFrame, frame, bc, bci, sp, local);
+            doStoreLocal(stackFrame, frame, bc, bci, sp, local, localTags);
         }
 
-        private void doStoreLocal$Long(Frame stackFrame, Frame frame, byte[] bc, int bci, int sp) {
+        private void doStoreLocal$Long(Frame stackFrame, Frame frame, byte[] bc, int bci, int sp, byte[] localTags) {
             Object local;
             try {
                 local = FRAMES.expectObject(stackFrame, sp - 1);
             } catch (UnexpectedResultException ex) {
-                doStoreLocal(stackFrame, frame, bc, bci, sp, ex.getResult());
+                doStoreLocal(stackFrame, frame, bc, bci, sp, ex.getResult(), localTags);
                 return;
             }
             int slot = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
             int localIndex = BYTES.getShort(bc, bci + 4 /* imm local_index */);
-            byte tag = this.getCachedLocalTagInternal(localIndex);
+            byte tag = this.getCachedLocalTagInternal(localTags, localIndex);
             if (tag == FrameTags.LONG) {
                 try {
                     FRAMES.setLong(frame, slot, BasicInterpreterWithStoreBytecodeIndexInFrame.expectLong(local));
@@ -6343,20 +6344,20 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                 }
             }
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            doStoreLocal(stackFrame, frame, bc, bci, sp, local);
+            doStoreLocal(stackFrame, frame, bc, bci, sp, local, localTags);
         }
 
-        private void doStoreLocal$Long$Long(Frame stackFrame, Frame frame, byte[] bc, int bci, int sp) {
+        private void doStoreLocal$Long$Long(Frame stackFrame, Frame frame, byte[] bc, int bci, int sp, byte[] localTags) {
             long local;
             try {
                 local = FRAMES.expectLong(stackFrame, sp - 1);
             } catch (UnexpectedResultException ex) {
-                doStoreLocal(stackFrame, frame, bc, bci, sp, ex.getResult());
+                doStoreLocal(stackFrame, frame, bc, bci, sp, ex.getResult(), localTags);
                 return;
             }
             int slot = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
             int localIndex = BYTES.getShort(bc, bci + 4 /* imm local_index */);
-            byte tag = this.getCachedLocalTagInternal(localIndex);
+            byte tag = this.getCachedLocalTagInternal(localTags, localIndex);
             if (tag == FrameTags.LONG) {
                 FRAMES.setLong(frame, slot, local);
                 if (CompilerDirectives.inCompiledCode()) {
@@ -6366,15 +6367,15 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                 return;
             }
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            doStoreLocal(stackFrame, frame, bc, bci, sp, local);
+            doStoreLocal(stackFrame, frame, bc, bci, sp, local, localTags);
         }
 
-        private void doStoreLocal$generic(Frame stackFrame, Frame frame, byte[] bc, int bci, int sp) {
+        private void doStoreLocal$generic(Frame stackFrame, Frame frame, byte[] bc, int bci, int sp, byte[] localTags) {
             Object local;
             try {
                 local = FRAMES.expectObject(stackFrame, sp - 1);
             } catch (UnexpectedResultException ex) {
-                doStoreLocal(stackFrame, frame, bc, bci, sp, ex.getResult());
+                doStoreLocal(stackFrame, frame, bc, bci, sp, ex.getResult(), localTags);
                 return;
             }
             FRAMES.setObject(frame, BYTES.getShort(bc, bci + 2 /* imm local_offset */), local);
@@ -6409,10 +6410,10 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
             }
         }
 
-        private void doLoadLocal(AbstractBytecodeNode $this, Frame stackFrame, Frame frame, byte[] bc, int bci, int sp) {
+        private void doLoadLocal(AbstractBytecodeNode $this, Frame stackFrame, Frame frame, byte[] bc, int bci, int sp, byte[] localTags) {
             int slot = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
             int localIndex = BYTES.getShort(bc, bci + 4 /* imm local_index */);
-            byte tag = this.getCachedLocalTagInternal(localIndex);
+            byte tag = this.getCachedLocalTagInternal(localTags, localIndex);
             Object value;
             short newInstruction;
             try {
@@ -6449,39 +6450,39 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
             FRAMES.setObject(stackFrame, sp, value);
         }
 
-        private void doLoadLocal$Boolean(AbstractBytecodeNode $this, Frame stackFrame, Frame frame, byte[] bc, int bci, int sp) {
+        private void doLoadLocal$Boolean(AbstractBytecodeNode $this, Frame stackFrame, Frame frame, byte[] bc, int bci, int sp, byte[] localTags) {
             try {
                 FRAMES.setObject(stackFrame, sp, FRAMES.expectBoolean(frame, BYTES.getShort(bc, bci + 2 /* imm local_offset */)));
             } catch (UnexpectedResultException ex) {
-                doLoadLocal($this, stackFrame, frame, bc, bci, sp);
+                doLoadLocal($this, stackFrame, frame, bc, bci, sp, localTags);
             }
         }
 
-        private void doLoadLocal$Boolean$unboxed(AbstractBytecodeNode $this, Frame stackFrame, Frame frame, byte[] bc, int bci, int sp) {
+        private void doLoadLocal$Boolean$unboxed(AbstractBytecodeNode $this, Frame stackFrame, Frame frame, byte[] bc, int bci, int sp, byte[] localTags) {
             try {
                 FRAMES.setBoolean(stackFrame, sp, FRAMES.expectBoolean(frame, BYTES.getShort(bc, bci + 2 /* imm local_offset */)));
             } catch (UnexpectedResultException ex) {
-                doLoadLocal($this, stackFrame, frame, bc, bci, sp);
+                doLoadLocal($this, stackFrame, frame, bc, bci, sp, localTags);
             }
         }
 
-        private void doLoadLocal$Long(AbstractBytecodeNode $this, Frame stackFrame, Frame frame, byte[] bc, int bci, int sp) {
+        private void doLoadLocal$Long(AbstractBytecodeNode $this, Frame stackFrame, Frame frame, byte[] bc, int bci, int sp, byte[] localTags) {
             try {
                 FRAMES.setObject(stackFrame, sp, FRAMES.expectLong(frame, BYTES.getShort(bc, bci + 2 /* imm local_offset */)));
             } catch (UnexpectedResultException ex) {
-                doLoadLocal($this, stackFrame, frame, bc, bci, sp);
+                doLoadLocal($this, stackFrame, frame, bc, bci, sp, localTags);
             }
         }
 
-        private void doLoadLocal$Long$unboxed(AbstractBytecodeNode $this, Frame stackFrame, Frame frame, byte[] bc, int bci, int sp) {
+        private void doLoadLocal$Long$unboxed(AbstractBytecodeNode $this, Frame stackFrame, Frame frame, byte[] bc, int bci, int sp, byte[] localTags) {
             try {
                 FRAMES.setLong(stackFrame, sp, FRAMES.expectLong(frame, BYTES.getShort(bc, bci + 2 /* imm local_offset */)));
             } catch (UnexpectedResultException ex) {
-                doLoadLocal($this, stackFrame, frame, bc, bci, sp);
+                doLoadLocal($this, stackFrame, frame, bc, bci, sp, localTags);
             }
         }
 
-        private void doLoadLocal$generic(AbstractBytecodeNode $this, Frame stackFrame, Frame frame, byte[] bc, int bci, int sp) {
+        private void doLoadLocal$generic(AbstractBytecodeNode $this, Frame stackFrame, Frame frame, byte[] bc, int bci, int sp, byte[] localTags) {
             FRAMES.setObject(stackFrame, sp, FRAMES.requireObject(frame, BYTES.getShort(bc, bci + 2 /* imm local_offset */)));
         }
 
@@ -6495,7 +6496,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
             }
             AbstractBytecodeNode bytecodeNode = localRoot.getBytecodeNodeImpl();
             assert bytecodeNode.validateLocalLivenessInternal(frame, slot, localIndex, stackFrame, bci);
-            byte tag = bytecodeNode.getCachedLocalTagInternal(localIndex);
+            byte tag = bytecodeNode.getCachedLocalTagInternal(bytecodeNode.getLocalTags(), localIndex);
             Object value;
             short newInstruction;
             try {
@@ -6623,7 +6624,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
             if (operandIndex != -1) {
                 short newOperand;
                 short operand = BYTES.getShort(bc, operandIndex);
-                byte oldTag = bytecodeNode.getCachedLocalTagInternal(localIndex);
+                byte oldTag = bytecodeNode.getCachedLocalTagInternal(bytecodeNode.getLocalTags(), localIndex);
                 byte newTag;
                 if (local instanceof Boolean) {
                     switch (oldTag) {
@@ -6682,13 +6683,13 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                     this.getRoot().onSpecialize(new InstructionImpl(this, bci, BYTES.getShort(bc, bci)), "StoreLocal$generic");
                     FRAMES.setObject(frame, slot, local);
                 }
-                bytecodeNode.setCachedLocalTagInternal(localIndex, newTag);
+                bytecodeNode.setCachedLocalTagInternal(bytecodeNode.getLocalTags(), localIndex, newTag);
                 BYTES.putShort(bc, operandIndex, newOperand);
                 this.getRoot().onQuickenOperand(new InstructionImpl(this, bci, BYTES.getShort(bc, bci)), 0, new InstructionImpl(this, operandIndex, operand), new InstructionImpl(this, operandIndex, newOperand));
             } else {
                 newInstruction = Instructions.STORE_LOCAL_MAT$GENERIC;
                 FRAMES.setObject(frame, slot, local);
-                bytecodeNode.setCachedLocalTagInternal(localIndex, FrameTags.OBJECT);
+                bytecodeNode.setCachedLocalTagInternal(bytecodeNode.getLocalTags(), localIndex, FrameTags.OBJECT);
             }
             {
                 InstructionImpl oldInstruction = new InstructionImpl(this, bci, BYTES.getShort(bc, bci));
@@ -6716,7 +6717,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
             }
             AbstractBytecodeNode bytecodeNode = localRoot.getBytecodeNodeImpl();
             assert bytecodeNode.validateLocalLivenessInternal(frame, slot, localIndex, stackFrame, bci);
-            byte tag = bytecodeNode.getCachedLocalTagInternal(localIndex);
+            byte tag = bytecodeNode.getCachedLocalTagInternal(bytecodeNode.getLocalTags(), localIndex);
             if (tag == FrameTags.BOOLEAN) {
                 try {
                     FRAMES.setBoolean(frame, slot, BasicInterpreterWithStoreBytecodeIndexInFrame.expectBoolean(local));
@@ -6752,7 +6753,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
             }
             AbstractBytecodeNode bytecodeNode = localRoot.getBytecodeNodeImpl();
             assert bytecodeNode.validateLocalLivenessInternal(frame, slot, localIndex, stackFrame, bci);
-            byte tag = bytecodeNode.getCachedLocalTagInternal(localIndex);
+            byte tag = bytecodeNode.getCachedLocalTagInternal(bytecodeNode.getLocalTags(), localIndex);
             if (tag == FrameTags.BOOLEAN) {
                 FRAMES.setBoolean(frame, slot, local);
                 FRAMES.clear(stackFrame, sp - 1);
@@ -6783,7 +6784,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
             }
             AbstractBytecodeNode bytecodeNode = localRoot.getBytecodeNodeImpl();
             assert bytecodeNode.validateLocalLivenessInternal(frame, slot, localIndex, stackFrame, bci);
-            byte tag = bytecodeNode.getCachedLocalTagInternal(localIndex);
+            byte tag = bytecodeNode.getCachedLocalTagInternal(bytecodeNode.getLocalTags(), localIndex);
             if (tag == FrameTags.LONG) {
                 try {
                     FRAMES.setLong(frame, slot, BasicInterpreterWithStoreBytecodeIndexInFrame.expectLong(local));
@@ -6819,7 +6820,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
             }
             AbstractBytecodeNode bytecodeNode = localRoot.getBytecodeNodeImpl();
             assert bytecodeNode.validateLocalLivenessInternal(frame, slot, localIndex, stackFrame, bci);
-            byte tag = bytecodeNode.getCachedLocalTagInternal(localIndex);
+            byte tag = bytecodeNode.getCachedLocalTagInternal(bytecodeNode.getLocalTags(), localIndex);
             if (tag == FrameTags.LONG) {
                 FRAMES.setLong(frame, slot, local);
                 FRAMES.clear(stackFrame, sp - 1);
@@ -7666,7 +7667,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
             assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
             int frameIndex = USER_LOCALS_START_INDEX + localOffset;
             try {
-                byte tag = getCachedLocalTagInternal(localIndex);
+                byte tag = getCachedLocalTagInternal(this.localTags_, localIndex);
                 switch (tag) {
                     case FrameTags.BOOLEAN :
                         return frame.expectBoolean(frameIndex);
@@ -7688,7 +7689,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
         protected void setLocalValueInternal(Frame frame, int localOffset, int localIndex, Object value) {
             assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
             int frameIndex = USER_LOCALS_START_INDEX + localOffset;
-            byte oldTag = getCachedLocalTagInternal(localIndex);
+            byte oldTag = getCachedLocalTagInternal(this.localTags_, localIndex);
             byte newTag;
             switch (oldTag) {
                 case FrameTags.BOOLEAN :
@@ -7715,7 +7716,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                     break;
             }
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            setCachedLocalTagInternal(localIndex, newTag);
+            setCachedLocalTagInternal(this.localTags_, localIndex, newTag);
             setLocalValueInternal(frame, localOffset, localIndex, value);
         }
 
@@ -7729,7 +7730,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
         protected void setLocalValueInternalBoolean(Frame frame, int localOffset, int localIndex, boolean value) {
             assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
             int frameIndex = USER_LOCALS_START_INDEX + localOffset;
-            byte oldTag = getCachedLocalTagInternal(localIndex);
+            byte oldTag = getCachedLocalTagInternal(this.localTags_, localIndex);
             byte newTag;
             switch (oldTag) {
                 case FrameTags.BOOLEAN :
@@ -7743,7 +7744,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                     break;
             }
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            setCachedLocalTagInternal(localIndex, newTag);
+            setCachedLocalTagInternal(this.localTags_, localIndex, newTag);
             setLocalValueInternal(frame, localOffset, localIndex, value);
         }
 
@@ -7757,7 +7758,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
         protected void setLocalValueInternalLong(Frame frame, int localOffset, int localIndex, long value) {
             assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
             int frameIndex = USER_LOCALS_START_INDEX + localOffset;
-            byte oldTag = getCachedLocalTagInternal(localIndex);
+            byte oldTag = getCachedLocalTagInternal(this.localTags_, localIndex);
             byte newTag;
             switch (oldTag) {
                 case FrameTags.LONG :
@@ -7771,7 +7772,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                     break;
             }
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            setCachedLocalTagInternal(localIndex, newTag);
+            setCachedLocalTagInternal(this.localTags_, localIndex, newTag);
             setLocalValueInternal(frame, localOffset, localIndex, value);
         }
 
@@ -7823,13 +7824,13 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
         }
 
         @Override
-        byte getCachedLocalTagInternal(int localIndex) {
-            return this.localTags_[localIndex];
+        byte getCachedLocalTagInternal(byte[] localTags, int localIndex) {
+            return localTags[localIndex];
         }
 
         @Override
-        void setCachedLocalTagInternal(int localIndex, byte tag) {
-            this.localTags_[localIndex] = tag;
+        void setCachedLocalTagInternal(byte[] localTags, int localIndex, byte tag) {
+            localTags[localIndex] = tag;
         }
 
         @Override
@@ -9944,12 +9945,12 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
         }
 
         @Override
-        byte getCachedLocalTagInternal(int localIndex) {
+        byte getCachedLocalTagInternal(byte[] localTags, int localIndex) {
             return FrameTags.OBJECT;
         }
 
         @Override
-        void setCachedLocalTagInternal(int localIndex, byte tag) {
+        void setCachedLocalTagInternal(byte[] localTags, int localIndex, byte tag) {
         }
 
         @Override

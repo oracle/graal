@@ -3380,9 +3380,9 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
 
         abstract byte[] getLocalTags();
 
-        abstract byte getCachedLocalTagInternal(int localIndex);
+        abstract byte getCachedLocalTagInternal(byte[] localTags, int localIndex);
 
-        abstract void setCachedLocalTagInternal(int localIndex, byte tag);
+        abstract void setCachedLocalTagInternal(byte[] localTags, int localIndex, byte tag);
 
         @Override
         @TruffleBoundary
@@ -4338,6 +4338,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             byte[] bc = this.bytecodes;
             Node[] cachedNodes = this.cachedNodes_;
             int[] branchProfiles = this.branchProfiles_;
+            byte[] localTags = this.localTags_;
             int bci = (int) startState;
             int sp = (short) (startState >>> 32);
             int op;
@@ -4450,7 +4451,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                         case Instructions.STORE_LOCAL :
                         {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
-                            doStoreLocal(frame, bc, bci, sp, FRAMES.getObject(frame, sp - 1));
+                            doStoreLocal(frame, bc, bci, sp, FRAMES.getObject(frame, sp - 1), localTags);
                             FRAMES.clear(frame, sp - 1);
                             sp -= 1;
                             bci += 10;
@@ -4458,7 +4459,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                         }
                         case Instructions.STORE_LOCAL$LONG :
                         {
-                            doStoreLocal$Long(frame, bc, bci, sp);
+                            doStoreLocal$Long(frame, bc, bci, sp, localTags);
                             FRAMES.clear(frame, sp - 1);
                             sp -= 1;
                             bci += 10;
@@ -4466,7 +4467,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                         }
                         case Instructions.STORE_LOCAL$LONG$LONG :
                         {
-                            doStoreLocal$Long$Long(frame, bc, bci, sp);
+                            doStoreLocal$Long$Long(frame, bc, bci, sp, localTags);
                             FRAMES.clear(frame, sp - 1);
                             sp -= 1;
                             bci += 10;
@@ -4474,7 +4475,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                         }
                         case Instructions.STORE_LOCAL$BOOLEAN :
                         {
-                            doStoreLocal$Boolean(frame, bc, bci, sp);
+                            doStoreLocal$Boolean(frame, bc, bci, sp, localTags);
                             FRAMES.clear(frame, sp - 1);
                             sp -= 1;
                             bci += 10;
@@ -4482,7 +4483,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                         }
                         case Instructions.STORE_LOCAL$BOOLEAN$BOOLEAN :
                         {
-                            doStoreLocal$Boolean$Boolean(frame, bc, bci, sp);
+                            doStoreLocal$Boolean$Boolean(frame, bc, bci, sp, localTags);
                             FRAMES.clear(frame, sp - 1);
                             sp -= 1;
                             bci += 10;
@@ -4490,7 +4491,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                         }
                         case Instructions.STORE_LOCAL$GENERIC :
                         {
-                            doStoreLocal$generic(frame, bc, bci, sp);
+                            doStoreLocal$generic(frame, bc, bci, sp, localTags);
                             FRAMES.clear(frame, sp - 1);
                             sp -= 1;
                             bci += 10;
@@ -4563,42 +4564,42 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                         case Instructions.LOAD_LOCAL :
                         {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
-                            doLoadLocal(frame, bc, bci, sp);
+                            doLoadLocal(frame, bc, bci, sp, localTags);
                             sp += 1;
                             bci += 6;
                             break;
                         }
                         case Instructions.LOAD_LOCAL$LONG :
                         {
-                            doLoadLocal$Long(frame, bc, bci, sp);
+                            doLoadLocal$Long(frame, bc, bci, sp, localTags);
                             sp += 1;
                             bci += 6;
                             break;
                         }
                         case Instructions.LOAD_LOCAL$LONG$UNBOXED :
                         {
-                            doLoadLocal$Long$unboxed(frame, bc, bci, sp);
+                            doLoadLocal$Long$unboxed(frame, bc, bci, sp, localTags);
                             sp += 1;
                             bci += 6;
                             break;
                         }
                         case Instructions.LOAD_LOCAL$BOOLEAN :
                         {
-                            doLoadLocal$Boolean(frame, bc, bci, sp);
+                            doLoadLocal$Boolean(frame, bc, bci, sp, localTags);
                             sp += 1;
                             bci += 6;
                             break;
                         }
                         case Instructions.LOAD_LOCAL$BOOLEAN$UNBOXED :
                         {
-                            doLoadLocal$Boolean$unboxed(frame, bc, bci, sp);
+                            doLoadLocal$Boolean$unboxed(frame, bc, bci, sp, localTags);
                             sp += 1;
                             bci += 6;
                             break;
                         }
                         case Instructions.LOAD_LOCAL$GENERIC :
                         {
-                            doLoadLocal$generic(frame, bc, bci, sp);
+                            doLoadLocal$generic(frame, bc, bci, sp, localTags);
                             sp += 1;
                             bci += 6;
                             break;
@@ -5333,7 +5334,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             return -1;
         }
 
-        private void doStoreLocal(Frame frame, byte[] bc, int bci, int sp, Object local) {
+        private void doStoreLocal(Frame frame, byte[] bc, int bci, int sp, Object local, byte[] localTags) {
             short newInstruction;
             int slot = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
             int localIndex = BYTES.getShort(bc, bci + 4 /* imm local_index */);
@@ -5341,7 +5342,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             if (operandIndex != -1) {
                 short newOperand;
                 short operand = BYTES.getShort(bc, operandIndex);
-                byte oldTag = this.getCachedLocalTagInternal(localIndex);
+                byte oldTag = this.getCachedLocalTagInternal(localTags, localIndex);
                 byte newTag;
                 if (local instanceof Long) {
                     switch (oldTag) {
@@ -5395,28 +5396,28 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                     newTag = FrameTags.OBJECT;
                     FRAMES.setObject(frame, slot, local);
                 }
-                this.setCachedLocalTagInternal(localIndex, newTag);
+                this.setCachedLocalTagInternal(localTags, localIndex, newTag);
                 BYTES.putShort(bc, operandIndex, newOperand);
             } else {
                 newInstruction = Instructions.STORE_LOCAL$GENERIC;
                 FRAMES.setObject(frame, slot, local);
-                this.setCachedLocalTagInternal(localIndex, FrameTags.OBJECT);
+                this.setCachedLocalTagInternal(localTags, localIndex, FrameTags.OBJECT);
             }
             BYTES.putShort(bc, bci, newInstruction);
             FRAMES.clear(frame, sp - 1);
         }
 
-        private void doStoreLocal$Long(Frame frame, byte[] bc, int bci, int sp) {
+        private void doStoreLocal$Long(Frame frame, byte[] bc, int bci, int sp, byte[] localTags) {
             Object local;
             try {
                 local = FRAMES.expectObject(frame, sp - 1);
             } catch (UnexpectedResultException ex) {
-                doStoreLocal(frame, bc, bci, sp, ex.getResult());
+                doStoreLocal(frame, bc, bci, sp, ex.getResult(), localTags);
                 return;
             }
             int slot = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
             int localIndex = BYTES.getShort(bc, bci + 4 /* imm local_index */);
-            byte tag = this.getCachedLocalTagInternal(localIndex);
+            byte tag = this.getCachedLocalTagInternal(localTags, localIndex);
             if (tag == FrameTags.LONG) {
                 try {
                     FRAMES.setLong(frame, slot, SLBytecodeRootNodeGen.expectLong(local));
@@ -5431,20 +5432,20 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 }
             }
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            doStoreLocal(frame, bc, bci, sp, local);
+            doStoreLocal(frame, bc, bci, sp, local, localTags);
         }
 
-        private void doStoreLocal$Long$Long(Frame frame, byte[] bc, int bci, int sp) {
+        private void doStoreLocal$Long$Long(Frame frame, byte[] bc, int bci, int sp, byte[] localTags) {
             long local;
             try {
                 local = FRAMES.expectLong(frame, sp - 1);
             } catch (UnexpectedResultException ex) {
-                doStoreLocal(frame, bc, bci, sp, ex.getResult());
+                doStoreLocal(frame, bc, bci, sp, ex.getResult(), localTags);
                 return;
             }
             int slot = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
             int localIndex = BYTES.getShort(bc, bci + 4 /* imm local_index */);
-            byte tag = this.getCachedLocalTagInternal(localIndex);
+            byte tag = this.getCachedLocalTagInternal(localTags, localIndex);
             if (tag == FrameTags.LONG) {
                 FRAMES.setLong(frame, slot, local);
                 if (CompilerDirectives.inCompiledCode()) {
@@ -5454,20 +5455,20 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 return;
             }
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            doStoreLocal(frame, bc, bci, sp, local);
+            doStoreLocal(frame, bc, bci, sp, local, localTags);
         }
 
-        private void doStoreLocal$Boolean(Frame frame, byte[] bc, int bci, int sp) {
+        private void doStoreLocal$Boolean(Frame frame, byte[] bc, int bci, int sp, byte[] localTags) {
             Object local;
             try {
                 local = FRAMES.expectObject(frame, sp - 1);
             } catch (UnexpectedResultException ex) {
-                doStoreLocal(frame, bc, bci, sp, ex.getResult());
+                doStoreLocal(frame, bc, bci, sp, ex.getResult(), localTags);
                 return;
             }
             int slot = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
             int localIndex = BYTES.getShort(bc, bci + 4 /* imm local_index */);
-            byte tag = this.getCachedLocalTagInternal(localIndex);
+            byte tag = this.getCachedLocalTagInternal(localTags, localIndex);
             if (tag == FrameTags.BOOLEAN) {
                 try {
                     FRAMES.setBoolean(frame, slot, SLBytecodeRootNodeGen.expectBoolean(local));
@@ -5482,20 +5483,20 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 }
             }
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            doStoreLocal(frame, bc, bci, sp, local);
+            doStoreLocal(frame, bc, bci, sp, local, localTags);
         }
 
-        private void doStoreLocal$Boolean$Boolean(Frame frame, byte[] bc, int bci, int sp) {
+        private void doStoreLocal$Boolean$Boolean(Frame frame, byte[] bc, int bci, int sp, byte[] localTags) {
             boolean local;
             try {
                 local = FRAMES.expectBoolean(frame, sp - 1);
             } catch (UnexpectedResultException ex) {
-                doStoreLocal(frame, bc, bci, sp, ex.getResult());
+                doStoreLocal(frame, bc, bci, sp, ex.getResult(), localTags);
                 return;
             }
             int slot = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
             int localIndex = BYTES.getShort(bc, bci + 4 /* imm local_index */);
-            byte tag = this.getCachedLocalTagInternal(localIndex);
+            byte tag = this.getCachedLocalTagInternal(localTags, localIndex);
             if (tag == FrameTags.BOOLEAN) {
                 FRAMES.setBoolean(frame, slot, local);
                 if (CompilerDirectives.inCompiledCode()) {
@@ -5505,15 +5506,15 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 return;
             }
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            doStoreLocal(frame, bc, bci, sp, local);
+            doStoreLocal(frame, bc, bci, sp, local, localTags);
         }
 
-        private void doStoreLocal$generic(Frame frame, byte[] bc, int bci, int sp) {
+        private void doStoreLocal$generic(Frame frame, byte[] bc, int bci, int sp, byte[] localTags) {
             Object local;
             try {
                 local = FRAMES.expectObject(frame, sp - 1);
             } catch (UnexpectedResultException ex) {
-                doStoreLocal(frame, bc, bci, sp, ex.getResult());
+                doStoreLocal(frame, bc, bci, sp, ex.getResult(), localTags);
                 return;
             }
             FRAMES.setObject(frame, BYTES.getShort(bc, bci + 2 /* imm local_offset */), local);
@@ -5540,10 +5541,10 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             }
         }
 
-        private void doLoadLocal(Frame frame, byte[] bc, int bci, int sp) {
+        private void doLoadLocal(Frame frame, byte[] bc, int bci, int sp, byte[] localTags) {
             int slot = BYTES.getShort(bc, bci + 2 /* imm local_offset */);
             int localIndex = BYTES.getShort(bc, bci + 4 /* imm local_index */);
-            byte tag = this.getCachedLocalTagInternal(localIndex);
+            byte tag = this.getCachedLocalTagInternal(localTags, localIndex);
             Object value;
             short newInstruction;
             try {
@@ -5572,39 +5573,39 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             FRAMES.setObject(frame, sp, value);
         }
 
-        private void doLoadLocal$Long(Frame frame, byte[] bc, int bci, int sp) {
+        private void doLoadLocal$Long(Frame frame, byte[] bc, int bci, int sp, byte[] localTags) {
             try {
                 FRAMES.setObject(frame, sp, FRAMES.expectLong(frame, BYTES.getShort(bc, bci + 2 /* imm local_offset */)));
             } catch (UnexpectedResultException ex) {
-                doLoadLocal(frame, bc, bci, sp);
+                doLoadLocal(frame, bc, bci, sp, localTags);
             }
         }
 
-        private void doLoadLocal$Long$unboxed(Frame frame, byte[] bc, int bci, int sp) {
+        private void doLoadLocal$Long$unboxed(Frame frame, byte[] bc, int bci, int sp, byte[] localTags) {
             try {
                 FRAMES.setLong(frame, sp, FRAMES.expectLong(frame, BYTES.getShort(bc, bci + 2 /* imm local_offset */)));
             } catch (UnexpectedResultException ex) {
-                doLoadLocal(frame, bc, bci, sp);
+                doLoadLocal(frame, bc, bci, sp, localTags);
             }
         }
 
-        private void doLoadLocal$Boolean(Frame frame, byte[] bc, int bci, int sp) {
+        private void doLoadLocal$Boolean(Frame frame, byte[] bc, int bci, int sp, byte[] localTags) {
             try {
                 FRAMES.setObject(frame, sp, FRAMES.expectBoolean(frame, BYTES.getShort(bc, bci + 2 /* imm local_offset */)));
             } catch (UnexpectedResultException ex) {
-                doLoadLocal(frame, bc, bci, sp);
+                doLoadLocal(frame, bc, bci, sp, localTags);
             }
         }
 
-        private void doLoadLocal$Boolean$unboxed(Frame frame, byte[] bc, int bci, int sp) {
+        private void doLoadLocal$Boolean$unboxed(Frame frame, byte[] bc, int bci, int sp, byte[] localTags) {
             try {
                 FRAMES.setBoolean(frame, sp, FRAMES.expectBoolean(frame, BYTES.getShort(bc, bci + 2 /* imm local_offset */)));
             } catch (UnexpectedResultException ex) {
-                doLoadLocal(frame, bc, bci, sp);
+                doLoadLocal(frame, bc, bci, sp, localTags);
             }
         }
 
-        private void doLoadLocal$generic(Frame frame, byte[] bc, int bci, int sp) {
+        private void doLoadLocal$generic(Frame frame, byte[] bc, int bci, int sp, byte[] localTags) {
             FRAMES.setObject(frame, sp, FRAMES.requireObject(frame, BYTES.getShort(bc, bci + 2 /* imm local_offset */)));
         }
 
@@ -5617,7 +5618,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
             }
             AbstractBytecodeNode bytecodeNode = localRoot.getBytecodeNodeImpl();
-            byte tag = bytecodeNode.getCachedLocalTagInternal(localIndex);
+            byte tag = bytecodeNode.getCachedLocalTagInternal(bytecodeNode.getLocalTags(), localIndex);
             Object value;
             short newInstruction;
             try {
@@ -5731,7 +5732,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             if (operandIndex != -1) {
                 short newOperand;
                 short operand = BYTES.getShort(bc, operandIndex);
-                byte oldTag = bytecodeNode.getCachedLocalTagInternal(localIndex);
+                byte oldTag = bytecodeNode.getCachedLocalTagInternal(bytecodeNode.getLocalTags(), localIndex);
                 byte newTag;
                 if (local instanceof Long) {
                     switch (oldTag) {
@@ -5785,12 +5786,12 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                     newTag = FrameTags.OBJECT;
                     FRAMES.setObject(frame, slot, local);
                 }
-                bytecodeNode.setCachedLocalTagInternal(localIndex, newTag);
+                bytecodeNode.setCachedLocalTagInternal(bytecodeNode.getLocalTags(), localIndex, newTag);
                 BYTES.putShort(bc, operandIndex, newOperand);
             } else {
                 newInstruction = Instructions.STORE_LOCAL_MAT$GENERIC;
                 FRAMES.setObject(frame, slot, local);
-                bytecodeNode.setCachedLocalTagInternal(localIndex, FrameTags.OBJECT);
+                bytecodeNode.setCachedLocalTagInternal(bytecodeNode.getLocalTags(), localIndex, FrameTags.OBJECT);
             }
             BYTES.putShort(bc, bci, newInstruction);
             FRAMES.clear(stackFrame, sp - 1);
@@ -5813,7 +5814,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
             }
             AbstractBytecodeNode bytecodeNode = localRoot.getBytecodeNodeImpl();
-            byte tag = bytecodeNode.getCachedLocalTagInternal(localIndex);
+            byte tag = bytecodeNode.getCachedLocalTagInternal(bytecodeNode.getLocalTags(), localIndex);
             if (tag == FrameTags.LONG) {
                 try {
                     FRAMES.setLong(frame, slot, SLBytecodeRootNodeGen.expectLong(local));
@@ -5848,7 +5849,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
             }
             AbstractBytecodeNode bytecodeNode = localRoot.getBytecodeNodeImpl();
-            byte tag = bytecodeNode.getCachedLocalTagInternal(localIndex);
+            byte tag = bytecodeNode.getCachedLocalTagInternal(bytecodeNode.getLocalTags(), localIndex);
             if (tag == FrameTags.LONG) {
                 FRAMES.setLong(frame, slot, local);
                 FRAMES.clear(stackFrame, sp - 1);
@@ -5878,7 +5879,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
             }
             AbstractBytecodeNode bytecodeNode = localRoot.getBytecodeNodeImpl();
-            byte tag = bytecodeNode.getCachedLocalTagInternal(localIndex);
+            byte tag = bytecodeNode.getCachedLocalTagInternal(bytecodeNode.getLocalTags(), localIndex);
             if (tag == FrameTags.BOOLEAN) {
                 try {
                     FRAMES.setBoolean(frame, slot, SLBytecodeRootNodeGen.expectBoolean(local));
@@ -5913,7 +5914,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
             }
             AbstractBytecodeNode bytecodeNode = localRoot.getBytecodeNodeImpl();
-            byte tag = bytecodeNode.getCachedLocalTagInternal(localIndex);
+            byte tag = bytecodeNode.getCachedLocalTagInternal(bytecodeNode.getLocalTags(), localIndex);
             if (tag == FrameTags.BOOLEAN) {
                 FRAMES.setBoolean(frame, slot, local);
                 FRAMES.clear(stackFrame, sp - 1);
@@ -6597,7 +6598,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
             int frameIndex = USER_LOCALS_START_INDEX + localOffset;
             try {
-                byte tag = getCachedLocalTagInternal(localIndex);
+                byte tag = getCachedLocalTagInternal(this.localTags_, localIndex);
                 switch (tag) {
                     case FrameTags.LONG :
                         return frame.expectLong(frameIndex);
@@ -6619,7 +6620,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         protected void setLocalValueInternal(Frame frame, int localOffset, int localIndex, Object value) {
             assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
             int frameIndex = USER_LOCALS_START_INDEX + localOffset;
-            byte oldTag = getCachedLocalTagInternal(localIndex);
+            byte oldTag = getCachedLocalTagInternal(this.localTags_, localIndex);
             byte newTag;
             switch (oldTag) {
                 case FrameTags.LONG :
@@ -6646,7 +6647,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                     break;
             }
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            setCachedLocalTagInternal(localIndex, newTag);
+            setCachedLocalTagInternal(this.localTags_, localIndex, newTag);
             setLocalValueInternal(frame, localOffset, localIndex, value);
         }
 
@@ -6660,7 +6661,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         protected void setLocalValueInternalLong(Frame frame, int localOffset, int localIndex, long value) {
             assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
             int frameIndex = USER_LOCALS_START_INDEX + localOffset;
-            byte oldTag = getCachedLocalTagInternal(localIndex);
+            byte oldTag = getCachedLocalTagInternal(this.localTags_, localIndex);
             byte newTag;
             switch (oldTag) {
                 case FrameTags.LONG :
@@ -6674,7 +6675,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                     break;
             }
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            setCachedLocalTagInternal(localIndex, newTag);
+            setCachedLocalTagInternal(this.localTags_, localIndex, newTag);
             setLocalValueInternal(frame, localOffset, localIndex, value);
         }
 
@@ -6688,7 +6689,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         protected void setLocalValueInternalBoolean(Frame frame, int localOffset, int localIndex, boolean value) {
             assert getRoot().getFrameDescriptor() == frame.getFrameDescriptor() : "Invalid frame with invalid descriptor passed.";
             int frameIndex = USER_LOCALS_START_INDEX + localOffset;
-            byte oldTag = getCachedLocalTagInternal(localIndex);
+            byte oldTag = getCachedLocalTagInternal(this.localTags_, localIndex);
             byte newTag;
             switch (oldTag) {
                 case FrameTags.BOOLEAN :
@@ -6702,7 +6703,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                     break;
             }
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            setCachedLocalTagInternal(localIndex, newTag);
+            setCachedLocalTagInternal(this.localTags_, localIndex, newTag);
             setLocalValueInternal(frame, localOffset, localIndex, value);
         }
 
@@ -6754,13 +6755,13 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         @Override
-        byte getCachedLocalTagInternal(int localIndex) {
-            return this.localTags_[localIndex];
+        byte getCachedLocalTagInternal(byte[] localTags, int localIndex) {
+            return localTags[localIndex];
         }
 
         @Override
-        void setCachedLocalTagInternal(int localIndex, byte tag) {
-            this.localTags_[localIndex] = tag;
+        void setCachedLocalTagInternal(byte[] localTags, int localIndex, byte tag) {
+            localTags[localIndex] = tag;
         }
 
         @Override
@@ -8461,12 +8462,12 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         @Override
-        byte getCachedLocalTagInternal(int localIndex) {
+        byte getCachedLocalTagInternal(byte[] localTags, int localIndex) {
             return FrameTags.OBJECT;
         }
 
         @Override
-        void setCachedLocalTagInternal(int localIndex, byte tag) {
+        void setCachedLocalTagInternal(byte[] localTags, int localIndex, byte tag) {
         }
 
         @Override
