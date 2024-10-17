@@ -498,7 +498,8 @@ public abstract class BytecodeNode extends Node {
      *            evaluation constant. If the bytecode index is inconsistent with the state of the
      *            frame passed then the result of this method is unspecified.
      * @param frame the frame to read locals from
-     * @param localOffset the logical offset of the local (as obtained by
+     * @param localOffset the logical offset of the local. The offset should be between 0 and
+     *            {@link #getLocalCount(int)} (and may come from
      *            {@link BytecodeLocal#getLocalOffset()} or {@link LocalVariable#getLocalOffset()}).
      * @return the current local value, or null if the local never written to (and there is no
      *         {@link GenerateBytecode#defaultLocalValue() default local value}).
@@ -546,7 +547,8 @@ public abstract class BytecodeNode extends Node {
      *            {@link BytecodeLocation#getBytecodeIndex()} or using @{@link Bind
      *            Bind}("$bytecodeIndex") annotation. The value must be a partial evaluation
      *            constant.
-     * @param localOffset the logical offset of the local (as obtained by
+     * @param localOffset the logical offset of the local. The offset should be between 0 and
+     *            {@link #getLocalCount(int)} (and may come from
      *            {@link BytecodeLocal#getLocalOffset()} or {@link LocalVariable#getLocalOffset()}).
      * @return the local name as a partial evaluation constant
      * @see GenerateBytecode#enableBlockScoping
@@ -593,7 +595,8 @@ public abstract class BytecodeNode extends Node {
      *            {@link BytecodeLocation#getBytecodeIndex()} or using @{@link Bind
      *            Bind}("$bytecodeIndex") annotation. The value must be a partial evaluation
      *            constant.
-     * @param localOffset the logical offset of the local (as obtained by
+     * @param localOffset the logical offset of the local. The offset should be between 0 and
+     *            {@link #getLocalCount(int)} (and may come from
      *            {@link BytecodeLocal#getLocalOffset()} or {@link LocalVariable#getLocalOffset()}).
      * @return the local info as a partial evaluation constant
      * @see GenerateBytecode#enableBlockScoping
@@ -605,7 +608,7 @@ public abstract class BytecodeNode extends Node {
      * Updates the values of the live locals in the frame. This method should be used for uncommon
      * scenarios, like setting locals in the prolog/epilog or from another root node. Prefer setting
      * locals directly in the bytecode (via {@code StoreLocal} operations or
-     * {@link LocalAccessorRange}) when possible.
+     * {@link LocalRangeAccessor}) when possible.
      * <p>
      *
      * @param bytecodeIndex the current bytecode index of the given frame. A valid bytecode index
@@ -673,7 +676,8 @@ public abstract class BytecodeNode extends Node {
      *            frame passed then the result of this method is unspecified.
      * @param source the frame to copy locals from
      * @param destination the frame to copy locals into
-     * @param localOffset the logical offset of the first local to be copied (as obtained by
+     * @param localOffset the logical offset of the first local to be copied. The offset should be
+     *            between 0 and {@link #getLocalCount(int)} (and may come from
      *            {@link BytecodeLocal#getLocalOffset()} or {@link LocalVariable#getLocalOffset()}).
      * @param localCount the number of locals to copy
      * @see GenerateBytecode#enableBlockScoping
@@ -710,7 +714,8 @@ public abstract class BytecodeNode extends Node {
      *            evaluation constant. If the bytecode index is inconsistent with the state of the
      *            frame passed then the result of this method is unspecified.
      * @param frame the frame to store the local value into
-     * @param localOffset the logical offset of the local (as obtained by
+     * @param localOffset the logical offset of the local. The offset should be between 0 and
+     *            {@link #getLocalCount(int)} (and may come from
      *            {@link BytecodeLocal#getLocalOffset()} or {@link LocalVariable#getLocalOffset()}).
      * @param value the value to store into the local
      * @since 24.2

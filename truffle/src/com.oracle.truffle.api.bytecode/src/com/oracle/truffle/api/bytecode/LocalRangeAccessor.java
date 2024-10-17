@@ -352,7 +352,7 @@ public final class LocalRangeAccessor {
     }
 
     /**
-     * Obtains a {@link LocalAccessorRange}.
+     * Obtains a {@link LocalRangeAccessor}.
      *
      * This method is invoked by the generated code and should not be called directly.
      *

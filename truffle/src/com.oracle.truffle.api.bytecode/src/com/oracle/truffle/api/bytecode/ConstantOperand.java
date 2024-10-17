@@ -126,7 +126,7 @@ public @interface ConstantOperand {
      * <p>
      * This flag is meaningless if the operation does not take dynamic operands, since all constant
      * operands will be supplied to a single {@code emit} method (except for {@link Prolog}s, which
-     * receive their operands as arguments to {@link beginRoot} and {@link endRoot}).
+     * receive their operands as arguments to {@code beginRoot} and {@code endRoot}).
      *
      * @since 24.2
      */
