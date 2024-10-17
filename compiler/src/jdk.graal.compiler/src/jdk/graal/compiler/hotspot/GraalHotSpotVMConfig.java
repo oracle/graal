@@ -302,6 +302,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int threadCarrierThreadObjectOffset = getFieldOffset("JavaThread::_threadObj", Integer.class, "OopHandle");
     public final int threadScopedValueCacheOffset = getFieldOffset("JavaThread::_scopedValueCache", Integer.class, "OopHandle");
 
+    public final int javaThreadLockIDOffset = getFieldOffset("JavaThread::_lock_id", Integer.class, "int64_t", -1, JDK > 21);
+
     public final int threadIsInVTMSTransitionOffset = getFieldOffset("JavaThread::_is_in_VTMS_transition", Integer.class, "bool");
     public final int threadIsInTmpVTMSTransitionOffset = getFieldOffset("JavaThread::_is_in_tmp_VTMS_transition", Integer.class, "bool", -1, JDK == 21);
     public final int threadIsDisableSuspendOffset = getFieldOffset("JavaThread::_is_disable_suspend", Integer.class, "bool", -1, JDK >= 22);
@@ -387,15 +389,18 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     // The following three constants are declared as 64 bits uintptr_t, but known to be 32 bits
     public final int unlockedValue = getConstant("markWord::unlocked_value", Integer.class);
     public final int monitorValue = getConstant("markWord::monitor_value", Integer.class);
+    public final int ageMaskInPlace = getConstant("markWord::age_mask_in_place", Integer.class);
+    public final int unusedMark = getConstant("markWord::marked_value", Integer.class);
     // Identity hash code value when uninitialized.
     public final int uninitializedIdentityHashCodeValue = getConstant("markWord::no_hash", Integer.class);
 
     // This field has no type in vmStructs.cpp
-    public final int objectMonitorOwner = getFieldOffset("ObjectMonitor::_owner", Integer.class, null);
+    public final int objectMonitorOwner = getFieldOffset("ObjectMonitor::_owner", Integer.class, JDK > 21 ? "int64_t" : null);
     public final int objectMonitorRecursions = getFieldOffset("ObjectMonitor::_recursions", Integer.class, "intptr_t");
     public final int objectMonitorCxq = getFieldOffset("ObjectMonitor::_cxq", Integer.class, "ObjectWaiter*");
     public final int objectMonitorEntryList = getFieldOffset("ObjectMonitor::_EntryList", Integer.class, "ObjectWaiter*");
-    public final int objectMonitorSucc = getFieldOffset("ObjectMonitor::_succ", Integer.class, "JavaThread*");
+    public final int objectMonitorSucc = getFieldOffset("ObjectMonitor::_succ", Integer.class, JDK > 21 ? "int64_t" : "JavaThread*");
+    public final int objectMonitorStackLocker = getFieldOffset("ObjectMonitor::_stack_locker", Integer.class, "BasicLock*");
 
     public final int contEntry = getFieldOffset("JavaThread::_cont_entry", Integer.class, "ContinuationEntry*", -1, JDK >= 24);
     public final int pinCount = getFieldOffset("ContinuationEntry::_pin_count", Integer.class, "uint32_t", -1, JDK >= 24);

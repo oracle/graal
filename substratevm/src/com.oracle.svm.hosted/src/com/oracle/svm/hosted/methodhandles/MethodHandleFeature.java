@@ -121,10 +121,16 @@ public class MethodHandleFeature implements InternalFeature {
         if (JavaVersionUtil.JAVA_SPEC >= 22) {
             try {
                 Class<?> referencedKeySetClass = ReflectionUtil.lookupClass("jdk.internal.util.ReferencedKeySet");
-                Method create = ReflectionUtil.lookupMethod(referencedKeySetClass, "create", boolean.class, boolean.class, Supplier.class);
                 // The following call must match the static initializer of MethodType#internTable.
-                runtimeMethodTypeInternTable = create.invoke(null,
-                                /* isSoft */ false, /* useNativeQueue */ true, (Supplier<Object>) () -> new ConcurrentHashMap<>(512));
+                if (JavaVersionUtil.JAVA_SPEC >= 24) {
+                    Method create = ReflectionUtil.lookupMethod(referencedKeySetClass, "create", boolean.class, Supplier.class);
+                    runtimeMethodTypeInternTable = create.invoke(null,
+                                    /* isSoft */ false, (Supplier<Object>) () -> new ConcurrentHashMap<>(512));
+                } else {
+                    Method create = ReflectionUtil.lookupMethod(referencedKeySetClass, "create", boolean.class, boolean.class, Supplier.class);
+                    runtimeMethodTypeInternTable = create.invoke(null,
+                                    /* isSoft */ false, /* useNativeQueue */ true, (Supplier<Object>) () -> new ConcurrentHashMap<>(512));
+                }
                 referencedKeySetAdd = ReflectionUtil.lookupMethod(referencedKeySetClass, "add", Object.class);
             } catch (ReflectiveOperationException e) {
                 throw VMError.shouldNotReachHere(e);
