@@ -147,6 +147,7 @@ public class HostInliningTest extends TruffleCompilerImplTest {
         runTest("testThrow");
         runTest("testRangeCheck");
         runTest("testImplicitCast");
+        runTest("testNativeCall");
     }
 
     @SuppressWarnings("try")
@@ -962,6 +963,22 @@ public class HostInliningTest extends TruffleCompilerImplTest {
     static int testImplicitCast(int value) {
         return (int) MyTypesGen.asImplicitDouble(0, value);
     }
+
+    @BytecodeInterpreterSwitch
+    @ExpectNotInlined(name = {"nativeCall"}, count = {1})
+    static int testNativeCall(int value) {
+        if (value == 42) {
+            // we do not call nativeCall directly to trigger the peek deopt logic in host inlining
+            peekNativeCall();
+        }
+        return 42;
+    }
+
+    static void peekNativeCall() {
+        nativeCall();
+    }
+
+    static native void nativeCall();
 
     static int testIndirectIntrinsicsImpl(A a) {
         return a.intrinsic(); // inlined and intrinsic
