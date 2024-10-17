@@ -1001,6 +1001,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
 
     @SuppressWarnings("all")
     private Object continueAt(AbstractBytecodeNode bc, int bci, int sp, VirtualFrame frame, VirtualFrame localFrame, ContinuationRootNodeImpl continuationRootNode) {
+        beforeRootExecute(new InstructionImpl(bc, bci, bc.readValidBytecode(bc.bytecodes, bci)));
         long state = ((sp & 0xFFFFL) << 32) | (bci & 0xFFFFFFFFL);
         while (true) {
             state = bc.continueAt(this, frame, localFrame, state);
@@ -4998,6 +4999,8 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
             loop: while (true) {
                 CompilerAsserts.partialEvaluationConstant(bci);
                 op = BYTES.getShort(bc, bci);
+                CompilerAsserts.partialEvaluationConstant(op);
+                $root.beforeInstructionExecute(new InstructionImpl(this, bci, op));
                 try {
                     switch (op) {
                         case Instructions.POP :
@@ -5042,6 +5045,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                             if (CompilerDirectives.hasNextTier() && loopCounter.value > 0) {
                                 LoopNode.reportLoopCount(this, loopCounter.value);
                             }
+                            $root.afterRootExecute(new InstructionImpl(this, bci, op), FRAMES.getObject(frame, (sp - 1)), null);
                             return (((sp - 1) & 0xFFFFL) << 32) | 0xFFFFFFFFL;
                         }
                         case Instructions.BRANCH :
@@ -5340,6 +5344,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                             if (CompilerDirectives.hasNextTier() && loopCounter.value > 0) {
                                 LoopNode.reportLoopCount(this, loopCounter.value);
                             }
+                            $root.afterRootExecute(new InstructionImpl(this, bci, op), FRAMES.getObject(frame, (sp - 1)), null);
                             doYield(frame, localFrame, bc, bci, sp, $root);
                             return (((sp - 1) & 0xFFFFL) << 32) | 0xFFFFFFFFL;
                         }
@@ -6161,6 +6166,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                     if (CompilerDirectives.hasNextTier() && loopCounter.value > 0) {
                         LoopNode.reportLoopCount(this, loopCounter.value);
                     }
+                    $root.afterRootExecute(new InstructionImpl(this, bci, op), null, throwable);
                     throw sneakyThrow(throwable);
                 }
             }
@@ -8754,6 +8760,8 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                 loop: while (true) {
                     CompilerAsserts.partialEvaluationConstant(bci);
                     op = BYTES.getShort(bc, bci);
+                    CompilerAsserts.partialEvaluationConstant(op);
+                    $root.beforeInstructionExecute(new InstructionImpl(this, bci, op));
                     try {
                         switch (op) {
                             case Instructions.POP :
@@ -8785,6 +8793,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                                     uncachedExecuteCount--;
                                     this.uncachedExecuteCount_ = uncachedExecuteCount;
                                 }
+                                $root.afterRootExecute(new InstructionImpl(this, bci, op), FRAMES.getObject(frame, (sp - 1)), null);
                                 return (((sp - 1) & 0xFFFFL) << 32) | 0xFFFFFFFFL;
                             }
                             case Instructions.BRANCH :
@@ -8916,6 +8925,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                                     uncachedExecuteCount--;
                                     this.uncachedExecuteCount_ = uncachedExecuteCount;
                                 }
+                                $root.afterRootExecute(new InstructionImpl(this, bci, op), FRAMES.getObject(frame, (sp - 1)), null);
                                 doYield(frame, localFrame, bc, bci, sp, $root);
                                 return (((sp - 1) & 0xFFFFL) << 32) | 0xFFFFFFFFL;
                             }
@@ -9496,6 +9506,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                             uncachedExecuteCount--;
                             this.uncachedExecuteCount_ = uncachedExecuteCount;
                         }
+                        $root.afterRootExecute(new InstructionImpl(this, bci, op), null, throwable);
                         throw sneakyThrow(throwable);
                     }
                 }

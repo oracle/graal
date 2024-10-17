@@ -47,6 +47,7 @@ import java.lang.annotation.Target;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.bytecode.debug.BytecodeDebugListener;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
@@ -432,5 +433,17 @@ public @interface GenerateBytecode {
      * @since 24.2
      */
     String defaultLocalValue() default "";
+
+    /**
+     * Whether the {@link BytecodeDebugListener} methods should be notified by generated code. By
+     * default the debug bytecode listener is enabled if the root node implements
+     * {@link BytecodeDebugListener}. If this attribute is set to <code>false</code> then the debug
+     * bytecode listener won't be notified. This attribute may be useful to keep a default debug
+     * listener implementation permanently in the source code and only and enable it temporarily
+     * during debug sessions.
+     *
+     * @since 24.2
+     */
+    boolean enableBytecodeDebugListener() default true;
 
 }
