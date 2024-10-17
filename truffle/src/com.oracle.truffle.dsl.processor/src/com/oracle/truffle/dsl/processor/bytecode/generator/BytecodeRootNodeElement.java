@@ -6486,7 +6486,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             int stackEffect = switch (instr.kind) {
                 case BRANCH, BRANCH_BACKWARD, //
                                 TAG_ENTER, TAG_LEAVE, TAG_LEAVE_VOID, TAG_RESUME, TAG_YIELD, //
-                                LOAD_LOCAL_MATERIALIZED, CLEAR_LOCAL, YIELD -> 0;
+                                LOAD_LOCAL_MATERIALIZED, CLEAR_LOCAL, YIELD -> {
+                    yield 0;
+                }
                 case STORE_NULL, LOAD_VARIADIC, MERGE_VARIADIC -> {
                     /*
                      * NB: These instructions *do* have stack effects. However, they are only used
