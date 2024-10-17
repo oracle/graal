@@ -40,8 +40,11 @@ import static jdk.graal.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVM
 import static jdk.graal.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_UNMOUNT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32C;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_CARRIER_THREAD_OOP_HANDLE_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_CONTINUATION_ENTRY_PIN_COUNT;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_JAVA_THREAD_CONT_ENTRY;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_JAVA_THREAD_SCOPED_VALUE_CACHE_HANDLE_LOCATION;
 import static jdk.graal.compiler.java.BytecodeParserOptions.InlineDuringParsing;
 import static jdk.graal.compiler.nodes.ConstantNode.forBoolean;
 import static jdk.graal.compiler.nodes.ProfileData.BranchProbabilityData.injected;
@@ -69,7 +72,9 @@ import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
+import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.core.common.type.TypeReference;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.HotSpotBackend;
@@ -78,6 +83,7 @@ import jdk.graal.compiler.hotspot.nodes.CurrentJavaThreadNode;
 import jdk.graal.compiler.hotspot.nodes.HotSpotLoadReservedReferenceNode;
 import jdk.graal.compiler.hotspot.nodes.HotSpotStoreReservedReferenceNode;
 import jdk.graal.compiler.hotspot.nodes.KlassFullyInitializedCheckNode;
+import jdk.graal.compiler.hotspot.nodes.VirtualThreadUpdateJFRNode;
 import jdk.graal.compiler.hotspot.replacements.CallSiteTargetNode;
 import jdk.graal.compiler.hotspot.replacements.DigestBaseSnippets;
 import jdk.graal.compiler.hotspot.replacements.FastNotifyNode;
@@ -142,6 +148,8 @@ import jdk.graal.compiler.nodes.java.DynamicNewInstanceNode;
 import jdk.graal.compiler.nodes.java.DynamicNewInstanceWithExceptionNode;
 import jdk.graal.compiler.nodes.java.NewArrayNode;
 import jdk.graal.compiler.nodes.java.ValidateNewInstanceClassNode;
+import jdk.graal.compiler.nodes.memory.ReadNode;
+import jdk.graal.compiler.nodes.memory.WriteNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.nodes.spi.Replacements;
@@ -664,14 +672,28 @@ public class HotSpotGraphBuilderPlugins {
         return false;
     }
 
+    private static AddressNode getScopedValueCacheAddress(GraphBuilderContext b, HotSpotInvocationPluginHelper helper) {
+        CurrentJavaThreadNode javaThread = b.add(new CurrentJavaThreadNode(helper.getWordKind()));
+        ValueNode scopedValueCacheHandle = helper.readJavaThreadScopedValueCache(javaThread);
+        return b.add(OffsetAddressNode.create(scopedValueCacheHandle));
+    }
+
     private static void registerThreadPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
+        BarrierSet barrierSet = replacements.getProviders().getPlatformConfigurationProvider().getBarrierSet();
         Registration r = new Registration(plugins, Thread.class, replacements);
         r.register(new InvocationPlugin("currentThread") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
-                    ValueNode value = helper.readCurrentThreadObject(true);
-                    b.push(JavaKind.Object, value);
+                    CurrentJavaThreadNode thread = b.add(new CurrentJavaThreadNode(helper.getWordKind()));
+                    ValueNode vthreadHandle = helper.readJavaThreadVthread(thread);
+                    // Read the Object from the OopHandle
+                    AddressNode handleAddress = b.add(OffsetAddressNode.create(vthreadHandle));
+                    // JavaThread::_vthread is never compressed
+                    ObjectStamp threadStamp = StampFactory.objectNonNull(TypeReference.create(b.getAssumptions(), b.getMetaAccess().lookupJavaType(Thread.class)));
+                    ValueNode read = new ReadNode(handleAddress, HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION, threadStamp,
+                                    barrierSet.readBarrierType(HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION, handleAddress, threadStamp), MemoryOrderMode.PLAIN);
+                    b.addPush(JavaKind.Object, read);
                 }
                 return true;
             }
@@ -681,8 +703,15 @@ public class HotSpotGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
-                    ValueNode value = helper.readCurrentThreadObject(false);
-                    b.push(JavaKind.Object, value);
+                    CurrentJavaThreadNode thread = b.add(new CurrentJavaThreadNode(helper.getWordKind()));
+                    ValueNode cthreadHandle = helper.readJavaThreadThreadObj(thread);
+                    // Read the Object from the OopHandle
+                    AddressNode handleAddress = b.add(OffsetAddressNode.create(cthreadHandle));
+                    // JavaThread::_threadObj is never compressed
+                    ObjectStamp threadStamp = StampFactory.objectNonNull(TypeReference.create(b.getAssumptions(), b.getMetaAccess().lookupJavaType(Thread.class)));
+                    ValueNode read = new ReadNode(handleAddress, HOTSPOT_CARRIER_THREAD_OOP_HANDLE_LOCATION, threadStamp,
+                                    barrierSet.readBarrierType(HOTSPOT_CARRIER_THREAD_OOP_HANDLE_LOCATION, handleAddress, threadStamp), MemoryOrderMode.PLAIN);
+                    b.addPush(JavaKind.Object, read);
                 }
                 return true;
             }
@@ -694,7 +723,15 @@ public class HotSpotGraphBuilderPlugins {
                 GraalError.guarantee(Services.IS_IN_NATIVE_IMAGE || isAnnotatedByChangesCurrentThread(b.getMethod()), "method changes current Thread but is not annotated ChangesCurrentThread");
                 try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
                     receiver.get(true);
-                    helper.setCurrentThread(thread);
+                    CurrentJavaThreadNode javaThread = b.add(new CurrentJavaThreadNode(helper.getWordKind()));
+                    ValueNode threadObjectHandle = helper.readJavaThreadVthread(javaThread);
+                    AddressNode handleAddress = b.add(OffsetAddressNode.create(threadObjectHandle));
+                    b.add(new WriteNode(handleAddress, HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION, thread,
+                                    barrierSet.writeBarrierType(HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION), MemoryOrderMode.PLAIN));
+
+                    if (HotSpotReplacementsUtil.supportsVirtualThreadUpdateJFR(config)) {
+                        b.add(new VirtualThreadUpdateJFRNode(thread));
+                    }
                 }
                 return true;
             }
@@ -704,7 +741,11 @@ public class HotSpotGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
-                    b.push(JavaKind.Object, helper.readThreadScopedValueCache());
+                    AddressNode handleAddress = getScopedValueCacheAddress(b, helper);
+                    ObjectStamp stamp = StampFactory.object(TypeReference.create(b.getAssumptions(), b.getMetaAccess().lookupJavaType(Object[].class)));
+                    b.push(JavaKind.Object, b.add(new ReadNode(handleAddress, HOTSPOT_JAVA_THREAD_SCOPED_VALUE_CACHE_HANDLE_LOCATION, stamp,
+                                    barrierSet.readBarrierType(HOTSPOT_JAVA_THREAD_SCOPED_VALUE_CACHE_HANDLE_LOCATION, handleAddress, stamp),
+                                    MemoryOrderMode.PLAIN)));
                 }
                 return true;
             }
@@ -714,7 +755,10 @@ public class HotSpotGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode cache) {
                 try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
-                    helper.setThreadScopedValueCache(cache);
+                    AddressNode handleAddress = getScopedValueCacheAddress(b, helper);
+                    b.add(new WriteNode(handleAddress, HOTSPOT_JAVA_THREAD_SCOPED_VALUE_CACHE_HANDLE_LOCATION, cache,
+                                    barrierSet.writeBarrierType(HOTSPOT_JAVA_THREAD_SCOPED_VALUE_CACHE_HANDLE_LOCATION),
+                                    MemoryOrderMode.PLAIN));
                 }
                 return true;
             }

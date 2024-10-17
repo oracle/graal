@@ -47,6 +47,7 @@ import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.OB
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.OBJECT_MONITOR_RECURSION_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.OBJECT_MONITOR_SUCC_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.diagnoseSyncOnValueBasedClasses;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.heldMonitorCountOffset;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.isCAssertEnabled;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.javaThreadLockStackEndOffset;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.javaThreadLockStackTopOffset;
@@ -291,18 +292,18 @@ public class MonitorSnippets implements Snippets {
             }
         } else {
             // mark is a pointer to the ObjectMonitor + monitorMask
-            monitor = mark.subtract(HotSpotReplacementsUtil.monitorValue(INJECTED_VMCONFIG));
+            monitor = mark.subtract(monitorValue(INJECTED_VMCONFIG));
         }
 
-        int ownerOffset = HotSpotReplacementsUtil.objectMonitorOwnerOffset(INJECTED_VMCONFIG);
-        Word owner = monitor.readWord(ownerOffset, HotSpotReplacementsUtil.OBJECT_MONITOR_OWNER_LOCATION);
+        int ownerOffset = objectMonitorOwnerOffset(INJECTED_VMCONFIG);
+        Word owner = monitor.readWord(ownerOffset, OBJECT_MONITOR_OWNER_LOCATION);
         // The following owner null check is essential. In the case where the null check fails, it
         // avoids the subsequent bound-to-fail CAS operation, which would have caused the
         // invalidation of the L1 cache of the core that runs the lock owner thread, and thus causes
         // the lock to be held slightly longer.
         if (probability(FREQUENT_PROBABILITY, owner.equal(0))) {
             // it appears unlocked (owner == 0)
-            if (probability(FREQUENT_PROBABILITY, monitor.logicCompareAndSwapWord(ownerOffset, owner, thread, HotSpotReplacementsUtil.OBJECT_MONITOR_OWNER_LOCATION))) {
+            if (probability(FREQUENT_PROBABILITY, monitor.logicCompareAndSwapWord(ownerOffset, owner, thread, OBJECT_MONITOR_OWNER_LOCATION))) {
                 // success
                 writeMonitorCache(lock, monitor);
                 traceObject(trace, "+lock{heavyweight:cas}", object, true);
@@ -313,9 +314,9 @@ public class MonitorSnippets implements Snippets {
                 counters.lockHeavyFailedCas.inc();
             }
         } else if (probability(NOT_LIKELY_PROBABILITY, owner.equal(thread))) {
-            int recursionsOffset = HotSpotReplacementsUtil.objectMonitorRecursionsOffset(INJECTED_VMCONFIG);
-            Word recursions = monitor.readWord(recursionsOffset, HotSpotReplacementsUtil.OBJECT_MONITOR_RECURSION_LOCATION);
-            monitor.writeWord(recursionsOffset, recursions.add(1), HotSpotReplacementsUtil.OBJECT_MONITOR_RECURSION_LOCATION);
+            int recursionsOffset = objectMonitorRecursionsOffset(INJECTED_VMCONFIG);
+            Word recursions = monitor.readWord(recursionsOffset, OBJECT_MONITOR_RECURSION_LOCATION);
+            monitor.writeWord(recursionsOffset, recursions.add(1), OBJECT_MONITOR_RECURSION_LOCATION);
             writeMonitorCache(lock, monitor);
             traceObject(trace, "+lock{heavyweight:recursive}", object, true);
             counters.lockHeavyRecursive.inc();
@@ -682,8 +683,8 @@ public class MonitorSnippets implements Snippets {
     }
 
     private static void updateHeldMonitorCount(Word thread, int increment) {
-        Word heldMonitorCount = thread.readWord(HotSpotReplacementsUtil.heldMonitorCountOffset(INJECTED_VMCONFIG), HotSpotReplacementsUtil.JAVA_THREAD_HOLD_MONITOR_COUNT_LOCATION);
-        thread.writeWord(HotSpotReplacementsUtil.heldMonitorCountOffset(INJECTED_VMCONFIG), heldMonitorCount.add(increment), HotSpotReplacementsUtil.JAVA_THREAD_HOLD_MONITOR_COUNT_LOCATION);
+        Word heldMonitorCount = thread.readWord(heldMonitorCountOffset(INJECTED_VMCONFIG), JAVA_THREAD_HOLD_MONITOR_COUNT_LOCATION);
+        thread.writeWord(heldMonitorCountOffset(INJECTED_VMCONFIG), heldMonitorCount.add(increment), JAVA_THREAD_HOLD_MONITOR_COUNT_LOCATION);
     }
 
     @Fold
