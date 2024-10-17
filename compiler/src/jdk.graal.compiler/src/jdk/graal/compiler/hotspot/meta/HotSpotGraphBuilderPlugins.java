@@ -45,6 +45,7 @@ import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HO
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_JAVA_THREAD_CONT_ENTRY;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_JAVA_THREAD_SCOPED_VALUE_CACHE_HANDLE_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_LOCK_ID_LOCATION;
 import static jdk.graal.compiler.java.BytecodeParserOptions.InlineDuringParsing;
 import static jdk.graal.compiler.nodes.ConstantNode.forBoolean;
 import static jdk.graal.compiler.nodes.ProfileData.BranchProbabilityData.injected;
@@ -729,6 +730,13 @@ public class HotSpotGraphBuilderPlugins {
                     b.add(new WriteNode(handleAddress, HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION, thread,
                                     barrierSet.writeBarrierType(HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION), MemoryOrderMode.PLAIN));
 
+                    if (JavaVersionUtil.JAVA_SPEC >= 24) {
+                        GraalError.guarantee(config.javaThreadLockIDOffset != -1, "JavaThread::_lock_id should have been exported");
+                        // Change the lock_id of the JavaThread
+                        ValueNode tid = helper.loadField(thread, helper.getField(b.getMetaAccess().lookupJavaType(Thread.class), "tid"));
+                        OffsetAddressNode address = b.add(new OffsetAddressNode(javaThread, helper.asWord(config.javaThreadLockIDOffset)));
+                        b.add(new JavaWriteNode(JavaKind.Long, address, JAVA_THREAD_LOCK_ID_LOCATION, tid, BarrierType.NONE, false));
+                    }
                     if (HotSpotReplacementsUtil.supportsVirtualThreadUpdateJFR(config)) {
                         b.add(new VirtualThreadUpdateJFRNode(thread));
                     }
@@ -952,6 +960,21 @@ public class HotSpotGraphBuilderPlugins {
                             OffsetAddressNode address = b.add(new OffsetAddressNode(javaThread, helper.asWord(config.threadIsDisableSuspendOffset)));
                             b.add(new JavaWriteNode(JavaKind.Boolean, address, HotSpotReplacementsUtil.HOTSPOT_JAVA_THREAD_IS_DISABLE_SUSPEND, enter, BarrierType.NONE, false));
                         }
+                    }
+                    return true;
+                }
+            });
+        }
+
+        if (JavaVersionUtil.JAVA_SPEC >= 24) {
+            r.registerConditional(config.javaThreadLockIDOffset != -1, new InvocationPlugin("setLockId", Receiver.class, long.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode tid) {
+                    try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
+                        receiver.get(true);
+                        CurrentJavaThreadNode javaThread = b.add(new CurrentJavaThreadNode(helper.getWordKind()));
+                        OffsetAddressNode address = b.add(new OffsetAddressNode(javaThread, helper.asWord(config.javaThreadLockIDOffset)));
+                        b.add(new JavaWriteNode(JavaKind.Long, address, JAVA_THREAD_LOCK_ID_LOCATION, tid, BarrierType.NONE, false));
                     }
                     return true;
                 }

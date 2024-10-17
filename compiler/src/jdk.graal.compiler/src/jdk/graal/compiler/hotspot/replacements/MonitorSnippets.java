@@ -34,6 +34,7 @@ import static jdk.graal.compiler.hotspot.nodes.EndLockScopeNode.endLockScope;
 import static jdk.graal.compiler.hotspot.nodes.VMErrorNode.vmError;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.BASICLOCK_METADATA_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_HOLD_MONITOR_COUNT_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_LOCK_ID_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_LOCK_STACK_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_LOCK_STACK_TOP_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_OM_CACHE_LOCATION;
@@ -45,10 +46,12 @@ import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.OB
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.OBJECT_MONITOR_ENTRY_LIST_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.OBJECT_MONITOR_OWNER_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.OBJECT_MONITOR_RECURSION_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.OBJECT_MONITOR_STACK_LOCKER_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.OBJECT_MONITOR_SUCC_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.diagnoseSyncOnValueBasedClasses;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.heldMonitorCountOffset;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.isCAssertEnabled;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.javaThreadLockIDOffset;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.javaThreadLockStackEndOffset;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.javaThreadLockStackTopOffset;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.javaThreadOomCacheOffset;
@@ -72,6 +75,7 @@ import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.pa
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.registerAsWord;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.shouldUseKlassMiscFlags;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.unlockedValue;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.unusedMark;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.useLightweightLocking;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.useObjectMonitorTable;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.useStackLocking;
@@ -90,6 +94,7 @@ import static jdk.graal.compiler.nodes.extended.MembarNode.memoryBarrier;
 import static jdk.graal.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 import static jdk.graal.compiler.replacements.nodes.CStringConstant.cstring;
 import static org.graalvm.word.LocationIdentity.any;
+import static org.graalvm.word.WordFactory.nullPointer;
 import static org.graalvm.word.WordFactory.unsigned;
 import static org.graalvm.word.WordFactory.zero;
 
@@ -230,7 +235,9 @@ public class MonitorSnippets implements Snippets {
         }
 
         if (tryFastPathLocking(object, stackPointerRegister, trace, counters, mark, lock, thread)) {
-            incrementHeldMonitorCount(thread);
+            if (JavaVersionUtil.JAVA_SPEC == 21 || useStackLocking(INJECTED_VMCONFIG)) {
+                incrementHeldMonitorCount(thread);
+            }
         } else {
             // slow-path runtime-call
             monitorenterStubC(MONITORENTER, object, lock);
@@ -290,6 +297,10 @@ public class MonitorSnippets implements Snippets {
                     cacheIter = cacheIter.add(stepSize);
                 }
             }
+
+            // Cache the monitor for unlock before trashing box. On failure to acquire
+            // the lock, the slow path will reset the entry accordingly (see CacheSetter).
+            writeMonitorCache(lock, monitor);
         } else {
             // mark is a pointer to the ObjectMonitor + monitorMask
             monitor = mark.subtract(monitorValue(INJECTED_VMCONFIG));
@@ -297,15 +308,16 @@ public class MonitorSnippets implements Snippets {
 
         int ownerOffset = objectMonitorOwnerOffset(INJECTED_VMCONFIG);
         Word owner = monitor.readWord(ownerOffset, OBJECT_MONITOR_OWNER_LOCATION);
+        Word newOwner = JavaVersionUtil.JAVA_SPEC == 21 ? thread : thread.readWord(javaThreadLockIDOffset(INJECTED_VMCONFIG), JAVA_THREAD_LOCK_ID_LOCATION);
+
         // The following owner null check is essential. In the case where the null check fails, it
         // avoids the subsequent bound-to-fail CAS operation, which would have caused the
         // invalidation of the L1 cache of the core that runs the lock owner thread, and thus causes
         // the lock to be held slightly longer.
-        if (probability(FREQUENT_PROBABILITY, owner.equal(0))) {
-            // it appears unlocked (owner == 0)
-            if (probability(FREQUENT_PROBABILITY, monitor.logicCompareAndSwapWord(ownerOffset, owner, thread, OBJECT_MONITOR_OWNER_LOCATION))) {
+        if (probability(FREQUENT_PROBABILITY, owner.equal(nullPointer()))) {
+            // it appears unlocked (owner == null)
+            if (probability(FREQUENT_PROBABILITY, monitor.logicCompareAndSwapWord(ownerOffset, owner, newOwner, OBJECT_MONITOR_OWNER_LOCATION))) {
                 // success
-                writeMonitorCache(lock, monitor);
                 traceObject(trace, "+lock{heavyweight:cas}", object, true);
                 counters.lockHeavyCas.inc();
                 return true;
@@ -313,11 +325,10 @@ public class MonitorSnippets implements Snippets {
                 traceObject(trace, "+lock{heavyweight:failed-cas}", object, true);
                 counters.lockHeavyFailedCas.inc();
             }
-        } else if (probability(NOT_LIKELY_PROBABILITY, owner.equal(thread))) {
+        } else if (probability(NOT_LIKELY_PROBABILITY, owner.equal(newOwner))) {
             int recursionsOffset = objectMonitorRecursionsOffset(INJECTED_VMCONFIG);
             Word recursions = monitor.readWord(recursionsOffset, OBJECT_MONITOR_RECURSION_LOCATION);
             monitor.writeWord(recursionsOffset, recursions.add(1), OBJECT_MONITOR_RECURSION_LOCATION);
-            writeMonitorCache(lock, monitor);
             traceObject(trace, "+lock{heavyweight:recursive}", object, true);
             counters.lockHeavyRecursive.inc();
             return true;
@@ -332,7 +343,7 @@ public class MonitorSnippets implements Snippets {
         if (probability(SLOW_PATH_PROBABILITY, mark.and(monitorValue(INJECTED_VMCONFIG)).notEqual(0))) {
             // Inflated case
             // Set the lock slot's displaced mark to unused. Any non-0 value suffices.
-            lock.writeWord(lockMetadataOffset(INJECTED_VMCONFIG), WordFactory.unsigned(3), BASICLOCK_METADATA_LOCATION);
+            lock.writeWord(lockMetadataOffset(INJECTED_VMCONFIG), WordFactory.unsigned(unusedMark(INJECTED_VMCONFIG)), BASICLOCK_METADATA_LOCATION);
             return tryEnterInflated(object, lock, mark, thread, trace, counters);
         }
 
@@ -464,7 +475,9 @@ public class MonitorSnippets implements Snippets {
         trace(trace, "             lock: 0x%016lx\n", lock);
 
         if (tryFastPathUnlocking(object, trace, counters, thread, lock)) {
-            decrementHeldMonitorCount(thread);
+            if (JavaVersionUtil.JAVA_SPEC == 21 || useStackLocking(INJECTED_VMCONFIG)) {
+                decrementHeldMonitorCount(thread);
+            }
         } else {
             monitorexitStubC(MONITOREXIT, object, lock);
         }
@@ -499,7 +512,7 @@ public class MonitorSnippets implements Snippets {
         Word mark = loadWordFromObject(object, markOffset(INJECTED_VMCONFIG));
 
         if (probability(SLOW_PATH_PROBABILITY, mark.and(monitorValue(INJECTED_VMCONFIG)).notEqual(0))) {
-            return tryExitInflated(object, thread, lock, trace, counters);
+            return tryExitInflated(object, mark, thread, lock, trace, counters);
         }
 
         if (probability(VERY_FAST_PATH_PROBABILITY, Word.objectToTrackedPointer(object).logicCompareAndSwapWord(markOffset(INJECTED_VMCONFIG),
@@ -539,7 +552,7 @@ public class MonitorSnippets implements Snippets {
                     AssertionSnippets.vmMessageC(VM_MESSAGE_C, true, cstring("Fast Unlock not monitor"), 0L, 0L, 0L);
                 }
             }
-            return tryExitInflated(object, thread, lock, trace, counters);
+            return tryExitInflated(object, mark, thread, lock, trace, counters);
         }
 
         // Pop lock-stack.
@@ -576,10 +589,8 @@ public class MonitorSnippets implements Snippets {
         return false;
     }
 
-    private static boolean tryExitInflated(Object object, Word thread, Word lock, boolean trace, Counters counters) {
+    private static boolean tryExitInflated(Object object, Word mark, Word thread, Word lock, boolean trace, Counters counters) {
         // Inflated case
-        // mark is a pointer to the ObjectMonitor + monitorMask
-        Word mark = loadWordFromObject(object, markOffset(INJECTED_VMCONFIG));
         Word monitor;
         if (useObjectMonitorTable(INJECTED_VMCONFIG)) {
             monitor = lock.readWord(lockMetadataOffset(INJECTED_VMCONFIG), BASICLOCK_METADATA_LOCATION);
@@ -589,10 +600,12 @@ public class MonitorSnippets implements Snippets {
                 return false;
             }
         } else {
+            // mark is a pointer to the ObjectMonitor + monitorMask
             monitor = mark.subtract(monitorValue(INJECTED_VMCONFIG));
         }
 
         int ownerOffset = objectMonitorOwnerOffset(INJECTED_VMCONFIG);
+
         int recursionsOffset = objectMonitorRecursionsOffset(INJECTED_VMCONFIG);
         Word recursions = monitor.readWord(recursionsOffset, OBJECT_MONITOR_RECURSION_LOCATION);
         if (probability(FAST_PATH_PROBABILITY, recursions.equal(0))) {
@@ -607,7 +620,7 @@ public class MonitorSnippets implements Snippets {
                     // Nobody is waiting, success
                     // release_store
                     memoryBarrier(MembarNode.FenceKind.STORE_RELEASE);
-                    monitor.writeWord(ownerOffset, zero());
+                    monitor.writeWord(ownerOffset, nullPointer(), OBJECT_MONITOR_OWNER_LOCATION);
                     traceObject(trace, "-lock{heavyweight:simple}", object, false);
                     counters.unlockHeavySimple.inc();
                     return true;
@@ -617,7 +630,7 @@ public class MonitorSnippets implements Snippets {
                     if (probability(FREQUENT_PROBABILITY, succ.isNonNull())) {
                         // There may be a thread spinning on this monitor. Temporarily setting
                         // the monitor owner to null, and hope that the other thread will grab it.
-                        monitor.writeWordVolatile(ownerOffset, zero());
+                        monitor.writeWordVolatile(ownerOffset, nullPointer());
                         succ = monitor.readWordVolatile(succOffset, OBJECT_MONITOR_SUCC_LOCATION);
                         if (probability(NOT_FREQUENT_PROBABILITY, succ.isNonNull())) {
                             // We manage to release the monitor before the other running thread even
@@ -812,7 +825,8 @@ public class MonitorSnippets implements Snippets {
                                 JAVA_THREAD_LOCK_STACK_LOCATION,
                                 JAVA_THREAD_LOCK_STACK_TOP_LOCATION,
                                 JAVA_THREAD_OM_CACHE_LOCATION,
-                                JAVA_THREAD_HOLD_MONITOR_COUNT_LOCATION};
+                                JAVA_THREAD_HOLD_MONITOR_COUNT_LOCATION,
+                                JAVA_THREAD_LOCK_ID_LOCATION};
                 exitLocations = new LocationIdentity[]{
                                 JAVA_THREAD_LOCK_STACK_LOCATION,
                                 JAVA_THREAD_LOCK_STACK_TOP_LOCATION,
@@ -822,10 +836,13 @@ public class MonitorSnippets implements Snippets {
                                 OBJECT_MONITOR_ENTRY_LIST_LOCATION,
                                 OBJECT_MONITOR_RECURSION_LOCATION,
                                 OBJECT_MONITOR_SUCC_LOCATION,
+                                OBJECT_MONITOR_STACK_LOCKER_LOCATION,
                                 MARK_WORD_LOCATION,
                                 JAVA_THREAD_HOLD_MONITOR_COUNT_LOCATION};
             } else {
-                enterLocations = new LocationIdentity[]{JAVA_THREAD_HOLD_MONITOR_COUNT_LOCATION};
+                enterLocations = new LocationIdentity[]{
+                                JAVA_THREAD_HOLD_MONITOR_COUNT_LOCATION,
+                                JAVA_THREAD_LOCK_ID_LOCATION};
                 exitLocations = new LocationIdentity[]{
                                 BASICLOCK_METADATA_LOCATION,
                                 OBJECT_MONITOR_OWNER_LOCATION,
@@ -833,6 +850,7 @@ public class MonitorSnippets implements Snippets {
                                 OBJECT_MONITOR_ENTRY_LIST_LOCATION,
                                 OBJECT_MONITOR_RECURSION_LOCATION,
                                 OBJECT_MONITOR_SUCC_LOCATION,
+                                OBJECT_MONITOR_STACK_LOCKER_LOCATION,
                                 MARK_WORD_LOCATION,
                                 JAVA_THREAD_HOLD_MONITOR_COUNT_LOCATION};
             }
