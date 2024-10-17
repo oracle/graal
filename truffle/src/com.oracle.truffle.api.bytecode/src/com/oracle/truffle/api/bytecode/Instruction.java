@@ -325,7 +325,7 @@ public abstract class Instruction {
         public abstract Kind getKind();
 
         /**
-         * Returns a humand readable name for this argument. This could be for example
+         * Returns a human readable name for this argument. This could be for example
          * <code>"localOffset"</code> for a local variable access instruction. Arguments with the
          * same {@link #getKind()} may have different {@link #getName() names}. A name is typically
          * more descriptive than just the kind and should be preferred over the kind for debug

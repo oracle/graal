@@ -5137,7 +5137,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                         }
                         case Instructions.SL_AND_ :
                         {
-                            if (!(boolean) FRAMES.uncheckedGetObject(frame, sp - 1)) {
+                            if (profileBranch(branchProfiles, BYTES.getIntUnaligned(bc, bci + 6 /* imm branch_profile */), !(boolean) FRAMES.uncheckedGetObject(frame, sp - 1))) {
                                 bci = BYTES.getIntUnaligned(bc, bci + 2 /* imm branch_target */);
                                 break;
                             } else {
@@ -5149,7 +5149,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                         }
                         case Instructions.SL_OR_ :
                         {
-                            if ((boolean) FRAMES.uncheckedGetObject(frame, sp - 1)) {
+                            if (profileBranch(branchProfiles, BYTES.getIntUnaligned(bc, bci + 6 /* imm branch_profile */), (boolean) FRAMES.uncheckedGetObject(frame, sp - 1))) {
                                 bci = BYTES.getIntUnaligned(bc, bci + 2 /* imm branch_target */);
                                 break;
                             } else {
