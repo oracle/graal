@@ -94,19 +94,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     timelimit:      if (is_gate) then '1:00:00' else '1:30:00',
   },
 
-  local wabt = {
-    packages+: {
-      gcc: '==8.3.0',
-    },
-    downloads+: {
-      WABT_DIR: {name: 'wabt', version: '1.0.32', platformspecific: true},
-    },
-    environment+: {
-      WABT_DIR: '$WABT_DIR/bin',
-    },
-  },
-
-  vm_bench_polybench_linux_common(env='polybench-${VM_ENV}', is_gate=false): vm_common.svm_common + vm_common.truffleruby + vm_common.graalpy + vm.custom_vm + self.vm_bench_common + wabt {
+  vm_bench_polybench_linux_common(env='polybench-${VM_ENV}', is_gate=false): vm_common.svm_common + vm_common.truffleruby + vm_common.graalpy + vm.custom_vm + self.vm_bench_common + vm_common.wasm {
     base_cmd:: ['mx', '--env', env],
     bench_cmd:: self.base_cmd + ['benchmark'] + (if (is_gate) then ['--fail-fast'] else []),
     interpreter_bench_cmd(vmConfig):: self.bench_cmd +
