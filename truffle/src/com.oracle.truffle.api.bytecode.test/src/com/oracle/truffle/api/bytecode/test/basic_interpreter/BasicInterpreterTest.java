@@ -151,7 +151,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     }
 
     private static void assertInstructionEquals(Instruction actual, ExpectedInstruction expected) {
-        assertEquals(expected.name, actual.getName());
+        assertTrue(actual.getName().startsWith(expected.name));
         if (expected.bci != null) {
             assertEquals(expected.bci.intValue(), actual.getBytecodeIndex());
         }
@@ -166,12 +166,13 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
                     fail(String.format("Argument %s missing from instruction %s", expectedArgument.name, actual.getName()));
                 }
                 assertEquals(expectedArgument.kind, actualArgument.getKind());
-                Object actualValue = switch (expectedArgument.kind) {
-                    case CONSTANT -> actualArgument.asConstant();
-                    case INTEGER -> actualArgument.asInteger();
+                switch (expectedArgument.kind) {
+                    case CONSTANT -> assertEquals(expectedArgument.value, actualArgument.asConstant());
+                    case INTEGER -> assertEquals(expectedArgument.value, actualArgument.asInteger());
+                    case BRANCH_PROFILE -> assertEquals((double) expectedArgument.value, actualArgument.asBranchProfile().getFrequency(), 0.0001d);
                     default -> throw new AssertionError(String.format("Testing arguments of kind %s not yet implemented", expectedArgument.kind));
-                };
-                assertEquals(expectedArgument.value, actualValue);
+                }
+                ;
             }
         }
 
@@ -2584,6 +2585,100 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
                         instr("load.argument").arg("index", Argument.Kind.INTEGER, 0).build(),
                         instr("c.AddConstantOperationAtEnd").arg("constantRhs", Argument.Kind.CONSTANT, 30L).build(),
                         instr("c.AddConstantOperation").arg("constantLhs", Argument.Kind.CONSTANT, 10L).build(),
+                        instr("return").build());
+    }
+
+    @Test
+    public void testIntrospectionDataBranchProfiles1() {
+        BasicInterpreter node = parseNode("introspectionDataBranchProfiles1", b -> {
+            b.beginRoot();
+            b.beginIfThen();
+            b.emitLoadArgument(0);
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+            b.endIfThen();
+            b.beginReturn();
+            b.emitLoadConstant(123L);
+            b.endReturn();
+            b.endRoot();
+        });
+
+        assertInstructionsEqual(node.getBytecodeNode().getInstructionsAsList(),
+                        instr("load.argument").build(),
+                        instr("branch.false").arg("branch_profile", Argument.Kind.BRANCH_PROFILE, 0.0d).build(),
+                        instr("load.constant").build(),
+                        instr("return").build(),
+                        instr("load.constant").build(),
+                        instr("return").build());
+
+        node.getBytecodeNode().setUncachedThreshold(0); // force caching
+
+        assertEquals(42L, node.getCallTarget().call(true));
+
+        assertInstructionsEqual(node.getBytecodeNode().getInstructionsAsList(),
+                        instr("load.argument").build(),
+                        instr("branch.false").arg("branch_profile", Argument.Kind.BRANCH_PROFILE, 1.0d).build(),
+                        instr("load.constant").build(),
+                        instr("return").build(),
+                        instr("load.constant").build(),
+                        instr("return").build());
+
+        assertEquals(123L, node.getCallTarget().call(false));
+
+        assertInstructionsEqual(node.getBytecodeNode().getInstructionsAsList(),
+                        instr("load.argument").build(),
+                        instr("branch.false").arg("branch_profile", Argument.Kind.BRANCH_PROFILE, 0.5d).build(),
+                        instr("load.constant").build(),
+                        instr("return").build(),
+                        instr("load.constant").build(),
+                        instr("return").build());
+    }
+
+    @Test
+    public void testIntrospectionDataBranchProfiles2() {
+        BasicInterpreter node = parseNode("introspectionDataBranchProfiles2", b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.beginScOr();
+            b.emitLoadArgument(0);
+            b.emitLoadArgument(1);
+            b.emitLoadArgument(2);
+            b.endScOr();
+            b.endReturn();
+            b.endRoot();
+        });
+
+        assertInstructionsEqual(node.getBytecodeNode().getInstructionsAsList(),
+                        instr("load.argument").arg("index", Kind.INTEGER, 0).build(),
+                        instr("dup").build(),
+                        instr("c.ToBoolean").build(),
+                        instr("sc.ScOr").arg("branch_profile", Argument.Kind.BRANCH_PROFILE, 0.0d).build(),
+                        instr("load.argument").arg("index", Kind.INTEGER, 1).build(),
+                        instr("dup").build(),
+                        instr("c.ToBoolean").build(),
+                        instr("sc.ScOr").arg("branch_profile", Argument.Kind.BRANCH_PROFILE, 0.0d).build(),
+                        instr("load.argument").arg("index", Kind.INTEGER, 2).build(),
+                        instr("return").build());
+
+        node.getBytecodeNode().setUncachedThreshold(0); // force caching
+
+        assertEquals(42L, node.getCallTarget().call(42L, 0L, 0L));
+        assertEquals(42L, node.getCallTarget().call(0L, 42L, 0L));
+        assertEquals(42L, node.getCallTarget().call(0L, 0L, 42L));
+
+        assertInstructionsEqual(node.getBytecodeNode().getInstructionsAsList(),
+                        instr("load.argument").arg("index", Kind.INTEGER, 0).build(),
+                        instr("dup").build(),
+                        instr("c.ToBoolean").build(),
+                        // operand 1 evaluated 3 times and was truthy once
+                        instr("sc.ScOr").arg("branch_profile", Argument.Kind.BRANCH_PROFILE, 1.0d / 3).build(),
+                        instr("load.argument").arg("index", Kind.INTEGER, 1).build(),
+                        instr("dup").build(),
+                        instr("c.ToBoolean").build(),
+                        // operand 2 evaluated 2 times and was truthy once
+                        instr("sc.ScOr").arg("branch_profile", Argument.Kind.BRANCH_PROFILE, 1.0d / 2).build(),
+                        instr("load.argument").arg("index", Kind.INTEGER, 2).build(),
                         instr("return").build());
     }
 

@@ -5964,7 +5964,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                         }
                         case Instructions.SC_AND_ :
                         {
-                            if (!(boolean) FRAMES.uncheckedGetObject(frame, sp - 1)) {
+                            if (profileBranch(branchProfiles, BYTES.getIntUnaligned(bc, bci + 6 /* imm branch_profile */), !(boolean) FRAMES.uncheckedGetObject(frame, sp - 1))) {
                                 FRAMES.clear(frame, sp - 1);
                                 sp -= 1;
                                 bci = BYTES.getIntUnaligned(bc, bci + 2 /* imm branch_target */);
@@ -5979,7 +5979,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                         }
                         case Instructions.SC_OR_ :
                         {
-                            if ((boolean) FRAMES.uncheckedGetObject(frame, sp - 1)) {
+                            if (profileBranch(branchProfiles, BYTES.getIntUnaligned(bc, bci + 6 /* imm branch_profile */), (boolean) FRAMES.uncheckedGetObject(frame, sp - 1))) {
                                 FRAMES.clear(frame, sp - 1);
                                 sp -= 1;
                                 bci = BYTES.getIntUnaligned(bc, bci + 2 /* imm branch_target */);

@@ -13249,16 +13249,27 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
                     b.startIf();
 
+                    if (tier.isCached()) {
+                        b.startCall("profileBranch");
+                        b.string("branchProfiles");
+                        b.tree(readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BRANCH_PROFILE)));
+                        b.startGroup();
+                    }
+
                     if (shortCircuitInstruction.continueWhen()) {
                         b.string("!");
                     }
+                    b.string("(boolean) ").string(uncheckedGetFrameObject("sp - 1"));
+
+                    if (tier.isCached()) {
+                        b.end(2); // profileBranch call
+                    }
+
+                    b.end().startBlock();
                     /*
                      * NB: Short circuit operations can evaluate to an operand or to the boolean
                      * conversion of an operand. The stack is different in either case.
                      */
-                    b.string("(boolean) ").string(uncheckedGetFrameObject("sp - 1"));
-
-                    b.end().startBlock();
                     if (shortCircuitInstruction.producesBoolean()) {
                         // Stack: [..., convertedValue]
                         // leave convertedValue on the top of stack
