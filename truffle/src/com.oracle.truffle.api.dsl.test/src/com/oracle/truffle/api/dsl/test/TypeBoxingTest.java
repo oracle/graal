@@ -41,9 +41,14 @@
 package com.oracle.truffle.api.dsl.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 
 import org.junit.Test;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -52,6 +57,7 @@ import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.dsl.test.TypeBoxingTestFactory.TypeBoxingTest1NodeGen;
 import com.oracle.truffle.api.dsl.test.TypeBoxingTestFactory.TypeBoxingTest2NodeGen;
 import com.oracle.truffle.api.dsl.test.TypeBoxingTestFactory.TypeBoxingTest3NodeGen;
+import com.oracle.truffle.api.dsl.test.TypeBoxingTestFactory.TypeBoxingWithInlinedUserNodeGen;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
@@ -272,4 +278,54 @@ public class TypeBoxingTest {
 
     }
 
+    @GenerateInline
+    @GenerateCached(false)
+    public abstract static class TypeBoxingWithInlinedNode extends Node {
+
+        public abstract Object execute(Node inliningTarget, Object x);
+
+        public abstract int executeInt(Node inliningTarget, Object x) throws UnexpectedResultException;
+
+        public abstract double executeDouble(Node inliningTarget, Object d) throws UnexpectedResultException;
+
+        @Specialization
+        static int doInt(@SuppressWarnings("unused") int i) {
+            return 42;
+        }
+
+        @Specialization
+        static double doDouble(@SuppressWarnings("unused") double d) {
+            return 0.5;
+        }
+
+        @Fallback
+        static Object doAll(@SuppressWarnings("unused") Object o) {
+            return "all";
+        }
+    }
+
+    @GenerateInline(false)
+    public abstract static class TypeBoxingWithInlinedUserNode extends Node {
+        public abstract void execute();
+
+        @Specialization
+        void doIt(@Cached TypeBoxingWithInlinedNode node) {
+            try {
+                assertEquals(0.5, node.executeDouble(this, 2.2), 0);
+                assertEquals(42, node.executeInt(this, 1));
+                assertEquals("all", node.execute(this, "object"));
+                assertEquals(42, node.execute(this, 4));
+            } catch (UnexpectedResultException e) {
+                throw new RuntimeException(e);
+            }
+            assertThrows(UnexpectedResultException.class, () -> node.executeDouble(this, "object"));
+            assertThrows(UnexpectedResultException.class, () -> node.executeDouble(this, 42));
+            assertThrows(UnexpectedResultException.class, () -> node.executeInt(this, "object"));
+        }
+    }
+
+    @Test
+    public void testInlineNodeWithTypeBoxing() {
+        TypeBoxingWithInlinedUserNodeGen.create().execute();
+    }
 }
