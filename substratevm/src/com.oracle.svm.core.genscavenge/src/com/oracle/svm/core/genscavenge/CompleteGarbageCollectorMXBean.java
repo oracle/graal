@@ -28,6 +28,7 @@ import java.lang.management.ManagementFactory;
 
 import javax.management.ObjectName;
 
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.gc.AbstractGarbageCollectorMXBean;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -81,5 +82,11 @@ public final class CompleteGarbageCollectorMXBean extends AbstractGarbageCollect
     @Override
     protected int gcThreadCount() {
         return 1;
+    }
+
+    @Override
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public boolean isIncremental() {
+        return false;
     }
 }

@@ -23,36 +23,56 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
-package com.oracle.svm.core.notification;
+package com.oracle.svm.core.collections;
 
 import com.oracle.svm.core.Uninterruptible;
 
-/** Used from allocation free code and later converted to MemoryUsage. */
-public class PoolMemoryUsage {
-    private long used;
-    private long committed;
-    private String name;
+import java.util.function.Supplier;
 
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public void set(long used, long committed, String name) {
-        this.used = used;
-        this.committed = committed;
-        this.name = name;
+/** Keeps the last n-1 entries. Entries at the head are removed first. */
+public final class CircularQueue<T> extends RingBuffer<T> {
+    private int head;
+
+    public CircularQueue(int numEntries, Supplier<T> supplier) {
+        super(numEntries, supplier);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void advanceHead() {
+        head = nextIndex(head);
+    }
+
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Override
+    public void advance() {
+        super.advance();
+        // If rear is now lapping front, then increment front to prevent overlap.
+        if (head == pos) {
+            head = nextIndex(head);
+        }
+    }
+
+    public T peekTail() {
+        T result = entries[pos];
+        return result;
+    }
+
+    public T dequeue() {
+        T result = entries[head];
+        advanceHead();
+        return result;
     }
 
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public long getUsed() {
-        return used;
+    public T replaceHead(T newHead) {
+        T oldHead = entries[head];
+        entries[head] = newHead;
+        return oldHead;
     }
 
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public long getCommitted() {
-        return committed;
-    }
-
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public String getName() {
-        return name;
+    public boolean isEmpty() {
+        return pos == head;
     }
 }

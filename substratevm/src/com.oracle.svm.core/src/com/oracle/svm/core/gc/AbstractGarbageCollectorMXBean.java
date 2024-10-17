@@ -25,10 +25,13 @@
  */
 package com.oracle.svm.core.gc;
 
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.notification.GcNotifier;
 import com.oracle.svm.core.notification.GcNotificationRequest;
+import com.oracle.svm.core.notification.HasGcNotificationSupport;
 import com.oracle.svm.core.notification.PoolMemoryUsage;
 import com.oracle.svm.core.notification.Target_com_sun_management_GcInfo;
 import com.oracle.svm.core.notification.Target_com_sun_management_internal_GcInfoBuilder;
@@ -55,7 +58,6 @@ public abstract class AbstractGarbageCollectorMXBean extends NotificationEmitter
     private static final String ACTION_MAJOR = "end of major GC";
 
     private Target_com_sun_management_internal_GcInfoBuilder gcInfoBuilder;
-    private volatile GcInfo gcInfo;
     private long seqNumber = 0;
 
     /**
@@ -63,6 +65,51 @@ public abstract class AbstractGarbageCollectorMXBean extends NotificationEmitter
      * calls this method.
      */
     public void createNotification(GcNotificationRequest request) {
+
+        GcInfo gcInfo = getGcInfoFromRequest(request);
+
+        GarbageCollectionNotificationInfo info = new GarbageCollectionNotificationInfo(
+                        getName(),
+                        request.isIncremental() ? ACTION_MINOR : ACTION_MAJOR,
+                        request.getCause().getName(),
+                        gcInfo);
+
+        CompositeData cd = GarbageCollectionNotifInfoCompositeData.toCompositeData(info);
+
+        Notification notif = new Notification(GarbageCollectionNotificationInfo.GARBAGE_COLLECTION_NOTIFICATION,
+                        getObjectName(),
+                        getNextSeqNumber(),
+                        request.getTimestamp(),
+                        getName());
+        notif.setUserData(cd);
+
+        sendNotification(notif);
+    }
+
+    @Override
+    public MBeanNotificationInfo[] getNotificationInfo() {
+        if (!HasGcNotificationSupport.get()) {
+            return new MBeanNotificationInfo[0];
+        }
+        return new MBeanNotificationInfo[]{
+                        new MBeanNotificationInfo(
+                                        new String[]{GarbageCollectionNotificationInfo.GARBAGE_COLLECTION_NOTIFICATION},
+                                        "javax.management.Notification",
+                                        "GC Notification")
+        };
+    }
+
+    @Override
+    public GcInfo getLastGcInfo() {
+        if (!HasGcNotificationSupport.get()) {
+            return null;
+        }
+        GcNotificationRequest request = new GcNotificationRequest();
+        getLastGcInfo(request);
+        return getGcInfoFromRequest(request);
+    }
+
+    private GcInfo getGcInfoFromRequest(GcNotificationRequest request) {
         AbstractMemoryPoolMXBean[] beans = MemoryPoolMXBeansProvider.get().getMXBeans();
 
         String[] poolNames = getMemoryPoolNames();
@@ -86,24 +133,7 @@ public abstract class AbstractGarbageCollectorMXBean extends NotificationEmitter
 
         Target_com_sun_management_GcInfo targetGcInfo = new Target_com_sun_management_GcInfo(getGcInfoBuilder(), request.getEpoch(), request.getStartTime(), request.getEndTime(), before, after,
                         extAttribute);
-        gcInfo = SubstrateUtil.cast(targetGcInfo, GcInfo.class);
-
-        GarbageCollectionNotificationInfo info = new GarbageCollectionNotificationInfo(
-                        getName(),
-                        request.isIncremental() ? ACTION_MINOR : ACTION_MAJOR,
-                        request.getCause().getName(),
-                        gcInfo);
-
-        CompositeData cd = GarbageCollectionNotifInfoCompositeData.toCompositeData(info);
-
-        Notification notif = new Notification(GarbageCollectionNotificationInfo.GARBAGE_COLLECTION_NOTIFICATION,
-                        getObjectName(),
-                        getNextSeqNumber(),
-                        request.getTimestamp(),
-                        getName());
-        notif.setUserData(cd);
-
-        sendNotification(notif);
+        return SubstrateUtil.cast(targetGcInfo, GcInfo.class);
     }
 
     private Target_com_sun_management_internal_GcInfoBuilder getGcInfoBuilder() {
@@ -117,20 +147,13 @@ public abstract class AbstractGarbageCollectorMXBean extends NotificationEmitter
         return ++seqNumber;
     }
 
-    @Override
-    public MBeanNotificationInfo[] getNotificationInfo() {
-        return new MBeanNotificationInfo[]{
-                        new MBeanNotificationInfo(
-                                        new String[]{GarbageCollectionNotificationInfo.GARBAGE_COLLECTION_NOTIFICATION},
-                                        "javax.management.Notification",
-                                        "GC Notification")
-        };
-    }
-
-    @Override
-    public GcInfo getLastGcInfo() {
-        return gcInfo;
+    @Uninterruptible(reason = "Avoid potential races with GC.")
+    private void getLastGcInfo(GcNotificationRequest request) {
+        GcNotifier.singleton().getLatestRequest(isIncremental()).copyTo(request);
     }
 
     protected abstract int gcThreadCount();
+
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public abstract boolean isIncremental();
 }

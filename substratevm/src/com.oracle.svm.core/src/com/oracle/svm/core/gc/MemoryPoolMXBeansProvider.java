@@ -37,7 +37,7 @@ public interface MemoryPoolMXBeansProvider {
 
     AbstractMemoryPoolMXBean[] getMXBeans();
 
-    String getCollectorName(boolean isIncremental);
+// String getCollectorName(boolean isIncremental);
 
     void notifyBeforeCollection();
 

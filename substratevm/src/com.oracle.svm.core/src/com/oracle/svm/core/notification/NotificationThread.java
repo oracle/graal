@@ -26,9 +26,8 @@
 
 package com.oracle.svm.core.notification;
 
-import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.jdk.UninterruptibleUtils;
-import com.oracle.svm.core.locks.VMSemaphore;
+import com.oracle.svm.core.locks.VMCondition;
+import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.util.BasedOnJDKFile;
@@ -41,10 +40,10 @@ import org.graalvm.nativeimage.Platforms;
  * notifications.
  */
 public class NotificationThread extends Thread {
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+19/src/hotspot/share/runtime/notificationThread.cpp#L41") \\
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+19/src/hotspot/share/runtime/notificationThread.cpp#L41") //
     private static final String THREAD_NAME = "Notification Thread";
-    private final UninterruptibleUtils.AtomicBoolean atomicNotify;
-    private final VMSemaphore semaphore;
+    private final VMMutex mutex;
+    private final VMCondition condition;
     private volatile boolean stopped;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -52,8 +51,8 @@ public class NotificationThread extends Thread {
     public NotificationThread() {
         // Hotspot sets the notification thread to the system thread group.
         super(PlatformThreads.singleton().systemGroup, THREAD_NAME);
-        this.semaphore = new VMSemaphore("serviceThread");
-        this.atomicNotify = new UninterruptibleUtils.AtomicBoolean(false);
+        this.mutex = new VMMutex("serviceThread");
+        this.condition = new VMCondition(mutex);
         setDaemon(true);
     }
 
@@ -61,24 +60,39 @@ public class NotificationThread extends Thread {
     @Override
     public void run() {
         while (!stopped) {
-            if (await()) {
-                if (HasGcNotificationSupport.get()) {
-                    GcNotifier.singleton().sendNotification();
-                }
-                // In the future, we may want to do other things here too.
+            if (!hasRequests()) {
+                await();
             }
+            if (HasGcNotificationSupport.get()) {
+                GcNotifier.singleton().sendNotification();
+            }
+            // In the future, we may want to do other things here too.
         }
     }
 
-    private boolean await() {
-        semaphore.await();
-        return atomicNotify.compareAndSet(true, false);
+    private void await() {
+        mutex.lock();
+        try {
+            while (!hasRequests() && !stopped) {
+                condition.block();
+            }
+        } finally {
+            mutex.unlock();
+        }
     }
 
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private boolean hasRequests() {
+        // In the future, we may check for other pending requests here too.
+        return GcNotifier.singleton().hasRequest();
+    }
+
     public void signal() {
-        atomicNotify.set(true);
-        semaphore.signal();
+        mutex.lock();
+        try {
+            condition.signal();
+        } finally {
+            mutex.unlock();
+        }
     }
 
     public void shutdown() {

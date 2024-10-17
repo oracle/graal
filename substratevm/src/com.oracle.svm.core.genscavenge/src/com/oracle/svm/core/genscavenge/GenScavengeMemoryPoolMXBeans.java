@@ -71,10 +71,10 @@ public class GenScavengeMemoryPoolMXBeans implements MemoryPoolMXBeansProvider {
         return mxBeans;
     }
 
-    @Override
-    public String getCollectorName(boolean isIncremental) {
-        return isIncremental ? YOUNG_GEN_SCAVENGER : COMPLETE_SCAVENGER;
-    }
+//    @Override
+//    public String getCollectorName(boolean isIncremental) {
+//        return isIncremental ? YOUNG_GEN_SCAVENGER : COMPLETE_SCAVENGER;
+//    }
 
     @Override
     public void notifyBeforeCollection() {

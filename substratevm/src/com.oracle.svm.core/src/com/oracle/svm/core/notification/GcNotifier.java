@@ -26,17 +26,17 @@
 
 package com.oracle.svm.core.notification;
 
+import com.oracle.svm.core.collections.CircularQueue;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.Platform;
 import com.oracle.svm.core.Uninterruptible;
 import jdk.graal.compiler.api.replacements.Fold;
-import com.oracle.svm.core.gc.MemoryPoolMXBeansProvider;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.gc.AbstractGarbageCollectorMXBean;
 import com.oracle.svm.core.thread.VMOperation;
 
-import java.lang.management.GarbageCollectorMXBean;
+import com.sun.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
 
 /**
@@ -50,22 +50,21 @@ import java.lang.management.ManagementFactory;
 public class GcNotifier {
     // 5 is probably more than enough, although making the queue larger isn't a problem either.
     private static final int QUEUE_SIZE = 5;
-    private static int rear;
-    private static int front;
-
-    GcNotificationRequest[] requests;
+    private final CircularQueue<GcNotificationRequest> requestQueue;
+    // This is the request we are emitting a notification for
     GcNotificationRequest currentRequest;
+    /** This is cached to handle {@link GarbageCollectorMXBean#getLastGcInfo()} . */
+    GcNotificationRequest latestRequestComplete;
+    /** This is cached to handle {@link GarbageCollectorMXBean#getLastGcInfo()} . */
+    GcNotificationRequest latestRequestIncremental;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     GcNotifier() {
         // Pre-allocate the queue so we can use it later from allocation free code.
-        requests = new GcNotificationRequest[QUEUE_SIZE];
-        for (int i = 0; i < QUEUE_SIZE; i++) {
-            requests[i] = new GcNotificationRequest(MemoryPoolMXBeansProvider.get().getMXBeans().length);
-        }
-        currentRequest = new GcNotificationRequest(MemoryPoolMXBeansProvider.get().getMXBeans().length);
-        rear = 0;
-        front = 0;
+        requestQueue = new CircularQueue<>(QUEUE_SIZE, GcNotificationRequest::new);
+        currentRequest = new GcNotificationRequest();
+        latestRequestComplete = new GcNotificationRequest();
+        latestRequestIncremental = new GcNotificationRequest();
     }
 
     @Fold
@@ -76,73 +75,78 @@ public class GcNotifier {
     /** Called during GC. */
     public void beforeCollection(long startTime) {
         assert VMOperation.isInProgressAtSafepoint();
-        GcNotificationRequest.beforeCollection(startTime, requests, rear);
+        requestQueue.peekTail().beforeCollection(startTime);
     }
 
     /** Called during GC. */
     public void afterCollection(boolean isIncremental, GCCause cause, long epoch, long endTime) {
         assert VMOperation.isInProgressAtSafepoint();
-        GcNotificationRequest.afterCollection(isIncremental, cause, epoch, endTime, requests, rear);
-        rear = incremented(rear);
+        requestQueue.peekTail().afterCollection(isIncremental, cause, epoch, endTime);
 
-        // If rear is now lapping front, then increment front to prevent overlap. Accept data loss.
-        if (front == rear) {
-            front = incremented(front);
+        if (isIncremental) {
+            requestQueue.peekTail().copyTo(latestRequestIncremental);
+        } else {
+            requestQueue.peekTail().copyTo(latestRequestComplete);
         }
+
+        requestQueue.advance();
         ImageSingletons.lookup(NotificationThreadSupport.class).signalServiceThread();
     }
 
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static int incremented(int value) {
-        return (value + 1) % QUEUE_SIZE;
+    @Uninterruptible(reason = "Avoid pausing for a GC which could cause races.")
+    public boolean hasRequest() {
+        return !requestQueue.isEmpty();
     }
 
     /**
      * Called by the notification thread. Sends a notification if any are queued. If none are
      * queued, then return immediately.
      */
-    public void sendNotification() {
+    void sendNotification() {
         assert !VMOperation.isInProgressAtSafepoint();
 
-        /*
-         * We don't need to drain all requests since signals queue at the semaphore level. The rest
-         * of the requests will be handled in subsequent calls to this method by the sevice thread.
-         */
         if (!updateCurrentRequest()) {
             // No new requests.
             return;
         }
 
-        /*
-         * Iterate to figure out which gc bean to send notifications too. Match with name in
-         * NotificationRequest class that was dequeued.
-         */
+        GarbageCollectorMXBean gcBean = getGarbageCollectorMXBean(currentRequest.isIncremental());
+
+        ((AbstractGarbageCollectorMXBean) gcBean).createNotification(currentRequest);
+    }
+
+    private GarbageCollectorMXBean getGarbageCollectorMXBean(boolean isIncremental) {
         GarbageCollectorMXBean gcBean = null;
-        String targetBeanName = MemoryPoolMXBeansProvider.get().getCollectorName(currentRequest.isIncremental());
         for (GarbageCollectorMXBean bean : ManagementFactory.getGarbageCollectorMXBeans()) {
-            if (bean.getName().equals(targetBeanName)) {
+            if (((AbstractGarbageCollectorMXBean) bean).isIncremental() == isIncremental) {
                 gcBean = bean;
                 break;
             }
         }
-
         assert (gcBean != null);
-        ((AbstractGarbageCollectorMXBean) gcBean).createNotification(currentRequest);
+        return gcBean;
     }
 
     /** Called by the notification thread. */
-    @Uninterruptible(reason = "Avoid pausing for a GC safepoint with could cause races with pushes to the request queue.")
+    @Uninterruptible(reason = "Avoid pausing for a GC safepoint which could cause races with pushes to the request queue.")
     private boolean updateCurrentRequest() {
         // If there's nothing to read, return immediately.
-        if (front == rear) {
+        if (!hasRequest()) {
             return false;
         }
-        // Copy the data to avoid data being overwritten by new writes to the queue.
-        GcNotificationRequest temp = currentRequest;
-        currentRequest = requests[front];
-        requests[front] = temp;
-
-        front = incremented(front);
+        // Move the data to avoid data being overwritten by new writes to the queue.
+        currentRequest = requestQueue.replaceHead(currentRequest);
+        requestQueue.advanceHead();
         return true;
+    }
+
+    /** Called by notification thread. */
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public GcNotificationRequest getLatestRequest(boolean isIncremental) {
+        assert !VMOperation.isInProgressAtSafepoint();
+        if (isIncremental) {
+            return latestRequestIncremental;
+        }
+        return latestRequestComplete;
     }
 }

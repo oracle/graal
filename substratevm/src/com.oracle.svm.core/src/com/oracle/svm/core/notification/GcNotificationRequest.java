@@ -26,11 +26,10 @@
 
 package com.oracle.svm.core.notification;
 
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.gc.AbstractMemoryPoolMXBean;
 import com.oracle.svm.core.gc.MemoryPoolMXBeansProvider;
 import com.oracle.svm.core.heap.GCCause;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 /**
  * This class stashes GC info during a safepoint until it can be dequeued to emit a notification at
@@ -50,8 +49,8 @@ public class GcNotificationRequest {
     private GCCause cause;
     private long epoch;
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    GcNotificationRequest(int poolCount) {
+    public GcNotificationRequest() {
+        int poolCount = MemoryPoolMXBeansProvider.get().getMXBeans().length;
         before = new PoolMemoryUsage[poolCount];
         after = new PoolMemoryUsage[poolCount];
         for (int i = 0; i < poolCount; i++) {
@@ -60,43 +59,65 @@ public class GcNotificationRequest {
         }
     }
 
-    public static void beforeCollection(long startTime, GcNotificationRequest[] requests, int index) {
+    public void beforeCollection(long startTime) {
         AbstractMemoryPoolMXBean[] beans = MemoryPoolMXBeansProvider.get().getMXBeans();
         for (int i = 0; i < beans.length; i++) {
             /*
              * Always add the old generation pool even if we don't end up using it (since we don't
              * know what type of collection will happen yet)
              */
-            requests[index].setPoolBefore(i, beans[i].getUsedBytes().rawValue(), beans[i].getCommittedBytes().rawValue(), beans[i].getName());
+            setPoolBefore(i, beans[i].getUsedBytes().rawValue(), beans[i].getCommittedBytes().rawValue(), beans[i].getName());
         }
-        requests[index].startTime = startTime;
+        this.startTime = startTime;
     }
 
-    public static void afterCollection(boolean isIncremental, GCCause cause, long epoch, long endTime, GcNotificationRequest[] requests, int index) {
+    public void afterCollection(boolean isIncremental, GCCause cause, long epoch, long endTime) {
         AbstractMemoryPoolMXBean[] beans = MemoryPoolMXBeansProvider.get().getMXBeans();
         for (int i = 0; i < beans.length; i++) {
-            requests[index].setPoolAfter(i, beans[i].getUsedBytes().rawValue(), beans[i].getCommittedBytes().rawValue(), beans[i].getName());
+            setPoolAfter(i, beans[i].getUsedBytes().rawValue(), beans[i].getCommittedBytes().rawValue(), beans[i].getName());
         }
-        requests[index].endTime = endTime;
-        requests[index].isIncremental = isIncremental;
-        requests[index].cause = cause;
-        requests[index].epoch = epoch;
-        requests[index].timestamp = System.currentTimeMillis();
+        this.endTime = endTime;
+        this.isIncremental = isIncremental;
+        this.cause = cause;
+        this.epoch = epoch;
+        this.timestamp = System.currentTimeMillis();
 
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     void setPoolBefore(int index, long used, long committed, String name) {
         before[index].set(used, committed, name);
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     void setPoolAfter(int index, long used, long committed, String name) {
         after[index].set(used, committed, name);
     }
 
+    @Uninterruptible(reason = "Avoid pausing for a GC which could cause races.")
+    public void copyTo(GcNotificationRequest destination) {
+        destination.startTime = startTime;
+        destination.epoch = epoch;
+        destination.endTime = endTime;
+        destination.cause = cause;
+        destination.timestamp = timestamp;
+        destination.isIncremental = isIncremental;
+
+        for (int index = 0; index < before.length; index++) {
+            destination.setPoolBefore(index, before[index].getUsed(), before[index].getCommitted(), before[index].getName());
+        }
+
+        for (int index = 0; index < after.length; index++) {
+            destination.setPoolAfter(index, after[index].getUsed(), after[index].getCommitted(), after[index].getName());
+        }
+    }
+
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public PoolMemoryUsage getPoolBefore(int i) {
         return before[i];
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public PoolMemoryUsage getPoolAfter(int i) {
         return after[i];
     }
