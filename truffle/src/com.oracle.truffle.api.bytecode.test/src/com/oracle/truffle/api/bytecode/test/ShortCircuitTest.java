@@ -281,7 +281,8 @@ public class ShortCircuitTest {
         });
         assertThrows(NullPointerException.class, () -> badRoot2.getCallTarget().call());
 
-        // true && 0 -> class cast exception
+        // NB: The last operand is not checked, since it is not used in a comparison.
+        // true && 0 -> 0
         BytecodeNodeWithShortCircuit badRoot3 = parseNode(b -> {
             b.beginRoot();
             b.beginReturn();
@@ -292,7 +293,7 @@ public class ShortCircuitTest {
             b.endReturn();
             b.endRoot();
         });
-        assertThrows(ClassCastException.class, () -> badRoot3.getCallTarget().call());
+        assertEquals(0, badRoot3.getCallTarget().call());
     }
 
     @Test
@@ -489,6 +490,7 @@ public class ShortCircuitTest {
         });
         assertThrows(NullPointerException.class, () -> badRoot2.getCallTarget().call());
 
+        // NB: The last operand is not checked, since it is not used in a comparison.
         // false || 1 -> class cast exception
         BytecodeNodeWithShortCircuit badRoot3 = parseNode(b -> {
             b.beginRoot();
@@ -500,7 +502,7 @@ public class ShortCircuitTest {
             b.endReturn();
             b.endRoot();
         });
-        assertThrows(ClassCastException.class, () -> badRoot3.getCallTarget().call());
+        assertEquals(1, badRoot3.getCallTarget().call());
     }
 
 }

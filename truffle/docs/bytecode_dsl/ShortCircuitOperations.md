@@ -8,7 +8,7 @@ A short-circuit operation implements `AND` or `OR` semantics, executing each chi
 
 ### Basic example
 
-By default, the operands to a short-circuit operation must be `boolean`; otherwise, the interpreter will throw a `ClassCastException` or `NullPointerException` during execution.
+By default, the operands to a short-circuit operation must be `boolean` so that they can be compared with `false`/`true`.
 Below we define a simple short-circuit `BoolOr` operation by annotating the root class with `@ShortCircuitOperation`:
 ```java
 @GenerateBytecode(...)
@@ -24,22 +24,25 @@ This means it executes its operands until the first `true` value, and then produ
 In pseudocode, it implements:
 
 ```python
-if (boolean) child_1.execute():
+if (boolean) child_1.execute() == true:
     return true
 
-if (boolean) child_2.execute():
+if (boolean) child_2.execute() == true:
     return true
 
 # ... more children
 
-return (boolean) child_n.execute()
+return child_n.execute()
 ```
+Each operand is casted to `boolean` to perform the comparisons, so a non-`boolean` operand will cause a `ClassCastException` or `NullPointerException` to be thrown.
+The last operand is not compared against `true`/`false`, so no cast is performed.
+It is the language implementation's responsibility to ensure the last operand produces a `boolean` (or to properly handle a non-`boolean` result in the consuming operation).
 
 ### Boolean converters
 
 Sometimes you don't expect the operands to be booleans, or the short-circuit operation has its own notion of "truthy" and "falsy" values.
 For example, Python's `or` operator evaluates to the first non-"falsy" operand, where values like `0` and `""` are falsy, and values like `42` and `"hello"` are not.
-In such cases, you can supply a boolean converter that coerces each operand to `boolean` to perform the boolean check.
+In such cases, you can supply a `booleanConverter` that coerces each operand to `boolean` to perform the boolean comparison.
 
 Suppose there already exists a `CoerceToBoolean` operation that coerces values to booleans.
 We can emulate Python's `or` operator with a `FalsyCoalesce` operation that returns the first non-"falsy" operand:
@@ -59,11 +62,11 @@ In pseudocode, it implements:
 
 ```python
 value_1 = child_1.execute()
-if CoerceToBoolean(value_1):
+if CoerceToBoolean(value_1) == true:
     return value_1
 
 value_2 = child_2.execute()
-if CoerceToBoolean(value_2):
+if CoerceToBoolean(value_2) == true:
     return value_2
 
 # ... more children
@@ -73,7 +76,7 @@ return child_n.execute()
 
 Observe that `FalsyCoalesce` produces the original operand value, and not the converted `boolean` value.
 This is because it uses the `OR_RETURN_VALUE` operator.
-For both `AND` and `OR` there are variations that instead produce the converted boolean value: `AND_RETURN_CONVERTED`, and `OR_RETURN_CONVERTED`.
+For both `AND` and `OR` operators there are variations that instead produce the converted boolean value: `AND_RETURN_CONVERTED` and `OR_RETURN_CONVERTED`.
 
 Below, we define a `CoerceAnd` operation that uses `CoerceToBoolean` to convert its operands to `boolean` and produces the converted value:
 ```java
@@ -90,10 +93,10 @@ It produces the converted `boolean` value of the last operand executed.
 In pseudocode:
 
 ```python
-if !CoerceToBoolean(child_1.execute()):
+if CoerceToBoolean(child_1.execute()) == false:
     return false
 
-if !CoerceToBoolean(child_2.execute()):
+if CoerceToBoolean(child_2.execute()) == false:
     return false
 
 # ... more children

@@ -174,7 +174,6 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public InstructionModel[] loadVariadicInstruction;
     public InstructionModel mergeVariadicInstruction;
     public InstructionModel storeNullInstruction;
-    public InstructionModel checkBooleanInstruction;
     public InstructionModel tagEnterInstruction;
     public InstructionModel tagLeaveValueInstruction;
     public InstructionModel tagLeaveVoidInstruction;
@@ -389,14 +388,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         instr.shortCircuitModel = shortCircuitModel;
 
         InstructionModel booleanConverterInstruction = shortCircuitModel.booleanConverterInstruction();
-        if (booleanConverterInstruction == null) {
-            /*
-             * In a short-circuit operation with no converter, the short-circuit instruction casts
-             * each operand -- except the last -- to boolean, causing a ClassCastException when the
-             * operand is invalid. To be consistent, the last operand also needs to be checked.
-             */
-            BytecodeDSLBuiltins.addCheckBooleanInstruction(this);
-        } else {
+        if (booleanConverterInstruction != null) {
             booleanConverterInstruction.shortCircuitInstructions.add(instr);
         }
 
