@@ -224,7 +224,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
 
     @Override
     public void notifySpecialize(FlatNodeGenFactory nodeFactory, CodeTreeBuilder builder, FrameState frameState, SpecializationData specialization) {
-        if (model.specializationDebugListener) {
+        if (model.bytecodeDebugListener) {
             rootNode.emitOnSpecialize(builder, "$bytecode", "$bci", BytecodeRootNodeElement.readInstruction("$bc", "$bci"), specialization.getNode().getNodeId() + "$" + specialization.getId());
         }
 
@@ -268,7 +268,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
         CodeExecutableElement method = new CodeExecutableElement(Set.of(Modifier.PRIVATE, Modifier.STATIC), context.getType(void.class), "quicken");
 
         factory.addQuickeningStateParametersTo(method, frameState, instruction.nodeData.getReachableSpecializations());
-        if (model.specializationDebugListener) {
+        if (model.bytecodeDebugListener) {
             method.addParameter(new CodeVariableElement(rootNode.getAbstractBytecodeNode().asType(), "$bytecode"));
         }
         method.addParameter(new CodeVariableElement(context.getType(byte[].class), "$bc"));

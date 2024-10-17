@@ -671,6 +671,14 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
         CodeTreeBuilder b = ex.createBuilder();
 
+        if (model.overridesBytecodeDebugListenerMethod("beforeRootExecute")) {
+            b.startStatement();
+            b.startCall("beforeRootExecute");
+            emitParseInstruction(b, "bc", "bci", CodeTreeBuilder.singleString("bc.readValidBytecode(bc.bytecodes, bci)"));
+            b.end();
+            b.end();
+        }
+
         b.statement("long state = ", encodeState("bci", "sp"));
 
         b.startWhile().string("true").end().startBlock();
@@ -711,7 +719,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
         String returnValue = uncheckedGetFrameObject(decodeSp("state"));
         b.startReturn().string(returnValue).end();
-
         mergeSuppressWarnings(ex, "all");
         return ex;
     }
@@ -1787,7 +1794,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
     }
 
     void emitQuickening(CodeTreeBuilder b, String node, String bc, String bci, CodeTree oldInstruction, CodeTree newInstruction) {
-        if (model.specializationDebugListener && oldInstruction == null) {
+        boolean overridesOnQuicken = model.overridesBytecodeDebugListenerMethod("onQuicken");
+        if (overridesOnQuicken && oldInstruction == null) {
             b.startBlock();
             b.startDeclaration(instructionImpl.asType(), "oldInstruction");
             emitParseInstruction(b, node, bci, readInstruction(bc, bci));
@@ -1796,7 +1804,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
         b.statement(writeInstruction(bc, bci, newInstruction));
 
-        if (model.specializationDebugListener) {
+        if (overridesOnQuicken) {
             b.startStatement();
             b.startCall(node, "getRoot().onQuicken");
             if (oldInstruction == null) {
@@ -1815,7 +1823,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
     }
 
     void emitInvalidateInstruction(CodeTreeBuilder b, String node, String bc, String bci, CodeTree oldInstruction, CodeTree newInstruction) {
-        if (model.specializationDebugListener && oldInstruction == null) {
+        boolean overridesOnInvalidateInstruction = model.overridesBytecodeDebugListenerMethod("onInvalidateInstruction");
+        if (overridesOnInvalidateInstruction && oldInstruction == null) {
             b.startBlock();
             b.startDeclaration(instructionImpl.asType(), "oldInstruction");
             emitParseInstruction(b, node, bci, readInstruction(bc, bci));
@@ -1824,7 +1833,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
         b.statement(writeInstruction(bc, bci, newInstruction));
 
-        if (model.specializationDebugListener) {
+        if (overridesOnInvalidateInstruction) {
             b.startStatement();
             b.startCall(node, "getRoot().onInvalidateInstruction");
             if (oldInstruction == null) {
@@ -1852,8 +1861,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     int operandIndex,
                     String operandBci,
                     String oldInstruction, String newInstruction) {
-
-        if (model.specializationDebugListener && oldInstruction == null) {
+        boolean overridesOnQuickenOperand = model.overridesBytecodeDebugListenerMethod("onQuickenOperand");
+        if (overridesOnQuickenOperand && oldInstruction == null) {
             b.startBlock();
             b.startDeclaration(instructionImpl.asType(), "oldInstruction");
             emitParseInstruction(b, node, operandBci, readInstruction(bc, operandBci));
@@ -1862,7 +1871,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
         b.statement(writeInstruction(bc, operandBci, newInstruction));
 
-        if (model.specializationDebugListener) {
+        if (overridesOnQuickenOperand) {
             b.startStatement();
             b.startCall(node, "getRoot().onQuickenOperand");
             CodeTree base = baseInstruction == null ? readInstruction(bc, baseBci) : CodeTreeBuilder.singleString(baseInstruction);
@@ -1884,7 +1893,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
     }
 
     void emitOnSpecialize(CodeTreeBuilder b, String node, String bci, CodeTree operand, String specializationName) {
-        if (model.specializationDebugListener) {
+        if (model.overridesBytecodeDebugListenerMethod("onSpecialize")) {
             b.startStatement().startCall(node, "getRoot().onSpecialize");
             emitParseInstruction(b, node, bci, operand);
             b.doubleQuote(specializationName);
@@ -10802,7 +10811,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             b.end();
 
-            if (model.specializationDebugListener) {
+            if (model.overridesBytecodeDebugListenerMethod("onBytecodeStackTransition")) {
                 b.startStatement();
                 b.startCall("getRoot().onBytecodeStackTransition");
                 emitParseInstruction(b, "this", "oldBci", readInstruction("oldBc", "oldBci"));
@@ -12811,6 +12820,14 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             InstructionPartitionResult instructionPartitions = partitionInstructions(instructions);
             b.startAssign("op").tree(readInstruction("bc", "bci")).end();
 
+            b.startStatement().startStaticCall(types.CompilerAsserts, "partialEvaluationConstant").string("op").end().end();
+            if (model.overridesBytecodeDebugListenerMethod("beforeInstructionExecute")) {
+                b.startStatement();
+                b.startCall("$root.beforeInstructionExecute");
+                emitParseInstruction(b, "this", "bci", CodeTreeBuilder.singleString("op"));
+                b.end().end();
+            }
+
             b.startTryBlock();
             b.startSwitch().string("op").end().startBlock();
 
@@ -12850,10 +12867,25 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             }
 
             b.end(); // switch
+            if (model.overridesBytecodeDebugListenerMethod("afterInstructionExecute")) {
+                b.startStatement();
+                b.startCall("$root.afterInstructionExecute");
+                emitParseInstruction(b, "this", "bci", CodeTreeBuilder.singleString("op"));
+                b.string("null");
+                b.end().end();
+            }
             b.end(); // try
 
             b.startCatchBlock(type(Throwable.class), "throwable");
             storeBciInFrameIfNecessary(b);
+
+            if (model.overridesBytecodeDebugListenerMethod("afterInstructionExecute")) {
+                b.startStatement();
+                b.startCall("$root.afterInstructionExecute");
+                emitParseInstruction(b, "this", "bci", CodeTreeBuilder.singleString("op"));
+                b.string("throwable");
+                b.end().end();
+            }
             /*
              * Three kinds of exceptions are supported: AbstractTruffleException,
              * ControlFlowException, and internal error (anything else). All of these can be
@@ -12888,6 +12920,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             } else {
                 b.startAssign("throwable").string("resolveThrowable($root, " + localFrame() + ", bci, throwable)").end();
             }
+
             b.startAssign("op").string("-EXCEPTION_HANDLER_LENGTH").end();
             b.startWhile().string("(op = resolveHandler(bci, op + EXCEPTION_HANDLER_LENGTH, this.handlers)) != -1").end().startBlock();
 
@@ -13041,6 +13074,15 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
              * avoid complicating the generated code too much).
              */
             emitBeforeReturnProfiling(b);
+            if (model.overridesBytecodeDebugListenerMethod("afterRootExecute")) {
+                b.startStatement();
+                b.startCall("$root.afterRootExecute");
+                emitParseInstruction(b, "this", "bci", CodeTreeBuilder.singleString("op"));
+                b.string("null");
+                b.string("throwable");
+                b.end();
+                b.end();
+            }
             b.statement("throw sneakyThrow(throwable)");
 
             b.end(); // catch
@@ -13159,14 +13201,14 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         if (model.isBoxingEliminated(type(boolean.class))) {
                             if (instr.isQuickening()) {
                                 b.startCall(lookupDoBranch(instr).getSimpleName().toString());
-                                if (model.specializationDebugListener) {
+                                if (model.bytecodeDebugListener) {
                                     b.string("this");
                                 }
                                 b.string("frame").string("bc").string("bci").string("sp");
                                 b.end();
                             } else {
                                 b.startCall(lookupDoSpecializeBranch(instr).getSimpleName().toString());
-                                if (model.specializationDebugListener) {
+                                if (model.bytecodeDebugListener) {
                                     b.string("this");
                                 }
                                 b.string("frame").string("bc").string("bci").string("sp");
@@ -13260,7 +13302,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     if (tier.isUncached() || instr.isQuickening() || !model.usesBoxingElimination()) {
                         b.startStatement();
                         b.startCall(lookupTagLeave(instr).getSimpleName().toString());
-                        if (model.specializationDebugListener) {
+                        if (model.bytecodeDebugListener) {
                             b.string("this");
                         }
                         b.string("frame");
@@ -13271,7 +13313,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
                         b.startStatement();
                         b.startCall(lookupSpecializeTagLeave(instr).getSimpleName().toString());
-                        if (model.specializationDebugListener) {
+                        if (model.bytecodeDebugListener) {
                             b.string("this");
                         }
                         b.string("frame");
@@ -13351,7 +13393,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     if (instr.isQuickening() || tier.isUncached() || !model.usesBoxingElimination()) {
                         b.startStatement();
                         b.startCall(lookupDoPop(instr).getSimpleName().toString());
-                        if (model.specializationDebugListener) {
+                        if (model.bytecodeDebugListener) {
                             b.string("this");
                         }
                         b.string("frame");
@@ -13362,7 +13404,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
                         b.startStatement();
                         b.startCall(lookupDoSpecializePop(instr).getSimpleName().toString());
-                        if (model.specializationDebugListener) {
+                        if (model.bytecodeDebugListener) {
                             b.string("this");
                         }
                         b.string("frame");
@@ -13379,13 +13421,23 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 case RETURN:
                     storeBciInFrameIfNecessary(b);
                     emitBeforeReturnProfiling(b);
+                    if (model.overridesBytecodeDebugListenerMethod("afterRootExecute")) {
+                        b.startStatement();
+                        b.startCall("$root.afterRootExecute");
+                        emitParseInstruction(b, "this", "bci", CodeTreeBuilder.singleString("op"));
+                        startGetFrameUnsafe(b, "frame", type(Object.class)).string("(sp - 1)");
+                        b.end();
+                        b.string("null");
+                        b.end();
+                        b.end();
+                    }
                     emitReturnTopOfStack(b);
                     break;
                 case LOAD_LOCAL:
                     if (instr.isQuickening() || tier.isUncached() || !model.usesBoxingElimination()) {
                         b.startStatement();
                         b.startCall(lookupDoLoadLocal(instr).getSimpleName().toString());
-                        if (model.specializationDebugListener) {
+                        if (model.bytecodeDebugListener) {
                             b.string("this");
                         }
                         b.string("frame");
@@ -13399,7 +13451,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
                         b.startStatement();
                         b.startCall(lookupDoSpecializeLoadLocal(instr).getSimpleName().toString());
-                        if (model.specializationDebugListener) {
+                        if (model.bytecodeDebugListener) {
                             b.string("this");
                         }
                         b.string("frame");
@@ -13417,7 +13469,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     if (instr.isQuickening() || tier.isUncached() || !model.usesBoxingElimination()) {
                         b.startStatement();
                         b.startCall(lookupDoLoadLocal(instr).getSimpleName().toString());
-                        if (model.specializationDebugListener) {
+                        if (model.bytecodeDebugListener) {
                             b.string("this");
                         }
                         b.string("frame").string(materializedFrame).string("bc").string("bci").string("sp");
@@ -13427,7 +13479,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
                         b.startStatement();
                         b.startCall(lookupDoSpecializeLoadLocal(instr).getSimpleName().toString());
-                        if (model.specializationDebugListener) {
+                        if (model.bytecodeDebugListener) {
                             b.string("this");
                         }
                         b.string("frame").string(materializedFrame).string("bc").string("bci").string("sp");
@@ -13490,7 +13542,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     if (instr.isQuickening() || tier.isUncached() || !model.usesBoxingElimination()) {
                         b.startStatement();
                         b.startCall(lookupDoMergeConditional(instr).getSimpleName().toString());
-                        if (model.specializationDebugListener) {
+                        if (model.bytecodeDebugListener) {
                             b.string("this");
                         }
                         b.string("frame").string("bc").string("bci").string("sp");
@@ -13500,7 +13552,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
                         b.startStatement();
                         b.startCall(lookupDoSpecializeMergeConditional(instr).getSimpleName().toString());
-                        if (model.specializationDebugListener) {
+                        if (model.bytecodeDebugListener) {
                             b.string("this");
                         }
                         b.string("frame").string("bc").string("bci").string("sp");
@@ -13518,6 +13570,16 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     storeBciInFrameIfNecessary(b);
                     emitBeforeReturnProfiling(b);
 
+                    if (model.overridesBytecodeDebugListenerMethod("afterRootExecute")) {
+                        b.startStatement();
+                        b.startCall("$root.afterRootExecute");
+                        emitParseInstruction(b, "this", "bci", CodeTreeBuilder.singleString("op"));
+                        startGetFrameUnsafe(b, "frame", type(Object.class)).string("(sp - 1)");
+                        b.end();
+                        b.string("null");
+                        b.end();
+                        b.end();
+                    }
                     b.startStatement();
                     b.startCall(lookupYield(instr).getSimpleName().toString());
                     b.string("frame");
@@ -14137,7 +14199,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 method.getParameters().add(0, new CodeVariableElement(types.Frame, "stackFrame"));
             }
 
-            if (model.specializationDebugListener) {
+            if (model.bytecodeDebugListener) {
                 method.getParameters().add(0, new CodeVariableElement(abstractBytecodeNode.asType(), "$this"));
             }
 
@@ -14166,7 +14228,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.end().startCatchBlock(types.UnexpectedResultException, "ex");
 
                 b.startReturn().startCall(lookupSpecializeTagLeave(instr.getQuickeningRoot()).getSimpleName().toString());
-                if (model.specializationDebugListener) {
+                if (model.bytecodeDebugListener) {
                     b.string("$this");
                 }
                 b.string("frame").string("bc").string("bci").string("sp");
@@ -14205,7 +14267,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                             new CodeVariableElement(type(int.class), "bci"),
                             new CodeVariableElement(type(int.class), "sp"));
 
-            if (model.specializationDebugListener) {
+            if (model.bytecodeDebugListener) {
                 method.getParameters().add(0, new CodeVariableElement(this.getSuperclass(), "$this"));
             }
 
@@ -14284,7 +14346,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 method.getParameters().add(0, new CodeVariableElement(types.Frame, "stackFrame"));
             }
 
-            if (model.specializationDebugListener) {
+            if (model.bytecodeDebugListener) {
                 method.getParameters().add(0, new CodeVariableElement(abstractBytecodeNode.asType(), "$this"));
             }
 
@@ -14303,7 +14365,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.startIf().string("frame.getTag(sp - 1) != ").staticReference(frameTagsElement.get(inputType)).end().startBlock();
                 b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
                 b.startStatement().startCall(lookupDoSpecializeBranch(instr.getQuickeningRoot()).getSimpleName().toString());
-                if (model.specializationDebugListener) {
+                if (model.bytecodeDebugListener) {
                     b.string("$this");
                 }
                 b.string("frame").string("bc").string("bci").string("sp");
@@ -14337,7 +14399,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                             new CodeVariableElement(type(int.class), "bci"),
                             new CodeVariableElement(type(int.class), "sp"));
 
-            if (model.specializationDebugListener) {
+            if (model.bytecodeDebugListener) {
                 method.getParameters().add(0, new CodeVariableElement(this.getSuperclass(), "$this"));
             }
 
@@ -14419,7 +14481,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 method.getParameters().add(0, new CodeVariableElement(types.Frame, "stackFrame"));
             }
 
-            if (model.specializationDebugListener) {
+            if (model.bytecodeDebugListener) {
                 method.getParameters().add(0, new CodeVariableElement(abstractBytecodeNode.asType(), "$this"));
             }
 
@@ -14439,7 +14501,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.end().startCatchBlock(types.UnexpectedResultException, "ex");
 
             b.startReturn().startCall(lookupDoSpecializeBranch(instr.getQuickeningRoot()).getSimpleName().toString());
-            if (model.specializationDebugListener) {
+            if (model.bytecodeDebugListener) {
                 b.string("$this");
             }
             b.string("frame").string("bc").string("bci").string("sp");
@@ -14466,7 +14528,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                             new CodeVariableElement(type(int.class), "bci"),
                             new CodeVariableElement(type(int.class), "sp"));
 
-            if (model.specializationDebugListener) {
+            if (model.bytecodeDebugListener) {
                 method.getParameters().add(0, new CodeVariableElement(abstractBytecodeNode.asType(), "$this"));
             }
 
@@ -14542,7 +14604,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 method.getParameters().add(0, new CodeVariableElement(types.Frame, "stackFrame"));
             }
 
-            if (model.specializationDebugListener) {
+            if (model.bytecodeDebugListener) {
                 method.getParameters().add(0, new CodeVariableElement(abstractBytecodeNode.asType(), "$this"));
             }
 
@@ -14590,7 +14652,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
                 b.end().startCatchBlock(types.UnexpectedResultException, "ex");
                 b.startStatement().startCall(lookupDoSpecializeLoadLocal(instr.getQuickeningRoot()).getSimpleName().toString());
-                if (model.specializationDebugListener) {
+                if (model.bytecodeDebugListener) {
                     b.string("$this");
                 }
                 if (needsStackFrame) {
@@ -14626,7 +14688,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 method.getParameters().add(0, new CodeVariableElement(types.Frame, "stackFrame"));
             }
 
-            if (model.specializationDebugListener) {
+            if (model.bytecodeDebugListener) {
                 method.getParameters().add(0, new CodeVariableElement(abstractBytecodeNode.asType(), "$this"));
             }
 
@@ -14748,7 +14810,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                             new CodeVariableElement(type(int.class), "bci"),
                             new CodeVariableElement(type(int.class), "sp"));
 
-            if (model.specializationDebugListener) {
+            if (model.bytecodeDebugListener) {
                 method.getParameters().add(0, new CodeVariableElement(abstractBytecodeNode.asType(), "$this"));
             }
 
@@ -14766,7 +14828,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.end();
                 b.end().startCatchBlock(types.UnexpectedResultException, "ex");
                 b.startStatement().startCall(lookupDoSpecializeMergeConditional(instr.getQuickeningRoot()).getSimpleName().toString());
-                if (model.specializationDebugListener) {
+                if (model.bytecodeDebugListener) {
                     b.string("$this");
                 }
                 b.string("frame").string("bc").string("bci").string("sp").string("ex.getResult()");
@@ -14807,7 +14869,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                             new CodeVariableElement(type(int.class), "sp"),
                             new CodeVariableElement(type(Object.class), "local"));
 
-            if (model.specializationDebugListener) {
+            if (model.bytecodeDebugListener) {
                 method.getParameters().add(0, new CodeVariableElement(abstractBytecodeNode.asType(), "$this"));
             }
 

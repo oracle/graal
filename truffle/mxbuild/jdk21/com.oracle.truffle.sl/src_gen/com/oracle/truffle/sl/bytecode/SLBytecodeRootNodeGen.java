@@ -4347,6 +4347,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             loop: while (true) {
                 CompilerAsserts.partialEvaluationConstant(bci);
                 op = BYTES.getShort(bc, bci);
+                CompilerAsserts.partialEvaluationConstant(op);
                 try {
                     switch (op) {
                         case Instructions.POP :
@@ -7605,6 +7606,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 loop: while (true) {
                     CompilerAsserts.partialEvaluationConstant(bci);
                     op = BYTES.getShort(bc, bci);
+                    CompilerAsserts.partialEvaluationConstant(op);
                     try {
                         switch (op) {
                             case Instructions.POP :

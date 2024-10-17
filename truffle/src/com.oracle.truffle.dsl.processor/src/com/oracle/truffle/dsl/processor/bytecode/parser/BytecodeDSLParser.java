@@ -226,12 +226,13 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         model.enableYield = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableYield");
         model.storeBciInFrame = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "storeBytecodeIndexInFrame");
         model.enableQuickening = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableQuickening");
-        model.specializationDebugListener = types.BytecodeDebugListener == null ? false : ElementUtils.isAssignable(typeElement.asType(), types.BytecodeDebugListener);
         model.enableTagInstrumentation = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableTagInstrumentation");
         model.enableRootTagging = model.enableTagInstrumentation && ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableRootTagging");
         model.enableRootBodyTagging = model.enableTagInstrumentation && ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableRootBodyTagging");
         model.enableBlockScoping = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableBlockScoping");
         model.defaultLocalValue = ElementUtils.getAnnotationValue(String.class, generateBytecodeMirror, "defaultLocalValue", false);
+        boolean enableBytecodeDebugListener = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableBytecodeDebugListener");
+        model.bytecodeDebugListener = (!enableBytecodeDebugListener || types.BytecodeDebugListener == null) ? false : ElementUtils.isAssignable(typeElement.asType(), types.BytecodeDebugListener);
 
         BytecodeDSLBuiltins.addBuiltins(model, types, context);
 

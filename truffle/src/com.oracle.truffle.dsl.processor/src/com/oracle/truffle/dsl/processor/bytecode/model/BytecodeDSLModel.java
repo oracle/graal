@@ -116,7 +116,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public boolean allowUnsafe;
     public boolean enableYield;
     public boolean storeBciInFrame;
-    public boolean specializationDebugListener;
+    public boolean bytecodeDebugListener;
     public boolean enableSpecializationIntrospection;
     public boolean enableTagInstrumentation;
     public boolean enableRootTagging;
@@ -364,6 +364,26 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         model.shortCircuitModel = base.shortCircuitModel;
         base.quickenedInstructions.add(model);
         return model;
+    }
+
+    public boolean overridesBytecodeDebugListenerMethod(String methodName) {
+        if (!bytecodeDebugListener) {
+            return false;
+        }
+        ExecutableElement e = ElementUtils.findMethod(types.BytecodeDebugListener, methodName);
+        if (e == null) {
+            throw new IllegalArgumentException("Method with name " + methodName + " not found.");
+        }
+
+        TypeElement type = getTemplateType();
+        while (type != null) {
+            if (ElementUtils.findOverride(type, e) != null) {
+                return true;
+            }
+            type = ElementUtils.castTypeElement(type.getSuperclass());
+        }
+        return false;
+
     }
 
     private InstructionModel instruction(InstructionKind kind, String name, Signature signature, String quickeningName) {

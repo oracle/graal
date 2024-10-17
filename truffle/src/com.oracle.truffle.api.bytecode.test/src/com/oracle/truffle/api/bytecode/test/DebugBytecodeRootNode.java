@@ -42,6 +42,8 @@ package com.oracle.truffle.api.bytecode.test;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.Instruction;
@@ -53,6 +55,10 @@ public abstract class DebugBytecodeRootNode extends RootNode implements Bytecode
 
     static boolean traceQuickening = false;
     static boolean traceInstrumentation = false;
+    @CompilationFinal static boolean traceInstructions = false;
+    @CompilationFinal static boolean traceRoots = false;
+    static RootInfo currentRoot;
+    static final AtomicInteger ROOT_EXECUTION_INDEX = new AtomicInteger();
 
     protected DebugBytecodeRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
@@ -61,6 +67,60 @@ public abstract class DebugBytecodeRootNode extends RootNode implements Bytecode
     final AtomicInteger invalidateCount = new AtomicInteger();
     final AtomicInteger quickeningCount = new AtomicInteger();
     final AtomicInteger specializeCount = new AtomicInteger();
+
+    @Override
+    public void beforeRootExecute(Instruction instruction) {
+        if (traceInstructions || traceRoots) {
+            currentRoot = new RootInfo(currentRoot);
+        }
+        if (traceRoots) {
+            traceRootEnter(instruction);
+        }
+    }
+
+    @Override
+    public void afterRootExecute(Instruction leaveInstruction, Object returnValue, Throwable t) {
+        if (traceRoots) {
+            traceRootLeave(leaveInstruction, returnValue, t);
+        }
+        if (traceInstructions || traceRoots) {
+            currentRoot = currentRoot.prev;
+        }
+    }
+
+    @TruffleBoundary
+    private static void traceRootEnter(Instruction instruction) {
+        if (instruction.getBytecodeIndex() == 0) {
+            System.out.printf("Before-Root %6s %s %n", "[" + currentRoot.rootIndex + "]", instruction.getBytecodeNode());
+        } else {
+            System.out.printf("Before-Root %6s %s at %s%n", "[" + currentRoot.rootIndex + "]", instruction.getBytecodeNode(), instruction);
+        }
+
+    }
+
+    @TruffleBoundary
+    private static void traceRootLeave(Instruction instruction, Object returnValue, Throwable t) {
+        System.out.printf("After-Root %7s %s with %s [instructionCount=%s] at %s %n",
+                        "[" + currentRoot.rootIndex + "]",
+                        instruction.getBytecodeNode(),
+                        t == null ? returnValue : t,
+                        currentRoot.instructionCount,
+                        instruction);
+    }
+
+    public void beforeInstructionExecute(Instruction instruction) {
+        if (traceInstructions) {
+            traceInstruction(instruction);
+        }
+        if (traceInstructions || traceRoots) {
+            currentRoot.instructionCount++;
+        }
+    }
+
+    @TruffleBoundary
+    private static void traceInstruction(Instruction instruction) {
+        System.out.printf("  Instruction %4s %s%n", "[" + currentRoot.instructionCount + "]", instruction);
+    }
 
     public void onBytecodeStackTransition(Instruction source, Instruction target) {
         if (traceInstrumentation) {
@@ -101,4 +161,16 @@ public abstract class DebugBytecodeRootNode extends RootNode implements Bytecode
         }
         specializeCount.incrementAndGet();
     }
+
+    private static final class RootInfo {
+        int instructionCount;
+        final int rootIndex;
+        final RootInfo prev;
+
+        RootInfo(RootInfo prev) {
+            this.prev = prev;
+            this.rootIndex = ROOT_EXECUTION_INDEX.incrementAndGet();
+        }
+    }
+
 }

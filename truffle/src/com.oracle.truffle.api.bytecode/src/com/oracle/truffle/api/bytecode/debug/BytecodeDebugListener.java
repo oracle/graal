@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.api.bytecode.debug;
 
+import com.oracle.truffle.api.bytecode.BytecodeDSLAccess;
+import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Instruction;
 
 /**
@@ -48,11 +50,54 @@ import com.oracle.truffle.api.bytecode.Instruction;
  * <p>
  * Warning: Do not deploy with implementing this listener in production. It causes severe
  * performance degradation.
+ * <p>
+ * The debug listener can also be explicitly disabled by setting
+ * {@link GenerateBytecode#enableBytecodeDebugListener()} to <code>false</code> .
  *
  * @since 24.2
  */
 @SuppressWarnings("unused")
 public interface BytecodeDebugListener {
+
+    /**
+     * Invoked before an instruction is executed. This has a very significant performance cost. Only
+     * override this method temporarily for debugging. This method may be called on partial
+     * evaluated code paths.
+     *
+     * @since 24.2
+     */
+    default void beforeRootExecute(Instruction enterInstruction) {
+    }
+
+    /**
+     * Invoked before an instruction is executed. This has a very significant performance cost. Only
+     * override this method temporarily for debugging. This method may be called on partial
+     * evaluated code paths.
+     *
+     * @since 24.2
+     */
+    default void afterRootExecute(Instruction leaveInstruction, Object returnValue, Throwable t) {
+    }
+
+    /**
+     * Invoked before an instruction is executed. This has a very significant performance cost. Only
+     * override this method temporarily for debugging. This method may be called on partial
+     * evaluated code paths.
+     *
+     * @since 24.2
+     */
+    default void beforeInstructionExecute(Instruction instruction) {
+    }
+
+    /**
+     * Invoked after an instruction was executed. This has a very significant performance cost. Only
+     * override this method temporarily for debugging. This method may be called on partial
+     * evaluated code paths.
+     *
+     * @since 24.2
+     */
+    default void afterInstructionExecute(Instruction instruction, Throwable exception) {
+    }
 
     /**
      * Invoked when an operation or instrumentation specializes itself.
