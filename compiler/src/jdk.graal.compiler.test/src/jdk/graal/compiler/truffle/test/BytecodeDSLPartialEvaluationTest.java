@@ -414,7 +414,6 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
                 b.beginTag(ExpressionTag.class);
                 b.emitLoadConstant(20L);
                 b.endTag(ExpressionTag.class);
-                b.endSourceSection();
 
                 b.beginTag(ExpressionTag.class);
                 b.emitLoadConstant(22L);
