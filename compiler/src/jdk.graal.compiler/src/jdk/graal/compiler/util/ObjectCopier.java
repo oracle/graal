@@ -25,11 +25,18 @@
 package jdk.graal.compiler.util;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.PrintStream;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.net.URI;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
@@ -785,16 +792,30 @@ public class ObjectCopier {
 
         /**
          * Map from values to static final fields. In a serialized object graph, references to such
-         * values are encoded with a reference to the field.
+         * values are encoded using the static final field they come from. This field is then looked
+         * up via reflection when the value needs to be decoded.
          */
-        final Map<Object, Field> externalValues = new IdentityHashMap<>();
+        final Map<Object, Field> externalValues;
 
-        public Encoder(List<Field> externalValues) {
+        public Encoder(List<Field> externalValueFields) {
+            this(gatherExternalValues(externalValueFields));
+        }
+
+        /**
+         * Use precomputed {@code externalValues} to avoid recomputing them.
+         */
+        public Encoder(Map<Object, Field> externalValues) {
             objects.add(null);
             objectToId.put(null, new ObjectID(0, null));
-            for (Field f : externalValues) {
-                addExternalValue(f);
+            this.externalValues = externalValues;
+        }
+
+        public static Map<Object, Field> gatherExternalValues(List<Field> externalValueFields) {
+            Map<Object, Field> result = new IdentityHashMap<>();
+            for (Field f : externalValueFields) {
+                addExternalValue(result, f);
             }
+            return result;
         }
 
         /**
@@ -808,7 +829,7 @@ public class ObjectCopier {
             return ClassInfo.of(declaringClass);
         }
 
-        private void addExternalValue(Field field) {
+        private static void addExternalValue(Map<Object, Field> externalValues, Field field) {
             GraalError.guarantee(Modifier.isStatic(field.getModifiers()), "Field '%s' is not static. Only a static field can be used as known location for an instance.", field);
             Object value = readField(field, null);
             if (value == null) {
@@ -825,7 +846,7 @@ public class ObjectCopier {
         }
 
         public Map<Object, Field> getExternalValues() {
-            return externalValues;
+            return Collections.unmodifiableMap(externalValues);
         }
 
         private String encodeMap(UnmodifiableEconomicMap<?, ?> map) {
@@ -997,6 +1018,79 @@ public class ObjectCopier {
             return f;
         } catch (NoSuchFieldException e) {
             throw GraalError.shouldNotReachHere(e);
+        }
+    }
+
+    public static List<Field> getExternalValueFields() throws IOException {
+        List<Field> externalValues = new ArrayList<>();
+        addImmutableCollectionsFields(externalValues);
+        addStaticFinalObjectFields(LocationIdentity.class, externalValues);
+
+        try (FileSystem fs = FileSystems.newFileSystem(URI.create("jrt:/"), Collections.emptyMap())) {
+            for (String module : List.of("jdk.internal.vm.ci", "jdk.graal.compiler", "com.oracle.graal.graal_enterprise")) {
+                Path top = fs.getPath("/modules/" + module);
+                try (Stream<Path> files = Files.find(top, Integer.MAX_VALUE, (path, attrs) -> attrs.isRegularFile())) {
+                    files.forEach(p -> {
+                        String fileName = p.getFileName().toString();
+                        if (fileName.endsWith(".class") && !fileName.equals("module-info.class")) {
+                            // Strip module prefix and convert to dotted form
+                            int nameCount = p.getNameCount();
+                            String className = p.subpath(2, nameCount).toString().replace('/', '.');
+                            // Strip ".class" suffix
+                            className = className.replace('/', '.').substring(0, className.length() - ".class".length());
+                            try {
+                                Class<?> graalClass = Class.forName(className);
+                                addStaticFinalObjectFields(graalClass, externalValues);
+                            } catch (ClassNotFoundException e) {
+                                throw new GraalError(e);
+                            }
+                        }
+                    });
+                }
+            }
+        }
+        return externalValues;
+    }
+
+    /**
+     * Adds the static, final, non-primitive fields of non-enum {@code declaringClass} to
+     * {@code fields}. In the process, the fields are made {@linkplain Field#setAccessible
+     * accessible}.
+     */
+    public static void addStaticFinalObjectFields(Class<?> declaringClass, List<Field> fields) {
+        if (Enum.class.isAssignableFrom(declaringClass)) {
+            return;
+        }
+        for (Field field : declaringClass.getDeclaredFields()) {
+            int fieldModifiers = field.getModifiers();
+            int fieldMask = Modifier.STATIC | Modifier.FINAL;
+            if ((fieldModifiers & fieldMask) != fieldMask) {
+                continue;
+            }
+            if (field.getType().isPrimitive()) {
+                continue;
+            }
+            field.setAccessible(true);
+            fields.add(field);
+        }
+    }
+
+    /**
+     * Adds the EMPTY* fields from {@code java.util.ImmutableCollections} to {@code fields}, making
+     * them {@linkplain Field#setAccessible accessible} in the process.
+     */
+    private static void addImmutableCollectionsFields(List<Field> fields) {
+        Class<?> c = List.of().getClass().getDeclaringClass();
+        GraalError.guarantee(c.getName().equals("java.util.ImmutableCollections"), "Incompatible ImmutableCollections class");
+        for (Field f : c.getDeclaredFields()) {
+            if (f.getName().startsWith("EMPTY")) {
+                int modifiers = f.getModifiers();
+                GraalError.guarantee(Modifier.isStatic(modifiers), "Expect %s to be static", f);
+                GraalError.guarantee(Modifier.isFinal(modifiers), "Expect %s to be final", f);
+                GraalError.guarantee(!f.getType().isPrimitive(), "Expect %s to be non-primitive", f);
+                f.setAccessible(true);
+                fields.add(f);
+            }
         }
     }
 

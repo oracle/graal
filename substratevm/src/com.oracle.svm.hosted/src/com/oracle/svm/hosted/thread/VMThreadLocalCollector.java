@@ -62,6 +62,7 @@ public class VMThreadLocalCollector implements Function<Object, Object>, Layered
     }
 
     Map<FastThreadLocal, VMThreadLocalInfo> threadLocals;
+    Map<VMThreadLocalInfo, FastThreadLocal> infoToThreadLocals;
     private boolean sealed;
     final boolean validateUniqueNames;
     final Set<String> seenNames;
@@ -78,22 +79,35 @@ public class VMThreadLocalCollector implements Function<Object, Object>, Layered
     public void installThreadLocalMap() {
         assert threadLocals == null : threadLocals;
         threadLocals = ObservableImageHeapMapProvider.create();
+        infoToThreadLocals = new ConcurrentHashMap<>();
     }
 
-    @Override
-    public Object apply(Object source) {
-        if (source instanceof FastThreadLocal threadLocal) {
+    public VMThreadLocalInfo forFastThreadLocal(FastThreadLocal threadLocal) {
+        VMThreadLocalInfo localInfo = threadLocals.get(threadLocal);
+        if (localInfo == null) {
             if (sealed) {
-                assert threadLocals.containsKey(threadLocal) : "VMThreadLocal must have been discovered during static analysis";
+                throw VMError.shouldNotReachHere("VMThreadLocal must have been discovered during static analysis");
             } else {
-                var previous = threadLocals.putIfAbsent(threadLocal, new VMThreadLocalInfo(threadLocal));
-                if (previous == null && validateUniqueNames) {
+                VMThreadLocalInfo newInfo = new VMThreadLocalInfo(threadLocal);
+                localInfo = threadLocals.computeIfAbsent(threadLocal, tl -> {
+                    infoToThreadLocals.putIfAbsent(newInfo, threadLocal);
+                    return newInfo;
+                });
+                if (localInfo == newInfo && validateUniqueNames) {
                     /*
                      * Ensure this name is unique.
                      */
                     VMError.guarantee(seenNames.add(threadLocal.getName()), "Two VMThreadLocals have the same name: %s", threadLocal.getName());
                 }
             }
+        }
+        return localInfo;
+    }
+
+    @Override
+    public Object apply(Object source) {
+        if (source instanceof FastThreadLocal fastThreadLocal) {
+            forFastThreadLocal(fastThreadLocal);
         }
         /*
          * We want to collect all instances without actually replacing them, so we always return the
@@ -116,6 +130,10 @@ public class VMThreadLocalCollector implements Function<Object, Object>, Layered
         VMThreadLocalInfo result = threadLocals.get(threadLocal);
         assert result != null;
         return result;
+    }
+
+    public FastThreadLocal getThreadLocal(VMThreadLocalInfo vmThreadLocalInfo) {
+        return infoToThreadLocals.get(vmThreadLocalInfo);
     }
 
     protected static int calculateSize(VMThreadLocalInfo info) {

@@ -30,7 +30,6 @@ import java.util.Objects;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
-
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -137,6 +136,10 @@ public class EncodedGraph {
 
     public Object getObject(int i) {
         return objects[i];
+    }
+
+    public void setObject(int i, Object object) {
+        objects[i] = object;
     }
 
     public NodeClass<?>[] getNodeClasses() {

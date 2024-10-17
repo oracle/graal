@@ -54,7 +54,6 @@ import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.CEntryPointLiteralCodePointer;
 
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
@@ -67,15 +66,16 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
+import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton.PersistFlags;
 import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.imagelayer.HostedDynamicLayerInfo;
 import com.oracle.svm.hosted.meta.HostedArrayClass;
 import com.oracle.svm.hosted.meta.HostedField;
@@ -85,8 +85,6 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedPrimitiveType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.RelocatableConstant;
-import com.oracle.svm.hosted.thread.LayeredVMThreadLocalCollector;
-import com.oracle.svm.hosted.thread.VMThreadLocalCollector;
 import com.oracle.svm.hosted.util.IdentityHashCodeUtil;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
@@ -102,19 +100,16 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     private final Field dynamicHubArrayHubField;
 
     private HostedUniverse hostedUniverse;
-    private ImageClassLoader imageClassLoader;
+    private final ImageClassLoader imageClassLoader;
 
-    public SVMImageLayerLoader(List<FilePaths> loadPaths) {
-        super(new SVMImageLayerSnapshotUtil(), loadPaths);
+    public SVMImageLayerLoader(List<FilePaths> loadPaths, ImageClassLoader imageClassLoader) {
+        super(loadPaths);
         dynamicHubArrayHubField = ReflectionUtil.lookupField(DynamicHub.class, "arrayHub");
+        this.imageClassLoader = imageClassLoader;
     }
 
     public void setHostedUniverse(HostedUniverse hostedUniverse) {
         this.hostedUniverse = hostedUniverse;
-    }
-
-    public void setImageClassLoader(ImageClassLoader imageClassLoader) {
-        this.imageClassLoader = imageClassLoader;
     }
 
     public HostedUniverse getHostedUniverse() {
@@ -197,13 +192,11 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     @Override
-    protected void processGraph(EncodedGraph encodedGraph) {
-        super.processGraph(encodedGraph);
-        Object[] objects = encodedGraph.getObjects();
-        for (Object object : objects) {
-            if (object instanceof VMThreadLocalInfo vmThreadLocalInfo) {
-                LayeredVMThreadLocalCollector layeredVMThreadLocalCollector = (LayeredVMThreadLocalCollector) ImageSingletons.lookup(VMThreadLocalCollector.class);
-                layeredVMThreadLocalCollector.registerPriorThreadLocalInfo(vmThreadLocalInfo);
+    protected void afterGraphDecodeHook(EncodedGraph encodedGraph) {
+        super.afterGraphDecodeHook(encodedGraph);
+        for (int i = 0; i < encodedGraph.getNumObjects(); ++i) {
+            if (encodedGraph.getObject(i) instanceof CGlobalDataInfo cGlobalDataInfo) {
+                encodedGraph.setObject(i, CGlobalDataFeature.singleton().registerAsAccessedOrGet(cGlobalDataInfo.getData()));
             }
         }
     }
