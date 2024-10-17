@@ -362,16 +362,6 @@ public class BytecodeDSLBuiltins {
         m.clearLocalInstruction.addImmediate(ImmediateKind.LOCAL_OFFSET, "local_offset");
     }
 
-    /*
-     * check.boolean is only needed if a short-circuit operation without a boolean converter is
-     * declared, so we initialize it on demand.
-     */
-    public static void addCheckBooleanInstruction(BytecodeDSLModel m) {
-        if (m.checkBooleanInstruction == null) {
-            m.checkBooleanInstruction = m.instruction(InstructionKind.CHECK_BOOLEAN, "check.boolean", m.signature(void.class));
-        }
-    }
-
     private static String loadLocalUndefinedBehaviour(BytecodeDSLModel m) {
         if (m.defaultLocalValue == null || m.defaultLocalValue.isEmpty()) {
             return "throws a {@link com.oracle.truffle.api.frame.FrameSlotTypeException}";

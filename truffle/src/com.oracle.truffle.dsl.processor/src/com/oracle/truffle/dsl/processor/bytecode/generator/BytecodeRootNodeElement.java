@@ -4451,12 +4451,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                          * conversion.
                          */
                         buildEmitBooleanConverterInstruction(b, shortCircuitInstruction);
-                    } else if (!shortCircuitInstruction.shortCircuitModel.convertsOperands()) {
-                        /*
-                         * All operands except the last have been verified to produce booleans. For
-                         * the last operand we need to insert a check.
-                         */
-                        buildEmitInstruction(b, model.checkBooleanInstruction);
                     }
                     // Go through the work list and fill in the branch target for each branch.
                     b.startFor().string("int site : operationData.branchFixupBcis").end().startBlock();
@@ -6483,7 +6477,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             int stackEffect = switch (instr.kind) {
                 case BRANCH, BRANCH_BACKWARD, //
                                 TAG_ENTER, TAG_LEAVE, TAG_LEAVE_VOID, TAG_RESUME, TAG_YIELD, //
-                                LOAD_LOCAL_MATERIALIZED, CLEAR_LOCAL, CHECK_BOOLEAN, YIELD -> 0;
+                                LOAD_LOCAL_MATERIALIZED, CLEAR_LOCAL, YIELD -> 0;
                 case STORE_NULL, LOAD_VARIADIC, MERGE_VARIADIC -> {
                     /*
                      * NB: These instructions *do* have stack effects. However, they are only used
@@ -11497,9 +11491,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 if (model.interceptControlFlowException != null) {
                     this.add(createResolveControlFlowException());
                 }
-                if (model.checkBooleanInstruction != null) {
-                    this.add(createDoCheckBoolean());
-                }
             }
 
             if (model.usesBoxingElimination()) {
@@ -13241,11 +13232,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     b.statement("break");
                     b.end();
                     break;
-                case CHECK_BOOLEAN:
-                    b.startStatement().startCall("doCheckBoolean");
-                    b.string("(boolean) ", uncheckedGetFrameObject("sp - 1"));
-                    b.end(2);
-                    break;
                 case TAG_RESUME:
                     b.startStatement();
                     b.startCall(lookupTagResume(instr).getSimpleName().toString());
@@ -13674,20 +13660,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.statement(setFrameObject("$root.maxLocals", "result"));
             b.startDeclaration(type(int.class), "sp").string("$root.maxLocals + 1").end();
             emitReturnTopOfStack(b);
-            return method;
-
-        }
-
-        private CodeExecutableElement createDoCheckBoolean() {
-            CodeExecutableElement method = new CodeExecutableElement(
-                            Set.of(PRIVATE),
-                            type(void.class), "doCheckBoolean");
-
-            method.addParameter(new CodeVariableElement(type(boolean.class), "booleanValue"));
-
-            CodeTreeBuilder b = method.createBuilder();
-            b.lineComment("A cast is not a valid Java statement, so we cast and pass the result to this trivial method.");
-
             return method;
 
         }
