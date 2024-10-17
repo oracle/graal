@@ -56,13 +56,13 @@ import com.oracle.truffle.api.source.Source;
 
 final class PolyglotSourceCache {
 
-    private final Cache strongCache;
-    private final Cache weakCache;
+    private final StrongCache strongCache;
+    private final WeakCache weakCache;
     private SourceCacheListener sourceCacheListener;
 
-    PolyglotSourceCache(SourceCacheListener sourceCacheListener) {
+    PolyglotSourceCache(ReferenceQueue<Source> deadSourcesQueue, TracingSourceCacheListener sourceCacheListener) {
         this.sourceCacheListener = sourceCacheListener;
-        this.weakCache = new WeakCache();
+        this.weakCache = new WeakCache(deadSourcesQueue);
         this.strongCache = new StrongCache();
     }
 
@@ -101,6 +101,10 @@ final class PolyglotSourceCache {
     void listCachedSources(PolyglotImpl polyglot, Collection<Object> source) {
         strongCache.listSources(polyglot, source);
         weakCache.listSources(polyglot, source);
+    }
+
+    void cleanupStaleEntries() {
+        WeakCache.cleanupStaleEntries(weakCache.deadSources, sourceCacheListener);
     }
 
     private static CallTarget parseImpl(PolyglotLanguageContext context, String[] argumentNames, Source source) {
@@ -256,14 +260,20 @@ final class PolyglotSourceCache {
     private final class WeakCache extends Cache {
 
         private final ConcurrentHashMap<WeakSourceKey, WeakCacheValue> sourceCache = new ConcurrentHashMap<>();
-        private final ReferenceQueue<Source> deadSources = new ReferenceQueue<>();
+        private final ReferenceQueue<Source> deadSources;
+        private final WeakReference<WeakCache> cacheRef;
+
+        WeakCache(ReferenceQueue<Source> deadSources) {
+            this.deadSources = deadSources;
+            this.cacheRef = new WeakReference<>(this);
+        }
 
         @Override
         CallTarget lookup(PolyglotLanguageContext context, Source source, String[] argumentNames, boolean parse) {
-            cleanupStaleEntries();
+            cleanupStaleEntries(deadSources, sourceCacheListener);
             Object sourceId = EngineAccessor.SOURCE.getSourceIdentifier(source);
             Source sourceValue = EngineAccessor.SOURCE.copySource(source);
-            WeakSourceKey ref = new WeakSourceKey(new SourceKey(sourceId, argumentNames), source, deadSources);
+            WeakSourceKey ref = new WeakSourceKey(new SourceKey(sourceId, argumentNames), source, cacheRef, deadSources);
             WeakCacheValue value = sourceCache.get(ref);
             if (value == null) {
                 if (parse) {
@@ -308,18 +318,25 @@ final class PolyglotSourceCache {
 
         @Override
         void listSources(PolyglotImpl polyglot, Collection<Object> sources) {
-            cleanupStaleEntries();
+            cleanupStaleEntries(deadSources, sourceCacheListener);
             for (WeakCacheValue value : sourceCache.values()) {
                 sources.add(PolyglotImpl.getOrCreatePolyglotSource(polyglot, value.source));
             }
         }
 
-        private void cleanupStaleEntries() {
+        /**
+         * This is deliberately a static method, because the dead sources queue is
+         * {@link PolyglotEngineImpl#getDeadSourcesQueue() shared} among all weak caches on a
+         * particular polyglot engine, and so the elements of {@link WeakCache#deadSources the
+         * queue} may {@link WeakSourceKey#cacheRef refer} to different weak caches.
+         */
+        private static void cleanupStaleEntries(ReferenceQueue<Source> deadSourcesQueue, SourceCacheListener cacheListener) {
             WeakSourceKey sourceRef;
-            while ((sourceRef = (WeakSourceKey) deadSources.poll()) != null) {
-                WeakCacheValue value = sourceCache.remove(sourceRef);
-                if (value != null && sourceCacheListener != null) {
-                    sourceCacheListener.onCacheEvict(value.source, value.target, SourceCacheListener.CacheType.WEAK, value.hits.get());
+            while ((sourceRef = (WeakSourceKey) deadSourcesQueue.poll()) != null) {
+                WeakCache cache = sourceRef.cacheRef.get();
+                WeakCacheValue value = cache != null ? cache.sourceCache.remove(sourceRef) : null;
+                if (value != null && cacheListener != null) {
+                    cacheListener.onCacheEvict(value.source, value.target, SourceCacheListener.CacheType.WEAK, value.hits.get());
                 }
             }
         }
@@ -373,9 +390,11 @@ final class PolyglotSourceCache {
     private static final class WeakSourceKey extends WeakReference<Source> {
 
         final SourceKey key;
+        final WeakReference<WeakCache> cacheRef;
 
-        WeakSourceKey(SourceKey key, Source value, ReferenceQueue<? super Source> q) {
+        WeakSourceKey(SourceKey key, Source value, WeakReference<WeakCache> cacheRef, ReferenceQueue<? super Source> q) {
             super(value, q);
+            this.cacheRef = cacheRef;
             this.key = key;
         }
 

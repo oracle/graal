@@ -113,7 +113,7 @@ final class PolyglotSharingLayer {
         int claimedCount;
 
         private Shared(PolyglotEngineImpl engine, ContextPolicy contextPolicy, Map<PolyglotLanguage, OptionValuesImpl> previousLanguageOptions) {
-            this.sourceCache = new PolyglotSourceCache(TracingSourceCacheListener.createOrNull(engine));
+            this.sourceCache = new PolyglotSourceCache(engine.getDeadSourcesQueue(), TracingSourceCacheListener.createOrNull(engine));
             this.contextPolicy = contextPolicy;
             this.instances = new PolyglotLanguageInstance[engine.languageCount];
             this.previousLanguageOptions = previousLanguageOptions;
@@ -340,6 +340,7 @@ final class PolyglotSharingLayer {
         assert isClaimed();
 
         shared.claimedCount--;
+        shared.sourceCache.cleanupStaleEntries();
 
         if (engine.getEngineOptionValues().get(PolyglotEngineOptions.TraceCodeSharing)) {
             traceFreeLayer(context);
