@@ -225,14 +225,23 @@ public class ObjectCopier {
 
         @Override
         protected void encode(Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
-            stream.writePackedUnsignedInt(((Enum<?>) obj).ordinal());
+            Enum<?> con = (Enum<?>) obj;
+            stream.writePackedUnsignedInt(con.ordinal());
+            stream.writeShort(fingerprint(con));
+        }
+
+        private static short fingerprint(Enum<?> con) {
+            int h = con.name().hashCode();
+            return hashIntToShort(h);
         }
 
         @Override
         protected Object decode(Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
             int ord = stream.readPackedUnsignedInt();
-            Object[] constants = concreteType.getEnumConstants();
-            return constants[ord];
+            int fingerprint = stream.readShort();
+            Enum<?> con = (Enum<?>) concreteType.getEnumConstants()[ord];
+            GraalError.guarantee(fingerprint(con) == fingerprint, "Enum constant type mismatch: %s ordinal %d not expected to be %s", concreteType.getName(), ord, con);
+            return con;
         }
     }
 
@@ -309,7 +318,7 @@ public class ObjectCopier {
      *            have the same name in which case the descriptor includes the qualified name of the
      *            class declaring the field as a prefix.
      */
-    public record ClassInfo(Class<?> clazz, SortedMap<String, Field> fields) {
+    public record ClassInfo(Class<?> clazz, SortedMap<String, Field> fields, short fingerprint) {
         public static ClassInfo of(Class<?> declaringClass) {
             SortedMap<String, Field> fields = new TreeMap<>();
             for (Class<?> c = declaringClass; !c.equals(Object.class); c = c.getSuperclass()) {
@@ -325,8 +334,17 @@ public class ObjectCopier {
                     }
                 }
             }
-            return new ClassInfo(declaringClass, fields);
+            int h = fields.size();
+            for (var entry : fields.entrySet()) {
+                h = h * 31 + entry.getKey().hashCode();
+                h = h * 31 + entry.getValue().getType().getName().hashCode();
+            }
+            return new ClassInfo(declaringClass, fields, hashIntToShort(h));
         }
+    }
+
+    private static short hashIntToShort(int h) {
+        return (short) (h ^ (h >>> 16));
     }
 
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
@@ -506,6 +524,8 @@ public class ObjectCopier {
                             Object obj = allocateInstance(clazz);
                             addDecodedObject(id, obj);
                             ClassInfo classInfo = classInfos.computeIfAbsent(clazz, ClassInfo::of);
+                            short fingerprint = stream.readShort();
+                            GraalError.guarantee(fingerprint == classInfo.fingerprint, "Type mismatch on %s", clazz);
                             fieldNum = 0;
                             for (Field field : classInfo.fields.values()) {
                                 Class<?> type = field.getType();
@@ -840,6 +860,7 @@ public class ObjectCopier {
                     debugf("%d:{", id);
                     writeString(out, clazz.getName());
                     debugf(" }");
+                    out.writeShort(classInfo.fingerprint);
                     for (var e : classInfo.fields().entrySet()) {
                         Field f = e.getValue();
                         debugf("%n ");

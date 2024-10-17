@@ -31,7 +31,8 @@ import java.nio.charset.StandardCharsets;
 
 /**
  * Delegates to, but does not subclass, {@link TypedDataInputStream} for symmetry with
- * {@link ObjectCopierOutputStream}, see the reasoning there. Add methods as needed.
+ * {@link ObjectCopierOutputStream}, see the reasoning there. Add methods such as {@link #readShort}
+ * as needed.
  */
 public class ObjectCopierInputStream extends InputStream {
     private final TypedDataInputStream in;
@@ -48,6 +49,10 @@ public class ObjectCopierInputStream extends InputStream {
     @Override
     public void close() throws IOException {
         in.close();
+    }
+
+    public short readShort() throws IOException {
+        return in.readShort();
     }
 
     protected Object readUntypedValue(int type) throws IOException {

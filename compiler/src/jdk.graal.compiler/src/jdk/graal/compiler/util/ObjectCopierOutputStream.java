@@ -37,8 +37,8 @@ import jdk.graal.compiler.core.common.calc.UnsignedMath;
  * Wraps an {@link OutputStream} and writes binary data of certain kinds to it. Optionally prints a
  * text representation to a separate stream for debugging. This delegates to, but does not subclass,
  * {@link TypedDataOutputStream} because it cannot override final public methods such as
- * {@link DataOutputStream#writeInt} to intercept them for debug printing. Add such methods as
- * needed.
+ * {@link DataOutputStream#writeShort} to intercept them for debug printing. Add such methods such
+ * as {@link #writeShort} as needed.
  */
 public class ObjectCopierOutputStream extends OutputStream {
     // Constants for UNSIGNED5 coding of Pack200
@@ -74,6 +74,11 @@ public class ObjectCopierOutputStream extends OutputStream {
     @Override
     public void close() throws IOException {
         out.close();
+    }
+
+    public void writeShort(int v) throws IOException {
+        out.writeShort(v);
+        debugPrintValue(v);
     }
 
     public void writeUntypedValue(Object value) throws IOException {
