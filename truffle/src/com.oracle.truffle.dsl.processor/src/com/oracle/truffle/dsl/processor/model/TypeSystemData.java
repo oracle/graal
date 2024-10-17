@@ -42,7 +42,6 @@ package com.oracle.truffle.dsl.processor.model;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -134,7 +133,7 @@ public class TypeSystemData extends Template {
 
     public List<ImplicitCastData> lookupByTargetType(TypeMirror targetType) {
         if (getImplicitCasts() == null) {
-            return Collections.emptyList();
+            return List.of();
         }
         List<ImplicitCastData> foundCasts = new ArrayList<>();
         for (ImplicitCastData cast : getImplicitCasts()) {

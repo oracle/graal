@@ -145,7 +145,7 @@ public class NodeInliningExample2_3 {
 
         @Specialization(guards = {"kind != null", "kind.type == array.getClass()"}, limit = "2", unroll = 2)
         static int doDefault(Object array,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached("resolve(array)") ArrayKind kind,
                         @Cached GetStoreNode getStore) {
             Object castStore = kind.type.cast(array);

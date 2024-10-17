@@ -53,6 +53,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
+import com.oracle.truffle.api.nodes.Node;
 
 final class BytecodeOSRRootNode extends BaseOSRRootNode {
     private final long target;
@@ -124,7 +125,7 @@ final class BytecodeOSRRootNode extends BaseOSRRootNode {
 
     @Override
     public String toString() {
-        return loopNode.toString() + "<OSR@" + target + ">";
+        return ((Node) loopNode).getRootNode().toString() + "<OSR@" + target + ">";
     }
 
     // GR-38296

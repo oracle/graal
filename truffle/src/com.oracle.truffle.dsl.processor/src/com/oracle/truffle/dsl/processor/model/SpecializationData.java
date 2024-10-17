@@ -166,7 +166,7 @@ public final class SpecializationData extends TemplateMethod {
         }
 
         String simpleString = var.getSimpleName().toString();
-        return (simpleString.equals("this") || simpleString.equals(NodeParser.NODE_KEYWORD)) && ElementUtils.typeEquals(var.asType(), types.Node);
+        return (simpleString.equals(NodeParser.SYMBOL_THIS) || simpleString.equals(NodeParser.SYMBOL_NODE)) && ElementUtils.typeEquals(var.asType(), types.Node);
     }
 
     public boolean isNodeReceiverBound(DSLExpression expression) {
@@ -276,6 +276,15 @@ public final class SpecializationData extends TemplateMethod {
 
     public SpecializationData getUncachedSpecialization() {
         return uncachedSpecialization;
+    }
+
+    public boolean hasFrameParameter() {
+        for (Parameter p : getSignatureParameters()) {
+            if (ElementUtils.typeEquals(p.getType(), types.VirtualFrame) || ElementUtils.typeEquals(p.getType(), types.Frame)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public boolean needsVirtualFrame() {
