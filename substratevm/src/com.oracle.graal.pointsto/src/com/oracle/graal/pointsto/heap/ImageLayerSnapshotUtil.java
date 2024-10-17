@@ -105,6 +105,8 @@ public class ImageLayerSnapshotUtil {
     public static final String INTERFACES_TAG = "interfaces";
     public static final String WRAPPED_TYPE_TAG = "wrapped type";
     public static final String GENERATED_SERIALIZATION_TAG = "generated serialization";
+    public static final String LAMBDA_TYPE_TAG = "lambda type";
+    public static final String HOLDER_CLASS_TAG = "holder class";
     public static final String RAW_DECLARING_CLASS_TAG = "raw declaring class";
     public static final String RAW_TARGET_CONSTRUCTOR_CLASS_TAG = "raw target constructor class";
     public static final String CONSTANTS_TAG = "constants";
