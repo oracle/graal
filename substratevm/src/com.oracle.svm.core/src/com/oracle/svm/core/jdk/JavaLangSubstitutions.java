@@ -492,6 +492,13 @@ final class Target_java_lang_Math {
     @Substitute
     @Uninterruptible(reason = "Must not contain a safepoint.")
     @SubstrateForeignCallTarget(fullyUninterruptible = true, stubCallingConvention = false)
+    public static double tanh(double a) {
+        return UnaryMathIntrinsicNode.compute(a, UnaryOperation.TANH);
+    }
+
+    @Substitute
+    @Uninterruptible(reason = "Must not contain a safepoint.")
+    @SubstrateForeignCallTarget(fullyUninterruptible = true, stubCallingConvention = false)
     public static double log(double a) {
         return UnaryMathIntrinsicNode.compute(a, UnaryOperation.LOG);
     }

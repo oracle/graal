@@ -59,6 +59,7 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
         testGraph("mathSin");
         testGraph("mathSqrt");
         testGraph("mathTan");
+        testGraph("mathTanh");
         testGraph("mathAll");
 
         test("mathCos", value);
@@ -67,6 +68,7 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
         test("mathSin", value);
         test("mathSqrt", value);
         test("mathTan", value);
+        test("mathTanh", value);
         test("mathAll", value);
     }
 
@@ -132,8 +134,12 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
         return Math.tan(value);
     }
 
+    public static double mathTanh(double value) {
+        return Math.tanh(value);
+    }
+
     public static double mathAll(double value) {
-        return Math.sqrt(value) + Math.log(value) + Math.log10(value) + Math.sin(value) + Math.cos(value) + Math.tan(value);
+        return Math.sqrt(value) + Math.log(value) + Math.log10(value) + Math.sin(value) + Math.cos(value) + Math.tan(value) + Math.tanh(value);
     }
 
     public void testSubstitution(String testMethodName, Class<?> holder, String methodName, boolean optional, Object[] args, Class<?>... intrinsicClasses) {
