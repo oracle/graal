@@ -31,17 +31,19 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.nodes.ConstantNode;
-import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.java.NewArrayNode;
-import jdk.graal.compiler.replacements.nodes.ReadRegisterNode;
-import jdk.graal.compiler.replacements.nodes.WriteRegisterNode;
 import org.graalvm.collections.Pair;
+
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.extended.PublishWritesNode;
+import jdk.graal.compiler.nodes.java.NewArrayNode;
+import jdk.graal.compiler.replacements.nodes.ReadRegisterNode;
+import jdk.graal.compiler.replacements.nodes.WriteRegisterNode;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -67,7 +69,7 @@ class ForeignGraphKit extends HostedGraphKit {
             assert argument.getStackKind().equals(JavaKind.Object);
             createStoreIndexed(argumentArray, i, JavaKind.Object, argument);
         }
-        return argumentArray;
+        return append(new PublishWritesNode(argumentArray));
     }
 
     List<ValueNode> unboxArguments(List<ValueNode> args, MethodType methodType) {
