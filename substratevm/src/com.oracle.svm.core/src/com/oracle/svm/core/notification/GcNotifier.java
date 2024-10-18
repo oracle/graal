@@ -57,9 +57,13 @@ public class GcNotifier {
     private final CircularQueue<GcNotificationRequest> requestQueue;
     // This is the request we are emitting a notification for
     GcNotificationRequest currentRequest;
-    /** This is cached to handle {@link GarbageCollectorMXBean#getLastGcInfo()} . */
+    /**
+     * This is cached to handle {@link com.sun.management.GarbageCollectorMXBean#getLastGcInfo()} .
+     */
     GcNotificationRequest latestRequestComplete;
-    /** This is cached to handle {@link GarbageCollectorMXBean#getLastGcInfo()} . */
+    /**
+     * This is cached to handle {@link com.sun.management.GarbageCollectorMXBean#getLastGcInfo()} .
+     */
     GcNotificationRequest latestRequestIncremental;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -120,7 +124,7 @@ public class GcNotifier {
         ((AbstractGarbageCollectorMXBean) gcBean).createNotification(currentRequest);
     }
 
-    private GarbageCollectorMXBean getGarbageCollectorMXBean(boolean isIncremental) {
+    private static GarbageCollectorMXBean getGarbageCollectorMXBean(boolean isIncremental) {
         GarbageCollectorMXBean gcBean = null;
         for (GarbageCollectorMXBean bean : ManagementFactory.getGarbageCollectorMXBeans()) {
             if (((AbstractGarbageCollectorMXBean) bean).isIncremental() == isIncremental) {

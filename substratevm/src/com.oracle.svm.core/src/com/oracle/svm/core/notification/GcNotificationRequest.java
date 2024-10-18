@@ -59,6 +59,7 @@ public class GcNotificationRequest {
         }
     }
 
+    @SuppressWarnings("hiding")
     public void beforeCollection(long startTime) {
         AbstractMemoryPoolMXBean[] beans = MemoryPoolMXBeansProvider.get().getMXBeans();
         for (int i = 0; i < beans.length; i++) {
@@ -71,6 +72,7 @@ public class GcNotificationRequest {
         this.startTime = startTime;
     }
 
+    @SuppressWarnings("hiding")
     public void afterCollection(boolean isIncremental, GCCause cause, long epoch, long endTime) {
         AbstractMemoryPoolMXBean[] beans = MemoryPoolMXBeansProvider.get().getMXBeans();
         for (int i = 0; i < beans.length; i++) {

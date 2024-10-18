@@ -42,7 +42,6 @@ public final class CircularQueue<T> extends RingBuffer<T> {
         head = nextIndex(head);
     }
 
-
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     public void advance() {
@@ -69,16 +68,6 @@ public final class CircularQueue<T> extends RingBuffer<T> {
         entries[head] = newHead;
         return oldHead;
     }
-//
-//    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-//    public T peekHead() {
-//        return entries[head];
-//    }
-//    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-//    public void setHead(T newHead) {
-//        entries[head] = newHead;
-//    }
-
 
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean isEmpty() {

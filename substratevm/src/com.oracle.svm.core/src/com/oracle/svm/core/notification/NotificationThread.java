@@ -89,7 +89,7 @@ public class NotificationThread extends Thread {
     }
 
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private boolean hasRequests() {
+    private static boolean hasRequests() {
         // In the future, we may check for other pending requests here too.
         return GcNotifier.singleton().hasRequest();
     }
