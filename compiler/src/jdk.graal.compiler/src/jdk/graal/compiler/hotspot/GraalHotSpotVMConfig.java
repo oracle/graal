@@ -431,10 +431,10 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final boolean useObjectMonitorTable = getFlag("UseObjectMonitorTable", Boolean.class, false, JDK >= 24);
 
     // JDK-8253180 & JDK-8265932
-    public final int threadPollingPageOffset = getFieldOffset("JavaThread::_poll_data", Integer.class, "SafepointMechanism::ThreadData") +
-                    getFieldOffset("SafepointMechanism::ThreadData::_polling_page", Integer.class, "volatile uintptr_t");
-    public final int threadPollingWordOffset = getFieldOffset("JavaThread::_poll_data", Integer.class, "SafepointMechanism::ThreadData") +
-                    getFieldOffset("SafepointMechanism::ThreadData::_polling_word", Integer.class, "volatile uintptr_t");
+    public final int threadPollDataOffset = JDK >= 24 ? getFieldOffset("Thread::_poll_data", Integer.class, "SafepointMechanism::ThreadData")
+                    : getFieldOffset("JavaThread::_poll_data", Integer.class, "SafepointMechanism::ThreadData");
+    public final int threadPollingPageOffset = threadPollDataOffset + getFieldOffset("SafepointMechanism::ThreadData::_polling_page", Integer.class, "volatile uintptr_t");
+    public final int threadPollingWordOffset = threadPollDataOffset + getFieldOffset("SafepointMechanism::ThreadData::_polling_word", Integer.class, "volatile uintptr_t");
     public final int savedExceptionPCOffset = getFieldOffset("JavaThread::_saved_exception_pc", Integer.class, "address");
 
     private final int threadLocalAllocBufferEndOffset = getFieldOffset("ThreadLocalAllocBuffer::_end", Integer.class, "HeapWord*");
