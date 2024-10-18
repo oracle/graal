@@ -26,21 +26,18 @@ package com.oracle.svm.core.genscavenge;
 
 import java.lang.management.ManagementFactory;
 
-import javax.management.MBeanNotificationInfo;
-import javax.management.NotificationEmitter;
-import javax.management.NotificationFilter;
-import javax.management.NotificationListener;
 import javax.management.ObjectName;
 
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.gc.AbstractGarbageCollectorMXBean;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.util.TimeUtils;
-import com.sun.management.GcInfo;
 
 import sun.management.Util;
 
-public final class CompleteGarbageCollectorMXBean implements com.sun.management.GarbageCollectorMXBean, NotificationEmitter {
+public final class CompleteGarbageCollectorMXBean extends AbstractGarbageCollectorMXBean {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public CompleteGarbageCollectorMXBean() {
@@ -83,24 +80,13 @@ public final class CompleteGarbageCollectorMXBean implements com.sun.management.
     }
 
     @Override
-    public void removeNotificationListener(NotificationListener listener, NotificationFilter filter, Object handback) {
+    protected int gcThreadCount() {
+        return 1;
     }
 
     @Override
-    public void addNotificationListener(NotificationListener listener, NotificationFilter filter, Object handback) {
-    }
-
-    @Override
-    public void removeNotificationListener(NotificationListener listener) {
-    }
-
-    @Override
-    public MBeanNotificationInfo[] getNotificationInfo() {
-        return new MBeanNotificationInfo[0];
-    }
-
-    @Override
-    public GcInfo getLastGcInfo() {
-        return null;
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public boolean isIncremental() {
+        return false;
     }
 }
