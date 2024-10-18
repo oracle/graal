@@ -173,6 +173,8 @@ public class ResourcesFeature implements InternalFeature {
     private ImageClassLoader imageClassLoader;
 
     private class ResourcesRegistryImpl extends ConditionalConfigurationRegistry implements ResourcesRegistry<ConfigurationCondition> {
+        private final ClassInitializationSupport classInitializationSupport = ClassInitializationSupport.singleton();
+
         private final Set<String> alreadyAddedResources = new HashSet<>();
 
         ResourcesRegistryImpl() {
@@ -198,6 +200,7 @@ public class ResourcesFeature implements InternalFeature {
         public void addCondition(ConfigurationCondition condition, Module module, String resourcePath) {
             var conditionalResource = Resources.singleton().getResourceStorage().get(createStorageKey(module, resourcePath));
             if (conditionalResource != null) {
+                classInitializationSupport.addForTypeReachedTracking(condition.getType());
                 conditionalResource.getConditions().addCondition(condition);
             }
         }
