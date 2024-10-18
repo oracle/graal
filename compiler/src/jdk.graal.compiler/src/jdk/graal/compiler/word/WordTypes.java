@@ -24,7 +24,7 @@
  */
 package jdk.graal.compiler.word;
 
-import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
+import static org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode;
 
 import jdk.graal.compiler.core.common.Fields;
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
@@ -85,7 +85,7 @@ public class WordTypes {
         this.objectAccessType = metaAccess.lookupJavaType(ObjectAccess.class);
         this.barrieredAccessType = metaAccess.lookupJavaType(BarrieredAccess.class);
 
-        if (!IS_BUILDING_NATIVE_IMAGE) {
+        if (!inImageBuildtimeCode()) {
             Word.ensureInitialized();
         }
         this.wordImplType.initialize();

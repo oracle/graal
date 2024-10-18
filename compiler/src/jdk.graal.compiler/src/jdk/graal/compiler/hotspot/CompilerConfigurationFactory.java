@@ -52,7 +52,7 @@ import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.common.InitTimer;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.services.Services;
+import org.graalvm.nativeimage.ImageInfo;
 
 /**
  * A factory that creates the {@link CompilerConfiguration} the compiler will use. Each factory must
@@ -274,7 +274,7 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
      * loaded from.
      */
     private Object getLoadedFromLocation(boolean verbose) {
-        if (Services.IS_IN_NATIVE_IMAGE) {
+        if (ImageInfo.inImageRuntimeCode()) {
             if (nativeImageLocationQualifier != null) {
                 return "a " + nativeImageLocationQualifier + " Native Image shared library";
             }

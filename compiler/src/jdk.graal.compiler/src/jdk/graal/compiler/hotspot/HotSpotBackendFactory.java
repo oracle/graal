@@ -25,8 +25,7 @@
 package jdk.graal.compiler.hotspot;
 
 import static jdk.vm.ci.common.InitTimer.timer;
-import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
+import static org.graalvm.nativeimage.ImageInfo.inImageCode;
 
 import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.core.ArchitectureSpecific;
@@ -135,7 +134,7 @@ public abstract class HotSpotBackendFactory implements ArchitectureSpecific {
         OptionValues options = graalRuntime.getOptions();
         JVMCIBackend jvmci = jvmciRuntime.getHostJVMCIBackend();
         GraalHotSpotVMConfig config = graalRuntime.getVMConfig();
-        if (IS_BUILDING_NATIVE_IMAGE || IS_IN_NATIVE_IMAGE) {
+        if (inImageCode()) {
             SnippetSignature.initPrimitiveKindCache(jvmci.getMetaAccess());
         }
         HotSpotCodeCacheProvider codeCache = (HotSpotCodeCacheProvider) jvmci.getCodeCache();

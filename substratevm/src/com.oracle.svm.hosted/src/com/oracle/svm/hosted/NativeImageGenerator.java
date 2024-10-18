@@ -285,9 +285,6 @@ import jdk.graal.compiler.debug.DebugContext.Builder;
 import jdk.graal.compiler.debug.DebugDumpScope;
 import jdk.graal.compiler.debug.Indent;
 import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
-import jdk.graal.compiler.hotspot.HotSpotGraalCompiler;
-import jdk.graal.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import jdk.graal.compiler.java.BciBlockMapping;
 import jdk.graal.compiler.lir.phases.LIRSuites;
 import jdk.graal.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
@@ -330,7 +327,6 @@ import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
@@ -1467,26 +1463,8 @@ public class NativeImageGenerator {
 
         featureHandler.forEachGraalFeature(feature -> feature.registerGraphBuilderPlugins(providers, plugins, reason));
 
-        NodeIntrinsificationProvider nodeIntrinsificationProvider;
-        if (SubstrateUtil.isBuildingLibgraal()) {
-            HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) HotSpotJVMCIRuntime.runtime().getCompiler();
-            nodeIntrinsificationProvider = new NodeIntrinsificationProvider(providers.getMetaAccess(), hostedSnippetReflection,
-                            providers.getForeignCalls(), providers.getWordTypes(), target) {
-                @Override
-                public <T> T getInjectedArgument(Class<T> type) {
-                    if (type.isAssignableFrom(GraalHotSpotVMConfig.class)) {
-                        return type.cast(compiler.getGraalRuntime().getVMConfig());
-                    }
-                    if (type.isAssignableFrom(HotSpotGraalRuntimeProvider.class)) {
-                        return type.cast(compiler.getGraalRuntime());
-                    }
-                    return super.getInjectedArgument(type);
-                }
-            };
-        } else {
-            nodeIntrinsificationProvider = new NodeIntrinsificationProvider(providers.getMetaAccess(), hostedSnippetReflection, providers.getForeignCalls(),
-                            providers.getWordTypes(), target);
-        }
+        NodeIntrinsificationProvider nodeIntrinsificationProvider = new NodeIntrinsificationProvider(providers.getMetaAccess(),
+                        hostedSnippetReflection, providers.getForeignCalls(), providers.getWordTypes(), target);
         for (Class<? extends GeneratedPluginFactory> factoryClass : loader.findSubclasses(GeneratedPluginFactory.class, true)) {
             if (!Modifier.isAbstract(factoryClass.getModifiers()) && !factoryClass.getName().contains("hotspot")) {
                 GeneratedPluginFactory factory;
