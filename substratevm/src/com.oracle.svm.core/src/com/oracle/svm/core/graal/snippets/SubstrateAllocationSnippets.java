@@ -82,13 +82,10 @@ import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.PiNode;
-import jdk.graal.compiler.nodes.ProfileData;
 import jdk.graal.compiler.nodes.SnippetAnchorNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.UnreachableNode;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
-import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.nodes.extended.ForeignCallWithExceptionNode;
 import jdk.graal.compiler.nodes.java.DynamicNewArrayNode;
@@ -728,16 +725,8 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             return allocationSite.createCounter(counterName);
         }
 
-        public static final double HOT_ALLOCATION_THRESHOLD = FAST_PATH_PROBABILITY;
-
         private static boolean shouldOutlineAllocation(Node node, StructuredGraph graph) {
-            if (GraalOptions.ReduceCodeSize.getValue(graph.getOptions())) {
-                return true;
-            }
-            ControlFlowGraph cfg = graph.getLastCFG();
-            HIRBlock block = cfg.blockFor(node);
-            return ProfileData.ProfileSource.isTrusted(block.getFrequencySource())
-                    && block.getRelativeFrequency() < HOT_ALLOCATION_THRESHOLD;
+            return GraalOptions.ReduceCodeSize.getValue(graph.getOptions());
         }
 
         private class NewInstanceLowering implements NodeLoweringProvider<NewInstanceNode> {
