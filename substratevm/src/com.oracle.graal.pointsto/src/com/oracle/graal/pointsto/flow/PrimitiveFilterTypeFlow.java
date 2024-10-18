@@ -65,7 +65,7 @@ public class PrimitiveFilterTypeFlow extends TypeFlow<BytecodePosition> {
 
     @Override
     public boolean addState(PointsToAnalysis bb, TypeState add) {
-        return super.addState(bb, eval());
+        return super.addState(bb, eval(bb));
     }
 
     @Override
@@ -74,15 +74,15 @@ public class PrimitiveFilterTypeFlow extends TypeFlow<BytecodePosition> {
          * If an input saturated, it does not mean that the condition has to always saturate as
          * well, e.g. Any == 5 still returns 5.
          */
-        super.addState(bb, eval());
+        super.addState(bb, eval(bb));
     }
 
     /**
      * Filters the type state of left using condition and right.
      */
-    private TypeState eval() {
-        var leftState = left.isSaturated() ? TypeState.anyPrimitiveState() : left.getState();
-        var rightState = right.isSaturated() ? TypeState.anyPrimitiveState() : right.getState();
+    private TypeState eval(PointsToAnalysis bb) {
+        var leftState = left.getOutputState(bb);
+        var rightState = right.getOutputState(bb);
         assert leftState.isPrimitive() || leftState.isEmpty() : left;
         assert rightState.isPrimitive() || rightState.isEmpty() : right;
         return TypeState.filter(leftState, comparison, rightState);

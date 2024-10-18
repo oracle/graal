@@ -72,7 +72,7 @@ public class NullCheckTypeFlow extends TypeFlow<BytecodePosition> {
 
     @Override
     public String toString() {
-        return "NullCheckTypeFlow<" + (getDeclaredType() != null ? getDeclaredType().toJavaName(false) : "null") + " : " + getState() + ">";
+        return "NullCheckTypeFlow<" + (getDeclaredType() != null ? getDeclaredType().toJavaName(false) : "null") + " : " + getStateDescription() + ">";
     }
 
 }

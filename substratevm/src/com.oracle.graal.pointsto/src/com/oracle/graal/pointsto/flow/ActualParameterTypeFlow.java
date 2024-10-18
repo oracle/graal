@@ -24,9 +24,9 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import jdk.graal.compiler.nodes.ValueNode;
-
 import com.oracle.graal.pointsto.meta.AnalysisType;
+
+import jdk.graal.compiler.nodes.ValueNode;
 
 /**
  * A sink type flow for the context insensitive invoke used to link in parameters in each caller
@@ -39,6 +39,6 @@ public class ActualParameterTypeFlow extends TypeFlow<ValueNode> {
 
     @Override
     public String toString() {
-        return "ActualParameter<" + getState() + '>';
+        return "ActualParameter<" + getStateDescription() + '>';
     }
 }

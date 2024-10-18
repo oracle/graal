@@ -85,7 +85,7 @@ public class ArrayElementsTypeFlow extends TypeFlow<AnalysisType> implements Glo
 
     @Override
     public String toString() {
-        return "MixedElementsFlow<" + source.getName() + "\n" + getState() + ">";
+        return "MixedElementsFlow<" + source.getName() + "\n" + getStateDescription() + ">";
     }
 
 }

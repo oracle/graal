@@ -117,7 +117,7 @@ public class CallSiteSensitiveMethodTypeFlow extends MethodTypeFlow {
         }
         if (originalTypeFlow instanceof FieldTypeFlow || originalTypeFlow instanceof ArrayElementsTypeFlow) {
             // field and array flows are not call site sensitive and thus not cloneable
-            return originalTypeFlow.state;
+            return originalTypeFlow.getState();
         }
         TypeState result = TypeState.forEmpty();
         for (MethodFlowsGraph methodFlows : clonedMethodFlows.values()) {

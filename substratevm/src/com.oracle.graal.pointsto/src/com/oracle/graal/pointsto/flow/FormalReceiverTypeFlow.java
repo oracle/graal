@@ -90,7 +90,7 @@ public class FormalReceiverTypeFlow extends FormalParamTypeFlow {
     public String format(boolean withState, boolean withSource) {
         return "Formal receiver of " + method().format("%H.%n(%p)") +
                         (withSource ? " at " + formatSource() : "") +
-                        (withState ? " with state <" + getState() + ">" : "");
+                        (withState ? " with state <" + getStateDescription() + ">" : "");
     }
 
 }

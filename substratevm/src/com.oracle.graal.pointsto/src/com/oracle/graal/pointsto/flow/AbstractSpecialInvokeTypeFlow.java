@@ -47,7 +47,9 @@ public abstract class AbstractSpecialInvokeTypeFlow extends DirectInvokeTypeFlow
 
     @Override
     protected void onFlowEnabled(PointsToAnalysis bb) {
-        bb.postTask(() -> onObservedUpdate(bb));
+        if (getReceiver().isFlowEnabled()) {
+            bb.postTask(() -> onObservedUpdate(bb));
+        }
     }
 
     @Override
@@ -71,7 +73,7 @@ public abstract class AbstractSpecialInvokeTypeFlow extends DirectInvokeTypeFlow
 
     @Override
     public String toString() {
-        return "SpecialInvoke<" + targetMethod.format("%h.%n") + ">" + ":" + getState();
+        return "SpecialInvoke<" + targetMethod.format("%h.%n") + ">" + ":" + getStateDescription();
     }
 
 }

@@ -141,6 +141,6 @@ public class ArrayCopyTypeFlow extends TypeFlow<BytecodePosition> {
 
     @Override
     public String toString() {
-        return "ArrayCopyTypeFlow<" + getState() + ">";
+        return "ArrayCopyTypeFlow<" + getStateDescription() + ">";
     }
 }

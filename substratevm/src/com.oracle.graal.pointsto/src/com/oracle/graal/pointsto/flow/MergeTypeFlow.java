@@ -46,6 +46,6 @@ public class MergeTypeFlow extends TypeFlow<BytecodePosition> {
 
     @Override
     public String toString() {
-        return "MergeTypeFlow<" + getState() + ">";
+        return "MergeTypeFlow<" + getStateDescription() + ">";
     }
 }

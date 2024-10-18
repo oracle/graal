@@ -69,7 +69,7 @@ public class FormalParamTypeFlow extends TypeFlow<BytecodePosition> {
     public String format(boolean withState, boolean withSource) {
         return "Parameter " + position + " of " + method().format("%H.%n(%p)") +
                         (withSource ? " at " + formatSource() : "") +
-                        (withState ? " with state <" + getState() + ">" : "");
+                        (withState ? " with state <" + getStateDescription() + ">" : "");
     }
 
 }

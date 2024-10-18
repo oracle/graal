@@ -46,7 +46,7 @@ public class BoxTypeFlow extends NewInstanceTypeFlow {
 
     @Override
     public String toString() {
-        return "BoxFlow<" + getState() + ">";
+        return "BoxFlow<" + getStateDescription() + ">";
     }
 
 }

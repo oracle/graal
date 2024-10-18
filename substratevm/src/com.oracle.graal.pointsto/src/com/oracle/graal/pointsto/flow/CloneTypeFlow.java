@@ -62,7 +62,17 @@ public class CloneTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
+    protected void onFlowEnabled(PointsToAnalysis bb) {
+        if (input.isFlowEnabled()) {
+            bb.postTask(() -> onObservedUpdate(bb));
+        }
+    }
+
+    @Override
     public void onObservedUpdate(PointsToAnalysis bb) {
+        if (!isFlowEnabled()) {
+            return;
+        }
         /* The input state has changed, clone its objects. */
         TypeState inputState = input.getState();
 
@@ -73,7 +83,7 @@ public class CloneTypeFlow extends TypeFlow<BytecodePosition> {
          * encapsulate the location of the cloning. From the point of view of the analysis a clone
          * flow is a source.
          */
-        TypeState resultState = bb.analysisPolicy().cloneState(bb, state, inputState, source, allocationContext);
+        TypeState resultState = bb.analysisPolicy().cloneState(bb, getState(), inputState, source, allocationContext);
 
         /* Update the clone flow state. */
         addState(bb, resultState);

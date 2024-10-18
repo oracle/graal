@@ -144,7 +144,7 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
 
         @Override
         public String toString() {
-            return "LoadIndexedTypeFlow<" + getState() + ">";
+            return "LoadIndexedTypeFlow<" + getStateDescription() + ">";
         }
 
     }
@@ -246,7 +246,7 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
 
         @Override
         public String toString() {
-            return "UnsafeLoadTypeFlow<" + getState() + ">";
+            return "UnsafeLoadTypeFlow<" + getStateDescription() + ">";
         }
     }
 }

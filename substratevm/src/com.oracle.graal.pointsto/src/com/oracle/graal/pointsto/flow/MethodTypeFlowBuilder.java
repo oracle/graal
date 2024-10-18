@@ -550,6 +550,7 @@ public class MethodTypeFlowBuilder {
                     } else {
                         parameter = new FormalParamTypeFlow(position, paramType, index);
                     }
+                    parameter.enableFlow(bb);
                     flowsGraph.setParameter(index, parameter);
                 }
             }
@@ -562,7 +563,9 @@ public class MethodTypeFlowBuilder {
                  * We want to determine whether void methods can return, so we need to create
                  * FormalReturnTypeFlow for them.
                  */
-                flowsGraph.setReturnFlow(new FormalReturnTypeFlow(position, returnType));
+                FormalReturnTypeFlow returnFlow = new FormalReturnTypeFlow(position, returnType);
+                returnFlow.enableFlow(bb);
+                flowsGraph.setReturnFlow(returnFlow);
             }
         }
 

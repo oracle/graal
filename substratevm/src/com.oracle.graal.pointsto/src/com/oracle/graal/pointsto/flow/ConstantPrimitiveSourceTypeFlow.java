@@ -37,7 +37,7 @@ public class ConstantPrimitiveSourceTypeFlow extends TypeFlow<BytecodePosition> 
     }
 
     public ConstantPrimitiveSourceTypeFlow(ConstantPrimitiveSourceTypeFlow original, MethodFlowsGraph methodFlows) {
-        super(original, methodFlows, original.getState());
+        super(original, methodFlows, original.getRawState());
     }
 
     @Override

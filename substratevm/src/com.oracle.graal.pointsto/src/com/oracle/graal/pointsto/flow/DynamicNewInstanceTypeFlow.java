@@ -78,10 +78,20 @@ public final class DynamicNewInstanceTypeFlow extends TypeFlow<BytecodePosition>
     }
 
     @Override
+    protected void onFlowEnabled(PointsToAnalysis bb) {
+        if (newTypeFlow.isFlowEnabled()) {
+            bb.postTask(() -> onObservedUpdate(bb));
+        }
+    }
+
+    @Override
     public void onObservedUpdate(PointsToAnalysis bb) {
+        if (!isFlowEnabled()) {
+            return;
+        }
         /* The state of the new type provider has changed. */
         TypeState newTypeState = newTypeFlow.getState();
-        TypeState updateState = bb.analysisPolicy().dynamicNewInstanceState(bb, state, newTypeState, source, allocationContext);
+        TypeState updateState = bb.analysisPolicy().dynamicNewInstanceState(bb, getState(), newTypeState, source, allocationContext);
         addState(bb, updateState);
     }
 
@@ -108,6 +118,6 @@ public final class DynamicNewInstanceTypeFlow extends TypeFlow<BytecodePosition>
 
     @Override
     public String toString() {
-        return "DynamicNewInstanceFlow<" + getState() + ">";
+        return "DynamicNewInstanceFlow<" + getStateDescription() + ">";
     }
 }

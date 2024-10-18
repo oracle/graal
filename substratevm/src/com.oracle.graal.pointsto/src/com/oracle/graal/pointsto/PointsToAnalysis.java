@@ -210,7 +210,9 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
              * update; an update of the receiver object flow will trigger an updated of the
              * observers, i.e., of the unsafe load.
              */
-            this.postFlow(unsafeLoad.receiver());
+            if (unsafeLoad.receiver().isFlowEnabled()) {
+                this.postFlow(unsafeLoad.receiver());
+            }
         }
 
         // force update of the unsafe stores
@@ -223,7 +225,9 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
              * update; an update of the receiver object flow will trigger an updated of the
              * observers, i.e., of the unsafe store.
              */
-            this.postFlow(unsafeStore.receiver());
+            if (unsafeStore.receiver().isFlowEnabled()) {
+                this.postFlow(unsafeStore.receiver());
+            }
         }
     }
 
@@ -563,6 +567,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     }
 
     public void postFlow(final TypeFlow<?> operation) {
+        assert operation.isFlowEnabled() : "Only enabled flows should be updated: " + operation;
         if (operation.inQueue) {
             return;
         }
@@ -766,7 +771,8 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
                 TypeFlow<?> tf = ((TypeFlowRunnable) r).getTypeFlow();
                 String source = String.valueOf(tf.getSource());
                 System.out.format("LONG RUNNING  %.2f  %s %x %s  state %s %x  uses %d observers %d%n", (double) nanos / 1_000_000_000, ClassUtil.getUnqualifiedName(tf.getClass()),
-                                System.identityHashCode(tf), source, PointsToStats.asString(tf.getState()), System.identityHashCode(tf.getState()), tf.getUses().size(), tf.getObservers().size());
+                                System.identityHashCode(tf), source, PointsToStats.asString(tf.getRawState()), System.identityHashCode(tf.getRawState()), tf.getUses().size(),
+                                tf.getObservers().size());
             }
         }
 

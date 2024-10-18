@@ -68,6 +68,6 @@ public class FormalReturnTypeFlow extends TypeFlow<BytecodePosition> {
     public String format(boolean withState, boolean withSource) {
         return "Formal return from " + method().format("%H.%n(%p)") +
                         (withSource ? " at " + formatSource() : "") +
-                        (withState ? " with state <" + getState() + ">" : "");
+                        (withState ? " with state <" + getStateDescription() + ">" : "");
     }
 }
