@@ -159,7 +159,7 @@ public final class GCImpl implements GC {
         if (hasNeverCollectPolicy()) {
             UnsignedWord edenUsed = HeapImpl.getAccounting().getEdenUsedBytes();
             outOfMemory = edenUsed.aboveThan(GCImpl.getPolicy().getMaximumHeapSize());
-        } else if (getPolicy().shouldCollectOnAllocation()) {
+        } else if (getPolicy().shouldCollectOnAllocation(allocationSize)) {
             AllocationRequiringGCEvent.emit(getCollectionEpoch(), allocationSize);
             outOfMemory = collectWithoutAllocating(GenScavengeGCCause.OnAllocation, false);
         }
