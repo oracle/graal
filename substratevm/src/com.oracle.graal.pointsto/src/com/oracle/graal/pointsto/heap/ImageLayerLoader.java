@@ -323,7 +323,7 @@ public class ImageLayerLoader {
     }
 
     protected final Set<AnalysisFuture<Void>> heapScannerTasks = ConcurrentHashMap.newKeySet();
-    private final ImageLayerSnapshotUtil imageLayerSnapshotUtil;
+    private ImageLayerSnapshotUtil imageLayerSnapshotUtil;
     private ImageLayerLoaderHelper imageLayerLoaderHelper;
     protected final Map<Integer, Integer> typeToConstant = new ConcurrentHashMap<>();
     protected final Map<String, Integer> stringToConstant = new ConcurrentHashMap<>();
@@ -343,12 +343,15 @@ public class ImageLayerLoader {
     }
 
     public ImageLayerLoader() {
-        this(new ImageLayerSnapshotUtil(), List.of());
+        this(List.of());
     }
 
-    public ImageLayerLoader(ImageLayerSnapshotUtil imageLayerSnapshotUtil, List<FilePaths> loadPaths) {
-        this.imageLayerSnapshotUtil = imageLayerSnapshotUtil;
+    public ImageLayerLoader(List<FilePaths> loadPaths) {
         this.loadPaths = loadPaths;
+    }
+
+    public void setImageLayerSnapshotUtil(ImageLayerSnapshotUtil imageLayerSnapshotUtil) {
+        this.imageLayerSnapshotUtil = imageLayerSnapshotUtil;
     }
 
     public AnalysisUniverse getUniverse() {
@@ -809,19 +812,12 @@ public class ImageLayerLoader {
         EconomicMap<String, Object> methodData = getMethodData(analysisMethod);
         String encodedAnalyzedGraph = readEncodedGraph(methodData, ANALYSIS_PARSED_GRAPH_TAG);
         Boolean intrinsic = get(methodData, INTRINSIC_TAG);
-        /*
-         * Methods without a persisted graph are folded and static methods.
-         *
-         * GR-55278: graphs that contain a reference to a $$Lambda cannot be persisted as well.
-         */
-        if (encodedAnalyzedGraph != null) {
-            EncodedGraph analyzedGraph = (EncodedGraph) ObjectCopier.decode(imageLayerSnapshotUtil.getGraphDecoder(this, analysisMethod, universe.getSnippetReflection()), encodedAnalyzedGraph);
-            if (hasStrengthenedGraph(analysisMethod)) {
-                loadAllAnalysisElements(readEncodedGraph(methodData, STRENGTHENED_GRAPH_TAG));
-            }
-            return new AnalysisParsedGraph(analyzedGraph, intrinsic);
+        EncodedGraph analyzedGraph = (EncodedGraph) ObjectCopier.decode(imageLayerSnapshotUtil.getGraphDecoder(this, analysisMethod, universe.getSnippetReflection()), encodedAnalyzedGraph);
+        if (hasStrengthenedGraph(analysisMethod)) {
+            loadAllAnalysisElements(readEncodedGraph(methodData, STRENGTHENED_GRAPH_TAG));
         }
-        throw AnalysisError.shouldNotReachHere("The method " + analysisMethod + " does not have a graph from the base layer");
+        afterGraphDecodeHook(analyzedGraph);
+        return new AnalysisParsedGraph(analyzedGraph, intrinsic);
     }
 
     private String readEncodedGraph(EconomicMap<String, Object> methodData, String elementIdentifier) {
@@ -856,12 +852,12 @@ public class ImageLayerLoader {
         EconomicMap<String, Object> methodData = getMethodData(analysisMethod);
         String encodedAnalyzedGraph = readEncodedGraph(methodData, STRENGTHENED_GRAPH_TAG);
         EncodedGraph analyzedGraph = (EncodedGraph) ObjectCopier.decode(imageLayerSnapshotUtil.getGraphDecoder(this, analysisMethod, universe.getSnippetReflection()), encodedAnalyzedGraph);
-        processGraph(analyzedGraph);
+        afterGraphDecodeHook(analyzedGraph);
         analysisMethod.setAnalyzedGraph(analyzedGraph);
     }
 
     @SuppressWarnings("unused")
-    protected void processGraph(EncodedGraph encodedGraph) {
+    protected void afterGraphDecodeHook(EncodedGraph encodedGraph) {
 
     }
 

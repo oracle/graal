@@ -101,7 +101,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     private HostedUniverse hUniverse;
 
     public SVMImageLayerWriter(boolean useSharedLayerGraphs) {
-        super(useSharedLayerGraphs, new SVMImageLayerSnapshotUtil());
+        super(useSharedLayerGraphs);
     }
 
     public void setNativeImageHeap(NativeImageHeap nativeImageHeap) {
