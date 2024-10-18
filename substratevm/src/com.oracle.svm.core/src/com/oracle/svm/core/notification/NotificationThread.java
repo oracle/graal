@@ -31,6 +31,8 @@ import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.util.BasedOnJDKFile;
+import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.core.Uninterruptible;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -57,6 +59,7 @@ public class NotificationThread extends Thread {
     }
 
     /** Awakens to send notifications asynchronously. */
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+19/src/hotspot/share/runtime/notificationThread.cpp#L52-L91") //
     @Override
     public void run() {
         while (!stopped) {
@@ -74,25 +77,25 @@ public class NotificationThread extends Thread {
         mutex.lock();
         try {
             while (!hasRequests() && !stopped) {
-                condition.block();
+                /*
+                 * It's possible for a signal to get lost here if a GC occurs after we check
+                 * hasRequests() but before we block. So wait a maximum of 3s as a precaution.
+                 */
+                condition.block(TimeUtils.millisToNanos(3000));
             }
         } finally {
             mutex.unlock();
         }
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private boolean hasRequests() {
         // In the future, we may check for other pending requests here too.
         return GcNotifier.singleton().hasRequest();
     }
 
     public void signal() {
-        mutex.lock();
-        try {
-            condition.signal();
-        } finally {
-            mutex.unlock();
-        }
+        condition.signal();
     }
 
     public void shutdown() {

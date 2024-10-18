@@ -27,17 +27,20 @@
 package com.oracle.svm.core.notification;
 
 import com.oracle.svm.core.collections.CircularQueue;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.Platform;
-import com.oracle.svm.core.Uninterruptible;
-import jdk.graal.compiler.api.replacements.Fold;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.gc.AbstractGarbageCollectorMXBean;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.util.BasedOnJDKFile;
+import com.oracle.svm.core.Uninterruptible;
 
-import com.sun.management.GarbageCollectorMXBean;
+import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
+
+import jdk.graal.compiler.api.replacements.Fold;
+
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.Platform;
 
 /**
  * This class keeps a circular queue of requests to later use when emitting GC notifications. The
@@ -47,9 +50,10 @@ import java.lang.management.ManagementFactory;
  * requests to generate notifications when the notification thread handles signals outside of
  * safepoints.
  */
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+19/src/hotspot/share/services/gcNotifier.cpp") //
 public class GcNotifier {
     // 5 is probably more than enough, although making the queue larger isn't a problem either.
-    private static final int QUEUE_SIZE = 5;
+    private static final int QUEUE_SIZE = 3;
     private final CircularQueue<GcNotificationRequest> requestQueue;
     // This is the request we are emitting a notification for
     GcNotificationRequest currentRequest;
@@ -90,7 +94,7 @@ public class GcNotifier {
         }
 
         requestQueue.advance();
-        ImageSingletons.lookup(NotificationThreadSupport.class).signalServiceThread();
+        ImageSingletons.lookup(NotificationThreadSupport.class).signalNotificationThread();
     }
 
     @Uninterruptible(reason = "Avoid pausing for a GC which could cause races.")
@@ -102,6 +106,7 @@ public class GcNotifier {
      * Called by the notification thread. Sends a notification if any are queued. If none are
      * queued, then return immediately.
      */
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+19/src/hotspot/share/services/gcNotifier.cpp#L191-L225") //
     void sendNotification() {
         assert !VMOperation.isInProgressAtSafepoint();
 
@@ -143,7 +148,6 @@ public class GcNotifier {
     /** Called by notification thread. */
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public GcNotificationRequest getLatestRequest(boolean isIncremental) {
-        assert !VMOperation.isInProgressAtSafepoint();
         if (isIncremental) {
             return latestRequestIncremental;
         }

@@ -48,13 +48,14 @@ import javax.management.NotificationEmitter;
 import javax.management.openmbean.CompositeData;
 import java.lang.management.MemoryUsage;
 
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+19/src/jdk.management/share/classes/com/sun/management/internal/GarbageCollectorExtImpl.java") //
 public abstract class AbstractGarbageCollectorMXBean extends NotificationEmitterSupport
                 implements GarbageCollectorMXBean, NotificationEmitter {
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+14/src/hotspot/share/gc/serial/serialHeap.cpp#L451") //
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+19/src/hotspot/share/gc/serial/serialHeap.cpp#L451") //
     private static final String ACTION_MINOR = "end of minor GC";
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+14/src/hotspot/share/gc/serial/serialHeap.cpp#L718") //
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+19/src/hotspot/share/gc/serial/serialHeap.cpp#L718") //
     private static final String ACTION_MAJOR = "end of major GC";
 
     private Target_com_sun_management_internal_GcInfoBuilder gcInfoBuilder;
@@ -64,9 +65,19 @@ public abstract class AbstractGarbageCollectorMXBean extends NotificationEmitter
      * Use the data taken from the request queue to populate MemoryUsage. The notification thread
      * calls this method.
      */
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+19/src/jdk.management/share/classes/com/sun/management/internal/GarbageCollectorExtImpl.java#L93-L116") //
     public void createNotification(GcNotificationRequest request) {
+        if (!hasListeners()) {
+            return;
+        }
 
         GcInfo gcInfo = getGcInfoFromRequest(request);
+
+        Notification notif = new Notification(GarbageCollectionNotificationInfo.GARBAGE_COLLECTION_NOTIFICATION,
+                        getObjectName(),
+                        getNextSeqNumber(),
+                        request.getTimestamp(),
+                        getName());
 
         GarbageCollectionNotificationInfo info = new GarbageCollectionNotificationInfo(
                         getName(),
@@ -75,17 +86,11 @@ public abstract class AbstractGarbageCollectorMXBean extends NotificationEmitter
                         gcInfo);
 
         CompositeData cd = GarbageCollectionNotifInfoCompositeData.toCompositeData(info);
-
-        Notification notif = new Notification(GarbageCollectionNotificationInfo.GARBAGE_COLLECTION_NOTIFICATION,
-                        getObjectName(),
-                        getNextSeqNumber(),
-                        request.getTimestamp(),
-                        getName());
         notif.setUserData(cd);
-
         sendNotification(notif);
     }
 
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+19/src/jdk.management/share/classes/com/sun/management/internal/GarbageCollectorExtImpl.java#L80-L86") //
     @Override
     public MBeanNotificationInfo[] getNotificationInfo() {
         if (!HasGcNotificationSupport.get()) {
@@ -107,6 +112,11 @@ public abstract class AbstractGarbageCollectorMXBean extends NotificationEmitter
         GcNotificationRequest request = new GcNotificationRequest();
         getLastGcInfo(request);
         return getGcInfoFromRequest(request);
+    }
+
+    @Uninterruptible(reason = "Avoid potential races with GC.")
+    private void getLastGcInfo(GcNotificationRequest request) {
+        GcNotifier.singleton().getLatestRequest(isIncremental()).copyTo(request);
     }
 
     private GcInfo getGcInfoFromRequest(GcNotificationRequest request) {
@@ -145,11 +155,6 @@ public abstract class AbstractGarbageCollectorMXBean extends NotificationEmitter
 
     private long getNextSeqNumber() {
         return ++seqNumber;
-    }
-
-    @Uninterruptible(reason = "Avoid potential races with GC.")
-    private void getLastGcInfo(GcNotificationRequest request) {
-        GcNotifier.singleton().getLatestRequest(isIncremental()).copyTo(request);
     }
 
     protected abstract int gcThreadCount();

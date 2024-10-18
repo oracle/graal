@@ -54,8 +54,7 @@ public final class CircularQueue<T> extends RingBuffer<T> {
     }
 
     public T peekTail() {
-        T result = entries[pos];
-        return result;
+        return entries[pos];
     }
 
     public T dequeue() {
@@ -70,6 +69,16 @@ public final class CircularQueue<T> extends RingBuffer<T> {
         entries[head] = newHead;
         return oldHead;
     }
+//
+//    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+//    public T peekHead() {
+//        return entries[head];
+//    }
+//    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+//    public void setHead(T newHead) {
+//        entries[head] = newHead;
+//    }
+
 
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean isEmpty() {

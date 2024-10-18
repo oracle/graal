@@ -48,7 +48,7 @@ public class NotificationThreadSupport {
         notificationThread.start();
     }
 
-    public void signalServiceThread() {
+    public void signalNotificationThread() {
         notificationThread.signal();
     }
 
