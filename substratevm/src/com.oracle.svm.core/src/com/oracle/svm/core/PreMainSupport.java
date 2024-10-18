@@ -26,15 +26,6 @@
 
 package com.oracle.svm.core;
 
-import com.oracle.svm.core.c.NonmovableArrays;
-import com.oracle.svm.core.code.CodeInfo;
-import com.oracle.svm.core.code.CodeInfoAccess;
-import com.oracle.svm.core.code.CodeInfoTable;
-import com.oracle.svm.core.jdk.ModuleNative;
-import com.oracle.svm.core.util.VMError;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-
 import java.lang.instrument.ClassDefinition;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.Instrumentation;
@@ -49,42 +40,45 @@ import java.util.Map;
 import java.util.Set;
 import java.util.jar.JarFile;
 
+import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.jdk.ModuleNative;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ModuleSupport;
+
 /**
- * Java agent can do instrumentation initialization work in premain phase. This class supports
- * registering such premain methods at native image build time and invoking them at native image
- * runtime. <br>
- * JVM supports two kind of premain methods:
+ * Java agents can do initialization work before the main method is invoked. This class supports
+ * registering such premain methods at native image build-time and invoking them at native image
+ * run-time.
+ *
+ * Two different kinds of premain methods are supported:
  * <ol>
  * <li>{@code public static void premain(String agentArgs, Instrumentation inst)}</li>
  * <li>{@code public static void premain(String agentArgs)}</li>
  * </ol>
- * For the first one, at registration time we will set the second parameter with an instance of
- * {@link NativeImageNoOpRuntimeInstrumentation} class which does not do any actual work as no
- * instrumentation can do in native code at runtime.
- * <p>
- * <b>Be noticed</b>, the original agent premain method may not work well at native image runtime
- * even if the input {@link Instrumentation} class is replaced with
- * {@link NativeImageNoOpRuntimeInstrumentation}.
- * </p>
- * <p>
- * It is the agent developers' responsibility to implement a native version of their agent premain
- * method. It can be implemented in two ways:
+ *
+ * For the first one, we set the second parameter to an instance of
+ * {@link NativeImageNoOpRuntimeInstrumentation} as instrumentation is not supported at run-time.
+ *
+ * <p/>
+ *
+ * <b>Please note:</b> unmodified premain methods may not work well with native image. It is the
+ * agent developers' responsibility to implement a native image-specific version of their premain
+ * method. Below are a few approaches how to determine if the premain method is executed by native
+ * image:
  * <ul>
- * <li>Isolate code by checking current runtime. For example: <code>
- *         <pre>
- *         if ("runtime".equals(System.getProperty("org.graalvm.nativeimage.imagecode"))) {
- *           // native image runtime
- *         } else{
- *           // JVM runtime
- *         }
- *         </pre>
- *     </code> Alternatively: Instead of directly getting property,
- * <code>ImageInfo.inImageRuntimeCode()</code> can also be used to check if current runtime is
- * native image runtime, but it requires extra dependency.</li>
- * <li>Use {@link com.oracle.svm.core.annotate.TargetClass} API to implement a native image version
- * premain.</li>
+ * <li>Check the system property {@code org.graalvm.nativeimage.imagecode}, e.g., if
+ * {@code "runtime".equals(System.getProperty("org.graalvm.nativeimage.imagecode"))} returns true,
+ * the code is executed by native image at run-time.</li>
+ * <li>Call {@link ImageInfo#inImageRuntimeCode}. However, note that this requires a dependency on
+ * the native image API.</li>
  * </ul>
- * </p>
+ *
+ * As a last resort, it is also possible to substitute a premain method with a native image-specific
+ * version.
  */
 public class PreMainSupport {
 
@@ -110,14 +104,17 @@ public class PreMainSupport {
     }
 
     /**
-     * Retrieve premain options from input args. Keep premain options and return the rest args as
-     * main args. Multiple agent options should be given in separated {@code -XX-premain:} leading
-     * arguments. The premain options format: <br>
-     * -XX-premain:[full.qualified.premain.class]:[premain options]
-     * -XX-premain:[full.qualified.premain.class2]:[premain options] <br>
+     * Retrieves the premain options and stores them internally. Returns the remaining arguments so
+     * that they can be passed to the Java main method. If multiple Java agents are used, a separate
+     * {@code -XXpremain:} argument needs to be specified for each agent, e.g.:
      *
-     * @param args original arguments for premain and main
-     * @return arguments for main class
+     * <pre>
+     * -XXpremain:[full.qualified.premain.class1]:[premain options]
+     * -XXpremain:[full.qualified.premain.class2]:[premain options]
+     * </pre>
+     *
+     * @param args arguments for premain and main
+     * @return arguments for the Java main method
      */
     public String[] retrievePremainArgs(String[] args) {
         if (args == null) {
@@ -127,7 +124,7 @@ public class PreMainSupport {
         for (String arg : args) {
             if (arg.startsWith(PREMAIN_OPTION_PREFIX)) {
                 String premainOptionKeyValue = arg.substring(PREMAIN_OPTION_PREFIX.length());
-                String[] pair = premainOptionKeyValue.split(":");
+                String[] pair = SubstrateUtil.split(premainOptionKeyValue, ":");
                 if (pair.length == 2) {
                     premainOptions.put(pair[0], pair[1]);
                 }
@@ -140,7 +137,6 @@ public class PreMainSupport {
 
     public void invokePremain() {
         for (PremainMethod premainMethod : premainMethods) {
-
             Object[] args = premainMethod.args;
             if (premainOptions.containsKey(premainMethod.className)) {
                 args[0] = premainOptions.get(premainMethod.className);
@@ -153,20 +149,16 @@ public class PreMainSupport {
                 if (t instanceof InvocationTargetException) {
                     cause = t.getCause();
                 }
-                VMError.shouldNotReachHere("Fail to execute " + premainMethod.className + ".premain", cause);
+                throw VMError.shouldNotReachHere("Failed to execute " + premainMethod.className + ".premain", cause);
             }
         }
     }
 
     /**
-     * This class is a dummy implementation of {@link Instrumentation} interface. It serves as the
-     * registered premain method's second parameter. At native image runtime, no actual
-     * instrumentation work can do. So all the methods here are empty.
+     * At native image run-time, instrumentation is not possible. So, most operations either throw
+     * an error or are no-ops.
      */
     public static class NativeImageNoOpRuntimeInstrumentation implements Instrumentation {
-
-        private static final Set<String> systemModules = Set.of("org.graalvm.nativeimage.builder", "org.graalvm.nativeimage", "org.graalvm.nativeimage.base", "com.oracle.svm.svm_enterprise",
-                        "org.graalvm.word", "jdk.internal.vm.ci", "jdk.graal.compiler", "com.oracle.graal.graal_enterprise");
 
         @Override
         public void addTransformer(ClassFileTransformer transformer, boolean canRetransform) {
@@ -209,28 +201,17 @@ public class PreMainSupport {
         @Override
         public Class<?>[] getAllLoadedClasses() {
             ArrayList<Class<?>> userClasses = new ArrayList<>();
-            CodeInfo imageCodeInfo = CodeInfoTable.getFirstImageCodeInfo();
-            while (imageCodeInfo.isNonNull()) {
-                Class<?>[] classes = NonmovableArrays.heapCopyOfObjectArray(CodeInfoAccess.getClasses(imageCodeInfo));
-                if (classes != null) {
-                    for (Class<?> clazz : classes) {
-                        if (clazz != null) {
-                            Module module = clazz.getModule();
-                            if (module == null ||
-                                            module.getName() == null ||
-                                            !isSystemClass(module)) {
-                                userClasses.add(clazz);
-                            }
-                        }
-                    }
+            Heap.getHeap().visitLoadedClasses(clazz -> {
+                Module module = clazz.getModule();
+                if (module == null || module.getName() == null || !isSystemClass(module)) {
+                    userClasses.add(clazz);
                 }
-                imageCodeInfo = CodeInfoAccess.getNextImageCodeInfo(imageCodeInfo);
-            }
+            });
             return userClasses.toArray(new Class<?>[0]);
         }
 
         private static boolean isSystemClass(Module module) {
-            return systemModules.contains(module.getName());
+            return ModuleSupport.SYSTEM_MODULES.contains(module.getName());
         }
 
         @Override

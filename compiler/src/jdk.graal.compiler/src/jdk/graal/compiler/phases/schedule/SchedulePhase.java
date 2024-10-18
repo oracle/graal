@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -603,9 +603,24 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
 
             unprocessed.clear(n);
 
-            for (Node input : n.inputs()) {
-                if (nodeMap.get(input) == b && unprocessed.isMarked(input) && input != excludeNode) {
-                    sortIntoList(input, b, result, nodeMap, unprocessed, excludeNode);
+            /*
+             * Schedule all unprocessed transitive inputs. This uses an explicit stack instead of
+             * recursion to avoid overflowing the call stack.
+             */
+            NodeStack stack = new NodeStack();
+            ArrayList<Node> tempList = new ArrayList<>();
+            stack.push(n);
+            while (!stack.isEmpty()) {
+                Node top = stack.peek();
+                pushUnprocessedInputs(top, b, nodeMap, unprocessed, excludeNode, stack, tempList);
+                if (stack.peek() == top) {
+                    if (top != n) {
+                        if (unprocessed.isMarked(top) && !(top instanceof ProxyNode)) {
+                            result.add(top);
+                        }
+                        unprocessed.clear(top);
+                    }
+                    stack.pop();
                 }
             }
 
@@ -614,7 +629,24 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             } else {
                 result.add(n);
             }
+        }
 
+        private static void pushUnprocessedInputs(Node n, HIRBlock b, NodeMap<HIRBlock> nodeMap, NodeBitMap unprocessed, Node excludeNode, NodeStack stack, ArrayList<Node> tempList) {
+            tempList.clear();
+            n.inputs().snapshotTo(tempList);
+            /*
+             * Nodes on top of the stack are scheduled first. Pushing inputs left to right would
+             * therefore mean scheduling them right to left. We observe the best performance when
+             * scheduling inputs left to right, therefore we push them in reverse order. We could
+             * explore more elaborate scheduling policies, like scheduling for reduced register
+             * pressure using Sethi-Ullman numbering (GR-34624).
+             */
+            for (int i = tempList.size() - 1; i >= 0; i--) {
+                Node input = tempList.get(i);
+                if (nodeMap.get(input) == b && unprocessed.isMarked(input) && input != excludeNode && !(input instanceof PhiNode)) {
+                    stack.push(input);
+                }
+            }
         }
 
         protected void calcLatestBlock(HIRBlock earliestBlock, SchedulingStrategy strategy, Node currentNode, NodeMap<HIRBlock> currentNodeMap, LocationIdentity constrainingLocation,

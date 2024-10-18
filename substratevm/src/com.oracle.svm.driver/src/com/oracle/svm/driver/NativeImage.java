@@ -46,11 +46,11 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
@@ -272,6 +272,7 @@ public class NativeImage {
 
     final Map<String, String> imageBuilderEnvironment = new HashMap<>();
     private final ArrayList<String> imageBuilderArgs = new ArrayList<>();
+    private final Set<String> imageBuilderUniqueLeftoverArgs = Collections.newSetFromMap(new IdentityHashMap<>());
     private final LinkedHashSet<Path> imageBuilderModulePath = new LinkedHashSet<>();
     private final LinkedHashSet<Path> imageBuilderClasspath = new LinkedHashSet<>();
     private final LinkedHashSet<Path> imageProvidedJars = new LinkedHashSet<>();
@@ -1124,7 +1125,7 @@ public class NativeImage {
     }
 
     private int completeImageBuild() {
-        List<String> leftoverArgs = processNativeImageArgs();
+        processNativeImageArgs();
         apiOptionHandler.validateExperimentalOptions();
 
         config.getBuilderClasspath().forEach(this::addImageBuilderClasspath);
@@ -1220,7 +1221,8 @@ public class NativeImage {
 
         imageBuilderJavaArgs.addAll(getAgentArguments());
 
-        mainClass = getHostedOptionArgumentValue(imageBuilderArgs, oHClass);
+        Optional<ArgumentEntry> lastMainClass = getHostedOptionArgument(imageBuilderArgs, oHClass);
+        mainClass = lastMainClass.map(ArgumentEntry::value).orElse(null);
         buildExecutable = imageBuilderArgs.stream().noneMatch(arg -> arg.startsWith(oHEnableSharedLibraryFlagPrefix) || arg.startsWith(oHEnableImageLayerFlagPrefix));
         staticExecutable = imageBuilderArgs.stream().anyMatch(arg -> arg.contains(oHEnableStaticExecutable));
         boolean listModules = imageBuilderArgs.stream().anyMatch(arg -> arg.contains(oH + "+" + "ListModules"));
@@ -1230,21 +1232,18 @@ public class NativeImage {
             /* Ensure name for bundle support */
             addPlainImageBuilderArg(oHName + "dummy-image");
         } else {
-            List<String> extraImageArgs = new ArrayList<>();
-            ListIterator<String> leftoverArgsItr = leftoverArgs.listIterator();
-            while (leftoverArgsItr.hasNext()) {
-                String leftoverArg = leftoverArgsItr.next();
-                if (!leftoverArg.startsWith("-")) {
-                    leftoverArgsItr.remove();
-                    extraImageArgs.add(leftoverArg);
+            List<ArgumentEntry> extraImageArgs = new ArrayList<>();
+            for (int i = 0, imageBuilderArgsSize = imageBuilderArgs.size(); i < imageBuilderArgsSize; i++) {
+                String builderArg = imageBuilderArgs.get(i);
+                if (imageBuilderUniqueLeftoverArgs.contains(builderArg)) {
+                    extraImageArgs.add(new ArgumentEntry(i, builderArg));
                 }
             }
 
-            if (!jarOptionMode) {
-                /* Main-class from customImageBuilderArgs counts as explicitMainClass */
-                boolean explicitMainClass = getHostedOptionArgumentValue(imageBuilderArgs, oHClass) != null;
-                mainClassModule = getHostedOptionArgumentValue(imageBuilderArgs, oHModule);
+            Optional<ArgumentEntry> lastImageName = getHostedOptionArgument(imageBuilderArgs, oHName);
 
+            if (!jarOptionMode) {
+                mainClassModule = getHostedOptionArgumentValue(imageBuilderArgs, oHModule);
                 boolean hasMainClassModule = mainClassModule != null && !mainClassModule.isEmpty();
                 boolean hasMainClass = mainClass != null && !mainClass.isEmpty();
                 if (extraImageArgs.isEmpty()) {
@@ -1254,18 +1253,22 @@ public class NativeImage {
                     }
                 } else if (!moduleOptionMode) {
                     /* extraImageArgs main-class overrules previous main-class specification */
-                    explicitMainClass = true;
-                    mainClass = extraImageArgs.remove(0);
-                    imageBuilderArgs.add(oH(SubstrateOptions.Class, "explicit main-class") + mainClass);
+                    ArgumentEntry extraMainClass = extraImageArgs.removeFirst();
+                    boolean extraMainClassIsLast = lastMainClass.isEmpty() || lastMainClass.get().index < extraMainClass.index;
+                    if (extraMainClassIsLast) {
+                        hasMainClass = true;
+                        mainClass = extraMainClass.value;
+                        imageBuilderArgs.add(oH(SubstrateOptions.Class, "explicit main-class") + mainClass);
+                    }
                 }
 
                 if (extraImageArgs.isEmpty()) {
                     /* No explicit image name, define image name by other means */
-                    if (getHostedOptionArgumentValue(imageBuilderArgs, oHName) == null) {
+                    if (lastImageName.isEmpty()) {
                         /* Also no explicit image name given as customImageBuilderArgs */
-                        if (explicitMainClass) {
+                        if (hasMainClass) {
                             imageBuilderArgs.add(oH(SubstrateOptions.Name, "main-class lower case as image name") + mainClass.toLowerCase(Locale.ROOT));
-                        } else if (getHostedOptionArgumentValue(imageBuilderArgs, oHName) == null) {
+                        } else {
                             if (hasMainClassModule) {
                                 imageBuilderArgs.add(oH(SubstrateOptions.Name, "image-name from module-name") + mainClassModule.toLowerCase(Locale.ROOT));
                             } else if (!listModules) {
@@ -1275,19 +1278,31 @@ public class NativeImage {
                         }
                     }
                 } else {
-                    /* extraImageArgs executable name overrules previous specification */
-                    imageBuilderArgs.add(oH(SubstrateOptions.Name, "explicit image name") + extraImageArgs.remove(0));
+                    ArgumentEntry extraImageName = extraImageArgs.removeFirst();
+                    boolean extraNameIsLast = lastImageName.isEmpty() || lastImageName.get().index < extraImageName.index;
+                    if (extraNameIsLast) {
+                        /* extraImageArg that comes after lastImageName wins */
+                        imageBuilderArgs.add(oH(SubstrateOptions.Name, "explicit image name") + extraImageName.value);
+                    }
                 }
-            } else {
+            } else { /* jarOptionMode */
                 if (!extraImageArgs.isEmpty()) {
-                    /* extraImageArgs library name overrules previous specification */
-                    imageBuilderArgs.add(oH(SubstrateOptions.Name, "explicit image name") + extraImageArgs.remove(0));
+                    ArgumentEntry extraImageName = extraImageArgs.removeFirst();
+                    boolean extraNameIsLast = lastImageName.isEmpty() || lastImageName.get().index < extraImageName.index;
+                    if (extraNameIsLast) {
+                        /* extraImageArg that comes after lastImageName wins */
+                        imageBuilderArgs.add(oH(SubstrateOptions.Name, "explicit image name") + extraImageName.value);
+                    }
                 }
             }
 
             if (!extraImageArgs.isEmpty()) {
-                showError("Unknown argument(s): " + StringUtil.joinSingleQuoted(extraImageArgs));
+                showError("Unrecognized option(s): " + StringUtil.joinSingleQuoted(extraImageArgs.stream().map(ArgumentEntry::value).toList()));
             }
+
+            /* Remove consumed extraImageArgs from imageBuilderArgs */
+            imageBuilderArgs.removeIf(imageBuilderUniqueLeftoverArgs::contains);
+            imageBuilderUniqueLeftoverArgs.clear();
         }
 
         ArgumentEntry imageNameEntry = getHostedOptionArgument(imageBuilderArgs, oHName).orElseThrow();
@@ -1341,10 +1356,6 @@ public class NativeImage {
             imageBuildID = SubstrateUtil.getUUIDFromString(value).toString();
         }
         addPlainImageBuilderArg(oH(SubstrateOptions.ImageBuildID, OptionOrigin.originDriver) + imageBuildID);
-
-        if (!leftoverArgs.isEmpty()) {
-            showError("Unrecognized option(s): " + StringUtil.joinSingleQuoted(leftoverArgs));
-        }
 
         LinkedHashSet<Path> finalImageModulePath = new LinkedHashSet<>(imageModulePath);
         LinkedHashSet<Path> finalImageClasspath = new LinkedHashSet<>(imageClasspath);
@@ -1406,7 +1417,7 @@ public class NativeImage {
 
     private static Optional<ArgumentEntry> getHostedOptionArgument(List<String> args, String argPrefix) {
         List<ArgumentEntry> values = getHostedOptionArgumentValues(args, argPrefix);
-        return values.isEmpty() ? Optional.empty() : Optional.of(values.get(values.size() - 1));
+        return values.isEmpty() ? Optional.empty() : Optional.of(values.getLast());
     }
 
     private static List<ArgumentEntry> getHostedOptionArgumentValues(List<String> args, String argPrefix) {
@@ -2026,6 +2037,7 @@ public class NativeImage {
     }
 
     class NativeImageArgsProcessor implements Consumer<String> {
+
         private final ArgumentQueue args;
 
         NativeImageArgsProcessor(String argumentOrigin) {
@@ -2037,7 +2049,7 @@ public class NativeImage {
             args.add(arg);
         }
 
-        List<String> apply(boolean strict) {
+        void apply(boolean strict) {
 
             ArgumentQueue queue = new ArgumentQueue(args.argumentOrigin);
             while (!args.isEmpty()) {
@@ -2051,11 +2063,9 @@ public class NativeImage {
 
             apiOptionHandler.ensureConsistentUnlockScopes(queue);
 
-            List<String> leftoverArgs = new ArrayList<>();
             while (!queue.isEmpty()) {
                 boolean consumed = false;
-                for (int index = optionHandlers.size() - 1; index >= 0; --index) {
-                    OptionHandler<? extends NativeImage> handler = optionHandlers.get(index);
+                for (OptionHandler<? extends NativeImage> handler : optionHandlers.reversed()) {
                     int numArgs = queue.size();
                     if (handler.consume(queue)) {
                         assert queue.size() < numArgs : "OptionHandler pretends to consume argument(s) but isn't: " + handler.getClass().getName();
@@ -2067,12 +2077,15 @@ public class NativeImage {
                     if (strict) {
                         showError("Property 'Args' contains invalid entry '" + queue.peek() + "'");
                     } else {
-                        leftoverArgs.add(queue.poll());
+                        /* Ensure unique object identity for leftover arg */
+                        String uniqueLeftoverArg = new String(queue.poll());
+                        /* Remember this exact leftover by adding to IdentityHashSet */
+                        imageBuilderUniqueLeftoverArgs.add(uniqueLeftoverArg);
+                        /* Insert leftover into imageBuilderArgs for further processing */
+                        imageBuilderArgs.add(uniqueLeftoverArg);
                     }
                 }
             }
-
-            return leftoverArgs;
         }
     }
 
@@ -2390,12 +2403,12 @@ public class NativeImage {
         }
     }
 
-    private List<String> processNativeImageArgs() {
+    private void processNativeImageArgs() {
         NativeImageArgsProcessor argsProcessor = new NativeImageArgsProcessor(OptionOrigin.originUser);
         for (String arg : getNativeImageArgs()) {
             argsProcessor.accept(arg);
         }
-        return argsProcessor.apply(false);
+        argsProcessor.apply(false);
     }
 
     List<String> getNativeImageArgs() {

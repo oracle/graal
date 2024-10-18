@@ -24,6 +24,9 @@
  */
 package jdk.graal.compiler.truffle.test;
 
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
@@ -709,7 +712,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         FixedIterationLoopLongTargetLoopBadOverload1 osrNode = new FixedIterationLoopLongTargetLoopBadOverload1(frameBuilder);
         RootNode rootNode = new Program(osrNode, frameBuilder.build());
         OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
-        Assert.assertThrows("long target used without implementing long overload of prepareOSR", AssertionError.class, () -> target.call(OSR_THRESHOLD + 1));
+        assertThrowsWithMessage("long target used without implementing long overload of prepareOSR", AssertionError.class, () -> target.call(OSR_THRESHOLD + 1));
     }
 
     @Test
@@ -718,7 +721,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         FixedIterationLoopLongTargetLoopBadOverload2 osrNode = new FixedIterationLoopLongTargetLoopBadOverload2(frameBuilder);
         RootNode rootNode = new Program(osrNode, frameBuilder.build());
         OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
-        Assert.assertThrows("long target used without implementing long overload of copyIntoOSRFrame", AssertionError.class, () -> target.call(OSR_THRESHOLD + 1));
+        assertThrowsWithMessage("long target used without implementing long overload of copyIntoOSRFrame", AssertionError.class, () -> target.call(OSR_THRESHOLD + 1));
     }
 
     @Test
@@ -727,7 +730,18 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         FixedIterationLoopLongTargetLoopBadOverload3 osrNode = new FixedIterationLoopLongTargetLoopBadOverload3(frameBuilder);
         RootNode rootNode = new Program(osrNode, frameBuilder.build());
         OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
-        Assert.assertThrows("long target used without implementing long overload of executeOSR", AssertionError.class, () -> target.call(OSR_THRESHOLD + 1));
+        assertThrowsWithMessage("long target used without implementing long overload of executeOSR", AssertionError.class, () -> target.call(OSR_THRESHOLD + 1));
+    }
+
+    private static void assertThrowsWithMessage(String errorMessage, Class<?> expectedThrowable, Runnable runnable) {
+        try {
+            runnable.run();
+        } catch (Throwable t) {
+            assertTrue(expectedThrowable.isInstance(t));
+            assertTrue(t.getMessage().contains(errorMessage));
+            return;
+        }
+        fail("No exception was thrown.");
     }
 
     public static class Program extends RootNode {

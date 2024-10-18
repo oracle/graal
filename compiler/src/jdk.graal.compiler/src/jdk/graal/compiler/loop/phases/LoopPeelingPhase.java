@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -64,13 +64,16 @@ public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
         return NotApplicable.ifAny(
                         super.notApplicableTo(graphState),
                         // keep in sync with stateAllowsPeeling()
+                        NotApplicable.unlessRunAfter(this, StageFlag.LOOP_OVERFLOWS_CHECKED, graphState),
                         NotApplicable.unlessRunBefore(this, StageFlag.FSA, graphState),
                         NotApplicable.unlessRunBefore(this, StageFlag.VALUE_PROXY_REMOVAL, graphState));
     }
 
     private static boolean stateAllowsPeeling(GraphState graphState) {
         // keep in sync with notApplicableTo()
-        return graphState.isBeforeStage(StageFlag.FSA) && graphState.isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL);
+        return graphState.isAfterStage(StageFlag.LOOP_OVERFLOWS_CHECKED) &&
+                        graphState.isBeforeStage(StageFlag.FSA) &&
+                        graphState.isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL);
     }
 
     @Override

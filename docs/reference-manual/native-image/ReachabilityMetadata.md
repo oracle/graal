@@ -23,8 +23,8 @@ Providing the builder with correct and exhaustive reachability metadata guarante
 
 Metadata can be provided to the `native-image` builder in the following ways:
 - By [computing metadata in code](#computing-metadata-in-code) [when the native binary is built](NativeImageBasics.md#image-build-time-vs-image-run-time) and storing required elements into the [initial heap of the native binary](NativeImageBasics.md#native-image-heap).
-- By [providing the _reachability-metadata.json_ file(s)](#specifying-metadata-with-json) stored in the _META-INF/native-image/\<groupId>\/\<artifactId>\/_ directory on the classpath. For more information about how to collect metadata for your application automatically, see [Collecting Metadata Automatically](AutomaticMetadataCollection.md).
-- For more advanced use cases, where classpath scanning or build-time initialization is needed, by using the [Native Image Feature API](https://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/hosted/Feature.html).
+- By [providing the _reachability-metadata.json_ file(s)](#specifying-metadata-with-json) stored in the _META-INF/native-image/\<group.Id>\/\<artifactId>\/_ directory on the classpath. For more information about how to collect metadata for your application automatically, see [Collecting Metadata Automatically](AutomaticMetadataCollection.md).
+- For more advanced use cases, where classpath scanning or build-time initialization is needed, by using the [public API](#public-api).
 
 > Note: Native Image is migrating to the more user-friendly implementation of reachability metadata that shows problems early on and allows easy debugging.
 >
@@ -94,10 +94,10 @@ Computing metadata in code can be achieved in two ways:
      Note that Native Image currently aggressively computes constants, and therefore it is not possible to specify exactly what is a constant at build time.
 
 2. By [initializing classes at build time](ClassInitialization.md) and storing dynamically accessed elements into the initial heap of the native executable. 
-   This way of providing metadata is suited for cases when specifying metadata with constants or in JSON is not possible.
-   This is necessary in cases when: 
-     * The user code needs to generate new class bytecode.
-     * The user code needs to traverse the classpath to compute the dynamically accessed program elements necessary for the application.
+   This way of providing metadata is suited for cases when specifying metadata with constants or in JSON is not possible. 
+   This is necessary in cases when:
+   * The user code needs to generate new class bytecode.
+   * The user code needs to traverse the classpath to compute the dynamically accessed program elements necessary for the application.
    
    In the following example:
 
@@ -122,7 +122,7 @@ Computing metadata in code can be achieved in two ways:
 
 ## Specifying Metadata with JSON
 
-All metadata specified in the _reachability-metadata.json_ file that is located in any of the classpath entries at _META-INF/native-image/\<groupId>\/\<artifactId>\/_.
+All metadata specified in the _reachability-metadata.json_ file that is located in any of the classpath entries at _META-INF/native-image/\<group.Id>\/\<artifactId>\/_.
 The JSON schema for the reachability metadata is defined in [reachability-metadata-schema-v1.0.0.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/reachability-metadata-schema-v1.0.0.json).
 
 A sample _reachability-metadata.json_ file can be found [in the sample section](#sample-reachability-metadata).

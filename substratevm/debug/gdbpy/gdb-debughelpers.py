@@ -100,8 +100,8 @@ class SVMUtil:
     compressed_ref_prefix = '_z_.'
 
     use_heap_base = try_or_else(lambda: bool(gdb.parse_and_eval('(int)__svm_use_heap_base')), True, gdb.error)
-    compressed_shift = try_or_else(lambda: int(gdb.parse_and_eval('(int)__svm_compressed_shift')), 0, gdb.error)
-    oop_tags_mask = try_or_else(lambda: int(gdb.parse_and_eval('(int)__svm_oop_tags_mask')), 0, gdb.error)
+    compression_shift = try_or_else(lambda: int(gdb.parse_and_eval('(int)__svm_compression_shift')), 0, gdb.error)
+    reserved_bits_mask = try_or_else(lambda: int(gdb.parse_and_eval('(int)__svm_reserved_bits_mask')), 0, gdb.error)
     object_alignment = try_or_else(lambda: int(gdb.parse_and_eval('(int)__svm_object_alignment')), 0, gdb.error)
 
     string_type = gdb.lookup_type("java.lang.String")
@@ -190,31 +190,34 @@ class SVMUtil:
         return gdb.lookup_type(type_name)
 
     @classmethod
-    def get_compressed_adr(cls, obj: gdb.Value) -> int:
+    def get_compressed_oop(cls, obj: gdb.Value) -> int:
         # use compressed ref if available - only compute it if necessary
         if obj.type.code == gdb.TYPE_CODE_PTR and cls.is_compressed(obj.type):
             return int(obj)
 
-        absolute_adr = adr(obj)
-        if absolute_adr == 0:
-            return absolute_adr
+        obj_adr = adr(obj)
+        if obj_adr == 0:
+            return obj_adr
 
-        # recreate correct address for compressed oops
-        # For an explanation of the conversion rules see com.oracle.svm.core.heap.ReferenceAccess
+        # recreate compressed oop from the object address
+        # this reverses the uncompress expression from
+        # com.oracle.objectfile.elf.dwarf.DwarfInfoSectionImpl#writeIndirectOopConversionExpression
         is_hub = cls.get_rtt(obj) == cls.hub_type
-        oop_compressed_shift = cls.compressed_shift
-        oop_tag_shift = int.bit_count(cls.oop_tags_mask)
-        oop_align_shift = int.bit_count(cls.object_alignment - 1)
-        compressed_adr = absolute_adr
+        compression_shift = cls.compression_shift
+        num_reserved_bits = int.bit_count(cls.reserved_bits_mask)
+        num_alignment_bits = int.bit_count(cls.object_alignment - 1)
+        compressed_oop = obj_adr
         if cls.use_heap_base:
-            compressed_adr -= int(SVMUtil.get_heap_base())
-            if is_hub:
-                if oop_compressed_shift == 0:
-                    oop_compressed_shift = oop_align_shift
-                compressed_adr = compressed_adr << oop_tag_shift
-            compressed_adr = compressed_adr >> oop_compressed_shift
+            compressed_oop -= int(SVMUtil.get_heap_base())
+            assert compression_shift >= 0
+            compressed_oop = compressed_oop >> compression_shift
+        if is_hub:
+            assert num_alignment_bits >= 0
+            compressed_oop = compressed_oop << num_alignment_bits
+            assert num_reserved_bits >= 0
+            compressed_oop = compressed_oop >> num_reserved_bits
 
-        return compressed_adr
+        return compressed_oop
 
     @classmethod
     def get_unqualified_type_name(cls, qualified_type_name: str) -> str:
@@ -237,7 +240,7 @@ class SVMUtil:
     @classmethod
     def adr_str(cls, obj: gdb.Value) -> str:
         if not svm_print_address.absolute_adr and cls.is_compressed(obj.type):
-            result = f' @z({hex(cls.get_compressed_adr(obj))})'
+            result = f' @z({hex(cls.get_compressed_oop(obj))})'
         else:
             result = f' @({hex(adr(obj))})'
         trace(f'<SVMUtil> - adr_str({hex(adr(obj))}) = {result}')
@@ -440,9 +443,9 @@ class SVMUtil:
 
         # get objects address, take care of compressed oops
         if cls.is_compressed(t):
-            obj_adr = cls.get_compressed_adr(obj)
+            obj_oop = cls.get_compressed_oop(obj)
         else:
-            obj_adr = adr(obj)
+            obj_oop = adr(obj)
 
         trace(f'<SVMUtil> - cast_to({hex(adr(obj))}, {t})')
         if t.code != gdb.TYPE_CODE_PTR:
@@ -451,7 +454,7 @@ class SVMUtil:
         trace(f'<SVMUtil> - cast_to({hex(adr(obj))}, {t}) returned')
         # just use the raw pointer value and cast it instead the obj
         # casting the obj directly results in issues with compressed oops
-        return obj if t == obj.type else gdb.Value(obj_adr).cast(t)
+        return obj if t == obj.type else gdb.Value(obj_oop).cast(t)
 
     @classmethod
     def get_symbol_adr(cls, symbol: str) -> int:
@@ -1236,8 +1239,8 @@ class SVMCommandPrint(gdb.Command):
         if static_type.name == rtt.name:
             return obj, obj_str
         else:
-            obj_adr = SVMUtil.get_compressed_adr(obj) if SVMUtil.is_compressed(rtt) else adr(obj)
-            return obj, f"(('{rtt.name}' *)({obj_adr}))"
+            obj_oop = SVMUtil.get_compressed_oop(obj) if SVMUtil.is_compressed(rtt) else adr(obj)
+            return obj, f"(('{rtt.name}' *)({obj_oop}))"
 
     # Define the token specifications
     token_specification = [

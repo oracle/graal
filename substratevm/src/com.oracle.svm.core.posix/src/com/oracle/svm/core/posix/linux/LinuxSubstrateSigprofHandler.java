@@ -87,7 +87,7 @@ public final class LinuxSubstrateSigprofHandler extends PosixSubstrateSigprofHan
 
         Signal.sigevent sigevent = StackValue.get(Signal.sigevent.class);
         sigevent.sigev_notify(Signal.SIGEV_SIGNAL());
-        sigevent.sigev_signo(Signal.SIGPROF());
+        sigevent.sigev_signo(Signal.SignalEnum.SIGPROF.getCValue());
         WordPointer timerPointer = StackValue.get(WordPointer.class);
         timerPointer.write(WordFactory.zero());
 

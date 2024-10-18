@@ -100,7 +100,9 @@ import jdk.graal.compiler.asm.amd64.AMD64Assembler.SSEMROp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.SSEOp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexFloatCompareOp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexGeneralPurposeRMOp;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexGeneralPurposeRMVOp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexGeneralPurposeRVMOp;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMIOp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMROp;
 import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler;
@@ -149,6 +151,7 @@ import jdk.graal.compiler.lir.amd64.AMD64Ternary;
 import jdk.graal.compiler.lir.amd64.AMD64Unary;
 import jdk.graal.compiler.lir.amd64.vector.AMD64VectorBinary;
 import jdk.graal.compiler.lir.amd64.vector.AMD64VectorBinary.AVXBinaryConstFloatOp;
+import jdk.graal.compiler.lir.amd64.vector.AMD64VectorBinary.AVXBinaryConstOp;
 import jdk.graal.compiler.lir.amd64.vector.AMD64VectorBinary.AVXBinaryOp;
 import jdk.graal.compiler.lir.amd64.vector.AMD64VectorBlend;
 import jdk.graal.compiler.lir.amd64.vector.AMD64VectorFloatCompareOp;
@@ -738,17 +741,42 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         if (isJavaConstant(b)) {
             return emitShiftConst(op, size, a, asJavaConstant(b));
         }
+
         Variable result = getLIRGen().newVariable(LIRKind.combine(a, b).changeType(a.getPlatformKind()));
-        AllocatableValue input = asAllocatable(a);
+        if (supportBMI2()) {
+            VexGeneralPurposeRMVOp bmiOp = null;
+            if (op == SHL) {
+                bmiOp = VexGeneralPurposeRMVOp.SHLX;
+            } else if (op == SHR) {
+                bmiOp = VexGeneralPurposeRMVOp.SHRX;
+            } else if (op == SAR) {
+                bmiOp = VexGeneralPurposeRMVOp.SARX;
+            }
+
+            if (bmiOp != null) {
+                getLIRGen().append(new AVXBinaryOp(bmiOp, size == DWORD ? AVXSize.DWORD : AVXSize.QWORD, result, asAllocatable(a), asAllocatable(b)));
+                return result;
+            }
+        }
+
         getLIRGen().emitMove(RCX_I, b);
-        getLIRGen().append(new AMD64ShiftOp(op.mcOp, size, result, input, RCX_I));
+        getLIRGen().append(new AMD64ShiftOp(op.mcOp, size, result, asAllocatable(a), RCX_I));
         return result;
     }
 
     public Variable emitShiftConst(AMD64Shift op, OperandSize size, Value a, JavaConstant b) {
         Variable result = getLIRGen().newVariable(LIRKind.combine(a).changeType(a.getPlatformKind()));
         AllocatableValue input = asAllocatable(a);
-        if (b.asLong() == 1) {
+        int shiftCount = (int) b.asLong();
+        int width = size.getBytes() * Byte.SIZE;
+        shiftCount &= (width - 1);
+        if (supportBMI2() && (op == ROL || op == ROR)) {
+            if (op == ROL) {
+                shiftCount = (width - shiftCount) & (width - 1);
+            }
+            VexRMIOp bmiOp = size == DWORD ? VexRMIOp.RORXL : VexRMIOp.RORXQ;
+            getLIRGen().append(new AVXBinaryConstOp(bmiOp, AVXSize.XMM, result, input, shiftCount));
+        } else if (shiftCount == 1) {
             getLIRGen().append(new AMD64Unary.MOp(op.m1Op, size, result, input));
         } else {
             /*
@@ -1546,6 +1574,11 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         Variable result = getLIRGen().newVariable(LIRKind.value(AMD64Kind.DWORD));
         getLIRGen().append(new AMD64VectorUnary.FloatPointClassTestOp(getLIRGen(), kind == AMD64Kind.DOUBLE ? OperandSize.SD : OperandSize.SS, POS_INF | NEG_INF, result, asAllocatable(input)));
         return result;
+    }
+
+    public boolean supportBMI2() {
+        TargetDescription target = getLIRGen().target();
+        return ((AMD64) target.arch).getFeatures().contains(CPUFeature.BMI2);
     }
 
     public boolean supportAVX() {

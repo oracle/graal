@@ -98,7 +98,7 @@ public class AnalysisUniverse implements Universe {
     private boolean sealed;
 
     private volatile AnalysisType[] typesById = new AnalysisType[ESTIMATED_NUMBER_OF_TYPES];
-    final AtomicInteger nextTypeId = new AtomicInteger();
+    final AtomicInteger nextTypeId = new AtomicInteger(1);
     final AtomicInteger nextMethodId = new AtomicInteger(1);
     final AtomicInteger nextFieldId = new AtomicInteger(1);
 
@@ -835,7 +835,7 @@ public class AnalysisUniverse implements Universe {
         /* No type was created yet, so the array can be overwritten without any concurrency issue */
         typesById = new AnalysisType[startTid];
 
-        setStartId(nextTypeId, startTid, 0);
+        setStartId(nextTypeId, startTid, 1);
     }
 
     public void setStartMethodId(int startMid) {

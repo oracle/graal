@@ -79,7 +79,7 @@ public final class LocationStackFrame {
         return method == null ? null : method.toString(Builder.Length.M);
     }
 
-    BinaryReader.Method getMethod() {
+    public BinaryReader.Method getMethod() {
         return method;
     }
 

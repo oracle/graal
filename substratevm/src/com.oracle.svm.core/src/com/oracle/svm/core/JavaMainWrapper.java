@@ -166,9 +166,13 @@ public class JavaMainWrapper {
     }
 
     public static void invokeMain(String[] args) throws Throwable {
-        PreMainSupport preMainSupport = ImageSingletons.lookup(PreMainSupport.class);
-        String[] mainArgs = preMainSupport.retrievePremainArgs(args);
-        preMainSupport.invokePremain();
+        String[] mainArgs = args;
+        if (ImageSingletons.contains(PreMainSupport.class)) {
+            PreMainSupport preMainSupport = ImageSingletons.lookup(PreMainSupport.class);
+            mainArgs = preMainSupport.retrievePremainArgs(args);
+            preMainSupport.invokePremain();
+        }
+
         JavaMainSupport javaMainSupport = ImageSingletons.lookup(JavaMainSupport.class);
         if (javaMainSupport.mainNonstatic) {
             Object instance = javaMainSupport.javaMainClassCtorHandle.invoke();
@@ -181,6 +185,7 @@ public class JavaMainWrapper {
             if (javaMainSupport.mainWithoutArgs) {
                 javaMainSupport.javaMainHandle.invokeExact();
             } else {
+                /* We really need to pass a String[] without any casting. */
                 javaMainSupport.javaMainHandle.invokeExact(mainArgs);
             }
         }

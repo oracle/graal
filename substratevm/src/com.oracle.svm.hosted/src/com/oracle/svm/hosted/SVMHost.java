@@ -1078,13 +1078,4 @@ public class SVMHost extends HostVM {
     public SimulateClassInitializerSupport createSimulateClassInitializerSupport(AnalysisMetaAccess aMetaAccess) {
         return new SimulateClassInitializerSupport(aMetaAccess, this);
     }
-
-    @Override
-    public Set<AnalysisMethod> loadOpenTypeWorldDispatchTableMethods(AnalysisType type) {
-        /*
-         * Will be enabled as part of GR-57248
-         */
-        // return OpenTypeWorldFeature.loadDispatchTable(type);
-        return Set.of();
-    }
 }

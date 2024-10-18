@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -47,17 +47,17 @@ public interface DebugInfoProvider {
     /**
      * Number of bits oops are left shifted by when using compressed oops.
      */
-    int oopCompressShift();
+    int compressionShift();
 
     /**
      * Mask selecting low order bits used for tagging oops.
      */
-    int oopTagsMask();
+    int reservedBitsMask();
 
     /**
      * Number of bytes used to store an oop reference.
      */
-    int oopReferenceSize();
+    int referenceSize();
 
     /**
      * Number of bytes used to store a raw pointer.
@@ -67,7 +67,7 @@ public interface DebugInfoProvider {
     /**
      * Alignment of object memory area (and, therefore, of any oop) in bytes.
      */
-    int oopAlignment();
+    int objectAlignment();
 
     int compiledCodeMax();
 

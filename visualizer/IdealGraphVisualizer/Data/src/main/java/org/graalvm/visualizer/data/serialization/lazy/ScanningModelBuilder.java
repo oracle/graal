@@ -280,20 +280,20 @@ public class ScanningModelBuilder extends LazyModelBuilder {
     }
 
     @Override
-    public InputEdge immutableEdge(char fromIndex, char toIndex, int from, int to, String label, String type) {
+    public InputEdge immutableEdge(char fromIndex, char toIndex, int from, int to, int listIndex, String label, String type) {
         return null;
     }
 
     @Override
     public void successorEdge(Port p, int from, int to, char num, int index) {
-        if (scanGraph) {
+        if (scanGraph && from >= 0) {
             entry.getGraphMeta().addEdge(from, to);
         }
     }
 
     @Override
     public void inputEdge(Port p, int from, int to, char num, int index) {
-        if (scanGraph) {
+        if (scanGraph && from >= 0) {
             entry.getGraphMeta().addEdge(from, to);
         }
     }

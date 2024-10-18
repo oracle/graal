@@ -36,7 +36,6 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
-import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.util.VMError;
@@ -135,7 +134,7 @@ public class Isolates {
     }
 
     @Uninterruptible(reason = "Thread state not yet set up.")
-    public static int create(WordPointer isolatePointer, CEntryPointCreateIsolateParameters parameters) {
+    public static int create(WordPointer isolatePointer, IsolateArguments arguments) {
         if (!SubstrateOptions.SpawnIsolates.getValue()) {
             if (!SINGLE_ISOLATE_ALREADY_CREATED.get().logicCompareAndSwapWord(0, WordFactory.zero(), WordFactory.signed(1), NamedLocationIdentity.OFF_HEAP_LOCATION)) {
                 return CEntryPointErrors.SINGLE_ISOLATE_ALREADY_CREATED;
@@ -143,7 +142,7 @@ public class Isolates {
         }
 
         WordPointer heapBasePointer = StackValue.get(WordPointer.class);
-        int result = CommittedMemoryProvider.get().initialize(heapBasePointer, parameters);
+        int result = CommittedMemoryProvider.get().initialize(heapBasePointer, arguments);
         if (result != CEntryPointErrors.NO_ERROR) {
             return result;
         }

@@ -259,6 +259,15 @@ local common_json = import "../common.json";
       } else {},
     },
 
+    wasm:: {
+      downloads+: {
+        WABT_DIR: {name: 'wabt', version: '1.0.36', platformspecific: true},
+      },
+      environment+: {
+        WABT_DIR: '$WABT_DIR/bin',
+      },
+    },
+
     fastr:: {
       # Note: On both Linux and MacOS, FastR depends on the gnur module and on gfortran
       # of a specific version (4.8.5 on Linux, 10.2.0 on MacOS)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -250,23 +250,6 @@ public final class Target_java_lang_ClassLoader {
     private static long findNative(@SuppressWarnings("unused") ClassLoader loader, String entryName) {
         return NativeLibrarySupport.singleton().findSymbol(entryName).rawValue();
     }
-
-    @Substitute
-    @TargetElement(onlyWith = JDKLatest.class)
-    static long findNative(ClassLoader loader, Class<?> clazz, String entryName, String javaName) {
-        long addr = NativeLibrarySupport.singleton().findSymbol(entryName).rawValue();
-        if (addr != 0 && loader != null) {
-            Target_jdk_internal_reflect_Reflection.ensureNativeAccess(clazz, clazz, javaName, true);
-        }
-        return addr;
-    }
-
-    /**
-     * All usages of {@link Target_jdk_internal_loader_NativeLibraries} are substituted currently.
-     */
-    @Delete
-    @TargetElement(onlyWith = JDKLatest.class)
-    static native Target_jdk_internal_loader_NativeLibraries nativeLibrariesFor(ClassLoader loader);
 
     @Substitute
     @SuppressWarnings({"unused", "static-method"})

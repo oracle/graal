@@ -38,7 +38,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import jdk.graal.compiler.serviceprovider.LibGraalService;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.CompressEncoding;
@@ -70,6 +69,7 @@ import jdk.graal.compiler.hotspot.nodes.HotSpotCompressionNode;
 import jdk.graal.compiler.hotspot.nodes.HotSpotDirectCallTargetNode;
 import jdk.graal.compiler.hotspot.nodes.HotSpotIndirectCallTargetNode;
 import jdk.graal.compiler.hotspot.nodes.KlassBeingInitializedCheckNode;
+import jdk.graal.compiler.hotspot.nodes.KlassFullyInitializedCheckNode;
 import jdk.graal.compiler.hotspot.nodes.VMErrorNode;
 import jdk.graal.compiler.hotspot.nodes.VirtualThreadUpdateJFRNode;
 import jdk.graal.compiler.hotspot.nodes.type.HotSpotNarrowOopStamp;
@@ -203,6 +203,7 @@ import jdk.graal.compiler.replacements.nodes.AssertionNode;
 import jdk.graal.compiler.replacements.nodes.CStringConstant;
 import jdk.graal.compiler.replacements.nodes.LogNode;
 import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.graal.compiler.serviceprovider.LibGraalService;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
@@ -252,7 +253,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     public interface Extensions {
         /**
          * Gets the extensions provided by this object.
-         *
+         * <p>
          * In the context of service caching done when building a libgraal image, implementations of
          * this method must return a new value each time to avoid sharing extensions between
          * different {@link DefaultHotSpotLoweringProvider}s.
@@ -548,6 +549,10 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         } else if (n instanceof KlassBeingInitializedCheckNode) {
             if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
                 getAllocationSnippets().lower((KlassBeingInitializedCheckNode) n, tool);
+            }
+        } else if (n instanceof KlassFullyInitializedCheckNode) {
+            if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
+                getAllocationSnippets().lower((KlassFullyInitializedCheckNode) n, tool);
             }
         } else if (n instanceof FastNotifyNode) {
             if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {

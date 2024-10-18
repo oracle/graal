@@ -430,22 +430,12 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
 
         List<DebugTypeInfo> infos = new LinkedList<>();
         int hubOffset = ol.getHubOffset();
-        int hubFieldSize = referenceSize;
-        int objHeaderSize = hubOffset + hubFieldSize;
 
-        int idHashSize = ol.sizeInBytes(JavaKind.Int);
-        int fixedIdHashOffset = -1;
+        NativeImageHeaderTypeInfo objHeader = new NativeImageHeaderTypeInfo("_objhdr", ol.getFirstFieldOffset());
+        objHeader.addField("hub", hubType, hubOffset, referenceSize);
         if (ol.isIdentityHashFieldInObjectHeader()) {
-            fixedIdHashOffset = ol.getObjectHeaderIdentityHashOffset();
-            objHeaderSize = Math.max(objHeaderSize, fixedIdHashOffset + idHashSize);
-        }
-
-        /* We need array headers for all Java kinds */
-
-        NativeImageHeaderTypeInfo objHeader = new NativeImageHeaderTypeInfo("_objhdr", objHeaderSize);
-        objHeader.addField("hub", hubType, hubOffset, hubFieldSize);
-        if (fixedIdHashOffset >= 0) {
-            objHeader.addField("idHash", javaKindToHostedType.get(JavaKind.Int), fixedIdHashOffset, idHashSize);
+            int idHashSize = ol.sizeInBytes(JavaKind.Int);
+            objHeader.addField("idHash", javaKindToHostedType.get(JavaKind.Int), ol.getObjectHeaderIdentityHashOffset(), idHashSize);
         }
         infos.add(objHeader);
 

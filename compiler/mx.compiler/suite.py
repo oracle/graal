@@ -1,5 +1,5 @@
 suite = {
-  "mxversion": "7.28.0",
+  "mxversion": "7.33.0",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
@@ -182,11 +182,13 @@ suite = {
           "jdk.vm.ci.common",
           "jdk.vm.ci.amd64",
           "jdk.vm.ci.aarch64",
+          "jdk.vm.ci.riscv64",
           "jdk.vm.ci.services",
           "jdk.vm.ci.runtime",
           "jdk.vm.ci.hotspot",
           "jdk.vm.ci.hotspot.amd64",
           "jdk.vm.ci.hotspot.aarch64",
+          "jdk.vm.ci.hotspot.riscv64",
         ],
       },
       "uses" : [
@@ -346,6 +348,7 @@ suite = {
           "sun.security.util.math.intpoly",
         ],
         "jdk.internal.vm.ci" : [
+          "jdk.vm.ci.code",
           "jdk.vm.ci.meta",
         ],
       },
@@ -381,6 +384,7 @@ suite = {
       "requiresConcealed" : {
         "jdk.internal.vm.ci" : [
           "jdk.vm.ci.meta",
+          "jdk.vm.ci.code"
         ],
       },
       "checkstyle" : "jdk.graal.compiler",
@@ -552,6 +556,7 @@ suite = {
           "jdk.graal.compiler.options                to org.graalvm.nativeimage.driver,org.graalvm.nativeimage.junitsupport",
           "jdk.graal.compiler.phases.common          to org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.configure",
           "jdk.graal.compiler.serviceprovider        to jdk.graal.compiler.management,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.diagnostics",
+          "jdk.graal.compiler.util.args",
           "jdk.graal.compiler.util.json",
         ],
         "uses" : [

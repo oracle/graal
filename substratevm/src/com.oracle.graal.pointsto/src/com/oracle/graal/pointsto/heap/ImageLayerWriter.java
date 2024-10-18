@@ -430,6 +430,11 @@ public class ImageLayerWriter {
         imageLayerWriterHelper.persistMethod(method, methodMap);
     }
 
+    public boolean isMethodPersisted(AnalysisMethod method) {
+        String name = imageLayerSnapshotUtil.getMethodIdentifier(method);
+        return methodsMap.containsKey(name);
+    }
+
     public void persistMethodGraphs() {
         for (AnalysisMethod method : aUniverse.getMethods()) {
             if (method.isReachable()) {

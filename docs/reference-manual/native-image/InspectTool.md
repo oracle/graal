@@ -13,7 +13,7 @@ Run the command `$JAVA_HOME/bin/native-image-inspect <path_to_binary>` to list c
 
 The `native-image` builder, by default, includes metadata in the native executable which then enables the Inspect Tool to list the included methods.
 
-The amount of data included is fairly minimal compared to the overall image size, however you can set the `-H:-IncludeMethodsData` option to disable the metadata emission.
+The amount of data included is fairly minimal compared to the overall image size, however you can set the `-H:-IncludeMethodData` option to disable the metadata emission.
 Images compiled with this option will not be able to be inspected by the tool.
 
 ## Software Bill of Materials (SBOM)

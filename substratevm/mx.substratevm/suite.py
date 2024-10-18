@@ -1,6 +1,6 @@
 # pylint: disable=line-too-long
 suite = {
-    "mxversion": "7.28.0",
+    "mxversion": "7.33.0",
     "name": "substratevm",
     "version" : "24.2.0",
     "release" : False,
@@ -326,6 +326,14 @@ suite = {
                 "jdk.internal.vm.ci": [
                     "jdk.vm.ci.meta",
                     "jdk.vm.ci.code",
+                    "jdk.vm.ci.aarch64",
+                    "jdk.vm.ci.amd64",
+                    "jdk.vm.ci.code.site",
+                    "jdk.vm.ci.code.stack",
+                    "jdk.vm.ci.common",
+                    "jdk.vm.ci.riscv64",
+                    "jdk.vm.ci.runtime",
+                    "jdk.vm.ci.services"
                 ],
             },
             "javaCompliance" : "21+",
@@ -361,6 +369,7 @@ suite = {
                 ],
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.code",
+                    "jdk.vm.ci.meta"
                 ],
             },
             "checkstyle": "com.oracle.svm.core",
@@ -382,6 +391,9 @@ suite = {
             "requiresConcealed" : {
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.code.site",
+                    "jdk.vm.ci.amd64",
+                    "jdk.vm.ci.code",
+                    "jdk.vm.ci.meta"
                 ],
             },
             "checkstyle": "com.oracle.svm.core",
@@ -402,6 +414,9 @@ suite = {
             "requiresConcealed" : {
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.code.site",
+                    "jdk.vm.ci.aarch64",
+                    "jdk.vm.ci.code",
+                    "jdk.vm.ci.meta"
                 ],
             },
             "checkstyle": "com.oracle.svm.core",
@@ -422,6 +437,9 @@ suite = {
             "requiresConcealed" : {
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.code.site",
+                    "jdk.vm.ci.code",
+                    "jdk.vm.ci.meta",
+                    "jdk.vm.ci.riscv64"
                 ],
             },
             "checkstyle": "com.oracle.svm.core",
@@ -476,6 +494,9 @@ suite = {
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.code",
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.aarch64",
+                    "jdk.vm.ci.amd64",
+                    "jdk.vm.ci.riscv64"
                 ],
             },
             "checkstyle": "com.oracle.svm.core",
@@ -499,6 +520,7 @@ suite = {
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.code",
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.amd64"
                 ],
             },
             "checkstyle": "com.oracle.svm.core",
@@ -528,6 +550,8 @@ suite = {
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.meta",
                     "jdk.vm.ci.code",
+                    "jdk.vm.ci.common",
+                    "jdk.vm.ci.runtime"
                 ]
             },
             "checkstyle": "com.oracle.svm.core",
@@ -551,6 +575,9 @@ suite = {
                 ],
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.code",
+                    "jdk.vm.ci.amd64",
+                    "jdk.vm.ci.hotspot",
+                    "jdk.vm.ci.meta"
                 ]
             },
             "checkstyle": "com.oracle.svm.core",
@@ -659,6 +686,10 @@ suite = {
                     "jdk.vm.ci.code.site",
                     "jdk.vm.ci.hotspot",
                     "jdk.vm.ci.runtime",
+                    "jdk.vm.ci.aarch64",
+                    "jdk.vm.ci.amd64",
+                    "jdk.vm.ci.common",
+                    "jdk.vm.ci.riscv64"
                 ],
                 "jdk.management": [
                     "com.sun.management.internal"
@@ -699,6 +730,9 @@ suite = {
                     "jdk.internal.foreign.abi.x64.windows",
                 ],
                 "jdk.internal.vm.ci" : [
+                    "jdk.vm.ci.amd64",
+                    "jdk.vm.ci.code",
+                    "jdk.vm.ci.meta"
                 ],
             },
             "javaCompliance" : "22+",
@@ -728,7 +762,8 @@ suite = {
                     "jdk.internal.foreign.abi",
                 ],
                 "jdk.internal.vm.ci" : [
-                    "jdk.vm.ci.code"
+                    "jdk.vm.ci.code",
+                    "jdk.vm.ci.meta"
                 ],
             },
             "javaCompliance" : "22+",
@@ -1092,6 +1127,9 @@ suite = {
                 ],
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.code",
+                    "jdk.vm.ci.aarch64",
+                    "jdk.vm.ci.amd64",
+                    "jdk.vm.ci.meta"
                 ],
             },
             "checkstyle" : "com.oracle.svm.hosted",
@@ -1119,6 +1157,11 @@ suite = {
                     "jdk.vm.ci.aarch64",
                     "jdk.vm.ci.code.site",
                     "jdk.vm.ci.runtime",
+                    "jdk.vm.ci.amd64",
+                    "jdk.vm.ci.code",
+                    "jdk.vm.ci.code.stack",
+                    "jdk.vm.ci.hotspot",
+                    "jdk.vm.ci.meta"
                 ],
             },
             "checkstyle": "com.oracle.svm.hosted",
@@ -1206,6 +1249,8 @@ suite = {
                 "jdk.internal.vm.ci": [
                     "jdk.vm.ci.aarch64",
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.code",
+                    "jdk.vm.ci.code.stack"
                 ]
             },
             "checkstyle": "com.oracle.svm.hosted",
@@ -1315,6 +1360,8 @@ suite = {
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.services",
                     "jdk.vm.ci.runtime",
+                    "jdk.vm.ci.hotspot",
+                    "jdk.vm.ci.meta"
                 ],
             },
             "annotationProcessors": [
@@ -1351,6 +1398,7 @@ suite = {
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.services",
                     "jdk.vm.ci.runtime",
+                    "jdk.vm.ci.code"
                 ],
             },
             "annotationProcessors": [

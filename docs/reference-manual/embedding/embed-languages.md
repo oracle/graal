@@ -976,7 +976,7 @@ Alternatively, the factory can be registered via `javax.script.ScriptEngineManag
 The best practice is to close the `ScriptEngine` when no longer used rather than relying on finalizers.
 To close it, use `((AutoCloseable) scriptEngine).close();` since `ScriptEngine` does not have a `close()` method.
 
-Note that [Graal.js](../js/) provides [a ScriptEngine implementation](../js/ScriptEngine/) for users migrating from the Nashorn JavaScript engine that was deprecated in JDK 11, so this method here is not needed.
+Note that [GraalJS](https://www.graalvm.org/reference-manual/js/) provides [a ScriptEngine implementation](https://www.graalvm.org/reference-manual/js/ScriptEngine/) for users migrating from the Nashorn JavaScript engine that was deprecated in JDK 11, so this method here is not needed.
 
 <details>
 <summary>Expand to see the <code>ScriptEngineFactory</code> implementation for Truffle languages in a single file.</summary>

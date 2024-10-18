@@ -134,7 +134,7 @@ class NativeImageBenchmarkConfig:
         self.bm_suite = bm_suite
         self.benchmark_suite_name = bm_suite.benchSuiteName(args)
         self.benchmark_name = bm_suite.benchmarkName()
-        self.executable, self.classpath_arguments, self.modulepath_arguments, self.system_properties, self.image_vm_args, image_run_args, self.split_run = NativeImageVM.extract_benchmark_arguments(args)
+        self.executable, self.classpath_arguments, self.modulepath_arguments, self.system_properties, self.image_vm_args, image_run_args, self.split_run = NativeImageVM.extract_benchmark_arguments(args, bm_suite.all_command_line_args_are_vm_args())
         self.extra_image_build_arguments: List[str] = bm_suite.extra_image_build_argument(self.benchmark_name, args)
         # use list() to create fresh copies to safeguard against accidental modification
         self.image_run_args = bm_suite.extra_run_arg(self.benchmark_name, args, list(image_run_args))
@@ -746,7 +746,10 @@ class NativeImageVM(GraalVm):
                                     '--patch-module', '--boot-class-path', '--source-path', '-cp', '-classpath', '-p']
 
     @staticmethod
-    def _split_vm_arguments(args):
+    def _split_vm_arguments(args, all_args_are_vm_args):
+        if all_args_are_vm_args:
+            return args, [], []
+
         i = 0
         while i < len(args):
             arg = args[i]
@@ -762,7 +765,7 @@ class NativeImageVM(GraalVm):
         mx.abort('No executable found in args: ' + str(args))
 
     @staticmethod
-    def extract_benchmark_arguments(args):
+    def extract_benchmark_arguments(args, all_args_are_vm_args):
         i = 0
         clean_args = args[:]
         split_run = None
@@ -776,7 +779,7 @@ class NativeImageVM(GraalVm):
             else:
                 i += 1
         clean_args = [x for x in clean_args if "-Dnative-image" not in x]
-        vm_args, executable, image_run_args = NativeImageVM._split_vm_arguments(clean_args)
+        vm_args, executable, image_run_args = NativeImageVM._split_vm_arguments(clean_args, all_args_are_vm_args)
 
         classpath_arguments = []
         modulepath_arguments = []
@@ -993,6 +996,7 @@ class NativeImageVM(GraalVm):
         rules = []
         for i in range(0, len(metric_objects)):
             rules += self._get_image_build_stats_rules({
+                "bench-suite": self.config.benchmark_suite_name,
                 "benchmark": benchmarks[0],
                 "metric.name": "image-build-stats",
                 "metric.type": "numeric",
@@ -1013,6 +1017,7 @@ class NativeImageVM(GraalVm):
             phase = measured_phases[i]
             value_name = phase + "_time"
             rules += self._get_image_build_stats_rules({
+                "bench-suite": self.config.benchmark_suite_name,
                 "benchmark": benchmarks[0],
                 "metric.name": "compile-time",
                 "metric.type": "numeric",
@@ -1025,6 +1030,7 @@ class NativeImageVM(GraalVm):
             }, [value_name])
             value_name = phase + "_memory"
             rules += self._get_image_build_stats_rules({
+                "bench-suite": self.config.benchmark_suite_name,
                 "benchmark": benchmarks[0],
                 "metric.name": "compile-time",
                 "metric.type": "numeric",
@@ -1411,7 +1417,7 @@ class AgentScriptJsBenchmarkSuite(mx_benchmark.VmBenchmarkSuite, mx_benchmark.Av
         assert len(benchmarks) == 1
         return [
             mx_benchmark.StdOutRule(r'^Hundred thousand prime numbers in (?P<time>[0-9]+) ms$', {
-                "bench-suite": self.name(),
+                "bench-suite": self.benchSuiteName(),
                 "benchmark": (benchmarks[0], str),
                 "metric.name": "warmup",
                 "metric.type": "numeric",
@@ -1695,7 +1701,7 @@ class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
             mx_benchmark.StdOutRule(
                 FileSizeBenchmarkSuite.SZ_RGX_PATTERN,
                 {
-                    "bench-suite": self.name(),
+                    "bench-suite": self.benchSuiteName(),
                     "benchmark": ("<image_name>", str),
                     "benchmark-configuration": ("<path>", str),
                     "vm": "svm",
