@@ -31,6 +31,7 @@ import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.Unary
 import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.LOG10;
 import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.SIN;
 import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.TAN;
+import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.TANH;
 
 import java.lang.reflect.Type;
 import java.util.Arrays;
@@ -203,6 +204,7 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
         registerUnaryMath(r, "sin", SIN);
         registerUnaryMath(r, "cos", COS);
         registerUnaryMath(r, "tan", TAN);
+        registerUnaryMath(r, "tanh", TANH);
 
         registerFMA(r, arch);
         registerMinMax(r, arch);
