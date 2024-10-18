@@ -389,6 +389,10 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> ptypes = StaticSymbols.putName("ptypes");
         public static final Symbol<Name> rtype = StaticSymbols.putName("rtype");
 
+        // java.lang.invoke.LambdaMetafactory
+        public static final Symbol<Name> metafactory = StaticSymbols.putName("metafactory");
+        public static final Symbol<Name> altMetafactory = StaticSymbols.putName("altMetafactory");
+
         // j.l.ref.Finalizer
         public static final Symbol<Name> finalize = StaticSymbols.putName("finalize");
         public static final Symbol<Name> register = StaticSymbols.putName("register");
@@ -896,6 +900,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_lang_invoke_MethodHandles$Lookup = StaticSymbols.putType("Ljava/lang/invoke/MethodHandles$Lookup;");
         public static final Symbol<Type> java_lang_invoke_CallSite = StaticSymbols.putType("Ljava/lang/invoke/CallSite;");
         public static final Symbol<Type> java_lang_invoke_DirectMethodHandle = StaticSymbols.putType("Ljava/lang/invoke/DirectMethodHandle;");
+        public static final Symbol<Type> java_lang_invoke_LambdaMetafactory = StaticSymbols.putType("Ljava/lang/invoke/LambdaMetafactory;");
 
         // MethodHandleNatives is not public.
         public static final Symbol<Type> java_lang_invoke_MethodHandleNatives = StaticSymbols.putType("Ljava/lang/invoke/MethodHandleNatives;");
@@ -1264,6 +1269,21 @@ public final class Symbol<T> extends ByteSequence {
                         Type.java_lang_Object,
                         Type.java_lang_Object);
         public static final Symbol<Signature> MethodHandles$Lookup = StaticSymbols.putSignature(Type.java_lang_invoke_MethodHandles$Lookup);
+
+        public static final Symbol<Signature> CallSite_Lookup_String_MethodType_MethodType_MethodHandle_MethodType = StaticSymbols.putSignature(
+                        Type.java_lang_invoke_CallSite,
+                        Type.java_lang_invoke_MethodHandles$Lookup,
+                        Type.java_lang_String,
+                        Type.java_lang_invoke_MethodType,
+                        Type.java_lang_invoke_MethodType,
+                        Type.java_lang_invoke_MethodHandle,
+                        Type.java_lang_invoke_MethodType);
+        public static final Symbol<Signature> CallSite_Lookup_String_MethodType_Object_array = StaticSymbols.putSignature(
+                        Type.java_lang_invoke_CallSite,
+                        Type.java_lang_invoke_MethodHandles$Lookup,
+                        Type.java_lang_String,
+                        Type.java_lang_invoke_MethodType,
+                        Type.java_lang_Object_array);
 
         public static final Symbol<Signature> Field_Object_long_Class = StaticSymbols.putSignature(Type.java_lang_reflect_Field, Type.java_lang_Object, Type._long, Type.java_lang_Class);
 
