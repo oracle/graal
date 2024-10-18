@@ -111,6 +111,10 @@ public abstract class AbstractGarbageCollectorMXBean extends NotificationEmitter
         }
         GcNotificationRequest request = new GcNotificationRequest();
         getLastGcInfo(request);
+        if (request.getEpoch() < 0) {
+            // This collector has not done any collections yet.
+            return null;
+        }
         return getGcInfoFromRequest(request);
     }
 
@@ -136,6 +140,7 @@ public abstract class AbstractGarbageCollectorMXBean extends NotificationEmitter
                     after[i] = beans[j].memoryUsage(pmu.getUsed(), pmu.getCommitted());
                 }
             }
+            assert before[i] != null && after[i] != null;
         }
 
         Object[] extAttribute = new Object[1];

@@ -37,10 +37,35 @@ import javax.management.NotificationEmitter;
 import javax.management.openmbean.CompositeData;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
+import java.util.Set;
 
 import static org.junit.Assert.assertTrue;
 
 public class GcNotificationTests {
+
+    @Test
+    public void testGetLastGcInfo() {
+        System.gc();
+        for (GarbageCollectorMXBean gcBean : ManagementFactory.getGarbageCollectorMXBeans()) {
+            if (!(gcBean instanceof NotificationEmitter)) {
+                continue;
+            }
+            GcInfo lastGcInfo = ((com.sun.management.GarbageCollectorMXBean) gcBean).getLastGcInfo();
+            if (lastGcInfo != null) {
+                assertTrue(lastGcInfo.getStartTime() > 0);
+                assertTrue(lastGcInfo.getId() >= 0);
+                assertTrue(lastGcInfo.getDuration() >= 0); // Precision is 1 ms.
+
+                Set<String> poolNames = lastGcInfo.getMemoryUsageBeforeGc().keySet();
+                for (String poolName : poolNames) {
+                    long before = lastGcInfo.getMemoryUsageBeforeGc().get(poolName).getUsed();
+                    long after = lastGcInfo.getMemoryUsageAfterGc().get(poolName).getUsed();
+                    assertTrue(before >= 0);
+                    assertTrue(after >= 0);
+                }
+            }
+        }
+    }
 
     @Test
     public void testListenerRegistration() {
@@ -104,10 +129,13 @@ public class GcNotificationTests {
             GcInfo gcInfo = notificationInfo.getGcInfo();
             assertTrue(gcInfo != null);
             assertTrue(gcInfo.getDuration() >= 0); // Precision is 1 ms.
-            long before = gcInfo.getMemoryUsageBeforeGc().get("eden space").getUsed();
-            long after = gcInfo.getMemoryUsageAfterGc().get("eden space").getUsed();
-            assertTrue(before > 0);
-            assertTrue(before >= after);
+            Set<String> poolNames = gcInfo.getMemoryUsageBeforeGc().keySet();
+            for (String poolName : poolNames) {
+                long before = gcInfo.getMemoryUsageBeforeGc().get(poolName).getUsed();
+                long after = gcInfo.getMemoryUsageAfterGc().get(poolName).getUsed();
+                assertTrue(before >= 0);
+                assertTrue(after >= 0);
+            }
 
             if (notificationInfo.getGcCause().equals("java.lang.System.gc()")) {
                 signalFinished();

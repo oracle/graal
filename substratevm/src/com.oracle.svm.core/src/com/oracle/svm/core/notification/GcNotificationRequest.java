@@ -57,6 +57,7 @@ public class GcNotificationRequest {
             before[i] = new PoolMemoryUsage();
             after[i] = new PoolMemoryUsage();
         }
+        epoch = -1; // Indicate no collections happened yet.
     }
 
     @SuppressWarnings("hiding")
