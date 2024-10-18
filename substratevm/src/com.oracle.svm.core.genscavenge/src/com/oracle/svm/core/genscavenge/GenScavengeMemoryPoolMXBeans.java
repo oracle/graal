@@ -27,7 +27,6 @@ package com.oracle.svm.core.genscavenge;
 
 import java.lang.management.MemoryUsage;
 
-
 import com.oracle.svm.core.gc.AbstractMemoryPoolMXBean;
 import com.oracle.svm.core.gc.MemoryPoolMXBeansProvider;
 import org.graalvm.nativeimage.Platform;
