@@ -75,7 +75,7 @@ import sun.security.util.SecurityConstants;
  * All security checks are disabled.
  */
 
-@TargetClass(java.security.AccessController.class)
+@TargetClass(value = java.security.AccessController.class, onlyWith = JDK21OrEarlier.class)
 @Platforms(InternalPlatform.NATIVE_ONLY.class)
 @SuppressWarnings({"unused"})
 final class Target_java_security_AccessController {
@@ -432,11 +432,11 @@ final class ContainsVerifyJars implements Predicate<Class<?>> {
     }
 }
 
-@TargetClass(value = java.security.Policy.class, innerClass = "PolicyInfo")
+@TargetClass(value = java.security.Policy.class, innerClass = "PolicyInfo", onlyWith = JDK21OrEarlier.class)
 final class Target_java_security_Policy_PolicyInfo {
 }
 
-@TargetClass(java.security.Policy.class)
+@TargetClass(value = java.security.Policy.class, onlyWith = JDK21OrEarlier.class)
 final class Target_java_security_Policy {
 
     @Delete //
@@ -503,7 +503,7 @@ final class AllPermissionsPolicy extends Policy {
  * version is more fool-proof in case someone manually registers security providers for reflective
  * instantiation.
  */
-@TargetClass(className = "sun.security.provider.PolicySpiFile")
+@TargetClass(className = "sun.security.provider.PolicySpiFile", onlyWith = JDK21OrEarlier.class)
 @SuppressWarnings({"unused", "static-method", "deprecation"})
 final class Target_sun_security_provider_PolicySpiFile {
 
@@ -536,7 +536,7 @@ final class Target_sun_security_provider_PolicySpiFile {
 }
 
 @Delete("Substrate VM does not use SecurityManager, so loading a security policy file would be misleading")
-@TargetClass(className = "sun.security.provider.PolicyFile")
+@TargetClass(className = "sun.security.provider.PolicyFile", onlyWith = JDK21OrEarlier.class)
 final class Target_sun_security_provider_PolicyFile {
 }
 
