@@ -265,7 +265,7 @@ public class HotSpotGraphBuilderPlugins {
                 registerArrayPlugins(invocationPlugins, replacements, config);
                 registerStringPlugins(invocationPlugins, replacements, wordTypes, foreignCalls, config);
                 registerArraysSupportPlugins(invocationPlugins, replacements, target.arch);
-                registerReferencePlugins(invocationPlugins, replacements);
+                registerReferencePlugins(invocationPlugins, config, replacements);
                 registerTrufflePlugins(invocationPlugins, wordTypes, config);
                 registerInstrumentationImplPlugins(invocationPlugins, config, replacements);
                 for (HotSpotInvocationPluginProvider p : GraalServices.load(HotSpotInvocationPluginProvider.class)) {
@@ -1366,7 +1366,7 @@ public class HotSpotGraphBuilderPlugins {
         });
     }
 
-    private static void registerReferencePlugins(InvocationPlugins plugins, Replacements replacements) {
+    private static void registerReferencePlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
         Registration r = new Registration(plugins, Reference.class, replacements);
         r.register(new ReachabilityFencePlugin() {
             @Override
@@ -1386,6 +1386,23 @@ public class HotSpotGraphBuilderPlugins {
                 return true;
             }
         });
+        if (JavaVersionUtil.JAVA_SPEC >= 24 && !config.useXGC()) {
+            r.register(new InlineOnlyInvocationPlugin("clear0", Receiver.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                    try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                        ValueNode offset = b.add(ConstantNode.forLong(HotSpotReplacementsUtil.referentOffset(b.getMetaAccess())));
+                        AddressNode address = b.add(new OffsetAddressNode(receiver.get(true), offset));
+                        FieldLocationIdentity locationIdentity = new FieldLocationIdentity(HotSpotReplacementsUtil.referentField(b.getMetaAccess()));
+                        JavaReadNode referent = b.add(new JavaReadNode(StampFactory.object(), JavaKind.Object, address, locationIdentity, BarrierType.WEAK_REFERS_TO, MemoryOrderMode.PLAIN, true));
+                        helper.emitReturnIf(IsNullNode.create(referent), null, GraalDirectives.LIKELY_PROBABILITY);
+                        b.add(new JavaWriteNode(JavaKind.Object, address, locationIdentity, ConstantNode.defaultForKind(JavaKind.Object), BarrierType.AS_NO_KEEPALIVE_WRITE, true));
+                        helper.emitFinalReturn(JavaKind.Void, null);
+                        return true;
+                    }
+                }
+            });
+        }
         r = new Registration(plugins, PhantomReference.class, replacements);
         r.register(new InlineOnlyInvocationPlugin("refersTo0", Receiver.class, Object.class) {
             @Override
@@ -1399,6 +1416,23 @@ public class HotSpotGraphBuilderPlugins {
                 return true;
             }
         });
+        if (JavaVersionUtil.JAVA_SPEC >= 24 && !config.useXGC()) {
+            r.register(new InlineOnlyInvocationPlugin("clear0", Receiver.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                    try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                        ValueNode offset = b.add(ConstantNode.forLong(HotSpotReplacementsUtil.referentOffset(b.getMetaAccess())));
+                        AddressNode address = b.add(new OffsetAddressNode(receiver.get(true), offset));
+                        FieldLocationIdentity locationIdentity = new FieldLocationIdentity(HotSpotReplacementsUtil.referentField(b.getMetaAccess()));
+                        JavaReadNode referent = b.add(new JavaReadNode(StampFactory.object(), JavaKind.Object, address, locationIdentity, BarrierType.PHANTOM_REFERS_TO, MemoryOrderMode.PLAIN, true));
+                        helper.emitReturnIf(IsNullNode.create(referent), null, GraalDirectives.LIKELY_PROBABILITY);
+                        b.add(new JavaWriteNode(JavaKind.Object, address, locationIdentity, ConstantNode.defaultForKind(JavaKind.Object), BarrierType.AS_NO_KEEPALIVE_WRITE, true));
+                        helper.emitFinalReturn(JavaKind.Void, null);
+                        return true;
+                    }
+                }
+            });
+        }
     }
 
     private static void registerInstrumentationImplPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {

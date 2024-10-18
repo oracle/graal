@@ -226,6 +226,10 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
     public static final HotSpotForeignCallDescriptor Z_REFERENCE_GET_BARRIER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, NO_LOCATIONS,
                     "ZBarrierSetRuntime::load_barrier_on_weak_oop_field_preloaded", long.class, long.class, long.class);
 
+    // void no_keepalive_store_barrier_on_oop_field_without_healing(oop* p);
+    public static final HotSpotForeignCallDescriptor Z_REFERENCE_CLEAR_BARRIER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, NO_LOCATIONS,
+                    "ZBarrierSetRuntime::no_keepalive_store_barrier_on_oop_field_without_healing", void.class, long.class);
+
     // oopDesc* no_keepalive_load_barrier_on_weak_oop_field_preloaded(oopDesc* o, oop* p);
     public static final HotSpotForeignCallDescriptor Z_WEAK_REFERS_TO_BARRIER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, NO_LOCATIONS,
                     "ZBarrierSetRuntime::no_keepalive_load_barrier_on_weak_oop_field_preloaded", long.class, long.class, long.class);
@@ -579,6 +583,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         linkStackOnlyForeignCall(c.gc == Z, options, providers, Z_STORE_BARRIER_WITH_HEALING, c.zBarrierSetRuntimeStoreBarrierOnOopFieldWithHealing, DONT_PREPEND_THREAD);
         linkStackOnlyForeignCall(c.gc == Z, options, providers, Z_STORE_BARRIER_NATIVE, c.zBarrierSetRuntimeStoreBarrierOnNativeOopFieldWithoutHealing, DONT_PREPEND_THREAD);
         linkStackOnlyForeignCall(c.gc == Z, options, providers, Z_REFERENCE_GET_BARRIER, c.zBarrierSetRuntimeLoadBarrierOnWeakOopFieldPreloaded, DONT_PREPEND_THREAD);
+        linkStackOnlyForeignCall(c.gc == Z, options, providers, Z_REFERENCE_CLEAR_BARRIER, c.zBarrierSetRuntimeNoKeepaliveStoreBarrierOnOopFieldWithoutHealing, DONT_PREPEND_THREAD);
         linkStackOnlyForeignCall(c.gc == Z, options, providers, Z_WEAK_REFERS_TO_BARRIER, c.zBarrierSetRuntimeNoKeepaliveLoadBarrierOnWeakOopFieldPreloaded, DONT_PREPEND_THREAD);
         linkStackOnlyForeignCall(c.gc == Z, options, providers, Z_PHANTOM_REFERS_TO_BARRIER, c.zBarrierSetRuntimeNoKeepaliveLoadBarrierOnPhantomOopFieldPreloaded, DONT_PREPEND_THREAD);
         linkStackOnlyForeignCall(c.gc == Z, options, providers, Z_ARRAY_BARRIER, c.zBarrierSetRuntimeLoadBarrierOnOopArray, DONT_PREPEND_THREAD);

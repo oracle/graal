@@ -153,8 +153,10 @@ public final class UnimplementedGraalIntrinsics {
 
         if (jdk >= 24) {
             add(toBeInvestigated, // @formatter:off
-                        "jdk/internal/vm/vector/VectorSupport.selectFromOp(Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$VectorMask;Ljdk/internal/vm/vector/VectorSupport$VectorSelectFromOp;)Ljdk/internal/vm/vector/VectorSupport$Vector;");
+                        "jdk/internal/vm/vector/VectorSupport.selectFromOp(Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$VectorMask;Ljdk/internal/vm/vector/VectorSupport$VectorSelectFromOp;)Ljdk/internal/vm/vector/VectorSupport$Vector;",
+                        "jdk/internal/vm/vector/VectorSupport.selectFromTwoVectorOp(Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$SelectFromTwoVector;)Ljdk/internal/vm/vector/VectorSupport$Vector;"
                         // @formatter:on
+            );
         }
 
         // These are known to be implemented down stream

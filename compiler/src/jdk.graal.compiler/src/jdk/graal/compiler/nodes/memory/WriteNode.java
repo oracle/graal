@@ -72,7 +72,7 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess, 
                     MemoryOrderMode memoryOrder) {
         super(c, address, location, value, barrierType);
         assert barrierType == BarrierType.NONE || barrierType == BarrierType.ARRAY || barrierType == BarrierType.FIELD || barrierType == BarrierType.UNKNOWN ||
-                        barrierType == BarrierType.POST_INIT_WRITE : barrierType;
+                        barrierType == BarrierType.POST_INIT_WRITE || barrierType == BarrierType.AS_NO_KEEPALIVE_WRITE : barrierType;
         this.killedLocationIdentity = killedLocationIdentity;
         this.memoryOrder = memoryOrder;
     }
