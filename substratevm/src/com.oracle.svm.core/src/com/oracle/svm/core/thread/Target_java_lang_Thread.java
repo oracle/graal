@@ -31,6 +31,8 @@ import java.security.AccessControlContext;
 import java.util.Map;
 import java.util.Objects;
 
+import com.oracle.svm.core.jdk.JDKUtils;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
@@ -115,6 +117,7 @@ public final class Target_java_lang_Thread {
      */
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    @TargetElement(onlyWith = JDK21OrEarlier.class)
     public AccessControlContext inheritedAccessControlContext;
 
     @Alias //
@@ -252,7 +255,9 @@ public final class Target_java_lang_Thread {
 
         this.name = (name != null) ? name : "";
         this.tid = Target_java_lang_Thread_ThreadIdentifiers.next();
-        this.inheritedAccessControlContext = Target_java_lang_Thread_Constants.NO_PERMISSIONS_ACC;
+        if (JavaVersionUtil.JAVA_SPEC == 21) {
+            this.inheritedAccessControlContext = Target_java_lang_Thread_Constants.NO_PERMISSIONS_ACC;
+        }
 
         boolean inheritThreadLocals = (characteristics & NO_INHERIT_THREAD_LOCALS) == 0;
         JavaThreads.initNewThreadLocalsAndLoader(this, inheritThreadLocals, Thread.currentThread());
@@ -538,6 +543,7 @@ public final class Target_java_lang_Thread {
 final class Target_java_lang_Thread_Constants {
     // Checkstyle: stop
     @SuppressWarnings("removal") //
+    @TargetElement(onlyWith = JDK21OrEarlier.class)
     @Alias static AccessControlContext NO_PERMISSIONS_ACC;
 
     @Alias static ThreadGroup VTHREAD_GROUP;

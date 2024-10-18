@@ -43,6 +43,11 @@ import com.oracle.svm.util.ReflectionUtil;
 @SuppressWarnings({"unused"})
 class AccessControlContextReplacerFeature implements InternalFeature {
 
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return JavaVersionUtil.JAVA_SPEC == 21;
+    }
+
     static Map<String, AccessControlContext> allowedContexts = new HashMap<>();
 
     static void allowContextIfExists(String className, String fieldName) {
