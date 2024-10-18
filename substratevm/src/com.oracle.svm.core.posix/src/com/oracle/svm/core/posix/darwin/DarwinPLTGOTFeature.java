@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,20 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.code;
+package com.oracle.svm.core.posix.darwin;
 
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.Value;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
 
-public interface SubstrateLIRGenerator {
+import com.oracle.svm.core.code.DynamicMethodAddressResolutionHeapSupport;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.hosted.pltgot.PLTGOTOptions;
 
-    void emitFarReturn(AllocatableValue result, Value sp, Value ip, boolean fromMethodWithCalleeSavedRegisters);
+@AutomaticallyRegisteredFeature
+public class DarwinPLTGOTFeature implements InternalFeature {
 
-    void emitDeadEnd();
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return Platform.includedIn(Platform.DARWIN.class) && PLTGOTOptions.EnablePLTGOT.getValue();
+    }
 
-    void emitVerificationMarker(Object marker);
-
-    void emitInstructionSynchronizationBarrier();
-
-    void emitExitMethodAddressResolution(Value ip);
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(DynamicMethodAddressResolutionHeapSupport.class, new DarwinGOTHeapSupport());
+    }
 }

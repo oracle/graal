@@ -38,6 +38,7 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import java.util.function.BiConsumer;
 
+import com.oracle.svm.core.pltgot.PLTGOTConfiguration;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.FrameAccess;
@@ -666,6 +667,14 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         @Override
         protected int getVMPageSize() {
             return SubstrateOptions.getPageSize();
+        }
+
+        @Override
+        public void emitExitMethodAddressResolution(Value ip) {
+            PLTGOTConfiguration configuration = PLTGOTConfiguration.singleton();
+            RegisterValue exitThroughRegisterValue = configuration.getExitMethodAddressResolutionRegister(getRegisterConfig()).asValue(ip.getValueKind());
+            emitMove(exitThroughRegisterValue, ip);
+            append(configuration.createExitMethodAddressResolutionOp(exitThroughRegisterValue));
         }
     }
 
