@@ -53,6 +53,7 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.ArchiveSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.heap.SVMImageLayerLoader;
@@ -164,27 +165,35 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         return false;
     }
 
-    public static HostedImageLayerBuildingSupport initialize(HostedOptionValues values) {
+    public static HostedImageLayerBuildingSupport initialize(HostedOptionValues values, ImageClassLoader imageClassLoader) {
+        boolean buildingSharedLayer = isLayerOptionEnabled(LayerCreate, values);
+        boolean buildingExtensionLayer = isLayerOptionEnabled(LayerUse, values);
+
+        boolean buildingImageLayer = buildingSharedLayer || buildingExtensionLayer;
+        boolean buildingInitialLayer = buildingImageLayer && !buildingExtensionLayer;
+        boolean buildingFinalLayer = buildingImageLayer && !buildingSharedLayer;
+
+        if (buildingImageLayer) {
+            ImageLayerBuildingSupport.openModules();
+        }
+
         WriteLayerArchiveSupport writeLayerArchiveSupport = null;
         SVMImageLayerWriter writer = null;
         ArchiveSupport archiveSupport = new ArchiveSupport(false);
-        if (isLayerOptionEnabled(LayerCreate, values)) {
+        if (buildingSharedLayer) {
             LayerOption layerOption = LayerOption.parse(LayerCreate.getValue(values).lastValue().orElseThrow());
             writeLayerArchiveSupport = new WriteLayerArchiveSupport(archiveSupport, layerOption.fileName());
             writer = new SVMImageLayerWriter(SubstrateOptions.UseSharedLayerGraphs.getValue(values));
         }
         SVMImageLayerLoader loader = null;
         LoadLayerArchiveSupport loadLayerArchiveSupport = null;
-        if (isLayerOptionEnabled(LayerUse, values)) {
+        if (buildingExtensionLayer) {
             Path layerFileName = LayerUse.getValue(values).lastValue().orElseThrow();
             loadLayerArchiveSupport = new LoadLayerArchiveSupport(layerFileName, archiveSupport);
             ImageLayerLoader.FilePaths paths = new ImageLayerLoader.FilePaths(loadLayerArchiveSupport.getSnapshotPath(), loadLayerArchiveSupport.getSnapshotGraphsPath());
-            loader = new SVMImageLayerLoader(List.of(paths));
+            loader = new SVMImageLayerLoader(List.of(paths), imageClassLoader);
         }
 
-        boolean buildingImageLayer = loader != null || writer != null;
-        boolean buildingInitialLayer = buildingImageLayer && loader == null;
-        boolean buildingFinalLayer = buildingImageLayer && writer == null;
         return new HostedImageLayerBuildingSupport(loader, writer, buildingImageLayer, buildingInitialLayer, buildingFinalLayer, writeLayerArchiveSupport, loadLayerArchiveSupport);
     }
 

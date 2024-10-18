@@ -90,7 +90,6 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.SUPER_CLASS_
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.TID_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.TYPES_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.VALUE_TAG;
-import static jdk.graal.compiler.java.LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -127,6 +126,7 @@ import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.svm.util.FileDumpingUtil;
 
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.nodes.EncodedGraph;
 import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
 import jdk.graal.compiler.util.ObjectCopier;
@@ -140,7 +140,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 public class ImageLayerWriter {
     static final Charset GRAPHS_CHARSET = Charset.defaultCharset();
 
-    protected final ImageLayerSnapshotUtil imageLayerSnapshotUtil;
+    protected ImageLayerSnapshotUtil imageLayerSnapshotUtil;
     private ImageLayerWriterHelper imageLayerWriterHelper;
     private ImageHeap imageHeap;
     protected AnalysisUniverse aUniverse;
@@ -203,13 +203,12 @@ public class ImageLayerWriter {
     }
 
     public ImageLayerWriter() {
-        this(true, new ImageLayerSnapshotUtil());
+        this(true);
     }
 
     @SuppressWarnings({"this-escape", "unused"})
-    public ImageLayerWriter(boolean useSharedLayerGraphs, ImageLayerSnapshotUtil imageLayerSnapshotUtil) {
+    public ImageLayerWriter(boolean useSharedLayerGraphs) {
         this.useSharedLayerGraphs = useSharedLayerGraphs;
-        this.imageLayerSnapshotUtil = imageLayerSnapshotUtil;
         this.jsonMap = EconomicMap.create();
         this.constantsToRelink = new ArrayList<>();
         this.persistedTypeIds = ConcurrentHashMap.newKeySet();
@@ -218,6 +217,10 @@ public class ImageLayerWriter {
         this.methodsMap = new ConcurrentHashMap<>();
         this.fieldsMap = new ConcurrentHashMap<>();
         this.constantsMap = new ConcurrentHashMap<>();
+    }
+
+    public void setImageLayerSnapshotUtil(ImageLayerSnapshotUtil imageLayerSnapshotUtil) {
+        this.imageLayerSnapshotUtil = imageLayerSnapshotUtil;
     }
 
     public void setInternedStringsIdentityMap(IdentityHashMap<String, String> map) {
@@ -255,6 +258,10 @@ public class ImageLayerWriter {
                 throw new RuntimeException(e);
             }
         });
+    }
+
+    public void initializeExternalValues() {
+        imageLayerSnapshotUtil.initializeExternalValues();
     }
 
     public void persistImageHeapSize(long imageHeapSize) {
@@ -449,7 +456,7 @@ public class ImageLayerWriter {
         Object analyzedGraph = method.getGraph();
         if (analyzedGraph instanceof AnalysisParsedGraph analysisParsedGraph) {
             if (!methodMap.containsKey(INTRINSIC_TAG)) {
-                if (!persistGraph(analysisParsedGraph.getEncodedGraph(), methodMap, ANALYSIS_PARSED_GRAPH_TAG)) {
+                if (!persistGraph(method, analysisParsedGraph.getEncodedGraph(), methodMap, ANALYSIS_PARSED_GRAPH_TAG)) {
                     return;
                 }
                 methodMap.put(INTRINSIC_TAG, analysisParsedGraph.isIntrinsic());
@@ -462,22 +469,17 @@ public class ImageLayerWriter {
 
         if (!methodMap.containsKey(STRENGTHENED_GRAPH_TAG)) {
             EncodedGraph analyzedGraph = method.getAnalyzedGraph();
-            persistGraph(analyzedGraph, methodMap, STRENGTHENED_GRAPH_TAG);
+            persistGraph(method, analyzedGraph, methodMap, STRENGTHENED_GRAPH_TAG);
         }
     }
 
-    private boolean persistGraph(EncodedGraph analyzedGraph, EconomicMap<String, Object> methodMap, String graphTag) {
+    private boolean persistGraph(AnalysisMethod method, EncodedGraph analyzedGraph, EconomicMap<String, Object> methodMap, String graphTag) {
         if (!useSharedLayerGraphs) {
             return false;
         }
         String encodedGraph = ObjectCopier.encode(imageLayerSnapshotUtil.getGraphEncoder(this), analyzedGraph);
-        /*
-         * The ObjectCopier cannot look up Lambda types by reflection, so it cannot decode a graph
-         * that contains a reference to a Lambda. Since the original Class is needed, the analysis
-         * id cannot be used either.
-         */
-        if (encodedGraph.contains(LAMBDA_CLASS_NAME_SUBSTRING)) {
-            return false;
+        if (encodedGraph.contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING)) {
+            throw AnalysisError.shouldNotReachHere("The graph for the method %s contains a reference to a lambda type, which cannot be decoded: %s".formatted(method, encodedGraph));
         }
         String location = graphsOutput.add(encodedGraph);
         methodMap.put(graphTag, location);
@@ -646,15 +648,6 @@ public class ImageLayerWriter {
      */
     @SuppressWarnings("unused")
     protected boolean delegateProcessing(List<List<Object>> data, Object constant) {
-        return false;
-    }
-
-    public boolean persistedMethodGraph(AnalysisMethod method) {
-        String name = imageLayerSnapshotUtil.getMethodIdentifier(method);
-        if (methodsMap.containsKey(name)) {
-            EconomicMap<String, Object> methodMap = methodsMap.get(name);
-            return methodMap.get(ANALYSIS_PARSED_GRAPH_TAG) != null || methodMap.get(STRENGTHENED_GRAPH_TAG) != null;
-        }
         return false;
     }
 }
