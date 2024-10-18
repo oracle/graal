@@ -483,7 +483,7 @@ public class JNIAccessFeature implements Feature {
             CEntryPointData unpublished = CEntryPointData.createCustomUnpublished();
             wrappers.forEach(wrapper -> {
                 AnalysisMethod analysisWrapper = access.getUniverse().lookup(wrapper);
-                access.getBigBang().addRootMethod(analysisWrapper, true, "Registerd in " + JNIAccessFeature.class);
+                access.getBigBang().addRootMethod(analysisWrapper, true, "Registered in " + JNIAccessFeature.class);
                 analysisWrapper.registerAsEntryPoint(unpublished); // ensures C calling convention
             });
             return new JNIJavaCallVariantWrapperGroup(varargs, array, valist);

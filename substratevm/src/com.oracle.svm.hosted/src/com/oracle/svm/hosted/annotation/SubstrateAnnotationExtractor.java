@@ -319,7 +319,7 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
                 return typeAnnotationValues;
             } catch (IllegalArgumentException | BufferUnderflowException ex) {
                 /*
-                 * The byte[] arrrays in the TypeAnnotationValue are structurally correct, but have
+                 * The byte[] arrays in the TypeAnnotationValue are structurally correct, but have
                  * an illegal first targetInfo byte that will throw an AnnotationFormatException
                  * during parsing.
                  */

@@ -64,7 +64,7 @@ public interface ProcessHandler {
      * <p>
      * The default implementation uses {@link ProcessBuilder} to create the new subprocess. The
      * subprocess current working directory is set to {@link ProcessCommand#getDirectory()}. The
-     * {@link ProcessCommand#getDirectory()} value was either explicitely set by the guest language
+     * {@link ProcessCommand#getDirectory()} value was either explicitly set by the guest language
      * or the {@link FileSystem}'s current working directory is used. The subprocess environment is
      * set to {@link ProcessCommand#getEnvironment()}, the initial value of
      * {@link ProcessBuilder#environment()} is cleaned. The {@link ProcessCommand#getEnvironment()}
