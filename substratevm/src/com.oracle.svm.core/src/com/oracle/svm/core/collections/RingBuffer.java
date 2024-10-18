@@ -32,7 +32,7 @@ import com.oracle.svm.core.Uninterruptible;
 public class RingBuffer<T> {
     protected final T[] entries;
     protected int pos;
-    protected boolean wrapped;
+    private boolean wrapped;
 
     public interface Consumer<T> {
         void accept(Object context, T t);

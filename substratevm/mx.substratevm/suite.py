@@ -364,9 +364,6 @@ suite = {
                 "java.management": [
                     "sun.management",
                 ],
-                "jdk.management": [
-                    "com.sun.management.internal"
-                ],
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.code",
                     "jdk.vm.ci.meta"

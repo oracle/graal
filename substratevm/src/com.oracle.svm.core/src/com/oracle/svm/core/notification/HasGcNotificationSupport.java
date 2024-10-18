@@ -26,9 +26,10 @@
 
 package com.oracle.svm.core.notification;
 
+import com.oracle.svm.core.VMInspectionOptions;
+
 import java.util.function.BooleanSupplier;
 
-import com.oracle.svm.core.VMInspectionOptions;
 import jdk.graal.compiler.api.replacements.Fold;
 
 public class HasGcNotificationSupport implements BooleanSupplier {

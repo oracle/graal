@@ -44,7 +44,7 @@ public class GenScavengeMemoryPoolMXBeans implements MemoryPoolMXBeansProvider {
 
     static final String EDEN_SPACE = "eden space";
     static final String SURVIVOR_SPACE = "survivor space";
-    public static final String OLD_GEN_SPACE = "old generation space";
+    static final String OLD_GEN_SPACE = "old generation space";
     static final String EPSILON_HEAP = "epsilon heap";
 
     private final AbstractMemoryPoolMXBean[] mxBeans;
