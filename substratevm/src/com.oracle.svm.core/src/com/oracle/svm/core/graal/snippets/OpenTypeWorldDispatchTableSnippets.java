@@ -72,7 +72,7 @@ public final class OpenTypeWorldDispatchTableSnippets extends SubstrateTemplates
         }
     }
 
-    private static long determineITableStartingOffset(
+    public static long determineITableStartingOffset(
                     DynamicHub checkedHub,
                     int interfaceID) {
 
@@ -120,7 +120,7 @@ public final class OpenTypeWorldDispatchTableSnippets extends SubstrateTemplates
         @Override
         public void lower(LoadOpenTypeWorldDispatchTableStartingOffset node, LoweringTool tool) {
             SharedMethod target = node.getTarget();
-            int vtableStartingOffset = KnownOffsets.singleton().getVTableOffset(0, true);
+            int vtableStartingOffset = KnownOffsets.singleton().getVTableBaseOffset();
             if (target != null) {
                 /*
                  * If the target is known, then we know whether to use the class dispatch table or
