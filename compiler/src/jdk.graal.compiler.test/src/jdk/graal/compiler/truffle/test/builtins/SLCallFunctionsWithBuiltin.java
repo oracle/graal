@@ -35,6 +35,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.SLLanguage;
+import com.oracle.truffle.sl.nodes.SLRootNode;
 import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.runtime.SLNull;
@@ -67,7 +68,7 @@ public abstract class SLCallFunctionsWithBuiltin extends SLGraalRuntimeBuiltin {
     }
 
     private static Source getSource(SLFunction function) {
-        SourceSection section = function.getCallTarget().getRootNode().getSourceSection();
+        SourceSection section = ((SLRootNode) function.getCallTarget().getRootNode()).ensureSourceSection();
         if (section != null) {
             return section.getSource();
         }

@@ -34,7 +34,7 @@ import com.oracle.truffle.sl.test.SLTestSuite;
 @RunWith(SLTestRunner.class)
 @SLTestSuite(value = {"sl"}, options = {//
                 "engine.BackgroundCompilation", "false",
-                "engine.SingleTierCompilationThreshold", "10",
+                "engine.SingleTierCompilationThreshold", "20", // enough to transition to cached
                 "engine.MultiTier", "false",
                 "engine.CompileImmediately", "false",
                 "sl.UseBytecode", "true"

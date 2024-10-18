@@ -428,14 +428,7 @@ public final class SLBytecodeParser extends SLBaseParser {
 
     private void emitShortCircuitOperands(List<? extends ParseTree> operands) {
         for (int i = 0; i < operands.size(); i++) {
-            if (i == operands.size() - 1) {
-                // Short circuit operations don't convert the last operand to a boolean.
-                b.beginSLToBoolean();
-                visit(operands.get(i));
-                b.endSLToBoolean();
-            } else {
-                visit(operands.get(i));
-            }
+            visit(operands.get(i));
         }
     }
 

@@ -172,7 +172,6 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
                     case BRANCH_PROFILE -> assertEquals((double) expectedArgument.value, actualArgument.asBranchProfile().getFrequency(), 0.0001d);
                     default -> throw new AssertionError(String.format("Testing arguments of kind %s not yet implemented", expectedArgument.kind));
                 }
-                ;
             }
         }
 

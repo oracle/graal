@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api.bytecode.debug;
 
-import com.oracle.truffle.api.bytecode.BytecodeDSLAccess;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Instruction;
 

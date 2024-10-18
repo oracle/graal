@@ -470,8 +470,8 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
                 b.endSource();
             });
 
-            ProxyInstrument.findEnv(c).getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder(). //
-                            tagIs(ExpressionTag.class).indexIn(text.indexOf("20"), 2).build(),
+            ProxyInstrument.findEnv(c).getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder() //
+                            .tagIs(ExpressionTag.class).indexIn(text.indexOf("20"), 2).build(),
                             new ExecutionEventListener() {
 
                                 @Override

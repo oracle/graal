@@ -291,6 +291,7 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.bytecode.Gener
 intf java.lang.annotation.Annotation
 meth public abstract !hasdefault boolean allowUnsafe()
 meth public abstract !hasdefault boolean enableBlockScoping()
+meth public abstract !hasdefault boolean enableBytecodeDebugListener()
 meth public abstract !hasdefault boolean enableQuickening()
 meth public abstract !hasdefault boolean enableRootBodyTagging()
 meth public abstract !hasdefault boolean enableRootTagging()
@@ -590,6 +591,10 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.bytecode.Varia
 intf java.lang.annotation.Annotation
 
 CLSS public abstract interface com.oracle.truffle.api.bytecode.debug.BytecodeDebugListener
+meth public void afterInstructionExecute(com.oracle.truffle.api.bytecode.Instruction,java.lang.Throwable)
+meth public void afterRootExecute(com.oracle.truffle.api.bytecode.Instruction,java.lang.Object,java.lang.Throwable)
+meth public void beforeInstructionExecute(com.oracle.truffle.api.bytecode.Instruction)
+meth public void beforeRootExecute(com.oracle.truffle.api.bytecode.Instruction)
 meth public void onBytecodeStackTransition(com.oracle.truffle.api.bytecode.Instruction,com.oracle.truffle.api.bytecode.Instruction)
 meth public void onInvalidateInstruction(com.oracle.truffle.api.bytecode.Instruction,com.oracle.truffle.api.bytecode.Instruction)
 meth public void onQuicken(com.oracle.truffle.api.bytecode.Instruction,com.oracle.truffle.api.bytecode.Instruction)
