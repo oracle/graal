@@ -87,7 +87,6 @@ import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.nodes.EncodedGraph;
 import jdk.graal.compiler.util.ObjectCopier;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
     public static final String GENERATED_SERIALIZATION = "jdk.internal.reflect.GeneratedSerializationConstructorAccessor";
@@ -169,7 +168,7 @@ public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
             return getGeneratedSerializationName(declaringClass) + ":" + method.getName();
         }
         if (method.wrapped instanceof FactoryMethod factoryMethod) {
-            ResolvedJavaMethod targetConstructor = factoryMethod.getTargetConstructor();
+            AnalysisMethod targetConstructor = method.getUniverse().lookup(factoryMethod.getTargetConstructor());
             return addModuleName(targetConstructor.getDeclaringClass().toJavaName(true) + getQualifiedName(method), moduleName);
         }
         if (method.wrapped instanceof IncompatibleClassChangeFallbackMethod) {
