@@ -48,12 +48,12 @@ import org.graalvm.polyglot.PolyglotException;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class SLExitTest {
+public class SLExitTest extends AbstractSLTest {
     private static final String LINE_SEPARATOR = System.getProperty("line.separator");
 
     @Test
     public void testExit() {
-        try (Context context = Context.create()) {
+        try (Context context = newContextBuilder().build()) {
             context.eval("sl", "function main() {\n" +
                             "  exit(5);\n" +
                             "}\n");
@@ -90,7 +90,7 @@ public class SLExitTest {
     public void testShutdownHookWithoutExit() throws IOException {
         String message = "Hello world!";
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            try (Context context = Context.newBuilder().out(out).build()) {
+            try (Context context = newContextBuilder().out(out).build()) {
                 context.eval("sl", "function onShutdown() {\n" +
                                 "  println(\"" + message + "\");\n" +
                                 "}\n" +
@@ -108,7 +108,7 @@ public class SLExitTest {
         String message1 = "Hello";
         String message2 = "world!";
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            try (Context context = Context.newBuilder().out(out).build()) {
+            try (Context context = newContextBuilder().out(out).build()) {
                 context.eval("sl", "function onShutdown1() {\n" +
                                 "  println(\"" + message1 + "\");\n" +
                                 "}\n" +

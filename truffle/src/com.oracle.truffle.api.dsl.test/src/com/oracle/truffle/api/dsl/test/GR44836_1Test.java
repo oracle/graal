@@ -105,7 +105,7 @@ public class GR44836_1Test {
 
         @Specialization
         static String s3(int arg0,
-                        @Bind("this") Node inlineTarget,
+                        @Bind Node inlineTarget,
                         // make sure we need a specialization data class
                         @Cached InnerCachedNode innerCached0,
                         @Cached InnerCachedNode innerCached1,

@@ -48,16 +48,6 @@ public abstract class TestWithSynchronousCompiling extends TestWithPolyglotOptio
     protected static final int FIRST_TIER_THRESHOLD = 5;
     protected static final int LAST_TIER_THRESHOLD = 10;
 
-    private static final String[] DEFAULT_OPTIONS = {
-                    "engine.BackgroundCompilation", Boolean.FALSE.toString(), //
-                    "engine.SingleTierCompilationThreshold", Integer.toString(SINGLE_TIER_THRESHOLD), //
-                    "engine.LastTierCompilationThreshold", Integer.toString(LAST_TIER_THRESHOLD), //
-                    "engine.FirstTierCompilationThreshold", Integer.toString(FIRST_TIER_THRESHOLD), //
-                    "engine.DynamicCompilationThresholds", Boolean.FALSE.toString(), //
-                    "engine.CompileImmediately", Boolean.FALSE.toString(), //
-                    "compiler.EncodedGraphCache", Boolean.FALSE.toString()
-    };
-
     @Before
     public void before() {
         setupContext();
@@ -70,9 +60,14 @@ public abstract class TestWithSynchronousCompiling extends TestWithPolyglotOptio
     @Override
     protected Builder newContextBuilder() {
         Builder builder = super.newContextBuilder();
-        for (int i = 0; i < DEFAULT_OPTIONS.length; i += 2) {
-            builder.option(DEFAULT_OPTIONS[i], DEFAULT_OPTIONS[i + 1]);
-        }
+        builder.option("engine.BackgroundCompilation", "false");
+        builder.option("engine.CompileImmediately", "false");
+
+        builder.option("engine.SingleTierCompilationThreshold", String.valueOf(SINGLE_TIER_THRESHOLD));
+        builder.option("engine.LastTierCompilationThreshold", String.valueOf(LAST_TIER_THRESHOLD));
+        builder.option("engine.FirstTierCompilationThreshold", String.valueOf(FIRST_TIER_THRESHOLD));
+        builder.option("engine.DynamicCompilationThresholds", "false");
+        builder.option("compiler.EncodedGraphCache", "false");
         return builder;
     }
 

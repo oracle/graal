@@ -104,7 +104,7 @@ public class ByteArrayBuffer implements TruffleObject {
     @SuppressWarnings({"unused"})
     @ExportMessage
     public Object readArrayElement(long index,
-                    @Bind("$node") Node node,
+                    @Bind Node node,
                     @Cached InlinedBranchProfile errorBranch) throws InvalidArrayIndexException {
         if (!isArrayElementReadable(index)) {
             errorBranch.enter(node);

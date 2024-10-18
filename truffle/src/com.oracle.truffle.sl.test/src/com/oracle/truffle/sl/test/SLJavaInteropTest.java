@@ -60,7 +60,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-public class SLJavaInteropTest {
+public class SLJavaInteropTest extends AbstractSLTest {
 
     private Context context;
     private ByteArrayOutputStream os;
@@ -68,7 +68,7 @@ public class SLJavaInteropTest {
     @Before
     public void create() {
         os = new ByteArrayOutputStream();
-        context = Context.newBuilder().allowHostAccess(HostAccess.ALL).allowHostClassLookup((s) -> true).out(os).build();
+        context = newContextBuilder().allowHostAccess(HostAccess.ALL).allowHostClassLookup((s) -> true).out(os).build();
     }
 
     @After

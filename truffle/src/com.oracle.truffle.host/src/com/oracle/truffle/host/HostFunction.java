@@ -84,7 +84,7 @@ final class HostFunction implements TruffleObject {
 
     @ExportMessage
     Object execute(Object[] args,
-                    @Bind("$node") Node node,
+                    @Bind Node node,
                     @Cached HostExecuteNode execute) throws UnsupportedTypeException, ArityException {
         return execute.execute(node, method, obj, args, context);
     }

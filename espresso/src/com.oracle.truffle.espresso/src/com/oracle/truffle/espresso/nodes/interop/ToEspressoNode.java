@@ -152,7 +152,7 @@ public abstract class ToEspressoNode extends EspressoNode {
 
         @Specialization
         public static Object doStaticObject(StaticObject value, Klass targetType,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached InstanceOf.Dynamic instanceOf,
                         @Cached InlinedBranchProfile error) throws UnsupportedTypeException {
             assert !value.isForeignObject();
@@ -168,7 +168,7 @@ public abstract class ToEspressoNode extends EspressoNode {
                         "!isStaticObject(value)"
         })
         public static Object doForeignNull(Object value, @SuppressWarnings("unused") Klass targetType,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached InlinedBranchProfile error) throws UnsupportedTypeException {
             if (targetType.isPrimitive()) {
@@ -184,7 +184,7 @@ public abstract class ToEspressoNode extends EspressoNode {
                         "!isStaticObject(value)"
         })
         public static Object doMappedInterface(Object value, Klass targetType,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached LookupProxyKlassNode lookupProxyKlassNode,
                         @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached InlinedBranchProfile error) throws UnsupportedTypeException {
@@ -207,7 +207,7 @@ public abstract class ToEspressoNode extends EspressoNode {
                         "!isStaticObject(value)"
         })
         public static Object doArray(Object value, ArrayKlass targetType,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached InlinedBranchProfile error) throws UnsupportedTypeException {
             Meta meta = EspressoContext.get(node).getMeta();
@@ -229,7 +229,7 @@ public abstract class ToEspressoNode extends EspressoNode {
                         "!isStaticObject(value)"
         })
         public static Object doTypeConverter(Object value, Klass targetType,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached LookupTypeConverterNode lookupTypeConverter,
                         @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached InlinedBranchProfile error) throws UnsupportedTypeException {
@@ -255,7 +255,7 @@ public abstract class ToEspressoNode extends EspressoNode {
                         "!isStaticObject(value)"
         })
         public static Object doInternalTypeConverter(Object value, Klass targetType,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached ToReference.DynamicToReference converterToEspresso,
                         @Cached LookupInternalTypeConverterNode lookupInternalTypeConverter,
                         @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
@@ -285,7 +285,7 @@ public abstract class ToEspressoNode extends EspressoNode {
         })
         public static Object doGeneric(Object value, Klass targetType,
                         @Bind("getMeta()") Meta meta,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached LookupTypeConverterNode lookupTypeConverterNode,
                         @Cached LookupInternalTypeConverterNode lookupInternalTypeConverterNode,

@@ -420,6 +420,7 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
     }
 
     static final class LoopOSRRootNode extends AbstractLoopOSRRootNode {
+
         LoopOSRRootNode(OptimizedOSRLoopNode loop, FrameDescriptor frameDescriptor, Class<? extends VirtualFrame> clazz) {
             super(loop, frameDescriptor, clazz);
         }

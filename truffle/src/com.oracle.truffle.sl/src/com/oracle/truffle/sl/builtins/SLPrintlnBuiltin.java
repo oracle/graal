@@ -41,6 +41,7 @@
 package com.oracle.truffle.sl.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -63,8 +64,9 @@ public abstract class SLPrintlnBuiltin extends SLBuiltinNode {
     @Specialization
     @TruffleBoundary
     public Object println(Object value,
-                    @CachedLibrary(limit = "3") InteropLibrary interop) {
-        SLContext.get(this).getOutput().println(interop.toDisplayString(SLLanguageView.forValue(value)));
+                    @CachedLibrary(limit = "3") InteropLibrary interop,
+                    @Bind SLContext context) {
+        context.getOutput().println(interop.toDisplayString(SLLanguageView.forValue(value)));
         return value;
     }
 
