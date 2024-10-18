@@ -13,6 +13,8 @@ distribution to your classpath when compiling (but not at runtime).
 Currently, only the Espresso VM supports the continuations feature. Since it is still experimental, the option needs to
 be enabled by using the flags `--experimental-options --java.Continuum=true`.
 
+See an [example usage](serialization.md) of the continuation API with serialization.
+
 ### High level
 
 If you can model your use case as code that emits (or _yields_) a stream of objects, you can use the `Generator<T>`
