@@ -56,6 +56,7 @@ import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
  * An immutable representation of a set of Python regular expression flags.
  */
 @ExportLibrary(InteropLibrary.class)
+@SuppressWarnings({"truffle-abstract-export"}) // GR-58123
 public final class PythonFlags extends AbstractConstantKeysObject {
 
     private static final String PROP_ASCII = "ASCII";

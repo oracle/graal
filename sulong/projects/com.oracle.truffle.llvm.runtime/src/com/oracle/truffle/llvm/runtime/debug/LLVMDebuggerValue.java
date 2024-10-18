@@ -44,6 +44,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 
 @ExportLibrary(InteropLibrary.class)
+@SuppressWarnings({"static-method", "truffle-abstract-export", "deprecation"}) // GR-57971
 public abstract class LLVMDebuggerValue implements TruffleObject {
 
     protected static final String[] NO_KEYS = new String[0];

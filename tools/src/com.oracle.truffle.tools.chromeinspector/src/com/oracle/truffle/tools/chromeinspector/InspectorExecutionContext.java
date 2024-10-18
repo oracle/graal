@@ -245,7 +245,7 @@ public final class InspectorExecutionContext {
     DebugValue getDebugValue(CallArgument newValue, DebuggerSession session) {
         String objectId = newValue.getObjectId();
         if (objectId != null) {
-            RemoteObject obj = getRemoteObjectsHandler().getRemote(objectId);
+            RemoteObject obj = (RemoteObject) getRemoteObjectsHandler().getRemote(objectId);
             return obj.getDebugValue();
         } else {
             return session.createPrimitiveValue(newValue.getPrimitiveValue(), null);

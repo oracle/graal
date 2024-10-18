@@ -66,7 +66,7 @@ import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -140,12 +140,13 @@ public final class SourceCodeEvaluator extends AbstractRequestHandler {
         Object nodeObject = ((InstrumentableNode) nearestNode).getNodeObject();
         if (nodeObject instanceof TruffleObject) {
             try {
-                if (INTEROP.isMemberReadable(nodeObject, "literal")) {
-                    Object result = INTEROP.readMember(nodeObject, "literal");
+                Object literalMember = "literal";
+                if (INTEROP.isMemberReadable(nodeObject, literalMember)) {
+                    Object result = INTEROP.readMember(nodeObject, literalMember);
                     assert result instanceof TruffleObject || InteropUtils.isPrimitive(result);
                     return EvaluationResult.createResult(result);
                 }
-            } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+            } catch (UnknownMemberException | UnsupportedMessageException e) {
                 logger.warning(e.getMessage());
                 return EvaluationResult.createError(e);
             }
@@ -173,12 +174,13 @@ public final class SourceCodeEvaluator extends AbstractRequestHandler {
                 if (nodeLibrary.hasScope(nearestNode, coverageData.getFrame())) {
                     try {
                         Object scope = nodeLibrary.getScope(nearestNode, coverageData.getFrame(), true);
-                        if (INTEROP.isMemberReadable(scope, var.getName())) {
+                        Object name = var.getName();
+                        if (INTEROP.isMemberReadable(scope, name)) {
                             logger.fine("Coverage-based variable look-up");
-                            Object value = INTEROP.readMember(scope, var.getName());
+                            Object value = INTEROP.readMember(scope, name);
                             return EvaluationResult.createResult(value);
                         }
-                    } catch (UnknownIdentifierException | UnsupportedMessageException ex) {
+                    } catch (UnknownMemberException | UnsupportedMessageException ex) {
                         throw CompilerDirectives.shouldNotReachHere(ex);
                     }
                 }

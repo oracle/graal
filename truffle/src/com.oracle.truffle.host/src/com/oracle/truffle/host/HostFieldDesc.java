@@ -49,14 +49,24 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
+import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnknownMemberException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.Node;
+import java.lang.invoke.WrongMethodTypeException;
 
-abstract class HostFieldDesc {
+@ExportLibrary(InteropLibrary.class)
+@SuppressWarnings("static-method")
+abstract class HostFieldDesc extends HostBaseObject {
 
     private final boolean isFinal;
     private final Class<?> type;
@@ -86,21 +96,75 @@ abstract class HostFieldDesc {
         return name;
     }
 
-    public abstract Object get(Object receiver);
+    public abstract Object get(Object receiver) throws UnknownMemberException;
 
-    public abstract void set(Object receiver, Object value) throws ClassCastException, NullPointerException, IllegalArgumentException;
+    public abstract void set(Object receiver, Object value) throws ClassCastException, NullPointerException, UnknownMemberException;
+
+    public abstract boolean isStatic();
+
+    // Interop messages
+
+    @ExportMessage
+    final boolean isMember() {
+        return true;
+    }
+
+    @ExportMessage
+    final Object getMemberSimpleName() {
+        return getName();
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    final Object getMemberQualifiedName() {
+        String className = getDeclaringClass().getCanonicalName();
+        if (className == null) {
+            className = getDeclaringClass().getName();
+        }
+        return className + '.' + getMemberSimpleName();
+    }
+
+    @ExportMessage
+    boolean isMemberKindField() {
+        return true;
+    }
+
+    @ExportMessage
+    boolean isMemberKindMethod() {
+        return false;
+    }
+
+    @ExportMessage
+    boolean isMemberKindMetaObject() {
+        return false;
+    }
+
+    @ExportMessage
+    final boolean hasDeclaringMetaObject() {
+        return true;
+    }
+
+    @ExportMessage
+    final Object getDeclaringMetaObject(@Bind("$node") Node node) {
+        return HostObject.forClass(this.getDeclaringClass(), HostContext.get(node));
+    }
+
+    @ExportMessage
+    final boolean hasMemberSignature() {
+        return true;
+    }
+
+    @ExportMessage
+    final Object getMemberSignature() {
+        return new HostObject.MembersArray(new Object[]{new HostSignatureElement(null, type)});
+    }
 
     static HostFieldDesc unreflect(MethodHandles.Lookup methodLookup, Field reflectionField) {
-        assert isAccessible(reflectionField);
         if (TruffleOptions.AOT) { // use reflection instead of MethodHandle
             return new ReflectImpl(reflectionField);
         } else {
             return new MHImpl(methodLookup, reflectionField);
         }
-    }
-
-    static boolean isAccessible(Field field) {
-        return Modifier.isPublic(field.getModifiers()) && Modifier.isPublic(field.getDeclaringClass().getModifiers());
     }
 
     private static final class ReflectImpl extends HostFieldDesc {
@@ -112,21 +176,35 @@ abstract class HostFieldDesc {
         }
 
         @Override
-        public Object get(Object receiver) {
+        public Object get(Object receiver) throws UnknownMemberException {
             try {
                 return reflectGet(field, receiver);
             } catch (IllegalAccessException e) {
                 throw shouldNotReachHere(e);
+            } catch (IllegalArgumentException e) {
+                throw UnknownMemberException.create(this);
             }
         }
 
         @Override
-        public void set(Object receiver, Object value) {
+        public void set(Object receiver, Object value) throws UnknownMemberException {
             try {
                 reflectSet(field, receiver, value);
             } catch (IllegalAccessException e) {
                 throw shouldNotReachHere(e);
+            } catch (IllegalArgumentException e) {
+                throw UnknownMemberException.create(this);
             }
+        }
+
+        @Override
+        public boolean isStatic() {
+            return Modifier.isStatic(field.getModifiers());
+        }
+
+        @Override
+        public Class<?> getDeclaringClass() {
+            return field.getDeclaringClass();
         }
 
         @TruffleBoundary
@@ -140,12 +218,32 @@ abstract class HostFieldDesc {
         }
 
         @Override
+        public int hashCode() {
+            return field.hashCode();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            final ReflectImpl other = (ReflectImpl) obj;
+            return this.field.equals(other.field);
+        }
+
+        @Override
         public String toString() {
             return "Field[" + field.toString() + "]";
         }
     }
 
-    private static final class MHImpl extends HostFieldDesc {
+    static final class MHImpl extends HostFieldDesc {
         private final MethodHandles.Lookup methodLookup;
         private final Field field;
         @CompilationFinal private MethodHandle getHandle;
@@ -158,39 +256,61 @@ abstract class HostFieldDesc {
         }
 
         @Override
-        public Object get(Object receiver) {
+        public Object get(Object receiver) throws UnknownMemberException {
             if (getHandle == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getHandle = makeGetMethodHandle();
             }
             try {
                 return invokeGetHandle(getHandle, receiver);
+            } catch (UnknownMemberException e) {
+                throw e;
             } catch (Throwable e) {
                 throw HostInteropReflect.rethrow(e);
             }
         }
 
         @Override
-        public void set(Object receiver, Object value) {
+        public void set(Object receiver, Object value) throws UnknownMemberException {
             if (setHandle == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 setHandle = makeSetMethodHandle();
             }
             try {
                 invokeSetHandle(setHandle, receiver, value);
+            } catch (UnknownMemberException e) {
+                throw e;
             } catch (Throwable e) {
                 throw HostInteropReflect.rethrow(e);
             }
         }
 
-        @TruffleBoundary(allowInlining = true)
-        private static Object invokeGetHandle(MethodHandle invokeHandle, Object receiver) throws Throwable {
-            return invokeHandle.invokeExact(receiver);
+        @Override
+        public boolean isStatic() {
+            return Modifier.isStatic(field.getModifiers());
+        }
+
+        @Override
+        public Class<?> getDeclaringClass() {
+            return field.getDeclaringClass();
         }
 
         @TruffleBoundary(allowInlining = true)
-        private static void invokeSetHandle(MethodHandle invokeHandle, Object receiver, Object value) throws Throwable {
-            invokeHandle.invokeExact(receiver, value);
+        private Object invokeGetHandle(MethodHandle invokeHandle, Object receiver) throws Throwable {
+            try {
+                return invokeHandle.invokeExact(receiver);
+            } catch (WrongMethodTypeException | ClassCastException e) {
+                throw UnknownMemberException.create(this);
+            }
+        }
+
+        @TruffleBoundary(allowInlining = true)
+        private void invokeSetHandle(MethodHandle invokeHandle, Object receiver, Object value) throws Throwable {
+            try {
+                invokeHandle.invokeExact(receiver, value);
+            } catch (WrongMethodTypeException | ClassCastException e) {
+                throw UnknownMemberException.create(this);
+            }
         }
 
         private MethodHandle makeGetMethodHandle() {
@@ -222,6 +342,26 @@ abstract class HostFieldDesc {
         }
 
         @Override
+        public int hashCode() {
+            return field.hashCode();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            final MHImpl other = (MHImpl) obj;
+            return this.field.equals(other.field);
+        }
+
+        @Override
         public String toString() {
             return "Field[" + field.toString() + "]";
         }
@@ -235,22 +375,101 @@ abstract class HostFieldDesc {
         }
 
         @Override
-        public Object get(Object receiver) {
+        public Object get(Object receiver) throws UnknownMemberException {
             try {
                 return Array.getLength(receiver);
             } catch (IllegalArgumentException e) {
-                throw shouldNotReachHere(e);
+                throw UnknownMemberException.create(this);
             }
         }
 
         @Override
-        public void set(Object receiver, Object value) {
-            shouldNotReachHere();
+        public void set(Object receiver, Object value) throws UnknownMemberException {
+            throw UnknownMemberException.create(this);
+        }
+
+        @Override
+        public boolean isStatic() {
+            return false;
+        }
+
+        @Override
+        public Class<?> getDeclaringClass() {
+            return Object[].class;
         }
 
         @Override
         public String toString() {
             return "Field[length]";
         }
+    }
+
+    static final class SyntheticClassField extends HostFieldDesc {
+
+        private final Class<?> declaringClass;
+        private final HostContext context;
+
+        SyntheticClassField(Class<?> declaringClass, String name, HostContext context) {
+            super(Class.class, Class.class, name, true);
+            this.declaringClass = declaringClass;
+            this.context = context;
+        }
+
+        @Override
+        public Object get(Object receiver) throws UnknownMemberException {
+            return switch (getName()) {
+                case HostInteropReflect.STATIC_TO_CLASS -> HostObject.forClass(declaringClass, context);
+                case HostInteropReflect.CLASS_TO_STATIC -> HostObject.forStaticClass(declaringClass, context);
+                default -> {
+                    throw UnknownMemberException.create(this);
+                }
+            };
+        }
+
+        @Override
+        public void set(Object receiver, Object value) throws UnknownMemberException {
+            throw UnknownMemberException.create(this);
+        }
+
+        @Override
+        public boolean isStatic() {
+            return true;
+        }
+
+        @Override
+        public Class<?> getDeclaringClass() {
+            return declaringClass;
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = 3;
+            hash = 83 * hash + Objects.hashCode(this.declaringClass);
+            hash = 83 * hash + Objects.hashCode(this.getName());
+            hash = 83 * hash + Objects.hashCode(this.context);
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            final SyntheticClassField other = (SyntheticClassField) obj;
+            if (!this.declaringClass.equals(other.declaringClass)) {
+                return false;
+            }
+            if (!this.getName().equals(other.getName())) {
+                return false;
+            }
+            return this.context == other.context;
+        }
+
     }
 }

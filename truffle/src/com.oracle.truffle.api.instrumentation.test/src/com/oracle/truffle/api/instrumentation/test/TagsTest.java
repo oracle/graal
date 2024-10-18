@@ -70,7 +70,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -361,6 +361,47 @@ public class TagsTest {
         }
 
         @ExportLibrary(InteropLibrary.class)
+        @SuppressWarnings("static-method")
+        static final class TagNameMember implements TruffleObject {
+
+            private final String tagName;
+
+            TagNameMember(String tagName) {
+                this.tagName = tagName;
+            }
+
+            @ExportMessage
+            boolean isMember() {
+                return true;
+            }
+
+            @ExportMessage
+            Object getMemberSimpleName() {
+                return tagName;
+            }
+
+            @ExportMessage
+            Object getMemberQualifiedName() {
+                return tagName;
+            }
+
+            @ExportMessage
+            boolean isMemberKindField() {
+                return true;
+            }
+
+            @ExportMessage
+            boolean isMemberKindMethod() {
+                return false;
+            }
+
+            @ExportMessage
+            boolean isMemberKindMetaObject() {
+                return false;
+            }
+        }
+
+        @ExportLibrary(InteropLibrary.class)
         static final class NodeObjectDescriptor implements TruffleObject {
 
             private final String tagName;
@@ -381,7 +422,7 @@ public class TagsTest {
                     tagName = "Bad";
                     index = 4;
                 }
-                keys = new NodeObjectArray(new String[]{tagName});
+                keys = new NodeObjectArray(new Object[]{new TagNameMember(tagName)});
                 boolean haveSourceSections = code.charAt(index++) == 'S';
                 this.varNames = code.substring(index).split(",");
                 this.sourceSections = new SourceSection[varNames.length];
@@ -408,19 +449,23 @@ public class TagsTest {
             }
 
             @ExportMessage
-            boolean isMemberReadable(String member) {
-                return tagName.equals(member);
+            boolean isMemberReadable(Object member) {
+                if (member instanceof TagNameMember tn) {
+                    return tagName.equals(tn.tagName);
+                } else {
+                    return tagName.equals(member);
+                }
             }
 
             @ExportMessage
             @SuppressWarnings("static-method")
-            Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+            Object getMemberObjects() {
                 return keys;
             }
 
             @ExportMessage
             @TruffleBoundary
-            Object readMember(String member) throws UnknownIdentifierException {
+            Object readMember(Object member) throws UnknownMemberException {
                 if (isMemberReadable(member)) {
                     if (varNames.length == 1) {
                         if ("string".equalsIgnoreCase(varNames[0])) {
@@ -436,7 +481,7 @@ public class TagsTest {
                         return new NodeObjectArray(symbols);
                     }
                 } else {
-                    throw UnknownIdentifierException.create(member);
+                    throw UnknownMemberException.create(member);
                 }
             }
         }

@@ -32,7 +32,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.tools.chromeinspector.InspectorExecutionContext;
 import com.oracle.truffle.tools.chromeinspector.server.InspectorServerConnection;
@@ -51,8 +51,10 @@ public final class Inspector extends AbstractInspectorObject {
     private static final String METHOD_CLOSE = "close";
     private static final String METHOD_OPEN = "open";
     private static final String METHOD_URL = "url";
-    static final String[] NAMES = new String[]{FIELD_CONSOLE, FIELD_SESSION, METHOD_CLOSE, METHOD_OPEN, METHOD_URL};
-    private static final TruffleObject KEYS = new Keys(NAMES);
+    private static final TruffleObject MEMBERS = new Members(new Object[]{
+                    new FieldMember(FIELD_CONSOLE), new FieldMember(FIELD_SESSION), //
+                    new MethodMember(METHOD_CLOSE), new MethodMember(METHOD_OPEN), new MethodMember(METHOD_URL)
+    });
 
     private InspectorServerConnection connection;
     private final InspectorServerConnection.Open open;
@@ -73,8 +75,8 @@ public final class Inspector extends AbstractInspectorObject {
     }
 
     @Override
-    protected TruffleObject getMembers(boolean includeInternal) {
-        return KEYS;
+    protected TruffleObject getMemberObjects() {
+        return MEMBERS;
     }
 
     @Override
@@ -113,7 +115,7 @@ public final class Inspector extends AbstractInspectorObject {
     }
 
     @Override
-    protected Object invokeMember(String name, Object[] arguments) throws UnknownIdentifierException {
+    protected Object invokeMethod(String name, Object member, Object[] arguments) throws UnknownMemberException {
         switch (name) {
             case METHOD_CLOSE:
                 return methodClose();
@@ -123,7 +125,7 @@ public final class Inspector extends AbstractInspectorObject {
                 return methodUrl();
             default:
                 CompilerDirectives.transferToInterpreter();
-                throw UnknownIdentifierException.create(name);
+                throw UnknownMemberException.create(member);
         }
     }
 

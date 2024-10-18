@@ -92,15 +92,15 @@ public class InteropTest {
     }
 
     @Test
-    public void testJSONKeysIdentity() throws InteropException {
+    public void testJSONMembersIdentity() throws InteropException {
         String json = "{ answer: 42, question: '?' }";
         JSONObject jsonObject = new JSONObject(json);
         JSONTruffleObject truffleObject = new JSONTruffleObject(jsonObject);
         InteropLibrary interop = InteropLibrary.getUncached();
-        Object keys = interop.getMembers(truffleObject);
-        Object sameKeys = interop.getMembers(truffleObject);
-        Object otherKeys = interop.getMembers(new JSONTruffleObject(jsonObject));
-        testIdentity(keys, sameKeys, otherKeys);
+        Object members = interop.getMemberObjects(truffleObject);
+        Object sameMembers = interop.getMemberObjects(truffleObject);
+        Object otherMembers = interop.getMemberObjects(new JSONTruffleObject(jsonObject));
+        testIdentity(members, sameMembers, otherMembers);
     }
 
 }

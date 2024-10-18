@@ -111,6 +111,31 @@ public abstract class InteropLibraryBaseTest extends AbstractParametrizedLibrary
     protected final void assertNoObject(Object value) {
         InteropLibrary lib = createLibrary(InteropLibrary.class, value);
         assertFalse(lib.hasMembers(value));
+        assertNoObjectLegacy(value, lib);
+        Object foo = "foo";
+        assertFalse(lib.isMemberReadable(value, foo));
+        assertFalse(lib.isMemberModifiable(value, foo));
+        assertFalse(lib.isMemberInsertable(value, foo));
+        assertFalse(lib.isMemberRemovable(value, foo));
+        assertFalse(lib.isMemberInvocable(value, foo));
+        assertFalse(lib.hasDeclaredMembers(value));
+        assertFalse(lib.hasMetaObject(value));
+        assertFalse(lib.hasMetaParents(value));
+        assertFalse(lib.hasDeclaringMetaObject(value));
+        assertFalse(lib.hasStaticReceiver(value));
+        assertUnsupported(() -> lib.getMemberObjects(value));
+        assertUnsupported(() -> lib.readMember(value, foo));
+        assertUnsupported(() -> lib.writeMember(value, foo, "bar"));
+        assertUnsupported(() -> lib.removeMember(value, foo));
+        assertUnsupported(() -> lib.invokeMember(value, foo));
+        assertUnsupported(() -> lib.getDeclaredMembers(value));
+        assertUnsupported(() -> lib.getMetaObject(value));
+        assertUnsupported(() -> lib.getMetaParents(value));
+        assertUnsupported(() -> lib.getStaticReceiver(value));
+    }
+
+    @SuppressWarnings("deprecation")
+    private static void assertNoObjectLegacy(Object value, InteropLibrary lib) {
         assertFalse(lib.isMemberReadable(value, "foo"));
         assertFalse(lib.isMemberModifiable(value, "foo"));
         assertFalse(lib.isMemberInsertable(value, "foo"));
@@ -122,6 +147,27 @@ public abstract class InteropLibraryBaseTest extends AbstractParametrizedLibrary
         assertUnsupported(() -> lib.writeMember(value, "foo", "bar"));
         assertUnsupported(() -> lib.removeMember(value, "foo"));
         assertUnsupported(() -> lib.invokeMember(value, "foo"));
+    }
+
+    protected final void assertNoMember(Object value) {
+        InteropLibrary lib = createLibrary(InteropLibrary.class, value);
+        assertFalse(lib.isMember(value));
+        assertFalse(lib.hasMemberSignature(value));
+        assertFalse(lib.isMemberKindField(value));
+        assertFalse(lib.isMemberKindMethod(value));
+        assertFalse(lib.isMemberKindMetaObject(value));
+        assertUnsupported(() -> lib.getMemberQualifiedName(value));
+        assertUnsupported(() -> lib.getMemberSignature(value));
+        assertUnsupported(() -> lib.getMemberSimpleName(value));
+    }
+
+    protected final void assertNoSignature(Object value) {
+        InteropLibrary lib = createLibrary(InteropLibrary.class, value);
+        assertFalse(lib.isSignatureElement(value));
+        assertFalse(lib.hasSignatureElementMetaObject(value));
+        assertFalse(lib.hasSignatureElementName(value));
+        assertUnsupported(() -> lib.getSignatureElementMetaObject(value));
+        assertUnsupported(() -> lib.getSignatureElementName(value));
     }
 
     protected final void assertNoBoolean(Object value) {

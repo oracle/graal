@@ -83,7 +83,7 @@ import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
@@ -330,7 +330,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
             languageEnv.addToHostClassPath(languageEnv.getPublicTruffleFile(jar.toString()));
 
             Object statics = languageEnv.lookupHostSymbol(hostClass.getPackage().getName() + "." + TEST_REPLACE_CLASS_NAME);
-            Object result = InteropLibrary.getUncached(statics).invokeMember(statics, "testMethod");
+            Object result = InteropLibrary.getUncached(statics).invokeMember(statics, (Object) "testMethod");
 
             try (InputStream stream = hostClass.getResourceAsStream("/" + HostClassLoadingTestClass3.class.getName().replace('.', '/') + ".class")) {
                 assertNotNull(stream);
@@ -571,18 +571,18 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
         assertEquals(42, execute(read(hostInstance, "testMethod")));
     }
 
-    private static Object read(Object o, String key) {
+    private static Object read(Object o, Object key) {
         try {
             return InteropLibrary.getFactory().getUncached().readMember(o, key);
-        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+        } catch (UnknownMemberException | UnsupportedMessageException e) {
             throw new AssertionError(e);
         }
     }
 
-    private static void write(Object o, String key, Object value) {
+    private static void write(Object o, Object key, Object value) {
         try {
             InteropLibrary.getFactory().getUncached().writeMember(o, key, value);
-        } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException e) {
+        } catch (UnknownMemberException | UnsupportedMessageException | UnsupportedTypeException e) {
             throw new AssertionError(e);
         }
     }

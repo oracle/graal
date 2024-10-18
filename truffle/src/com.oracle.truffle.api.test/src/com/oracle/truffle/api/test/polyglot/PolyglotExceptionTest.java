@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -91,7 +91,7 @@ import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -842,8 +842,8 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
         Object doGeneric(@CachedLibrary(limit = "1") InteropLibrary interop) {
             try {
                 Object bindings = TestAPIAccessor.engineAccess().getPolyglotBindingsObject();
-                return interop.readMember(bindings, "receiver");
-            } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+                return interop.readMember(bindings, (Object) "receiver");
+            } catch (UnsupportedMessageException | UnknownMemberException e) {
                 throw CompilerDirectives.shouldNotReachHere();
             }
         }

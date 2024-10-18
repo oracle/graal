@@ -340,6 +340,7 @@ public abstract class ToEspressoNode extends EspressoNode {
     }
 
     @TruffleBoundary
+    @SuppressWarnings("deprecation") // GR-58181
     public static void checkHasAllFieldsOrThrow(Object value, ObjectKlass klass, InteropLibrary interopLibrary, Meta meta) throws UnsupportedTypeException {
         CompilerAsserts.partialEvaluationConstant(klass);
         /*

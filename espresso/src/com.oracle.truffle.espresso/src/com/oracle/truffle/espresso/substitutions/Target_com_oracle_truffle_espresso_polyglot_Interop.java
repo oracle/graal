@@ -74,6 +74,7 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.vm.VM;
 
 @EspressoSubstitutions
+@SuppressWarnings("deprecation") // GR-58181
 public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
     static final class InteropUtils {
@@ -1742,24 +1743,24 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
     /**
      * Returns <code>true</code> if the receiver may have members. Therefore, at least one of
-     * {@link InteropLibrary#readMember(Object, String)},
-     * {@link InteropLibrary#writeMember(Object, String, Object)},
-     * {@link InteropLibrary#removeMember(Object, String)},
-     * {@link InteropLibrary#invokeMember(Object, String, Object...)} must not throw
+     * {@link InteropLibrary#readMember(Object, Object)},
+     * {@link InteropLibrary#writeMember(Object, Object, Object)},
+     * {@link InteropLibrary#removeMember(Object, Object)},
+     * {@link InteropLibrary#invokeMember(Object, Object, Object...)} must not throw
      * {@link UnsupportedMessageException}. Members are structural elements of a class. For example,
      * a method or field is a member of a class. Invoking this message does not cause any observable
      * side-effects. Returns <code>false</code> by default.
      *
-     * @see InteropLibrary#getMembers(Object, boolean)
-     * @see InteropLibrary#isMemberReadable(Object, String)
-     * @see InteropLibrary#isMemberModifiable(Object, String)
-     * @see InteropLibrary#isMemberInvocable(Object, String)
-     * @see InteropLibrary#isMemberInsertable(Object, String)
-     * @see InteropLibrary#isMemberRemovable(Object, String)
-     * @see InteropLibrary#readMember(Object, String)
-     * @see InteropLibrary#writeMember(Object, String, Object)
-     * @see InteropLibrary#removeMember(Object, String)
-     * @see InteropLibrary#invokeMember(Object, String, Object...)
+     * @see InteropLibrary#getMemberObjects(Object)
+     * @see InteropLibrary#isMemberReadable(Object, Object)
+     * @see InteropLibrary#isMemberModifiable(Object, Object)
+     * @see InteropLibrary#isMemberInvocable(Object, Object)
+     * @see InteropLibrary#isMemberInsertable(Object, Object)
+     * @see InteropLibrary#isMemberRemovable(Object, Object)
+     * @see InteropLibrary#readMember(Object, Object)
+     * @see InteropLibrary#writeMember(Object, Object, Object)
+     * @see InteropLibrary#removeMember(Object, Object)
+     * @see InteropLibrary#invokeMember(Object, Object, Object...)
      * @since 19.0
      */
     @Substitution
@@ -1784,7 +1785,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * additional information like {@link InteropLibrary#getSourceLocation(Object) source location}
      * in case of {@link InteropLibrary#isScope(Object) scope} variables, etc.
      *
-     * @see InteropLibrary#getMembers(Object)
+     * @see InteropLibrary#getMemberObjects(Object)
      * @since 19.0
      */
     @Substitution
@@ -1817,13 +1818,13 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
     /**
      * Returns <code>true</code> if a given member is
-     * {@link InteropLibrary#readMember(Object, String) readable}. This method may only return
+     * {@link InteropLibrary#readMember(Object, Object) readable}. This method may only return
      * <code>true</code> if {@link InteropLibrary#hasMembers(Object)} returns <code>true</code> as
-     * well and {@link InteropLibrary#isMemberInsertable(Object, String)} returns
+     * well and {@link InteropLibrary#isMemberInsertable(Object, Object)} returns
      * <code>false</code>. Invoking this message does not cause any observable side-effects. Returns
      * <code>false</code> by default.
      *
-     * @see InteropLibrary#isMemberReadable(Object, String)
+     * @see InteropLibrary#isMemberReadable(Object, Object)
      * @since 19.0
      */
     @Substitution
@@ -1847,13 +1848,13 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
     /**
      * Reads the value of a given member. If the member is
-     * {@link InteropLibrary#isMemberReadable(Object, String) readable} and
-     * {@link InteropLibrary#isMemberInvocable(Object, String) invocable} then the result of reading
+     * {@link InteropLibrary#isMemberReadable(Object, Object) readable} and
+     * {@link InteropLibrary#isMemberInvocable(Object, Object) invocable} then the result of reading
      * the member is {@link InteropLibrary#isExecutable(Object) executable} and is bound to this
      * receiver. This method must have not observable side-effects unless
-     * {@link InteropLibrary#hasMemberReadSideEffects(Object, String)} returns <code>true</code>.
+     * {@link InteropLibrary#hasMemberReadSideEffects(Object, Object)} returns <code>true</code>.
      *
-     * @see InteropLibrary#readMember(Object, String)
+     * @see InteropLibrary#readMember(Object, Object)
      * @since 19.0
      */
 
@@ -1893,13 +1894,13 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
     /**
      * Returns <code>true</code> if a given member is existing and
-     * {@link InteropLibrary#writeMember(Object, String, Object) writable}. This method may only
+     * {@link InteropLibrary#writeMember(Object, Object, Object) writable}. This method may only
      * return <code>true</code> if {@link InteropLibrary#hasMembers(Object)} returns
-     * <code>true</code> as well and {@link InteropLibrary#isMemberInsertable(Object, String)}
+     * <code>true</code> as well and {@link InteropLibrary#isMemberInsertable(Object, Object)}
      * returns <code>false</code>. Invoking this message does not cause any observable side-effects.
      * Returns <code>false</code> by default.
      *
-     * @see InteropLibrary#isMemberModifiable(Object, String)
+     * @see InteropLibrary#isMemberModifiable(Object, Object)
      * @since 19.0
      */
     @Substitution
@@ -1923,13 +1924,13 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
     /**
      * Returns <code>true</code> if a given member is not existing and
-     * {@link InteropLibrary#writeMember(Object, String, Object) writable}. This method may only
+     * {@link InteropLibrary#writeMember(Object, Object, Object) writable}. This method may only
      * return <code>true</code> if {@link InteropLibrary#hasMembers(Object)} returns
-     * <code>true</code> as well and {@link InteropLibrary#isMemberExisting(Object, String)} returns
+     * <code>true</code> as well and {@link InteropLibrary#isMemberExisting(Object, Object)} returns
      * <code>false</code>. Invoking this message does not cause any observable side-effects. Returns
      * <code>false</code> by default.
      *
-     * @see InteropLibrary#isMemberInsertable(Object, String)
+     * @see InteropLibrary#isMemberInsertable(Object, Object)
      * @since 19.0
      */
     @Substitution
@@ -1953,13 +1954,13 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
     /**
      * Writes the value of a given member. Writing a member is allowed if is existing and
-     * {@link InteropLibrary#isMemberModifiable(Object, String) modifiable}, or not existing and
-     * {@link InteropLibrary#isMemberInsertable(Object, String) insertable}.
+     * {@link InteropLibrary#isMemberModifiable(Object, Object) modifiable}, or not existing and
+     * {@link InteropLibrary#isMemberInsertable(Object, Object) insertable}.
      *
      * This method must have not observable side-effects other than the changed member unless
-     * {@link InteropLibrary#hasMemberWriteSideEffects(Object, String) side-effects} are allowed.
+     * {@link InteropLibrary#hasMemberWriteSideEffects(Object, Object) side-effects} are allowed.
      *
-     * @see InteropLibrary#writeMember(Object, String, Object)
+     * @see InteropLibrary#writeMember(Object, Object, Object)
      * @since 19.0
      */
     @Substitution
@@ -2006,11 +2007,11 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
     /**
      * Returns <code>true</code> if a given member is existing and removable. This method may only
      * return <code>true</code> if {@link InteropLibrary#hasMembers(Object)} returns
-     * <code>true</code> as well and {@link InteropLibrary#isMemberInsertable(Object, String)}
+     * <code>true</code> as well and {@link InteropLibrary#isMemberInsertable(Object, Object)}
      * returns <code>false</code>. Invoking this message does not cause any observable side-effects.
      * Returns <code>false</code> by default.
      *
-     * @see InteropLibrary#isMemberRemovable(Object, String)
+     * @see InteropLibrary#isMemberRemovable(Object, Object)
      * @since 19.0
      */
     @Substitution
@@ -2034,11 +2035,11 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
     /**
      * Removes a member from the receiver object. Removing member is allowed if is
-     * {@link InteropLibrary#isMemberRemovable(Object, String) removable}.
+     * {@link InteropLibrary#isMemberRemovable(Object, Object) removable}.
      *
      * This method does not have not observable side-effects other than the removed member.
      *
-     * @see InteropLibrary#removeMember(Object, String)
+     * @see InteropLibrary#removeMember(Object, Object)
      * @since 19.0
      */
     @Substitution
@@ -2075,12 +2076,12 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
     /**
      * Returns <code>true</code> if a given member is invocable. This method may only return
      * <code>true</code> if {@link InteropLibrary#hasMembers(Object)} returns <code>true</code> as
-     * well and {@link InteropLibrary#isMemberInsertable(Object, String)} returns
+     * well and {@link InteropLibrary#isMemberInsertable(Object, Object)} returns
      * <code>false</code>. Invoking this message does not cause any observable side-effects. Returns
      * <code>false</code> by default.
      *
-     * @see InteropLibrary#isMemberInvocable(Object, String)
-     * @see InteropLibrary#invokeMember(Object, String, Object...)
+     * @see InteropLibrary#isMemberInvocable(Object, Object)
+     * @see InteropLibrary#invokeMember(Object, Object, Object...)
      * @since 19.0
      */
     @Substitution
@@ -2105,7 +2106,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
     /**
      * Invokes a member for a given receiver and arguments.
      *
-     * @see InteropLibrary#invokeMember(Object, String, Object...)
+     * @see InteropLibrary#invokeMember(Object, Object, Object...)
      * @since 19.0
      */
     @Substitution
@@ -2228,7 +2229,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * For instance in JavaScript a property read may have side-effects if the property has a getter
      * function.
      *
-     * @see InteropLibrary#hasMemberReadSideEffects(Object, String)
+     * @see InteropLibrary#hasMemberReadSideEffects(Object, Object)
      * @since 19.0
      */
     @Substitution
@@ -2258,7 +2259,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * For instance in JavaScript a property write may have side-effects if the property has a
      * setter function.
      *
-     * @see InteropLibrary#hasMemberWriteSideEffects(Object, String)
+     * @see InteropLibrary#hasMemberWriteSideEffects(Object, Object)
      * @since 19.0
      */
     @Substitution

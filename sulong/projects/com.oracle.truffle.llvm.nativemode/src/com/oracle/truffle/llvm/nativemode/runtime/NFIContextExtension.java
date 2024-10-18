@@ -38,7 +38,7 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -424,13 +424,13 @@ public final class NFIContextExtension extends NativeContextExtension {
 
     private static Object getNativeFunctionOrNull(Object library, String name) {
         CompilerAsserts.neverPartOfCompilation();
-        if (!INTEROP.isMemberReadable(library, name)) {
+        if (!INTEROP.isMemberReadable(library, (Object) name)) {
             // try another library
             return null;
         }
         try {
-            return INTEROP.readMember(library, name);
-        } catch (UnknownIdentifierException ex) {
+            return INTEROP.readMember(library, (Object) name);
+        } catch (UnknownMemberException ex) {
             return null;
         } catch (InteropException ex) {
             throw new IllegalStateException(ex);
@@ -524,13 +524,13 @@ public final class NFIContextExtension extends NativeContextExtension {
 
     private static Object getNativeDataObjectOrNull(Object libraryHandle, String name) {
         try {
-            Object symbol = INTEROP.readMember(libraryHandle, name);
+            Object symbol = INTEROP.readMember(libraryHandle, (Object) name);
             if (symbol != null && 0 != INTEROP.asPointer(symbol)) {
                 return symbol;
             } else {
                 return null;
             }
-        } catch (UnknownIdentifierException ex) {
+        } catch (UnknownMemberException ex) {
             // try another library
             return null;
         } catch (InteropException ex) {

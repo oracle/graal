@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,7 +32,7 @@ package com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
@@ -76,17 +76,17 @@ public abstract class DebugExprObjectMemberNode extends LLVMExpressionNode imple
 
     private Pair<Object, DebugExprType> findMemberAndType(Object baseMember) {
         InteropLibrary library = InteropLibrary.getFactory().getUncached();
-        if (baseMember != null && library.isMemberExisting(baseMember, fieldName)) {
+        if (baseMember != null && library.isMemberExisting(baseMember, (Object) fieldName)) {
             try {
-                Object member = library.readMember(baseMember, fieldName);
+                Object member = library.readMember(baseMember, (Object) fieldName);
                 LLVMDebuggerValue ldv = (LLVMDebuggerValue) member;
                 Object metaObj = ldv.resolveMetaObject();
                 DebugExprType type = DebugExprType.getTypeFromSymbolTableMetaObject(metaObj);
                 return Pair.create(member, type);
             } catch (UnsupportedMessageException e1) {
                 throw DebugExprException.symbolNotFound(this, fieldName, baseMember);
-            } catch (UnknownIdentifierException e1) {
-                throw DebugExprException.symbolNotFound(this, e1.getUnknownIdentifier(), baseMember);
+            } catch (UnknownMemberException e1) {
+                throw DebugExprException.symbolNotFound(this, fieldName, baseMember);
             } catch (ClassCastException e1) {
                 throw DebugExprException.symbolNotFound(this, fieldName, baseMember);
             }

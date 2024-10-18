@@ -67,7 +67,7 @@ import org.graalvm.wasm.nodes.WasmDataAccess;
  * Represents an object scope in the debug environment.
  */
 @ExportLibrary(InteropLibrary.class)
-@SuppressWarnings("static-method")
+@SuppressWarnings({"static-method", "truffle-abstract-export", "deprecation"})
 public final class DebugObjectDisplayValue extends DebugDisplayValue implements TruffleObject {
     private final DebugContext context;
     private final DebugLocation location;

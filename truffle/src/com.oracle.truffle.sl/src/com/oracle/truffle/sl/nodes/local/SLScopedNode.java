@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,13 +40,17 @@
  */
 package com.oracle.truffle.sl.nodes.local;
 
+import java.util.Objects;
+
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NeverDefault;
-import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -54,8 +58,9 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
@@ -66,6 +71,7 @@ import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLRootNode;
 import com.oracle.truffle.sl.nodes.controlflow.SLBlockNode;
+import com.oracle.truffle.sl.nodes.interop.CompareStringsNode;
 import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLNull;
 import com.oracle.truffle.sl.runtime.SLStrings;
@@ -208,6 +214,15 @@ public abstract class SLScopedNode extends Node {
         return visibleVariablesIndexOnEnter;
     }
 
+    private static String toString(Object member, InteropLibrary memberLibrary) {
+        assert memberLibrary.isString(member) : member;
+        try {
+            return memberLibrary.asString(member);
+        } catch (UnsupportedMessageException ex) {
+            throw CompilerDirectives.shouldNotReachHere(ex);
+        }
+    }
+
     /**
      * Scope of function arguments. This scope is provided by nodes just under a {@link SLRootNode},
      * outside of a {@link SLBlockNode block}.
@@ -224,7 +239,7 @@ public abstract class SLScopedNode extends Node {
         static int LIMIT = 3;
 
         private final Frame frame;
-        protected final SLRootNode root;
+        @NeverDefault protected final SLRootNode root;
 
         /**
          * The arguments depend on the current frame and root node.
@@ -304,7 +319,7 @@ public abstract class SLScopedNode extends Node {
          * We return an array of argument objects as scope members.
          */
         @ExportMessage
-        Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        Object getMemberObjects() {
             SLWriteLocalVariableNode[] writeNodes = root.getDeclaredArguments();
             return new KeysArray(writeNodes, writeNodes.length, writeNodes.length);
         }
@@ -319,23 +334,47 @@ public abstract class SLScopedNode extends Node {
              * If the member is cached, provide the cached result. Call
              * {@link #doGeneric(ArgumentsObject, String)} otherwise.
              */
-            @Specialization(limit = "LIMIT", guards = {"cachedMember.equals(member)"})
+            @Specialization(guards = {"compareNode.execute(node, member, cachedMember)", "memberLibrary.isString(member)"}, limit = "LIMIT")
             @SuppressWarnings("unused")
-            static boolean doCached(ArgumentsObject receiver, String member,
-                            @Exclusive @Cached("member") String cachedMember,
+            static boolean doCached(ArgumentsObject receiver, Object member,
+                            @Bind("$node") Node node,
+                            @Shared("compareNode") @Cached CompareStringsNode compareNode,
+                            @Cached("member") Object cachedMember,
+                            @CachedLibrary("member") InteropLibrary memberLibrary,
                             // We cache the member existence for fast-path access
-                            @Cached("doGeneric(receiver, member)") boolean cachedResult) {
-                assert cachedResult == doGeneric(receiver, member);
+                            @Cached("doGeneric(receiver, member, memberLibrary)") boolean cachedResult) {
+                assert cachedResult == doGeneric(receiver, member, memberLibrary);
                 return cachedResult;
             }
 
             /**
              * Test if an argument with that name exists.
              */
-            @Specialization(replaces = "doCached")
+            @Specialization(replaces = "doCached", guards = "memberLibrary.isString(member)", limit = "LIMIT")
             @TruffleBoundary
-            static boolean doGeneric(ArgumentsObject receiver, String member) {
+            static boolean doGeneric(ArgumentsObject receiver, Object member,
+                            @CachedLibrary("member") InteropLibrary memberLibrary) {
+                return receiver.hasArgumentIndex(member, memberLibrary);
+            }
+
+            @Specialization(limit = "LIMIT", guards = {"cachedMember.equals(member)"})
+            @SuppressWarnings("unused")
+            static boolean doVariableCached(ArgumentsObject receiver, Key member,
+                            @Cached("member") Key cachedMember,
+                            @Cached("receiver.hasArgumentIndex(member)") boolean hasWriteNode) {
+                assert hasWriteNode == doVariable(receiver, member);
+                return hasWriteNode;
+            }
+
+            @Specialization(replaces = "doVariableCached")
+            static boolean doVariable(ArgumentsObject receiver, Key member) {
                 return receiver.hasArgumentIndex(member);
+            }
+
+            @Fallback
+            @SuppressWarnings("unused")
+            static boolean doOther(ArgumentsObject receiver, Object member) {
+                return false;
             }
         }
 
@@ -345,22 +384,45 @@ public abstract class SLScopedNode extends Node {
         @ExportMessage(name = "isMemberModifiable")
         static final class ModifiableMember {
 
-            @Specialization(limit = "LIMIT", guards = {"cachedMember.equals(member)"})
+            @Specialization(guards = {"compareNode.execute(node, member, cachedMember)", "memberLibrary.isString(member)"}, limit = "LIMIT")
             @SuppressWarnings("unused")
-            static boolean doCached(ArgumentsObject receiver, String member,
-                            @Exclusive @Cached("member") String cachedMember,
+            static boolean doCached(ArgumentsObject receiver, Object member,
+                            @Bind("$node") Node node,
+                            @Shared("compareNode") @Cached CompareStringsNode compareNode,
+                            @Cached("member") Object cachedMember,
+                            @CachedLibrary("member") InteropLibrary memberLibrary,
                             // We cache the member existence for fast-path access
-                            @Cached("receiver.hasArgumentIndex(member)") boolean cachedResult) {
+                            @Cached("receiver.hasArgumentIndex(member, memberLibrary)") boolean cachedResult) {
                 return cachedResult && receiver.frame != null;
             }
 
             /**
              * Test if an argument can be modified (it must exist and we must have a frame).
              */
-            @Specialization(replaces = "doCached")
+            @Specialization(replaces = "doCached", guards = "memberLibrary.isString(member)", limit = "LIMIT")
             @TruffleBoundary
-            static boolean doGeneric(ArgumentsObject receiver, String member) {
-                return receiver.findArgumentIndex(member) >= 0 && receiver.frame != null;
+            static boolean doGeneric(ArgumentsObject receiver, Object member,
+                            @CachedLibrary("member") InteropLibrary memberLibrary) {
+                return receiver.hasArgumentIndex(member, memberLibrary) && receiver.frame != null;
+            }
+
+            @Specialization(limit = "LIMIT", guards = {"cachedMember.equals(member)"})
+            @SuppressWarnings("unused")
+            static boolean doVariableCached(ArgumentsObject receiver, Key member,
+                            @Cached("member") Key cachedMember,
+                            @Cached("receiver.hasArgumentIndex(member)") boolean hasWriteNode) {
+                return hasWriteNode && receiver.frame != null;
+            }
+
+            @Specialization(replaces = "doVariableCached")
+            static boolean doVariable(ArgumentsObject receiver, Key member) {
+                return receiver.hasArgumentIndex(member) && receiver.frame != null;
+            }
+
+            @Fallback
+            @SuppressWarnings("unused")
+            static boolean doOther(ArgumentsObject receiver, Object member) {
+                return false;
             }
         }
 
@@ -369,7 +431,7 @@ public abstract class SLScopedNode extends Node {
          */
         @ExportMessage
         @SuppressWarnings("static-method")
-        boolean isMemberInsertable(@SuppressWarnings("unused") String member) {
+        boolean isMemberInsertable(@SuppressWarnings("unused") Object member) {
             return false;
         }
 
@@ -383,37 +445,61 @@ public abstract class SLScopedNode extends Node {
              * If the member is cached, use the cached index and read the value at that index. Call
              * {@link #doGeneric(ArgumentsObject, String)} otherwise.
              */
-            @Specialization(limit = "LIMIT", guards = {"cachedMember.equals(member)"})
+            @Specialization(guards = {"compareNode.execute(node, member, cachedMember)", "memberLibrary.isString(member)"}, limit = "LIMIT")
             @SuppressWarnings("unused")
-            static Object doCached(ArgumentsObject receiver, String member,
-                            @Cached("member") String cachedMember,
+            static Object doCached(ArgumentsObject receiver, Object member,
+                            @Bind("$node") Node node,
+                            @Shared("compareNode") @Cached CompareStringsNode compareNode,
+                            @Cached("member") Object cachedMember,
+                            @CachedLibrary("member") InteropLibrary memberLibrary,
                             // We cache the member's index for fast-path access
-                            @Cached("receiver.findArgumentIndex(member)") int index) throws UnknownIdentifierException {
+                            @Cached("receiver.findArgumentIndex(member, memberLibrary)") int index) throws UnknownMemberException {
                 return doRead(receiver, cachedMember, index);
             }
 
             /**
              * Find the member's index and read the value at that index.
              */
-            @Specialization(replaces = "doCached")
+            @Specialization(replaces = "doCached", guards = "memberLibrary.isString(member)", limit = "LIMIT")
             @TruffleBoundary
-            static Object doGeneric(ArgumentsObject receiver, String member) throws UnknownIdentifierException {
-                int index = receiver.findArgumentIndex(member);
+            static Object doGeneric(ArgumentsObject receiver, Object member,
+                            @CachedLibrary("member") InteropLibrary memberLibrary) throws UnknownMemberException {
+                int index = receiver.findArgumentIndex(member, memberLibrary);
                 return doRead(receiver, member, index);
             }
 
             /**
              * Read the argument at the provided index from {@link Frame#getArguments()} array.
              */
-            private static Object doRead(ArgumentsObject receiver, String member, int index) throws UnknownIdentifierException {
+            private static Object doRead(ArgumentsObject receiver, Object member, int index) throws UnknownMemberException {
                 if (index < 0) {
-                    throw UnknownIdentifierException.create(member);
+                    throw UnknownMemberException.create(member);
                 }
                 if (receiver.frame != null) {
                     return receiver.frame.getArguments()[index];
                 } else {
                     return SLNull.SINGLETON;
                 }
+            }
+
+            @Specialization(guards = {"cachedMember.equals(member)"}, limit = "LIMIT")
+            @SuppressWarnings("unused")
+            static Object doVariableCached(ArgumentsObject receiver, Key member,
+                            @Cached("member") Key cachedMember,
+                            @Cached("receiver.findArgumentIndex(member)") int index) throws UnknownMemberException {
+                assert index == receiver.findArgumentIndex(member);
+                return doRead(receiver, member, index);
+            }
+
+            @Specialization(replaces = "doVariableCached")
+            static Object doVariable(ArgumentsObject receiver, Key member) throws UnknownMemberException {
+                return doRead(receiver, member, receiver.findArgumentIndex(member));
+            }
+
+            @Fallback
+            @SuppressWarnings("unused")
+            static Object doOther(ArgumentsObject receiver, Object member) throws UnknownMemberException {
+                throw UnknownMemberException.create(member);
             }
         }
 
@@ -427,22 +513,27 @@ public abstract class SLScopedNode extends Node {
              * If the member is cached, use the cached index and write the value at that index. Call
              * {@link #doGeneric(ArgumentsObject, String, Object)} otherwise.
              */
-            @Specialization(limit = "LIMIT", guards = {"cachedMember.equals(member)"})
+            @Specialization(guards = {"compareNode.execute(node, member, cachedMember)", "memberLibrary.isString(member)"}, limit = "LIMIT")
             @SuppressWarnings("unused")
-            static void doCached(ArgumentsObject receiver, String member, Object value,
-                            @Cached("member") String cachedMember,
+            static void doCached(ArgumentsObject receiver, Object member, Object value,
+                            @Bind("$node") Node node,
+                            @Shared("compareNode") @Cached CompareStringsNode compareNode,
+                            @Cached("member") Object cachedMember,
+                            @CachedLibrary("member") InteropLibrary memberLibrary,
                             // We cache the member's index for fast-path access
-                            @Cached("receiver.findArgumentIndex(member)") int index) throws UnknownIdentifierException, UnsupportedMessageException {
+                            @Cached("receiver.findArgumentIndex(member, memberLibrary)") int index) throws UnknownMemberException, UnsupportedMessageException {
+                assert index == receiver.findArgumentIndex(member, memberLibrary);
                 doWrite(receiver, member, index, value);
             }
 
             /**
              * Find the member's index and write the value at that index.
              */
-            @Specialization(replaces = "doCached")
+            @Specialization(replaces = "doCached", guards = "memberLibrary.isString(member)", limit = "LIMIT")
             @TruffleBoundary
-            static void doGeneric(ArgumentsObject receiver, String member, Object value) throws UnknownIdentifierException, UnsupportedMessageException {
-                int index = receiver.findArgumentIndex(member);
+            static void doGeneric(ArgumentsObject receiver, String member, Object value,
+                            @CachedLibrary("member") InteropLibrary memberLibrary) throws UnknownMemberException, UnsupportedMessageException {
+                int index = receiver.findArgumentIndex(member, memberLibrary);
                 doWrite(receiver, member, index, value);
             }
 
@@ -450,9 +541,9 @@ public abstract class SLScopedNode extends Node {
              * Write the argument value at the provided index into {@link Frame#getArguments()}
              * array.
              */
-            private static void doWrite(ArgumentsObject receiver, String member, int index, Object value) throws UnknownIdentifierException, UnsupportedMessageException {
+            private static void doWrite(ArgumentsObject receiver, Object member, int index, Object value) throws UnknownMemberException, UnsupportedMessageException {
                 if (index < 0) {
-                    throw UnknownIdentifierException.create(member);
+                    throw UnknownMemberException.create(member);
                 }
                 if (receiver.frame != null) {
                     receiver.frame.getArguments()[index] = value;
@@ -460,14 +551,34 @@ public abstract class SLScopedNode extends Node {
                     throw UnsupportedMessageException.create();
                 }
             }
+
+            @Specialization(limit = "LIMIT", guards = {"cachedMember.equals(member)"})
+            static void doVariableCached(ArgumentsObject receiver, Key member, Object value,
+                            @SuppressWarnings("unused") @Cached("member") Key cachedMember,
+                            @Cached("receiver.findArgumentIndex(member)") int index) throws UnknownMemberException, UnsupportedMessageException {
+                assert index == receiver.findArgumentIndex(member);
+                doWrite(receiver, member, index, value);
+            }
+
+            @Specialization(replaces = "doVariableCached")
+            static void doVariable(ArgumentsObject receiver, Key member, Object value) throws UnknownMemberException, UnsupportedMessageException {
+                doWrite(receiver, member, receiver.findArgumentIndex(member), value);
+            }
+
+            @Fallback
+            @SuppressWarnings("unused")
+            static void doOther(ArgumentsObject receiver, Object member, Object value) throws UnknownMemberException {
+                throw UnknownMemberException.create(member);
+            }
         }
 
-        boolean hasArgumentIndex(String member) {
-            return findArgumentIndex(member) >= 0;
+        boolean hasArgumentIndex(Object member, InteropLibrary memberLibrary) {
+            return findArgumentIndex(member, memberLibrary) >= 0;
         }
 
-        int findArgumentIndex(String member) {
-            TruffleString memberTS = SLStrings.fromJavaString(member);
+        int findArgumentIndex(Object member, InteropLibrary memberLibrary) {
+            String name = SLScopedNode.toString(member, memberLibrary);
+            TruffleString memberTS = SLStrings.fromJavaString(name);
             SLWriteLocalVariableNode[] writeNodes = root.getDeclaredArguments();
             for (int i = 0; i < writeNodes.length; i++) {
                 SLWriteLocalVariableNode writeNode = writeNodes[i];
@@ -478,6 +589,22 @@ public abstract class SLScopedNode extends Node {
             return -1;
         }
 
+        boolean hasArgumentIndex(Key member) {
+            return findArgumentIndex(member) >= 0;
+        }
+
+        @TruffleBoundary
+        int findArgumentIndex(Key member) {
+            Node node = member.writeNode;
+            SLWriteLocalVariableNode[] writeNodes = root.getDeclaredArguments();
+            for (int i = 0; i < writeNodes.length; i++) {
+                SLWriteLocalVariableNode writeNode = writeNodes[i];
+                if (writeNode == node) {
+                    return i;
+                }
+            }
+            return -1;
+        }
     }
 
     /**
@@ -494,8 +621,8 @@ public abstract class SLScopedNode extends Node {
         private final Frame frame;          // the current frame
         protected final SLScopedNode node;  // the current node
         final boolean nodeEnter;            // whether the node was entered or is about to be exited
-        @NeverDefault protected final SLBlockNode block;  // the inner-most block of the current
-                                                          // node
+        @NeverDefault protected final SLBlockNode block;  // the inner-most block that contains the
+                                                          // current node
 
         VariablesObject(Frame frame, SLScopedNode node, boolean nodeEnter, SLBlockNode blockNode) {
             this.frame = frame;
@@ -624,13 +751,16 @@ public abstract class SLScopedNode extends Node {
              * If the member is cached, provide the cached result. Call
              * {@link #doGeneric(VariablesObject, String)} otherwise.
              */
-            @Specialization(limit = "LIMIT", guards = {"cachedMember.equals(member)"})
+            @Specialization(guards = {"compareNode.execute(node, member, cachedMember)", "memberLibrary.isString(member)"}, limit = "LIMIT")
             @SuppressWarnings("unused")
-            static boolean doCached(VariablesObject receiver, String member,
-                            @Cached("member") String cachedMember,
+            static boolean doCached(VariablesObject receiver, Object member,
+                            @Bind("$node") Node node,
+                            @Shared("compareNode") @Cached CompareStringsNode compareNode,
+                            @Cached("member") Object cachedMember,
+                            @CachedLibrary("member") InteropLibrary memberLibrary,
                             // We cache the member existence for fast-path access
-                            @Cached("doGeneric(receiver, member)") boolean cachedResult) {
-                assert cachedResult == doGeneric(receiver, member);
+                            @Cached("doGeneric(receiver, member, memberLibrary)") boolean cachedResult) {
+                assert cachedResult == doGeneric(receiver, member, memberLibrary);
                 return cachedResult;
             }
 
@@ -638,10 +768,30 @@ public abstract class SLScopedNode extends Node {
              * Test if a variable with that name exists. It exists if we have a corresponding write
              * node.
              */
-            @Specialization(replaces = "doCached")
+            @Specialization(replaces = "doCached", guards = "memberLibrary.isString(member)", limit = "LIMIT")
             @TruffleBoundary
-            static boolean doGeneric(VariablesObject receiver, String member) {
+            static boolean doGeneric(VariablesObject receiver, Object member,
+                            @CachedLibrary("member") InteropLibrary memberLibrary) {
+                return receiver.hasWriteNode(member, memberLibrary);
+            }
+
+            @Specialization(limit = "LIMIT", guards = {"cachedMember.equals(member)"})
+            static boolean doVariableCached(VariablesObject receiver, Key member,
+                            @SuppressWarnings("unused") @Cached("member") Key cachedMember,
+                            @Cached("receiver.hasWriteNode(member)") boolean hasWriteNode) {
+                assert hasWriteNode == doVariable(receiver, member);
+                return hasWriteNode;
+            }
+
+            @Specialization(replaces = "doVariableCached")
+            static boolean doVariable(VariablesObject receiver, Key member) {
                 return receiver.hasWriteNode(member);
+            }
+
+            @Fallback
+            @SuppressWarnings("unused")
+            static boolean doOther(VariablesObject receiver, Object member) {
+                return false;
             }
         }
 
@@ -651,22 +801,45 @@ public abstract class SLScopedNode extends Node {
         @ExportMessage(name = "isMemberModifiable")
         static final class ModifiableMember {
 
-            @Specialization(limit = "LIMIT", guards = {"cachedMember.equals(member)"})
+            @Specialization(guards = {"compareNode.execute(node, member, cachedMember)", "memberLibrary.isString(member)"}, limit = "LIMIT")
             @SuppressWarnings("unused")
-            static boolean doCached(VariablesObject receiver, String member,
-                            @Cached("member") String cachedMember,
+            static boolean doCached(VariablesObject receiver, Object member,
+                            @Bind("$node") Node node,
+                            @Shared("compareNode") @Cached CompareStringsNode compareNode,
+                            @Cached("member") Object cachedMember,
+                            @CachedLibrary("member") InteropLibrary memberLibrary,
                             // We cache the member existence for fast-path access
-                            @Cached("receiver.hasWriteNode(member)") boolean cachedResult) {
+                            @Cached("receiver.hasWriteNode(member, memberLibrary)") boolean cachedResult) {
                 return cachedResult && receiver.frame != null;
             }
 
             /**
              * Test if a variable with that name exists and we have a frame.
              */
-            @Specialization(replaces = "doCached")
+            @Specialization(replaces = "doCached", guards = "memberLibrary.isString(member)", limit = "LIMIT")
             @TruffleBoundary
-            static boolean doGeneric(VariablesObject receiver, String member) {
+            static boolean doGeneric(VariablesObject receiver, Object member,
+                            @CachedLibrary("member") InteropLibrary memberLibrary) {
+                return receiver.hasWriteNode(member, memberLibrary) && receiver.frame != null;
+            }
+
+            @Specialization(limit = "LIMIT", guards = {"cachedMember.equals(member)"})
+            @SuppressWarnings("unused")
+            static boolean doVariableCached(VariablesObject receiver, Key member,
+                            @Cached("member") Key cachedMember,
+                            @Cached("receiver.hasWriteNode(member)") boolean hasWriteNode) {
+                return hasWriteNode && receiver.frame != null;
+            }
+
+            @Specialization(replaces = "doVariableCached")
+            static boolean doVariable(VariablesObject receiver, Key member) {
                 return receiver.hasWriteNode(member) && receiver.frame != null;
+            }
+
+            @Fallback
+            @SuppressWarnings("unused")
+            static boolean doOther(VariablesObject receiver, Object member) {
+                return false;
             }
         }
 
@@ -675,7 +848,7 @@ public abstract class SLScopedNode extends Node {
          */
         @ExportMessage
         @SuppressWarnings("static-method")
-        boolean isMemberInsertable(@SuppressWarnings("unused") String member) {
+        boolean isMemberInsertable(@SuppressWarnings("unused") Object member) {
             return false;
         }
 
@@ -689,34 +862,69 @@ public abstract class SLScopedNode extends Node {
              * If the member is cached, use the cached frame slot and read the value from it. Call
              * {@link #doGeneric(VariablesObject, String)} otherwise.
              */
-            @Specialization(limit = "LIMIT", guards = {"cachedMember.equals(member)"})
+            @Specialization(guards = {"compareNode.execute(node, member, cachedMember)", "memberLibrary.isString(member)"}, limit = "LIMIT")
             @SuppressWarnings("unused")
-            static Object doCached(VariablesObject receiver, String member,
-                            @Cached("member") String cachedMember,
+            static Object doCached(VariablesObject receiver, Object member,
+                            @Bind("$node") Node node,
+                            @Shared("compareNode") @Cached CompareStringsNode compareNode,
+                            @Cached("member") Object cachedMember,
+                            @CachedLibrary("member") InteropLibrary memberLibrary,
                             // We cache the member's frame slot for fast-path access
-                            @Cached("receiver.findSlot(member)") int slot) throws UnknownIdentifierException {
+                            @Cached("receiver.findSlot(member, memberLibrary)") int slot) throws UnknownMemberException {
                 return doRead(receiver, cachedMember, slot);
             }
 
             /**
              * The uncached version finds the member's slot and read the value from it.
              */
-            @Specialization(replaces = "doCached")
+            @Specialization(replaces = "doCached", guards = "memberLibrary.isString(member)", limit = "LIMIT")
             @TruffleBoundary
-            static Object doGeneric(VariablesObject receiver, String member) throws UnknownIdentifierException {
-                int slot = receiver.findSlot(member);
+            static Object doGeneric(VariablesObject receiver, Object member,
+                            @CachedLibrary("member") InteropLibrary memberLibrary) throws UnknownMemberException {
+                int slot = receiver.findSlot(member, memberLibrary);
                 return doRead(receiver, member, slot);
             }
 
-            private static Object doRead(VariablesObject receiver, String member, int slot) throws UnknownIdentifierException {
+            private static Object doRead(VariablesObject receiver, Object member, int slot) throws UnknownMemberException {
                 if (slot == -1) {
-                    throw UnknownIdentifierException.create(member);
+                    throw UnknownMemberException.create(member);
                 }
                 if (receiver.frame != null) {
                     return receiver.frame.getValue(slot);
                 } else {
                     return SLNull.SINGLETON;
                 }
+            }
+
+            @Specialization(limit = "LIMIT", guards = {"cachedMember.equals(member)"})
+            static Object doVariableCached(VariablesObject receiver, Key member,
+                            @SuppressWarnings("unused") @Cached("member") Key cachedMember,
+                            @Cached("receiver.hasWriteNode(member)") boolean hasWriteNode) throws UnknownMemberException {
+                assert hasWriteNode == receiver.hasWriteNode(member);
+                return doRead(receiver, member, hasWriteNode);
+            }
+
+            @Specialization(replaces = "doVariableCached")
+            static Object doVariable(VariablesObject receiver, Key member) throws UnknownMemberException {
+                return doRead(receiver, member, receiver.hasWriteNode(member));
+            }
+
+            private static Object doRead(VariablesObject receiver, Key member, boolean hasWriteNode) throws UnknownMemberException {
+                if (hasWriteNode) {
+                    if (receiver.frame != null) {
+                        return receiver.frame.getValue(member.writeNode.getSlot());
+                    } else {
+                        return SLNull.SINGLETON;
+                    }
+                } else {
+                    throw UnknownMemberException.create(member);
+                }
+            }
+
+            @Fallback
+            @SuppressWarnings("unused")
+            static Object doOther(VariablesObject receiver, Object member) throws UnknownMemberException {
+                throw UnknownMemberException.create(member);
             }
         }
 
@@ -730,33 +938,69 @@ public abstract class SLScopedNode extends Node {
              * If the member is cached, use the cached write node and use it to write the value.
              * Call {@link #doGeneric(VariablesObject, String, Object)} otherwise.
              */
-            @Specialization(limit = "LIMIT", guards = {"cachedMember.equals(member)"})
+            @Specialization(guards = {"compareNode.execute(node, member, cachedMember)", "memberLibrary.isString(member)"}, limit = "LIMIT")
             @SuppressWarnings("unused")
-            static void doCached(VariablesObject receiver, String member, Object value,
-                            @Cached("member") String cachedMember,
+            static void doCached(VariablesObject receiver, Object member, Object value,
+                            @Bind("$node") Node node,
+                            @Shared("compareNode") @Cached CompareStringsNode compareNode,
+                            @Cached("member") Object cachedMember,
+                            @CachedLibrary("member") InteropLibrary memberLibrary,
                             // We cache the member's write node for fast-path access
-                            @Cached(value = "receiver.findWriteNode(member)", adopt = false) SLWriteLocalVariableNode writeNode) throws UnknownIdentifierException, UnsupportedMessageException {
+                            @Cached(value = "receiver.findWriteNode(member, memberLibrary)", adopt = false) SLWriteLocalVariableNode writeNode)
+                            throws UnknownMemberException, UnsupportedMessageException {
                 doWrite(receiver, cachedMember, writeNode, value);
             }
 
             /**
              * The uncached version finds the write node and use it to write the value.
              */
-            @Specialization(replaces = "doCached")
+            @Specialization(replaces = "doCached", guards = "memberLibrary.isString(member)", limit = "LIMIT")
             @TruffleBoundary
-            static void doGeneric(VariablesObject receiver, String member, Object value) throws UnknownIdentifierException, UnsupportedMessageException {
-                SLWriteLocalVariableNode writeNode = receiver.findWriteNode(member);
+            static void doGeneric(VariablesObject receiver, Object member, Object value,
+                            @CachedLibrary("member") InteropLibrary memberLibrary) throws UnknownMemberException, UnsupportedMessageException {
+                SLWriteLocalVariableNode writeNode = receiver.findWriteNode(member, memberLibrary);
                 doWrite(receiver, member, writeNode, value);
             }
 
-            private static void doWrite(VariablesObject receiver, String member, SLWriteLocalVariableNode writeNode, Object value) throws UnknownIdentifierException, UnsupportedMessageException {
+            private static void doWrite(VariablesObject receiver, Object member, SLWriteLocalVariableNode writeNode, Object value) throws UnknownMemberException, UnsupportedMessageException {
                 if (writeNode == null) {
-                    throw UnknownIdentifierException.create(member);
+                    throw UnknownMemberException.create(member);
                 }
                 if (receiver.frame == null) {
                     throw UnsupportedMessageException.create();
                 }
                 writeNode.executeWrite((VirtualFrame) receiver.frame, value);
+            }
+
+            @Specialization(limit = "LIMIT", guards = {"cachedMember.equals(member)"})
+            static void doVariableCached(VariablesObject receiver, Key member, Object value,
+                            @SuppressWarnings("unused") @Cached("member") Key cachedMember,
+                            @Cached("receiver.hasWriteNode(member)") boolean hasWriteNode) throws UnknownMemberException, UnsupportedMessageException {
+                assert hasWriteNode == receiver.hasWriteNode(member);
+                doWrite(receiver, member, value, hasWriteNode);
+            }
+
+            @Specialization(replaces = "doVariableCached")
+            static void doVariable(VariablesObject receiver, Key member, Object value) throws UnknownMemberException, UnsupportedMessageException {
+                doWrite(receiver, member, value, receiver.hasWriteNode(member));
+            }
+
+            private static void doWrite(VariablesObject receiver, Key member, Object value, boolean hasWriteNode) throws UnknownMemberException, UnsupportedMessageException {
+                if (hasWriteNode) {
+                    if (receiver.frame != null) {
+                        member.writeNode.executeWrite((VirtualFrame) receiver.frame, value);
+                    } else {
+                        throw UnsupportedMessageException.create();
+                    }
+                } else {
+                    throw UnknownMemberException.create(member);
+                }
+            }
+
+            @Fallback
+            @SuppressWarnings("unused")
+            static void doOther(VariablesObject receiver, Object member, Object value) throws UnknownMemberException {
+                throw UnknownMemberException.create(member);
             }
         }
 
@@ -766,7 +1010,7 @@ public abstract class SLScopedNode extends Node {
          */
         @ExportMessage
         @SuppressWarnings("static-method")
-        Object getMembers(@SuppressWarnings("unused") boolean includeInternal,
+        Object getMemberObjects(
                         @Cached(value = "this.block.getDeclaredLocalVariables()", adopt = false, neverDefault = false, dimensions = 1, allowUncached = true) SLWriteLocalVariableNode[] writeNodes,
                         @Cached(value = "this.getVisibleVariablesIndex()", allowUncached = true, neverDefault = false) int visibleVariablesIndex,
                         @Cached(value = "this.block.getParentBlockIndex()", allowUncached = true, neverDefault = false) int parentBlockIndex) {
@@ -779,12 +1023,24 @@ public abstract class SLScopedNode extends Node {
             return nodeEnter ? node.visibleVariablesIndexOnEnter : node.visibleVariablesIndexOnExit;
         }
 
-        boolean hasWriteNode(String member) {
-            return findWriteNode(member) != null;
+        @TruffleBoundary
+        boolean hasWriteNode(Key member) {
+            Node parent = member.writeNode.getParent();
+            while (parent != null) {
+                if (parent == block) {
+                    return true;
+                }
+                parent = parent.getParent();
+            }
+            return false;
         }
 
-        int findSlot(String member) {
-            SLWriteLocalVariableNode writeNode = findWriteNode(member);
+        boolean hasWriteNode(Object member, InteropLibrary memberLibrary) {
+            return findWriteNode(member, memberLibrary) != null;
+        }
+
+        int findSlot(Object member, InteropLibrary memberLibrary) {
+            SLWriteLocalVariableNode writeNode = findWriteNode(member, memberLibrary);
             if (writeNode != null) {
                 return writeNode.getSlot();
             } else {
@@ -798,8 +1054,9 @@ public abstract class SLScopedNode extends Node {
          *
          * @param member the variable name
          */
-        SLWriteLocalVariableNode findWriteNode(String member) {
-            TruffleString memberTS = SLStrings.fromJavaString(member);
+        SLWriteLocalVariableNode findWriteNode(Object member, InteropLibrary memberLibrary) {
+            String name = SLScopedNode.toString(member, memberLibrary);
+            TruffleString memberTS = SLStrings.fromJavaString(name);
             SLWriteLocalVariableNode[] writeNodes = block.getDeclaredLocalVariables();
             int parentBlockIndex = block.getParentBlockIndex();
             int index = getVisibleVariablesIndex();
@@ -898,6 +1155,40 @@ public abstract class SLScopedNode extends Node {
 
         @ExportMessage
         @SuppressWarnings("static-method")
+        boolean isMember() {
+            return true;
+        }
+
+        @ExportMessage
+        Object getMemberSimpleName() {
+            return asTruffleString();
+        }
+
+        @ExportMessage
+        Object getMemberQualifiedName() {
+            return asTruffleString();
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean isMemberKindField() {
+            return true;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean isMemberKindMethod() {
+            return false;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean isMemberKindMetaObject() {
+            return false;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
         boolean isString() {
             return true;
         }
@@ -929,6 +1220,26 @@ public abstract class SLScopedNode extends Node {
             }
             SLExpressionNode nameNode = writeNode.getNameNode();
             return writeNode.getRootNode().getSourceSection().getSource().createSection(nameNode.getSourceCharIndex(), nameNode.getSourceLength());
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hashCode(this.writeNode);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            final Key other = (Key) obj;
+            return this.writeNode == other.writeNode;
         }
     }
 }

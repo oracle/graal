@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -89,8 +89,8 @@ import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
 import com.oracle.truffle.api.interop.StopIterationException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnknownKeyException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -99,13 +99,14 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedExactClassProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.host.HostContext.ToGuestValueNode;
 import com.oracle.truffle.host.HostContextFactory.ToGuestValueNodeGen;
 
 @ExportLibrary(InteropLibrary.class)
 @SuppressWarnings({"unused"})
-final class HostObject implements TruffleObject {
+final class HostObject extends HostBaseObject {
 
     static final int LIMIT = 5;
 
@@ -216,6 +217,11 @@ final class HostObject implements TruffleObject {
         return isClass() && !asClass().isArray();
     }
 
+    @Override
+    Class<?> getDeclaringClass() {
+        return asClass().getDeclaringClass();
+    }
+
     private static RuntimeException unboxEngineException(HostObject receiver, RuntimeException e) {
         AbstractHostAccess access = receiver.context.language.access;
         if (access.isEngineException(e)) {
@@ -229,189 +235,315 @@ final class HostObject implements TruffleObject {
         return !isNull();
     }
 
+    @GenerateInline
+    @GenerateCached(false)
+    abstract static class CompareMemberNode extends Node {
+
+        static final int LIMIT = 3;
+
+        public abstract boolean execute(Node node, Object member, Object cachedMember);
+
+        @Specialization
+        static boolean doMethod(HostMethodDesc.SingleMethod member, HostMethodDesc.SingleMethod cachedMember) {
+            return cachedMember.getReflectionMethod() == member.getReflectionMethod();
+        }
+
+        @Specialization
+        static boolean doField(HostFieldDesc member, HostFieldDesc cachedMember) {
+            return cachedMember.getDeclaringClass() == member.getDeclaringClass() && cachedMember.getName().equals(member.getName());
+        }
+
+        @Specialization(guards = {"memberLibrary.isString(member)", "cachedLibrary.isString(cachedMember)"}, limit = "LIMIT")
+        static boolean doString(Object member, Object cachedMember,
+                        @CachedLibrary("member") InteropLibrary memberLibrary,
+                        @CachedLibrary("cachedMember") InteropLibrary cachedLibrary) {
+            assert memberLibrary.isString(member) : member;
+            assert cachedLibrary.isString(cachedMember) : cachedMember;
+            TruffleString a;
+            try {
+                a = memberLibrary.asTruffleString(member);
+            } catch (UnsupportedMessageException e) {
+                throw CompilerDirectives.shouldNotReachHere("incompatible member");
+            }
+            TruffleString b;
+            try {
+                b = cachedLibrary.asTruffleString(cachedMember);
+            } catch (UnsupportedMessageException e) {
+                throw CompilerDirectives.shouldNotReachHere("incompatible member");
+            }
+            return a.equals(b);
+        }
+
+        @Fallback
+        static boolean doOther(Object member, Object cachedMember) {
+            return false;
+        }
+
+    }
+
     @ExportMessage
     static class IsMemberReadable {
 
-        @Specialization(guards = {"receiver.isStaticClass()", "receiver.isStaticClass() == cachedStatic", "receiver.getLookupClass() == cachedClazz", "cachedName.equals(name)"}, limit = "LIMIT")
-        static boolean doCached(HostObject receiver, String name,
+        @Specialization(guards = {"receiver.isStaticClass() == cachedStatic", "receiver.getLookupClass() == cachedClazz", "compareNode.execute(node, member, cachedMember)"}, limit = "LIMIT")
+        static boolean doCached(HostObject receiver, Object member,
+                        @Bind("$node") Node node,
                         @Cached("receiver.isStaticClass()") boolean cachedStatic,
                         @Cached("receiver.getLookupClass()") Class<?> cachedClazz,
-                        @Cached("name") String cachedName,
-                        @Cached("doUncached(receiver, name)") boolean cachedReadable) {
-            assert cachedReadable == doUncached(receiver, name);
+                        @Cached("member") Object cachedMember,
+                        @Shared("compareNode") @Cached CompareMemberNode compareNode,
+                        @Cached("isReadableCached(receiver, member)") boolean cachedReadable) {
+            assert cachedReadable == isReadableCached(receiver, member);
             return cachedReadable;
         }
 
-        @Specialization(replaces = "doCached")
-        static boolean doUncached(HostObject receiver, String name) {
-            if (receiver.isNull()) {
-                return false;
+        @Specialization(replaces = "doCached", guards = "!receiver.isNull()")
+        static boolean doMember(HostObject receiver, HostBaseObject member) {
+            return member.existsIn(receiver);
+        }
+
+        @Specialization(replaces = "doCached", guards = {"!receiver.isNull()", "memberLibrary.isString(member)"})
+        static boolean doString(HostObject receiver, Object member,
+                        @Shared("memberLibrary") @CachedLibrary(limit = "LIMIT") InteropLibrary memberLibrary) {
+            String name;
+            try {
+                name = memberLibrary.asString(member);
+            } catch (UnsupportedMessageException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
             }
             return HostInteropReflect.isReadable(receiver, receiver.getLookupClass(), name, receiver.isStaticClass(), receiver.isClass());
         }
 
+        @Fallback
+        static boolean doOther(HostObject receiver, Object member) {
+            return false;
+        }
+
+        static boolean isReadableCached(HostObject receiver, Object member) {
+            if (receiver.isNull()) {
+                return false;
+            }
+            if (member instanceof HostBaseObject o) {
+                return doMember(receiver, o);
+            } else if (InteropLibrary.getUncached().isString(member)) {
+                return doString(receiver, member, InteropLibrary.getUncached());
+            } else {
+                return false;
+            }
+        }
     }
 
-    @ExportLibrary(InteropLibrary.class)
-    static final class KeysArray implements TruffleObject {
+    @ExportMessage
+    static class ReadMember {
 
-        @CompilationFinal(dimensions = 1) private final String[] keys;
-
-        KeysArray(String[] keys) {
-            this.keys = keys;
-        }
-
-        @SuppressWarnings("static-method")
-        @ExportMessage
-        boolean hasArrayElements() {
-            return true;
-        }
-
-        @ExportMessage
-        long getArraySize() {
-            return keys.length;
-        }
-
-        @ExportMessage
-        boolean isArrayElementReadable(long idx) {
-            return 0 <= idx && idx < keys.length;
-        }
-
-        @ExportMessage
-        String readArrayElement(long idx,
+        @Specialization(guards = "!receiver.isNull()")
+        static Object doReadMember(HostObject receiver,
+                        HostFieldDesc field,
                         @Bind("$node") Node node,
-                        @Cached InlinedBranchProfile error) throws InvalidArrayIndexException {
-            if (!isArrayElementReadable(idx)) {
+                        @Shared("readField") @Cached ReadFieldNode readField) throws UnsupportedMessageException, UnknownMemberException {
+            return readField.execute(node, field, receiver);
+        }
+
+        @Specialization(guards = "!receiver.isNull()")
+        static Object doReadMember(HostObject receiver,
+                        HostMethodDesc method,
+                        @Bind("$node") Node node,
+                        @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException, UnknownMemberException {
+            if (method.existsIn(receiver)) {
+                return new HostFunction(method, receiver.obj, receiver.context);
+            } else {
                 error.enter(node);
-                throw InvalidArrayIndexException.create(idx);
+                throw UnknownMemberException.create(method);
             }
-            return keys[(int) idx];
         }
-    }
 
-    @ExportMessage
-    Object getMembers(boolean includeInternal) throws UnsupportedMessageException {
-        if (isNull()) {
-            throw UnsupportedMessageException.create();
+        @Specialization(guards = "!receiver.isNull()")
+        static Object doReadMember(HostObject receiver,
+                        HostMemberClass memberClass,
+                        @Bind("$node") Node node,
+                        @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException, UnknownMemberException {
+            if (memberClass.existsIn(receiver)) {
+                return HostObject.forStaticClass(memberClass.getType(), receiver.context);
+            } else {
+                error.enter(node);
+                throw UnknownMemberException.create(memberClass);
+            }
         }
-        String[] fields = HostInteropReflect.findUniquePublicMemberNames(context, getLookupClass(), isStaticClass(), isClass(), includeInternal);
-        return new KeysArray(fields);
-    }
 
-    @ExportMessage
-    Object readMember(String name,
-                    @Bind("$node") Node node,
-                    @Shared("lookupField") @Cached LookupFieldNode lookupField,
-                    @Shared("readField") @Cached ReadFieldNode readField,
-                    @Shared("lookupMethod") @Cached LookupMethodNode lookupMethod,
-                    @Cached LookupInnerClassNode lookupInnerClass,
-                    @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException, UnknownIdentifierException {
-        if (isNull()) {
+        @Specialization(guards = "memberLibrary.isString(memberString)")
+        static Object doReadMember(HostObject receiver,
+                        Object memberString,
+                        @Bind("$node") Node node,
+                        @Shared("memberLibrary") @CachedLibrary(limit = "LIMIT") InteropLibrary memberLibrary,
+                        @Shared("lookupField") @Cached LookupFieldNode lookupField,
+                        @Shared("readField") @Cached ReadFieldNode readField,
+                        @Shared("lookupMethod") @Cached LookupMethodNode lookupMethod,
+                        @Cached LookupInnerClassNode lookupInnerClass,
+                        @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException, UnknownMemberException {
+            if (receiver.isNull()) {
+                error.enter(node);
+                throw UnsupportedMessageException.create();
+            }
+            String name;
+            try {
+                name = memberLibrary.asString(memberString);
+            } catch (UnsupportedMessageException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
+            boolean isStatic = receiver.isStaticClass();
+            Class<?> lookupClass = receiver.getLookupClass();
+            HostFieldDesc foundField = lookupField.execute(node, receiver, lookupClass, name, isStatic);
+            if (foundField != null) {
+                return readField.execute(node, foundField, receiver);
+            }
+            HostMethodDesc foundMethod = lookupMethod.execute(node, receiver, lookupClass, name, isStatic);
+            if (foundMethod != null) {
+                return new HostFunction(foundMethod, receiver.obj, receiver.context);
+            }
+
+            if (isStatic) {
+                LookupInnerClassNode lookupInnerClassNode = lookupInnerClass;
+                if (HostInteropReflect.STATIC_TO_CLASS.equals(name)) {
+                    return HostObject.forClass(lookupClass, receiver.context);
+                }
+                Class<?> innerclass = lookupInnerClassNode.execute(node, lookupClass, name);
+                if (innerclass != null) {
+                    return HostObject.forStaticClass(innerclass, receiver.context);
+                }
+            } else if (receiver.isClass() && HostInteropReflect.CLASS_TO_STATIC.equals(name)) {
+                return HostObject.forStaticClass(receiver.asClass(), receiver.context);
+            } else if (HostInteropReflect.ADAPTER_SUPER_MEMBER.equals(name) && HostAdapterFactory.isAdapterInstance(receiver.obj)) {
+                return HostAdapterFactory.getSuperAdapter(receiver);
+            }
             error.enter(node);
-            throw UnsupportedMessageException.create();
-        }
-        boolean isStatic = isStaticClass();
-        Class<?> lookupClass = getLookupClass();
-        HostFieldDesc foundField = lookupField.execute(node, this, lookupClass, name, isStatic);
-        if (foundField != null) {
-            return readField.execute(node, foundField, this);
-        }
-        HostMethodDesc foundMethod = lookupMethod.execute(node, this, lookupClass, name, isStatic);
-        if (foundMethod != null) {
-            return new HostFunction(foundMethod, this.obj, this.context);
+            throw UnknownMemberException.create(name);
         }
 
-        if (isStatic) {
-            LookupInnerClassNode lookupInnerClassNode = lookupInnerClass;
-            if (HostInteropReflect.STATIC_TO_CLASS.equals(name)) {
-                return HostObject.forClass(lookupClass, context);
+        @Fallback()
+        static Object doReadOther(HostObject receiver,
+                        Object member,
+                        @Bind("$node") Node node,
+                        @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException, UnknownMemberException {
+            if (receiver.isNull()) {
+                error.enter(node);
+                throw UnsupportedMessageException.create();
             }
-            Class<?> innerclass = lookupInnerClassNode.execute(node, lookupClass, name);
-            if (innerclass != null) {
-                return HostObject.forStaticClass(innerclass, context);
-            }
-        } else if (isClass() && HostInteropReflect.CLASS_TO_STATIC.equals(name)) {
-            return HostObject.forStaticClass(asClass(), context);
-        } else if (HostInteropReflect.ADAPTER_SUPER_MEMBER.equals(name) && HostAdapterFactory.isAdapterInstance(this.obj)) {
-            return HostAdapterFactory.getSuperAdapter(this);
+            // Unknown member
+            error.enter(node);
+            throw UnknownMemberException.create(member);
         }
-        error.enter(node);
-        throw UnknownIdentifierException.create(name);
     }
 
     @ExportMessage
     static class IsMemberModifiable {
 
-        @Specialization(guards = {"receiver.isStaticClass()", "receiver.isStaticClass() == cachedStatic", "receiver.getLookupClass() == cachedClazz", "cachedName.equals(name)"}, limit = "LIMIT")
-        static boolean doCached(HostObject receiver, String name,
+        @Specialization(guards = {"receiver.isStaticClass() == cachedStatic", "receiver.getLookupClass() == cachedClazz", "compareNode.execute(node, member, cachedMember)"}, limit = "LIMIT")
+        static boolean doCached(HostObject receiver, Object member,
+                        @Bind("$node") Node node,
                         @Cached("receiver.isStaticClass()") boolean cachedStatic,
                         @Cached("receiver.getLookupClass()") Class<?> cachedClazz,
-                        @Cached("name") String cachedName,
-                        @Cached("doUncached(receiver, name)") boolean cachedModifiable) {
-            assert cachedModifiable == doUncached(receiver, name);
+                        @Cached("member") Object cachedMember,
+                        @Shared("compareNode") @Cached CompareMemberNode compareNode,
+                        @Cached("isModifiableCached(receiver, member)") boolean cachedModifiable) {
+            assert cachedModifiable == isModifiableCached(receiver, member);
             return cachedModifiable;
         }
 
-        @Specialization(replaces = "doCached")
-        static boolean doUncached(HostObject receiver, String name) {
-            if (receiver.isNull()) {
-                return false;
+        @Specialization(replaces = "doCached", guards = "!receiver.isNull()")
+        static boolean doField(HostObject receiver, HostFieldDesc field) {
+            return !field.isFinal() && field.existsIn(receiver);
+        }
+
+        @Specialization(replaces = "doCached", guards = {"!receiver.isNull()", "memberLibrary.isString(member)"})
+        static boolean doString(HostObject receiver, Object member,
+                        @Shared("memberLibrary") @CachedLibrary(limit = "LIMIT") InteropLibrary memberLibrary) {
+            String name;
+            try {
+                name = memberLibrary.asString(member);
+            } catch (UnsupportedMessageException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
             }
             return HostInteropReflect.isModifiable(receiver, receiver.getLookupClass(), name, receiver.isStaticClass());
         }
 
-    }
-
-    @ExportMessage
-    static class IsMemberInternal {
-
-        @Specialization(guards = {"receiver.isStaticClass()", "receiver.isStaticClass() == cachedStatic", "receiver.getLookupClass() == cachedClazz", "cachedName.equals(name)"}, limit = "LIMIT")
-        static boolean doCached(HostObject receiver, String name,
-                        @Cached("receiver.isStaticClass()") boolean cachedStatic,
-                        @Cached("receiver.getLookupClass()") Class<?> cachedClazz,
-                        @Cached("name") String cachedName,
-                        @Cached("doUncached(receiver, name)") boolean cachedInternal) {
-            assert cachedInternal == doUncached(receiver, name);
-            return cachedInternal;
+        @Fallback
+        static boolean doOther(HostObject receiver, Object member) {
+            return false;
         }
 
-        @Specialization(replaces = "doCached")
-        static boolean doUncached(HostObject receiver, String name) {
+        static boolean isModifiableCached(HostObject receiver, Object member) {
             if (receiver.isNull()) {
                 return false;
             }
-            return HostInteropReflect.isInternal(receiver, receiver.getLookupClass(), name, receiver.isStaticClass());
+            if (member instanceof HostFieldDesc field) {
+                return doField(receiver, field);
+            } else if (InteropLibrary.getUncached().isString(member)) {
+                return doString(receiver, member, InteropLibrary.getUncached());
+            } else {
+                return false;
+            }
         }
     }
 
     @SuppressWarnings("static-method")
     @ExportMessage
-    boolean isMemberInsertable(String member) {
+    boolean isMemberInsertable(Object member) {
         return false;
     }
 
     @ExportMessage
-    void writeMember(String member, Object value,
-                    @Bind("$node") Node node,
-                    @Shared("lookupField") @Cached LookupFieldNode lookupField,
-                    @Cached WriteFieldNode writeField,
-                    @Shared("error") @Cached InlinedBranchProfile error)
-                    throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException {
-        if (isNull()) {
-            error.enter(node);
-            throw UnsupportedMessageException.create();
+    static class WriteMember {
+
+        @Specialization(guards = "!receiver.isNull()")
+        static void doWriteMember(HostObject receiver,
+                        HostFieldDesc field,
+                        Object value,
+                        @Bind("$node") Node node,
+                        @Shared("writeField") @Cached WriteFieldNode writeField) throws UnsupportedMessageException, UnknownMemberException, UnsupportedTypeException {
+            writeField.execute(node, field, receiver, value);
         }
-        HostFieldDesc f = lookupField.execute(node, this, getLookupClass(), member, isStaticClass());
-        if (f == null) {
-            error.enter(node);
-            throw UnknownIdentifierException.create(member);
+
+        @Specialization(guards = {"!receiver.isNull()", "memberLibrary.isString(memberString)"})
+        static void doWriteMember(HostObject receiver,
+                        Object memberString,
+                        Object value,
+                        @Bind("$node") Node node,
+                        @Shared("memberLibrary") @CachedLibrary(limit = "LIMIT") InteropLibrary memberLibrary,
+                        @Shared("lookupField") @Cached LookupFieldNode lookupField,
+                        @Shared("writeField") @Cached WriteFieldNode writeField,
+                        @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException, UnknownMemberException, UnsupportedTypeException {
+            String name;
+            try {
+                name = memberLibrary.asString(memberString);
+            } catch (UnsupportedMessageException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
+            HostFieldDesc f = lookupField.execute(node, receiver, receiver.getLookupClass(), name, receiver.isStaticClass());
+            if (f == null) {
+                error.enter(node);
+                throw UnknownMemberException.create(name);
+            }
+            try {
+                writeField.execute(node, f, receiver, value);
+            } catch (ClassCastException | NullPointerException e) {
+                // conversion failed by ToJavaNode
+                error.enter(node);
+                throw UnsupportedTypeException.create(new Object[]{value}, getMessage(e));
+            }
         }
-        try {
-            writeField.execute(node, f, this, value);
-        } catch (ClassCastException | NullPointerException e) {
-            // conversion failed by ToJavaNode
+
+        @Fallback()
+        static void doWriteOther(HostObject receiver,
+                        Object member,
+                        Object value,
+                        @Bind("$node") Node node,
+                        @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException, UnknownMemberException {
+            if (receiver.isNull()) {
+                error.enter(node);
+                throw UnsupportedMessageException.create();
+            }
+            // Unknown member
             error.enter(node);
-            throw UnsupportedTypeException.create(new Object[]{value}, getMessage(e));
+            throw UnknownMemberException.create(member);
         }
     }
 
@@ -423,58 +555,188 @@ final class HostObject implements TruffleObject {
     @ExportMessage
     static class IsMemberInvocable {
 
-        @Specialization(guards = {"receiver.isStaticClass()", "receiver.isStaticClass() == cachedStatic", "receiver.getLookupClass() == cachedClazz", "cachedName.equals(name)"}, limit = "LIMIT")
-        static boolean doCached(HostObject receiver, String name,
+        @Specialization(guards = {"receiver.isStaticClass() == cachedStatic", "receiver.getLookupClass() == cachedClazz", "compareNode.execute(node, member, cachedMember)"}, limit = "LIMIT")
+        static boolean doCached(HostObject receiver, Object member,
+                        @Bind("$node") Node node,
                         @Cached("receiver.isStaticClass()") boolean cachedStatic,
                         @Cached("receiver.getLookupClass()") Class<?> cachedClazz,
-                        @Cached("name") String cachedName,
-                        @Cached("doUncached(receiver, name)") boolean cachedInvokable) {
-            assert cachedInvokable == doUncached(receiver, name);
+                        @Cached("member") Object cachedMember,
+                        @Shared("compareNode") @Cached CompareMemberNode compareNode,
+                        @Cached("isInvocableCached(receiver, member)") boolean cachedInvokable) {
+            assert cachedInvokable == isInvocableCached(receiver, member);
             return cachedInvokable;
         }
 
-        @Specialization(replaces = "doCached")
-        static boolean doUncached(HostObject receiver, String name) {
+        @Specialization(replaces = "doCached", guards = "!receiver.isNull()")
+        static boolean doMethod(HostObject receiver, HostMethodDesc.SingleMethod method) {
+            return method.existsIn(receiver);
+        }
+
+        @Specialization(replaces = "doCached", guards = {"!receiver.isNull()", "memberLibrary.isString(member)"})
+        static boolean doString(HostObject receiver, Object member,
+                        @Shared("memberLibrary") @CachedLibrary(limit = "LIMIT") InteropLibrary memberLibrary) {
+            String name;
+            try {
+                name = memberLibrary.asString(member);
+            } catch (UnsupportedMessageException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
+            return HostInteropReflect.isInvokable(receiver, receiver.getLookupClass(), name, receiver.isStaticClass());
+        }
+
+        @Fallback
+        static boolean doOther(HostObject receiver, Object member) {
+            return false;
+        }
+
+        static boolean isInvocableCached(HostObject receiver, Object member) {
             if (receiver.isNull()) {
                 return false;
             }
-            return HostInteropReflect.isInvokable(receiver, receiver.getLookupClass(), name, receiver.isStaticClass());
+            if (member instanceof HostMethodDesc.SingleMethod method) {
+                return doMethod(receiver, method);
+            } else if (InteropLibrary.getUncached().isString(member)) {
+                return doString(receiver, member, InteropLibrary.getUncached());
+            } else {
+                return false;
+            }
         }
     }
 
     @ExportMessage
-    Object invokeMember(String name, Object[] args,
-                    @Bind("$node") Node node,
-                    @Shared("lookupMethod") @Cached LookupMethodNode lookupMethod,
-                    @Shared("hostExecute") @Cached HostExecuteNode executeMethod,
-                    @Shared("lookupField") @Cached LookupFieldNode lookupField,
-                    @Shared("readField") @Cached ReadFieldNode readField,
-                    @CachedLibrary(limit = "5") InteropLibrary fieldValues,
-                    @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedTypeException, ArityException, UnsupportedMessageException, UnknownIdentifierException {
-        if (isNull()) {
-            error.enter(node);
-            throw UnsupportedMessageException.create();
-        }
+    static class InvokeMember {
 
-        boolean isStatic = isStaticClass();
-        Class<?> lookupClass = getLookupClass();
-
-        // (1) look for a method; if found, invoke it on obj.
-        HostMethodDesc foundMethod = lookupMethod.execute(node, this, lookupClass, name, isStatic);
-        if (foundMethod != null) {
-            return executeMethod.execute(node, foundMethod, obj, args, context);
-        }
-
-        // (2) look for a field; if found, read its value and if that IsExecutable, Execute it.
-        HostFieldDesc foundField = lookupField.execute(node, this, lookupClass, name, isStatic);
-        if (foundField != null) {
-            Object fieldValue = readField.execute(node, foundField, this);
-            if (fieldValues.isExecutable(fieldValue)) {
-                return fieldValues.execute(fieldValue, args);
+        @Specialization(guards = "!receiver.isNull()")
+        static Object doInvokeMember(HostObject receiver,
+                        HostMethodDesc method,
+                        Object[] args,
+                        @Bind("$node") Node node,
+                        @Shared("hostExecute") @Cached HostExecuteNode executeMethod,
+                        @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedTypeException, ArityException, UnsupportedMessageException, UnknownMemberException {
+            if (method.existsIn(receiver)) {
+                return executeMethod.execute(node, method, receiver.obj, args, receiver.context);
+            } else {
+                error.enter(node);
+                throw UnknownMemberException.create(method);
             }
         }
-        error.enter(node);
-        throw UnknownIdentifierException.create(name);
+
+        @Specialization(guards = {"!receiver.isNull()", "memberLibrary.isString(memberString)"})
+        static Object doInvokeMember(HostObject receiver,
+                        Object memberString,
+                        Object[] args,
+                        @Bind("$node") Node node,
+                        @Shared("memberLibrary") @CachedLibrary(limit = "LIMIT") InteropLibrary memberLibrary,
+                        @Shared("lookupMethod") @Cached LookupMethodNode lookupMethod,
+                        @Shared("hostExecute") @Cached HostExecuteNode executeMethod,
+                        @Shared("lookupField") @Cached LookupFieldNode lookupField,
+                        @Shared("readField") @Cached ReadFieldNode readField,
+                        @CachedLibrary(limit = "5") InteropLibrary fieldValues,
+                        @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedTypeException, ArityException, UnsupportedMessageException, UnknownMemberException {
+            String name;
+            try {
+                name = memberLibrary.asString(memberString);
+            } catch (UnsupportedMessageException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
+            boolean isStatic = receiver.isStaticClass();
+            Class<?> lookupClass = receiver.getLookupClass();
+
+            // (1) look for a method; if found, invoke it on obj.
+            HostMethodDesc foundMethod = lookupMethod.execute(node, receiver, lookupClass, name, isStatic);
+            if (foundMethod != null) {
+                return executeMethod.execute(node, foundMethod, receiver.obj, args, receiver.context);
+            }
+
+            // (2) look for a field; if found, read its value and if that IsExecutable, Execute it.
+            HostFieldDesc foundField = lookupField.execute(node, receiver, lookupClass, name, isStatic);
+            if (foundField != null) {
+                Object fieldValue = readField.execute(node, foundField, receiver);
+                if (fieldValues.isExecutable(fieldValue)) {
+                    return fieldValues.execute(fieldValue, args);
+                }
+            }
+            error.enter(node);
+            throw UnknownMemberException.create(name);
+        }
+
+        @Fallback()
+        static Object doInvokeOther(HostObject receiver,
+                        Object member,
+                        Object[] args,
+                        @Bind("$node") Node node,
+                        @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException, UnknownMemberException {
+            if (receiver.isNull()) {
+                error.enter(node);
+                throw UnsupportedMessageException.create();
+            }
+            // Unknown member
+            error.enter(node);
+            throw UnknownMemberException.create(member);
+        }
+    }
+
+    @ExportMessage
+    boolean hasDeclaredMembers() {
+        return isClass() && HostInteropReflect.hasDeclaredMembers(context, asClass());
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    Object getDeclaredMembers() throws UnsupportedMessageException {
+        if (!isClass()) {
+            throw UnsupportedMessageException.create();
+        }
+        Class<?> clazz = asClass();
+        Object[] members = HostInteropReflect.findDeclaredMembers(context, clazz);
+        return new MembersArray(members);
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    Object getMemberObjects() throws UnsupportedMessageException {
+        if (isNull()) {
+            throw UnsupportedMessageException.create();
+        }
+        Object[] members = HostInteropReflect.findPublicMembers(context, getLookupClass(), isStaticClass(), isClass());
+        return new MembersArray(members);
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class MembersArray implements TruffleObject {
+
+        @CompilationFinal(dimensions = 1) private final Object[] members;
+
+        MembersArray(Object[] members) {
+            this.members = members;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean hasArrayElements() {
+            return true;
+        }
+
+        @ExportMessage
+        long getArraySize() {
+            return members.length;
+        }
+
+        @ExportMessage
+        boolean isArrayElementReadable(long idx) {
+            return 0 <= idx && idx < members.length;
+        }
+
+        @ExportMessage
+        Object readArrayElement(long idx,
+                        @Bind("$node") Node node,
+                        @Cached InlinedBranchProfile error) throws InvalidArrayIndexException {
+            if (!isArrayElementReadable(idx)) {
+                error.enter(node);
+                throw InvalidArrayIndexException.create(idx);
+            }
+            return members[(int) idx];
+        }
     }
 
     @ExportMessage
@@ -2826,8 +3088,8 @@ final class HostObject implements TruffleObject {
                         } else if (thisLib.isNumber(hostObject)) {
                             assert isJavaSupportedNumber(javaObject) : javaObject;
                             return javaObject.toString();
-                        } else if (thisLib.isMemberInvocable(hostObject, "toString")) {
-                            Object result = thisLib.invokeMember(hostObject, "toString");
+                        } else if (thisLib.isMemberInvocable(hostObject, (Object) "toString")) {
+                            Object result = thisLib.invokeMember(hostObject, (Object) "toString");
                             return InteropLibrary.getUncached().asString(result);
                         }
                     } catch (InteropException e) {
@@ -3427,6 +3689,21 @@ final class HostObject implements TruffleObject {
         }
     }
 
+    @ExportMessage
+    boolean hasStaticReceiver() {
+        return obj != null && !isStaticClass();
+    }
+
+    @ExportMessage
+    Object getStaticReceiver() throws UnsupportedMessageException {
+        if (hasStaticReceiver()) {
+            return HostObject.forStaticClass(getLookupClass(), context);
+        } else {
+            CompilerDirectives.transferToInterpreter();
+            throw UnsupportedMessageException.create();
+        }
+    }
+
     boolean isStaticClass() {
         return extraInfo instanceof Class<?>;
     }
@@ -3757,20 +4034,20 @@ final class HostObject implements TruffleObject {
         ReadFieldNode() {
         }
 
-        public abstract Object execute(Node node, HostFieldDesc field, HostObject object);
+        public abstract Object execute(Node node, HostFieldDesc field, HostObject object) throws UnknownMemberException;
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"field == cachedField"}, limit = "LIMIT")
         static Object doCached(Node node, HostFieldDesc field, HostObject object,
                         @Cached("field") HostFieldDesc cachedField,
-                        @Cached ToGuestValueNode toGuest) {
+                        @Cached ToGuestValueNode toGuest) throws UnknownMemberException {
             Object val = cachedField.get(object.obj);
             return toGuest.execute(node, object.context, val);
         }
 
         @Specialization(replaces = "doCached")
         @TruffleBoundary
-        static Object doUncached(HostFieldDesc field, HostObject object) {
+        static Object doUncached(HostFieldDesc field, HostObject object) throws UnknownMemberException {
             Object val = field.get(object.obj);
             return ToGuestValueNodeGen.getUncached().execute(null, object.context, val);
         }
@@ -3785,17 +4062,17 @@ final class HostObject implements TruffleObject {
         WriteFieldNode() {
         }
 
-        public abstract void execute(Node node, HostFieldDesc field, HostObject object, Object value) throws UnsupportedTypeException, UnknownIdentifierException;
+        public abstract void execute(Node node, HostFieldDesc field, HostObject object, Object value) throws UnsupportedTypeException, UnknownMemberException;
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"field == cachedField"}, limit = "LIMIT")
         static void doCached(Node node, HostFieldDesc field, HostObject object, Object rawValue,
                         @Cached("field") HostFieldDesc cachedField,
                         @Cached HostToTypeNode toHost,
-                        @Cached InlinedBranchProfile error) throws UnsupportedTypeException, UnknownIdentifierException {
+                        @Cached InlinedBranchProfile error) throws UnsupportedTypeException, UnknownMemberException {
             if (field.isFinal()) {
                 error.enter(node);
-                throw UnknownIdentifierException.create(field.getName());
+                throw UnknownMemberException.create(field);
             }
             try {
                 Object value = toHost.execute(node, object.context, rawValue, cachedField.getType(), cachedField.getGenericType(), true);
@@ -3812,9 +4089,9 @@ final class HostObject implements TruffleObject {
 
         @Specialization(replaces = "doCached")
         @TruffleBoundary
-        static void doUncached(HostFieldDesc field, HostObject object, Object rawValue) throws UnsupportedTypeException, UnknownIdentifierException {
+        static void doUncached(HostFieldDesc field, HostObject object, Object rawValue) throws UnsupportedTypeException, UnknownMemberException {
             if (field.isFinal()) {
-                throw UnknownIdentifierException.create(field.getName());
+                throw UnknownMemberException.create(field);
             }
             try {
                 Object val = HostToTypeNodeGen.getUncached().execute(null, object.context, rawValue, field.getType(), field.getGenericType(), true);

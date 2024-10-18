@@ -106,7 +106,7 @@ public class GuestToHostLanguageService extends AbstractHostLanguageService {
 
     @Override
     public boolean isHostValue(Object value) {
-        throw new UnsupportedOperationException();
+        return false;
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,12 +25,17 @@
 package org.graalvm.polybench.micro;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -111,8 +116,35 @@ public final class Runner implements TruffleObject {
     }
 
     @ExportMessage
+    static class IsMemberReadable {
+
+        @Specialization
+        static boolean isReadable(Runner receiver, MemberObject member) {
+            return member.member.getter.get(receiver) != null;
+        }
+
+        @Specialization(guards = "interop.isString(member)")
+        static boolean isReadable(Runner receiver, Object member,
+                        @Shared("interop") @CachedLibrary(limit = "2") InteropLibrary interop) {
+            String name;
+            try {
+                name = interop.asString(member);
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
+            return receiver.doIsMemberReadable(name);
+        }
+
+        @Fallback
+        @SuppressWarnings("unused")
+        static boolean isReadable(Runner receiver, Object unknown) {
+            return false;
+        }
+    }
+
     @ExplodeLoop
-    boolean isMemberReadable(String member) {
+    boolean doIsMemberReadable(String member) {
         for (Member m : Member.values()) {
             if (m.name().equals(member)) {
                 return m.getter.get(this) != null;
@@ -122,36 +154,61 @@ public final class Runner implements TruffleObject {
     }
 
     @ExportMessage
+    static class ReadMember {
+
+        @Specialization
+        static Object read(Runner receiver, MemberObject member) {
+            return member.member.getter.get(receiver);
+        }
+
+        @Specialization(guards = "interop.isString(member)")
+        static Object read(Runner receiver, Object member,
+                        @Shared("interop") @CachedLibrary(limit = "2") InteropLibrary interop) throws UnknownMemberException, UnsupportedMessageException {
+            String name = interop.asString(member);
+            Object value = receiver.doReadMember(name);
+            if (value == null) {
+                throw UnknownMemberException.create(member);
+            } else {
+                return value;
+            }
+        }
+
+        @Fallback
+        static Object read(@SuppressWarnings("unused") Runner receiver, Object unknown) throws UnknownMemberException {
+            throw UnknownMemberException.create(unknown);
+        }
+    }
+
     @ExplodeLoop
-    Object readMember(String member) throws UnknownIdentifierException {
+    Object doReadMember(String member) {
         for (Member m : Member.values()) {
             if (m.name().equals(member)) {
                 return m.getter.get(this);
             }
         }
-        throw UnknownIdentifierException.create(member);
+        return null;
     }
 
     @ExportMessage
-    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+    Object getMemberObjects() {
         return new MemberList(this);
     }
 
     @ExportLibrary(InteropLibrary.class)
     static final class MemberList implements TruffleObject {
 
-        private final String[] members;
+        private final Member[] members;
 
         MemberList(Runner runner) {
-            ArrayList<String> ret = new ArrayList<>();
+            ArrayList<Member> ret = new ArrayList<>();
 
             for (Member m : Member.values()) {
                 if (m.getter.get(runner) != null) {
-                    ret.add(m.name());
+                    ret.add(m);
                 }
             }
 
-            this.members = ret.toArray(new String[0]);
+            this.members = ret.toArray(new Member[0]);
         }
 
         @ExportMessage
@@ -168,7 +225,7 @@ public final class Runner implements TruffleObject {
         @ExportMessage
         Object readArrayElement(long index) throws InvalidArrayIndexException {
             if (Long.compareUnsigned(index, members.length) < 0) {
-                return members[(int) index];
+                return new MemberObject(members[(int) index]);
             } else {
                 throw InvalidArrayIndexException.create(index);
             }
@@ -176,7 +233,48 @@ public final class Runner implements TruffleObject {
 
         @ExportMessage
         boolean isArrayElementReadable(long index) {
-            return index < members.length;
+            return 0 <= index && index < members.length;
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings("static-method")
+    static final class MemberObject implements TruffleObject {
+
+        private final Member member;
+
+        MemberObject(Member member) {
+            this.member = member;
+        }
+
+        @ExportMessage
+        boolean isMember() {
+            return true;
+        }
+
+        @ExportMessage
+        Object getMemberSimpleName() {
+            return member.name();
+        }
+
+        @ExportMessage
+        Object getMemberQualifiedName() {
+            return member.name();
+        }
+
+        @ExportMessage
+        boolean isMemberKindField() {
+            return true;
+        }
+
+        @ExportMessage
+        boolean isMemberKindMethod() {
+            return false;
+        }
+
+        @ExportMessage
+        boolean isMemberKindMetaObject() {
+            return false;
         }
     }
 }

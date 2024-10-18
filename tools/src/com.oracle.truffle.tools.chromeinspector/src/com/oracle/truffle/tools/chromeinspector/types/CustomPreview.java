@@ -178,16 +178,16 @@ public final class CustomPreview {
             }
             return json;
         } else {
-            Collection<DebugValue> properties = value.getProperties();
-            if (properties != null) {
+            Collection<DebugValue> members = value.getMembers();
+            if (members != null) {
                 JSONObject json = new JSONObject();
-                for (DebugValue property : properties) {
+                for (DebugValue member : members) {
                     try {
-                        if (property.isReadable() && !property.canExecute() && !property.isInternal()) {
-                            Object rawValue = getPrimitiveValue(property);
+                        if (member.isReadable() && !member.canExecute()) {
+                            Object rawValue = getPrimitiveValue(member.getMemberValue());
                             // Do not allow inner objects
                             if (rawValue != null) {
-                                json.put(property.getName(), rawValue);
+                                json.put(member.getName(), rawValue);
                             }
                         }
                     } catch (DebugException ex) {

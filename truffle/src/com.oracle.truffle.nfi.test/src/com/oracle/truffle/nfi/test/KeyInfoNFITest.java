@@ -82,7 +82,7 @@ public class KeyInfoNFITest extends NFITest {
 
         Supplier<Object> symbol = () -> {
             try {
-                return UNCACHED_INTEROP.readMember(testLibrary, "increment_SINT32");
+                return UNCACHED_INTEROP.readMember(testLibrary, (Object) "increment_SINT32");
             } catch (InteropException e) {
                 throw new AssertionError(e);
             }
@@ -118,7 +118,7 @@ public class KeyInfoNFITest extends NFITest {
 
         @Override
         public Object executeTest(VirtualFrame frame) {
-            verify.execute(frame.getArguments()[0], (String) frame.getArguments()[1], (boolean) frame.getArguments()[2], (boolean) frame.getArguments()[3], (boolean) frame.getArguments()[4]);
+            verify.execute(frame.getArguments()[0], frame.getArguments()[1], (boolean) frame.getArguments()[2], (boolean) frame.getArguments()[3], (boolean) frame.getArguments()[4]);
             return null;
         }
     }
@@ -141,10 +141,10 @@ public class KeyInfoNFITest extends NFITest {
 
     abstract static class VerifyKeyInfoNode extends Node {
 
-        abstract void execute(Object object, String symbol, boolean read, boolean invoke, boolean optional);
+        abstract void execute(Object object, Object symbol, boolean read, boolean invoke, boolean optional);
 
         @Specialization(limit = "3")
-        void verify(Object object, String symbol, boolean read, boolean invoke, boolean optional,
+        void verify(Object object, Object symbol, boolean read, boolean invoke, boolean optional,
                         @CachedLibrary("object") InteropLibrary interop) {
             if (optional) {
                 /*
@@ -174,11 +174,10 @@ public class KeyInfoNFITest extends NFITest {
             assertBoolean("isMemberModifiable", false, interop.isMemberModifiable(object, symbol));
             assertBoolean("isMemberWritable", false, interop.isMemberWritable(object, symbol));
             assertBoolean("isMemberRemovable", false, interop.isMemberRemovable(object, symbol));
-            assertBoolean("isMemberInternal", false, interop.isMemberInternal(object, symbol));
         }
 
         @TruffleBoundary
-        static boolean tryRead(InteropLibrary interop, Object object, String symbol) {
+        static boolean tryRead(InteropLibrary interop, Object object, Object symbol) {
             try {
                 interop.readMember(object, symbol);
                 return true;

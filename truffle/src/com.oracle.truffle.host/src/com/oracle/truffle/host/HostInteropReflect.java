@@ -42,6 +42,7 @@ package com.oracle.truffle.host;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.Collection;
 
 import org.graalvm.collections.EconomicSet;
 
@@ -50,6 +51,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.host.HostAdapterFactory.AdapterResult;
@@ -164,6 +166,8 @@ final class HostInteropReflect {
             if (innerClass != null) {
                 return true;
             }
+        } else if (HostInteropReflect.ADAPTER_SUPER_MEMBER.equals(name) && HostAdapterFactory.isAdapterInstance(object.obj)) {
+            return true;
         }
         if (isClass) {
             if (CLASS_TO_STATIC.equals(name)) {
@@ -189,26 +193,6 @@ final class HostInteropReflect {
         HostMethodDesc foundMethod = classDesc.lookupMethod(name, onlyStatic);
         if (foundMethod != null) {
             return true;
-        } else if (isSignature(name)) {
-            foundMethod = classDesc.lookupMethodBySignature(name, onlyStatic);
-            if (foundMethod != null) {
-                return true;
-            }
-        } else if (isJNIName(name)) {
-            foundMethod = classDesc.lookupMethodByJNIName(name, onlyStatic);
-            if (foundMethod != null) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    @TruffleBoundary
-    static boolean isInternal(HostObject object, Class<?> clazz, String name, boolean onlyStatic) {
-        HostClassDesc classDesc = HostClassDesc.forClass(object.context, clazz);
-        HostMethodDesc foundMethod = classDesc.lookupMethod(name, onlyStatic);
-        if (foundMethod != null) {
-            return false;
         } else if (isSignature(name)) {
             foundMethod = classDesc.lookupMethodBySignature(name, onlyStatic);
             if (foundMethod != null) {
@@ -257,26 +241,58 @@ final class HostInteropReflect {
     }
 
     @CompilerDirectives.TruffleBoundary
-    static String[] findUniquePublicMemberNames(HostContext context, Class<?> clazz, boolean isStatic, boolean isClass, boolean includeInternal) throws SecurityException {
+    static Object[] findPublicMembers(HostContext context, Class<?> clazz, boolean isStatic, boolean isClass) throws SecurityException {
         HostClassDesc classDesc = HostClassDesc.forClass(context, clazz);
-        EconomicSet<String> names = EconomicSet.create();
-        names.addAll(classDesc.getFieldNames(isStatic));
-        names.addAll(classDesc.getMethodNames(isStatic, includeInternal));
+        EconomicSet<Object> members = EconomicSet.create();
+        members.addAll(classDesc.getFieldValues(isStatic));
+        Collection<HostMethodDesc> methods = classDesc.getMethodValues(isStatic);
+        for (HostMethodDesc method : methods) {
+            // We keep filtering Object's methods for backward compatibility
+            // So that Value.as(Map.class) returns the explicitly declared members only
+            if (method.hasOverloads()) {
+                for (HostMethodDesc om : method.getOverloads()) {
+                    if (om.getDeclaringClass() != Object.class) {
+                        members.add(om);
+                    }
+                }
+            } else {
+                if (method.getDeclaringClass() != Object.class) {
+                    members.add(method);
+                }
+            }
+        }
         if (isStatic) {
-            names.add(STATIC_TO_CLASS);
+            members.add(new HostFieldDesc.SyntheticClassField(clazz, HostInteropReflect.STATIC_TO_CLASS, context));
             if (Modifier.isPublic(clazz.getModifiers())) {
                 // no support for non-static member types now
                 for (Class<?> t : clazz.getClasses()) {
                     if (!isStaticTypeOrInterface(t)) {
                         continue;
                     }
-                    names.add(t.getSimpleName());
+                    members.add(new HostMemberClass(t));
                 }
             }
         } else if (isClass) {
-            names.add(CLASS_TO_STATIC);
+            members.add(new HostFieldDesc.SyntheticClassField(clazz, HostInteropReflect.CLASS_TO_STATIC, context));
         }
-        return names.toArray(new String[names.size()]);
+        return members.toArray(new Object[members.size()]);
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    static boolean hasDeclaredMembers(HostContext context, Class<?> clazz) {
+        HostClassDesc classDesc = HostClassDesc.forClass(context, clazz);
+        return classDesc.hasDeclaredMembers();
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    static Object[] findDeclaredMembers(HostContext context, Class<?> clazz) throws UnsupportedMessageException {
+        HostClassDesc classDesc = HostClassDesc.forClass(context, clazz);
+        Object[] members = classDesc.getDeclaredMembers();
+        if (members != null) {
+            return members;
+        } else {
+            throw UnsupportedMessageException.create();
+        }
     }
 
     @SuppressWarnings({"unchecked"})

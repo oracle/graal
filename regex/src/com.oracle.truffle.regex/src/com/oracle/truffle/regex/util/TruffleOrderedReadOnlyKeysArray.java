@@ -53,9 +53,10 @@ import com.oracle.truffle.regex.AbstractRegexObject;
 /**
  * Represents an array of keys (members) of a TRegex TruffleObject. This ordered variant respects
  * the order of the keys as passed to the constructor. This order is then observable when using
- * {@link InteropLibrary#getMembers(Object)}.
+ * {@link InteropLibrary#getMemberObjects(Object)}.
  */
 @ExportLibrary(InteropLibrary.class)
+@SuppressWarnings({"truffle-abstract-export"}) // GR-58123
 public class TruffleOrderedReadOnlyKeysArray extends AbstractRegexObject {
 
     @CompilationFinal(dimensions = 1) private final String[] keys;

@@ -113,9 +113,6 @@ public class HostLanguageService extends AbstractHostLanguageService {
     public Object findStaticClass(Object receiver, String classValue) {
         HostContext context = (HostContext) receiver;
         Class<?> found = context.findClass(classValue);
-        if (found == null) {
-            return null;
-        }
         return HostObject.forStaticClass(found, context);
     }
 

@@ -48,11 +48,14 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -95,45 +98,115 @@ final class NFILibrary implements TruffleObject {
 
     @ExportMessage
     @TruffleBoundary
-    Keys getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-        return new Keys(symbols.keySet().toArray());
+    Symbols getMemberObjects() {
+        return new Symbols(symbols.keySet().toArray(new String[]{}));
     }
 
-    @ExportMessage(limit = "3")
-    boolean isMemberReadable(String symbol,
-                    @CachedLibrary("this.getLibrary()") InteropLibrary recursive) {
-        // no need to check the map, pre-bound symbols need to exist in the library, too
-        return recursive.isMemberReadable(getLibrary(), symbol);
+    @ExportMessage
+    static class IsMemberReadable {
+
+        @Specialization(limit = "3")
+        static boolean isReadable(NFILibrary receiver, SymbolMember member,
+                        @CachedLibrary("receiver.getLibrary()") InteropLibrary recursive) {
+            Object symbol = member.getMemberSimpleName();
+            return recursive.isMemberReadable(receiver.getLibrary(), symbol);
+        }
+
+        @Specialization(guards = "interop.isString(member)", limit = "3")
+        static boolean isReadable(NFILibrary receiver, Object member,
+                        @SuppressWarnings("unused") @Shared("interop") @CachedLibrary(limit = "2") InteropLibrary interop,
+                        @CachedLibrary("receiver.getLibrary()") InteropLibrary recursive) {
+            return recursive.isMemberReadable(receiver.getLibrary(), member);
+        }
+
+        @Fallback
+        @SuppressWarnings("unused")
+        static boolean isReadable(NFILibrary receiver, Object unknownObj) {
+            return false;
+        }
     }
 
-    @ExportMessage(limit = "3")
-    Object readMember(String symbol,
-                    @CachedLibrary("this.getLibrary()") InteropLibrary recursive) throws UnsupportedMessageException, UnknownIdentifierException {
-        Object preBound = findSymbol(symbol);
-        if (preBound != null) {
-            return preBound;
-        } else {
-            return recursive.readMember(getLibrary(), symbol);
+    @ExportMessage
+    static class ReadMember {
+
+        @Specialization(limit = "3")
+        static Object read(NFILibrary receiver, SymbolMember member,
+                        @Shared("simpleNameLibrary") @CachedLibrary(limit = "2") InteropLibrary simpleNameLibrary,
+                        @CachedLibrary("receiver.getLibrary()") InteropLibrary recursive) throws UnsupportedMessageException, UnknownMemberException {
+            Object symbol = member.getMemberSimpleName();
+            String symbolName = simpleNameLibrary.asString(symbol);
+            Object preBound = receiver.findSymbol(symbolName);
+            if (preBound != null) {
+                return preBound;
+            } else {
+                return recursive.readMember(receiver.getLibrary(), symbol);
+            }
+        }
+
+        @Specialization(guards = "interop.isString(member)", limit = "3")
+        static Object read(NFILibrary receiver, Object member,
+                        @Shared("interop") @CachedLibrary(limit = "2") InteropLibrary interop,
+                        @CachedLibrary("receiver.getLibrary()") InteropLibrary recursive) throws UnsupportedMessageException, UnknownMemberException {
+            String symbolName = interop.asString(member);
+            Object preBound = receiver.findSymbol(symbolName);
+            if (preBound != null) {
+                return preBound;
+            } else {
+                return recursive.readMember(receiver.getLibrary(), member);
+            }
+        }
+
+        @Fallback
+        static Object read(@SuppressWarnings("unused") NFILibrary receiver, Object unknownObj) throws UnknownMemberException {
+            throw UnknownMemberException.create(unknownObj);
         }
     }
 
     @SuppressWarnings("static-method")
     @ExportMessage
-    boolean isMemberInvocable(@SuppressWarnings("unused") String symbol) {
+    boolean isMemberInvocable(@SuppressWarnings("unused") Object symbol) {
         return true; // avoid expensive truffle boundary
     }
 
     @ExportMessage
-    Object invokeMember(String symbol, Object[] args,
-                    @Bind("$node") Node node,
-                    @CachedLibrary(limit = "3") InteropLibrary executables,
-                    @Cached InlinedBranchProfile exception) throws UnknownIdentifierException, ArityException, UnsupportedTypeException, UnsupportedMessageException {
-        Object preBound = findSymbol(symbol);
-        if (preBound == null) {
-            exception.enter(node);
-            throw UnknownIdentifierException.create(symbol);
+    static class InvokeMember {
+
+        @Specialization
+        static Object invoke(NFILibrary receiver, SymbolMember member, Object[] args,
+                        @Shared("simpleNameLibrary") @CachedLibrary(limit = "2") InteropLibrary simpleNameLibrary,
+                        @Bind("$node") Node node,
+                        @Shared("executables") @CachedLibrary(limit = "3") InteropLibrary executables,
+                        @Shared("exception") @Cached InlinedBranchProfile exception) throws UnsupportedMessageException, UnknownMemberException, ArityException, UnsupportedTypeException {
+            Object symbol = member.getMemberSimpleName();
+            String symbolName = simpleNameLibrary.asString(symbol);
+            Object preBound = receiver.findSymbol(symbolName);
+            if (preBound == null) {
+                exception.enter(node);
+                throw UnknownMemberException.create(member);
+            }
+            return executables.execute(preBound, args);
         }
-        return executables.execute(preBound, args);
+
+        @Specialization(guards = "interop.isString(member)")
+        static Object invoke(NFILibrary receiver, Object member, Object[] args,
+                        @Shared("interop") @CachedLibrary(limit = "2") InteropLibrary interop,
+                        @Bind("$node") Node node,
+                        @Shared("executables") @CachedLibrary(limit = "3") InteropLibrary executables,
+                        @Shared("exception") @Cached InlinedBranchProfile exception) throws UnsupportedMessageException, UnknownMemberException, ArityException, UnsupportedTypeException {
+            String symbolName = interop.asString(member);
+            Object preBound = receiver.findSymbol(symbolName);
+            if (preBound == null) {
+                exception.enter(node);
+                throw UnknownMemberException.create(member);
+            }
+            return executables.execute(preBound, args);
+        }
+
+        @Fallback
+        @SuppressWarnings("unused")
+        static Object invoke(NFILibrary receiver, Object unknownObj, Object[] args) throws UnknownMemberException {
+            throw UnknownMemberException.create(unknownObj);
+        }
     }
 
     @ExportMessage
@@ -170,12 +243,57 @@ final class NFILibrary implements TruffleObject {
     }
 
     @ExportLibrary(InteropLibrary.class)
-    static final class Keys implements TruffleObject {
+    @SuppressWarnings("static-method")
+    static final class SymbolMember implements TruffleObject {
 
-        @CompilationFinal(dimensions = 1) private final Object[] keys;
+        private final String symbol;
 
-        Keys(Object... keys) {
-            this.keys = keys;
+        SymbolMember(String symbol) {
+            this.symbol = symbol;
+        }
+
+        @ExportMessage
+        boolean isMember() {
+            return true;
+        }
+
+        @ExportMessage
+        Object getMemberSimpleName() {
+            return symbol;
+        }
+
+        @ExportMessage
+        Object getMemberQualifiedName() {
+            return symbol;
+        }
+
+        @ExportMessage
+        boolean isMemberKindField() {
+            return false;
+        }
+
+        @ExportMessage
+        boolean isMemberKindMethod() {
+            return false;
+        }
+
+        @ExportMessage
+        boolean isMemberKindMetaObject() {
+            return false;
+        }
+
+        String getSymbol() {
+            return symbol;
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class Symbols implements TruffleObject {
+
+        @CompilationFinal(dimensions = 1) private final String[] symbols;
+
+        Symbols(String... keys) {
+            this.symbols = keys;
         }
 
         @SuppressWarnings("static-method")
@@ -186,12 +304,12 @@ final class NFILibrary implements TruffleObject {
 
         @ExportMessage
         long getArraySize() {
-            return keys.length;
+            return symbols.length;
         }
 
         @ExportMessage
         boolean isArrayElementReadable(long index) {
-            return 0 <= index && index < keys.length;
+            return 0 <= index && index < symbols.length;
         }
 
         @ExportMessage
@@ -202,21 +320,21 @@ final class NFILibrary implements TruffleObject {
                 exception.enter(node);
                 throw InvalidArrayIndexException.create(idx);
             }
-            return keys[(int) idx];
+            return new SymbolMember(symbols[(int) idx]);
         }
 
         @ExportMessage
-        static boolean hasLanguage(@SuppressWarnings("unused") Keys receiver) {
+        static boolean hasLanguage(@SuppressWarnings("unused") Symbols receiver) {
             return true;
         }
 
         @ExportMessage
-        static Class<? extends TruffleLanguage<?>> getLanguage(@SuppressWarnings("unused") Keys receiver) {
+        static Class<? extends TruffleLanguage<?>> getLanguage(@SuppressWarnings("unused") Symbols receiver) {
             return NFILanguage.class;
         }
 
         @ExportMessage
-        static Object toDisplayString(@SuppressWarnings("unused") Keys receiver, @SuppressWarnings("unused") boolean allowSideEffects) {
+        static Object toDisplayString(@SuppressWarnings("unused") Symbols receiver, @SuppressWarnings("unused") boolean allowSideEffects) {
             return "Native Members";
         }
     }

@@ -44,6 +44,7 @@ import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObject;
 
 @ExportLibrary(InteropLibrary.class)
+@SuppressWarnings("truffle-abstract-export") // GR-57971
 public abstract class LLVMSourceType extends LLVMDebuggerValue {
 
     public static final LLVMSourceType UNSUPPORTED = new LLVMSourceType(() -> "<unsupported>", 0, 0, 0, null) {

@@ -66,6 +66,8 @@ public final class LibraryMessage extends MessageContainer {
     private final Set<LibraryMessage> abstractIfExportedAsWarning = new LinkedHashSet<>();
     private List<LibraryMessage> deprecatedOverloads;
     private LibraryMessage deprecatedReplacement;
+    private LibraryMessage replacementForMessage;
+    private String replaceWithMethod;
 
     public LibraryMessage(LibraryData library, String name, ExecutableElement executable, boolean isDeprecated) {
         this.library = library;
@@ -194,4 +196,16 @@ public final class LibraryMessage extends MessageContainer {
         return true;
     }
 
+    void setReplacementFor(LibraryMessage replacementForMessage, String replaceWithMethod) {
+        this.replacementForMessage = replacementForMessage;
+        this.replaceWithMethod = replaceWithMethod;
+    }
+
+    LibraryMessage getReplacementFor() {
+        return replacementForMessage;
+    }
+
+    String getReplaceWith() {
+        return replaceWithMethod;
+    }
 }

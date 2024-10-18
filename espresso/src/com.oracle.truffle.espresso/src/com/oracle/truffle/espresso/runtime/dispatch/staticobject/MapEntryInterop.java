@@ -44,6 +44,7 @@ import com.oracle.truffle.espresso.runtime.dispatch.messages.Shareable;
 
 @GenerateInteropNodes
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
+@SuppressWarnings({"truffle-abstract-export"}) // GR-58181
 public class MapEntryInterop extends EspressoInterop {
     @ExportMessage
     @Shareable

@@ -49,7 +49,7 @@ import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -201,58 +201,83 @@ public abstract class ProxyInteropObject implements TruffleObject {
     }
 
     @ExportMessage
-    protected boolean isMemberReadable(String member) {
+    protected boolean isMemberReadable(Object member) {
         return false;
     }
 
     @ExportMessage
-    protected boolean isMemberModifiable(String member) {
+    protected boolean isMemberModifiable(Object member) {
         return false;
     }
 
     @ExportMessage
-    protected boolean isMemberRemovable(String member) {
+    protected boolean isMemberRemovable(Object member) {
         return false;
     }
 
     @ExportMessage
-    protected boolean isMemberInternal(String member) {
+    protected boolean isMemberInsertable(Object member) {
         return false;
     }
 
     @ExportMessage
-    protected boolean isMemberInsertable(String member) {
+    protected boolean hasMemberReadSideEffects(Object member) {
         return false;
     }
 
     @ExportMessage
-    protected boolean hasMemberReadSideEffects(String member) {
+    protected boolean hasMemberWriteSideEffects(Object member) {
         return false;
     }
 
     @ExportMessage
-    protected boolean hasMemberWriteSideEffects(String member) {
-        return false;
-    }
-
-    @ExportMessage
-    protected void removeMember(String member) throws UnsupportedMessageException, UnknownIdentifierException {
+    protected void removeMember(Object member) throws UnsupportedMessageException, UnknownMemberException {
         throw UnsupportedMessageException.create();
     }
 
     @ExportMessage
-    protected Object readMember(String member) throws UnsupportedMessageException, UnknownIdentifierException {
+    protected Object readMember(Object member) throws UnsupportedMessageException, UnknownMemberException {
         throw UnsupportedMessageException.create();
     }
 
     @ExportMessage
-    protected Object getMembers(boolean includeInternal) throws UnsupportedMessageException {
+    protected Object getMemberObjects() throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
     }
 
     @ExportMessage
-    protected void writeMember(String member, Object value) throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException {
+    protected void writeMember(Object member, Object value) throws UnsupportedMessageException, UnknownMemberException, UnsupportedTypeException {
         throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    protected boolean isMember() {
+        return false;
+    }
+
+    @ExportMessage
+    protected Object getMemberSimpleName() throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    protected Object getMemberQualifiedName() throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    protected boolean isMemberKindField() {
+        return false;
+    }
+
+    @ExportMessage
+    protected boolean isMemberKindMethod() {
+        return false;
+    }
+
+    @ExportMessage
+    protected boolean isMemberKindMetaObject() {
+        return false;
     }
 
     @ExportMessage
@@ -366,8 +391,8 @@ public abstract class ProxyInteropObject implements TruffleObject {
     }
 
     @ExportMessage
-    protected boolean isMetaInstance(Object instance) {
-        return false;
+    protected boolean isMetaInstance(Object instance) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
     }
 
     @ExportMessage
@@ -501,48 +526,73 @@ public abstract class ProxyInteropObject implements TruffleObject {
         }
 
         @Override
-        protected boolean isMemberReadable(String member) {
+        protected boolean isMemberReadable(Object member) {
             return INTEROP.isMemberReadable(delegate, member);
         }
 
         @Override
-        protected boolean isMemberModifiable(String member) {
+        protected boolean isMemberModifiable(Object member) {
             return INTEROP.isMemberModifiable(delegate, member);
         }
 
         @Override
-        protected boolean isMemberRemovable(String member) {
+        protected boolean isMemberRemovable(Object member) {
             return INTEROP.isMemberRemovable(delegate, member);
         }
 
         @Override
-        protected boolean isMemberInternal(String member) {
-            return INTEROP.isMemberInternal(delegate, member);
-        }
-
-        @Override
-        protected boolean isMemberInsertable(String member) {
+        protected boolean isMemberInsertable(Object member) {
             return INTEROP.isMemberInsertable(delegate, member);
         }
 
         @Override
-        protected void removeMember(String member) throws UnsupportedMessageException, UnknownIdentifierException {
+        protected void removeMember(Object member) throws UnsupportedMessageException, UnknownMemberException {
             INTEROP.removeMember(delegate, member);
         }
 
         @Override
-        protected Object readMember(String member) throws UnsupportedMessageException, UnknownIdentifierException {
+        protected Object readMember(Object member) throws UnsupportedMessageException, UnknownMemberException {
             return INTEROP.readMember(delegate, member);
         }
 
         @Override
-        protected Object getMembers(boolean includeInternal) throws UnsupportedMessageException {
-            return INTEROP.getMembers(delegate, includeInternal);
+        protected Object getMemberObjects() throws UnsupportedMessageException {
+            return INTEROP.getMemberObjects(delegate);
         }
 
         @Override
-        protected void writeMember(String member, Object value) throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException {
+        protected void writeMember(Object member, Object value) throws UnsupportedMessageException, UnknownMemberException, UnsupportedTypeException {
             INTEROP.writeMember(delegate, member, value);
+        }
+
+        @Override
+        protected boolean isMember() {
+            return INTEROP.isMember(delegate);
+        }
+
+        @Override
+        protected Object getMemberSimpleName() throws UnsupportedMessageException {
+            return INTEROP.getMemberSimpleName(delegate);
+        }
+
+        @Override
+        protected Object getMemberQualifiedName() throws UnsupportedMessageException {
+            return INTEROP.getMemberQualifiedName(delegate);
+        }
+
+        @Override
+        protected boolean isMemberKindField() {
+            return INTEROP.isMemberKindField(delegate);
+        }
+
+        @Override
+        protected boolean isMemberKindMethod() {
+            return INTEROP.isMemberKindMethod(delegate);
+        }
+
+        @Override
+        protected boolean isMemberKindMetaObject() {
+            return INTEROP.isMemberKindMetaObject(delegate);
         }
 
         @Override
@@ -556,12 +606,12 @@ public abstract class ProxyInteropObject implements TruffleObject {
         }
 
         @Override
-        protected boolean hasMemberReadSideEffects(String member) {
+        protected boolean hasMemberReadSideEffects(Object member) {
             return INTEROP.hasMemberReadSideEffects(delegate, member);
         }
 
         @Override
-        protected boolean hasMemberWriteSideEffects(String member) {
+        protected boolean hasMemberWriteSideEffects(Object member) {
             return INTEROP.hasMemberWriteSideEffects(delegate, member);
         }
 
@@ -666,6 +716,11 @@ public abstract class ProxyInteropObject implements TruffleObject {
         }
 
         @Override
+        protected boolean isMetaObject() {
+            return INTEROP.isMetaObject(delegate);
+        }
+
+        @Override
         protected String getMetaQualifiedName() throws UnsupportedMessageException {
             return INTEROP.asString(INTEROP.getMetaQualifiedName(delegate));
         }
@@ -675,6 +730,10 @@ public abstract class ProxyInteropObject implements TruffleObject {
             return INTEROP.asString(INTEROP.getMetaSimpleName(delegate));
         }
 
+        @Override
+        protected boolean isMetaInstance(Object instance) throws UnsupportedMessageException {
+            return INTEROP.isMetaInstance(delegate, instance);
+        }
     }
 
 }

@@ -54,6 +54,7 @@ import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
  * An immutable representation of a set of Ruby regular expression flags.
  */
 @ExportLibrary(InteropLibrary.class)
+@SuppressWarnings({"truffle-abstract-export"}) // GR-58123
 public final class RubyFlags extends AbstractConstantKeysObject {
 
     private static final String PROP_EXTENDED = "EXTENDED";

@@ -55,7 +55,7 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.NodeLibrary;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -222,23 +222,33 @@ public final class TestReceiverLanguage extends ProxyLanguage {
 
         @Override
         @TruffleBoundary
-        protected Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        protected Object getMemberObjects() {
             return new ReceiverScopeMembers(members.split("\\s+"));
         }
 
-        @Override
-        @TruffleBoundary
-        protected boolean isMemberReadable(String member) {
-            return membersMap.containsKey(member);
+        private static String getKey(Object member) {
+            if (member instanceof ScopeMember sm) {
+                return sm.name;
+            } else {
+                return (String) member;
+            }
         }
 
         @Override
         @TruffleBoundary
-        protected Object readMember(String member) throws UnknownIdentifierException {
+        protected boolean isMemberReadable(Object member) {
+            String key = getKey(member);
+            return membersMap.containsKey(key);
+        }
+
+        @Override
+        @TruffleBoundary
+        protected Object readMember(Object member) throws UnknownMemberException {
             if (!isMemberReadable(member)) {
-                throw UnknownIdentifierException.create(member);
+                throw UnknownMemberException.create(member);
             }
-            return membersMap.get(member);
+            String key = getKey(member);
+            return membersMap.get(key);
         }
 
         @Override
@@ -280,7 +290,7 @@ public final class TestReceiverLanguage extends ProxyLanguage {
             if (!isArrayElementReadable(index)) {
                 throw InvalidArrayIndexException.create(index);
             }
-            return members[(int) index * 2];
+            return new ScopeMember(members[(int) index * 2]);
         }
 
         @Override
@@ -290,4 +300,42 @@ public final class TestReceiverLanguage extends ProxyLanguage {
 
     }
 
+    static final class ScopeMember extends ProxyInteropObject {
+
+        private final String name;
+
+        ScopeMember(String name) {
+            this.name = name;
+        }
+
+        @Override
+        protected boolean isMember() {
+            return true;
+        }
+
+        @Override
+        protected Object getMemberSimpleName() {
+            return name;
+        }
+
+        @Override
+        protected Object getMemberQualifiedName() {
+            return name;
+        }
+
+        @Override
+        protected boolean isMemberKindField() {
+            return false;
+        }
+
+        @Override
+        protected boolean isMemberKindMethod() {
+            return false;
+        }
+
+        @Override
+        protected boolean isMemberKindMetaObject() {
+            return false;
+        }
+    }
 }

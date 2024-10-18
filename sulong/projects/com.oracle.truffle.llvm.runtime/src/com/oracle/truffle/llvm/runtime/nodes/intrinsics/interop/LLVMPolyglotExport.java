@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -59,7 +59,7 @@ public abstract class LLVMPolyglotExport extends LLVMIntrinsic {
         Object escaped = escape.executeWithTarget(value);
 
         try {
-            interop.writeMember(getContext().getEnv().getPolyglotBindings(), symbolName, escaped);
+            interop.writeMember(getContext().getEnv().getPolyglotBindings(), (Object) symbolName, escaped);
         } catch (InteropException ex) {
             exception.enter();
             throw new LLVMPolyglotException(this, ex.getMessage());

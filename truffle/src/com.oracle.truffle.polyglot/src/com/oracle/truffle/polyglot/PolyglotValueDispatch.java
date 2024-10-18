@@ -59,6 +59,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueDispatch;
@@ -77,8 +78,8 @@ import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
 import com.oracle.truffle.api.interop.StopIterationException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnknownKeyException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -106,6 +107,7 @@ import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFact
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetArrayElementNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetArraySizeNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetBufferSizeNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetDeclaredMembersNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetHashEntriesIteratorNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetHashKeysIteratorNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetHashSizeNodeGen;
@@ -113,28 +115,47 @@ import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFact
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetHashValueOrDefaultNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetHashValuesIteratorNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetIteratorNextElementNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetDeclaringMetaObjectNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetMemberKeysNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetMemberNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.IsMemberKindFieldNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.IsMemberKindMethodNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.IsMemberKindMetaObjectNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetMemberQualifiedNameNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetMemberSignatureNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetMemberSimpleNameNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetMembersNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetMetaQualifiedNameNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetMetaSimpleNameNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetSignatureElementMetaObjectNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetSignatureElementNameNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetStaticReceiverNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.HasArrayElementsNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.HasBufferElementsNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.HasDeclaredMembersNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.HasHashEntriesNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.HasHashEntryNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.HasIteratorNextElementNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.HasIteratorNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.HasDeclaringMetaObjectNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.HasMemberNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.HasMemberSignatureNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.HasMembersNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.HasSignatureElementMetaObjectNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.HasSignatureElementNameNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.HasStaticReceiverNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.InvokeNoArgsNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.InvokeNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.IsBufferWritableNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.IsDateNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.IsDurationNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.IsExceptionNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.IsMemberNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.IsMetaInstanceNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.IsMetaObjectNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.IsNativePointerNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.IsNullNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.IsSignatureElementNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.IsTimeNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.IsTimeZoneNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.NewInstanceNodeGen;
@@ -542,7 +563,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
     // endregion
 
     @Override
-    public Object getMember(Object languageContext, Object receiver, String key) {
+    public Object getMember(Object languageContext, Object receiver, Object key) {
         PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
         Object prev = hostEnter(context);
         try {
@@ -555,12 +576,12 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
     }
 
     @TruffleBoundary
-    static Object getMemberUnsupported(PolyglotLanguageContext context, Object receiver, @SuppressWarnings("unused") String key) {
-        throw unsupported(context, receiver, "getMember(String)", "hasMembers()");
+    static Object getMemberUnsupported(PolyglotLanguageContext context, Object receiver, @SuppressWarnings("unused") Object key) {
+        throw unsupported(context, receiver, "getMember(Object)", "hasMembers()");
     }
 
     @Override
-    public void putMember(Object languageContext, Object receiver, String key, Object member) {
+    public void putMember(Object languageContext, Object receiver, Object key, Object member) {
         PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
         Object prev = hostEnter(context);
         try {
@@ -574,11 +595,11 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
     @TruffleBoundary
     static RuntimeException putMemberUnsupported(PolyglotLanguageContext context, Object receiver) {
-        throw unsupported(context, receiver, "putMember(String, Object)", "hasMembers()");
+        throw unsupported(context, receiver, "putMember(Object, Object)", "hasMembers()");
     }
 
     @Override
-    public boolean removeMember(Object languageContext, Object receiver, String key) {
+    public boolean removeMember(Object languageContext, Object receiver, Object key) {
         PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
         Object prev = hostEnter(context);
         try {
@@ -592,7 +613,184 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
     @TruffleBoundary
     static RuntimeException removeMemberUnsupported(PolyglotLanguageContext context, Object receiver) {
-        throw unsupported(context, receiver, "removeMember(String, Object)", null);
+        throw unsupported(context, receiver, "removeMember(Object, Object)", null);
+    }
+
+    @Override
+    public Object getStaticReceiver(Object languageContext, Object receiver) {
+        PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
+        Object prev = hostEnter(context);
+        try {
+            return getStaticReceiverUnsupported(context, receiver);
+        } catch (Throwable e) {
+            throw guestToHostException(context, e, true);
+        } finally {
+            hostLeave(context, prev);
+        }
+    }
+
+    @TruffleBoundary
+    static Object getStaticReceiverUnsupported(PolyglotLanguageContext context, Object receiver) {
+        throw unsupported(context, receiver, "getStaticReceiver(Object)", "hasStaticReceiver");
+    }
+
+    @Override
+    public Object getMembers(Object languageContext, Object receiver) {
+        PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
+        Object prev = hostEnter(context);
+        try {
+            return getMembersUnsupported(context, receiver);
+        } catch (Throwable e) {
+            throw guestToHostException(context, e, true);
+        } finally {
+            hostLeave(context, prev);
+        }
+    }
+
+    @TruffleBoundary
+    static Object getMembersUnsupported(PolyglotLanguageContext context, Object receiver) {
+        throw unsupported(context, receiver, "getMemberObjects(Object)", "hasMembers(Object)");
+    }
+
+    @Override
+    public Object getDeclaredMembers(Object languageContext, Object receiver) {
+        PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
+        Object prev = hostEnter(context);
+        try {
+            return getDeclaredMembersUnsupported(context, receiver);
+        } catch (Throwable e) {
+            throw guestToHostException(context, e, true);
+        } finally {
+            hostLeave(context, prev);
+        }
+    }
+
+    @TruffleBoundary
+    static Object getDeclaredMembersUnsupported(PolyglotLanguageContext context, Object receiver) {
+        throw unsupported(context, receiver, "getDeclaredMembers(Object)", "hasDeclaredMembers");
+    }
+
+    @Override
+    public String getMemberSimpleName(Object languageContext, Object receiver) {
+        PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
+        Object prev = hostEnter(context);
+        try {
+            return getMemberSimpleNameUnsupported(context, receiver);
+        } catch (Throwable e) {
+            throw guestToHostException(context, e, true);
+        } finally {
+            hostLeave(context, prev);
+        }
+    }
+
+    @TruffleBoundary
+    static String getMemberSimpleNameUnsupported(PolyglotLanguageContext context, Object receiver) {
+        throw unsupported(context, receiver, "getMemberSimpleName(Object)", "isMember()");
+    }
+
+    @Override
+    public String getMemberQualifiedName(Object languageContext, Object receiver) {
+        PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
+        Object prev = hostEnter(context);
+        try {
+            return getMemberQualifiedNameUnsupported(context, receiver);
+        } catch (Throwable e) {
+            throw guestToHostException(context, e, true);
+        } finally {
+            hostLeave(context, prev);
+        }
+    }
+
+    @TruffleBoundary
+    static String getMemberQualifiedNameUnsupported(PolyglotLanguageContext context, Object receiver) {
+        throw unsupported(context, receiver, "getMemberQualifiedName(Object)", "isMember()");
+    }
+
+    @Override
+    public boolean isMemberKindField(Object languageContext, Object receiver) {
+        return false;
+    }
+
+    @Override
+    public boolean isMemberKindMethod(Object languageContext, Object receiver) {
+        return false;
+    }
+
+    @Override
+    public boolean isMemberKindMetaObject(Object languageContext, Object receiver) {
+        return false;
+    }
+
+    @Override
+    public Object getDeclaringMetaObject(Object languageContext, Object receiver) {
+        PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
+        Object prev = hostEnter(context);
+        try {
+            return getDeclaringMetaObjectUnsupported(context, receiver);
+        } catch (Throwable e) {
+            throw guestToHostException(context, e, true);
+        } finally {
+            hostLeave(context, prev);
+        }
+    }
+
+    @TruffleBoundary
+    static Object getDeclaringMetaObjectUnsupported(PolyglotLanguageContext context, Object receiver) {
+        throw unsupported(context, receiver, "getDeclaringMetaObject(Object)", "hasDeclaringMetaObject()");
+    }
+
+    @Override
+    public Object getMemberSignature(Object languageContext, Object receiver) {
+        PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
+        Object prev = hostEnter(context);
+        try {
+            return getMemberSignatureUnsupported(context, receiver);
+        } catch (Throwable e) {
+            throw guestToHostException(context, e, true);
+        } finally {
+            hostLeave(context, prev);
+        }
+    }
+
+    @TruffleBoundary
+    static Object getMemberSignatureUnsupported(PolyglotLanguageContext context, Object receiver) {
+        throw unsupported(context, receiver, "getMemberSignature(Object)", "hasMemberSignature()");
+    }
+
+    @Override
+    public String getSignatureElementName(Object languageContext, Object receiver) {
+        PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
+        Object prev = hostEnter(context);
+        try {
+            return getSignatureElementNameUnsupported(context, receiver);
+        } catch (Throwable e) {
+            throw guestToHostException(context, e, true);
+        } finally {
+            hostLeave(context, prev);
+        }
+    }
+
+    @TruffleBoundary
+    static String getSignatureElementNameUnsupported(PolyglotLanguageContext context, Object receiver) {
+        throw unsupported(context, receiver, "getSignatureElementName(Object)", "hasSignatureElementName()");
+    }
+
+    @Override
+    public Object getSignatureElementMetaObject(Object languageContext, Object receiver) {
+        PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
+        Object prev = hostEnter(context);
+        try {
+            return getSignatureElementMetaObjectUnsupported(context, receiver);
+        } catch (Throwable e) {
+            throw guestToHostException(context, e, true);
+        } finally {
+            hostLeave(context, prev);
+        }
+    }
+
+    @TruffleBoundary
+    static Object getSignatureElementMetaObjectUnsupported(PolyglotLanguageContext context, Object receiver) {
+        throw unsupported(context, receiver, "getSignatureElementMetaObject(Object)", "hasSignatureElementMetaObject()");
     }
 
     @Override
@@ -676,7 +874,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
     }
 
     @Override
-    public Object invoke(Object languageContext, Object receiver, String identifier, Object[] arguments) {
+    public Object invoke(Object languageContext, Object receiver, Object identifier, Object[] arguments) {
         PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
         Object prev = hostEnter(context);
         try {
@@ -689,7 +887,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
     }
 
     @Override
-    public Object invoke(Object languageContext, Object receiver, String identifier) {
+    public Object invoke(Object languageContext, Object receiver, Object identifier) {
         PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
         Object prev = hostEnter(context);
         try {
@@ -702,8 +900,24 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
     }
 
     @TruffleBoundary
-    static RuntimeException invokeUnsupported(PolyglotLanguageContext context, Object receiver, String identifier) {
-        throw unsupported(context, receiver, "invoke(" + identifier + ", Object...)", "canInvoke(String)");
+    static RuntimeException invokeUnsupported(PolyglotLanguageContext context, Object receiver, Object identifier) {
+        throw unsupported(context, receiver, "invoke(" + formatValue(identifier) + ", Object...)", "canInvoke(Object)");
+    }
+
+    private static String formatValue(Object arg) {
+        if (arg == null) {
+            return "null";
+        } else if (arg instanceof TruffleObject) {
+            return arg.toString() + "(" + arg.getClass().getName() + ")";
+        } else if (arg instanceof String) {
+            return "\"" + arg.toString() + "\"";
+        } else if (arg instanceof Character) {
+            return "'" + arg.toString() + "'";
+        } else if (arg instanceof Boolean) {
+            return arg.toString();
+        } else {
+            return arg.toString() + "(" + arg.getClass().getSimpleName() + ")";
+        }
     }
 
     @Override
@@ -1415,26 +1629,26 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
     }
 
     @TruffleBoundary
-    protected static RuntimeException nonReadableMemberKey(PolyglotLanguageContext context, Object receiver, String identifier) {
-        String message = String.format("Non readable or non-existent member key '%s' for object %s.", identifier, getValueInfo(context, receiver));
+    protected static RuntimeException nonReadableMemberKey(PolyglotLanguageContext context, Object receiver, Object identifier) {
+        String message = String.format("Non readable or non-existent member %s for object %s.", getValueInfo(context, identifier), getValueInfo(context, receiver));
         throw PolyglotEngineException.unsupported(message);
     }
 
     @TruffleBoundary
-    protected static RuntimeException nonWritableMemberKey(PolyglotLanguageContext context, Object receiver, String identifier) {
-        String message = String.format("Non writable or non-existent member key '%s' for object %s.", identifier, getValueInfo(context, receiver));
+    protected static RuntimeException nonWritableMemberKey(PolyglotLanguageContext context, Object receiver, Object identifier) {
+        String message = String.format("Non writable or non-existent member %s for object %s.", getValueInfo(context, identifier), getValueInfo(context, receiver));
         throw PolyglotEngineException.unsupported(message);
     }
 
     @TruffleBoundary
-    protected static RuntimeException nonRemovableMemberKey(PolyglotLanguageContext context, Object receiver, String identifier) {
-        String message = String.format("Non removable or non-existent member key '%s' for object %s.", identifier, getValueInfo(context, receiver));
+    protected static RuntimeException nonRemovableMemberKey(PolyglotLanguageContext context, Object receiver, Object identifier) {
+        String message = String.format("Non removable or non-existent member %s for object %s.", getValueInfo(context, identifier), getValueInfo(context, receiver));
         throw PolyglotEngineException.unsupported(message);
     }
 
     @TruffleBoundary
-    protected static RuntimeException invalidMemberValue(PolyglotLanguageContext context, Object receiver, String identifier, Object value) {
-        String message = String.format("Invalid member value %s for object %s and member key '%s'.", getValueInfo(context, value), getValueInfo(context, receiver), identifier);
+    protected static RuntimeException invalidMemberValue(PolyglotLanguageContext context, Object receiver, Object identifier, Object value) {
+        String message = String.format("Invalid member value %s for object %s and member %s.", getValueInfo(context, value), getValueInfo(context, receiver), getValueInfo(context, identifier));
         throw PolyglotEngineException.illegalArgument(message);
     }
 
@@ -1469,11 +1683,11 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
     }
 
     @TruffleBoundary
-    protected static RuntimeException invalidInvokeArgumentType(PolyglotLanguageContext context, Object receiver, String member, UnsupportedTypeException e) {
+    protected static RuntimeException invalidInvokeArgumentType(PolyglotLanguageContext context, Object receiver, Object member, UnsupportedTypeException e) {
         String originalMessage = e.getMessage() == null ? "" : e.getMessage();
         String[] formattedArgs = formatArgs(context, e.getSuppliedValues());
-        String message = String.format("Invalid argument when invoking '%s' on %s. %sProvided arguments: %s.",
-                        member,
+        String message = String.format("Invalid argument when invoking %s on %s. %sProvided arguments: %s.",
+                        getValueInfo(context, member),
                         getValueInfo(context, receiver),
                         originalMessage,
                         Arrays.asList(formattedArgs));
@@ -1504,10 +1718,10 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
     }
 
     @TruffleBoundary
-    protected static RuntimeException invalidInvokeArity(PolyglotLanguageContext context, Object receiver, String member, Object[] arguments, int expectedMin, int expectedMax, int actual) {
+    protected static RuntimeException invalidInvokeArity(PolyglotLanguageContext context, Object receiver, Object member, Object[] arguments, int expectedMin, int expectedMax, int actual) {
         String[] formattedArgs = formatArgs(context, arguments);
-        String message = String.format("Invalid argument count when invoking '%s' on %s with arguments %s. %s",
-                        member,
+        String message = String.format("Invalid argument count when invoking %s on %s with arguments %s. %s",
+                        getValueInfo(context, member),
                         getValueInfo(context, receiver), Arrays.asList(formattedArgs), formatExpectedArguments(expectedMin, expectedMax, actual));
         throw PolyglotEngineException.illegalArgument(message);
     }
@@ -2235,6 +2449,26 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         final CallTarget invoke;
         final CallTarget invokeNoArgs;
         final CallTarget getMemberKeys;
+        final CallTarget getMembers;
+        final CallTarget hasDeclaredMembers;
+        final CallTarget getDeclaredMembers;
+        final CallTarget hasStaticReceiver;
+        final CallTarget getStaticReceiver;
+        final CallTarget isMember;
+        final CallTarget getMemberSimpleName;
+        final CallTarget getMemberQualifiedName;
+        final CallTarget isMemberKindField;
+        final CallTarget isMemberKindMethod;
+        final CallTarget isMemberKindMetaObject;
+        final CallTarget hasDeclaringMetaObject;
+        final CallTarget getDeclaringMetaObject;
+        final CallTarget hasMemberSignature;
+        final CallTarget getMemberSignature;
+        final CallTarget isSignatureElement;
+        final CallTarget hasSignatureElementName;
+        final CallTarget getSignatureElementName;
+        final CallTarget hasSignatureElementMetaObject;
+        final CallTarget getSignatureElementMetaObject;
         final CallTarget isDate;
         final CallTarget asDate;
         final CallTarget isTime;
@@ -2317,6 +2551,26 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             this.invokeNoArgs = createTarget(InvokeNoArgsNodeGen.create(this));
             this.hasMembers = createTarget(HasMembersNodeGen.create(this));
             this.getMemberKeys = createTarget(GetMemberKeysNodeGen.create(this));
+            this.getMembers = createTarget(GetMembersNodeGen.create(this));
+            this.hasDeclaredMembers = createTarget(HasDeclaredMembersNodeGen.create(this));
+            this.getDeclaredMembers = createTarget(GetDeclaredMembersNodeGen.create(this));
+            this.hasStaticReceiver = createTarget(HasStaticReceiverNodeGen.create(this));
+            this.getStaticReceiver = createTarget(GetStaticReceiverNodeGen.create(this));
+            this.isMember = createTarget(IsMemberNodeGen.create(this));
+            this.getMemberSimpleName = createTarget(GetMemberSimpleNameNodeGen.create(this));
+            this.getMemberQualifiedName = createTarget(GetMemberQualifiedNameNodeGen.create(this));
+            this.isMemberKindField = createTarget(IsMemberKindFieldNodeGen.create(this));
+            this.isMemberKindMethod = createTarget(IsMemberKindMethodNodeGen.create(this));
+            this.isMemberKindMetaObject = createTarget(IsMemberKindMetaObjectNodeGen.create(this));
+            this.hasDeclaringMetaObject = createTarget(HasDeclaringMetaObjectNodeGen.create(this));
+            this.getDeclaringMetaObject = createTarget(GetDeclaringMetaObjectNodeGen.create(this));
+            this.hasMemberSignature = createTarget(HasMemberSignatureNodeGen.create(this));
+            this.getMemberSignature = createTarget(GetMemberSignatureNodeGen.create(this));
+            this.isSignatureElement = createTarget(IsSignatureElementNodeGen.create(this));
+            this.hasSignatureElementName = createTarget(HasSignatureElementNameNodeGen.create(this));
+            this.getSignatureElementName = createTarget(GetSignatureElementNameNodeGen.create(this));
+            this.hasSignatureElementMetaObject = createTarget(HasSignatureElementMetaObjectNodeGen.create(this));
+            this.getSignatureElementMetaObject = createTarget(GetSignatureElementMetaObjectNodeGen.create(this));
             this.isDate = createTarget(IsDateNodeGen.create(this));
             this.asDate = createTarget(AsDateNodeGen.create(this));
             this.isTime = createTarget(IsTimeNodeGen.create(this));
@@ -2485,22 +2739,22 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         }
 
         @Override
-        public Object getMember(Object languageContext, Object receiver, String key) {
+        public Object getMember(Object languageContext, Object receiver, Object key) {
             return RUNTIME.callProfiled(this.getMember, languageContext, receiver, key);
         }
 
         @Override
-        public boolean hasMember(Object languageContext, Object receiver, String key) {
+        public boolean hasMember(Object languageContext, Object receiver, Object key) {
             return (boolean) RUNTIME.callProfiled(this.hasMember, languageContext, receiver, key);
         }
 
         @Override
-        public void putMember(Object languageContext, Object receiver, String key, Object member) {
-            RUNTIME.callProfiled(this.putMember, languageContext, receiver, key, member);
+        public void putMember(Object languageContext, Object receiver, Object key, Object memberValue) {
+            RUNTIME.callProfiled(this.putMember, languageContext, receiver, key, memberValue);
         }
 
         @Override
-        public boolean removeMember(Object languageContext, Object receiver, String key) {
+        public boolean removeMember(Object languageContext, Object receiver, Object key) {
             return (boolean) RUNTIME.callProfiled(this.removeMember, languageContext, receiver, key);
         }
 
@@ -2512,6 +2766,106 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
                 return Collections.emptySet();
             }
             return new MemberSet(this.getEngine().getAPIAccess(), languageContext, receiver, keys);
+        }
+
+        @Override
+        public Object getMembers(Object languageContext, Object receiver) {
+            return RUNTIME.callProfiled(this.getMembers, languageContext, receiver);
+        }
+
+        @Override
+        public boolean hasDeclaredMembers(Object languageContext, Object receiver) {
+            return (boolean) RUNTIME.callProfiled(this.hasDeclaredMembers, languageContext, receiver);
+        }
+
+        @Override
+        public Object getDeclaredMembers(Object languageContext, Object receiver) {
+            return RUNTIME.callProfiled(this.getDeclaredMembers, languageContext, receiver);
+        }
+
+        @Override
+        public boolean hasStaticReceiver(Object languageContext, Object receiver) {
+            return (boolean) RUNTIME.callProfiled(this.hasStaticReceiver, languageContext, receiver);
+        }
+
+        @Override
+        public Object getStaticReceiver(Object languageContext, Object receiver) {
+            return RUNTIME.callProfiled(this.getStaticReceiver, languageContext, receiver);
+        }
+
+        @Override
+        public boolean isMember(Object languageContext, Object receiver) {
+            return (boolean) RUNTIME.callProfiled(this.isMember, languageContext, receiver);
+        }
+
+        @Override
+        public String getMemberSimpleName(Object languageContext, Object receiver) {
+            return (String) RUNTIME.callProfiled(this.getMemberSimpleName, languageContext, receiver);
+        }
+
+        @Override
+        public String getMemberQualifiedName(Object languageContext, Object receiver) {
+            return (String) RUNTIME.callProfiled(this.getMemberQualifiedName, languageContext, receiver);
+        }
+
+        @Override
+        public boolean isMemberKindField(Object languageContext, Object receiver) {
+            return (boolean) RUNTIME.callProfiled(this.isMemberKindField, languageContext, receiver);
+        }
+
+        @Override
+        public boolean isMemberKindMethod(Object languageContext, Object receiver) {
+            return (boolean) RUNTIME.callProfiled(this.isMemberKindMethod, languageContext, receiver);
+        }
+
+        @Override
+        public boolean isMemberKindMetaObject(Object languageContext, Object receiver) {
+            return (boolean) RUNTIME.callProfiled(this.isMemberKindMetaObject, languageContext, receiver);
+        }
+
+        @Override
+        public boolean hasDeclaringMetaObject(Object languageContext, Object receiver) {
+            return (boolean) RUNTIME.callProfiled(this.hasDeclaringMetaObject, languageContext, receiver);
+        }
+
+        @Override
+        public Object getDeclaringMetaObject(Object languageContext, Object receiver) {
+            return RUNTIME.callProfiled(this.getDeclaringMetaObject, languageContext, receiver);
+        }
+
+        @Override
+        public boolean hasMemberSignature(Object languageContext, Object receiver) {
+            return (boolean) RUNTIME.callProfiled(this.hasMemberSignature, languageContext, receiver);
+        }
+
+        @Override
+        public Object getMemberSignature(Object languageContext, Object receiver) {
+            return RUNTIME.callProfiled(this.getMemberSignature, languageContext, receiver);
+        }
+
+        @Override
+        public boolean isSignatureElement(Object languageContext, Object receiver) {
+            return (boolean) RUNTIME.callProfiled(this.isSignatureElement, languageContext, receiver);
+        }
+
+        @Override
+        public boolean hasSignatureElementName(Object languageContext, Object receiver) {
+            return (boolean) RUNTIME.callProfiled(this.hasSignatureElementName, languageContext, receiver);
+        }
+
+        @Override
+        public String getSignatureElementName(Object languageContext, Object receiver) {
+            return (String) RUNTIME.callProfiled(this.getSignatureElementName, languageContext, receiver);
+        }
+
+        @Override
+        public boolean hasSignatureElementMetaObject(Object languageContext, Object receiver) {
+            return (boolean) RUNTIME.callProfiled(this.hasSignatureElementMetaObject, languageContext, receiver);
+        }
+
+        @Override
+        public Object getSignatureElementMetaObject(Object languageContext, Object receiver) {
+            return RUNTIME.callProfiled(this.getSignatureElementMetaObject, languageContext, receiver);
         }
 
         @Override
@@ -2653,17 +3007,17 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         }
 
         @Override
-        public boolean canInvoke(Object languageContext, String identifier, Object receiver) {
+        public boolean canInvoke(Object languageContext, Object identifier, Object receiver) {
             return (boolean) RUNTIME.callProfiled(this.canInvoke, languageContext, receiver, identifier);
         }
 
         @Override
-        public Object invoke(Object languageContext, Object receiver, String identifier, Object[] arguments) {
+        public Object invoke(Object languageContext, Object receiver, Object identifier, Object[] arguments) {
             return RUNTIME.callProfiled(this.invoke, languageContext, receiver, identifier, arguments);
         }
 
         @Override
-        public Object invoke(Object languageContext, Object receiver, String identifier) {
+        public Object invoke(Object languageContext, Object receiver, Object identifier) {
             return RUNTIME.callProfiled(this.invokeNoArgs, languageContext, receiver, identifier);
         }
 
@@ -3086,32 +3440,52 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
             @Override
             public boolean contains(Object o) {
-                if (!(o instanceof String)) {
-                    return false;
-                }
-                return hasMember(this.context, receiver, (String) o);
+                return hasMember(this.context, receiver, o);
             }
 
             @Override
             public Iterator<String> iterator() {
                 return new Iterator<String>() {
 
-                    int index = 0;
+                    private final EconomicSet<String> uniqueNames = EconomicSet.create();
+                    private int index = 0;
+                    private String next;
 
                     public boolean hasNext() {
-                        return index < size();
+                        if (index >= size()) {
+                            return false;
+                        }
+                        if (next == null) {
+                            next = getNext();
+                        }
+                        return next != null;
                     }
 
                     public String next() {
-                        if (index >= size()) {
+                        String n = next;
+                        if (n == null) {
+                            n = getNext();
+                        } else {
+                            next = null;
+                        }
+                        if (n != null) {
+                            return n;
+                        } else {
                             throw new NoSuchElementException();
                         }
-                        Object arrayElement = api.callValueGetArrayElement(keys, index++);
-                        if (api.callValueIsString(arrayElement)) {
-                            return api.callValueAsString(arrayElement);
-                        } else {
-                            return null;
+                    }
+
+                    private String getNext() {
+                        while (index < size()) {
+                            Object arrayElement = api.callValueGetArrayElement(keys, index++);
+                            if (api.callValueIsString(arrayElement)) {
+                                String name = api.callValueAsString(arrayElement);
+                                if (uniqueNames.add(name)) {
+                                    return name;
+                                }
+                            }
                         }
+                        return null;
                     }
                 };
             }
@@ -3542,10 +3916,539 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
                             @Cached ToHostValueNode toHost,
                             @Cached InlinedBranchProfile unsupported) {
                 try {
-                    return toHost.execute(node, context, objects.getMembers(receiver));
+                    return toHost.execute(node, context, new MembersToStrings(objects.getMemberObjects(receiver)));
                 } catch (UnsupportedMessageException e) {
                     unsupported.enter(node);
                     return null;
+                }
+            }
+        }
+
+        abstract static class GetMembersNode extends InteropNode {
+
+            protected GetMembersNode(InteropValue interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "getMembers";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
+                            @Bind("this") Node node,
+                            @CachedLibrary("receiver") InteropLibrary objects,
+                            @Cached ToHostValueNode toHost,
+                            @Cached InlinedBranchProfile unsupported) {
+                try {
+                    return toHost.execute(node, context, objects.getMemberObjects(receiver));
+                } catch (UnsupportedMessageException e) {
+                    unsupported.enter(node);
+                    return getMembersUnsupported(context, receiver);
+                }
+            }
+        }
+
+        abstract static class HasDeclaredMembersNode extends InteropNode {
+
+            protected HasDeclaredMembersNode(InteropValue interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "hasDeclaredMembers";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
+                            @CachedLibrary("receiver") InteropLibrary objects) {
+                return objects.hasDeclaredMembers(receiver);
+            }
+        }
+
+        abstract static class GetDeclaredMembersNode extends InteropNode {
+
+            protected GetDeclaredMembersNode(InteropValue interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "getDeclaredMembers";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
+                            @Bind("this") Node node,
+                            @CachedLibrary("receiver") InteropLibrary objects,
+                            @Cached ToHostValueNode toHost,
+                            @Cached InlinedBranchProfile unsupported) {
+                try {
+                    return toHost.execute(node, context, objects.getDeclaredMembers(receiver));
+                } catch (UnsupportedMessageException e) {
+                    unsupported.enter(node);
+                    return getDeclaredMembersUnsupported(context, receiver);
+                }
+            }
+        }
+
+        abstract static class HasStaticReceiverNode extends InteropNode {
+
+            protected HasStaticReceiverNode(InteropValue interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "hasStaticReceiver";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
+                            @CachedLibrary("receiver") InteropLibrary objects) {
+                return objects.hasStaticReceiver(receiver);
+            }
+        }
+
+        abstract static class GetStaticReceiverNode extends InteropNode {
+
+            protected GetStaticReceiverNode(InteropValue interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "getStaticReceiver";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
+                            @Bind("this") Node node,
+                            @CachedLibrary("receiver") InteropLibrary objects,
+                            @Cached ToHostValueNode toHost,
+                            @Cached InlinedBranchProfile unsupported) {
+                try {
+                    return toHost.execute(node, context, objects.getStaticReceiver(receiver));
+                } catch (UnsupportedMessageException e) {
+                    unsupported.enter(node);
+                    return getStaticReceiverUnsupported(context, receiver);
+                }
+            }
+        }
+
+        abstract static class IsMemberNode extends InteropNode {
+
+            protected IsMemberNode(InteropValue interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "isMember";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
+                            @CachedLibrary("receiver") InteropLibrary objects) {
+                return objects.isMember(receiver);
+            }
+        }
+
+        abstract static class GetMemberSimpleNameNode extends InteropNode {
+
+            protected GetMemberSimpleNameNode(InteropValue interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "getMemberSimpleName";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static String doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node,
+                            @CachedLibrary("receiver") InteropLibrary objects,
+                            @CachedLibrary(limit = "1") InteropLibrary toString,
+                            @Cached InlinedBranchProfile unsupported) {
+                try {
+                    return toString.asString(objects.getMemberSimpleName(receiver));
+                } catch (UnsupportedMessageException e) {
+                    unsupported.enter(node);
+                    return getMemberSimpleNameUnsupported(context, receiver);
+                }
+            }
+        }
+
+        abstract static class GetMemberQualifiedNameNode extends InteropNode {
+
+            protected GetMemberQualifiedNameNode(InteropValue interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "getMemberQualifiedName";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static String doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node,
+                            @CachedLibrary("receiver") InteropLibrary objects,
+                            @CachedLibrary(limit = "1") InteropLibrary toString,
+                            @Cached InlinedBranchProfile unsupported) {
+                try {
+                    return toString.asString(objects.getMemberQualifiedName(receiver));
+                } catch (UnsupportedMessageException e) {
+                    unsupported.enter(node);
+                    return getMemberQualifiedNameUnsupported(context, receiver);
+                }
+            }
+        }
+
+        abstract static class IsMemberKindFieldNode extends InteropNode {
+
+            protected IsMemberKindFieldNode(InteropValue interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "isMemberKindField";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static boolean doCached(PolyglotLanguageContext context, Object receiver, Object[] args,
+                            @CachedLibrary("receiver") InteropLibrary objects) {
+                return objects.isMemberKindField(receiver);
+            }
+        }
+
+        abstract static class IsMemberKindMethodNode extends InteropNode {
+
+            protected IsMemberKindMethodNode(InteropValue interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "isMemberKindMethod";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static boolean doCached(PolyglotLanguageContext context, Object receiver, Object[] args,
+                            @CachedLibrary("receiver") InteropLibrary objects) {
+                return objects.isMemberKindMethod(receiver);
+            }
+        }
+
+        abstract static class IsMemberKindMetaObjectNode extends InteropNode {
+
+            protected IsMemberKindMetaObjectNode(InteropValue interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "isMemberKindMetaObject";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static boolean doCached(PolyglotLanguageContext context, Object receiver, Object[] args,
+                            @CachedLibrary("receiver") InteropLibrary objects) {
+                return objects.isMemberKindMetaObject(receiver);
+            }
+        }
+
+        abstract static class HasDeclaringMetaObjectNode extends InteropNode {
+
+            protected HasDeclaringMetaObjectNode(InteropValue interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "hasDeclaringMetaObject";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
+                            @CachedLibrary("receiver") InteropLibrary objects) {
+                return objects.hasDeclaringMetaObject(receiver);
+            }
+        }
+
+        abstract static class GetDeclaringMetaObjectNode extends InteropNode {
+
+            protected GetDeclaringMetaObjectNode(InteropValue interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "getDeclaringMetaObject";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
+                            @Bind("this") Node node,
+                            @CachedLibrary("receiver") InteropLibrary objects,
+                            @Cached ToHostValueNode toHost,
+                            @Cached InlinedBranchProfile unsupported) {
+                try {
+                    return toHost.execute(node, context, objects.getDeclaringMetaObject(receiver));
+                } catch (UnsupportedMessageException e) {
+                    unsupported.enter(node);
+                    return getDeclaringMetaObjectUnsupported(context, receiver);
+                }
+            }
+        }
+
+        abstract static class HasMemberSignatureNode extends InteropNode {
+
+            protected HasMemberSignatureNode(InteropValue interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "hasMemberSignature";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
+                            @CachedLibrary("receiver") InteropLibrary objects) {
+                return objects.hasMemberSignature(receiver);
+            }
+        }
+
+        abstract static class GetMemberSignatureNode extends InteropNode {
+
+            protected GetMemberSignatureNode(InteropValue interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "getMemberSignature";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
+                            @Bind("this") Node node,
+                            @CachedLibrary("receiver") InteropLibrary objects,
+                            @Cached ToHostValueNode toHost,
+                            @Cached InlinedBranchProfile unsupported) {
+                try {
+                    return toHost.execute(node, context, objects.getMemberSignature(receiver));
+                } catch (UnsupportedMessageException e) {
+                    unsupported.enter(node);
+                    return getMemberSignatureUnsupported(context, receiver);
+                }
+            }
+        }
+
+        abstract static class IsSignatureElementNode extends InteropNode {
+
+            protected IsSignatureElementNode(InteropValue interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "isSignatureElement";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
+                            @CachedLibrary("receiver") InteropLibrary objects) {
+                return objects.isSignatureElement(receiver);
+            }
+        }
+
+        abstract static class HasSignatureElementNameNode extends InteropNode {
+
+            protected HasSignatureElementNameNode(InteropValue interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "hasSignatureElementName";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
+                            @CachedLibrary("receiver") InteropLibrary objects) {
+                return objects.hasSignatureElementName(receiver);
+            }
+        }
+
+        abstract static class GetSignatureElementNameNode extends InteropNode {
+
+            protected GetSignatureElementNameNode(InteropValue interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "getSignatureElementName";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static String doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node,
+                            @CachedLibrary("receiver") InteropLibrary objects,
+                            @CachedLibrary(limit = "1") InteropLibrary toString,
+                            @Cached InlinedBranchProfile unsupported) {
+                try {
+                    return toString.asString(objects.getSignatureElementName(receiver));
+                } catch (UnsupportedMessageException e) {
+                    unsupported.enter(node);
+                    return getSignatureElementNameUnsupported(context, receiver);
+                }
+            }
+        }
+
+        abstract static class HasSignatureElementMetaObjectNode extends InteropNode {
+
+            protected HasSignatureElementMetaObjectNode(InteropValue interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "hasSignatureElementMetaObject";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
+                            @CachedLibrary("receiver") InteropLibrary objects) {
+                return objects.hasSignatureElementMetaObject(receiver);
+            }
+        }
+
+        abstract static class GetSignatureElementMetaObjectNode extends InteropNode {
+
+            protected GetSignatureElementMetaObjectNode(InteropValue interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "getSignatureElementMetaObject";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
+                            @Bind("this") Node node,
+                            @CachedLibrary("receiver") InteropLibrary objects,
+                            @Cached ToHostValueNode toHost,
+                            @Cached InlinedBranchProfile unsupported) {
+                try {
+                    return toHost.execute(node, context, objects.getSignatureElementMetaObject(receiver));
+                } catch (UnsupportedMessageException e) {
+                    unsupported.enter(node);
+                    return getSignatureElementMetaObjectUnsupported(context, receiver);
                 }
             }
         }
@@ -4311,7 +5214,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
             @Override
             protected Class<?>[] getArgumentTypes() {
-                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType, String.class};
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType, Object.class};
             }
 
             @Override
@@ -4322,14 +5225,16 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             @Specialization(limit = "CACHE_LIMIT")
             static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node, //
                             @CachedLibrary("receiver") InteropLibrary objects,
+                            @Cached(inline = true) ToGuestValueNode toGuestValue,
                             @Cached ToHostValueNode toHost,
                             @Cached InlinedBranchProfile unsupported,
                             @Cached InlinedBranchProfile unknown) {
-                String key = (String) args[ARGUMENT_OFFSET];
+                Object key = args[ARGUMENT_OFFSET];
                 Object value;
                 try {
                     assert key != null : "should be handled already";
-                    value = toHost.execute(node, context, objects.readMember(receiver, key));
+                    Object guestMember = toGuestValue.execute(node, context, key);
+                    value = toHost.execute(node, context, objects.readMember(receiver, guestMember));
                 } catch (UnsupportedMessageException e) {
                     unsupported.enter(node);
                     if (objects.hasMembers(receiver)) {
@@ -4337,7 +5242,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
                     } else {
                         return getMemberUnsupported(context, receiver, key);
                     }
-                } catch (UnknownIdentifierException e) {
+                } catch (UnknownMemberException e) {
                     unknown.enter(node);
                     value = null;
                 }
@@ -4359,7 +5264,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
             @Override
             protected Class<?>[] getArgumentTypes() {
-                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType, String.class, null};
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType, Object.class, null};
             }
 
             @Specialization
@@ -4370,21 +5275,22 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
                             @Cached InlinedBranchProfile unsupported,
                             @Cached InlinedBranchProfile invalidValue,
                             @Cached InlinedBranchProfile unknown) {
-                String key = (String) args[ARGUMENT_OFFSET];
+                Object key = args[ARGUMENT_OFFSET];
                 Object originalValue = args[ARGUMENT_OFFSET + 1];
-                Object value = toGuestValue.execute(node, context, originalValue);
                 assert key != null;
+                Object guestMember = toGuestValue.execute(node, context, key);
+                Object value = toGuestValue.execute(node, context, originalValue);
                 try {
-                    objects.writeMember(receiver, key, value);
+                    objects.writeMember(receiver, guestMember, value);
                 } catch (UnsupportedMessageException e) {
                     unsupported.enter(node);
                     throw putMemberUnsupported(context, receiver);
-                } catch (UnknownIdentifierException e) {
+                } catch (UnknownMemberException e) {
                     unknown.enter(node);
-                    throw nonWritableMemberKey(context, receiver, key);
+                    throw nonWritableMemberKey(context, receiver, guestMember);
                 } catch (UnsupportedTypeException e) {
                     invalidValue.enter(node);
-                    throw invalidMemberValue(context, receiver, key, value);
+                    throw invalidMemberValue(context, receiver, guestMember, value);
                 }
                 return null;
             }
@@ -4403,33 +5309,35 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
             @Override
             protected Class<?>[] getArgumentTypes() {
-                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType, String.class};
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType, Object.class};
             }
 
             @Specialization(limit = "CACHE_LIMIT")
             static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node, //
                             @CachedLibrary("receiver") InteropLibrary objects,
+                            @Cached(inline = true) ToGuestValueNode toGuestValue,
                             @Cached InlinedBranchProfile unsupported,
                             @Cached InlinedBranchProfile unknown) {
-                String key = (String) args[ARGUMENT_OFFSET];
+                Object key = args[ARGUMENT_OFFSET];
+                assert key != null : "should be handled already";
+                Object guestMember = toGuestValue.execute(node, context, key);
                 Object value;
                 try {
-                    assert key != null : "should be handled already";
-                    objects.removeMember(receiver, key);
+                    objects.removeMember(receiver, guestMember);
                     value = Boolean.TRUE;
                 } catch (UnsupportedMessageException e) {
                     unsupported.enter(node);
                     if (!objects.hasMembers(receiver)) {
                         throw removeMemberUnsupported(context, receiver);
-                    } else if (objects.isMemberExisting(receiver, key)) {
-                        throw nonRemovableMemberKey(context, receiver, key);
+                    } else if (objects.isMemberExisting(receiver, guestMember)) {
+                        throw nonRemovableMemberKey(context, receiver, guestMember);
                     } else {
                         value = Boolean.FALSE;
                     }
-                } catch (UnknownIdentifierException e) {
+                } catch (UnknownMemberException e) {
                     unknown.enter(node);
-                    if (objects.isMemberExisting(receiver, key)) {
-                        throw nonRemovableMemberKey(context, receiver, key);
+                    if (objects.isMemberExisting(receiver, guestMember)) {
+                        throw nonRemovableMemberKey(context, receiver, guestMember);
                     } else {
                         value = Boolean.FALSE;
                     }
@@ -4495,7 +5403,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
             @Override
             protected final Class<?>[] getArgumentTypes() {
-                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType, String.class};
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType, Object.class};
             }
 
         }
@@ -4513,9 +5421,11 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
             @Specialization(limit = "CACHE_LIMIT")
             static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node, //
-                            @CachedLibrary("receiver") InteropLibrary objects) {
-                String key = (String) args[ARGUMENT_OFFSET];
-                return objects.isMemberExisting(receiver, key);
+                            @CachedLibrary("receiver") InteropLibrary objects,
+                            @Cached(inline = true) ToGuestValueNode toGuestValue) {
+                Object key = args[ARGUMENT_OFFSET];
+                Object guestKey = toGuestValue.execute(node, context, key);
+                return objects.isMemberExisting(receiver, guestKey);
             }
         }
 
@@ -4532,9 +5442,11 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
             @Specialization(limit = "CACHE_LIMIT")
             static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node, //
-                            @CachedLibrary("receiver") InteropLibrary objects) {
-                String key = (String) args[ARGUMENT_OFFSET];
-                return objects.isMemberInvocable(receiver, key);
+                            @CachedLibrary("receiver") InteropLibrary objects,
+                            @Cached(inline = true) ToGuestValueNode toGuestValue) {
+                Object key = args[ARGUMENT_OFFSET];
+                Object guestKey = toGuestValue.execute(node, context, key);
+                return objects.isMemberInvocable(receiver, guestKey);
             }
 
         }
@@ -4767,10 +5679,10 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         @GenerateCached(false)
         abstract static class SharedInvokeNode extends Node {
 
-            protected abstract Object executeShared(Node node, PolyglotLanguageContext context, Object receiver, String key, Object[] guestArguments);
+            protected abstract Object executeShared(Node node, PolyglotLanguageContext context, Object receiver, Object key, Object[] guestArguments);
 
             @Specialization(limit = "CACHE_LIMIT")
-            protected static Object doDefault(Node node, PolyglotLanguageContext context, Object receiver, String key, Object[] guestArguments,
+            protected static Object doDefault(Node node, PolyglotLanguageContext context, Object receiver, Object key, Object[] guestArguments,
                             @CachedLibrary("receiver") InteropLibrary objects,
                             @Cached ToHostValueNode toHostValue,
                             @Cached InlinedBranchProfile invalidArgument,
@@ -4782,7 +5694,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
                 } catch (UnsupportedMessageException e) {
                     unsupported.enter(node);
                     throw invokeUnsupported(context, receiver, key);
-                } catch (UnknownIdentifierException e) {
+                } catch (UnknownMemberException e) {
                     unknownIdentifier.enter(node);
                     throw nonReadableMemberKey(context, receiver, key);
                 } catch (UnsupportedTypeException e) {
@@ -4804,7 +5716,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
             @Override
             protected Class<?>[] getArgumentTypes() {
-                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType, String.class, Object[].class};
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType, Object.class, Object[].class};
             }
 
             @Override
@@ -4815,10 +5727,12 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             @Specialization
             final Object doDefault(PolyglotLanguageContext context, Object receiver, Object[] args,
                             @Cached SharedInvokeNode sharedInvoke,
+                            @Cached(inline = true) ToGuestValueNode toGuestValue,
                             @Cached ToGuestValuesNode toGuestValues) {
-                String key = (String) args[ARGUMENT_OFFSET];
+                Object key = args[ARGUMENT_OFFSET];
+                Object guestKey = toGuestValue.execute(this, context, key);
                 Object[] guestArguments = toGuestValues.execute(this, context, (Object[]) args[ARGUMENT_OFFSET + 1]);
-                return sharedInvoke.executeShared(this, context, receiver, key, guestArguments);
+                return sharedInvoke.executeShared(this, context, receiver, guestKey, guestArguments);
             }
 
         }
@@ -4831,7 +5745,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
             @Override
             protected Class<?>[] getArgumentTypes() {
-                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType, String.class};
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType, Object.class};
             }
 
             @Override
@@ -4841,9 +5755,11 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
             @Specialization
             final Object doDefault(PolyglotLanguageContext context, Object receiver, Object[] args,
-                            @Cached SharedInvokeNode sharedInvoke) {
-                String key = (String) args[ARGUMENT_OFFSET];
-                return sharedInvoke.executeShared(this, context, receiver, key, ExecuteVoidNoArgsNode.NO_ARGS);
+                            @Cached SharedInvokeNode sharedInvoke,
+                            @Cached(inline = true) ToGuestValueNode toGuestValue) {
+                Object key = args[ARGUMENT_OFFSET];
+                Object guestKey = toGuestValue.execute(this, context, key);
+                return sharedInvoke.executeShared(this, context, receiver, guestKey, ExecuteVoidNoArgsNode.NO_ARGS);
             }
 
         }

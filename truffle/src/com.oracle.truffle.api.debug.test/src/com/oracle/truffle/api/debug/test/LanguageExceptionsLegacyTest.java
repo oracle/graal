@@ -61,6 +61,7 @@ import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 public class LanguageExceptionsLegacyTest extends AbstractDebugTest {
 
     @Test
+    @SuppressWarnings("deprecation")
     public void testBuggyKeys() {
         testBuggyLanguageCalls(new TestDebugBuggyLanguage(),
                         (SuspendedEvent event) -> {

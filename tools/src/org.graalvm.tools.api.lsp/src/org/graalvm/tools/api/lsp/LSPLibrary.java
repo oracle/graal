@@ -135,8 +135,8 @@ public abstract class LSPLibrary extends Library {
             }
             InteropLibrary interop = InteropLibrary.getFactory().getUncached();
             assert doc instanceof TruffleObject;
-            return interop.isMemberInvocable(doc, "markdown") ||
-                            interop.isMemberInvocable(doc, "plaintext");
+            return interop.isMemberInvocable(doc, (Object) "markdown") ||
+                            interop.isMemberInvocable(doc, (Object) "plaintext");
         }
 
         @CompilerDirectives.TruffleBoundary
@@ -144,21 +144,21 @@ public abstract class LSPLibrary extends Library {
             InteropLibrary interop = InteropLibrary.getFactory().getUncached();
             assert signature instanceof TruffleObject;
             try {
-                if (interop.isMemberReadable(signature, "documentation")) {
-                    if (!isDocumentation(interop.readMember(signature, "documentation"))) {
+                if (interop.isMemberReadable(signature, (Object) "documentation")) {
+                    if (!isDocumentation(interop.readMember(signature, (Object) "documentation"))) {
                         assert false : "Wrong documentation of signature " + signature;
                         return false;
                     }
                 }
-                if (interop.isMemberReadable(signature, "parameters")) {
-                    Object parameters = interop.readMember(signature, "parameters");
+                if (interop.isMemberReadable(signature, (Object) "parameters")) {
+                    Object parameters = interop.readMember(signature, (Object) "parameters");
                     assert interop.hasArrayElements(parameters) : "Parameters of " + signature + " is not an array";
                     long size = interop.getArraySize(parameters);
                     for (long i = 0; i < size; i++) {
                         assert interop.isArrayElementReadable(parameters, i);
                         Object param = interop.readArrayElement(parameters, i);
-                        assert interop.isMemberReadable(param, "label");
-                        Object label = interop.readMember(param, "label");
+                        assert interop.isMemberReadable(param, (Object) "label");
+                        Object label = interop.readMember(param, (Object) "label");
                         assert label instanceof String || interop.hasArrayElements(label);
                         if (interop.hasArrayElements(label)) {
                             long rangeSize = interop.getArraySize(label);
@@ -170,8 +170,8 @@ public abstract class LSPLibrary extends Library {
                             // int i2 = interop.asInt(l2);
                             // assert 0 <= i1 && i1 <= i2 && i2 <= signatureLabel.length();
                         }
-                        if (interop.isMemberReadable(param, "documentation")) {
-                            if (!isDocumentation(interop.readMember(signature, "documentation"))) {
+                        if (interop.isMemberReadable(param, (Object) "documentation")) {
+                            if (!isDocumentation(interop.readMember(signature, (Object) "documentation"))) {
                                 assert false : "Wrong documentation of parameter " + param + " of signature " + signature;
                                 return false;
                             }

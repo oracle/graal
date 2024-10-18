@@ -63,6 +63,7 @@ import com.oracle.truffle.espresso.runtime.JavaVersion;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 @EspressoSubstitutions
+@SuppressWarnings("deprecation") // GR-58181
 public final class Target_java_util_regex_Matcher {
     private Target_java_util_regex_Matcher() {
     }

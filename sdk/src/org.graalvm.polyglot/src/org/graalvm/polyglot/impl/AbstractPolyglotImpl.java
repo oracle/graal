@@ -370,7 +370,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract boolean callProxyObjectRemoveMember(Object proxy, String member);
 
-        public abstract Object callProxyObjectHasMember(Object proxy, String string);
+        public abstract boolean callProxyObjectHasMember(Object proxy, String string);
 
         public abstract ZoneId callProxyTimeZoneAsTimeZone(Object proxy);
 
@@ -1155,9 +1155,9 @@ public abstract class AbstractPolyglotImpl {
             return false;
         }
 
-        public abstract Object getMember(Object context, Object receiver, String key);
+        public abstract Object getMember(Object context, Object receiver, Object key);
 
-        public boolean hasMember(Object context, Object receiver, String key) {
+        public boolean hasMember(Object context, Object receiver, Object key) {
             return false;
         }
 
@@ -1169,9 +1169,65 @@ public abstract class AbstractPolyglotImpl {
             return Collections.emptySet();
         }
 
-        public abstract void putMember(Object context, Object receiver, String key, Object member);
+        public abstract Object getMembers(Object context, Object receiver);
 
-        public abstract boolean removeMember(Object context, Object receiver, String key);
+        public abstract void putMember(Object context, Object receiver, Object key, Object member);
+
+        public abstract boolean removeMember(Object context, Object receiver, Object key);
+
+        public boolean hasDeclaredMembers(Object context, Object receiver) {
+            return false;
+        }
+
+        public abstract Object getDeclaredMembers(Object context, Object receiver);
+
+        public boolean hasStaticReceiver(Object context, Object receiver) {
+            return false;
+        }
+
+        public abstract Object getStaticReceiver(Object context, Object receiver);
+
+        public boolean isMember(Object context, Object receiver) {
+            return false;
+        }
+
+        public abstract String getMemberSimpleName(Object context, Object receiver);
+
+        public abstract String getMemberQualifiedName(Object context, Object receiver);
+
+        public abstract boolean isMemberKindField(Object context, Object receiver);
+
+        public abstract boolean isMemberKindMethod(Object context, Object receiver);
+
+        public abstract boolean isMemberKindMetaObject(Object context, Object receiver);
+
+        public boolean hasDeclaringMetaObject(Object context, Object receiver) {
+            return false;
+        }
+
+        public abstract Object getDeclaringMetaObject(Object context, Object receiver);
+
+        public boolean hasMemberSignature(Object context, Object receiver) {
+            return false;
+        }
+
+        public abstract Object getMemberSignature(Object context, Object receiver);
+
+        public boolean isSignatureElement(Object context, Object receiver) {
+            return false;
+        }
+
+        public boolean hasSignatureElementName(Object context, Object receiver) {
+            return false;
+        }
+
+        public abstract String getSignatureElementName(Object context, Object receiver);
+
+        public boolean hasSignatureElementMetaObject(Object context, Object receiver) {
+            return false;
+        }
+
+        public abstract Object getSignatureElementMetaObject(Object context, Object receiver);
 
         public boolean canExecute(Object context, Object receiver) {
             return false;
@@ -1191,13 +1247,21 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract void executeVoid(Object context, Object receiver);
 
-        public boolean canInvoke(Object context, String identifier, Object receiver) {
+        public boolean canInvoke(Object context, Object identifier, Object receiver) {
             return false;
         }
 
-        public abstract Object invoke(Object context, Object receiver, String identifier, Object[] arguments);
+        public abstract Object invoke(Object context, Object receiver, Object identifier, Object[] arguments);
 
-        public abstract Object invoke(Object context, Object receiver, String identifier);
+        public abstract Object invoke(Object context, Object receiver, Object identifier);
+
+        public boolean hasMemberReadSideEffects(Object context, Object receiver, Object member) {
+            return false;
+        }
+
+        public boolean hasMemberWriteSideEffects(Object context, Object receiver, Object member) {
+            return false;
+        }
 
         public boolean isString(Object context, Object receiver) {
             return false;

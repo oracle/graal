@@ -56,7 +56,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 
 @ExportLibrary(InteropLibrary.class)
-@SuppressWarnings({"static-method"})
+@SuppressWarnings({"static-method", "truffle-abstract-export", "deprecation"})
 public final class WasmScope implements TruffleObject {
     private final WasmContext context;
 

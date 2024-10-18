@@ -208,6 +208,7 @@ public class NFINativeAccess implements NativeAccess {
     }
 
     @Override
+    @SuppressWarnings("deprecation") // GR-58181
     public @Pointer TruffleObject lookupSymbol(@Pointer TruffleObject library, String symbolName) {
         try {
             TruffleObject symbol = (TruffleObject) uncachedInterop.readMember(library, symbolName);

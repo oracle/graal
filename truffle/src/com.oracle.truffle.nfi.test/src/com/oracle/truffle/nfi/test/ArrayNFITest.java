@@ -105,10 +105,10 @@ public class ArrayNFITest extends NFITest {
 
         public CreateAndSumArray() {
             try {
-                this.store = UNCACHED_INTEROP.readMember(testLibrary, "store_" + nativeType);
+                this.store = UNCACHED_INTEROP.readMember(testLibrary, (Object) ("store_" + nativeType));
                 this.storeSignature = parseSignature(String.format("([%s], uint32, %s) : void", nativeType, nativeType));
 
-                this.sum = UNCACHED_INTEROP.readMember(testLibrary, "sum_" + nativeType);
+                this.sum = UNCACHED_INTEROP.readMember(testLibrary, (Object) ("sum_" + nativeType));
                 this.sumSignature = parseSignature(String.format("([%s], uint32) : %s", nativeType, nativeType));
 
                 this.storeSignatureLibrary = SignatureLibrary.getFactory().create(this.storeSignature);

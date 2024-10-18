@@ -118,9 +118,9 @@ public class StringAsInterfaceNFITest {
     @Test
     public void testAllocAndReleaseWithInvoke() throws Exception {
         assumptions();
-        Object mem = NFITest.UNCACHED_INTEROP.invokeMember(rawStdLib, "malloc", 512);
+        Object mem = NFITest.UNCACHED_INTEROP.invokeMember(rawStdLib, (Object) "malloc", 512);
         assertNotNull("some memory allocated", mem);
-        NFITest.UNCACHED_INTEROP.invokeMember(rawStdLib, "free", mem);
+        NFITest.UNCACHED_INTEROP.invokeMember(rawStdLib, (Object) "free", mem);
     }
 
     @Test

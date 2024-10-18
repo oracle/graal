@@ -112,6 +112,7 @@ public final class CallFrame {
         return rootNode;
     }
 
+    @SuppressWarnings("deprecation") // GR-58181
     public Object getThisValue() {
         Object theScope = getScope();
         if (theScope == null) {
@@ -131,11 +132,13 @@ public final class CallFrame {
         }
     }
 
+    @SuppressWarnings("deprecation") // GR-58181
     public Object getVariable(String identifier) throws InteropException {
         Object theScope = getScope();
         return theScope != null ? INTEROP.readMember(theScope, identifier) : null;
     }
 
+    @SuppressWarnings("deprecation") // GR-58181
     public void setVariable(Object value, String identifier) {
         Object theScope = getScope();
         if (theScope == null) {

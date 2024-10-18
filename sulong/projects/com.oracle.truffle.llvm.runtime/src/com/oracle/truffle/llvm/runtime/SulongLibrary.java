@@ -66,7 +66,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
  * Object that is returned when a bitcode library is parsed.
  */
 @ExportLibrary(InteropLibrary.class)
-@SuppressWarnings("static-method")
+@SuppressWarnings({"static-method", "truffle-abstract-export", "deprecation"}) // GR-57971
 public final class SulongLibrary implements TruffleObject {
 
     private final String name;

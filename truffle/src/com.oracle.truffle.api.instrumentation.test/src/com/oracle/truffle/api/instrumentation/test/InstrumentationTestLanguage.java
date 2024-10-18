@@ -81,6 +81,8 @@ import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -114,7 +116,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -812,13 +814,26 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         }
     }
 
+    private static String getNameFromStringMember(Object member, InteropLibrary memberLibrary) {
+        assert memberLibrary.isString(member) : member;
+        String name;
+        try {
+            name = memberLibrary.asString(member);
+        } catch (UnsupportedMessageException e) {
+            throw CompilerDirectives.shouldNotReachHere("incompatible member");
+        }
+        return name;
+    }
+
     @ExportLibrary(InteropLibrary.class)
     @ExportLibrary(NodeLibrary.class)
     @GenerateWrapper
     @SuppressWarnings("static-method")
     public abstract static class InstrumentedNode extends InstrumentedBaseNode implements InstrumentableNode, TruffleObject {
 
-        private static final String THIS = "THIS";
+        protected static final int CACHE_LIMIT = 3;
+        private static final String THIS_NAME = "THIS";
+        private static final Object THIS = new InstrumentationMember(THIS_NAME);
 
         @Children final BaseNode[] children;
 
@@ -862,21 +877,62 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         }
 
         @ExportMessage
-        final Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        final Object getMemberObjects() {
             if (this instanceof ConstantNode) {
-                return new KeysObject(new String[]{"simpleName", "constant"});
+                return new KeysObject("simpleName", "constant");
             } else {
-                return new KeysObject(new String[]{"simpleName"});
+                return new KeysObject("simpleName");
             }
         }
 
         @ExportMessage
-        final boolean isMemberReadable(@SuppressWarnings("unused") String member) {
-            return true;
+        static class IsMemberReadable {
+
+            @Specialization
+            static boolean isReadable(InstrumentedNode receiver, InstrumentationMember member) {
+                return receiver.isReadable(member.name);
+            }
+
+            @Specialization(guards = "memberLibrary.isString(member)")
+            static boolean isReadable(InstrumentedNode receiver, Object member,
+                            @Shared("memberLibrary") @CachedLibrary(limit = "CACHE_LIMIT") InteropLibrary memberLibrary) {
+                String name = getNameFromStringMember(member, memberLibrary);
+                return receiver.isReadable(name);
+            }
+
+            @Fallback
+            @SuppressWarnings("unused")
+            static boolean isReadable(InstrumentedNode receiver, Object member) {
+                return false;
+            }
+        }
+
+        private boolean isReadable(String member) {
+            return member.equals("simpleName") || this instanceof ConstantNode && member.equals("constant");
         }
 
         @ExportMessage
-        Object readMember(String key) throws UnknownIdentifierException {
+        static class ReadMember {
+            @Specialization
+            static Object read(InstrumentedNode receiver, InstrumentationMember member) throws UnknownMemberException {
+                return receiver.doReadMember(member.name, member);
+            }
+
+            @Specialization(guards = "memberLibrary.isString(member)")
+            static Object read(InstrumentedNode receiver, Object member,
+                            @Shared("memberLibrary") @CachedLibrary(limit = "CACHE_LIMIT") InteropLibrary memberLibrary) throws UnknownMemberException {
+                String name = getNameFromStringMember(member, memberLibrary);
+                return receiver.doReadMember(name, member);
+            }
+
+            @Fallback
+            @SuppressWarnings("unused")
+            static Object read(InstrumentedNode receiver, Object member) throws UnknownMemberException {
+                throw UnknownMemberException.create(member);
+            }
+        }
+
+        private Object doReadMember(String key, Object member) throws UnknownMemberException {
             switch (key) {
                 case "simpleName":
                     return classSimpleName(getClass());
@@ -887,7 +943,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                         return ((ConstantNode) this).constant;
                 }
             }
-            throw UnknownIdentifierException.create(key);
+            throw UnknownMemberException.create(member);
         }
 
         @Override
@@ -987,7 +1043,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             if (frame != null) {
                 Object[] args = frame.getArguments();
                 if (args.length > 0 && args[0] instanceof ThisArg) {
-                    return THIS;
+                    return THIS_NAME;
                 }
             }
             throw UnsupportedMessageException.create();
@@ -1021,6 +1077,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         @SuppressWarnings("static-method")
         static final class ArgumentsArrayObject implements TruffleObject {
 
+            protected static final int CACHE_LIMIT = 3;
             final Object[] args;
 
             ArgumentsArrayObject(Object[] args) {
@@ -1048,47 +1105,90 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             }
 
             @ExportMessage
-            Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-                return new ArgumentNamesObject(args.length);
+            Object getMemberObjects() {
+                return new ArgumentMembersObject(args.length);
             }
 
             @ExportMessage
+            static class IsMemberReadable {
+
+                @Specialization
+                static boolean isReadable(ArgumentsArrayObject receiver, ArgumentMember member) {
+                    return receiver.isReadable(member.index);
+                }
+
+                @Specialization(guards = "memberLibrary.isString(member)")
+                static boolean isReadable(ArgumentsArrayObject receiver, Object member,
+                                @Shared("memberLibrary") @CachedLibrary(limit = "CACHE_LIMIT") InteropLibrary memberLibrary) {
+                    String name = getNameFromStringMember(member, memberLibrary);
+                    return receiver.isReadable(name);
+                }
+
+                @Fallback
+                @SuppressWarnings("unused")
+                static boolean isReadable(ArgumentsArrayObject receiver, Object member) {
+                    return false;
+                }
+            }
+
             @TruffleBoundary
-            boolean isMemberReadable(String member) {
+            private boolean isReadable(String member) {
                 try {
                     int index = Integer.parseInt(member);
-                    if (0 <= index && index < args.length) {
-                        return InteropLibrary.isValidValue(args[index]);
-                    } else {
-                        return false;
-                    }
+                    return isReadable(index);
                 } catch (NumberFormatException e) {
                     return false;
                 }
             }
 
-            @ExportMessage(name = "isMemberModifiable")
-            @ExportMessage(name = "isMemberInsertable")
-            boolean isMemberModifiable(@SuppressWarnings("unused") String member) {
-                return false;
+            @TruffleBoundary
+            private boolean isReadable(int index) {
+                if (0 <= index && index < args.length) {
+                    return InteropLibrary.isValidValue(args[index]);
+                } else {
+                    return false;
+                }
             }
 
             @ExportMessage
+            static class ReadMember {
+                @Specialization
+                static Object read(ArgumentsArrayObject receiver, ArgumentMember member) throws UnknownMemberException {
+                    return receiver.doReadMember(member.index, member);
+                }
+
+                @Specialization(guards = "memberLibrary.isString(member)")
+                static Object read(ArgumentsArrayObject receiver, Object member,
+                                @Shared("memberLibrary") @CachedLibrary(limit = "CACHE_LIMIT") InteropLibrary memberLibrary) throws UnknownMemberException {
+                    String name = getNameFromStringMember(member, memberLibrary);
+                    return receiver.doReadMember(name, member);
+                }
+
+                @Fallback
+                @SuppressWarnings("unused")
+                static Object read(ArgumentsArrayObject receiver, Object member) throws UnknownMemberException {
+                    throw UnknownMemberException.create(member);
+                }
+            }
+
             @TruffleBoundary
-            Object readMember(String member) throws UnsupportedMessageException {
+            private Object doReadMember(String name, Object member) throws UnknownMemberException {
                 try {
-                    int index = Integer.parseInt(member);
+                    int index = Integer.parseInt(name);
                     if (0 <= index && index < args.length) {
                         return args[index];
                     }
                 } catch (NumberFormatException e) {
                 }
-                throw UnsupportedMessageException.create();
+                throw UnknownMemberException.create(member);
             }
 
-            @ExportMessage
-            void writeMember(@SuppressWarnings("unused") String member, @SuppressWarnings("unused") Object value) throws UnsupportedMessageException {
-                throw UnsupportedMessageException.create();
+            @TruffleBoundary
+            private Object doReadMember(int index, Object member) throws UnknownMemberException {
+                if (0 <= index && index < args.length) {
+                    return args[index];
+                }
+                throw UnknownMemberException.create(member);
             }
 
             @ExportMessage
@@ -1098,11 +1198,11 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         }
 
         @ExportLibrary(InteropLibrary.class)
-        static final class ArgumentNamesObject implements TruffleObject {
+        static final class ArgumentMembersObject implements TruffleObject {
 
             private final int n;
 
-            ArgumentNamesObject(int n) {
+            ArgumentMembersObject(int n) {
                 this.n = n;
             }
 
@@ -1124,7 +1224,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                 if (!isArrayElementReadable(index)) {
                     throw InvalidArrayIndexException.create(index);
                 }
-                return Long.toString(index);
+                return new ArgumentMember((int) index);
             }
 
             @ExportMessage
@@ -1135,8 +1235,50 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         }
 
         @ExportLibrary(InteropLibrary.class)
+        static final class ArgumentMember implements TruffleObject {
+
+            private final int index;
+
+            ArgumentMember(int index) {
+                this.index = index;
+            }
+
+            @ExportMessage
+            boolean isMember() {
+                return true;
+            }
+
+            @ExportMessage
+            Object getMemberSimpleName() {
+                return Long.toString(index);
+            }
+
+            @ExportMessage
+            @TruffleBoundary
+            Object getMemberQualifiedName() {
+                return Long.toString(index);
+            }
+
+            @ExportMessage
+            boolean isMemberKindField() {
+                return true;
+            }
+
+            @ExportMessage
+            boolean isMemberKindMethod() {
+                return false;
+            }
+
+            @ExportMessage
+            boolean isMemberKindMetaObject() {
+                return false;
+            }
+        }
+
+        @ExportLibrary(InteropLibrary.class)
         static final class VariablesWithThis implements TruffleObject {
 
+            protected static final int CACHE_LIMIT = 3;
             private final Object variables;
             private final Object receiver;
 
@@ -1180,47 +1322,107 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             }
 
             @ExportMessage
-            Object getMembers(boolean includeInternal, @Shared("interop") @CachedLibrary(limit = "1") InteropLibrary interopLibrary) throws UnsupportedMessageException {
-                return new MembersWithReceiver(interopLibrary.getMembers(variables, includeInternal));
+            Object getMemberObjects(@Shared("interop") @CachedLibrary(limit = "1") InteropLibrary interopLibrary) throws UnsupportedMessageException {
+                return new MembersWithReceiver(interopLibrary.getMemberObjects(variables));
             }
 
             @ExportMessage
-            Object readMember(String member, @Shared("interop") @CachedLibrary(limit = "1") InteropLibrary interopLibrary) throws UnknownIdentifierException, UnsupportedMessageException {
-                if (THIS.equals(member)) {
-                    return receiver;
+            static class IsMemberReadable {
+
+                @Specialization(guards = "memberLibrary.isString(member)")
+                static boolean isReadableName(VariablesWithThis receiver, Object member,
+                                @Shared("memberLibrary") @CachedLibrary(limit = "CACHE_LIMIT") InteropLibrary memberLibrary) {
+                    String name = getNameFromStringMember(member, memberLibrary);
+                    if (THIS_NAME.equals(name)) {
+                        return true;
+                    }
+                    return memberLibrary.isMemberReadable(receiver.variables, member);
                 }
-                return interopLibrary.readMember(variables, member);
+
+                @Fallback
+                static boolean isReadable(VariablesWithThis receiver, Object member,
+                                @Shared("memberLibrary") @CachedLibrary(limit = "CACHE_LIMIT") InteropLibrary memberLibrary) {
+                    if (THIS == member) {
+                        return true;
+                    }
+                    return memberLibrary.isMemberReadable(receiver.variables, member);
+                }
             }
 
             @ExportMessage
-            boolean isMemberReadable(String member, @Shared("interop") @CachedLibrary(limit = "1") InteropLibrary interopLibrary) {
-                if (THIS.equals(member)) {
-                    assert !interopLibrary.isMemberReadable(variables, member);
-                    return true;
+            static class ReadMember {
+
+                @Specialization(guards = "memberLibrary.isString(member)")
+                static Object readName(VariablesWithThis receiver, Object member,
+                                @Shared("memberLibrary") @CachedLibrary(limit = "CACHE_LIMIT") InteropLibrary memberLibrary) throws UnknownMemberException, UnsupportedMessageException {
+                    String name = getNameFromStringMember(member, memberLibrary);
+                    if (THIS_NAME.equals(name)) {
+                        return receiver.receiver;
+                    }
+                    return memberLibrary.readMember(receiver.variables, member);
                 }
-                return interopLibrary.isMemberReadable(variables, member);
+
+                @Fallback
+                static Object read(VariablesWithThis receiver, Object member,
+                                @Shared("memberLibrary") @CachedLibrary(limit = "CACHE_LIMIT") InteropLibrary memberLibrary) throws UnknownMemberException, UnsupportedMessageException {
+                    if (THIS == member) {
+                        return receiver.receiver;
+                    }
+                    return memberLibrary.readMember(receiver.variables, member);
+                }
             }
 
             @ExportMessage
-            void writeMember(String member, Object value, @Shared("interop") @CachedLibrary(limit = "1") InteropLibrary interopLibrary)
-                            throws UnknownIdentifierException, UnsupportedTypeException, UnsupportedMessageException {
-                if (THIS.equals(member)) {
-                    throw UnknownIdentifierException.create(member);
+            static class IsMemberModifiable {
+
+                @Specialization(guards = "memberLibrary.isString(member)")
+                static boolean isModifiableName(VariablesWithThis receiver, Object member,
+                                @Shared("memberLibrary") @CachedLibrary(limit = "CACHE_LIMIT") InteropLibrary memberLibrary) {
+                    String name = getNameFromStringMember(member, memberLibrary);
+                    if (THIS_NAME.equals(name)) {
+                        return false;
+                    }
+                    return memberLibrary.isMemberModifiable(receiver.variables, member);
                 }
-                interopLibrary.writeMember(variables, member, value);
+
+                @Fallback
+                static boolean isModifiable(VariablesWithThis receiver, Object member,
+                                @Shared("memberLibrary") @CachedLibrary(limit = "CACHE_LIMIT") InteropLibrary memberLibrary) {
+                    if (THIS == member) {
+                        return false;
+                    }
+                    return memberLibrary.isMemberModifiable(receiver.variables, member);
+                }
             }
 
             @ExportMessage
-            boolean isMemberModifiable(String member, @Shared("interop") @CachedLibrary(limit = "1") InteropLibrary interopLibrary) {
-                if (THIS.equals(member)) {
-                    return false;
+            static class WriteMember {
+
+                @Specialization(guards = "memberLibrary.isString(member)")
+                static void writeName(VariablesWithThis receiver, Object member, Object value,
+                                @Shared("memberLibrary") @CachedLibrary(limit = "CACHE_LIMIT") InteropLibrary memberLibrary)
+                                throws UnknownMemberException, UnsupportedTypeException, UnsupportedMessageException {
+                    String name = getNameFromStringMember(member, memberLibrary);
+                    if (THIS_NAME.equals(name)) {
+                        throw UnknownMemberException.create(member);
+                    }
+                    memberLibrary.writeMember(receiver.variables, member, value);
                 }
-                return interopLibrary.isMemberModifiable(variables, member);
+
+                @Fallback
+                static void write(VariablesWithThis receiver, Object member, Object value,
+                                @Shared("memberLibrary") @CachedLibrary(limit = "CACHE_LIMIT") InteropLibrary memberLibrary)
+                                throws UnknownMemberException, UnsupportedTypeException, UnsupportedMessageException {
+                    if (THIS == member) {
+                        throw UnknownMemberException.create(member);
+                    }
+                    memberLibrary.writeMember(receiver.variables, member, value);
+                }
             }
 
             @ExportMessage
             @SuppressWarnings({"static-method", "unused"})
-            boolean isMemberInsertable(String member) {
+            boolean isMemberInsertable(Object member) {
                 return false;
             }
 
@@ -1276,6 +1478,47 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                     }
                 }
             }
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings("static-method")
+    static final class InstrumentationMember implements TruffleObject {
+
+        private final String name;
+
+        InstrumentationMember(String name) {
+            this.name = name;
+        }
+
+        @ExportMessage
+        boolean isMember() {
+            return true;
+        }
+
+        @ExportMessage
+        Object getMemberSimpleName() {
+            return name;
+        }
+
+        @ExportMessage
+        Object getMemberQualifiedName() {
+            return name;
+        }
+
+        @ExportMessage
+        boolean isMemberKindField() {
+            return true;
+        }
+
+        @ExportMessage
+        boolean isMemberKindMethod() {
+            return false;
+        }
+
+        @ExportMessage
+        boolean isMemberKindMetaObject() {
+            return false;
         }
     }
 
@@ -1421,6 +1664,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         @ExportLibrary(InteropLibrary.class)
         static class CatchesInfoObject implements TruffleObject {
 
+            protected static final int CACHE_LIMIT = 3;
             private final CatchNode[] catches;
 
             CatchesInfoObject(CatchNode[] catches) {
@@ -1437,20 +1681,57 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             }
 
             @ExportMessage
-            @TruffleBoundary
-            final Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-                return new KeysObject(new String[]{"catches"});
+            final Object getMemberObjects() {
+                return new KeysObject("catches");
             }
 
             @ExportMessage
-            final boolean isMemberInvocable(@SuppressWarnings("unused") String member) {
-                return "catches".equals(member);
+            @SuppressWarnings("unused")
+            static class IsMemberInvocable {
+
+                @Specialization
+                static boolean isInvocable(CatchesInfoObject receiver, InstrumentationMember member) {
+                    return "catches".equals(member.name);
+                }
+
+                @Specialization(guards = "memberLibrary.isString(member)")
+                static boolean isInvocable(CatchesInfoObject receiver, Object member,
+                                @Shared("memberLibrary") @CachedLibrary(limit = "CACHE_LIMIT") InteropLibrary memberLibrary) {
+                    String name = getNameFromStringMember(member, memberLibrary);
+                    return "catches".equals(name);
+                }
+
+                @Fallback
+                static boolean isInvocable(CatchesInfoObject receiver, Object member) {
+                    return false;
+                }
             }
 
             @ExportMessage
+            static class InvokeMember {
+
+                @Specialization
+                static Object invoke(CatchesInfoObject receiver, InstrumentationMember member, Object[] arguments) throws UnknownMemberException {
+                    return receiver.invokeCatches(member.name, member, arguments);
+                }
+
+                @Specialization(guards = "memberLibrary.isString(member)")
+                static Object invoke(CatchesInfoObject receiver, Object member, Object[] arguments,
+                                @Shared("memberLibrary") @CachedLibrary(limit = "CACHE_LIMIT") InteropLibrary memberLibrary) throws UnknownMemberException {
+                    String name = getNameFromStringMember(member, memberLibrary);
+                    return receiver.invokeCatches(name, member, arguments);
+                }
+
+                @Fallback
+                @SuppressWarnings("unused")
+                static Object invoke(CatchesInfoObject receiver, Object member, Object[] arguments) throws UnknownMemberException {
+                    throw UnknownMemberException.create(member);
+                }
+            }
+
             @TruffleBoundary
-            final Object invokeMember(String member, Object[] arguments) throws UnknownIdentifierException {
-                if ("catches".equals(member)) {
+            final Object invokeCatches(String name, Object member, Object[] arguments) throws UnknownMemberException {
+                if ("catches".equals(name)) {
                     InteropLibrary interop = InteropLibrary.getUncached();
                     if (interop.isString(arguments[0])) {
                         String type;
@@ -1467,7 +1748,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                     }
                     return false;
                 } else {
-                    throw UnknownIdentifierException.create(member);
+                    throw UnknownMemberException.create(member);
                 }
             }
         }
@@ -3065,8 +3346,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         public Object execute(VirtualFrame frame) {
             Object obj = super.execute(frame);
             try {
-                return interop.invokeMember(obj, memberName);
-            } catch (UnsupportedMessageException | ArityException | UnknownIdentifierException | UnsupportedTypeException e) {
+                return interop.invokeMember(obj, (Object) memberName);
+            } catch (UnsupportedMessageException | ArityException | UnknownMemberException | UnsupportedTypeException e) {
                 throw CompilerDirectives.shouldNotReachHere(e);
             }
         }
@@ -3525,6 +3806,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
     @ExportLibrary(InteropLibrary.class)
     static class FunctionsObject implements TruffleObject {
 
+        protected static final int CACHE_LIMIT = 3;
         final Map<String, RootCallTarget> callTargets = Collections.synchronizedMap(new LinkedHashMap<>());
         final Map<String, TruffleObject> functions = new ConcurrentHashMap<>();
 
@@ -3556,22 +3838,68 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         @ExportMessage
         @TruffleBoundary
-        final Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        final Object getMemberObjects() {
             synchronized (callTargets) {
                 return new KeysObject(callTargets.keySet().toArray(new String[0]));
             }
         }
 
         @ExportMessage
+        static class IsMemberReadable {
+
+            @Specialization
+            static boolean isReadable(FunctionsObject receiver, InstrumentationMember member) {
+                return receiver.isReadable(member.name);
+            }
+
+            @Specialization(guards = "memberLibrary.isString(member)")
+            static boolean isReadable(FunctionsObject receiver, Object member,
+                            @Shared("memberLibrary") @CachedLibrary(limit = "CACHE_LIMIT") InteropLibrary memberLibrary) {
+                String name = getNameFromStringMember(member, memberLibrary);
+                return receiver.isReadable(name);
+            }
+
+            @Fallback
+            @SuppressWarnings("unused")
+            static boolean isReadable(FunctionsObject receiver, Object member) {
+                return false;
+            }
+        }
+
         @TruffleBoundary
-        final boolean isMemberReadable(@SuppressWarnings("unused") String member) {
+        private boolean isReadable(String member) {
             return callTargets.containsKey(member);
         }
 
         @ExportMessage
+        static class ReadMember {
+            @Specialization
+            static Object read(FunctionsObject receiver, InstrumentationMember member) throws UnknownMemberException {
+                return receiver.doReadMember(member.name, member);
+            }
+
+            @Specialization(guards = "memberLibrary.isString(member)")
+            static Object read(FunctionsObject receiver, Object member,
+                            @Shared("memberLibrary") @CachedLibrary(limit = "CACHE_LIMIT") InteropLibrary memberLibrary) throws UnknownMemberException {
+                String name = getNameFromStringMember(member, memberLibrary);
+                return receiver.doReadMember(name, member);
+            }
+
+            @Fallback
+            @SuppressWarnings("unused")
+            static Object read(FunctionsObject receiver, Object member) throws UnknownMemberException {
+                throw UnknownMemberException.create(member);
+            }
+        }
+
         @TruffleBoundary
-        Object readMember(String key) {
-            return findFunction(key);
+        private Object doReadMember(String key, Object member) throws UnknownMemberException {
+            TruffleObject function = findFunction(key);
+            if (function != null) {
+                return function;
+            } else {
+                throw UnknownMemberException.create(member);
+            }
         }
 
         @ExportMessage
@@ -3597,7 +3925,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         private final String[] keys;
 
-        KeysObject(String[] keys) {
+        KeysObject(String... keys) {
             this.keys = keys;
         }
 
@@ -3620,7 +3948,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         @ExportMessage
         Object readArrayElement(long index) throws InvalidArrayIndexException {
             try {
-                return keys[(int) index];
+                return new InstrumentationMember(keys[(int) index]);
             } catch (IndexOutOfBoundsException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw InvalidArrayIndexException.create(index);
@@ -3776,7 +4104,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         Object getMetaObject() {
             return new InstrumentationMetaObject(this, getTypeName());
         }
-
     }
 
     private static class StringBuilderWrapper {

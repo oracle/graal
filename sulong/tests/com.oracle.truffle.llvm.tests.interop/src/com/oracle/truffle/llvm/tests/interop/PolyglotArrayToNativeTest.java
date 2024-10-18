@@ -73,7 +73,7 @@ public class PolyglotArrayToNativeTest extends PolyglotArrayTestBase {
 
     @ExportLibrary(InteropLibrary.class)
     @ExportLibrary(value = NativeTypeLibrary.class, useForAOT = false)
-    @SuppressWarnings("static-method")
+    @SuppressWarnings({"static-method", "truffle-abstract-export", "deprecation"}) // GR-57971
     static final class SimpleWrapper implements TruffleObject {
         private final long delegate;
 

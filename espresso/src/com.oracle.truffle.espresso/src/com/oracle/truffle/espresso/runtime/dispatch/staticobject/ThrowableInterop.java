@@ -38,6 +38,7 @@ import com.oracle.truffle.espresso.runtime.dispatch.messages.Shareable;
 @GenerateInteropNodes
 @Shareable
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
+@SuppressWarnings({"truffle-abstract-export", "deprecation"}) // GR-58181
 public class ThrowableInterop extends EspressoInterop {
 
     @ExportMessage

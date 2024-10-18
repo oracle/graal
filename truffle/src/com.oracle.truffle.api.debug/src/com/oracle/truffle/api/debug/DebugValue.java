@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -191,7 +191,9 @@ public abstract class DebugValue {
      * </p>
      *
      * @since 0.26
+     * @deprecated
      */
+    @Deprecated(since = "24.2")
     public abstract boolean isInternal();
 
     /**
@@ -1006,6 +1008,310 @@ public abstract class DebugValue {
     }
 
     /**
+     * Returns <code>true</code> if the value represents a member object. See
+     * {@link InteropLibrary#isMember(Object)} for the detailed description.
+     *
+     * @throws DebugException when guest language code throws an exception
+     * @see #getMemberQualifiedName()
+     * @see #getMemberSimpleName()
+     * @see #isMemberKindField()
+     * @see #isMemberKindMethod()
+     * @see #isMemberKindMetaObject()
+     * @see #getMembers()
+     * @since 24.2
+     */
+    public boolean isMember() {
+        return false;
+    }
+
+    /**
+     * Returns actual value of a {@link #isMember() member} object. If the member value is not
+     * {@link #isMemberValueReadable() readable}, the returned value returns {@code false} from
+     * {@link #isReadable()}. Any read/write side-effects can be tested on the returned value via
+     * {@link #getMemberValue()}.{@link #hasReadSideEffects()} or
+     * {@link #getMemberValue()}.{@link #hasWriteSideEffects()}.
+     *
+     * @throws UnsupportedOperationException if and only if {@link #isMember()} returns
+     *             <code>false</code> for this value.
+     * @throws DebugException when guest language code throws an exception
+     * @see #isMember()
+     * @since 24.2
+     */
+    public DebugValue getMemberValue() {
+        throw new UnsupportedOperationException("Not a member object.");
+    }
+
+    /**
+     * Returns <code>true</code> if the value represents a {@link #isMember() member} object and
+     * it's {@link #getMemberValue() value} is readable. Member objects themselves are usually
+     * {@link #isReadable() readable}, but their {@link #getMemberValue() value} might not be.
+     * <p>
+     * This method is equivalent to {@link #getMemberValue()}.{@link #isReadable()}.
+     *
+     * @return <code>true</code> if this is a {@link #isMember() member} and it's
+     *         {@link #getMemberValue() value} is {@link #isReadable() readable}, <code>false<code>
+     *         otherwise.
+     *
+     * @see #isMember()
+     * @see #getMemberValue()
+     * @since 24.2
+     */
+    public boolean isMemberValueReadable() {
+        return false;
+    }
+
+    /**
+     * Returns the qualified name of a {@link #isMember() member} object. See
+     * {@link InteropLibrary#getMemberQualifiedName(Object)} for detailed description.
+     *
+     * @throws UnsupportedOperationException if and only if {@link #isMember()} returns
+     *             <code>false</code> for this value.
+     * @throws DebugException when guest language code throws an exception
+     * @see #isMember()
+     * @since 24.2
+     */
+    public final String getMemberQualifiedName() {
+        if (!isReadable()) {
+            throw new UnsupportedOperationException("Value is not readable");
+        }
+        try {
+            Object value = get();
+            return INTEROP.asString(INTEROP.getMemberQualifiedName(value));
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (UnsupportedMessageException uex) {
+            throw new UnsupportedOperationException("Not a member object", uex);
+        } catch (Throwable ex) {
+            throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
+     * Returns the simple name of a {@link #isMember() member} object. See
+     * {@link InteropLibrary#getMemberSimpleName(Object)} for detailed description.
+     *
+     * @throws UnsupportedOperationException if and only if {@link #isMember()} returns
+     *             <code>false</code> for this value.
+     * @throws DebugException when guest language code throws an exception
+     * @see #isMember()
+     * @since 24.2
+     */
+    public final String getMemberSimpleName() {
+        if (!isReadable()) {
+            throw new UnsupportedOperationException("Value is not readable");
+        }
+        try {
+            Object value = get();
+            return INTEROP.asString(INTEROP.getMemberSimpleName(value));
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (UnsupportedMessageException uex) {
+            throw new UnsupportedOperationException("Not a member object", uex);
+        } catch (Throwable ex) {
+            throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
+     * Returns {@code true} when this object represents a field {@link #isMember() member}. A field
+     * value is represented by {@link #getMemberValue()}.
+     *
+     * @see #isMember()
+     * @since 24.2
+     */
+    public final boolean isMemberKindField() {
+        if (!isReadable()) {
+            return false;
+        }
+        try {
+            Object value = get();
+            return INTEROP.isMemberKindField(value);
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
+     * Returns {@code true} when this object represents a method {@link #isMember() member}. A
+     * method can have a {@link #getMemberSignature() signature} associated.
+     *
+     * @see #isMember()
+     * @see #getMemberSignature()
+     * @since 24.2
+     */
+    public final boolean isMemberKindMethod() {
+        if (!isReadable()) {
+            return false;
+        }
+        try {
+            Object value = get();
+            return INTEROP.isMemberKindMethod(value);
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
+     * Returns {@code true} when this object represents a {@link #isMetaObject() meta object}
+     * {@link #isMember() member}. A member of this kind may represent an inner class, for instance.
+     *
+     * @see #isMember()
+     * @see #isMetaObject()
+     * @since 24.2
+     */
+    public final boolean isMemberKindMetaObject() {
+        if (!isReadable()) {
+            return false;
+        }
+        try {
+            Object value = get();
+            return INTEROP.isMemberKindMetaObject(value);
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
+     * Returns signature of a {@link #isMember() member} object, if any. Returns <code>null</code>
+     * if the member does not have any signature.
+     *
+     * @throws UnsupportedOperationException if and only if {@link #isMember()} returns
+     *             <code>false</code>.
+     * @see #isMember()
+     * @see DebugSignature
+     * @since 24.2
+     */
+    public final DebugSignature getMemberSignature() {
+        if (!isReadable()) {
+            throw new UnsupportedOperationException("Value is not readable");
+        }
+        Object view = getLanguageView();
+        if (!INTEROP.isMember(view)) {
+            throw new UnsupportedOperationException("Not a member object");
+        }
+        try {
+            if (INTEROP.hasMemberSignature(view)) {
+                return new DebugSignature(getSession(), resolveLanguage(), INTEROP.getMemberSignature(view));
+            } else {
+                return null;
+            }
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (UnsupportedMessageException uex) {
+            throw new UnsupportedOperationException("Not a member object", uex);
+        } catch (Throwable ex) {
+            throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
+     * Returns <code>true</code> if this value represents a signature element.
+     *
+     * @see DebugSignature
+     * @since 24.2
+     */
+    public final boolean isSignatureElement() {
+        if (!isReadable()) {
+            return false;
+        }
+        try {
+            Object value = get();
+            return INTEROP.isSignatureElement(value);
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
+     * Returns name of the signature element represented by this value.
+     *
+     * @return the name, or <code> null</code> when this signature element does not have a name
+     * @throws UnsupportedOperationException if and only if {@link #isSignatureElement()} returns
+     *             <code>false</code>.
+     * @see DebugSignature
+     * @see #isSignatureElement()
+     * @since 24.2
+     */
+    public String getSignatureElementName() {
+        if (!isSignatureElement()) {
+            throw new UnsupportedOperationException("Not a signature element");
+        }
+        try {
+            Object value = get();
+            if (INTEROP.hasSignatureElementName(value)) {
+                String name = INTEROP.asString(INTEROP.getSignatureElementName(value));
+                return name;
+            } else {
+                return null;
+            }
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
+     * Returns meta object of the signature element represented by this value.
+     *
+     * @return the meta object, or <code> null</code> when this signature element does not have any
+     *         meta object associated
+     * @throws UnsupportedOperationException if and only if {@link #isSignatureElement()} returns
+     *             <code>false</code>.
+     * @see DebugSignature
+     * @see #isSignatureElement()
+     * @since 24.2
+     */
+    public DebugValue getSignatureElementMetaObject() {
+        if (!isSignatureElement()) {
+            throw new UnsupportedOperationException("Not a signature element");
+        }
+        try {
+            Object value = get();
+            if (INTEROP.hasSignatureElementMetaObject(value)) {
+                Object meta = INTEROP.getSignatureElementMetaObject(value);
+                return new DebugValue.HeapValue(getSession(), resolveLanguage(), null, meta);
+            } else {
+                return null;
+            }
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    /**
+     * Returns a value that provides static members from {@link #getMembers()}, if any.
+     *
+     * @since 24.2
+     */
+    public final DebugValue getStaticProvider() {
+        if (!isReadable()) {
+            return null;
+        }
+        Object view = getLanguageView();
+        try {
+            if (INTEROP.hasStaticReceiver(view)) {
+                return new HeapValue(getSession(), resolveLanguage(), null, INTEROP.getStaticReceiver(view));
+            }
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+        return null;
+    }
+
+    /**
      * Get a list of breakpoints installed to the value's session and whose
      * {@link Breakpoint.Builder#rootInstance(DebugValue) root instance} is this value.
      *
@@ -1039,12 +1345,14 @@ public abstract class DebugValue {
      *         any concept of properties.
      * @throws DebugException when guest language code throws an exception
      * @since 0.19
+     * @deprecated Use {@link #getMembers()} instead.
      */
+    @Deprecated(since = "24.2")
     public final Collection<DebugValue> getProperties() throws DebugException {
         if (!isReadable()) {
             return null;
         }
-        Object value = get();
+        Object value = getLanguageView();
         try {
             return getProperties(value, null, getSession(), resolveLanguage(), null);
         } catch (ThreadDeath td) {
@@ -1054,6 +1362,8 @@ public abstract class DebugValue {
         }
     }
 
+    @Deprecated(since = "24.2")
+    @SuppressWarnings("deprecation")
     static ValuePropertiesCollection getProperties(Object value, String receiverName, DebuggerSession session, LanguageInfo language, DebugScope scope) {
         if (INTEROP.hasMembers(value)) {
             Object keys;
@@ -1079,13 +1389,13 @@ public abstract class DebugValue {
         if (!isReadable()) {
             return null;
         }
-        Object value = get();
+        Object value = getLanguageView();
         if (value != null) {
             try {
-                if (!INTEROP.isMemberExisting(value, name)) {
+                if (!INTEROP.isMemberExisting(value, (Object) name)) {
                     return null;
                 } else {
-                    return new DebugValue.ObjectMemberValue(getSession(), resolveLanguage(), null, value, name);
+                    return new DebugValue.PropertyValue(getSession(), resolveLanguage(), null, value, name);
                 }
             } catch (ThreadDeath td) {
                 throw td;
@@ -1095,6 +1405,29 @@ public abstract class DebugValue {
         } else {
             return null;
         }
+    }
+
+    /**
+     * Provides collection of member objects. All declared members, including inherited ones, are
+     * returned. Static members are not returned unless called on a {@link #getStaticProvider()
+     * static provider}. The returned collection is not thread-safe. If the value is not
+     * {@link #isReadable() readable} then <code>null</code> is returned. {@link #isMember()}
+     * returns <code>true</code> for all collection elements,
+     *
+     * @return a collection of members, or </code>null</code> when the value does not have any
+     *         concept of membersS.
+     * @throws DebugException when guest language code throws an exception
+     * @since 24.2
+     */
+    public final Collection<DebugValue> getMembers() {
+        if (!isReadable()) {
+            return null;
+        }
+        Object value = getLanguageView();
+        if (!INTEROP.hasMembers(value)) {
+            return null;
+        }
+        return new ValueMembersCollection(getSession(), resolveLanguage(), value, true);
     }
 
     /**
@@ -1177,6 +1510,9 @@ public abstract class DebugValue {
         if (!isReadable()) {
             return "<not readable>";
         }
+        if (!allowSideEffects && hasReadSideEffects()) {
+            return "<has read side-effects>";
+        }
         try {
             Object stringValue = INTEROP.toDisplayString(getLanguageView(), allowSideEffects);
             return INTEROP.asString(stringValue);
@@ -1226,6 +1562,46 @@ public abstract class DebugValue {
         try {
             if (INTEROP.hasMetaObject(view)) {
                 return new HeapValue(getSession(), resolveLanguage(), null, INTEROP.getMetaObject(view));
+            }
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+        return null;
+    }
+
+    /**
+     * Returns a list of direct parent metaobjects.
+     *
+     * @return a list of meta-object that are direct parents of this metaobject or <code>null</code>
+     * @throws DebugException when guest language code throws an exception
+     */
+    public final List<DebugValue> getMetaParents() throws DebugException {
+        if (!isReadable()) {
+            return null;
+        }
+        Object view = getLanguageView();
+        try {
+            if (INTEROP.hasMetaParents(view)) {
+                return new ValueInteropList(getSession(), resolveLanguage(), INTEROP.getMetaParents(view));
+            }
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+        return null;
+    }
+
+    public final DebugValue getDeclaringMetaObject() throws DebugException {
+        if (!isReadable()) {
+            return null;
+        }
+        Object view = getLanguageView();
+        try {
+            if (INTEROP.hasDeclaringMetaObject(view)) {
+                return new HeapValue(getSession(), resolveLanguage(), null, INTEROP.getDeclaringMetaObject(view));
             }
         } catch (ThreadDeath td) {
             throw td;
@@ -1826,6 +2202,8 @@ public abstract class DebugValue {
         try {
             if (INTEROP.hasIdentity(value)) {
                 return INTEROP.identityHashCode(value);
+            } else if (INTEROP.isMetaObject(value) && !INTEROP.hasIdentity(value)) {
+                return INTEROP.asString(INTEROP.getMetaQualifiedName(value)).hashCode();
             }
         } catch (ThreadDeath td) {
             throw td;
@@ -1840,6 +2218,10 @@ public abstract class DebugValue {
             return true;
         }
         try {
+            if (INTEROP.isMetaObject(value1) && INTEROP.isMetaObject(value2) && !INTEROP.hasIdentity(value1) && !INTEROP.hasIdentity(value2)) {
+                // In case of metaobjects compare the fully qualified names.
+                return INTEROP.asString(INTEROP.getMetaQualifiedName(value1)).equals(INTEROP.asString(INTEROP.getMetaQualifiedName(value2)));
+            }
             return INTEROP.isIdentical(value1, value2, INTEROP);
         } catch (ThreadDeath td) {
             throw td;
@@ -1920,7 +2302,7 @@ public abstract class DebugValue {
      */
     @Override
     public String toString() {
-        return "DebugValue(name=" + getName() + ", value = " + (isReadable() ? toDisplayString() : "<not readable>") + ")";
+        return "DebugValue(name=" + getName() + ", value = " + toDisplayString(false) + ")";
     }
 
     abstract static class AbstractDebugValue extends DebugValue {
@@ -2032,6 +2414,7 @@ public abstract class DebugValue {
         }
 
         @Override
+        @SuppressWarnings("deprecation")
         public boolean isInternal() {
             return false;
         }
@@ -2087,13 +2470,13 @@ public abstract class DebugValue {
         }
     }
 
-    static final class ObjectMemberValue extends AbstractDebugCachedValue {
+    static final class PropertyValue extends AbstractDebugCachedValue {
 
         private final Object object;
-        private final String member;
+        private final Object member;
         private final DebugScope scope;
 
-        ObjectMemberValue(DebuggerSession session, LanguageInfo preferredLanguage, DebugScope scope, Object object, String member) {
+        PropertyValue(DebuggerSession session, LanguageInfo preferredLanguage, DebugScope scope, Object object, Object member) {
             super(session, preferredLanguage);
             this.object = object;
             this.member = member;
@@ -2114,7 +2497,17 @@ public abstract class DebugValue {
 
         @Override
         public String getName() {
-            return String.valueOf(member);
+            if (member instanceof String) {
+                return (String) member;
+            }
+            checkValid();
+            try {
+                return INTEROP.asString(INTEROP.getMemberSimpleName(member));
+            } catch (ThreadDeath td) {
+                throw td;
+            } catch (Throwable ex) {
+                throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
+            }
         }
 
         @Override
@@ -2142,9 +2535,15 @@ public abstract class DebugValue {
         }
 
         @Override
+        @Deprecated(since = "24.2")
+        @SuppressWarnings("deprecation")
         public boolean isInternal() {
             checkValid();
-            return INTEROP.isMemberInternal(object, member);
+            if (member instanceof String) {
+                return INTEROP.isMemberInternal(object, (String) member);
+            } else {
+                return false;
+            }
         }
 
         @Override
@@ -2182,24 +2581,144 @@ public abstract class DebugValue {
 
         @Override
         DebugValue createAsInLanguage(LanguageInfo language) {
-            return new ObjectMemberValue(session, language, scope, object, member);
+            return new PropertyValue(session, language, scope, object, member);
         }
 
         @Override
         int unreadableHashCode() {
             int hash = 7;
             hash = 29 * hash + valueHashCode(object);
-            hash = 29 * hash + member.hashCode();
+            hash = 29 * hash + valueHashCode(member);
             return hash;
         }
 
         @Override
         boolean unreadableEquals(DebugValue var) {
-            if (!(var instanceof ObjectMemberValue)) {
+            if (!(var instanceof PropertyValue)) {
                 return false;
             }
-            ObjectMemberValue other = (ObjectMemberValue) var;
-            return valueEquals(object, other.object) && member.equals(other.member);
+            PropertyValue other = (PropertyValue) var;
+            return valueEquals(object, other.object) && valueEquals(member, other.member);
+        }
+
+        private void checkValid() {
+            if (scope != null) {
+                scope.verifyValidState();
+            }
+        }
+    }
+
+    static final class MemberObject extends AbstractDebugCachedValue {
+
+        private final Object instance;
+        private final Object member;
+        private final DebugScope scope;
+
+        MemberObject(DebuggerSession session, LanguageInfo preferredLanguage, DebugScope scope, Object instance, Object member) {
+            super(session, preferredLanguage);
+            assert INTEROP.isMember(member);
+            assert instance != null : "The instance object, or static receiver must always be set.";
+            this.instance = instance;
+            this.member = member;
+            this.scope = scope;
+        }
+
+        @Override
+        Object readValue() {
+            checkValid();
+            return member;
+        }
+
+        @Override
+        public boolean isMember() {
+            return true;
+        }
+
+        @Override
+        public boolean isMemberValueReadable() {
+            checkValid();
+            return INTEROP.isMemberReadable(instance, member);
+        }
+
+        @Override
+        public void set(DebugValue value) {
+            throw DebugException.create(getSession(), "Can not modify read-only value.");
+        }
+
+        @Override
+        @SuppressWarnings("deprecation")
+        public void set(Object primitiveValue) {
+            throw DebugException.create(getSession(), "Can not modify read-only value.");
+        }
+
+        @Override
+        public DebugValue getMemberValue() {
+            checkValid();
+            return new PropertyValue(session, preferredLanguage, scope, instance, member);
+        }
+
+        @Override
+        public String getName() {
+            try {
+                Object stringObject = INTEROP.getMemberSimpleName(member);
+                return INTEROP.asString(stringObject);
+            } catch (ThreadDeath td) {
+                throw td;
+            } catch (Throwable ex) {
+                return ex.toString();
+            }
+        }
+
+        @Override
+        public boolean isReadable() {
+            checkValid();
+            return true;
+        }
+
+        @Override
+        public boolean hasReadSideEffects() {
+            checkValid();
+            return false;
+        }
+
+        @Override
+        public boolean hasWriteSideEffects() {
+            checkValid();
+            return false;
+        }
+
+        @Override
+        public boolean isWritable() {
+            checkValid();
+            return false;
+        }
+
+        @Override
+        @SuppressWarnings("deprecation")
+        public boolean isInternal() {
+            return false;
+        }
+
+        @Override
+        int unreadableHashCode() {
+            int hash = 11;
+            hash = 29 * hash + valueHashCode(instance);
+            hash = 29 * hash + valueHashCode(member);
+            return hash;
+        }
+
+        @Override
+        boolean unreadableEquals(DebugValue var) {
+            if (!(var instanceof MemberObject)) {
+                return false;
+            }
+            MemberObject other = (MemberObject) var;
+            return valueEquals(instance, other.instance) && valueEquals(member, other.member);
+        }
+
+        @Override
+        DebugValue createAsInLanguage(LanguageInfo language) {
+            return new MemberObject(session, language, scope, instance, member);
         }
 
         private void checkValid() {
@@ -2264,6 +2783,7 @@ public abstract class DebugValue {
         }
 
         @Override
+        @SuppressWarnings("deprecation")
         public boolean isInternal() {
             checkValid();
             return false;
@@ -2538,6 +3058,7 @@ public abstract class DebugValue {
         }
 
         @Override
+        @SuppressWarnings("deprecation")
         public boolean isInternal() {
             return false;
         }

@@ -53,6 +53,7 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 
 @ExportLibrary(InteropLibrary.class)
+@SuppressWarnings({"truffle-abstract-export"}) // GR-58123
 public final class RegexFlags extends AbstractConstantKeysObject implements JsonConvertible {
 
     private static final String PROP_SOURCE = "source";

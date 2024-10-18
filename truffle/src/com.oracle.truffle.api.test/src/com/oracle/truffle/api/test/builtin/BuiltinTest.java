@@ -46,14 +46,14 @@ import org.junit.Test;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.test.interop.InteropLibraryBaseTest;
 
 public class BuiltinTest extends InteropLibraryBaseTest {
 
-    private static final String EXISTING = "testArg1";
-    private static final String NOT_EXISTING = "testArg1_";
+    private static final Object EXISTING = "testArg1";
+    private static final Object NOT_EXISTING = "testArg1_";
 
     @Test
     public void testExisting() throws InteropException {
@@ -65,9 +65,9 @@ public class BuiltinTest extends InteropLibraryBaseTest {
         Object function = builtinLib.readMember(testObject, EXISTING);
         InteropLibrary functionLib = createLibrary(InteropLibrary.class, function);
 
-        Assert.assertEquals("test", builtinLib.invokeMember(testObject, "testArg0"));
+        Assert.assertEquals("test", builtinLib.invokeMember(testObject, (Object) "testArg0"));
         Assert.assertEquals("test42", builtinLib.invokeMember(testObject, EXISTING, "42"));
-        Assert.assertEquals("test42", builtinLib.invokeMember(testObject, "testArg2", "4", "2"));
+        Assert.assertEquals("test42", builtinLib.invokeMember(testObject, (Object) "testArg2", "4", "2"));
         Assert.assertEquals("test42", functionLib.execute(function, "42"));
     }
 
@@ -75,11 +75,12 @@ public class BuiltinTest extends InteropLibraryBaseTest {
     public void testGetMembers() throws InteropException {
         BuiltinTestObject testObject = new BuiltinTestObject();
         InteropLibrary builtinLib = createLibrary(InteropLibrary.class, testObject);
-        Object members = builtinLib.getMembers(testObject);
+        Object members = builtinLib.getMemberObjects(testObject);
         InteropLibrary membersLib = createLibrary(InteropLibrary.class, members);
         Assert.assertTrue(membersLib.hasArrayElements(members));
         Assert.assertEquals(4, membersLib.getArraySize(members));
-        Assert.assertEquals(EXISTING, membersLib.readArrayElement(members, 1));
+        Object m1 = membersLib.readArrayElement(members, 1);
+        Assert.assertEquals(EXISTING, InteropLibrary.getUncached().getMemberSimpleName(m1));
     }
 
     @Test
@@ -131,13 +132,13 @@ public class BuiltinTest extends InteropLibraryBaseTest {
         try {
             builtinLib.readMember(testObject, NOT_EXISTING);
             Assert.fail();
-        } catch (UnknownIdentifierException e) {
+        } catch (UnknownMemberException e) {
         }
 
         try {
             builtinLib.invokeMember(testObject, NOT_EXISTING);
             Assert.fail();
-        } catch (UnknownIdentifierException e) {
+        } catch (UnknownMemberException e) {
         }
     }
 

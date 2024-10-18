@@ -65,12 +65,16 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
@@ -227,7 +231,7 @@ public class AsCollectionsTest {
 
     @Test
     public void testAsMap() {
-        Map<String, String> origMap = new LinkedHashMap<>();
+        Map<String, Object> origMap = new LinkedHashMap<>();
         for (int i = 10; i <= 100; i += 10) {
             origMap.put(Integer.toString(i), Integer.toHexString(i));
         }
@@ -304,7 +308,7 @@ public class AsCollectionsTest {
     public void testInvokeMap() throws InteropException {
         TruffleObject validator = asTruffleObject(new Validator());
         MapBasedTO mapTO = new MapBasedTO(Collections.singletonMap("foo", "bar"));
-        assertEquals(Boolean.TRUE, INTEROP.invokeMember(validator, "validateMap", mapTO, mapTO));
+        assertEquals(Boolean.TRUE, INTEROP.invokeMember(validator, (Object) "validateMap", mapTO, mapTO));
     }
 
     @Test
@@ -312,7 +316,7 @@ public class AsCollectionsTest {
         TruffleObject validator = asTruffleObject(new Validator());
         MapBasedTO mapTO = new MapBasedTO(Collections.singletonMap("foo", "bar"));
         TruffleObject listOfMapTO = new ListBasedTO(Arrays.asList(mapTO));
-        assertEquals(Boolean.TRUE, INTEROP.invokeMember(validator, "validateArrayOfMap", listOfMapTO, listOfMapTO));
+        assertEquals(Boolean.TRUE, INTEROP.invokeMember(validator, (Object) "validateArrayOfMap", listOfMapTO, listOfMapTO));
     }
 
     @Test
@@ -320,7 +324,7 @@ public class AsCollectionsTest {
         TruffleObject validator = asTruffleObject(new Validator());
         MapBasedTO mapTO = new MapBasedTO(Collections.singletonMap("foo", "bar"));
         TruffleObject listOfMapTO = new ListBasedTO(Arrays.asList(mapTO));
-        assertEquals(Boolean.TRUE, INTEROP.invokeMember(validator, "validateListOfMap", listOfMapTO, listOfMapTO));
+        assertEquals(Boolean.TRUE, INTEROP.invokeMember(validator, (Object) "validateListOfMap", listOfMapTO, listOfMapTO));
     }
 
     public interface ProxyValidator {
@@ -341,7 +345,7 @@ public class AsCollectionsTest {
                         }));
         MapBasedTO mapTO = new MapBasedTO(Collections.singletonMap("foo", "bar"));
         TruffleObject listOfMapTO = new ListBasedTO(Arrays.asList(mapTO));
-        assertEquals(Boolean.TRUE, INTEROP.invokeMember(validator, "test", listOfMapTO));
+        assertEquals(Boolean.TRUE, INTEROP.invokeMember(validator, (Object) "test", listOfMapTO));
     }
 
     @ExportLibrary(InteropLibrary.class)
@@ -490,9 +494,9 @@ public class AsCollectionsTest {
     @ExportLibrary(InteropLibrary.class)
     static final class MapBasedTO implements TruffleObject {
 
-        final Map map;
+        private final Map<String, Object> map;
 
-        MapBasedTO(Map map) {
+        MapBasedTO(Map<String, Object> map) {
             this.map = map;
         }
 
@@ -503,38 +507,121 @@ public class AsCollectionsTest {
 
         @ExportMessage
         @TruffleBoundary
-        Object getMembers(boolean includeInternal) throws UnsupportedMessageException {
-            return new MapKeysTO(map.keySet().toArray());
+        Object getMemberObjects() throws UnsupportedMessageException {
+            return new MapKeysTO(map.keySet().toArray(new String[]{}));
         }
 
         @ExportMessage
-        @TruffleBoundary
-        Object readMember(String member) throws UnsupportedMessageException, UnknownIdentifierException {
-            Object value = map.get(member);
-            if (value == null) {
-                throw UnknownIdentifierException.create(member);
-            } else {
-                return value;
+        static class ReadMember {
+
+            @TruffleBoundary
+            @Specialization
+            static Object read(MapBasedTO receiver, MapKeyMember member) throws UnknownMemberException {
+                Object value = receiver.map.get(member.key);
+                if (value == null) {
+                    throw UnknownMemberException.create(member);
+                } else {
+                    return value;
+                }
+            }
+
+            @TruffleBoundary
+            @Specialization(guards = "interop.isString(member)")
+            static Object read(MapBasedTO receiver, Object member,
+                            @Shared("interop") @CachedLibrary(limit = "2") InteropLibrary interop) throws UnsupportedMessageException, UnknownMemberException {
+                String key = interop.asString(member);
+                Object value = receiver.map.get(key);
+                if (value == null) {
+                    throw UnknownMemberException.create(member);
+                } else {
+                    return value;
+                }
+            }
+
+            @Fallback
+            static Object read(MapBasedTO receiver, Object unknownObj) throws UnknownMemberException {
+                throw UnknownMemberException.create(unknownObj);
             }
         }
 
         @ExportMessage
-        @TruffleBoundary
-        void writeMember(String member, Object value) throws UnsupportedMessageException, UnknownIdentifierException {
-            map.put(member, value);
+        static class WriteMember {
+
+            @TruffleBoundary
+            @Specialization
+            static void write(MapBasedTO receiver, MapKeyMember member, Object value) throws UnknownMemberException {
+                receiver.map.put(member.key, value);
+            }
+
+            @TruffleBoundary
+            @Specialization(guards = "interop.isString(member)")
+            static void write(MapBasedTO receiver, Object member, Object value,
+                            @Shared("interop") @CachedLibrary(limit = "2") InteropLibrary interop) throws UnsupportedMessageException, UnknownMemberException {
+                String key = interop.asString(member);
+                receiver.map.put(key, value);
+            }
+
+            @Fallback
+            static void write(MapBasedTO receiver, Object unknownObj, Object value) throws UnknownMemberException {
+                throw UnknownMemberException.create(unknownObj);
+            }
         }
 
         @ExportMessage(name = "isMemberModifiable")
         @ExportMessage(name = "isMemberReadable")
-        @TruffleBoundary
-        boolean isMemberReadable(String member) {
-            return member.contains(member);
+        static class IsMemberExisting {
+
+            @TruffleBoundary
+            @Specialization
+            static boolean isExisting(MapBasedTO receiver, MapKeyMember member) {
+                return receiver.map.containsKey(member.key);
+            }
+
+            @TruffleBoundary
+            @Specialization(guards = "interop.isString(member)")
+            static boolean isExisting(MapBasedTO receiver, Object member,
+                            @Shared("interop") @CachedLibrary(limit = "2") InteropLibrary interop) {
+                String key;
+                try {
+                    key = interop.asString(member);
+                } catch (UnsupportedMessageException ex) {
+                    throw CompilerDirectives.shouldNotReachHere();
+                }
+                return receiver.map.containsKey(key);
+            }
+
+            @Fallback
+            static boolean isExisting(MapBasedTO receiver, Object unknownObj) {
+                return false;
+            }
         }
 
-        @ExportMessage
-        @TruffleBoundary
-        boolean isMemberInsertable(String member) {
-            return !member.contains(member);
+        @ExportMessage(name = "isMemberInsertable")
+        static class IsMemberNotExisting {
+
+            @TruffleBoundary
+            @Specialization
+            static boolean isNotExisting(MapBasedTO receiver, MapKeyMember member) {
+                return !receiver.map.containsKey(member.key);
+            }
+
+            @TruffleBoundary
+            @Specialization(guards = "interop.isString(member)")
+            static boolean isNotExisting(MapBasedTO receiver, Object member,
+                            @Shared("interop") @CachedLibrary(limit = "2") InteropLibrary interop) {
+                String key;
+                try {
+                    key = interop.asString(member);
+                } catch (UnsupportedMessageException ex) {
+                    throw CompilerDirectives.shouldNotReachHere();
+                }
+                return !receiver.map.containsKey(key);
+            }
+
+            @Fallback
+            static boolean isNotExisting(MapBasedTO receiver, Object unknownObj) {
+                return false;
+            }
         }
 
         @ExportMessage
@@ -556,11 +643,52 @@ public class AsCollectionsTest {
     }
 
     @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings("static-method")
+    static final class MapKeyMember implements TruffleObject {
+
+        private final String key;
+
+        MapKeyMember(String key) {
+            this.key = key;
+        }
+
+        @ExportMessage
+        boolean isMember() {
+            return true;
+        }
+
+        @ExportMessage
+        Object getMemberSimpleName() {
+            return key;
+        }
+
+        @ExportMessage
+        Object getMemberQualifiedName() {
+            return key;
+        }
+
+        @ExportMessage
+        boolean isMemberKindField() {
+            return true;
+        }
+
+        @ExportMessage
+        boolean isMemberKindMethod() {
+            return false;
+        }
+
+        @ExportMessage
+        boolean isMemberKindMetaObject() {
+            return false;
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
     static final class MapKeysTO implements TruffleObject {
 
-        private final Object[] keys;
+        private final String[] keys;
 
-        MapKeysTO(Object[] keys) {
+        MapKeysTO(String[] keys) {
             this.keys = keys;
         }
 
@@ -583,7 +711,7 @@ public class AsCollectionsTest {
         @ExportMessage
         Object readArrayElement(long index) throws InvalidArrayIndexException {
             try {
-                return keys[(int) index];
+                return new MapKeyMember(keys[(int) index]);
             } catch (IndexOutOfBoundsException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw InvalidArrayIndexException.create(index);

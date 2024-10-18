@@ -40,7 +40,9 @@
  */
 package com.oracle.truffle.api.test.host;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -66,7 +68,7 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.StopIterationException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -91,6 +93,10 @@ public class HostInteropErrorTest extends ProxyLanguageEnvTest {
             fail("foo called");
         }
 
+        public int method() {
+            return field;
+        }
+
         public void cce(Object human) {
             Value cannotCast = (Value) human;
             cannotCast.invokeMember("hello");
@@ -99,6 +105,27 @@ public class HostInteropErrorTest extends ProxyLanguageEnvTest {
         @Override
         public String toString() {
             return "MyHostObj";
+        }
+    }
+
+    public static class MyHostObj2 {
+
+        public int field;
+
+        public MyHostObj2() {
+        }
+
+        public void foo(@SuppressWarnings("unused") int a) {
+            fail("foo called");
+        }
+
+        public int method() {
+            return field;
+        }
+
+        @Override
+        public String toString() {
+            return "MyHostObj2";
         }
     }
 
@@ -111,9 +138,9 @@ public class HostInteropErrorTest extends ProxyLanguageEnvTest {
     public void testHostMethodArityError() throws InteropException {
         Object hostObj = env.asGuestValue(new MyHostObj(42));
 
-        Object foo = INTEROP.readMember(hostObj, "foo");
+        Object foo = INTEROP.readMember(hostObj, (Object) "foo");
 
-        assertFails(() -> INTEROP.invokeMember(hostObj, "foo"), ArityException.class,
+        assertFails(() -> INTEROP.invokeMember(hostObj, (Object) "foo"), ArityException.class,
                         "Arity error - expected: 1 actual: 0");
         assertFails(() -> INTEROP.execute(foo), ArityException.class,
                         "Arity error - expected: 1 actual: 0");
@@ -123,24 +150,24 @@ public class HostInteropErrorTest extends ProxyLanguageEnvTest {
     public void testHostMethodArgumentTypeError() throws InteropException {
         Object hostObj = env.asGuestValue(new MyHostObj(42));
 
-        Object foo = INTEROP.readMember(hostObj, "foo");
+        Object foo = INTEROP.readMember(hostObj, (Object) "foo");
 
-        assertFails(() -> INTEROP.invokeMember(hostObj, "foo", env.asGuestValue(Collections.emptyMap())), UnsupportedTypeException.class,
+        assertFails(() -> INTEROP.invokeMember(hostObj, (Object) "foo", env.asGuestValue(Collections.emptyMap())), UnsupportedTypeException.class,
                         "Cannot convert '{}'(language: Java, type: java.util.Collections$EmptyMap) to Java type 'int': Invalid or lossy primitive coercion.");
         assertFails(() -> INTEROP.execute(foo, env.asGuestValue(Collections.emptyMap())), UnsupportedTypeException.class,
                         "Cannot convert '{}'(language: Java, type: java.util.Collections$EmptyMap) to Java type 'int': Invalid or lossy primitive coercion.");
 
-        assertFails(() -> INTEROP.invokeMember(hostObj, "foo", env.asGuestValue(null)), UnsupportedTypeException.class,
+        assertFails(() -> INTEROP.invokeMember(hostObj, (Object) "foo", env.asGuestValue(null)), UnsupportedTypeException.class,
                         "Cannot convert null value 'null'(language: Java) to Java type 'int'.");
         assertFails(() -> INTEROP.execute(foo, env.asGuestValue(null)), UnsupportedTypeException.class,
                         "Cannot convert null value 'null'(language: Java) to Java type 'int'.");
 
-        assertFails(() -> INTEROP.invokeMember(hostObj, "foo", new OtherObject()), UnsupportedTypeException.class,
+        assertFails(() -> INTEROP.invokeMember(hostObj, (Object) "foo", new OtherObject()), UnsupportedTypeException.class,
                         "Cannot convert 'Other'(language: proxyLanguage, type: OtherType) to Java type 'int': Invalid or lossy primitive coercion.");
         assertFails(() -> INTEROP.execute(foo, new OtherObject()), UnsupportedTypeException.class,
                         "Cannot convert 'Other'(language: proxyLanguage, type: OtherType) to Java type 'int': Invalid or lossy primitive coercion.");
 
-        assertFails(() -> INTEROP.invokeMember(hostObj, "foo", new OtherNull()), UnsupportedTypeException.class,
+        assertFails(() -> INTEROP.invokeMember(hostObj, (Object) "foo", new OtherNull()), UnsupportedTypeException.class,
                         "Cannot convert null value 'null'(language: proxyLanguage, type: Unknown) to Java type 'int'.");
         assertFails(() -> INTEROP.execute(foo, new OtherNull()), UnsupportedTypeException.class,
                         "Cannot convert null value 'null'(language: proxyLanguage, type: Unknown) to Java type 'int'.");
@@ -180,14 +207,14 @@ public class HostInteropErrorTest extends ProxyLanguageEnvTest {
     public void testHostFieldTypeError() {
         Object hostObj = env.asGuestValue(new MyHostObj(42));
 
-        assertFails(() -> INTEROP.writeMember(hostObj, "field", env.asGuestValue(Collections.emptyMap())), UnsupportedTypeException.class,
+        assertFails(() -> INTEROP.writeMember(hostObj, (Object) "field", env.asGuestValue(Collections.emptyMap())), UnsupportedTypeException.class,
                         "Cannot convert '{}'(language: Java, type: java.util.Collections$EmptyMap) to Java type 'int': Invalid or lossy primitive coercion.");
-        assertFails(() -> INTEROP.writeMember(hostObj, "field", env.asGuestValue(null)), UnsupportedTypeException.class,
+        assertFails(() -> INTEROP.writeMember(hostObj, (Object) "field", env.asGuestValue(null)), UnsupportedTypeException.class,
                         "Cannot convert null value 'null'(language: Java) to Java type 'int'.");
 
-        assertFails(() -> INTEROP.writeMember(hostObj, "field", new OtherObject()), UnsupportedTypeException.class,
+        assertFails(() -> INTEROP.writeMember(hostObj, (Object) "field", new OtherObject()), UnsupportedTypeException.class,
                         "Cannot convert 'Other'(language: proxyLanguage, type: OtherType) to Java type 'int': Invalid or lossy primitive coercion.");
-        assertFails(() -> INTEROP.writeMember(hostObj, "field", new OtherNull()), UnsupportedTypeException.class,
+        assertFails(() -> INTEROP.writeMember(hostObj, (Object) "field", new OtherNull()), UnsupportedTypeException.class,
                         "Cannot convert null value 'null'(language: proxyLanguage, type: Unknown) to Java type 'int'.");
     }
 
@@ -195,22 +222,22 @@ public class HostInteropErrorTest extends ProxyLanguageEnvTest {
     public void testHostFinalFieldError() {
         Object hostObj = env.asGuestValue(new MyHostObj(42));
 
-        assertFails(() -> INTEROP.writeMember(hostObj, "finalField", 42), UnknownIdentifierException.class,
-                        "Unknown identifier: finalField");
+        assertFails(() -> INTEROP.writeMember(hostObj, (Object) "finalField", 42), UnknownMemberException.class,
+                        "Unknown member: Field[public final int com.oracle.truffle.api.test.host.HostInteropErrorTest$MyHostObj.finalField]");
 
-        assertFails(() -> INTEROP.writeMember(hostObj, "finalField", env.asGuestValue(null)), UnknownIdentifierException.class,
-                        "Unknown identifier: finalField");
-        assertFails(() -> INTEROP.writeMember(hostObj, "finalField", env.asGuestValue(Collections.emptyMap())), UnknownIdentifierException.class,
-                        "Unknown identifier: finalField");
+        assertFails(() -> INTEROP.writeMember(hostObj, (Object) "finalField", env.asGuestValue(null)), UnknownMemberException.class,
+                        "Unknown member: Field[public final int com.oracle.truffle.api.test.host.HostInteropErrorTest$MyHostObj.finalField]");
+        assertFails(() -> INTEROP.writeMember(hostObj, (Object) "finalField", env.asGuestValue(Collections.emptyMap())), UnknownMemberException.class,
+                        "Unknown member: Field[public final int com.oracle.truffle.api.test.host.HostInteropErrorTest$MyHostObj.finalField]");
     }
 
     @Test
     public void testClassCastExceptionInHostMethod() throws InteropException {
         Object hostObj = env.asGuestValue(new MyHostObj(42));
 
-        Object foo = INTEROP.readMember(hostObj, "cce");
+        Object foo = INTEROP.readMember(hostObj, (Object) "cce");
 
-        AbstractPolyglotTest.assertFails(() -> INTEROP.invokeMember(hostObj, "cce", 42), RuntimeException.class, (e) -> {
+        AbstractPolyglotTest.assertFails(() -> INTEROP.invokeMember(hostObj, (Object) "cce", 42), RuntimeException.class, (e) -> {
             assertTrue(env.isHostException(e));
         });
         AbstractPolyglotTest.assertFails(() -> INTEROP.execute(foo, 42), RuntimeException.class, (e) -> {
@@ -402,8 +429,60 @@ public class HostInteropErrorTest extends ProxyLanguageEnvTest {
         });
     }
 
+    @Test
+    @SuppressWarnings("serial")
+    public void testOtherMembersException() {
+        Object obj1 = env.asGuestValue(new MyHostObj(42));
+        Object obj2 = env.asGuestValue(new MyHostObj2());
+        Value value1 = context.asValue(obj1);
+        Value value2 = context.asValue(obj2);
+
+        Value members1 = value1.getMembers();
+        Value members2 = value2.getMembers();
+
+        Value m1Field = members1.getArrayElement(0);
+        Value m2Field = members2.getArrayElement(0);
+        assertEquals(0, value1.getMember(m1Field).asInt());
+        assertNull(value1.getMember(m2Field));
+        assertNull(value2.getMember(m1Field));
+        assertEquals(0, value2.getMember(m2Field).asInt());
+
+        value1.putMember(m1Field, 42);
+        assertFails(() -> value1.putMember(m2Field, 42), UnsupportedOperationException.class,
+                        "Non writable or non-existent member 'Field[public int com.oracle.truffle.api.test.host.HostInteropErrorTest$MyHostObj2.field]'(language: Java, type: org.graalvm.polyglot.Value) " +
+                                        "for object 'MyHostObj'(language: Java, type: com.oracle.truffle.api.test.host.HostInteropErrorTest$MyHostObj).");
+        assertFails(() -> value2.putMember(m1Field, 42), UnsupportedOperationException.class,
+                        "Non writable or non-existent member 'Field[public int com.oracle.truffle.api.test.host.HostInteropErrorTest$MyHostObj.field]'(language: Java, type: org.graalvm.polyglot.Value) " +
+                                        "for object 'MyHostObj2'(language: Java, type: com.oracle.truffle.api.test.host.HostInteropErrorTest$MyHostObj2).");
+        value2.putMember(m2Field, 42);
+
+        Value m1Method = findMember(members1, "method");
+        Value m2Method = findMember(members2, "method");
+        assertEquals("method", m1Method.getMemberSimpleName());
+        assertEquals("method", m2Method.getMemberSimpleName());
+        assertEquals(42, value1.invokeMember(m1Method).asInt());
+        assertFails(() -> value1.invokeMember(m2Method), UnsupportedOperationException.class,
+                        "Non readable or non-existent member 'Method[public int com.oracle.truffle.api.test.host.HostInteropErrorTest$MyHostObj2.method()]'(language: Java, type: org.graalvm.polyglot.Value) " +
+                                        "for object 'MyHostObj'(language: Java, type: com.oracle.truffle.api.test.host.HostInteropErrorTest$MyHostObj).");
+        assertFails(() -> value2.invokeMember(m1Method), UnsupportedOperationException.class,
+                        "Non readable or non-existent member 'Method[public int com.oracle.truffle.api.test.host.HostInteropErrorTest$MyHostObj.method()]'(language: Java, type: org.graalvm.polyglot.Value) " +
+                                        "for object 'MyHostObj2'(language: Java, type: com.oracle.truffle.api.test.host.HostInteropErrorTest$MyHostObj2).");
+        value2.invokeMember(m2Method);
+    }
+
+    private static Value findMember(Value members, String name) {
+        for (long i = members.getArraySize() - 1; i >= 0; i--) {
+            Value m = members.getArrayElement(i);
+            if (name.equals(m.getMemberSimpleName())) {
+                return m;
+            }
+        }
+        return null;
+    }
+
     @ExportLibrary(InteropLibrary.class)
-    class OtherObject implements TruffleObject {
+    @SuppressWarnings("static-method")
+    static class OtherObject implements TruffleObject {
         @ExportMessage
         final boolean hasLanguage() {
             return true;
@@ -431,7 +510,8 @@ public class HostInteropErrorTest extends ProxyLanguageEnvTest {
     }
 
     @ExportLibrary(InteropLibrary.class)
-    class OtherNull implements TruffleObject {
+    @SuppressWarnings("static-method")
+    static class OtherNull implements TruffleObject {
         @ExportMessage
         final boolean isNull() {
             return true;
@@ -454,7 +534,8 @@ public class HostInteropErrorTest extends ProxyLanguageEnvTest {
     }
 
     @ExportLibrary(InteropLibrary.class)
-    class OtherType implements TruffleObject {
+    @SuppressWarnings("static-method")
+    static class OtherType implements TruffleObject {
         @ExportMessage
         final boolean isMetaObject() {
             return true;
@@ -477,7 +558,7 @@ public class HostInteropErrorTest extends ProxyLanguageEnvTest {
         void run() throws Exception;
     }
 
-    private static void assertFails(InteropRunnable r, Class<?> hostExceptionType, String message) {
+    static void assertFails(InteropRunnable r, Class<?> hostExceptionType, String message) {
         try {
             r.run();
             fail("No error but expected " + hostExceptionType);

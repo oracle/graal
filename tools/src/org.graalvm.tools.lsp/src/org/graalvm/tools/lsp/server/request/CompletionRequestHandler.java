@@ -65,7 +65,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
@@ -318,13 +318,13 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
                 }
             }
             ++scopeCounter;
-            Object keys;
+            Object members;
             long size;
             try {
-                keys = INTEROP.getMembers(scope, false);
-                size = INTEROP.getArraySize(keys);
+                members = INTEROP.getMemberObjects(scope);
+                size = INTEROP.getArraySize(members);
                 if (scopeParent != null) {
-                    size -= INTEROP.getArraySize(INTEROP.getMembers(scopeParent, false));
+                    size -= INTEROP.getArraySize(INTEROP.getMemberObjects(scopeParent));
                 }
             } catch (Exception ex) {
                 logger.log(Level.INFO, ex.getLocalizedMessage(), ex);
@@ -334,7 +334,11 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
                 String key;
                 Object object;
                 try {
-                    key = INTEROP.asString(INTEROP.readArrayElement(keys, i));
+                    Object member = INTEROP.readArrayElement(members, i);
+                    if (!INTEROP.isMemberReadable(scope, member)) {
+                        continue;
+                    }
+                    key = INTEROP.asString(INTEROP.getMemberSimpleName(member));
                     if (completionKeys.contains(key)) {
                         // Scopes are provided from inner to outer, so we need to detect duplicate
                         // keys and only take those from the most inner scope
@@ -342,7 +346,7 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
                     } else {
                         completionKeys.add(key);
                     }
-                    object = INTEROP.readMember(scope, key);
+                    object = INTEROP.readMember(scope, member);
                 } catch (ThreadDeath td) {
                     throw td;
                 } catch (Throwable t) {
@@ -389,7 +393,7 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
         Object members = null;
         if (INTEROP.hasMembers(languageView)) {
             try {
-                members = INTEROP.getMembers(languageView);
+                members = INTEROP.getMemberObjects(languageView);
             } catch (UnsupportedMessageException ex) {
                 // No members
             }
@@ -411,9 +415,10 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
             String key;
             Object value;
             try {
-                key = INTEROP.readArrayElement(members, i).toString();
-                if (INTEROP.isMemberReadable(languageView, key)) {
-                    value = INTEROP.readMember(languageView, key);
+                Object member = INTEROP.readArrayElement(members, i);
+                key = INTEROP.asString(INTEROP.getMemberSimpleName(member));
+                if (INTEROP.isMemberReadable(languageView, member)) {
+                    value = INTEROP.readMember(languageView, member);
                 } else {
                     value = null;
                 }
@@ -531,8 +536,9 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
                     TruffleObject markup = (TruffleObject) docu;
                     MarkupKind markupKind = null;
                     String text = null;
-                    if (INTEROP.isMemberReadable(markup, "kind")) {
-                        Object kind = INTEROP.readMember(markup, "kind");
+                    Object kindMember = "kind";
+                    if (INTEROP.isMemberReadable(markup, kindMember)) {
+                        Object kind = INTEROP.readMember(markup, kindMember);
                         if (kind instanceof String) {
                             markupKind = MarkupKind.get((String) kind);
                         }
@@ -540,8 +546,9 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
                     if (markupKind == null) {
                         markupKind = MarkupKind.PlainText;
                     }
-                    if (INTEROP.isMemberReadable(markup, "value")) {
-                        Object v = INTEROP.readMember(markup, "value");
+                    Object valueMember = "value";
+                    if (INTEROP.isMemberReadable(markup, valueMember)) {
+                        Object v = INTEROP.readMember(markup, valueMember);
                         if (v instanceof String) {
                             text = (String) v;
                         }
@@ -554,7 +561,7 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
                     }
                 }
             }
-        } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+        } catch (UnsupportedMessageException | UnknownMemberException e) {
             // Not supported or not existing
         }
         return null;

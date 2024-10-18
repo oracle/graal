@@ -53,6 +53,7 @@ import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary.Abstract;
 import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
 import com.oracle.truffle.api.library.Library;
+import com.oracle.truffle.api.library.LibraryFactory;
 import com.oracle.truffle.api.library.test.CachedLibraryTest.SimpleDispatchedNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.AbstractLibraryTest;
@@ -302,6 +303,116 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
 
     }
 
+    @GenerateLibrary
+    public abstract static class ReplacementsLibrary extends Library {
+
+        @Deprecated
+        public int readMember(Object receiver, String name) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Abstract(replacementFor = "readMember(Object, String)")
+        public int readMember(Object receiver, Object name) {
+            if (name instanceof String stringName) {
+                return readMember(receiver, stringName);
+            }
+            throw new UnsupportedOperationException();
+        }
+
+        @Deprecated
+        public int read(Object receiver, int index) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Abstract(replacementFor = "read(Object, int)")
+        public int read(Object receiver, long index) {
+            if (Integer.MIN_VALUE <= index && index <= Integer.MAX_VALUE) {
+                return read(receiver, (int) index);
+            }
+            throw new UnsupportedOperationException();
+        }
+
+        @Deprecated
+        public int readUnsigned(Object receiver, int index) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Abstract(replacementFor = "readUnsigned(Object, int)", replaceWith = "readUnsignedLegacy")
+        public int readUnsigned(Object receiver, long index) {
+            if (0 <= index && index <= 0xFFFFFFFFL) {
+                return readUnsigned(receiver, (int) (0xFFFFFFFFL & index));
+            }
+            throw new UnsupportedOperationException();
+        }
+
+        protected final int readUnsignedLegacy(Object receiver, int index) {
+            long unsignedIndex = Integer.toUnsignedLong(index);
+            return read(receiver, unsignedIndex);
+        }
+    }
+
+    @ExportLibrary(ReplacementsLibrary.class)
+    @SuppressWarnings({"deprecation", "static-method"})
+    public static class ReplacementLegacy {
+
+        @ExportMessage
+        final int readMember(String name) {
+            return 1;
+        }
+
+        @ExportMessage
+        final int read(int index) {
+            return Integer.toString(index).length();
+        }
+
+        @ExportMessage
+        final int readUnsigned(int index) {
+            return Integer.toUnsignedString(index).length();
+        }
+    }
+
+    @ExportLibrary(ReplacementsLibrary.class)
+    @SuppressWarnings("static-method")
+    public static class ReplacementNew {
+
+        @ExportMessage
+        final int readMember(Object name) {
+            return 100;
+        }
+
+        @ExportMessage
+        final int read(long index) {
+            return Long.toString(index).length();
+        }
+
+        @ExportMessage
+        final int readUnsigned(long index) {
+            return Long.toUnsignedString(index).length();
+        }
+    }
+
+    @Test
+    @SuppressWarnings("deprecation")
+    public void testReplacements() {
+        ReplacementsLibrary lib = LibraryFactory.resolve(ReplacementsLibrary.class).getUncached();
+        Object legacyObj = new ReplacementLegacy();
+        Object newObj = new ReplacementNew();
+
+        assertEquals(1, lib.readMember(legacyObj, "string"));
+        assertEquals(1, lib.readMember(legacyObj, (Object) "string"));
+        assertEquals(2, lib.read(legacyObj, 10));
+        assertEquals(2, lib.read(legacyObj, 10L));
+        assertEquals(10, lib.readUnsigned(legacyObj, -10));
+        assertEquals(10, lib.readUnsigned(legacyObj, 0XFFFFFFFA));
+
+        assertEquals(100, lib.readMember(newObj, "string"));
+        assertEquals(100, lib.readMember(newObj, (Object) "string"));
+        assertEquals(2, lib.read(newObj, 10));
+        assertEquals(2, lib.read(newObj, 10L));
+        assertEquals(10, lib.readUnsigned(newObj, -10));
+        assertEquals(20, lib.readUnsigned(newObj, -10L));
+    }
+
     interface ExportsType {
     }
 
@@ -482,6 +593,23 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
             return receiver;
         }
 
+        @ExpectError("Message replacedErr declares `replaceWith`, but `replacementFor` is missing.")
+        @Abstract(replaceWith = "isType")
+        public Object replacedErr(Object receiver) {
+            return receiver;
+        }
+
+        @ExpectError("The replace method doReplaceNone does not exist.")
+        @Abstract(replacementFor = "isType", replaceWith = "doReplaceNone")
+        public boolean replaceWithNonexisting(Object receiver) {
+            return receiver != null;
+        }
+
+        @ExpectError("Message replace2 is a replacement of multiple messages. Arguments to replacementFor annotation have to be unique.")
+        @Abstract(replacementFor = "isType")
+        public boolean replace2(Object receiver) {
+            return receiver != null;
+        }
     }
 
     @GenerateLibrary

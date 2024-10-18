@@ -42,7 +42,7 @@ import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -232,28 +232,39 @@ public class NotReadableValuesTest {
 
             @Override
             @CompilerDirectives.TruffleBoundary
-            protected Object getMembers(boolean includeInternal) throws UnsupportedMessageException {
+            protected Object getMemberObjects() throws UnsupportedMessageException {
                 return new Names(NAMES);
             }
 
+            private static String getMemberName(Object member) {
+                if (member instanceof String) {
+                    return (String) member;
+                }
+                if (member instanceof NameMember) {
+                    return ((NameMember) member).name;
+                }
+                return null;
+            }
+
             @Override
-            protected boolean isMemberReadable(String member) {
-                return !member.startsWith("nr");
+            protected boolean isMemberReadable(Object member) {
+                return !getMemberName(member).startsWith("nr");
             }
 
             @Override
             @CompilerDirectives.TruffleBoundary
-            protected Object readMember(String member) throws UnsupportedMessageException, UnknownIdentifierException {
-                if (member.startsWith("nr")) {
-                    throw UnsupportedMessageException.create();
+            protected Object readMember(Object member) throws UnsupportedMessageException, UnknownMemberException {
+                String name = getMemberName(member);
+                if (name.startsWith("nr")) {
+                    throw UnknownMemberException.create(member);
                 }
-                switch (member) {
+                switch (name) {
                     case "object":
                         return new VariablesObject(false);
                     case "array":
                         return new ArrayValue();
                     default:
-                        throw UnsupportedMessageException.create();
+                        throw UnknownMemberException.create(member);
                 }
             }
 
@@ -327,11 +338,40 @@ public class NotReadableValuesTest {
             @Override
             protected Object readArrayElement(long index) throws UnsupportedMessageException, InvalidArrayIndexException {
                 if (index >= 0 && index < names.length) {
-                    return names[(int) index];
+                    return new NameMember(names[(int) index]);
                 } else {
                     CompilerDirectives.transferToInterpreter();
                     throw InvalidArrayIndexException.create(index);
                 }
+            }
+        }
+
+        private static class NameMember extends ProxyInteropObject {
+
+            private final String name;
+
+            NameMember(String name) {
+                this.name = name;
+            }
+
+            @Override
+            protected boolean isMember() {
+                return true;
+            }
+
+            @Override
+            protected String getMemberSimpleName() {
+                return name;
+            }
+
+            @Override
+            protected String getMemberQualifiedName() {
+                return name;
+            }
+
+            @Override
+            protected boolean isMemberKindField() {
+                return true;
             }
         }
 

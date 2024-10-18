@@ -34,6 +34,7 @@ import com.oracle.truffle.espresso.runtime.dispatch.messages.Shareable;
 @GenerateInteropNodes
 @Shareable
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
+@SuppressWarnings({"truffle-abstract-export"}) // GR-58181
 public class InterruptedExceptionInterop extends ThrowableInterop {
     @ExportMessage
     public static ExceptionType getExceptionType(@SuppressWarnings("unused") StaticObject receiver) {

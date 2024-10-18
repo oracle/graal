@@ -38,7 +38,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import java.util.Map;
 
 @ExportLibrary(InteropLibrary.class)
-@SuppressWarnings("static-method")
+@SuppressWarnings({"static-method", "truffle-abstract-export", "deprecation"}) // GR-57971
 public final class StructObject implements TruffleObject {
 
     final Map<String, Object> properties;

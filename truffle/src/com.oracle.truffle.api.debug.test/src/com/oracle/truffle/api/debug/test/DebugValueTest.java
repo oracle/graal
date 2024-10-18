@@ -59,6 +59,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.debug.DebugSignature;
 import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.DebuggerSession;
@@ -107,7 +108,19 @@ public class DebugValueTest extends AbstractDebugTest {
                 assertEquals("a", value42.getName());
                 assertFalse(value42.isArray());
                 assertNull(value42.getArray());
-                assertNull(value42.getProperties());
+                assertNull(value42.getMembers());
+                assertFalse(value42.isMemberKindField());
+                assertFalse(value42.isMemberKindMethod());
+                assertFalse(value42.isMemberKindMetaObject());
+                assertFails(() -> value42.getMemberSimpleName(), UnsupportedOperationException.class);
+                assertFails(() -> value42.getMemberQualifiedName(), UnsupportedOperationException.class);
+                assertFails(() -> value42.getMemberSignature(), UnsupportedOperationException.class);
+                assertFails(() -> value42.getMemberValue(), UnsupportedOperationException.class);
+                assertNull(value42.getStaticProvider());
+                assertFails(() -> value42.getSignatureElementName(), UnsupportedOperationException.class);
+                assertFails(() -> value42.getSignatureElementMetaObject(), UnsupportedOperationException.class);
+                assertFalse(value42.isMember());
+                assertFalse(value42.isSignatureElement());
                 assertFalse(value42.isBoolean());
                 assertTrue(value42.isNumber());
                 assertTrue(value42.fitsInLong());
@@ -222,14 +235,15 @@ public class DebugValueTest extends AbstractDebugTest {
         // Test of the default attribute values:
         NoAttributesTruffleObject nao = new NoAttributesTruffleObject();
         checkDebugValueOf(nao, (event, value) -> {
-            DebugValue attributesTOValue = value.getProperties().iterator().next();
-            assertEquals("property", attributesTOValue.getName());
-            // Property is readable by default
-            assertTrue(attributesTOValue.isReadable());
+            DebugValue attributesTOMember = value.getMembers().iterator().next();
+            assertEquals("property", attributesTOMember.getName());
+            // Member is readable by default
+            assertTrue(attributesTOMember.isReadable());
+            assertTrue(attributesTOMember.isMemberValueReadable());
+            DebugValue attributesTOValue = attributesTOMember.getMemberValue();
+            assertEquals("propertyValue", attributesTOValue.toDisplayString());
             // Property is writable by default
             assertTrue(attributesTOValue.isWritable());
-            // Property is not internal by default
-            assertFalse(attributesTOValue.isInternal());
             // Property does not have read side-effects by default
             assertFalse(attributesTOValue.hasReadSideEffects());
             // Property does not have write side-effects by default
@@ -243,29 +257,57 @@ public class DebugValueTest extends AbstractDebugTest {
         // Test of the modified attribute values:
         final ModifiableAttributesTruffleObject mao = new ModifiableAttributesTruffleObject();
         checkDebugValueOf(mao, value -> {
-            DebugValue attributesTOValue = value.getProperties().iterator().next();
-            assertEquals("property", attributesTOValue.getName());
+            Iterator<DebugValue> membersIterator = value.getMembers().iterator();
+            DebugValue attributesTOMember = membersIterator.next();
+            assertTrue(attributesTOMember.isMember());
+            assertEquals("property", attributesTOMember.getName());
+            assertEquals("property", attributesTOMember.getMemberSimpleName());
+            assertEquals("qualified_property", attributesTOMember.getMemberQualifiedName());
+            assertTrue(attributesTOMember.isMemberKindField());
+            assertFalse(attributesTOMember.isMemberKindMethod());
+            assertFalse(attributesTOMember.isMemberKindMetaObject());
             // All false initially
-            assertFalse(attributesTOValue.isReadable());
-            assertEquals("<not readable>", attributesTOValue.toDisplayString());
-            assertFalse(attributesTOValue.isWritable());
-            assertFalse(attributesTOValue.isInternal());
-            assertFalse(attributesTOValue.hasReadSideEffects());
-            assertFalse(attributesTOValue.hasWriteSideEffects());
+            assertFalse(attributesTOMember.isMemberValueReadable());
+            assertTrue(attributesTOMember.isReadable()); // The member itself is readable
+            final DebugValue memberValue = attributesTOMember.getMemberValue();
+            assertFalse(memberValue.isReadable());
+            assertEquals("<not readable>", memberValue.toDisplayString());
+            assertFalse(attributesTOMember.isWritable());
+            assertFalse(memberValue.isWritable());
+            assertFalse(memberValue.hasReadSideEffects());
+            assertFalse(memberValue.hasWriteSideEffects());
+
             mao.setIsReadable(true);
-            attributesTOValue = value.getProperties().iterator().next();
-            assertTrue(attributesTOValue.isReadable());
+            assertTrue(attributesTOMember.isMemberValueReadable());
+            assertTrue(memberValue.isReadable());
+
             mao.setIsWritable(true);
-            attributesTOValue = value.getProperties().iterator().next();
-            assertTrue(attributesTOValue.isWritable());
-            mao.setIsInternal(true);
-            attributesTOValue = value.getProperties().iterator().next();
-            assertTrue(attributesTOValue.isInternal());
+            assertTrue(memberValue.isWritable());
             mao.setHasReadSideEffects(true);
             mao.setHasWriteSideEffects(true);
-            attributesTOValue = value.getProperties().iterator().next();
-            assertTrue(attributesTOValue.hasReadSideEffects());
-            assertTrue(attributesTOValue.hasWriteSideEffects());
+            assertTrue(memberValue.hasReadSideEffects());
+            assertTrue(memberValue.hasWriteSideEffects());
+            DebugSignature signature = attributesTOMember.getMemberSignature();
+            assertNull(signature);
+
+            attributesTOMember = membersIterator.next();
+            assertTrue(attributesTOMember.isMember());
+            assertEquals("p1", attributesTOMember.getName());
+            assertEquals("p1", attributesTOMember.getMemberSimpleName());
+            assertEquals("qualified_p1", attributesTOMember.getMemberQualifiedName());
+            assertTrue(attributesTOMember.isMemberKindMethod());
+            assertFalse(attributesTOMember.isMemberKindField());
+            assertFalse(attributesTOMember.isMemberKindMetaObject());
+
+            attributesTOMember = membersIterator.next();
+            assertTrue(attributesTOMember.isMember());
+            assertEquals("p2", attributesTOMember.getMemberSimpleName());
+            assertEquals("qualified_p2", attributesTOMember.getMemberQualifiedName());
+            assertTrue(attributesTOMember.isMemberKindMetaObject());
+            assertFalse(attributesTOMember.isMemberKindField());
+            assertFalse(attributesTOMember.isMemberKindMethod());
+
+            assertFalse(membersIterator.hasNext());
         });
     }
 
@@ -353,13 +395,11 @@ public class DebugValueTest extends AbstractDebugTest {
                 assertTrue(var0.isReadable());
                 assertTrue(var1.isReadable());
 
-                assertNull(var0.getProperties());
                 assertFalse(var0.isArray());
                 assertFalse(var0.isBoolean());
                 assertFalse(var0.isDate());
                 assertFalse(var0.isDuration());
                 assertFalse(var0.isInstant());
-                assertFalse(var0.isInternal());
                 assertFalse(var0.isMetaObject());
                 assertTrue(var0.isNull());
                 assertFalse(var0.isNumber());
@@ -544,31 +584,31 @@ public class DebugValueTest extends AbstractDebugTest {
         }
 
         @ExportMessage
-        Object getMembers(boolean internal) {
+        Object getMemberObjects() {
             return new PropertyKeysTruffleObject();
         }
 
         @ExportMessage
-        boolean isMemberReadable(String member) {
+        boolean isMemberReadable(Object member) {
             return true;
         }
 
         @ExportMessage
-        boolean isMemberModifiable(String member) {
+        boolean isMemberModifiable(Object member) {
             return true;
         }
 
         @ExportMessage
-        boolean isMemberInsertable(String member) {
+        boolean isMemberInsertable(Object member) {
             return false;
         }
 
         @ExportMessage
-        void writeMember(String member, Object value) {
+        void writeMember(Object member, Object value) {
         }
 
         @ExportMessage
-        Object readMember(String member) {
+        Object readMember(Object member) {
             return "propertyValue";
         }
     }
@@ -580,7 +620,6 @@ public class DebugValueTest extends AbstractDebugTest {
         private boolean hasReadSideEffects;
         private boolean isWritable;
         private boolean hasWriteSideEffects;
-        private boolean isInternal;
         private final Map<String, Integer> memberCounters = new HashMap<>();
 
         @ExportMessage
@@ -589,57 +628,52 @@ public class DebugValueTest extends AbstractDebugTest {
         }
 
         @ExportMessage
-        Object getMembers(boolean internal) {
-            if (internal || isInternal == internal) {
-                return new PropertyKeysTruffleObject();
-            } else {
-                return new EmptyKeysTruffleObject();
-            }
+        Object getMemberObjects() {
+            return new PropertyKeysTruffleObject();
         }
 
         @ExportMessage
-        boolean isMemberReadable(String member) {
+        boolean isMemberReadable(Object member) {
             return isReadable;
         }
 
         @ExportMessage
-        boolean isMemberModifiable(String member) {
+        boolean isMemberModifiable(Object member) {
             return isWritable;
         }
 
         @ExportMessage
-        boolean isMemberInternal(String member) {
-            return isInternal;
-        }
-
-        @ExportMessage
-        boolean hasMemberReadSideEffects(String member) {
+        boolean hasMemberReadSideEffects(Object member) {
             return hasReadSideEffects;
         }
 
         @ExportMessage
-        boolean hasMemberWriteSideEffects(String member) {
+        boolean hasMemberWriteSideEffects(Object member) {
             return hasWriteSideEffects;
         }
 
         @ExportMessage
-        boolean isMemberInsertable(String member) {
+        boolean isMemberInsertable(Object member) {
             return false;
         }
 
         @ExportMessage
-        void writeMember(String member, Object value) {
+        void writeMember(Object member, Object value) {
         }
 
         @ExportMessage
-        Object readMember(String member) {
-            Integer counter = memberCounters.get(member);
+        Object readMember(Object member) throws UnsupportedMessageException {
+            if (!isReadable) {
+                throw UnsupportedMessageException.create();
+            }
+            String name = (member instanceof PropertyMember pm) ? pm.simpleName : (String) member;
+            Integer counter = memberCounters.get(name);
             if (counter == null) {
                 counter = 0;
             } else {
                 counter++;
             }
-            memberCounters.put(member, counter);
+            memberCounters.put(name, counter);
             return counter;
         }
 
@@ -659,10 +693,6 @@ public class DebugValueTest extends AbstractDebugTest {
             this.hasWriteSideEffects = hasSideEffects;
         }
 
-        public void setIsInternal(boolean isInternal) {
-            this.isInternal = isInternal;
-        }
-
         public String getMemberCounters() {
             return memberCounters.toString();
         }
@@ -671,6 +701,19 @@ public class DebugValueTest extends AbstractDebugTest {
             return obj instanceof ModifiableAttributesTruffleObject;
         }
 
+        @ExportMessage
+        TriState isIdenticalOrUndefined(Object otherObject) {
+            if (this == otherObject) {
+                return TriState.TRUE;
+            } else {
+                return TriState.UNDEFINED;
+            }
+        }
+
+        @ExportMessage
+        int identityHashCode() {
+            return hashCode();
+        }
     }
 
     /**
@@ -686,16 +729,13 @@ public class DebugValueTest extends AbstractDebugTest {
 
         @ExportMessage
         Object readArrayElement(long index) throws UnsupportedMessageException, InvalidArrayIndexException {
-            switch ((int) index) {
-                case 0:
-                    return "property";
-                case 1:
-                    return "p1";
-                case 2:
-                    return "p2";
-                default:
-                    throw new IllegalStateException("Wrong index: " + index);
-            }
+            String name = switch ((int) index) {
+                case 0 -> "property";
+                case 1 -> "p1";
+                case 2 -> "p2";
+                default -> throw InvalidArrayIndexException.create(index);
+            };
+            return new PropertyMember(name, "qualified_" + name, index);
         }
 
         @ExportMessage
@@ -706,6 +746,50 @@ public class DebugValueTest extends AbstractDebugTest {
         @ExportMessage
         boolean isArrayElementReadable(long index) {
             return 0 <= index && index < 3;
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class PropertyMember implements TruffleObject {
+
+        private final String simpleName;
+        private final String qualifiedName;
+        private final long memberIndex;
+
+        PropertyMember(String simpleName, String qualifiedName, long memberIndex) {
+            this.simpleName = simpleName;
+            this.qualifiedName = qualifiedName;
+            this.memberIndex = memberIndex;
+        }
+
+        @ExportMessage
+        boolean isMember() {
+            return true;
+        }
+
+        @ExportMessage
+        Object getMemberSimpleName() {
+            return simpleName;
+        }
+
+        @ExportMessage
+        Object getMemberQualifiedName() {
+            return qualifiedName;
+        }
+
+        @ExportMessage
+        boolean isMemberKindField() {
+            return memberIndex == 0;
+        }
+
+        @ExportMessage
+        boolean isMemberKindMethod() {
+            return memberIndex == 1;
+        }
+
+        @ExportMessage
+        boolean isMemberKindMetaObject() {
+            return memberIndex == 2;
         }
     }
 
@@ -736,11 +820,11 @@ public class DebugValueTest extends AbstractDebugTest {
     @ExportLibrary(InteropLibrary.class)
     static final class IdentityObject implements TruffleObject {
 
-        private final Object equalsDelegate;
+        private final Object identityDelegate;
         private final int hashCode;
 
-        IdentityObject(Object equalsDelegate, int hashCode) {
-            this.equalsDelegate = equalsDelegate;
+        IdentityObject(Object identityDelegate, int hashCode) {
+            this.identityDelegate = identityDelegate;
             this.hashCode = hashCode;
         }
 
@@ -754,7 +838,7 @@ public class DebugValueTest extends AbstractDebugTest {
             if (other == this) {
                 return TriState.TRUE;
             }
-            return TriState.valueOf((other instanceof IdentityObject) && equalsDelegate.equals(((IdentityObject) other).equalsDelegate));
+            return TriState.valueOf((other instanceof IdentityObject) && identityDelegate.equals(((IdentityObject) other).identityDelegate));
         }
     }
 }

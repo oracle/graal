@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,8 +54,8 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
+
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -69,7 +69,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.StopIterationException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -273,7 +273,7 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
     }
 
     @ExportLibrary(InteropLibrary.class)
-    static class MetaObjectTest implements TruffleObject {
+    static class MetaObjectTest extends LanguageObject {
 
         Supplier<Object> getMetaQualifiedName;
         Supplier<Object> getMetaSimpleName;
@@ -601,14 +601,14 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         ScopeCached sc = new ScopeCached(5);
         InteropLibrary iop = createLibrary(InteropLibrary.class, sc);
         assertTrue(iop.hasMembers(sc));
-        Object members = iop.getMembers(sc);
+        Object members = iop.getMemberObjects(sc);
         assertNotNull(members);
         assertTrue(iop.hasScopeParent(sc));
         Object scParent = iop.getScopeParent(sc);
         assertNotNull(scParent);
         if (run == TestRun.CACHED) {
             checkInvalidUsage(() -> iop.hasMembers(scParent));
-            checkInvalidUsage(() -> iop.getMembers(scParent));
+            checkInvalidUsage(() -> iop.getMemberObjects(scParent));
             checkInvalidUsage(() -> iop.hasScopeParent(scParent));
             checkInvalidUsage(() -> iop.getScopeParent(scParent));
         }
@@ -625,8 +625,36 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         assertTrue(invalidUsage);
     }
 
+    /**
+     * An object that has a language associated.
+     * <p>
+     * A single-threaded context and an object associated with a language is necessary to trigger
+     * single-threaded assertions.
+     */
     @ExportLibrary(InteropLibrary.class)
-    static class ScopeCached implements TruffleObject {
+    static class LanguageObject implements TruffleObject {
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean hasLanguage() {
+            return true;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        Class<? extends TruffleLanguage<?>> getLanguage() {
+            return ProxyLanguage.class;
+        }
+
+        @ExportMessage
+        Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+            return "LanguageObject()";
+        }
+
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static class ScopeCached extends LanguageObject {
 
         final long id;
 
@@ -667,29 +695,18 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         }
 
         @ExportMessage
-        Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        Object getMemberObjects() {
             return new ScopeMembers(id);
         }
 
-        @ExportMessage
-        @SuppressWarnings("static-method")
-        boolean hasLanguage() {
-            return true;
-        }
-
-        @ExportMessage
-        @SuppressWarnings("static-method")
-        Class<? extends TruffleLanguage<?>> getLanguage() {
-            return ProxyLanguage.class;
-        }
-
+        @Override
         @ExportMessage
         Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
             return "ScopeCached[" + id + "]";
         }
 
         @ExportLibrary(InteropLibrary.class)
-        static final class ScopeMembers implements TruffleObject {
+        static final class ScopeMembers extends LanguageObject {
 
             private final long len;
 
@@ -706,7 +723,7 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
             @ExportMessage
             Object readArrayElement(long index) throws InvalidArrayIndexException {
                 if (0 <= index && index < len) {
-                    return Long.toString(len - index);
+                    return new ScopeMember(len - index);
                 } else {
                     throw InvalidArrayIndexException.create(index);
                 }
@@ -720,6 +737,48 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
             @ExportMessage
             boolean isArrayElementReadable(long index) {
                 return 0 <= index && index < len;
+            }
+        }
+
+        @ExportLibrary(InteropLibrary.class)
+        @SuppressWarnings("static-method")
+        static final class ScopeMember implements TruffleObject {
+
+            private final long n;
+
+            ScopeMember(long n) {
+                this.n = n;
+            }
+
+            @ExportMessage
+            boolean isMember() {
+                return true;
+            }
+
+            @ExportMessage
+            Object getMemberSimpleName() {
+                return Long.toString(n);
+            }
+
+            @ExportMessage
+            @TruffleBoundary
+            Object getMemberQualifiedName() {
+                return Long.toString(n);
+            }
+
+            @ExportMessage
+            boolean isMemberKindField() {
+                return false;
+            }
+
+            @ExportMessage
+            boolean isMemberKindMethod() {
+                return false;
+            }
+
+            @ExportMessage
+            boolean isMemberKindMetaObject() {
+                return false;
             }
         }
     }
@@ -774,7 +833,7 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         }
 
         @ExportMessage
-        final Object getMembers(@SuppressWarnings("unused") boolean includeInternal) throws UnsupportedMessageException {
+        final Object getMemberObjects() throws UnsupportedMessageException {
             if (getMembers == null) {
                 throw UnsupportedMessageException.create();
             }
@@ -1030,7 +1089,7 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
     }
 
     @ExportLibrary(InteropLibrary.class)
-    static final class IteratorTest implements TruffleObject {
+    static final class IteratorTest extends LanguageObject {
 
         boolean isIterator;
         Supplier<Boolean> hasNext;
@@ -1066,18 +1125,7 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
             return next.get();
         }
 
-        @ExportMessage
-        @SuppressWarnings("static-method")
-        boolean hasLanguage() {
-            return true;
-        }
-
-        @ExportMessage
-        @SuppressWarnings("static-method")
-        Class<? extends TruffleLanguage<?>> getLanguage() {
-            return ProxyLanguage.class;
-        }
-
+        @Override
         @ExportMessage
         @SuppressWarnings("unused")
         String toDisplayString(boolean allowSideEffects) {
@@ -1310,7 +1358,7 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
     }
 
     @ExportLibrary(InteropLibrary.class)
-    static final class HashTest implements TruffleObject {
+    static final class HashTest extends LanguageObject {
 
         boolean hasHashEntries;
         Predicate<Object> readable;
@@ -1482,18 +1530,7 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
             }
         }
 
-        @ExportMessage
-        @SuppressWarnings("static-method")
-        boolean hasLanguage() {
-            return true;
-        }
-
-        @ExportMessage
-        @SuppressWarnings("static-method")
-        Class<? extends TruffleLanguage<?>> getLanguage() {
-            return ProxyLanguage.class;
-        }
-
+        @Override
         @ExportMessage
         @SuppressWarnings("unused")
         String toDisplayString(boolean allowSideEffects) {
@@ -1821,11 +1858,11 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
     }
 
     @Test
-    public void testIsInvocableMemberWithReadSideEffects() throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException {
+    public void testIsInvocableMemberWithReadSideEffects() throws UnsupportedMessageException, ArityException, UnknownMemberException, UnsupportedTypeException {
         setupEnv(Context.create()); // we need no multi threaded context.
         var obj = new IsInvocableUnknown();
         InteropLibrary memberLib = createLibrary(InteropLibrary.class, obj);
-        String memberName = IsInvocableUnknown.MEMBER_NAME;
+        Object memberName = IsInvocableUnknown.MEMBER_NAME;
         /*
          * If hasMemberReadSideEffects(), a language may not be able to determine, without side
          * effects, if the member is invocable, so the invariant that if invokeMember succeeds
@@ -1861,47 +1898,47 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         }
 
         @ExportMessage
-        final Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-            return ProxyArray.fromArray(MEMBER_NAME);
+        final Object getMemberObjects() {
+            throw new UnsupportedOperationException();
         }
 
         @ExportMessage
-        final boolean isMemberReadable(String member) {
-            return switch (member) {
+        final boolean isMemberReadable(Object member) {
+            return switch ((String) member) {
                 case MEMBER_NAME -> true;
                 default -> false;
             };
         }
 
         @ExportMessage
-        final boolean isMemberInvocable(String member) {
-            return switch (member) {
+        final boolean isMemberInvocable(Object member) {
+            return switch ((String) member) {
                 case MEMBER_NAME -> invocable;
                 default -> false;
             };
         }
 
         @ExportMessage
-        final boolean hasMemberReadSideEffects(String member) {
-            return switch (member) {
+        final boolean hasMemberReadSideEffects(Object member) {
+            return switch ((String) member) {
                 case MEMBER_NAME -> readSideEffects;
                 default -> false;
             };
         }
 
         @ExportMessage
-        final Object readMember(String member) throws UnknownIdentifierException {
-            return switch (member) {
+        final Object readMember(Object member) throws UnknownMemberException {
+            return switch ((String) member) {
                 case MEMBER_NAME -> ((ProxyExecutable) a -> 42);
-                default -> throw UnknownIdentifierException.create(member);
+                default -> throw UnknownMemberException.create(member);
             };
         }
 
         @ExportMessage
-        final Object invokeMember(String member, @SuppressWarnings("unused") Object[] arguments) throws UnknownIdentifierException {
-            return switch (member) {
+        final Object invokeMember(Object member, @SuppressWarnings("unused") Object[] arguments) throws UnknownMemberException {
+            return switch ((String) member) {
                 case MEMBER_NAME -> 42;
-                default -> throw UnknownIdentifierException.create(member);
+                default -> throw UnknownMemberException.create(member);
             };
         }
 
@@ -1925,11 +1962,11 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
     }
 
     @Test
-    public void testAllMemberSideEffects() throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException {
+    public void testAllMemberSideEffects() throws UnsupportedMessageException, ArityException, UnknownMemberException, UnsupportedTypeException {
         setupEnv(Context.create()); // we need no multi threaded context.
         var obj = new IsMemberAllUnknown();
         InteropLibrary memberLib = createLibrary(InteropLibrary.class, obj);
-        String memberName = IsMemberAllUnknown.MEMBER_NAME;
+        Object memberName = IsMemberAllUnknown.MEMBER_NAME;
 
         obj.isMember = false;
         assertEquals("isMemberInvocable", false, memberLib.isMemberInvocable(obj, memberName));
@@ -1998,75 +2035,75 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         }
 
         @ExportMessage
-        final Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-            return ProxyArray.fromArray(MEMBER_NAME);
+        final Object getMemberObjects() {
+            throw new UnsupportedOperationException();
         }
 
         @ExportMessage(name = "isMemberReadable")
         @ExportMessage(name = "isMemberRemovable")
         @ExportMessage(name = "isMemberModifiable")
         @ExportMessage(name = "isMemberInvocable")
-        final boolean isMemberReadable(@SuppressWarnings("unused") String member) {
+        final boolean isMemberReadable(@SuppressWarnings("unused") Object member) {
             return isMember;
         }
 
         @ExportMessage
-        final boolean isMemberInsertable(@SuppressWarnings("unused") String member) {
+        final boolean isMemberInsertable(@SuppressWarnings("unused") Object member) {
             return false;
         }
 
         @ExportMessage(name = "hasMemberReadSideEffects")
         @ExportMessage(name = "hasMemberWriteSideEffects")
-        final boolean hasMemberReadSideEffects(String member) {
-            return switch (member) {
+        final boolean hasMemberReadSideEffects(Object member) {
+            return switch ((String) member) {
                 case MEMBER_NAME -> readSideEffects;
                 default -> false;
             };
         }
 
         @ExportMessage
-        final Object readMember(String member) throws UnknownIdentifierException, UnsupportedMessageException {
+        final Object readMember(Object member) throws UnknownMemberException, UnsupportedMessageException {
             if (throwUnsupported) {
                 throw UnsupportedMessageException.create();
             }
-            return switch (member) {
+            return switch ((String) member) {
                 case MEMBER_NAME -> 42;
-                default -> throw UnknownIdentifierException.create(member);
+                default -> throw UnknownMemberException.create(member);
             };
         }
 
         @ExportMessage
-        final Object invokeMember(String member, @SuppressWarnings("unused") Object[] arguments) throws UnknownIdentifierException, UnsupportedMessageException {
+        final Object invokeMember(Object member, @SuppressWarnings("unused") Object[] arguments) throws UnknownMemberException, UnsupportedMessageException {
             if (throwUnsupported) {
                 throw UnsupportedMessageException.create();
             }
-            return switch (member) {
+            return switch ((String) member) {
                 case MEMBER_NAME -> 42;
-                default -> throw UnknownIdentifierException.create(member);
+                default -> throw UnknownMemberException.create(member);
             };
         }
 
         @ExportMessage
-        final void writeMember(String member, @SuppressWarnings("unused") Object value) throws UnknownIdentifierException, UnsupportedMessageException {
+        final void writeMember(Object member, @SuppressWarnings("unused") Object value) throws UnknownMemberException, UnsupportedMessageException {
             if (throwUnsupported) {
                 throw UnsupportedMessageException.create();
             }
-            switch (member) {
+            switch ((String) member) {
                 case MEMBER_NAME -> {
                 }
-                default -> throw UnknownIdentifierException.create(member);
+                default -> throw UnknownMemberException.create(member);
             }
         }
 
         @ExportMessage
-        final void removeMember(String member) throws UnknownIdentifierException, UnsupportedMessageException {
+        final void removeMember(Object member) throws UnknownMemberException, UnsupportedMessageException {
             if (throwUnsupported) {
                 throw UnsupportedMessageException.create();
             }
-            switch (member) {
+            switch ((String) member) {
                 case MEMBER_NAME -> {
                 }
-                default -> throw UnknownIdentifierException.create(member);
+                default -> throw UnknownMemberException.create(member);
             }
         }
 
@@ -2087,5 +2124,311 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         final Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
             return getClass().getSimpleName();
         }
+    }
+
+    enum MemberKind {
+        FIELD,
+        METHOD,
+        META_OBJECT,
+        OTHER
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class MembersTest extends MetaObjectTest {
+
+        boolean hasMembers;
+        Supplier<Object> publicMembers;
+        boolean hasStaticReceiver;
+        Supplier<Object> staticReceiver;
+        boolean hasDeclaredMembers;
+        Supplier<Object> declaredMembers;
+        boolean hasMetaObject;
+        Supplier<Object> metaObject;
+        boolean isMember;
+        Supplier<Object> memberSimpleName;
+        Supplier<Object> memberQualifiedName;
+        Supplier<MemberKind> memberKind;
+        boolean hasMemberDeclaringMetaObject;
+        Supplier<Object> memberDeclaringMetaObject;
+        boolean hasMemberSignature;
+        Supplier<Object> memberSignature;
+
+        @ExportMessage
+        boolean hasMembers() {
+            return hasMembers;
+        }
+
+        @ExportMessage
+        Object getMemberObjects() throws UnsupportedMessageException {
+            if (publicMembers == null) {
+                throw UnsupportedMessageException.create();
+            }
+            return publicMembers.get();
+        }
+
+        @ExportMessage
+        boolean hasStaticReceiver() {
+            return hasStaticReceiver;
+        }
+
+        @ExportMessage
+        Object getStaticReceiver() throws UnsupportedMessageException {
+            if (staticReceiver == null) {
+                throw UnsupportedMessageException.create();
+            }
+            return staticReceiver.get();
+        }
+
+        @ExportMessage
+        boolean hasDeclaredMembers() {
+            return hasDeclaredMembers;
+        }
+
+        @ExportMessage
+        Object getDeclaredMembers() throws UnsupportedMessageException {
+            if (declaredMembers == null) {
+                throw UnsupportedMessageException.create();
+            }
+            return declaredMembers.get();
+        }
+
+        @ExportMessage
+        boolean hasMetaObject() {
+            return hasMetaObject;
+        }
+
+        @ExportMessage
+        Object getMetaObject() throws UnsupportedMessageException {
+            if (metaObject == null) {
+                throw UnsupportedMessageException.create();
+            }
+            return metaObject.get();
+        }
+
+        @ExportMessage
+        boolean isMember() {
+            return isMember;
+        }
+
+        @ExportMessage
+        Object getMemberSimpleName() throws UnsupportedMessageException {
+            if (memberSimpleName == null) {
+                throw UnsupportedMessageException.create();
+            }
+            return memberSimpleName.get();
+        }
+
+        @ExportMessage
+        Object getMemberQualifiedName() throws UnsupportedMessageException {
+            if (memberQualifiedName == null) {
+                throw UnsupportedMessageException.create();
+            }
+            return memberQualifiedName.get();
+        }
+
+        @ExportMessage
+        boolean isMemberKindField() {
+            return memberKind != null && memberKind.get() == MemberKind.FIELD;
+        }
+
+        @ExportMessage
+        boolean isMemberKindMethod() {
+            return memberKind != null && memberKind.get() == MemberKind.METHOD;
+        }
+
+        @ExportMessage
+        boolean isMemberKindMetaObject() {
+            return memberKind != null && memberKind.get() == MemberKind.META_OBJECT;
+        }
+
+        @ExportMessage
+        boolean hasDeclaringMetaObject() {
+            return hasMemberDeclaringMetaObject;
+        }
+
+        @ExportMessage
+        Object getDeclaringMetaObject() throws UnsupportedMessageException {
+            if (memberDeclaringMetaObject == null) {
+                throw UnsupportedMessageException.create();
+            }
+            return memberDeclaringMetaObject.get();
+        }
+
+        @ExportMessage
+        boolean hasMemberSignature() {
+            return hasMemberSignature;
+        }
+
+        @ExportMessage
+        Object getMemberSignature() throws UnsupportedMessageException {
+            if (memberSignature == null) {
+                throw UnsupportedMessageException.create();
+            }
+            return memberSignature.get();
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class SignatureElementTest extends LanguageObject {
+
+        boolean isSignatureElement;
+        boolean hasSignatureElementName;
+        Supplier<Object> signatureElementName;
+        boolean hasSignatureElementMetaObject;
+        Supplier<Object> signatureElementMetaObject;
+
+        @ExportMessage
+        boolean isSignatureElement() {
+            return isSignatureElement;
+        }
+
+        @ExportMessage
+        boolean hasSignatureElementName() {
+            return hasSignatureElementName;
+        }
+
+        @ExportMessage
+        Object getSignatureElementName() throws UnsupportedMessageException {
+            if (signatureElementName == null) {
+                throw UnsupportedMessageException.create();
+            }
+            return signatureElementName.get();
+        }
+
+        @ExportMessage
+        boolean hasSignatureElementMetaObject() {
+            return hasSignatureElementMetaObject;
+        }
+
+        @ExportMessage
+        Object getSignatureElementMetaObject() throws UnsupportedMessageException {
+            if (signatureElementMetaObject == null) {
+                throw UnsupportedMessageException.create();
+            }
+            return signatureElementMetaObject.get();
+        }
+    }
+
+    @Test
+    public void testMembers() throws UnsupportedMessageException {
+        setupEnv(Context.create()); // we need no multi threaded context.
+        MembersTest membersTest = new MembersTest();
+        InteropLibrary membersLib = createLibrary(InteropLibrary.class, membersTest);
+
+        // Public members
+        membersTest.hasMembers = true;
+        assertTrue(membersLib.hasMembers(membersTest));
+        assertFails(() -> membersLib.getMemberObjects(membersTest), UnsupportedMessageException.class);
+        assertFails(() -> membersLib.getDeclaredMembers(membersTest), UnsupportedMessageException.class);
+        membersTest.hasMembers = false;
+        membersTest.publicMembers = () -> new InteropDefaultsTest.Array();
+        assertFails(() -> membersLib.getMemberObjects(membersTest), AssertionError.class);
+        membersTest.hasMembers = true;
+        MembersTest memberElement = new MembersTest();
+        membersTest.publicMembers = () -> new InteropDefaultsTest.Array(memberElement);
+        assertFails(() -> membersLib.getMemberObjects(membersTest), AssertionError.class);
+        memberElement.isMember = true;
+        Object members = membersLib.getMemberObjects(membersTest);
+        assertEquals(1, InteropLibrary.getUncached().getArraySize(members));
+
+        // Declared members
+        membersTest.hasDeclaredMembers = true;
+        assertFails(() -> membersLib.getDeclaredMembers(membersTest), AssertionError.class);
+        membersTest.hasDeclaredMembers = false;
+        membersTest.declaredMembers = () -> new InteropDefaultsTest.Array();
+        assertFails(() -> membersLib.getDeclaredMembers(membersTest), AssertionError.class);
+        membersTest.declaredMembers = () -> new InteropDefaultsTest.Array(memberElement);
+        assertFails(() -> membersLib.getDeclaredMembers(membersTest), AssertionError.class);
+
+        // Static receiver
+        membersTest.hasStaticReceiver = true;
+        assertFails(() -> membersLib.getStaticReceiver(membersTest), AssertionError.class);
+        membersTest.hasStaticReceiver = false;
+        membersTest.staticReceiver = () -> new TruffleObject() {
+        };
+        assertFails(() -> membersLib.getStaticReceiver(membersTest), AssertionError.class);
+
+        // Member
+        InteropLibrary memberElementLib = createLibrary(InteropLibrary.class, memberElement);
+        assertTrue(memberElementLib.isMember(memberElement));
+        assertFails(() -> memberElementLib.getMemberSimpleName(memberElement), AssertionError.class);
+        assertFails(() -> memberElementLib.getMemberQualifiedName(memberElement), AssertionError.class);
+        assertFalse(memberElementLib.isMemberKindField(memberElement));
+        assertFalse(memberElementLib.isMemberKindMethod(memberElement));
+        assertFalse(memberElementLib.isMemberKindMetaObject(memberElement));
+        memberElement.hasMemberDeclaringMetaObject = true;
+        assertFails(() -> memberElementLib.getDeclaringMetaObject(memberElement), AssertionError.class);
+        memberElement.hasMemberSignature = true;
+        assertFails(() -> memberElementLib.getMemberSignature(memberElement), AssertionError.class);
+        memberElement.memberSimpleName = () -> new TruffleObject() {
+        };
+        assertFails(() -> memberElementLib.getMemberSimpleName(memberElement), AssertionError.class);
+        memberElement.memberSimpleName = () -> new TestStringWrapper("test");
+        assertEquals("test", InteropLibrary.getUncached().asString(memberElementLib.getMemberSimpleName(memberElement)));
+        memberElement.memberQualifiedName = () -> new TruffleObject() {
+        };
+        assertFails(() -> memberElementLib.getMemberQualifiedName(memberElement), AssertionError.class);
+        memberElement.memberQualifiedName = () -> new TestStringWrapper("test");
+        assertEquals("test", InteropLibrary.getUncached().asString(memberElementLib.getMemberQualifiedName(memberElement)));
+        MetaObjectTest metaObject = new MetaObjectTest();
+        memberElement.memberKind = () -> MemberKind.OTHER;
+        assertFalse(memberElementLib.isMemberKindField(memberElement));
+        assertFalse(memberElementLib.isMemberKindMethod(memberElement));
+        assertFalse(memberElementLib.isMemberKindMetaObject(memberElement));
+        assertTrue(memberElementLib.isMember(memberElement));
+        memberElement.memberDeclaringMetaObject = () -> metaObject;
+        assertFails(() -> memberElementLib.getDeclaringMetaObject(memberElement), AssertionError.class);
+        metaObject.isMetaObject = true;
+        assertFails(() -> memberElementLib.getDeclaringMetaObject(memberElement), AssertionError.class);
+        metaObject.isMetaInstance = (o) -> false;
+        metaObject.getMetaQualifiedName = () -> "std";
+        metaObject.getMetaSimpleName = () -> "std";
+        memberElementLib.getDeclaringMetaObject(memberElement); // O.K.
+        memberElement.hasMemberDeclaringMetaObject = false;
+        assertFails(() -> memberElementLib.getDeclaringMetaObject(memberElement), AssertionError.class);
+        memberElement.hasMemberDeclaringMetaObject = true;
+        memberElement.memberSignature = () -> new TruffleObject() {
+        };
+        assertFails(() -> memberElementLib.getMemberSignature(memberElement), AssertionError.class);
+        memberElement.memberSignature = () -> new InteropDefaultsTest.Array();
+        memberElementLib.getMemberSignature(memberElement); // O.K.
+
+        memberElement.isMember = false;
+        assertFails(() -> memberElementLib.getMemberSimpleName(memberElement), AssertionError.class);
+        assertFails(() -> memberElementLib.getMemberQualifiedName(memberElement), AssertionError.class);
+        assertFails(() -> memberElementLib.getMemberSignature(memberElement), AssertionError.class);
+    }
+
+    @Test
+    public void testSignature() throws UnsupportedMessageException {
+        setupEnv(Context.create()); // we need no multi threaded context.
+        SignatureElementTest signatureElement = new SignatureElementTest();
+        InteropLibrary signatureElementLib = createLibrary(InteropLibrary.class, signatureElement);
+        signatureElement.isSignatureElement = true;
+        assertTrue(signatureElementLib.isSignatureElement(signatureElement));
+        signatureElement.hasSignatureElementName = true;
+        signatureElement.hasSignatureElementMetaObject = true;
+        assertFails(() -> signatureElementLib.getSignatureElementName(signatureElement), AssertionError.class);
+        assertFails(() -> signatureElementLib.getSignatureElementMetaObject(signatureElement), AssertionError.class);
+        signatureElement.signatureElementName = () -> new TestStringWrapper("x");
+        signatureElementLib.getSignatureElementName(signatureElement); // O.K.
+        MetaObjectTest metaObject = new MetaObjectTest();
+        signatureElement.signatureElementMetaObject = () -> metaObject;
+        assertFails(() -> signatureElementLib.getSignatureElementMetaObject(signatureElement), AssertionError.class);
+        metaObject.isMetaObject = true;
+        assertFails(() -> signatureElementLib.getSignatureElementMetaObject(signatureElement), AssertionError.class);
+        metaObject.isMetaInstance = (o) -> false;
+        metaObject.getMetaQualifiedName = () -> "std";
+        metaObject.getMetaSimpleName = () -> "std";
+        signatureElementLib.getSignatureElementMetaObject(signatureElement); // O.K.
+        signatureElement.hasSignatureElementName = false;
+        signatureElement.hasSignatureElementMetaObject = false;
+        assertFails(() -> signatureElementLib.getSignatureElementName(signatureElement), AssertionError.class);
+        assertFails(() -> signatureElementLib.getSignatureElementMetaObject(signatureElement), AssertionError.class);
+        signatureElement.hasSignatureElementName = true;
+        signatureElement.hasSignatureElementMetaObject = true;
+        signatureElement.isSignatureElement = false;
+        assertFails(() -> signatureElementLib.getSignatureElementName(signatureElement), AssertionError.class);
+        assertFails(() -> signatureElementLib.getSignatureElementMetaObject(signatureElement), AssertionError.class);
     }
 }

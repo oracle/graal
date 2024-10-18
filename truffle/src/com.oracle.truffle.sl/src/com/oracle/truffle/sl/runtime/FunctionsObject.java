@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,15 +42,22 @@ package com.oracle.truffle.sl.runtime;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
@@ -62,6 +69,7 @@ import com.oracle.truffle.sl.SLLanguage;
 @SuppressWarnings("static-method")
 final class FunctionsObject implements TruffleObject {
 
+    static final int LIMIT = 3;
     final Map<TruffleString, SLFunction> functions = new HashMap<>();
 
     FunctionsObject() {
@@ -83,25 +91,77 @@ final class FunctionsObject implements TruffleObject {
     }
 
     @ExportMessage
-    @TruffleBoundary
-    Object readMember(String member) throws UnknownIdentifierException {
-        Object value = functions.get(SLStrings.fromJavaString(member));
-        if (value != null) {
-            return value;
+    static class ReadMember {
+
+        @Specialization
+        static Object read(@SuppressWarnings("unused") FunctionsObject fo, FunctionMemberObject member) {
+            return member.getFunction();
         }
-        throw UnknownIdentifierException.create(member);
+
+        @Specialization(guards = "memberLibrary.isString(member)", limit = "LIMIT")
+        static Object read(FunctionsObject fo, Object member,
+                        @CachedLibrary("member") InteropLibrary memberLibrary,
+                        @Bind("$node") Node node, @Cached InlinedBranchProfile error) throws UnknownMemberException {
+            TruffleString name = FunctionsObject.toString(member, memberLibrary);
+            Object value = doRead(fo, name);
+            if (value != null) {
+                return value;
+            }
+            error.enter(node);
+            throw UnknownMemberException.create(name);
+        }
+
+        @Fallback
+        static Object read(@SuppressWarnings("unused") FunctionsObject fo, Object member) throws UnknownMemberException {
+            throw UnknownMemberException.create(member);
+        }
+
+        @TruffleBoundary
+        static Object doRead(FunctionsObject fo, TruffleString name) {
+            return fo.functions.get(name);
+        }
     }
 
     @ExportMessage
-    @TruffleBoundary
-    boolean isMemberReadable(String member) {
-        return functions.containsKey(SLStrings.fromJavaString(member));
+    static class IsMemberReadable {
+
+        @Specialization
+        @SuppressWarnings("unused")
+        static boolean isReadable(FunctionsObject fo, FunctionMemberObject member) {
+            return true;
+        }
+
+        @Specialization(guards = "memberLibrary.isString(member)", limit = "LIMIT")
+        static boolean isReadable(FunctionsObject fo, Object member,
+                        @CachedLibrary("member") InteropLibrary memberLibrary) {
+            TruffleString name = FunctionsObject.toString(member, memberLibrary);
+            return doIsReadable(fo, name);
+        }
+
+        @Fallback
+        @SuppressWarnings("unused")
+        static boolean isReadable(FunctionsObject fo, Object member) {
+            return false;
+        }
+
+        @TruffleBoundary
+        static boolean doIsReadable(FunctionsObject fo, TruffleString name) {
+            return fo.functions.containsKey(name);
+        }
+    }
+
+    private static TruffleString toString(Object member, InteropLibrary memberLibrary) {
+        assert memberLibrary.isString(member) : member;
+        try {
+            return memberLibrary.asTruffleString(member);
+        } catch (UnsupportedMessageException ex) {
+            throw CompilerDirectives.shouldNotReachHere(ex);
+        }
     }
 
     @ExportMessage
-    @TruffleBoundary
-    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-        return new FunctionNamesObject(functions.keySet().toArray());
+    Object getMemberObjects() {
+        return new FunctionNamesObject(functions);
     }
 
     @ExportMessage
@@ -132,10 +192,19 @@ final class FunctionsObject implements TruffleObject {
     @ExportLibrary(InteropLibrary.class)
     static final class FunctionNamesObject implements TruffleObject {
 
-        private final Object[] names;
+        @CompilationFinal(dimensions = 1) private final TruffleString[] names;
+        @CompilationFinal(dimensions = 1) private final SLFunction[] functions;
 
-        FunctionNamesObject(Object[] names) {
-            this.names = names;
+        @TruffleBoundary
+        FunctionNamesObject(Map<TruffleString, SLFunction> functions) {
+            this.names = new TruffleString[functions.size()];
+            this.functions = new SLFunction[functions.size()];
+            int i = 0;
+            for (Map.Entry<TruffleString, SLFunction> entry : functions.entrySet()) {
+                this.names[i] = entry.getKey();
+                this.functions[i] = entry.getValue();
+                i++;
+            }
         }
 
         @ExportMessage
@@ -159,7 +228,77 @@ final class FunctionsObject implements TruffleObject {
                 error.enter(node);
                 throw InvalidArrayIndexException.create(index);
             }
-            return names[(int) index];
+            return new FunctionMemberObject(names[(int) index], functions[(int) index]);
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class FunctionMemberObject implements TruffleObject {
+
+        private final TruffleString name;
+        private final SLFunction function;
+
+        FunctionMemberObject(TruffleString name, SLFunction function) {
+            this.name = name;
+            this.function = function;
+        }
+
+        @ExportMessage
+        boolean isMember() {
+            return true;
+        }
+
+        @ExportMessage
+        Object getMemberSimpleName() {
+            return name;
+        }
+
+        @ExportMessage
+        Object getMemberQualifiedName() {
+            return name;
+        }
+
+        @ExportMessage
+        boolean isMemberKindField() {
+            return false;
+        }
+
+        @ExportMessage
+        boolean isMemberKindMethod() {
+            return true;
+        }
+
+        @ExportMessage
+        boolean isMemberKindMetaObject() {
+            return false;
+        }
+
+        @Override
+        public int hashCode() {
+            return name.hashCode();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            final FunctionMemberObject other = (FunctionMemberObject) obj;
+            return Objects.equals(this.name, other.name);
+        }
+
+        TruffleString getName() {
+            return name;
+        }
+
+        SLFunction getFunction() {
+            return function;
         }
     }
 }

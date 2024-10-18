@@ -4,7 +4,14 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 
 ## Version 24.2.0
 * GR-54905 When using Truffle NFI with the Panama backend, native access must now be granted to the Truffle module instead of the NFI Panama module. Use the `--enable-native-access=org.graalvm.truffle` Java command line option to enable the native access for the NFI Panama backend.
-* GR-57681 Added the ability to use `Value#as(byte[].class)` to copy the contents of a guest language byte buffer (`Value#hasBufferElements()`) to a new byte array. The new functionality has precedence over accessing the guest object as array (`Value#hasArrayElements()`) if both ways are available. 
+* GR-57681 Added the ability to use `Value#as(byte[].class)` to copy the contents of a guest language byte buffer (`Value#hasBufferElements()`) to a new byte array. The new functionality has precedence over accessing the guest object as array (`Value#hasArrayElements()`) if both ways are available.
+* GR-34476 Introduced object members and declared members in `Value` class.
+        * Methods that take a `String` member name are overloaded with methods that take an `Object` member, where the `Object` can be either a `String`, or a `Value` that represents a member.
+        * `Value.getMembers()` introduced to return an array of member objects.
+        * `Value.isMember()`, `Value.getMemberSimpleName()`, `Value.getMemberQualifiedName()`, `Value.isMemberKindField()`, `Value.isMemberKindMethod()`, `Value.isMemberKindMetaObject()`, `Value.hasMemberSignature()`, `Value.getMemberSignature()` are introduced to represent a member object value.
+        * `Value.isSignatureElement()` `Value.hasSignatureElementName()`, `Value.getSignatureElementName()`, `Value.hasSignatureElementMetaObject()`, `Value.getSignatureElementMetaObject()` are introduced to represent a member signature.
+        * `Value.hasDeclaredMembers()` and `Value.getDeclaredMembers()` introduces declared members.
+        * `Value.hasMemberReadSideEffects()` and `Value.hasMemberPutSideEffects()` are introduced to inform about side-effects during read/store operations.
 
 ## Version 24.1.0
 * GR-51177 Enable random offsets of runtime compiled function entry points for the UNTRUSTED polyglot sandbox policy.

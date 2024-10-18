@@ -84,6 +84,7 @@ import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
 @ExportLibrary(value = LLVMVaListLibrary.class, useForAOT = true, useForAOTPriority = 3)
 @ExportLibrary(value = NativeTypeLibrary.class, useForAOT = true, useForAOTPriority = 2)
 @ExportLibrary(InteropLibrary.class)
+@SuppressWarnings("truffle-abstract-export") // GR-57971
 public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
 
     // LLVM12: %struct.__va_list = type { i8*, i8*, i8*, i32, i32 }

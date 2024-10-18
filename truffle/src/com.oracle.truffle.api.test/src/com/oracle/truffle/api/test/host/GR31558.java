@@ -67,7 +67,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.StopIterationException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -111,26 +111,26 @@ public class GR31558 extends AbstractPolyglotTest {
                                 InteropLibrary interop = InteropLibrary.getUncached();
                                 Object test = frame.getArguments()[0];
 
-                                interop.invokeMember(test, "testFunction", "hi", new ArgumentsCollectorFunction());
+                                interop.invokeMember(test, (Object) "testFunction", "hi", new ArgumentsCollectorFunction());
 
-                                if (interop.isMemberExisting(test, "testMap")) {
-                                    interop.invokeMember(test, "testFunction", "hi", new ArgumentsCollectorFunction(false, false, false, true));
+                                if (interop.isMemberExisting(test, (Object) "testMap")) {
+                                    interop.invokeMember(test, (Object) "testFunction", "hi", new ArgumentsCollectorFunction(false, false, false, true));
                                 }
-                                if (interop.isMemberExisting(test, "testMapEntry")) {
-                                    interop.invokeMember(test, "testMapEntry", "hi", new ArgumentsCollectorFunction(false, false, true, false));
+                                if (interop.isMemberExisting(test, (Object) "testMapEntry")) {
+                                    interop.invokeMember(test, (Object) "testMapEntry", "hi", new ArgumentsCollectorFunction(false, false, true, false));
                                 }
-                                if (interop.isMemberExisting(test, "testList")) {
-                                    interop.invokeMember(test, "testList", "hi", new ArgumentsCollectorFunction(false, false, true, false));
+                                if (interop.isMemberExisting(test, (Object) "testList")) {
+                                    interop.invokeMember(test, (Object) "testList", "hi", new ArgumentsCollectorFunction(false, false, true, false));
                                 }
-                                if (interop.isMemberExisting(test, "testIterator")) {
-                                    interop.invokeMember(test, "testIterator", "hi", new ArgumentsCollectorFunction(false, true, false, false));
+                                if (interop.isMemberExisting(test, (Object) "testIterator")) {
+                                    interop.invokeMember(test, (Object) "testIterator", "hi", new ArgumentsCollectorFunction(false, true, false, false));
                                 }
-                                if (interop.isMemberExisting(test, "testIterable")) {
-                                    interop.invokeMember(test, "testIterable", "hi", new ArgumentsCollectorFunction(true, false, false, false));
+                                if (interop.isMemberExisting(test, (Object) "testIterable")) {
+                                    interop.invokeMember(test, (Object) "testIterable", "hi", new ArgumentsCollectorFunction(true, false, false, false));
                                 }
 
                                 return "success";
-                            } catch (UnsupportedMessageException | UnknownIdentifierException | ArityException | UnsupportedTypeException e) {
+                            } catch (UnsupportedMessageException | UnknownMemberException | ArityException | UnsupportedTypeException e) {
                                 CompilerDirectives.transferToInterpreter();
                                 throw new AssertionError(e);
                             }

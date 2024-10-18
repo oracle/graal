@@ -52,6 +52,7 @@ import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 
 @ExportLibrary(InteropLibrary.class)
+@SuppressWarnings({"truffle-abstract-export", "deprecation"}) // GR-58123
 public abstract class AbstractConstantKeysObject extends AbstractRegexObject {
 
     public abstract TruffleReadOnlyKeysArray getKeys();

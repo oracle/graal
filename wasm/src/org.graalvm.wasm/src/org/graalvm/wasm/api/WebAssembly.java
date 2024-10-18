@@ -192,6 +192,7 @@ public class WebAssembly extends Dictionary {
         return importObject;
     }
 
+    @SuppressWarnings("deprecation")
     private static Object getImportObjectMemberInParentContext(Object importObject, ImportDescriptor descriptor, WasmContext context) {
         TruffleContext parentContext = context.environment().getContext().getParent();
         Object prev = parentContext.enter(null);

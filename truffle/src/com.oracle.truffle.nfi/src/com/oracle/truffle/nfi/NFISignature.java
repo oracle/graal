@@ -42,6 +42,7 @@ package com.oracle.truffle.nfi;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
@@ -56,7 +57,7 @@ import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -145,12 +146,12 @@ final class NFISignature implements TruffleObject {
         }
     }
 
-    static boolean isBind(String member) {
-        return "bind".equals(member);
+    static boolean isBindMember(Object member) {
+        return member == SignatureMembers.BIND;
     }
 
-    static boolean isCreateClosure(String member) {
-        return "createClosure".equals(member);
+    static boolean isCreateClosureMember(Object member) {
+        return member == SignatureMembers.CREATE_CLOSURE;
     }
 
     @ExportMessage
@@ -161,13 +162,61 @@ final class NFISignature implements TruffleObject {
 
     @ExportMessage
     @SuppressWarnings("static-method")
-    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+    Object getMemberObjects() {
         return new SignatureMembers();
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings("static-method")
+    static final class SignatureMember implements TruffleObject {
+
+        private final String name;
+
+        SignatureMember(String name) {
+            this.name = name;
+        }
+
+        @ExportMessage
+        boolean isMember() {
+            return true;
+        }
+
+        @ExportMessage
+        Object getMemberSimpleName() {
+            return name;
+        }
+
+        @ExportMessage
+        Object getMemberQualifiedName() {
+            return name;
+        }
+
+        @ExportMessage
+        boolean isMemberKindField() {
+            return false;
+        }
+
+        @ExportMessage
+        boolean isMemberKindMethod() {
+            return true;
+        }
+
+        @ExportMessage
+        boolean isMemberKindMetaObject() {
+            return false;
+        }
+
+        String getName() {
+            return name;
+        }
     }
 
     @ExportLibrary(InteropLibrary.class)
     @SuppressWarnings({"static-method", "unused"})
     static final class SignatureMembers implements TruffleObject {
+
+        static final Object BIND = new SignatureMember("bind");
+        static final Object CREATE_CLOSURE = new SignatureMember("createClosure");
 
         @ExportMessage
         boolean hasArrayElements() {
@@ -179,9 +228,9 @@ final class NFISignature implements TruffleObject {
                         @Bind("$node") Node node,
                         @Cached InlinedBranchProfile ioob) throws InvalidArrayIndexException {
             if (index == 0) {
-                return "bind";
+                return BIND;
             } else if (index == 1) {
-                return "createClosure";
+                return CREATE_CLOSURE;
             } else {
                 ioob.enter(node);
                 throw InvalidArrayIndexException.create(index);
@@ -200,19 +249,39 @@ final class NFISignature implements TruffleObject {
     }
 
     @ExportMessage
-    @SuppressWarnings("static-method")
-    boolean isMemberInvocable(String member) {
-        return isBind(member) || isCreateClosure(member);
+    static class IsMemberInvocable {
+
+        @Specialization
+        @SuppressWarnings("unused")
+        static boolean isInvocable(NFISignature receiver, SignatureMember member) {
+            return true;
+        }
+
+        @Specialization(guards = "interop.isString(member)")
+        static boolean isInvocable(@SuppressWarnings("unused") NFISignature receiver, Object member, @Cached.Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop) {
+            try {
+                String name = interop.asString(member);
+                return switch (name) {
+                    case "bind", "createClosure" -> true;
+                    default -> false;
+                };
+            } catch (UnsupportedMessageException ex) {
+                CompilerDirectives.transferToInterpreter();
+                throw CompilerDirectives.shouldNotReachHere(ex);
+            }
+        }
+
+        @Fallback
+        @SuppressWarnings("unused")
+        static boolean isInvocable(NFISignature receiver, Object unknownObj) {
+            return false;
+        }
     }
 
     @ExportMessage
     static class InvokeMember {
 
-        @Specialization(guards = "isBind(member)")
-        static Object doBind(NFISignature signature, @SuppressWarnings("unused") String member, Object[] args,
-                        @Bind("$node") Node node,
-                        @CachedLibrary("signature") SignatureLibrary signatureLibrary,
-                        @Shared("invokeException") @Cached InlinedBranchProfile exception) throws ArityException {
+        private static Object doBind(NFISignature signature, Object[] args, SignatureLibrary signatureLibrary, Node node, InlinedBranchProfile exception) throws ArityException {
             if (args.length != 1) {
                 exception.enter(node);
                 throw ArityException.create(1, 1, args.length);
@@ -220,11 +289,7 @@ final class NFISignature implements TruffleObject {
             return signatureLibrary.bind(signature, args[0]);
         }
 
-        @Specialization(guards = "isCreateClosure(member)")
-        static Object doCreateClosure(NFISignature signature, @SuppressWarnings("unused") String member, Object[] args,
-                        @Bind("$node") Node node,
-                        @CachedLibrary("signature") SignatureLibrary signatureLibrary,
-                        @Shared("invokeException") @Cached InlinedBranchProfile exception) throws ArityException {
+        private static Object doCreateClosure(NFISignature signature, Object[] args, SignatureLibrary signatureLibrary, Node node, InlinedBranchProfile exception) throws ArityException {
             if (args.length != 1) {
                 exception.enter(node);
                 throw ArityException.create(1, 1, args.length);
@@ -232,10 +297,42 @@ final class NFISignature implements TruffleObject {
             return signatureLibrary.createClosure(signature, args[0]);
         }
 
+        @Specialization(guards = "isBindMember(member)")
+        static Object invokeBind(NFISignature signature, @SuppressWarnings("unused") Object member, Object[] args,
+                        @Bind("$node") Node node,
+                        @CachedLibrary("signature") SignatureLibrary signatureLibrary,
+                        @Shared("invokeException") @Cached InlinedBranchProfile exception) throws ArityException {
+            return doBind(signature, args, signatureLibrary, node, exception);
+        }
+
+        @Specialization(guards = "isCreateClosureMember(member)")
+        static Object invokeCreateClosure(NFISignature signature, @SuppressWarnings("unused") Object member, Object[] args,
+                        @Bind("$node") Node node,
+                        @CachedLibrary("signature") SignatureLibrary signatureLibrary,
+                        @Shared("invokeException") @Cached InlinedBranchProfile exception) throws ArityException {
+            return doCreateClosure(signature, args, signatureLibrary, node, exception);
+        }
+
+        @Specialization(guards = "interop.isString(member)")
+        static Object invoke(NFISignature signature, Object member, Object[] args,
+                        @Cached.Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop,
+                        @Bind("$node") Node node,
+                        @CachedLibrary("signature") SignatureLibrary signatureLibrary,
+                        @Shared("invokeException") @Cached InlinedBranchProfile exception) throws ArityException, UnsupportedMessageException, UnknownMemberException {
+            String name = interop.asString(member);
+            return switch (name) {
+                case "bind" -> doBind(signature, args, signatureLibrary, node, exception);
+                case "createClosure" -> doCreateClosure(signature, args, signatureLibrary, node, exception);
+                default -> {
+                    throw UnknownMemberException.create(member);
+                }
+            };
+        }
+
         @Fallback
         @SuppressWarnings("unused")
-        static Object doUnknown(NFISignature signature, String member, Object[] args) throws UnknownIdentifierException {
-            throw UnknownIdentifierException.create(member);
+        static Object doUnknown(NFISignature signature, Object member, Object[] args) throws UnknownMemberException {
+            throw UnknownMemberException.create(member);
         }
     }
 

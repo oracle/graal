@@ -562,7 +562,7 @@ public class EngineBenchmark extends TruffleBenchmark {
         }
 
         @ExportMessage
-        protected final Object getMembers(boolean includeInternal) {
+        protected final Object getMemberObjects() {
             return null;
         }
 
@@ -602,27 +602,27 @@ public class EngineBenchmark extends TruffleBenchmark {
         }
 
         @ExportMessage
-        protected final boolean isMemberReadable(String member) {
+        protected final boolean isMemberReadable(Object member) {
             return true;
         }
 
         @ExportMessage
-        protected final boolean isMemberModifiable(String member) {
+        protected final boolean isMemberModifiable(Object member) {
             return true;
         }
 
         @ExportMessage
-        protected final boolean isMemberInsertable(String member) {
+        protected final boolean isMemberInsertable(Object member) {
             return true;
         }
 
         @ExportMessage
-        protected final void writeMember(String member, Object value) {
+        protected final void writeMember(Object member, Object value) {
             this.value = value;
         }
 
         @ExportMessage
-        protected final Object readMember(String member) {
+        protected final Object readMember(Object member) {
             return value;
         }
 

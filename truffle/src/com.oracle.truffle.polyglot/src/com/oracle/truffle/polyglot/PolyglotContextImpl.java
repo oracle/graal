@@ -473,7 +473,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
     final TruffleContext currentTruffleContext;
     final PolyglotContextImpl parent;
     volatile Map<String, Object> polyglotBindings; // for direct legacy access
-    volatile Object polyglotHostBindings; // for accesses from the polyglot api
+    private volatile Object polyglotHostBindings; // for accesses from the polyglot api
     private final PolyglotBindings polyglotBindingsObject = new PolyglotBindings(this);
     final PolyglotLanguage creator; // creator for internal contexts
     final ContextWeakReference weakReference;
@@ -1499,7 +1499,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         }
     }
 
-    public Map<String, Object> getPolyglotGuestBindings() {
+    Map<String, Object> getPolyglotGuestBindings() {
         Map<String, Object> bindings = this.polyglotBindings;
         if (bindings == null) {
             initPolyglotBindings();

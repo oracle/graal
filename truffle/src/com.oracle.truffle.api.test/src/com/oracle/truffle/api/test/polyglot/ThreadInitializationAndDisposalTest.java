@@ -49,7 +49,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -79,7 +79,7 @@ public class ThreadInitializationAndDisposalTest {
         }
 
         @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
-        private void markThreadOperationDone(ExecutableContext context, String operationId, Thread thread) {
+        private void markThreadOperationDone(ExecutableContext context, Object operationId, Thread thread) {
             synchronized (context) {
                 try {
                     Object scope = getScope(context);
@@ -89,7 +89,7 @@ public class ThreadInitializationAndDisposalTest {
                         alreadyExecuted = uncached.readMember(scope, operationId) + ",";
                     }
                     uncached.writeMember(scope, operationId, alreadyExecuted + thread.threadId());
-                } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
+                } catch (UnsupportedMessageException | UnknownMemberException | UnsupportedTypeException e) {
                     throw new AssertionError(e);
                 }
             }

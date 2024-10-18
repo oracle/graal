@@ -177,6 +177,7 @@ import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
 @ExportLibrary(value = LLVMVaListLibrary.class, useForAOT = true, useForAOTPriority = 1)
 @ExportLibrary(value = NativeTypeLibrary.class, useForAOT = true, useForAOTPriority = 0)
 @ExportLibrary(InteropLibrary.class)
+@SuppressWarnings("truffle-abstract-export") // GR-57971
 public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
 
     public static final ArrayType VA_LIST_TYPE = new ArrayType(StructureType.createNamedFromList("struct.__va_list_tag", false,

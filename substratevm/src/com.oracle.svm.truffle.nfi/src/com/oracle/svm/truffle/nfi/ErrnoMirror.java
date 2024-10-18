@@ -29,13 +29,19 @@ import org.graalvm.nativeimage.c.type.CIntPointer;
 
 import com.oracle.svm.core.threadlocal.FastThreadLocalBytes;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
@@ -60,21 +66,69 @@ public final class ErrnoMirror implements TruffleObject {
     }
 
     @ExportMessage
-    boolean isMemberInvocable(String member) {
-        return member.equals("bind");
-    }
-
-    @ExportMessage
-    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+    Object getMemberObjects() {
         return KEYS;
     }
 
     @ExportMessage
-    Object invokeMember(String member, @SuppressWarnings("unused") Object[] args) throws UnknownIdentifierException {
-        if (!"bind".equals(member)) {
-            throw UnknownIdentifierException.create(member);
+    static class IsMemberInvocable {
+
+        @Specialization
+        static boolean isInvocable(@SuppressWarnings("unused") ErrnoMirror error, KeyMember member) {
+            return "bind".equals(member.key);
         }
-        return this;
+
+        @Specialization(guards = "interop.isString(member)")
+        static boolean isInvocable(@SuppressWarnings("unused") ErrnoMirror error, Object member,
+                        @Shared("interop") @CachedLibrary(limit = "2") InteropLibrary interop) {
+            try {
+                return "bind".equals(interop.asString(member));
+            } catch (UnsupportedMessageException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
+        }
+
+        @Fallback
+        @SuppressWarnings("unused")
+        static boolean isInvocable(ErrnoMirror error, Object unknown) {
+            return false;
+        }
+    }
+
+    @ExportMessage
+    static class InvokeMember {
+
+        @Specialization
+        static Object invoke(ErrnoMirror error, KeyMember member, @SuppressWarnings("unused") Object[] args) throws UnknownMemberException {
+            if ("bind".equals(member.key)) {
+                return error;
+            } else {
+                CompilerDirectives.transferToInterpreter();
+                throw UnknownMemberException.create(member);
+            }
+        }
+
+        @Specialization(guards = "interop.isString(member)")
+        static Object invoke(ErrnoMirror error, Object member, @SuppressWarnings("unused") Object[] args,
+                        @Shared("interop") @CachedLibrary(limit = "2") InteropLibrary interop) throws UnknownMemberException {
+            try {
+                if ("bind".equals(interop.asString(member))) {
+                    return error;
+                } else {
+                    CompilerDirectives.transferToInterpreter();
+                    throw UnknownMemberException.create(member);
+                }
+            } catch (UnsupportedMessageException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
+        }
+
+        @Fallback
+        @SuppressWarnings("unused")
+        static Object invoke(ErrnoMirror error, Object unknown, Object[] args) throws UnknownMemberException {
+            CompilerDirectives.transferToInterpreter();
+            throw UnknownMemberException.create(unknown);
+        }
     }
 
     @ExportMessage
@@ -108,15 +162,54 @@ public final class ErrnoMirror implements TruffleObject {
         }
 
         @ExportMessage
-        String readArrayElement(long idx,
+        Object readArrayElement(long idx,
                         @Bind("$node") Node node,
                         @Cached InlinedBranchProfile exception) throws InvalidArrayIndexException {
             if (!isArrayElementReadable(idx)) {
                 exception.enter(node);
                 throw InvalidArrayIndexException.create(idx);
             }
-            return keys[(int) idx];
+            return new KeyMember(keys[(int) idx]);
         }
     }
 
+    @ExportLibrary(InteropLibrary.class)
+    static final class KeyMember implements TruffleObject {
+
+        private final String key;
+
+        KeyMember(String key) {
+            this.key = key;
+        }
+
+        @ExportMessage
+        boolean isMember() {
+            return true;
+        }
+
+        @ExportMessage
+        Object getMemberSimpleName() {
+            return key;
+        }
+
+        @ExportMessage
+        Object getMemberQualifiedName() {
+            return key;
+        }
+
+        @ExportMessage
+        boolean isMemberKindField() {
+            return false;
+        }
+
+        @ExportMessage
+        boolean isMemberKindMethod() {
+            return false;
+        }
+
+        @ExportMessage
+        boolean isMemberKindMetaObject() {
+            return false;
+        }
+    }
 }

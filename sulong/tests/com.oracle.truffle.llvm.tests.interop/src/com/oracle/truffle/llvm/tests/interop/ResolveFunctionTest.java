@@ -52,8 +52,8 @@ public class ResolveFunctionTest extends InteropTestBase {
     public static void loadTestBitcode() {
         testLibrary = loadTestBitcodeInternal("createResolveFunction.c");
         try {
-            fortyTwoFunction = InteropLibrary.getFactory().getUncached().readMember(testLibrary, "fortytwo");
-            maxFunction = InteropLibrary.getFactory().getUncached().readMember(testLibrary, "max");
+            fortyTwoFunction = InteropLibrary.getFactory().getUncached().readMember(testLibrary, (Object) "fortytwo");
+            maxFunction = InteropLibrary.getFactory().getUncached().readMember(testLibrary, (Object) "max");
         } catch (InteropException ex) {
             throw new AssertionError(ex);
         }

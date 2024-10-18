@@ -47,7 +47,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -177,23 +177,23 @@ public class NodeLibraryCompilerTest extends PartialEvaluationTest {
 
         @ExportMessage
         @SuppressWarnings("static-method")
-        boolean isMemberReadable(String name) {
+        boolean isMemberReadable(Object name) {
             return name.equals(VAR);
         }
 
         @ExportMessage
-        Object readMember(String name) throws UnknownIdentifierException {
+        Object readMember(Object name) throws UnknownMemberException {
             if (name.equals(VAR)) {
                 return readNode.execute((VirtualFrame) frame);
             } else {
                 CompilerDirectives.transferToInterpreter();
-                throw UnknownIdentifierException.create(name);
+                throw UnknownMemberException.create(name);
             }
         }
 
         @ExportMessage
         @SuppressWarnings("static-method")
-        Object getMembers(@SuppressWarnings("unused") boolean includeInternal) throws UnsupportedMessageException {
+        Object getMemberObjects() throws UnsupportedMessageException {
             throw UnsupportedMessageException.create();
         }
     }
@@ -276,9 +276,9 @@ public class NodeLibraryCompilerTest extends PartialEvaluationTest {
         protected void onReturnValue(VirtualFrame frame, Object result) {
             try {
                 Object scope = nodeLibrary.getScope(node, frame, false);
-                Object val = interop.readMember(scope, VAR);
+                Object val = interop.readMember(scope, (Object) VAR);
                 throw context.createUnwind(val);
-            } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+            } catch (UnsupportedMessageException | UnknownMemberException e) {
                 throw CompilerDirectives.shouldNotReachHere(e);
             }
         }

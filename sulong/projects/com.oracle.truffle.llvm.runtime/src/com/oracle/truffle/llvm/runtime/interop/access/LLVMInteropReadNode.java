@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,7 +37,7 @@ import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -129,12 +129,12 @@ public abstract class LLVMInteropReadNode extends LLVMNode {
                         @Cached BranchProfile exception) {
             assert name == location.identifier;
             try {
-                Object ret = interop.readMember(location.base, name);
+                Object ret = interop.readMember(location.base, (Object) name);
                 return toLLVM.executeWithType(ret, location.type, accessType);
             } catch (UnsupportedMessageException ex) {
                 exception.enter();
                 throw new LLVMPolyglotException(this, "Member '%s' not found", name);
-            } catch (UnknownIdentifierException ex) {
+            } catch (UnknownMemberException ex) {
                 exception.enter();
                 throw new LLVMPolyglotException(this, "Cannot read member '%s'", name);
             }

@@ -78,7 +78,7 @@ public class ParseSignatureTest {
         Source source = Source.newBuilder("nfi", "with test default", "ParseSignatureTest").internal(true).build();
         CallTarget target = runWithPolyglot.getTruffleTestEnv().parseInternal(source);
         Object library = target.call();
-        testSymbol = INTEROP.readMember(library, "testSymbol");
+        testSymbol = INTEROP.readMember(library, (Object) "testSymbol");
     }
 
     @SuppressWarnings("truffle-inlining")

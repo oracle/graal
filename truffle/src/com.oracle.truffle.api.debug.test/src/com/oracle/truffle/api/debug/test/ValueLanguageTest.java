@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -74,7 +75,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -177,22 +178,27 @@ public class ValueLanguageTest extends AbstractDebugTest {
 
                 // Properties are always in the original language:
                 value = frame.getScope().getDeclaredValue("b");
-                DebugValue a = value.getProperties().iterator().next();
+                DebugValue ma = value.getMembers().iterator().next();
+                assertTrue(ma.isMember());
+                DebugValue a = ma.getMemberValue();
                 assertEquals(lang1, a.getOriginalLanguage());
-                Iterator<DebugValue> it = value.getProperties().iterator();
+                Iterator<DebugValue> it = value.getMembers().iterator();
                 it.next();
                 it.next();
                 it.next();
-                DebugValue c = it.next();
+                DebugValue mc = it.next();
+                DebugValue c = mc.getMemberValue();
                 assertEquals(lang2, c.getOriginalLanguage());
                 value = value.asInLanguage(lang2);
-                a = value.getProperties().iterator().next();
+                ma = value.getMembers().iterator().next();
+                a = ma.getMemberValue();
                 assertEquals(lang1, a.getOriginalLanguage());
-                it = value.getProperties().iterator();
+                it = value.getMembers().iterator();
                 it.next();
                 it.next();
                 it.next();
-                c = it.next();
+                mc = it.next();
+                c = mc.getMemberValue();
                 assertEquals(lang2, c.getOriginalLanguage());
 
                 value = frame.getScope().getDeclaredValue("j");
@@ -448,8 +454,8 @@ public class ValueLanguageTest extends AbstractDebugTest {
                 }
                 frame.setAuxiliarySlot(slot, value);
                 try {
-                    interop.writeMember(language.getContextReference0().get(null).getEnv().getPolyglotBindings(), name, value);
-                } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
+                    interop.writeMember(language.getContextReference0().get(null).getEnv().getPolyglotBindings(), (Object) name, value);
+                } catch (UnknownMemberException | UnsupportedTypeException | UnsupportedMessageException e) {
                     CompilerDirectives.transferToInterpreter();
                     // should not happen for polyglot bindings.
                     throw new AssertionError(e);
@@ -510,8 +516,8 @@ public class ValueLanguageTest extends AbstractDebugTest {
                 varObj = frame.getAuxiliarySlot(slot);
                 if (varObj == null) {
                     try {
-                        varObj = interop.readMember(language.getContextReference0().get(null).getEnv().getPolyglotBindings(), var);
-                    } catch (UnknownIdentifierException e) {
+                        varObj = interop.readMember(language.getContextReference0().get(null).getEnv().getPolyglotBindings(), (Object) var);
+                    } catch (UnknownMemberException e) {
                         varObj = null;
                     } catch (UnsupportedMessageException e) {
                         CompilerDirectives.transferToInterpreter();
@@ -523,7 +529,7 @@ public class ValueLanguageTest extends AbstractDebugTest {
                     frame.setAuxiliarySlot(slot, varObj);
                 }
                 PropertiesMapObject props = (PropertiesMapObject) varObj;
-                props.map.put(prop, value);
+                props.map.put(new ValueMemberObject(prop), value);
                 return value;
             }
         }
@@ -663,7 +669,7 @@ public class ValueLanguageTest extends AbstractDebugTest {
         @ExportLibrary(InteropLibrary.class)
         static final class PropertiesMapObject implements TruffleObject {
 
-            private final Map<String, Object> map = new LinkedHashMap<>();
+            private final Map<Object, Object> map = new LinkedHashMap<>();
             protected final ValuesLanguage language;
             private final SourceSection sourceSection;
 
@@ -715,15 +721,15 @@ public class ValueLanguageTest extends AbstractDebugTest {
             @ExportMessage
             @TruffleBoundary
             Object toDisplayString(boolean allowSideEffects) {
-                Iterator<Map.Entry<String, Object>> i = map.entrySet().iterator();
+                Iterator<Map.Entry<Object, Object>> i = map.entrySet().iterator();
                 if (!i.hasNext()) {
                     return "{}";
                 }
                 StringBuilder sb = new StringBuilder();
                 sb.append('{');
                 for (;;) {
-                    Map.Entry<String, Object> e = i.next();
-                    String key = e.getKey();
+                    Map.Entry<Object, Object> e = i.next();
+                    Object member = e.getKey();
                     Object value = e.getValue();
                     if (value instanceof PropertiesMapObject) {
                         if (value == this) {
@@ -732,7 +738,11 @@ public class ValueLanguageTest extends AbstractDebugTest {
                             value = ((PropertiesMapObject) value).toDisplayString(allowSideEffects);
                         }
                     }
-                    sb.append(key);
+                    try {
+                        sb.append(InteropLibrary.getFactory().getUncached().getMemberSimpleName(member));
+                    } catch (UnsupportedMessageException ex) {
+                        sb.append(ex.getLocalizedMessage());
+                    }
                     sb.append('=');
                     sb.append(value);
                     if (!i.hasNext()) {
@@ -750,40 +760,44 @@ public class ValueLanguageTest extends AbstractDebugTest {
 
             @ExportMessage
             @TruffleBoundary
-            Object getMembers(@SuppressWarnings("unused") boolean internal) {
-                return new PropertyNamesObject(map.keySet());
+            Object getMemberObjects() {
+                return new PropertyMembersObject(map.keySet());
             }
 
             @ExportMessage
             @TruffleBoundary
-            boolean isMemberReadable(String member) {
+            boolean isMemberReadable(Object member) {
                 return map.containsKey(member);
             }
 
             @ExportMessage
             @TruffleBoundary
-            boolean isMemberModifiable(String member) {
+            boolean isMemberModifiable(Object member) {
                 return map.containsKey(member);
             }
 
             @ExportMessage
             @TruffleBoundary
-            boolean isMemberInsertable(String member) {
+            boolean isMemberInsertable(Object member) {
                 return !map.containsKey(member);
             }
 
             @ExportMessage
             @TruffleBoundary
-            void writeMember(String member, Object value) {
-                map.put(member, value);
+            void writeMember(Object member, Object value) {
+                if (member instanceof String) {
+                    map.put(new ValueMemberObject((String) member), value);
+                } else {
+                    map.put(member, value);
+                }
             }
 
             @ExportMessage
             @TruffleBoundary
-            Object readMember(String member) throws UnknownIdentifierException {
+            Object readMember(Object member) throws UnknownMemberException {
                 Object object = map.get(member);
                 if (object == null) {
-                    throw UnknownIdentifierException.create(member);
+                    throw UnknownMemberException.create(member);
                 } else {
                     return object;
                 }
@@ -792,12 +806,12 @@ public class ValueLanguageTest extends AbstractDebugTest {
         }
 
         @ExportLibrary(InteropLibrary.class)
-        static final class PropertyNamesObject implements TruffleObject {
+        static final class PropertyMembersObject implements TruffleObject {
 
-            private final Set<String> names;
+            private final Set<Object> members;
 
-            private PropertyNamesObject(Set<String> names) {
-                this.names = names;
+            private PropertyMembersObject(Set<Object> members) {
+                this.members = members;
             }
 
             @ExportMessage
@@ -808,10 +822,10 @@ public class ValueLanguageTest extends AbstractDebugTest {
             @ExportMessage
             @TruffleBoundary
             Object readArrayElement(long index) throws InvalidArrayIndexException {
-                if (index >= names.size()) {
+                if (index >= members.size()) {
                     throw InvalidArrayIndexException.create(index);
                 }
-                Iterator<String> iterator = names.iterator();
+                Iterator<Object> iterator = members.iterator();
                 long i = index;
                 while (i-- > 0) {
                     iterator.next();
@@ -822,7 +836,7 @@ public class ValueLanguageTest extends AbstractDebugTest {
             @ExportMessage
             @TruffleBoundary
             long getArraySize() {
-                return names.size();
+                return members.size();
             }
 
             @ExportMessage
@@ -830,6 +844,46 @@ public class ValueLanguageTest extends AbstractDebugTest {
                 return index >= 0 && index < getArraySize();
             }
 
+        }
+
+        @ExportLibrary(InteropLibrary.class)
+        static final class ValueMemberObject implements TruffleObject {
+
+            private final String name;
+
+            ValueMemberObject(String name) {
+                this.name = name;
+            }
+
+            @ExportMessage
+            boolean isMember() {
+                return true;
+            }
+
+            @ExportMessage
+            Object getMemberSimpleName() {
+                return name;
+            }
+
+            @ExportMessage
+            Object getMemberQualifiedName() {
+                return name;
+            }
+
+            @ExportMessage
+            boolean isMemberKindField() {
+                return true;
+            }
+
+            @ExportMessage
+            boolean isMemberKindMethod() {
+                return false;
+            }
+
+            @ExportMessage
+            boolean isMemberKindMetaObject() {
+                return false;
+            }
         }
 
     }

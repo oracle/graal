@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,7 +34,7 @@ import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -60,9 +60,9 @@ public abstract class LLVMPolyglotImport extends LLVMIntrinsic {
         String symbolName = readString.executeWithTarget(name);
 
         try {
-            Object ret = interop.readMember(getContext().getEnv().getPolyglotBindings(), symbolName);
+            Object ret = interop.readMember(getContext().getEnv().getPolyglotBindings(), (Object) symbolName);
             return toLLVM.executeWithTarget(ret);
-        } catch (UnknownIdentifierException ex) {
+        } catch (UnknownMemberException ex) {
             notFound.enter();
             return LLVMNativePointer.createNull();
         } catch (UnsupportedMessageException ex) {
