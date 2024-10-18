@@ -26,6 +26,7 @@ package com.oracle.svm.core.reflect.target;
 
 import java.util.function.Function;
 
+import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -36,11 +37,11 @@ import com.oracle.svm.core.reflect.serialize.SerializationRegistry;
 
 import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 
-@TargetClass(className = "jdk.internal.reflect.AccessorGenerator")
+@TargetClass(className = "jdk.internal.reflect.AccessorGenerator", onlyWith = JDK21OrEarlier.class)
 final class Target_jdk_internal_reflect_AccessorGenerator {
 }
 
-@TargetClass(classNameProvider = Name_jdk_internal_reflect_SerializationConstructorAccessorGenerator_helper.class)
+@TargetClass(classNameProvider = Name_jdk_internal_reflect_SerializationConstructorAccessorGenerator_helper.class, onlyWith = JDK21OrEarlier.class)
 final class Target_jdk_internal_reflect_SerializationConstructorAccessorGenerator {
 
     @Substitute
@@ -55,7 +56,7 @@ final class Target_jdk_internal_reflect_SerializationConstructorAccessorGenerato
     }
 }
 
-@TargetClass(className = "jdk.internal.reflect.SerializationConstructorAccessorImpl")
+@TargetClass(className = "jdk.internal.reflect.SerializationConstructorAccessorImpl", onlyWith = JDK21OrEarlier.class)
 final class Target_jdk_internal_reflect_SerializationConstructorAccessorImpl {
 }
 
