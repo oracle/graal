@@ -98,7 +98,7 @@ public class FieldTypeFlow extends TypeFlow<AnalysisField> implements GlobalFlow
 
     @Override
     public String toString() {
-        return "FieldFlow<" + source.format("%h.%n") + System.lineSeparator() + getState() + ">";
+        return "FieldFlow<" + source.format("%h.%n") + System.lineSeparator() + getStateDescription() + ">";
     }
 
 }

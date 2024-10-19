@@ -248,7 +248,11 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
      * Return the type state of the original flow.
      */
     public TypeState foldTypeFlow(@SuppressWarnings("unused") PointsToAnalysis bb, TypeFlow<?> originalTypeFlow) {
-        return originalTypeFlow == null ? null : originalTypeFlow.getState();
+        if (originalTypeFlow == null) {
+            return null;
+        }
+        assert !originalTypeFlow.isSaturated() : "Saturated flows should not be accessed here: " + originalTypeFlow;
+        return originalTypeFlow.getState();
     }
 
     /**

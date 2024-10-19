@@ -29,6 +29,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -107,7 +108,7 @@ public abstract class TypeFlow<T> {
      */
     protected final AnalysisType declaredType;
 
-    protected volatile TypeState state;
+    private volatile TypeState state;
 
     /** Nonzero iff this flow was enabled by its predicate. */
     @SuppressWarnings("unused") private volatile int isEnabled;
@@ -412,13 +413,41 @@ public abstract class TypeFlow<T> {
         return false;
     }
 
-    public AnalysisType getDeclaredType() {
-        return declaredType;
+    /**
+     * Returns the type state that is currently propagated along the use edges out of this flow. For
+     * disabled flows, this value is always empty. For saturated flows, this value will be
+     * AllInstantiated/AnyPrimitive. This is a helper method that should be used when the user is
+     * not sure what is the state of this flow. If it is known from the context that this flow is
+     * already enabled, use {@link TypeFlow#getState}
+     */
+    public TypeState getOutputState(BigBang bb) {
+        if (!isFlowEnabled()) {
+            return TypeState.forEmpty();
+        } else if (isSaturated() && declaredType != null) {
+            return declaredType.getTypeFlow(bb, true).state;
+        }
+        return state;
     }
 
+    /**
+     * Returns the type state of the flow. Should be used most of the time, but only for flows that
+     * are already enabled.
+     */
     public TypeState getState() {
-        /* GR-58690 - We should not query the type state of disabled flows. */
+        assert isFlowEnabled() : "This method should be used only for enabled flows: " + this;
         return state;
+    }
+
+    /**
+     * Returns the raw type state of this flow regardless of its disabled/enabled/saturation status.
+     * Use this only when you know what you are doing, e.g. for logging.
+     */
+    public TypeState getRawState() {
+        return state;
+    }
+
+    public AnalysisType getDeclaredType() {
+        return declaredType;
     }
 
     public boolean isAllInstantiated() {
@@ -1035,7 +1064,20 @@ public abstract class TypeFlow<T> {
     }
 
     public String format(boolean withState, boolean withSource) {
-        return ClassUtil.getUnqualifiedName(getClass()) + (withSource ? " at " + formatSource() : "") + (withState ? " with state <" + getState() + '>' : "");
+        return ClassUtil.getUnqualifiedName(getClass()) + (withSource ? " at " + formatSource() : "") + (withState ? " with state <" + getStateDescription() + '>' : "");
+    }
+
+    /**
+     * Returns the string representation of the state of this flow, including
+     * disabled/enabled/saturation status. Meant mainly for logging and debugging.
+     */
+    protected final String getStateDescription() {
+        if (!isFlowEnabled()) {
+            return "DISABLED: " + state;
+        } else if (isSaturated()) {
+            return "SATURATED: " + state;
+        }
+        return state.toString();
     }
 
     @Override
