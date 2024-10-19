@@ -92,7 +92,7 @@ public abstract class StoreFieldTypeFlow extends AccessFieldTypeFlow {
 
         @Override
         public String toString() {
-            return "StoreStaticFieldTypeFlow<" + getState() + ">";
+            return "StoreStaticFieldTypeFlow<" + getStateDescription() + ">";
         }
 
     }
@@ -199,7 +199,7 @@ public abstract class StoreFieldTypeFlow extends AccessFieldTypeFlow {
 
         @Override
         public String toString() {
-            return "StoreInstanceFieldTypeFlow<" + getState() + ">";
+            return "StoreInstanceFieldTypeFlow<" + getStateDescription() + ">";
         }
     }
 }

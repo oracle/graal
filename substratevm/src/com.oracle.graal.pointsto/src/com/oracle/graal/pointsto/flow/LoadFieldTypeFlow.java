@@ -81,7 +81,7 @@ public abstract class LoadFieldTypeFlow extends AccessFieldTypeFlow {
 
         @Override
         public String toString() {
-            return "LoadStaticFieldTypeFlow<" + getState() + ">";
+            return "LoadStaticFieldTypeFlow<" + getStateDescription() + ">";
         }
 
     }
@@ -163,7 +163,7 @@ public abstract class LoadFieldTypeFlow extends AccessFieldTypeFlow {
 
         @Override
         public String toString() {
-            return "LoadInstanceFieldTypeFlow<" + getState() + ">";
+            return "LoadInstanceFieldTypeFlow<" + getStateDescription() + ">";
         }
     }
 }
