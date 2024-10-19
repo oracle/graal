@@ -37,7 +37,8 @@ normally, or if an exception escaped).
 `Continuation` implements `Serializable` and can serialize to a backwards compatible format. Because frames can point to
 anything in their parameters and local variables, the class `ContinuationSerializable` provides static
 methods `readObjectExternal` and `writeObjectExternal` which may be used to coordinate serialization of
-continuation-related objects with a non-jdk serialization engine.
+continuation-related objects with a non-jdk serialization engine. Note that when the `--java.Continuum` flag is specified, 
+all lambdas are serializable but deserialization will require special support from your serializer engine.
 
 ## Security
 

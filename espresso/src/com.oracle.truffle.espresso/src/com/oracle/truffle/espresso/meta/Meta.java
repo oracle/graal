@@ -842,6 +842,10 @@ public final class Meta extends ContextAccessImpl {
             java_lang_invoke_MethodHandleNatives_linkDynamicConstant = null;
         }
 
+        ObjectKlass lambdaMetafactory = knownKlass(Type.java_lang_invoke_LambdaMetafactory);
+        java_lang_invoke_LambdaMetafactory_metafactory = lambdaMetafactory.requireDeclaredMethod(Name.metafactory, Signature.CallSite_Lookup_String_MethodType_MethodType_MethodHandle_MethodType);
+        java_lang_invoke_LambdaMetafactory_altMetafactory = lambdaMetafactory.requireDeclaredMethod(Name.altMetafactory, Signature.CallSite_Lookup_String_MethodType_Object_array);
+
         // Interop
         java_time_Duration = knownKlass(Type.java_time_Duration);
         java_time_Duration_seconds = java_time_Duration.requireDeclaredField(Name.seconds, Type._long);
@@ -1707,6 +1711,9 @@ public final class Meta extends ContextAccessImpl {
     public final Method java_lang_invoke_MethodHandleNatives_findMethodHandleType;
     public final Method java_lang_invoke_MethodHandleNatives_linkCallSite;
     public final Method java_lang_invoke_MethodHandleNatives_linkDynamicConstant;
+
+    public final Method java_lang_invoke_LambdaMetafactory_metafactory;
+    public final Method java_lang_invoke_LambdaMetafactory_altMetafactory;
 
     public final Method java_lang_Object_wait;
     public final Method java_lang_Object_toString;
