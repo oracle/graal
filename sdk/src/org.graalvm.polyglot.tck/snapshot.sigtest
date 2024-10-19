@@ -122,6 +122,7 @@ supr java.lang.Object
 hfds executableReturnType,executableValue,id,parameterTypes,verifier
 
 CLSS public final org.graalvm.polyglot.tck.TypeDescriptor
+fld public final static org.graalvm.polyglot.tck.TypeDescriptor ALL
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor ANY
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor ARRAY
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor BOOLEAN
