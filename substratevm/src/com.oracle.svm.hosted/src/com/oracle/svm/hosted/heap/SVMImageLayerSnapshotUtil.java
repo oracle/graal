@@ -31,12 +31,14 @@ import static jdk.graal.compiler.java.LambdaUtils.isLambdaType;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.heap.ImageLayerLoader;
 import com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil;
@@ -45,35 +47,16 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.core.SubstrateDiagnostics;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.c.struct.CInterfaceLocationIdentity;
-import com.oracle.svm.core.deopt.DeoptimizationCounters;
-import com.oracle.svm.core.graal.snippets.DeoptTester;
-import com.oracle.svm.core.graal.snippets.StackOverflowCheckImpl;
-import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
-import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
-import com.oracle.svm.core.jfr.JfrThreadLocal;
-import com.oracle.svm.core.jfr.events.JfrAllocationEvents;
-import com.oracle.svm.core.jfr.events.ThreadCPULoadEvent;
-import com.oracle.svm.core.jfr.sampler.AbstractJfrExecutionSampler;
-import com.oracle.svm.core.jni.JNIObjectHandles;
-import com.oracle.svm.core.jni.JNIThreadLocalEnvironment;
-import com.oracle.svm.core.jni.JNIThreadLocalPendingException;
-import com.oracle.svm.core.jni.JNIThreadLocalPrimitiveArrayViews;
-import com.oracle.svm.core.jni.JNIThreadOwnedMonitors;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
-import com.oracle.svm.core.snippets.ExceptionUnwind;
-import com.oracle.svm.core.snippets.ImplicitExceptions;
-import com.oracle.svm.core.stack.JavaFrameAnchors;
-import com.oracle.svm.core.thread.JavaThreads;
-import com.oracle.svm.core.thread.PlatformThreads;
-import com.oracle.svm.core.thread.Safepoint;
-import com.oracle.svm.core.thread.ThreadingSupportImpl;
-import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
+import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.hosted.VMFeature;
 import com.oracle.svm.hosted.code.FactoryMethod;
 import com.oracle.svm.hosted.code.IncompatibleClassChangeFallbackMethod;
 import com.oracle.svm.hosted.meta.HostedArrayClass;
@@ -81,6 +64,8 @@ import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedSnippetReflectionProvider;
 import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.hosted.thread.VMThreadLocalCollector;
+import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -104,46 +89,59 @@ public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
     protected static final Set<Field> dynamicHubRelinkedFields = Set.of(companion, classInitializationInfo, name, superHub, componentType, arrayHub);
 
     protected final Map<AnalysisType, Set<Integer>> fieldsToRelink = new HashMap<>();
+    private final ImageClassLoader imageClassLoader;
 
     @SuppressWarnings("this-escape")
-    public SVMImageLayerSnapshotUtil() {
+    public SVMImageLayerSnapshotUtil(ImageClassLoader imageClassLoader) {
         super();
-        addExternalValues(DeoptTester.class);
-        addExternalValues(JfrThreadLocal.class);
-        addExternalValues(JfrAllocationEvents.class);
-        addExternalValues(AbstractJfrExecutionSampler.class);
-        addExternalValues(ThreadCPULoadEvent.class);
-        addExternalValues(JNIObjectHandles.class);
-        addExternalValues(JNIThreadLocalPendingException.class);
-        addExternalValues(JNIThreadLocalPrimitiveArrayViews.class);
-        addExternalValues(JNIThreadOwnedMonitors.class);
-        addExternalValues(JNIThreadLocalEnvironment.class);
-        addExternalValues(ExceptionUnwind.class);
-        addExternalValues(JavaThreads.class);
-        addExternalValues(ImplicitExceptions.class);
-        addExternalValues(IdentityHashCodeSupport.class);
-        addExternalValues(StackOverflowCheckImpl.class);
-        addExternalValues(CInterfaceLocationIdentity.class);
-        addExternalValues(JavaFrameAnchors.class);
-        addExternalValues(PlatformThreads.class);
-        addExternalValues(VMThreads.class);
-        addExternalValues(VMThreads.StatusSupport.class);
-        addExternalValues(VMThreads.SafepointBehavior.class);
-        addExternalValues(VMThreads.ActionOnTransitionToJavaSupport.class);
-        addExternalValues(Safepoint.class);
-        addExternalValues(NoAllocationVerifier.class);
-        addExternalValues(ThreadingSupportImpl.class);
-        addExternalValues(ThreadingSupportImpl.RecurringCallbackTimer.class);
-        addExternalValues(DeoptimizationCounters.class);
-        addExternalValues(Objects.requireNonNull(ReflectionUtil.lookupClass(false, "com.oracle.svm.core.genscavenge.ThreadLocalAllocation")));
-        addExternalValues(Objects.requireNonNull(ReflectionUtil.lookupClass(false, "com.oracle.svm.core.genscavenge.graal.BarrierSnippets")));
-        addExternalValues(SubstrateDiagnostics.class);
-        addExternalValues(SubstrateAllocationSnippets.class);
+        this.imageClassLoader = imageClassLoader;
+        addSVMExternalValueFields();
     }
 
-    @Override
-    protected boolean shouldAddExternalValue(Class<?> type) {
-        return FastThreadLocal.class.isAssignableFrom(type) || super.shouldAddExternalValue(type);
+    /**
+     * Gets the externalValues (like {@link ObjectCopier#getExternalValueFields()}) of classes from
+     * the SVM core classes.
+     */
+    private void addSVMExternalValueFields() {
+        for (URI svmURI : getBuilderLocations()) {
+            for (String className : imageClassLoader.classLoaderSupport.classes(svmURI)) {
+                try {
+                    Class<?> clazz = imageClassLoader.forName(className);
+
+                    String packageName = clazz.getPackageName();
+                    if (!shouldScanPackage(packageName)) {
+                        continue;
+                    }
+
+                    /* The ObjectCopier needs to access the static fields by reflection */
+                    Module module = clazz.getModule();
+                    ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, ObjectCopier.class, false, module.getName(), packageName);
+
+                    ObjectCopier.addStaticFinalObjectFields(clazz, externalValueFields);
+                } catch (ClassNotFoundException e) {
+                    throw AnalysisError.shouldNotReachHere("The class %s from the modulePath %s was not found".formatted(className, svmURI.getPath()), e);
+                }
+            }
+        }
+    }
+
+    protected Set<URI> getBuilderLocations() {
+        try {
+            Class<?> vmFeatureClass = ImageSingletons.lookup(VMFeature.class).getClass();
+            URI svmURI = VMFeature.class.getProtectionDomain().getCodeSource().getLocation().toURI();
+            if (vmFeatureClass == VMFeature.class) {
+                return Set.of(svmURI);
+            } else {
+                return Set.of(svmURI, vmFeatureClass.getProtectionDomain().getCodeSource().getLocation().toURI());
+            }
+        } catch (URISyntaxException e) {
+            throw VMError.shouldNotReachHere("Error when trying to get SVM URI", e);
+        }
+    }
+
+    @SuppressWarnings("unused")
+    protected boolean shouldScanPackage(String packageName) {
+        return true;
     }
 
     @Override
@@ -232,7 +230,7 @@ public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
 
     public static class SVMGraphEncoder extends GraphEncoder {
         @SuppressWarnings("this-escape")
-        public SVMGraphEncoder(List<Field> externalValues, ImageLayerWriter imageLayerWriter) {
+        public SVMGraphEncoder(Map<Object, Field> externalValues, ImageLayerWriter imageLayerWriter) {
             super(externalValues, imageLayerWriter);
             addBuiltin(new HostedTypeBuiltIn(null));
             addBuiltin(new HostedMethodBuiltIn(null));
@@ -240,6 +238,7 @@ public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
             addBuiltin(new HostedSnippetReflectionProviderBuiltIn(null));
             addBuiltin(new CInterfaceLocationIdentityBuiltIn());
             addBuiltin(new FastThreadLocalLocationIdentityBuiltIn());
+            addBuiltin(new VMThreadLocalInfoBuiltIn());
         }
     }
 
@@ -253,6 +252,7 @@ public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
             addBuiltin(new HostedSnippetReflectionProviderBuiltIn(snippetReflectionProvider));
             addBuiltin(new CInterfaceLocationIdentityBuiltIn());
             addBuiltin(new FastThreadLocalLocationIdentityBuiltIn());
+            addBuiltin(new VMThreadLocalInfoBuiltIn());
         }
     }
 
@@ -357,18 +357,46 @@ public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
         protected String encode(ObjectCopier.Encoder encoder, Object obj) {
             FastThreadLocal.FastThreadLocalLocationIdentity fastThreadLocalLocationIdentity = (FastThreadLocal.FastThreadLocalLocationIdentity) obj;
             FastThreadLocal fastThreadLocal = ReflectionUtil.readField(FastThreadLocal.FastThreadLocalLocationIdentity.class, "this$0", fastThreadLocalLocationIdentity);
-            Field staticField = encoder.getExternalValues().get(fastThreadLocal);
-            return staticField.getDeclaringClass().getName() + ":" + staticField.getName();
+            return encodeStaticField(encoder, fastThreadLocal);
         }
 
         @Override
         protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, String encoding, String encoded) {
-            String[] fieldParts = encoded.split(":");
-            String className = fieldParts[0];
-            String fieldName = fieldParts[1];
-            Class<?> declaringClass = ReflectionUtil.lookupClass(false, className);
-            FastThreadLocal fastThreadLocal = ReflectionUtil.readStaticField(declaringClass, fieldName);
+            FastThreadLocal fastThreadLocal = getObjectFromStaticField(encoded);
             return fastThreadLocal.getLocationIdentity();
         }
+    }
+
+    public static class VMThreadLocalInfoBuiltIn extends ObjectCopier.Builtin {
+        protected VMThreadLocalInfoBuiltIn() {
+            super(VMThreadLocalInfo.class);
+        }
+
+        @Override
+        protected String encode(ObjectCopier.Encoder encoder, Object obj) {
+            VMThreadLocalInfo vmThreadLocalInfo = (VMThreadLocalInfo) obj;
+            VMThreadLocalCollector vmThreadLocalCollector = ImageSingletons.lookup(VMThreadLocalCollector.class);
+            FastThreadLocal fastThreadLocal = vmThreadLocalCollector.getThreadLocal(vmThreadLocalInfo);
+            return encodeStaticField(encoder, fastThreadLocal);
+        }
+
+        @Override
+        protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, String encoding, String encoded) {
+            FastThreadLocal fastThreadLocal = getObjectFromStaticField(encoded);
+            return ImageSingletons.lookup(VMThreadLocalCollector.class).forFastThreadLocal(fastThreadLocal);
+        }
+    }
+
+    private static String encodeStaticField(ObjectCopier.Encoder encoder, Object object) {
+        Field staticField = encoder.getExternalValues().get(object);
+        return staticField.getDeclaringClass().getName() + ":" + staticField.getName();
+    }
+
+    private static <T> T getObjectFromStaticField(String staticField) {
+        String[] fieldParts = staticField.split(":");
+        String className = fieldParts[0];
+        String fieldName = fieldParts[1];
+        Class<?> declaringClass = ReflectionUtil.lookupClass(false, className);
+        return ReflectionUtil.readStaticField(declaringClass, fieldName);
     }
 }

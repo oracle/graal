@@ -65,6 +65,7 @@ import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.config.HybridLayoutSupport;
 import com.oracle.svm.hosted.heap.SVMImageLayerLoaderHelper;
+import com.oracle.svm.hosted.heap.SVMImageLayerSnapshotUtil;
 import com.oracle.svm.hosted.heap.SVMImageLayerWriterHelper;
 import com.oracle.svm.hosted.image.LIRNativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
@@ -239,6 +240,10 @@ public class HostedConfiguration {
 
     public SVMImageLayerLoaderHelper createSVMImageLayerLoaderHelper() {
         return new SVMImageLayerLoaderHelper(HostedImageLayerBuildingSupport.singleton().getLoader());
+    }
+
+    public SVMImageLayerSnapshotUtil createSVMImageLayerSnapshotUtil(ImageClassLoader imageClassLoader) {
+        return new SVMImageLayerSnapshotUtil(imageClassLoader);
     }
 
     public CompileQueue createCompileQueue(DebugContext debug, FeatureHandler featureHandler, HostedUniverse hostedUniverse, RuntimeConfiguration runtimeConfiguration, boolean deoptimizeAll) {
