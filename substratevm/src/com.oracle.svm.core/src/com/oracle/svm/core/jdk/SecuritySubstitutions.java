@@ -259,7 +259,7 @@ final class ProviderUtil {
             return;
         }
 
-        if (provider.name.equals("SunMSCAPI")) {
+        if ("SunMSCAPI".equals(provider.name)) {
             try {
                 System.loadLibrary("sunmscapi");
             } catch (Throwable ignored) {
