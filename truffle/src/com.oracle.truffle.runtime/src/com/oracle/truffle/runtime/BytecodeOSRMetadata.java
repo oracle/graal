@@ -52,6 +52,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.FrameWithoutBoxing;
@@ -414,7 +415,7 @@ public final class BytecodeOSRMetadata {
 
         OptimizedRuntimeAccessor.ACCESSOR.startOSRFrameTransfer(target);
         // Transfer indexed frame slots
-        transferLoop(description.indexedFrameTags.length, source, target, description.indexedFrameTags);
+        transferLoop(description.indexedFrameTags, source, target);
         // transfer auxiliary slots
         transferAuxiliarySlots(source, target, state);
     }
@@ -422,7 +423,7 @@ public final class BytecodeOSRMetadata {
     /**
      * Transfer state from {@code source} to {@code target}. Can be used to transfer state from an
      * OSR frame to a parent frame. Overall less efficient than its
-     * {@link #transferFrame(FrameWithoutBoxing, FrameWithoutBoxing, int, Object) counterpart},
+     * {@link #transferFrame(FrameWithoutBoxing, FrameWithoutBoxing, long, Object) counterpart},
      * mainly due to not being able to speculate on the source tags: While entering bytecode OSR is
      * done through specific entry points (likely back edges), returning could be done from anywhere
      * within a method body (through regular returns, or exception thrown).
@@ -464,10 +465,11 @@ public final class BytecodeOSRMetadata {
         // The frames should use the same descriptor.
         validateDescriptors(source, target, state);
 
-        // We can't reasonably have constant expected tags for parent frame restoration.
+        // We can't reasonably have constant expected tags for parent frame restoration. We pass
+        // state.frameDescriptor to restoreLoop in order to correctly account for static slots.
 
         // transfer indexed frame slots
-        transferLoop(state.frameDescriptor.getNumberOfSlots(), source, target, null);
+        restoreLoop(state.frameDescriptor, source, target);
         // transfer auxiliary slots
         transferAuxiliarySlots(source, target, state);
     }
@@ -487,26 +489,23 @@ public final class BytecodeOSRMetadata {
     }
 
     /**
-     * Common transfer loop for copying over legacy frame slot or indexed slots from a source frame
-     * to a target frame.
+     * Transfer loop for copying over indexed frame slots from a source parent frame to a target OSR
+     * frame.
      *
-     * @param length Number of slots to transfer. Must be
-     *            {@link CompilerDirectives#isCompilationConstant(Object) compilation constant}
+     * @param expectedTags The array of tags the source is expected to have. If compilation
+     *            constant, frame slot accesses may be simplified.
      * @param source The frame to copy from
      * @param target The frame to copy to
-     * @param expectedTags The array of tags the source is expected to have, or null if no previous
-     *            knowledge of tags was collected. If compilation constant, frame slot accesses may
-     *            be simplified.
      */
     @ExplodeLoop
     private static void transferLoop(
-                    int length,
-                    FrameWithoutBoxing source, FrameWithoutBoxing target,
-                    byte[] expectedTags) {
+                    byte[] expectedTags,
+                    FrameWithoutBoxing source, FrameWithoutBoxing target) {
+        CompilerAsserts.partialEvaluationConstant(expectedTags.length);
         int i = 0;
-        while (i < length) {
+        while (i < expectedTags.length) {
             byte actualTag = source.getTag(i);
-            byte expectedTag = expectedTags == null ? actualTag : expectedTags[i];
+            byte expectedTag = expectedTags[i];
 
             boolean incompatibleTags = expectedTag != actualTag;
             if (incompatibleTags) {
@@ -518,6 +517,33 @@ public final class BytecodeOSRMetadata {
 
             transferIndexedFrameSlot(source, target, i, expectedTag);
             i++;
+        }
+    }
+
+    /**
+     * Transfer loop for copying over indexed frame slots from a source OSR frame to a target parent
+     * frame.
+     *
+     * @param frameDescriptor The common frame descriptor of source and target
+     * @param source The frame to copy from
+     * @param target The frame to copy to
+     */
+    private static void restoreLoop(
+                    FrameDescriptor frameDescriptor,
+                    FrameWithoutBoxing source, FrameWithoutBoxing target) {
+        CompilerAsserts.neverPartOfCompilation();
+        for (int i = 0; i < frameDescriptor.getNumberOfSlots(); i++) {
+            byte tag = source.getTag(i);
+
+            if (tag == 0 && frameDescriptor.getSlotKind(i) == FrameSlotKind.Static) {
+                // When using static slots, the tags might never be initialized. We cannot rely
+                // solely on the source frame instance tags in order to detect static slots and
+                // distinguish them from non-static Object-type slots. Hence, if the tag is 0, we
+                // check the FrameDescriptor whether the slot has a static kind.
+                tag = FrameWithoutBoxing.STATIC_TAG;
+            }
+
+            transferIndexedFrameSlot(source, target, i, tag);
         }
     }
 
