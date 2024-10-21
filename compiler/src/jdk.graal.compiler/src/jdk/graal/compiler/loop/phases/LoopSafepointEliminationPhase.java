@@ -32,9 +32,11 @@ import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.LoopBeginNode.SafepointState;
 import jdk.graal.compiler.nodes.LoopEndNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.extended.ForeignCall;
 import jdk.graal.compiler.nodes.loop.InductionVariable;
@@ -49,7 +51,6 @@ import jdk.graal.compiler.phases.tiers.MidTierContext;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
-
     public static class Options {
         //@formatter:off
         @Option(help = "Removes safepoints on counted loop ends.", type = OptionType.Expert)
@@ -59,33 +60,7 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
 
     private static final long IntegerRangeDistance = NumUtil.unsafeAbs((long) Integer.MAX_VALUE - (long) Integer.MIN_VALUE);
 
-    /**
-     * To be implemented by subclasses to perform additional checks. Returns <code>true</code> if
-     * the safepoint was also disabled in subclasses and we therefore don't need to continue
-     * traversing.
-     */
-    @SuppressWarnings("unused")
-    protected boolean onCallInLoop(LoopEndNode loopEnd, FixedNode currentCallNode) {
-        return true;
-    }
-
-    /**
-     * To be implemented by subclasses to compute additional fields.
-     */
-    @SuppressWarnings("unused")
-    protected void onSafepointDisabledLoopBegin(Loop loop) {
-    }
-
-    /**
-     * Determines whether guest safepoints should be allowed at all. To be implemented by
-     * subclasses. The default implementation returns <code>false</code>, leading to guest
-     * safepoints being disabled for all loops in the graph.
-     */
-    protected boolean allowGuestSafepoints() {
-        return false;
-    }
-
-    public static boolean loopIsIn32BitRange(Loop loop) {
+    public static boolean iterationRangeIsIn32Bit(Loop loop) {
         if (loop.counted().getStamp().getBits() <= 32) {
             return true;
         }
@@ -126,12 +101,143 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
     }
 
     @Override
-    protected final void run(StructuredGraph graph, MidTierContext context) {
-        LoopsData loops = context.getLoopsDataProvider().getLoopsData(graph);
-        if (Options.RemoveLoopSafepoints.getValue(graph.getOptions())) {
+    protected void run(StructuredGraph graph, MidTierContext context) {
+        new Instance(graph, context).optimizeSafepoints();
+    }
+
+    protected static class Instance {
+        private final StructuredGraph graph;
+        private final MidTierContext context;
+
+        protected Instance(StructuredGraph graph, MidTierContext context) {
+            this.graph = graph;
+            this.context = context;
+        }
+
+        /**
+         * Disable safepoints on loop ends by body nodes. If there is a node that is a guaranteed
+         * safepoint (like a call) we can disable the safepoint on the dominated loop end because
+         * there will be a safepoint poll done already on every iteration of the loop.
+         *
+         * So for a pattern
+         *
+         * <pre>
+         * while (header) {
+         *     if (someCondition1) {
+         *         call1();
+         *         continue;
+         *     }
+         *     code();
+         *     if (someCondition2) {
+         *         call2();
+         *         continue;
+         *     }
+         *     restOfBody();
+         * }
+         * </pre>
+         *
+         * we know that both {@code continue} backedges are dominated by a call. {@code call1} and
+         * {@code call2} dominate the backedges. We can remove safepoint polls from both of them
+         * because the call will be a guaranteed safepoint.
+         */
+        private int disableSafepointsByBodyNodes(Loop loop, ControlFlowGraph cfg) {
+            int loopEndSafepointsDisabled = 0;
+            for (LoopEndNode loopEnd : loop.loopBegin().loopEnds()) {
+                HIRBlock b = cfg.blockFor(loopEnd);
+                blocks: while (b != loop.getCFGLoop().getHeader()) {
+                    assert b != null;
+                    for (FixedNode node : b.getNodes()) {
+                        boolean canDisableSafepoint = canDisableSafepoint(node, context);
+                        boolean disabledInSubclass = onCallInLoop(loopEnd, node);
+                        if (canDisableSafepoint) {
+                            loopEnd.disableSafepoint();
+                            graph.getOptimizationLog().report(LoopSafepointEliminationPhase.class, "SafepointElimination", loop.loopBegin());
+                            loopEndSafepointsDisabled++;
+                            /*
+                             * we can only stop if subclasses also say we can stop iterating blocks
+                             */
+                            if (disabledInSubclass) {
+                                break blocks;
+                            }
+                        }
+                    }
+                    b = b.getDominator();
+                }
+            }
+            return loopEndSafepointsDisabled;
+        }
+
+        public void optimizeSafepoints() {
+            final boolean optimisticallyRemoveLoopSafepoints = Options.RemoveLoopSafepoints.getValue(graph.getOptions());
+
+            LoopsData loops = context.getLoopsDataProvider().getLoopsData(graph);
             loops.detectCountedLoops();
-            for (Loop loop : loops.countedLoops()) {
-                if (loop.getCFGLoop().getChildren().isEmpty() && (loop.loopBegin().isPreLoop() || loop.loopBegin().isPostLoop() || loopIsIn32BitRange(loop) || loop.loopBegin().isStripMinedInner())) {
+
+            for (Loop loop : loops.loops()) {
+                if (!allowGuestSafepoints()) {
+                    loop.loopBegin().disableGuestSafepoint(SafepointState.MUST_NEVER_SAFEPOINT);
+                }
+                int loopEndSafepointsDisabled = disableSafepointsByBodyNodes(loop, loops.getCFG());
+                final boolean allLoopEndSafepointsDisabled = loopEndSafepointsDisabled == loop.loopBegin().getLoopEndCount();
+                if (!allLoopEndSafepointsDisabled && optimisticallyRemoveLoopSafepoints) {
+                    if (optimizeSafepointsForCountedLoop(loop)) {
+                        /*
+                         * We removed all loop end safepoints if we do it optimistically for the
+                         * entire loop.
+                         */
+                        loopEndSafepointsDisabled = loop.loopBegin().getLoopEndCount();
+                    }
+                }
+                final boolean allLoopEndSafepointsEnabled = loopEndSafepointsDisabled == 0;
+                if (allLoopEndSafepointsEnabled) {
+                    /*
+                     * Only if ALL paths through the loop are guaranteed to safepoint we can drop
+                     * the exit safepoint. If there is any path left that does not safepoint we
+                     * could be only executing that path and then we need an exit safepoint.
+                     */
+                    loop.loopBegin().disableLoopExitSafepoint(SafepointState.OPTIMIZER_DISABLED);
+                }
+
+            }
+            loops.deleteUnusedNodes();
+        }
+
+        /**
+         * Determines whether guest safepoints should be allowed at all. To be implemented by
+         * subclasses. The default implementation returns <code>false</code>, leading to guest
+         * safepoints being disabled for all loops in the graph.
+         */
+        protected boolean allowGuestSafepoints() {
+            return false;
+        }
+
+        /**
+         * To be implemented by subclasses to perform additional checks. Returns <code>true</code>
+         * if the safepoint was also disabled in subclasses and we therefore don't need to continue
+         * traversing.
+         */
+        @SuppressWarnings("unused")
+        protected boolean onCallInLoop(LoopEndNode loopEnd, FixedNode currentCallNode) {
+            return true;
+        }
+
+        /**
+         * To be implemented by subclasses to compute additional fields.
+         */
+        @SuppressWarnings("unused")
+        protected void onSafepointDisabledLoopBegin(Loop loop) {
+        }
+
+        /**
+         * Tries to optimize away safepoints for the given counted loop completely. We have not been
+         * able to remove safepoints from the loop ends of the given loop yet. However, the
+         * optimizer may believe this loop is short running enough to remove safepoints.
+         */
+        private boolean optimizeSafepointsForCountedLoop(Loop loop) {
+            if (loop.isCounted()) {
+                if (loop.getCFGLoop().getChildren().isEmpty() &&
+                                (loop.loopBegin().isPreLoop() || loop.loopBegin().isPostLoop() || loopIsIn32BitRange(loop) ||
+                                                loop.loopBegin().isStripMinedInner())) {
                     boolean hasSafepoint = false;
                     for (LoopEndNode loopEnd : loop.loopBegin().loopEnds()) {
                         hasSafepoint |= loopEnd.canSafepoint();
@@ -144,51 +250,37 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
                             if (allowsLoopLimitChecks && allowsFloatingGuards) {
                                 loop.counted().createOverFlowGuard();
                             } else {
-                                // Cannot disable this safepoint, because the loop could overflow.
-                                continue;
+                                /*
+                                 * Cannot disable this safepoint, because the loop could overflow.
+                                 */
+                                return false;
                             }
                         }
-                        loop.loopBegin().disableSafepoint();
+                        loop.loopBegin().disableSafepoint(SafepointState.OPTIMIZER_DISABLED);
                         if (loop.loopBegin().isStripMinedInner()) {
-                            // graal strip mined this loop, trust the heuristics and remove the
-                            // inner
-                            // loop safepoint
-                            loop.loopBegin().disableGuestSafepoint();
+                            /*
+                             * graal strip mined this loop, trust the heuristics and remove the
+                             * inner loop safepoint
+                             */
+                            loop.loopBegin().disableGuestSafepoint(SafepointState.OPTIMIZER_DISABLED);
                         } else {
-                            // let the shape of the loop decide whether a guest safepoint is needed
+                            /*
+                             * let the shape of the loop decide whether a guest safepoint is needed
+                             */
                             onSafepointDisabledLoopBegin(loop);
                         }
                         graph.getOptimizationLog().report(LoopSafepointEliminationPhase.class, "SafepointElimination", loop.loopBegin());
+                        return true;
                     }
                 }
             }
+            return false;
         }
-        for (Loop loop : loops.loops()) {
-            if (!allowGuestSafepoints()) {
-                loop.loopBegin().disableGuestSafepoint();
-            }
-            for (LoopEndNode loopEnd : loop.loopBegin().loopEnds()) {
-                HIRBlock b = loops.getCFG().blockFor(loopEnd);
-                blocks: while (b != loop.getCFGLoop().getHeader()) {
-                    assert b != null;
-                    for (FixedNode node : b.getNodes()) {
-                        boolean canDisableSafepoint = canDisableSafepoint(node, context);
-                        boolean disabledInSubclass = onCallInLoop(loopEnd, node);
-                        if (canDisableSafepoint) {
-                            loopEnd.disableSafepoint();
-                            graph.getOptimizationLog().report(LoopSafepointEliminationPhase.class, "SafepointElimination", loop.loopBegin());
 
-                            // we can only stop if subclasses also say we can stop iterating blocks
-                            if (disabledInSubclass) {
-                                break blocks;
-                            }
-                        }
-                    }
-                    b = b.getDominator();
-                }
-            }
+        public boolean loopIsIn32BitRange(Loop loop) {
+            return iterationRangeIsIn32Bit(loop);
         }
-        loops.deleteUnusedNodes();
+
     }
 
     public static boolean canDisableSafepoint(FixedNode node, CoreProviders context) {

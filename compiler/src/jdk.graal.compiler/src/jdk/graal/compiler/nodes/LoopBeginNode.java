@@ -128,11 +128,45 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         return protectedNonOverflowingUnsigned != null;
     }
 
+    /**
+     * State of the safepoint properties of this loop.
+     */
+    public enum SafepointState {
+        /**
+         * Determines that, for whatever reason, we must never create a safepoint related to this
+         * loop. This includes on the backedge or the loop exit.
+         */
+        MUST_NEVER_SAFEPOINT(false),
+        /**
+         * Determines that the optimizer decided there is no need for a safepoint on any backedge or
+         * loop exit.
+         */
+        OPTIMIZER_DISABLED(false),
+        /**
+         * Determines the safepoint poll should be performed.
+         */
+        ENABLED(true);
+
+        private final boolean canSafepoint;
+
+        SafepointState(boolean canSafepoint) {
+            this.canSafepoint = canSafepoint;
+        }
+
+        private boolean canSafepoint() {
+            return canSafepoint;
+        }
+
+    }
+
     /** See {@link LoopEndNode#canSafepoint} for more information. */
-    boolean canEndsSafepoint;
+    SafepointState loopEndsSafepointState;
+
+    /** Same as {@link #loopEndsSafepointState} but for {@link LoopExitNode}. */
+    SafepointState loopExitsSafepointState;
 
     /** See {@link LoopEndNode#canGuestSafepoint} for more information. */
-    boolean canEndsGuestSafepoint;
+    SafepointState guestLoopEndsSafepointState;
 
     /**
      * A guard that proves that this loop's counter never overflows and wraps around (either in the
@@ -168,8 +202,9 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         loopOrigFrequency = 1;
         unswitches = 0;
         splits = 0;
-        this.canEndsSafepoint = true;
-        this.canEndsGuestSafepoint = true;
+        loopEndsSafepointState = SafepointState.ENABLED;
+        loopExitsSafepointState = SafepointState.ENABLED;
+        guestLoopEndsSafepointState = SafepointState.ENABLED;
         loopType = LoopType.SIMPLE_LOOP;
         unrollFactor = 1;
     }
@@ -212,11 +247,19 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
     }
 
     public boolean canEndsSafepoint() {
-        return canEndsSafepoint;
+        return loopEndsSafepointState.canSafepoint();
+    }
+
+    public SafepointState getLoopEndsSafepointState() {
+        return loopEndsSafepointState;
     }
 
     public boolean canEndsGuestSafepoint() {
-        return canEndsGuestSafepoint;
+        return guestLoopEndsSafepointState.canSafepoint();
+    }
+
+    public boolean canExitsSafepoint() {
+        return loopExitsSafepointState.canSafepoint();
     }
 
     public void setStripMinedInner(boolean stripMinedInner) {
@@ -300,18 +343,26 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
     }
 
     /** Disables safepoint for the whole loop, i.e., for all {@link LoopEndNode loop ends}. */
-    public void disableSafepoint() {
+    public void disableSafepoint(SafepointState newState) {
+        GraalError.guarantee(!newState.canSafepoint(), "New state must not safepoint %s", newState);
         /* Store flag locally in case new loop ends are created later on. */
-        this.canEndsSafepoint = false;
+        this.loopEndsSafepointState = newState;
         /* Propagate flag to all existing loop ends. */
         for (LoopEndNode loopEnd : loopEnds()) {
             loopEnd.disableSafepoint();
         }
     }
 
-    public void disableGuestSafepoint() {
+    /** Disables safepoint for the whole loop, i.e., for all {@link LoopEndNode loop ends}. */
+    public void disableLoopExitSafepoint(SafepointState newState) {
+        GraalError.guarantee(!newState.canSafepoint(), "New state must not safepoint %s", newState);
+        this.loopExitsSafepointState = newState;
+    }
+
+    public void disableGuestSafepoint(SafepointState newState) {
+        GraalError.guarantee(!newState.canSafepoint(), "New state must not safepoint %s", newState);
         /* Store flag locally in case new loop ends are created later on. */
-        this.canEndsGuestSafepoint = false;
+        this.guestLoopEndsSafepointState = newState;
         /* Propagate flag to all existing loop ends. */
         for (LoopEndNode loopEnd : loopEnds()) {
             loopEnd.disableGuestSafepoint();
@@ -340,6 +391,10 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
 
     public NodeIterable<LoopExitNode> loopExits() {
         return usages().filter(LoopExitNode.class);
+    }
+
+    public NodeIterable<SafepointNode> loopSafepoints() {
+        return usages().filter(SafepointNode.class);
     }
 
     @Override
@@ -624,6 +679,22 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
              */
             checkDisableCountedBySpeculation(x.bci, graph());
         }
+    }
+
+    public void removeSafepoints() {
+        this.graph().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, this.graph(), "Before removing safepoints at %s", this);
+        for (SafepointNode loopSafepoint : loopSafepoints().snapshot()) {
+            if (loopSafepoint.isAlive()) {
+                if (loopSafepoint.predecessor() != null && loopSafepoint.next() != null) {
+                    this.graph().removeFixed(loopSafepoint);
+                } else {
+                    loopSafepoint.replaceAtPredecessor(null);
+                    loopSafepoint.safeDelete();
+                }
+            }
+        }
+
+        this.graph().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, this.graph(), "After removing safepoints at %s", this);
     }
 
 }
