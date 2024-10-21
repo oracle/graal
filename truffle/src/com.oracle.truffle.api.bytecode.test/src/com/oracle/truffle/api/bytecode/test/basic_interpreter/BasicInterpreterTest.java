@@ -1306,9 +1306,8 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
         // @formatter:on
 
-        // The interpreter can only check liveness if it stores the bci in the frame and it uses
-        // block scoping.
-        assumeTrue(run.interpreterClass() == BasicInterpreterWithStoreBytecodeIndexInFrame.class);
+        // The interpreter can only check liveness if it stores the bci in the frame.
+        assumeTrue(run.storesBciInFrame());
 
         BytecodeRootNodes<BasicInterpreter> nodes = createNodes(BytecodeConfig.DEFAULT, b -> {
             b.beginRoot();
@@ -1370,23 +1369,9 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             assertEquals(42L, readX.getCallTarget().call(materializedFrame));
 
             cont = (ContinuationResult) cont.continueWith(null);
-            materializedFrame = (MaterializedFrame) cont.getResult();
-            boolean threw = false;
-            try {
-                storeX.getCallTarget().call(materializedFrame);
-            } catch (AssertionError err) {
-                // expected
-                threw = true;
-            }
-            assertTrue("Expected an assertion error, but none was thrown.", threw);
-            threw = false;
-            try {
-                readX.getCallTarget().call(materializedFrame);
-            } catch (AssertionError err) {
-                // expected
-                threw = true;
-            }
-            assertTrue("Expected an assertion error, but none was thrown.", threw);
+            MaterializedFrame materializedFrame2 = (MaterializedFrame) cont.getResult();
+            assertThrows(IllegalArgumentException.class, () -> storeX.getCallTarget().call(materializedFrame2));
+            assertThrows(IllegalArgumentException.class, () -> readX.getCallTarget().call(materializedFrame2));
 
             // Ensure next iteration is cached.
             outer.getBytecodeNode().setUncachedThreshold(0);
@@ -1482,23 +1467,9 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
             // Using g's frame
             cont = (ContinuationResult) g.getCallTarget().call();
-            materializedFrame = (MaterializedFrame) cont.getResult();
-            boolean threw = false;
-            try {
-                storeX.getCallTarget().call(materializedFrame);
-            } catch (AssertionError err) {
-                // expected
-                threw = true;
-            }
-            assertTrue("Expected an assertion error, but none was thrown.", threw);
-            threw = false;
-            try {
-                readX.getCallTarget().call(materializedFrame);
-            } catch (AssertionError err) {
-                // expected
-                threw = true;
-            }
-            assertTrue("Expected an assertion error, but none was thrown.", threw);
+            MaterializedFrame materializedFrame2 = (MaterializedFrame) cont.getResult();
+            assertThrows(IllegalArgumentException.class, () -> storeX.getCallTarget().call(materializedFrame2));
+            assertThrows(IllegalArgumentException.class, () -> readX.getCallTarget().call(materializedFrame2));
 
             // Ensure next iteration is cached.
             f.getBytecodeNode().setUncachedThreshold(0);

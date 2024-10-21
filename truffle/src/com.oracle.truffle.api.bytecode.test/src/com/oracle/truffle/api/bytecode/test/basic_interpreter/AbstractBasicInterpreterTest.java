@@ -121,6 +121,10 @@ public abstract class AbstractBasicInterpreterTest {
             return !hasRootScoping();
         }
 
+        public boolean storesBciInFrame() {
+            return interpreterClass == BasicInterpreterWithStoreBytecodeIndexInFrame.class;
+        }
+
         @Override
         public String toString() {
             return interpreterClass.getSimpleName() + "[serialize=" + testSerialize + "]";

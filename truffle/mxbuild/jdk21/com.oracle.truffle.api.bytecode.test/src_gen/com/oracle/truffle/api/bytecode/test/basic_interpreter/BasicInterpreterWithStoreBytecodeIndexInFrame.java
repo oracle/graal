@@ -3988,7 +3988,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
             }
             // Ensure the local we're trying to access is live at the current bci.
             if (locals[localIndexToTableIndex(bci, localIndex) + LOCALS_OFFSET_FRAME_INDEX] != frameIndex) {
-                throw CompilerDirectives.shouldNotReachHere("Inconsistent indices");
+                throw new IllegalArgumentException("Local is out of scope in the frame passed for a materialized local access.");
             }
             return true;
         }
@@ -6492,7 +6492,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
             int localIndex = BYTES.getShort(bc, bci + 6 /* imm local_index */);
             BasicInterpreterWithStoreBytecodeIndexInFrame localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
             if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
-                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+                throw new IllegalArgumentException("Materialized frame belongs to the wrong root node.");
             }
             AbstractBytecodeNode bytecodeNode = localRoot.getBytecodeNodeImpl();
             assert bytecodeNode.validateLocalLivenessInternal(frame, slot, localIndex, stackFrame, bci);
@@ -6539,7 +6539,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
             int localIndex = BYTES.getShort(bc, bci + 6 /* imm local_index */);
             BasicInterpreterWithStoreBytecodeIndexInFrame localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
             if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
-                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+                throw new IllegalArgumentException("Materialized frame belongs to the wrong root node.");
             }
             assert localRoot.getBytecodeNodeImpl().validateLocalLivenessInternal(frame, slot, localIndex, stackFrame, bci);
             try {
@@ -6555,7 +6555,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
             int localIndex = BYTES.getShort(bc, bci + 6 /* imm local_index */);
             BasicInterpreterWithStoreBytecodeIndexInFrame localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
             if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
-                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+                throw new IllegalArgumentException("Materialized frame belongs to the wrong root node.");
             }
             assert localRoot.getBytecodeNodeImpl().validateLocalLivenessInternal(frame, slot, localIndex, stackFrame, bci);
             try {
@@ -6571,7 +6571,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
             int localIndex = BYTES.getShort(bc, bci + 6 /* imm local_index */);
             BasicInterpreterWithStoreBytecodeIndexInFrame localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
             if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
-                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+                throw new IllegalArgumentException("Materialized frame belongs to the wrong root node.");
             }
             assert localRoot.getBytecodeNodeImpl().validateLocalLivenessInternal(frame, slot, localIndex, stackFrame, bci);
             try {
@@ -6587,7 +6587,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
             int localIndex = BYTES.getShort(bc, bci + 6 /* imm local_index */);
             BasicInterpreterWithStoreBytecodeIndexInFrame localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
             if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
-                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+                throw new IllegalArgumentException("Materialized frame belongs to the wrong root node.");
             }
             assert localRoot.getBytecodeNodeImpl().validateLocalLivenessInternal(frame, slot, localIndex, stackFrame, bci);
             try {
@@ -6603,7 +6603,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
             int localIndex = BYTES.getShort(bc, bci + 6 /* imm local_index */);
             BasicInterpreterWithStoreBytecodeIndexInFrame localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
             if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
-                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+                throw new IllegalArgumentException("Materialized frame belongs to the wrong root node.");
             }
             assert localRoot.getBytecodeNodeImpl().validateLocalLivenessInternal(frame, slot, localIndex, stackFrame, bci);
             FRAMES.setObject(stackFrame, sp - 1, FRAMES.requireObject(frame, slot));
@@ -6617,7 +6617,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
             int operandIndex = BYTES.getIntUnaligned(bc, bci + 8 /* imm child0 */);
             BasicInterpreterWithStoreBytecodeIndexInFrame localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
             if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
-                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+                throw new IllegalArgumentException("Materialized frame belongs to the wrong root node.");
             }
             AbstractBytecodeNode bytecodeNode = localRoot.getBytecodeNodeImpl();
             assert bytecodeNode.validateLocalLivenessInternal(frame, slot, localIndex, stackFrame, bci);
@@ -6713,7 +6713,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
             int localIndex = BYTES.getShort(bc, bci + 6 /* imm local_index */);
             BasicInterpreterWithStoreBytecodeIndexInFrame localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
             if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
-                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+                throw new IllegalArgumentException("Materialized frame belongs to the wrong root node.");
             }
             AbstractBytecodeNode bytecodeNode = localRoot.getBytecodeNodeImpl();
             assert bytecodeNode.validateLocalLivenessInternal(frame, slot, localIndex, stackFrame, bci);
@@ -6749,7 +6749,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
             int localIndex = BYTES.getShort(bc, bci + 6 /* imm local_index */);
             BasicInterpreterWithStoreBytecodeIndexInFrame localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
             if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
-                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+                throw new IllegalArgumentException("Materialized frame belongs to the wrong root node.");
             }
             AbstractBytecodeNode bytecodeNode = localRoot.getBytecodeNodeImpl();
             assert bytecodeNode.validateLocalLivenessInternal(frame, slot, localIndex, stackFrame, bci);
@@ -6780,7 +6780,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
             int localIndex = BYTES.getShort(bc, bci + 6 /* imm local_index */);
             BasicInterpreterWithStoreBytecodeIndexInFrame localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
             if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
-                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+                throw new IllegalArgumentException("Materialized frame belongs to the wrong root node.");
             }
             AbstractBytecodeNode bytecodeNode = localRoot.getBytecodeNodeImpl();
             assert bytecodeNode.validateLocalLivenessInternal(frame, slot, localIndex, stackFrame, bci);
@@ -6816,7 +6816,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
             int localIndex = BYTES.getShort(bc, bci + 6 /* imm local_index */);
             BasicInterpreterWithStoreBytecodeIndexInFrame localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
             if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
-                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+                throw new IllegalArgumentException("Materialized frame belongs to the wrong root node.");
             }
             AbstractBytecodeNode bytecodeNode = localRoot.getBytecodeNodeImpl();
             assert bytecodeNode.validateLocalLivenessInternal(frame, slot, localIndex, stackFrame, bci);
@@ -6847,7 +6847,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
             int localIndex = BYTES.getShort(bc, bci + 6 /* imm local_index */);
             BasicInterpreterWithStoreBytecodeIndexInFrame localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
             if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
-                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+                throw new IllegalArgumentException("Materialized frame belongs to the wrong root node.");
             }
             assert localRoot.getBytecodeNodeImpl().validateLocalLivenessInternal(frame, slot, localIndex, stackFrame, bci);
             FRAMES.setObject(frame, slot, local);
@@ -9532,7 +9532,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
             int localIndex = BYTES.getShort(bc, bci + 6 /* imm local_index */);
             BasicInterpreterWithStoreBytecodeIndexInFrame localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
             if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
-                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+                throw new IllegalArgumentException("Materialized frame belongs to the wrong root node.");
             }
             assert localRoot.getBytecodeNodeImpl().validateLocalLivenessInternal(frame, slot, localIndex, stackFrame, bci);
             FRAMES.setObject(stackFrame, sp - 1, FRAMES.requireObject(frame, slot));
@@ -9545,7 +9545,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
             int localIndex = BYTES.getShort(bc, bci + 6 /* imm local_index */);
             BasicInterpreterWithStoreBytecodeIndexInFrame localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
             if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
-                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+                throw new IllegalArgumentException("Materialized frame belongs to the wrong root node.");
             }
             assert localRoot.getBytecodeNodeImpl().validateLocalLivenessInternal(frame, slot, localIndex, stackFrame, bci);
             FRAMES.setObject(frame, slot, local);
@@ -11264,8 +11264,13 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
         }
 
         private void validateLocalScope(BytecodeLocal local) {
-            if (!((BytecodeLocalImpl) local).scope.valid) {
-                throw failArgument("Local variable scope of this local no longer valid.");
+            BytecodeLocalImpl localImpl = (BytecodeLocalImpl) local;
+            if (!localImpl.scope.valid) {
+                throw failArgument("Local variable scope of this local is no longer valid.");
+            }
+            RootData rootOperationData = getCurrentRootOperationData();
+            if (rootOperationData.index != localImpl.rootIndex) {
+                throw failArgument("Local variable must belong to the current root node. Consider using materialized local accesses to access locals from an outer root node.");
             }
         }
 
@@ -11298,6 +11303,13 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
             afterChild(true, bci - 6);
         }
 
+        private void validateMaterializedLocalScope(BytecodeLocal local) {
+            BytecodeLocalImpl localImpl = (BytecodeLocalImpl) local;
+            if (!localImpl.scope.valid) {
+                throw failArgument("Local variable scope of this local is no longer valid.");
+            }
+        }
+
         /**
          * Begins a built-in LoadLocalMaterialized operation.
          * <p>
@@ -11325,7 +11337,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                 return;
             }
             validateRootOperationBegin();
-            validateLocalScope(local);
+            validateMaterializedLocalScope(local);
             beforeChild();
             BytecodeLocalImpl operationData = (BytecodeLocalImpl)local;
             beginOperation(Operations.LOADLOCALMATERIALIZED, operationData);
@@ -11444,7 +11456,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                 return;
             }
             validateRootOperationBegin();
-            validateLocalScope(local);
+            validateMaterializedLocalScope(local);
             beforeChild();
             StoreLocalData operationData = new StoreLocalData((BytecodeLocalImpl)local);
             beginOperation(Operations.STORELOCALMATERIALIZED, operationData);
@@ -13885,6 +13897,14 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
             if (rootOperationSp == -1) {
                 throw failState("Unexpected operation emit - no root operation present. Did you forget a beginRoot()?");
             }
+        }
+
+        private RootData getCurrentRootOperationData() {
+            validateRootOperationBegin();
+            if (!(operationStack[rootOperationSp].data instanceof RootData rootOperationData)) {
+                throw assertionFailed("Data class RootData expected, but was " + operationStack[rootOperationSp].data);
+            }
+            return rootOperationData;
         }
 
         private void beforeChild() {

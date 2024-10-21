@@ -52,14 +52,17 @@ import java.util.List;
 
 import org.junit.Test;
 
+import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
+import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.Instruction;
 import com.oracle.truffle.api.bytecode.Instruction.Argument;
 import com.oracle.truffle.api.bytecode.Instruction.Argument.Kind;
 import com.oracle.truffle.api.bytecode.LocalVariable;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 
 public class LocalsTest extends AbstractBasicInterpreterTest {
 
@@ -723,6 +726,285 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
             assertSame(defaultLocal, root.getCallTarget().call(false));
         }
 
+    }
+
+    @Test
+    public void testInvalidLocalAccesses() {
+        assertThrows(IllegalArgumentException.class, () -> {
+            parseNode("invalidLocalRead", b -> {
+                b.beginRoot();
+                BytecodeLocal x = b.createLocal("x", null);
+                b.emitLoadNull();
+                b.endRoot();
+                b.beginRoot();
+                b.createLocal("y", null);
+                b.emitLoadLocal(x);
+                b.endRoot();
+            });
+        });
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            parseNode("invalidOuterLocalRead", b -> {
+                b.beginRoot();
+                BytecodeLocal x = b.createLocal("x", null);
+                b.beginRoot(); // inner
+                b.createLocal("y", null);
+                b.emitLoadLocal(x);
+                b.endRoot();
+                b.endRoot();
+            });
+        });
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            parseNode("invalidOuterLocalWrite", b -> {
+                b.beginRoot();
+                BytecodeLocal x = b.createLocal("x", null);
+                b.beginRoot(); // inner
+                b.createLocal("y", null);
+                b.beginStoreLocal(x);
+                b.emitLoadArgument(0);
+                b.endStoreLocal();
+                b.endRoot();
+                b.endRoot();
+            });
+        });
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            parseNode("invalidInnerLocalRead", b -> {
+                b.beginRoot();
+                b.createLocal("x", null);
+                b.beginRoot(); // inner
+                BytecodeLocal y = b.createLocal("y", null);
+                b.endRoot();
+                b.emitLoadLocal(y);
+                b.endRoot();
+            });
+        });
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            parseNode("invalidInnerLocalStore", b -> {
+                b.beginRoot();
+                b.createLocal("x", null);
+                b.beginRoot(); // inner
+                BytecodeLocal y = b.createLocal("y", null);
+                b.endRoot();
+                b.beginStoreLocal(y);
+                b.emitLoadArgument(0);
+                b.endStoreLocal();
+                b.endRoot();
+            });
+        });
+
+        if (run.hasBlockScoping()) {
+            assertThrows(IllegalArgumentException.class, () -> {
+                parseNode("outOfScopeLocalRead", b -> {
+                    b.beginRoot();
+                    b.beginBlock();
+                    BytecodeLocal x = b.createLocal("x", null);
+                    b.endBlock();
+                    b.beginBlock();
+                    b.emitLoadLocal(x);
+                    b.endBlock();
+                    b.endRoot();
+                });
+            });
+
+            assertThrows(IllegalArgumentException.class, () -> {
+                parseNode("outOfScopeLocalStore", b -> {
+                    b.beginRoot();
+                    b.beginBlock();
+                    BytecodeLocal x = b.createLocal("x", null);
+                    b.endBlock();
+                    b.beginBlock();
+                    b.beginStoreLocal(x);
+                    b.emitLoadNull();
+                    b.endStoreLocal();
+                    b.endBlock();
+                    b.endRoot();
+                });
+            });
+        }
+    }
+
+    @Test
+    public void testInvalidMaterializedLocalAccesses() {
+        assertThrows(IllegalArgumentException.class, () -> {
+            parseNode("invalidMaterializedLocalRead", b -> {
+                b.beginRoot();
+                BytecodeLocal x = b.createLocal("x", null);
+                b.emitLoadNull();
+                b.endRoot();
+                b.beginRoot();
+                b.createLocal("y", null);
+                b.beginLoadLocalMaterialized(x);
+                b.emitLoadArgument(0);
+                b.endLoadLocalMaterialized();
+                b.endRoot();
+            });
+        });
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            parseNode("invalidMaterializedLocalStore", b -> {
+                b.beginRoot();
+                BytecodeLocal x = b.createLocal("x", null);
+                b.emitLoadNull();
+                b.endRoot();
+                b.beginRoot();
+                b.createLocal("y", null);
+                b.beginStoreLocalMaterialized(x);
+                b.emitLoadArgument(0);
+                b.emitLoadArgument(1);
+                b.endStoreLocalMaterialized();
+                b.endRoot();
+            });
+        });
+
+        BasicInterpreter root1 = createNodes(BytecodeConfig.DEFAULT, b -> {
+            b.beginRoot();
+            BytecodeLocal x = b.createLocal("x", null);
+            b.beginStoreLocal(x);
+            b.emitLoadConstant(42L);
+            b.endStoreLocal();
+
+            b.beginRoot(); // inner
+            b.createLocal("y", null);
+            b.beginLoadLocalMaterialized(x);
+            b.emitMaterializeFrame(); // inner frame used
+            b.endLoadLocalMaterialized();
+            b.endRoot();
+
+            b.endRoot();
+        }).getNode(1);
+        assertThrows(IllegalArgumentException.class, () -> root1.getCallTarget().call());
+
+        BasicInterpreter root2 = createNodes(BytecodeConfig.DEFAULT, b -> {
+            b.beginRoot();
+            BytecodeLocal x = b.createLocal("x", null);
+            b.beginStoreLocal(x);
+            b.emitLoadConstant(42L);
+            b.endStoreLocal();
+
+            b.beginRoot(); // inner
+            b.createLocal("y", null);
+            b.beginStoreLocalMaterialized(x);
+            b.emitMaterializeFrame(); // inner frame used
+            b.emitLoadNull();
+            b.endStoreLocalMaterialized();
+            b.endRoot();
+
+            b.endRoot();
+        }).getNode(1);
+        assertThrows(IllegalArgumentException.class, () -> root2.getCallTarget().call());
+
+        if (run.hasBlockScoping()) {
+            assertThrows(IllegalArgumentException.class, () -> {
+                parseNode("outOfScopeMaterializedLocalReadSameRoot", b -> {
+                    b.beginRoot();
+                    b.beginBlock();
+                    BytecodeLocal x = b.createLocal("x", null);
+                    b.endBlock();
+                    b.beginBlock();
+                    b.createLocal("y", null);
+                    b.beginLoadLocalMaterialized(x);
+                    b.emitMaterializeFrame();
+                    b.endLoadLocalMaterialized();
+                    b.endBlock();
+                    b.endRoot();
+                });
+            });
+
+            assertThrows(IllegalArgumentException.class, () -> {
+                parseNode("outOfScopeMaterializedLocalStoreSameRoot", b -> {
+                    b.beginRoot();
+                    b.beginBlock();
+                    BytecodeLocal x = b.createLocal("x", null);
+                    b.endBlock();
+                    b.beginBlock();
+                    b.createLocal("y", null);
+                    b.beginStoreLocalMaterialized(x);
+                    b.emitMaterializeFrame();
+                    b.emitLoadNull();
+                    b.endStoreLocalMaterialized();
+                    b.endBlock();
+                    b.endRoot();
+                });
+            });
+
+            assertThrows(IllegalArgumentException.class, () -> {
+                parseNode("outOfScopeMaterializedLocalReadDifferentRoot", b -> {
+                    b.beginRoot();
+                    b.beginBlock();
+                    BytecodeLocal x = b.createLocal("x", null);
+                    b.endBlock();
+                    b.beginBlock();
+                    b.createLocal("y", null);
+
+                    b.beginRoot(); // x is out of scope when inner root declared
+                    b.beginLoadLocalMaterialized(x);
+                    b.emitMaterializeFrame();
+                    b.endLoadLocalMaterialized();
+                    b.endRoot();
+
+                    b.endBlock();
+                    b.endRoot();
+                });
+            });
+
+            assertThrows(IllegalArgumentException.class, () -> {
+                parseNode("outOfScopeMaterializedLocalStoreDifferentRoot", b -> {
+                    b.beginRoot();
+                    b.beginBlock();
+                    BytecodeLocal x = b.createLocal("x", null);
+                    b.endBlock();
+                    b.beginBlock();
+                    b.createLocal("y", null);
+
+                    b.beginRoot(); // x is out of scope when inner root declared
+                    b.beginStoreLocalMaterialized(x);
+                    b.emitMaterializeFrame();
+                    b.emitLoadNull();
+                    b.endStoreLocalMaterialized();
+                    b.endRoot();
+
+                    b.endBlock();
+                    b.endRoot();
+                });
+            });
+
+            if (run.storesBciInFrame()) {
+                BytecodeRootNodes<BasicInterpreter> roots = createNodes(BytecodeConfig.DEFAULT, b -> {
+                    b.beginRoot();
+                    b.beginBlock();
+                    BytecodeLocal x = b.createLocal("x", null);
+                    b.beginStoreLocal(x);
+                    b.emitLoadConstant(42L);
+                    b.endStoreLocal();
+
+                    b.beginRoot(); // x is statically in scope
+                    b.beginLoadLocalMaterialized(x);
+                    b.emitLoadArgument(0);
+                    b.endLoadLocalMaterialized();
+                    b.endRoot();
+
+                    b.beginRoot(); // x is statically in scope
+                    b.beginStoreLocalMaterialized(x);
+                    b.emitLoadArgument(0);
+                    b.emitLoadNull();
+                    b.endStoreLocalMaterialized();
+                    b.endRoot();
+
+                    b.endBlock();
+                    b.beginBlock();
+                    b.createLocal("y", null);
+                    b.emitMaterializeFrame(); // x is out of scope in this frame
+                    b.endBlock();
+                    b.endRoot();
+                });
+                MaterializedFrame outerFrame = (MaterializedFrame) roots.getNode(0).getCallTarget().call();
+                assertThrows(IllegalArgumentException.class, () -> roots.getNode(1).getCallTarget().call(outerFrame));
+                assertThrows(IllegalArgumentException.class, () -> roots.getNode(2).getCallTarget().call(outerFrame));
+            }
+        }
     }
 
 }

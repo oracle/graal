@@ -5615,7 +5615,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             int localIndex = BYTES.getShort(bc, bci + 6 /* imm local_index */);
             SLBytecodeRootNodeGen localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
             if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
-                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+                throw new IllegalArgumentException("Materialized frame belongs to the wrong root node.");
             }
             AbstractBytecodeNode bytecodeNode = localRoot.getBytecodeNodeImpl();
             byte tag = bytecodeNode.getCachedLocalTagInternal(bytecodeNode.getLocalTags(), localIndex);
@@ -5653,7 +5653,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             int localIndex = BYTES.getShort(bc, bci + 6 /* imm local_index */);
             SLBytecodeRootNodeGen localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
             if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
-                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+                throw new IllegalArgumentException("Materialized frame belongs to the wrong root node.");
             }
             try {
                 FRAMES.setObject(stackFrame, sp - 1, FRAMES.expectLong(frame, slot));
@@ -5668,7 +5668,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             int localIndex = BYTES.getShort(bc, bci + 6 /* imm local_index */);
             SLBytecodeRootNodeGen localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
             if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
-                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+                throw new IllegalArgumentException("Materialized frame belongs to the wrong root node.");
             }
             try {
                 FRAMES.setLong(stackFrame, sp - 1, FRAMES.expectLong(frame, slot));
@@ -5683,7 +5683,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             int localIndex = BYTES.getShort(bc, bci + 6 /* imm local_index */);
             SLBytecodeRootNodeGen localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
             if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
-                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+                throw new IllegalArgumentException("Materialized frame belongs to the wrong root node.");
             }
             try {
                 FRAMES.setObject(stackFrame, sp - 1, FRAMES.expectBoolean(frame, slot));
@@ -5698,7 +5698,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             int localIndex = BYTES.getShort(bc, bci + 6 /* imm local_index */);
             SLBytecodeRootNodeGen localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
             if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
-                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+                throw new IllegalArgumentException("Materialized frame belongs to the wrong root node.");
             }
             try {
                 FRAMES.setBoolean(stackFrame, sp - 1, FRAMES.expectBoolean(frame, slot));
@@ -5713,7 +5713,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             int localIndex = BYTES.getShort(bc, bci + 6 /* imm local_index */);
             SLBytecodeRootNodeGen localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
             if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
-                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+                throw new IllegalArgumentException("Materialized frame belongs to the wrong root node.");
             }
             FRAMES.setObject(stackFrame, sp - 1, FRAMES.requireObject(frame, slot));
         }
@@ -5726,7 +5726,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             int operandIndex = BYTES.getIntUnaligned(bc, bci + 8 /* imm child0 */);
             SLBytecodeRootNodeGen localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
             if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
-                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+                throw new IllegalArgumentException("Materialized frame belongs to the wrong root node.");
             }
             AbstractBytecodeNode bytecodeNode = localRoot.getBytecodeNodeImpl();
             if (operandIndex != -1) {
@@ -5811,7 +5811,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             int localIndex = BYTES.getShort(bc, bci + 6 /* imm local_index */);
             SLBytecodeRootNodeGen localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
             if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
-                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+                throw new IllegalArgumentException("Materialized frame belongs to the wrong root node.");
             }
             AbstractBytecodeNode bytecodeNode = localRoot.getBytecodeNodeImpl();
             byte tag = bytecodeNode.getCachedLocalTagInternal(bytecodeNode.getLocalTags(), localIndex);
@@ -5846,7 +5846,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             int localIndex = BYTES.getShort(bc, bci + 6 /* imm local_index */);
             SLBytecodeRootNodeGen localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
             if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
-                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+                throw new IllegalArgumentException("Materialized frame belongs to the wrong root node.");
             }
             AbstractBytecodeNode bytecodeNode = localRoot.getBytecodeNodeImpl();
             byte tag = bytecodeNode.getCachedLocalTagInternal(bytecodeNode.getLocalTags(), localIndex);
@@ -5876,7 +5876,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             int localIndex = BYTES.getShort(bc, bci + 6 /* imm local_index */);
             SLBytecodeRootNodeGen localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
             if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
-                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+                throw new IllegalArgumentException("Materialized frame belongs to the wrong root node.");
             }
             AbstractBytecodeNode bytecodeNode = localRoot.getBytecodeNodeImpl();
             byte tag = bytecodeNode.getCachedLocalTagInternal(bytecodeNode.getLocalTags(), localIndex);
@@ -5911,7 +5911,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             int localIndex = BYTES.getShort(bc, bci + 6 /* imm local_index */);
             SLBytecodeRootNodeGen localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
             if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
-                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+                throw new IllegalArgumentException("Materialized frame belongs to the wrong root node.");
             }
             AbstractBytecodeNode bytecodeNode = localRoot.getBytecodeNodeImpl();
             byte tag = bytecodeNode.getCachedLocalTagInternal(bytecodeNode.getLocalTags(), localIndex);
@@ -5941,7 +5941,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             int localIndex = BYTES.getShort(bc, bci + 6 /* imm local_index */);
             SLBytecodeRootNodeGen localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
             if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
-                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+                throw new IllegalArgumentException("Materialized frame belongs to the wrong root node.");
             }
             FRAMES.setObject(frame, slot, local);
             FRAMES.clear(stackFrame, sp - 1);
@@ -8182,7 +8182,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             int localIndex = BYTES.getShort(bc, bci + 6 /* imm local_index */);
             SLBytecodeRootNodeGen localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
             if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
-                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+                throw new IllegalArgumentException("Materialized frame belongs to the wrong root node.");
             }
             FRAMES.setObject(stackFrame, sp - 1, FRAMES.requireObject(frame, slot));
         }
@@ -8194,7 +8194,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             int localIndex = BYTES.getShort(bc, bci + 6 /* imm local_index */);
             SLBytecodeRootNodeGen localRoot = this.getRoot().getBytecodeRootNodeImpl(localRootIndex);
             if (localRoot.getFrameDescriptor() != frame.getFrameDescriptor()) {
-                throw CompilerDirectives.shouldNotReachHere("Materialized frame belongs to the wrong root node.");
+                throw new IllegalArgumentException("Materialized frame belongs to the wrong root node.");
             }
             FRAMES.setObject(frame, slot, local);
             FRAMES.clear(stackFrame, sp - 1);
@@ -9724,8 +9724,13 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
         }
 
         private void validateLocalScope(BytecodeLocal local) {
-            if (!((BytecodeLocalImpl) local).scope.valid) {
-                throw failArgument("Local variable scope of this local no longer valid.");
+            BytecodeLocalImpl localImpl = (BytecodeLocalImpl) local;
+            if (!localImpl.scope.valid) {
+                throw failArgument("Local variable scope of this local is no longer valid.");
+            }
+            RootData rootOperationData = getCurrentRootOperationData();
+            if (rootOperationData.index != localImpl.rootIndex) {
+                throw failArgument("Local variable must belong to the current root node. Consider using materialized local accesses to access locals from an outer root node.");
             }
         }
 
@@ -9757,6 +9762,13 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             afterChild(true, bci - 6);
         }
 
+        private void validateMaterializedLocalScope(BytecodeLocal local) {
+            BytecodeLocalImpl localImpl = (BytecodeLocalImpl) local;
+            if (!localImpl.scope.valid) {
+                throw failArgument("Local variable scope of this local is no longer valid.");
+            }
+        }
+
         /**
          * Begins a built-in LoadLocalMaterialized operation.
          * <p>
@@ -9783,7 +9795,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 return;
             }
             validateRootOperationBegin();
-            validateLocalScope(local);
+            validateMaterializedLocalScope(local);
             beforeChild();
             BytecodeLocalImpl operationData = (BytecodeLocalImpl)local;
             beginOperation(Operations.LOADLOCALMATERIALIZED, operationData);
@@ -9898,7 +9910,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                 return;
             }
             validateRootOperationBegin();
-            validateLocalScope(local);
+            validateMaterializedLocalScope(local);
             beforeChild();
             StoreLocalData operationData = new StoreLocalData((BytecodeLocalImpl)local);
             beginOperation(Operations.STORELOCALMATERIALIZED, operationData);
@@ -11453,6 +11465,14 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
             if (rootOperationSp == -1) {
                 throw failState("Unexpected operation emit - no root operation present. Did you forget a beginRoot()?");
             }
+        }
+
+        private RootData getCurrentRootOperationData() {
+            validateRootOperationBegin();
+            if (!(operationStack[rootOperationSp].data instanceof RootData rootOperationData)) {
+                throw assertionFailed("Data class RootData expected, but was " + operationStack[rootOperationSp].data);
+            }
+            return rootOperationData;
         }
 
         private void beforeChild() {
