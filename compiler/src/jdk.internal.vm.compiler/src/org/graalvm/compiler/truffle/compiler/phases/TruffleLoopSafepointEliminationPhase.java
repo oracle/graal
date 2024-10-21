@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.truffle.compiler.phases;
 
+<<<<<<< HEAD:compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/truffle/compiler/phases/TruffleLoopSafepointEliminationPhase.java
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.loop.phases.LoopSafepointEliminationPhase;
 import org.graalvm.compiler.nodes.CallTargetNode;
@@ -35,6 +36,20 @@ import org.graalvm.compiler.nodes.loop.LoopEx;
 import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
 import org.graalvm.compiler.truffle.compiler.KnownTruffleTypes;
 
+=======
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.loop.phases.LoopSafepointEliminationPhase;
+import jdk.graal.compiler.nodes.CallTargetNode;
+import jdk.graal.compiler.nodes.FixedNode;
+import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.LoopEndNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;
+import jdk.graal.compiler.nodes.loop.Loop;
+import jdk.graal.compiler.nodes.virtual.CommitAllocationNode;
+import jdk.graal.compiler.phases.tiers.MidTierContext;
+import jdk.graal.compiler.truffle.KnownTruffleTypes;
+>>>>>>> c0405ac1a58 (safepoint elimination: refactorings):compiler/src/jdk.graal.compiler/src/jdk/graal/compiler/truffle/phases/TruffleLoopSafepointEliminationPhase.java
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -53,30 +68,46 @@ public final class TruffleLoopSafepointEliminationPhase extends LoopSafepointEli
     }
 
     @Override
+<<<<<<< HEAD:compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/truffle/compiler/phases/TruffleLoopSafepointEliminationPhase.java
     protected void onSafepointDisabledLoopBegin(LoopEx loop) {
         for (Node node : loop.whole().nodes()) {
             if (node instanceof CommitAllocationNode || node instanceof AbstractNewObjectNode) {
                 // we can disable truffle safepoints if there are no allocations
                 // allocations are no implicit safepoint for truffle
                 return;
+=======
+    protected void run(StructuredGraph graph, MidTierContext context) {
+        LoopSafepointEliminationPhase.Instance instance = new LoopSafepointEliminationPhase.Instance(graph, context) {
+
+            @Override
+            protected void onSafepointDisabledLoopBegin(Loop loop) {
+                for (Node node : loop.whole().nodes()) {
+                    if (node instanceof CommitAllocationNode || node instanceof AbstractNewObjectNode) {
+                        // we can disable truffle safepoints if there are no allocations
+                        // allocations are no implicit safepoint for truffle
+                        return;
+                    }
+                }
+                loop.loopBegin().disableGuestSafepoint(loop.loopBegin().getLoopEndsSafepointState());
+>>>>>>> c0405ac1a58 (safepoint elimination: refactorings):compiler/src/jdk.graal.compiler/src/jdk/graal/compiler/truffle/phases/TruffleLoopSafepointEliminationPhase.java
             }
-        }
-        loop.loopBegin().disableGuestSafepoint();
-    }
 
-    @Override
-    protected boolean onCallInLoop(LoopEndNode loopEnd, FixedNode currentCallNode) {
-        if (currentCallNode instanceof Invoke && isTruffleCall((Invoke) currentCallNode)) {
-            // only truffle calls imply a truffle safepoint at method exits
-            loopEnd.disableGuestSafepoint();
-            return true;
-        }
-        return false;
-    }
+            @Override
+            protected boolean onCallInLoop(LoopEndNode loopEnd, FixedNode currentCallNode) {
+                if (currentCallNode instanceof Invoke && isTruffleCall((Invoke) currentCallNode)) {
+                    // only truffle calls imply a truffle safepoint at method exits
+                    loopEnd.disableGuestSafepoint();
+                    return true;
+                }
+                return false;
+            }
 
-    @Override
-    protected boolean allowGuestSafepoints() {
-        return true;
+            @Override
+            protected boolean allowGuestSafepoints() {
+                return true;
+            }
+        };
+        instance.optimizeSafepoints();
     }
 
     private boolean isTruffleCall(Invoke call) {
