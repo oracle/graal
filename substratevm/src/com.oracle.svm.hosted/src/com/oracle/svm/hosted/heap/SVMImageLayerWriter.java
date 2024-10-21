@@ -213,12 +213,12 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     }
 
     @Override
-    protected void persistConstant(ImageHeapConstant imageHeapConstant, EconomicMap<String, Object> constantMap) {
+    protected void persistConstant(int parentId, int index, ImageHeapConstant imageHeapConstant, EconomicMap<String, Object> constantMap) {
         ObjectInfo objectInfo = nativeImageHeap.getConstantInfo(imageHeapConstant);
         if (objectInfo != null) {
             constantMap.put(OBJECT_OFFSET_TAG, String.valueOf(objectInfo.getOffset()));
         }
-        super.persistConstant(imageHeapConstant, constantMap);
+        super.persistConstant(parentId, index, imageHeapConstant, constantMap);
     }
 
     @Override

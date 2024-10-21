@@ -56,6 +56,8 @@ public class ImageLayerSnapshotUtil {
 
     public static final String PERSISTED = "persisted";
 
+    public static final int UNDEFINED_CONSTANT_ID = -1;
+    public static final int UNDEFINED_FIELD_INDEX = -1;
     public static final int NULL_POINTER_CONSTANT = -1;
     public static final int NOT_MATERIALIZED_CONSTANT = -2;
     public static final String OBJECT_TAG = "A";
@@ -114,6 +116,8 @@ public class ImageLayerSnapshotUtil {
     public static final String TARGET_CONSTRUCTOR_TAG = "target constructor";
     public static final String THROW_ALLOCATED_OBJECT_TAG = "throw allocated object";
     public static final String IDENTITY_HASH_CODE_TAG = "identityHashCode";
+    public static final String PARENT_CONSTANT_ID_TAG = "parent constant id";
+    public static final String PARENT_CONSTANT_INDEX_TAG = "parent constant index";
     public static final String HUB_IDENTITY_HASH_CODE_TAG = "hub identityHashCode";
     public static final String IS_INITIALIZED_AT_BUILD_TIME_TAG = "is initialized at build time";
     public static final String IS_NO_INITIALIZER_NO_TRACKING_TAG = "in no initializer no tracking";
@@ -210,6 +214,10 @@ public class ImageLayerSnapshotUtil {
         return method.getSignature().getReturnType().toJavaName(true) + " " + method.getQualifiedName();
     }
 
+    /**
+     * Get all the field indexes that should be relinked using the hosted value of a constant from
+     * the given type.
+     */
     @SuppressWarnings("unused")
     public Set<Integer> getRelinkedFields(AnalysisType type, AnalysisMetaAccess metaAccess) {
         return Set.of();
@@ -269,7 +277,7 @@ public class ImageLayerSnapshotUtil {
         @Override
         public String encode(ObjectCopier.Encoder encoder, Object obj) {
             ImageHeapConstant imageHeapConstant = (ImageHeapConstant) obj;
-            imageLayerWriter.elementsToPersist.add(new AnalysisFuture<>(() -> imageLayerWriter.persistConstant(imageHeapConstant)));
+            imageLayerWriter.elementsToPersist.add(new AnalysisFuture<>(() -> imageLayerWriter.persistConstant(UNDEFINED_CONSTANT_ID, UNDEFINED_FIELD_INDEX, imageHeapConstant)));
             return String.valueOf(imageHeapConstant.getConstantData().id);
         }
 

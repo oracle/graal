@@ -80,6 +80,8 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.NEXT_TYPE_ID
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.NOT_MATERIALIZED_CONSTANT;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.NULL_POINTER_CONSTANT;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.OBJECT_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.PARENT_CONSTANT_ID_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.PARENT_CONSTANT_INDEX_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.POSITION_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.PRIMITIVE_ARRAY_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.RETURN_TYPE_TAG;
@@ -89,6 +91,8 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.STRENGTHENED
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.SUPER_CLASS_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.TID_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.TYPES_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.UNDEFINED_CONSTANT_ID;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.UNDEFINED_FIELD_INDEX;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.VALUE_TAG;
 
 import java.io.IOException;
@@ -303,7 +307,7 @@ public class ImageLayerWriter {
 
         for (Map.Entry<AnalysisType, Set<ImageHeapConstant>> entry : imageHeap.getReachableObjects().entrySet()) {
             for (ImageHeapConstant imageHeapConstant : entry.getValue()) {
-                persistConstant(imageHeapConstant);
+                persistConstant(UNDEFINED_CONSTANT_ID, UNDEFINED_FIELD_INDEX, imageHeapConstant);
             }
         }
         for (AnalysisFuture<Void> task : elementsToPersist) {
@@ -523,15 +527,16 @@ public class ImageLayerWriter {
         fieldMap.put(FIELD_FOLDED_TAG, field.getFoldedReason() != null);
     }
 
-    protected void persistConstant(ImageHeapConstant imageHeapConstant) {
+    protected void persistConstant(int parentId, int index, ImageHeapConstant imageHeapConstant) {
         if (!constantsMap.containsKey(Integer.toString(getConstantId(imageHeapConstant)))) {
             EconomicMap<String, Object> constantMap = EconomicMap.create();
-            persistConstant(imageHeapConstant, constantMap);
+            persistConstant(parentId, index, imageHeapConstant, constantMap);
         }
     }
 
-    protected void persistConstant(ImageHeapConstant imageHeapConstant, EconomicMap<String, Object> constantMap) {
-        constantsMap.put(Integer.toString(getConstantId(imageHeapConstant)), constantMap);
+    protected void persistConstant(int parentId, int index, ImageHeapConstant imageHeapConstant, EconomicMap<String, Object> constantMap) {
+        int id = getConstantId(imageHeapConstant);
+        constantsMap.put(Integer.toString(id), constantMap);
         constantMap.put(TID_TAG, imageHeapConstant.getType().getId());
 
         IdentityHashCodeProvider identityHashCodeProvider = (IdentityHashCodeProvider) aUniverse.getBigbang().getConstantReflectionProvider();
@@ -541,16 +546,22 @@ public class ImageLayerWriter {
         switch (imageHeapConstant) {
             case ImageHeapInstance imageHeapInstance -> {
                 Object[] fieldValues = imageHeapInstance.isReaderInstalled() ? imageHeapInstance.getFieldValues() : null;
-                persistConstant(constantMap, INSTANCE_TAG, fieldValues);
+                persistConstant(id, imageHeapConstant.getType(), constantMap, INSTANCE_TAG, fieldValues);
                 persistConstantRelinkingInfo(constantMap, imageHeapConstant, aUniverse.getBigbang());
             }
             case ImageHeapObjectArray imageHeapObjectArray ->
-                persistConstant(constantMap, ARRAY_TAG, imageHeapObjectArray.getElementValues());
+                persistConstant(id, imageHeapConstant.getType(), constantMap, ARRAY_TAG, imageHeapObjectArray.getElementValues());
             case ImageHeapPrimitiveArray imageHeapPrimitiveArray -> {
                 constantMap.put(CONSTANT_TYPE_TAG, PRIMITIVE_ARRAY_TAG);
                 constantMap.put(DATA_TAG, getString(imageHeapPrimitiveArray.getType().getComponentType().getJavaKind(), imageHeapPrimitiveArray.getArray()));
             }
             default -> throw AnalysisError.shouldNotReachHere("Unexpected constant type " + imageHeapConstant);
+        }
+
+        if (!constantsToRelink.contains(id) && parentId != UNDEFINED_CONSTANT_ID) {
+            constantMap.put(PARENT_CONSTANT_ID_TAG, parentId);
+            assert index != UNDEFINED_FIELD_INDEX : "Tried to persist child constant %s from parent constant %d, but got index %d".formatted(imageHeapConstant, parentId, index);
+            constantMap.put(PARENT_CONSTANT_INDEX_TAG, index);
         }
     }
 
@@ -602,11 +613,12 @@ public class ImageLayerWriter {
         };
     }
 
-    protected void persistConstant(EconomicMap<String, Object> constantMap, String constantType, Object[] values) {
+    protected void persistConstant(int id, AnalysisType type, EconomicMap<String, Object> constantMap, String constantType, Object[] values) {
         constantMap.put(CONSTANT_TYPE_TAG, constantType);
         if (values != null) {
             List<List<Object>> data = new ArrayList<>();
-            for (Object object : values) {
+            for (int i = 0; i < values.length; ++i) {
+                Object object = values[i];
                 if (delegateProcessing(data, object)) {
                     /* The object was already persisted */
                 } else if (object instanceof ImageHeapConstant imageHeapConstant) {
@@ -616,7 +628,7 @@ public class ImageLayerWriter {
                      * in reachable constants. They can be created in the extension image, but
                      * should not be used.
                      */
-                    persistConstant(imageHeapConstant);
+                    persistConstant(imageLayerSnapshotUtil.getRelinkedFields(type, aUniverse.getBigbang().getMetaAccess()).contains(i) ? id : UNDEFINED_CONSTANT_ID, i, imageHeapConstant);
                 } else if (object == JavaConstant.NULL_POINTER) {
                     data.add(List.of(OBJECT_TAG, NULL_POINTER_CONSTANT));
                 } else if (object instanceof PrimitiveConstant primitiveConstant) {

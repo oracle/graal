@@ -84,6 +84,8 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.NOT_MATERIAL
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.NULL_POINTER_CONSTANT;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.OBJECT_OFFSET_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.OBJECT_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.PARENT_CONSTANT_ID_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.PARENT_CONSTANT_INDEX_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.PERSISTED;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.POSITION_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.PRIMITIVE_ARRAY_TAG;
@@ -295,8 +297,10 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * <p>
  * Relinking a base layer {@link ImageHeapConstant} is finding the corresponding hosted object in
  * the extension image build process and storing it in the constant. This is only done for object
- * that can be created or found using a specific recipe. Some fields from those constant can then be
- * relinked using the value of the hosted object.
+ * that can be created or found using a specific recipe. Those constants are then called parent
+ * constants. Some fields of their field values can then be relinked using the value of the hosted
+ * object. The produced constants are called child constants, and they have to be consistent across
+ * image builds.
  * <p>
  * The "offset object" is the offset of the constant in the heap from the base layer.
  */
@@ -1010,7 +1014,7 @@ public class ImageLayerLoader {
      * underlying host VM, found by querying the parent object that made this constant reachable
      * (see {@link ImageLayerLoader#getReachableHostedValue(ImageHeapConstant, int)}).
      */
-    protected ImageHeapConstant getOrCreateConstant(EconomicMap<String, Object> constantsMap, int id, JavaConstant parentReachableHostedObject) {
+    protected ImageHeapConstant getOrCreateConstant(EconomicMap<String, Object> constantsMap, int id, JavaConstant parentReachableHostedObjectCandidate) {
         if (constants.containsKey(id)) {
             return constants.get(id);
         }
@@ -1024,6 +1028,21 @@ public class ImageLayerLoader {
 
         String objectOffset = get(baseLayerConstant, OBJECT_OFFSET_TAG);
         int identityHashCode = get(baseLayerConstant, IDENTITY_HASH_CODE_TAG);
+
+        JavaConstant parentReachableHostedObject;
+        if (parentReachableHostedObjectCandidate == null) {
+            Integer parentConstantId = get(baseLayerConstant, PARENT_CONSTANT_ID_TAG);
+            if (parentConstantId != null) {
+                ImageHeapConstant parentConstant = getOrCreateConstant(parentConstantId);
+                int index = get(baseLayerConstant, PARENT_CONSTANT_INDEX_TAG);
+                parentReachableHostedObject = getReachableHostedValue(parentConstant, index);
+            } else {
+                parentReachableHostedObject = null;
+            }
+        } else {
+            parentReachableHostedObject = parentReachableHostedObjectCandidate;
+        }
+
         if (parentReachableHostedObject != null && !type.getJavaClass().equals(Class.class)) {
             /*
              * The hash codes of DynamicHubs need to be injected before they are used in a map,
