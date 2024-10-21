@@ -6575,7 +6575,7 @@ public final class SLBytecodeRootNodeGen extends SLBytecodeRootNode {
                     case FrameTags.ILLEGAL :
                         return null;
                     default :
-                        throw CompilerDirectives.shouldNotReachHere("unexpected tag");
+                        throw CompilerDirectives.shouldNotReachHere("Unexpected tag");
                 }
             } catch (UnexpectedResultException ex) {
                 return ex.getResult();

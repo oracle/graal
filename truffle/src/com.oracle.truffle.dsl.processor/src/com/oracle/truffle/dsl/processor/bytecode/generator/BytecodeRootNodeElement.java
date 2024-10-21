@@ -3881,7 +3881,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             if (operation.constantOperands != null && operation.constantOperands.hasConstantOperands()) {
                 int index = 0;
                 for (ConstantOperandModel operand : operation.constantOperands.before()) {
-                    buildConstantOperandNonNullCheck(b, operand.type(), operation.getOperationBeginArgumentName(index++));
+                    buildConstantOperandValidation(b, operand.type(), operation.getOperationBeginArgumentName(index++));
                 }
             }
 
@@ -4062,7 +4062,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             if (model.prolog != null) {
                 for (OperationArgument operationArgument : model.prolog.operation.operationBeginArguments) {
-                    buildConstantOperandNonNullCheck(b, operationArgument.builderType(), operationArgument.name());
+                    buildConstantOperandValidation(b, operationArgument.builderType(), operationArgument.name());
                 }
             }
 
@@ -4453,7 +4453,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             if (operation.constantOperands != null && operation.constantOperands.hasConstantOperands()) {
                 int index = 0;
                 for (ConstantOperandModel operand : operation.constantOperands.after()) {
-                    buildConstantOperandNonNullCheck(b, operand.type(), operation.getOperationEndArgumentName(index++));
+                    buildConstantOperandValidation(b, operand.type(), operation.getOperationEndArgumentName(index++));
                 }
             }
 
@@ -4801,7 +4801,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     int endConstantsOffset = prologOperation.constantOperands.before().size();
 
                     for (OperationArgument operationArgument : model.prolog.operation.operationEndArguments) {
-                        buildConstantOperandNonNullCheck(b, operationArgument.builderType(), operationArgument.name());
+                        buildConstantOperandValidation(b, operationArgument.builderType(), operationArgument.name());
                     }
 
                     for (int i = 0; i < prologOperation.operationEndArguments.length; i++) {
@@ -5496,11 +5496,11 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             if (operation.constantOperands != null && operation.constantOperands.hasConstantOperands()) {
                 int index = 0;
                 for (ConstantOperandModel operand : operation.constantOperands.before()) {
-                    buildConstantOperandNonNullCheck(b, operand.type(), operation.getOperationBeginArgumentName(index++));
+                    buildConstantOperandValidation(b, operand.type(), operation.getOperationBeginArgumentName(index++));
                 }
                 index = 0;
                 for (ConstantOperandModel operand : operation.constantOperands.after()) {
-                    buildConstantOperandNonNullCheck(b, operand.type(), operation.getOperationEndArgumentName(index++));
+                    buildConstantOperandValidation(b, operand.type(), operation.getOperationEndArgumentName(index++));
                 }
             }
 
@@ -5564,10 +5564,19 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             return ex;
         }
 
-        private void buildConstantOperandNonNullCheck(CodeTreeBuilder b, TypeMirror type, String name) {
+        private void buildConstantOperandValidation(CodeTreeBuilder b, TypeMirror type, String name) {
             if (!ElementUtils.isPrimitive(type)) {
                 b.startIf().string(name, " == null").end().startBlock();
                 b.startThrow().startCall("failArgument").doubleQuote("The " + name + " parameter must not be null. Constant operands do not permit null values.").end().end();
+                b.end();
+            }
+
+            if (ElementUtils.typeEquals(type, types.LocalAccessor)) {
+                b.startStatement().startCall("validateLocalScope").string(name).end(2);
+            } else if (ElementUtils.typeEquals(type, types.LocalRangeAccessor)) {
+                String element = name + "Element";
+                b.startFor().type(types.BytecodeLocal).string(" " + element + " : " + name).end().startBlock();
+                b.startStatement().startCall("validateLocalScope").string(element).end(2);
                 b.end();
             }
         }
@@ -11778,7 +11787,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.end(); // case block
 
                 b.caseDefault().startCaseBlock();
-                b.tree(GeneratorUtils.createShouldNotReachHere("unexpected tag"));
+                b.tree(GeneratorUtils.createShouldNotReachHere("Unexpected tag"));
                 b.end();
 
                 b.end(); // switch block
@@ -15954,14 +15963,14 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             b.statement("Object[] args = frame.getArguments()");
             b.startIf().string("args.length != 2").end().startBlock();
-            b.tree(GeneratorUtils.createShouldNotReachHere("Expected 2 arguments: (parentFrame, inputValue)"));
+            emitThrow(b, IllegalArgumentException.class, "\"Expected 2 arguments: (parentFrame, inputValue)\"");
             b.end();
 
             b.declaration(types.MaterializedFrame, "parentFrame", "(MaterializedFrame) args[0]");
             b.declaration(type(Object.class), "inputValue", "args[1]");
 
             b.startIf().string("parentFrame.getFrameDescriptor() != frame.getFrameDescriptor()").end().startBlock();
-            b.tree(GeneratorUtils.createShouldNotReachHere("Invalid continuation parent frame passed"));
+            emitThrow(b, IllegalArgumentException.class, "\"Invalid continuation parent frame passed\"");
             b.end();
 
             b.lineComment("Copy any existing stack values (from numLocals to sp - 1) to the current frame, which will be used for stack accesses.");

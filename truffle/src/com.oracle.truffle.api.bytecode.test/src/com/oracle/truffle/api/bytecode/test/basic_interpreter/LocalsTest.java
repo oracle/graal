@@ -49,12 +49,14 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.util.List;
+import java.util.function.BiConsumer;
 
 import org.junit.Test;
 
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
+import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.Instruction;
 import com.oracle.truffle.api.bytecode.Instruction.Argument;
@@ -728,250 +730,163 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
 
     }
 
+    private <T extends BasicInterpreterBuilder> void assertParseFailure(BytecodeParser<T> parser) {
+        assertThrows(IllegalArgumentException.class, () -> parseNode("invalid", parser));
+    }
+
+    private static <T extends BasicInterpreterBuilder> BytecodeParser<T> siblingRootsTest(BiConsumer<T, BytecodeLocal> accessGenerator) {
+        return b -> {
+            b.beginRoot();
+            BytecodeLocal x = b.createLocal("x", null);
+            b.emitLoadNull();
+            b.endRoot();
+
+            b.beginRoot();
+            b.createLocal("y", null);
+            accessGenerator.accept(b, x);
+            b.endRoot();
+        };
+    }
+
+    private static <T extends BasicInterpreterBuilder> BytecodeParser<T> nestedRootsInnerAccessTest(BiConsumer<T, BytecodeLocal> accessGenerator) {
+        return b -> {
+            b.beginRoot();
+            BytecodeLocal x = b.createLocal("x", null);
+
+            b.beginRoot(); // inner
+            b.createLocal("y", null);
+            accessGenerator.accept(b, x);
+            b.endRoot();
+
+            b.endRoot();
+        };
+    }
+
+    private static <T extends BasicInterpreterBuilder> BytecodeParser<T> nestedRootsOuterAccessTest(BiConsumer<T, BytecodeLocal> accessGenerator) {
+        return b -> {
+            b.beginRoot();
+            b.createLocal("x", null);
+
+            b.beginRoot(); // inner
+            BytecodeLocal y = b.createLocal("y", null);
+            b.endRoot();
+
+            accessGenerator.accept(b, y);
+            b.endRoot();
+        };
+    }
+
+    private static <T extends BasicInterpreterBuilder> BytecodeParser<T> outOfScopeTest(BiConsumer<T, BytecodeLocal> accessGenerator) {
+        return b -> {
+            b.beginRoot();
+            b.beginBlock();
+            BytecodeLocal x = b.createLocal("x", null);
+            b.endBlock();
+            b.beginBlock();
+            accessGenerator.accept(b, x);
+            b.endBlock();
+            b.endRoot();
+        };
+    }
+
+    private static <T extends BasicInterpreterBuilder> void loadLocal(T b, BytecodeLocal local) {
+        b.emitLoadLocal(local);
+    }
+
+    private static <T extends BasicInterpreterBuilder> void storeLocal(T b, BytecodeLocal local) {
+        b.beginStoreLocal(local);
+        b.emitLoadNull();
+        b.endStoreLocal();
+    }
+
+    private static <T extends BasicInterpreterBuilder> void teeLocal(T b, BytecodeLocal local) {
+        b.beginTeeLocal(local);
+        b.emitLoadNull();
+        b.endTeeLocal();
+    }
+
+    private static <T extends BasicInterpreterBuilder> void teeLocalRange(T b, BytecodeLocal local) {
+        b.beginTeeLocalRange(new BytecodeLocal[]{local});
+        b.emitLoadNull();
+        b.endTeeLocalRange();
+    }
+
     @Test
     public void testInvalidLocalAccesses() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            parseNode("invalidLocalRead", b -> {
-                b.beginRoot();
-                BytecodeLocal x = b.createLocal("x", null);
-                b.emitLoadNull();
-                b.endRoot();
-                b.beginRoot();
-                b.createLocal("y", null);
-                b.emitLoadLocal(x);
-                b.endRoot();
-            });
-        });
+        assertParseFailure(siblingRootsTest(LocalsTest::loadLocal));
+        assertParseFailure(siblingRootsTest(LocalsTest::storeLocal));
+        assertParseFailure(siblingRootsTest(LocalsTest::teeLocal));
+        assertParseFailure(siblingRootsTest(LocalsTest::teeLocalRange));
 
-        assertThrows(IllegalArgumentException.class, () -> {
-            parseNode("invalidOuterLocalRead", b -> {
-                b.beginRoot();
-                BytecodeLocal x = b.createLocal("x", null);
-                b.beginRoot(); // inner
-                b.createLocal("y", null);
-                b.emitLoadLocal(x);
-                b.endRoot();
-                b.endRoot();
-            });
-        });
+        assertParseFailure(nestedRootsInnerAccessTest(LocalsTest::loadLocal));
+        assertParseFailure(nestedRootsInnerAccessTest(LocalsTest::storeLocal));
+        assertParseFailure(nestedRootsInnerAccessTest(LocalsTest::teeLocal));
+        assertParseFailure(nestedRootsInnerAccessTest(LocalsTest::teeLocalRange));
 
-        assertThrows(IllegalArgumentException.class, () -> {
-            parseNode("invalidOuterLocalWrite", b -> {
-                b.beginRoot();
-                BytecodeLocal x = b.createLocal("x", null);
-                b.beginRoot(); // inner
-                b.createLocal("y", null);
-                b.beginStoreLocal(x);
-                b.emitLoadArgument(0);
-                b.endStoreLocal();
-                b.endRoot();
-                b.endRoot();
-            });
-        });
-
-        assertThrows(IllegalArgumentException.class, () -> {
-            parseNode("invalidInnerLocalRead", b -> {
-                b.beginRoot();
-                b.createLocal("x", null);
-                b.beginRoot(); // inner
-                BytecodeLocal y = b.createLocal("y", null);
-                b.endRoot();
-                b.emitLoadLocal(y);
-                b.endRoot();
-            });
-        });
-
-        assertThrows(IllegalArgumentException.class, () -> {
-            parseNode("invalidInnerLocalStore", b -> {
-                b.beginRoot();
-                b.createLocal("x", null);
-                b.beginRoot(); // inner
-                BytecodeLocal y = b.createLocal("y", null);
-                b.endRoot();
-                b.beginStoreLocal(y);
-                b.emitLoadArgument(0);
-                b.endStoreLocal();
-                b.endRoot();
-            });
-        });
+        assertParseFailure(nestedRootsOuterAccessTest(LocalsTest::loadLocal));
+        assertParseFailure(nestedRootsOuterAccessTest(LocalsTest::storeLocal));
+        assertParseFailure(nestedRootsOuterAccessTest(LocalsTest::teeLocal));
+        assertParseFailure(nestedRootsOuterAccessTest(LocalsTest::teeLocalRange));
 
         if (run.hasBlockScoping()) {
-            assertThrows(IllegalArgumentException.class, () -> {
-                parseNode("outOfScopeLocalRead", b -> {
-                    b.beginRoot();
-                    b.beginBlock();
-                    BytecodeLocal x = b.createLocal("x", null);
-                    b.endBlock();
-                    b.beginBlock();
-                    b.emitLoadLocal(x);
-                    b.endBlock();
-                    b.endRoot();
-                });
-            });
-
-            assertThrows(IllegalArgumentException.class, () -> {
-                parseNode("outOfScopeLocalStore", b -> {
-                    b.beginRoot();
-                    b.beginBlock();
-                    BytecodeLocal x = b.createLocal("x", null);
-                    b.endBlock();
-                    b.beginBlock();
-                    b.beginStoreLocal(x);
-                    b.emitLoadNull();
-                    b.endStoreLocal();
-                    b.endBlock();
-                    b.endRoot();
-                });
-            });
+            assertParseFailure(outOfScopeTest(LocalsTest::loadLocal));
+            assertParseFailure(outOfScopeTest(LocalsTest::storeLocal));
+            assertParseFailure(outOfScopeTest(LocalsTest::teeLocal));
+            assertParseFailure(outOfScopeTest(LocalsTest::teeLocalRange));
         }
+    }
+
+    private static <T extends BasicInterpreterBuilder> BytecodeParser<T> outOfScopeDifferentRootsTest(BiConsumer<T, BytecodeLocal> accessGenerator) {
+        return b -> {
+            b.beginRoot();
+            b.beginBlock();
+            BytecodeLocal x = b.createLocal("x", null);
+            b.endBlock();
+            b.beginBlock();
+            b.createLocal("y", null);
+
+            b.beginRoot(); // x is out of scope when inner root declared
+            accessGenerator.accept(b, x);
+            b.endRoot();
+
+            b.endBlock();
+            b.endRoot();
+        };
+    }
+
+    private static <T extends BasicInterpreterBuilder> void loadLocalMaterialized(T b, BytecodeLocal local) {
+        b.beginLoadLocalMaterialized(local);
+        b.emitMaterializeFrame(); // uses current frame
+        b.endLoadLocalMaterialized();
+    }
+
+    private static <T extends BasicInterpreterBuilder> void storeLocalMaterialized(T b, BytecodeLocal local) {
+        b.beginStoreLocalMaterialized(local);
+        b.emitMaterializeFrame(); // uses current frame
+        b.emitLoadNull();
+        b.endStoreLocalMaterialized();
     }
 
     @Test
     public void testInvalidMaterializedLocalAccesses() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            parseNode("invalidMaterializedLocalRead", b -> {
-                b.beginRoot();
-                BytecodeLocal x = b.createLocal("x", null);
-                b.emitLoadNull();
-                b.endRoot();
-                b.beginRoot();
-                b.createLocal("y", null);
-                b.beginLoadLocalMaterialized(x);
-                b.emitLoadArgument(0);
-                b.endLoadLocalMaterialized();
-                b.endRoot();
-            });
-        });
+        assertParseFailure(siblingRootsTest(LocalsTest::loadLocalMaterialized));
+        assertParseFailure(siblingRootsTest(LocalsTest::storeLocalMaterialized));
 
-        assertThrows(IllegalArgumentException.class, () -> {
-            parseNode("invalidMaterializedLocalStore", b -> {
-                b.beginRoot();
-                BytecodeLocal x = b.createLocal("x", null);
-                b.emitLoadNull();
-                b.endRoot();
-                b.beginRoot();
-                b.createLocal("y", null);
-                b.beginStoreLocalMaterialized(x);
-                b.emitLoadArgument(0);
-                b.emitLoadArgument(1);
-                b.endStoreLocalMaterialized();
-                b.endRoot();
-            });
-        });
-
-        BasicInterpreter root1 = createNodes(BytecodeConfig.DEFAULT, b -> {
-            b.beginRoot();
-            BytecodeLocal x = b.createLocal("x", null);
-            b.beginStoreLocal(x);
-            b.emitLoadConstant(42L);
-            b.endStoreLocal();
-
-            b.beginRoot(); // inner
-            b.createLocal("y", null);
-            b.beginLoadLocalMaterialized(x);
-            b.emitMaterializeFrame(); // inner frame used
-            b.endLoadLocalMaterialized();
-            b.endRoot();
-
-            b.endRoot();
-        }).getNode(1);
+        // At run time we should fail if the wrong frame is passed.
+        BasicInterpreter root1 = createNodes(BytecodeConfig.DEFAULT, nestedRootsInnerAccessTest(LocalsTest::loadLocalMaterialized)).getNode(1);
         assertThrows(IllegalArgumentException.class, () -> root1.getCallTarget().call());
-
-        BasicInterpreter root2 = createNodes(BytecodeConfig.DEFAULT, b -> {
-            b.beginRoot();
-            BytecodeLocal x = b.createLocal("x", null);
-            b.beginStoreLocal(x);
-            b.emitLoadConstant(42L);
-            b.endStoreLocal();
-
-            b.beginRoot(); // inner
-            b.createLocal("y", null);
-            b.beginStoreLocalMaterialized(x);
-            b.emitMaterializeFrame(); // inner frame used
-            b.emitLoadNull();
-            b.endStoreLocalMaterialized();
-            b.endRoot();
-
-            b.endRoot();
-        }).getNode(1);
+        BasicInterpreter root2 = createNodes(BytecodeConfig.DEFAULT, nestedRootsInnerAccessTest(LocalsTest::storeLocalMaterialized)).getNode(1);
         assertThrows(IllegalArgumentException.class, () -> root2.getCallTarget().call());
 
         if (run.hasBlockScoping()) {
-            assertThrows(IllegalArgumentException.class, () -> {
-                parseNode("outOfScopeMaterializedLocalReadSameRoot", b -> {
-                    b.beginRoot();
-                    b.beginBlock();
-                    BytecodeLocal x = b.createLocal("x", null);
-                    b.endBlock();
-                    b.beginBlock();
-                    b.createLocal("y", null);
-                    b.beginLoadLocalMaterialized(x);
-                    b.emitMaterializeFrame();
-                    b.endLoadLocalMaterialized();
-                    b.endBlock();
-                    b.endRoot();
-                });
-            });
+            assertParseFailure(outOfScopeTest(LocalsTest::loadLocalMaterialized));
+            assertParseFailure(outOfScopeTest(LocalsTest::storeLocalMaterialized));
 
-            assertThrows(IllegalArgumentException.class, () -> {
-                parseNode("outOfScopeMaterializedLocalStoreSameRoot", b -> {
-                    b.beginRoot();
-                    b.beginBlock();
-                    BytecodeLocal x = b.createLocal("x", null);
-                    b.endBlock();
-                    b.beginBlock();
-                    b.createLocal("y", null);
-                    b.beginStoreLocalMaterialized(x);
-                    b.emitMaterializeFrame();
-                    b.emitLoadNull();
-                    b.endStoreLocalMaterialized();
-                    b.endBlock();
-                    b.endRoot();
-                });
-            });
-
-            assertThrows(IllegalArgumentException.class, () -> {
-                parseNode("outOfScopeMaterializedLocalReadDifferentRoot", b -> {
-                    b.beginRoot();
-                    b.beginBlock();
-                    BytecodeLocal x = b.createLocal("x", null);
-                    b.endBlock();
-                    b.beginBlock();
-                    b.createLocal("y", null);
-
-                    b.beginRoot(); // x is out of scope when inner root declared
-                    b.beginLoadLocalMaterialized(x);
-                    b.emitMaterializeFrame();
-                    b.endLoadLocalMaterialized();
-                    b.endRoot();
-
-                    b.endBlock();
-                    b.endRoot();
-                });
-            });
-
-            assertThrows(IllegalArgumentException.class, () -> {
-                parseNode("outOfScopeMaterializedLocalStoreDifferentRoot", b -> {
-                    b.beginRoot();
-                    b.beginBlock();
-                    BytecodeLocal x = b.createLocal("x", null);
-                    b.endBlock();
-                    b.beginBlock();
-                    b.createLocal("y", null);
-
-                    b.beginRoot(); // x is out of scope when inner root declared
-                    b.beginStoreLocalMaterialized(x);
-                    b.emitMaterializeFrame();
-                    b.emitLoadNull();
-                    b.endStoreLocalMaterialized();
-                    b.endRoot();
-
-                    b.endBlock();
-                    b.endRoot();
-                });
-            });
+            assertParseFailure(outOfScopeDifferentRootsTest(LocalsTest::loadLocalMaterialized));
+            assertParseFailure(outOfScopeDifferentRootsTest(LocalsTest::storeLocalMaterialized));
 
             if (run.storesBciInFrame()) {
+                // At run time we should fail if the local is not in scope.
                 BytecodeRootNodes<BasicInterpreter> roots = createNodes(BytecodeConfig.DEFAULT, b -> {
                     b.beginRoot();
                     b.beginBlock();

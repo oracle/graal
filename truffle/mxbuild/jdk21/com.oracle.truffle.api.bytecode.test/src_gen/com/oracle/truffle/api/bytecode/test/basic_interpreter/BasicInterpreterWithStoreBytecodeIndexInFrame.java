@@ -7644,7 +7644,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
                     case FrameTags.ILLEGAL :
                         return null;
                     default :
-                        throw CompilerDirectives.shouldNotReachHere("unexpected tag");
+                        throw CompilerDirectives.shouldNotReachHere("Unexpected tag");
                 }
             } catch (UnexpectedResultException ex) {
                 return ex.getResult();
@@ -12508,6 +12508,7 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
             if (setterValue == null) {
                 throw failArgument("The setterValue parameter must not be null. Constant operands do not permit null values.");
             }
+            validateLocalScope(setterValue);
             int setterIndex = constantPool.addConstant(LocalAccessor.constantOf(setterValue));
             beforeChild();
             CustomOperationData operationData = new CustomOperationData(new int[] {UNINITIALIZED}, new int[] {setterIndex});
@@ -12575,6 +12576,9 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
             validateRootOperationBegin();
             if (setterValue == null) {
                 throw failArgument("The setterValue parameter must not be null. Constant operands do not permit null values.");
+            }
+            for (BytecodeLocal setterValueElement : setterValue) {
+                validateLocalScope(setterValueElement);
             }
             int setterIndex = constantPool.addConstant(LocalRangeAccessor.constantOf(setterValue));
             beforeChild();
@@ -18867,12 +18871,12 @@ public final class BasicInterpreterWithStoreBytecodeIndexInFrame extends BasicIn
         public Object execute(VirtualFrame frame) {
             Object[] args = frame.getArguments();
             if (args.length != 2) {
-                throw CompilerDirectives.shouldNotReachHere("Expected 2 arguments: (parentFrame, inputValue)");
+                throw new IllegalArgumentException("Expected 2 arguments: (parentFrame, inputValue)");
             }
             MaterializedFrame parentFrame = (MaterializedFrame) args[0];
             Object inputValue = args[1];
             if (parentFrame.getFrameDescriptor() != frame.getFrameDescriptor()) {
-                throw CompilerDirectives.shouldNotReachHere("Invalid continuation parent frame passed");
+                throw new IllegalArgumentException("Invalid continuation parent frame passed");
             }
             // Copy any existing stack values (from numLocals to sp - 1) to the current frame, which will be used for stack accesses.
             FRAMES.copyTo(parentFrame, root.maxLocals, frame, root.maxLocals, sp - 1);
