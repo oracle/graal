@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -288,7 +288,12 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             try {
                 super.maybeEagerlyResolve(cpi, bytecode);
             } catch (UnresolvedElementException e) {
-                if (e.getCause() instanceof LambdaConversionException || e.getCause() instanceof LinkageError || e.getCause() instanceof IllegalAccessError) {
+                Throwable cause = e.getCause();
+                if (cause instanceof NoClassDefFoundError && linkAtBuildTime && LinkAtBuildTimeSupport.failFast()) {
+                    String message = "Error during parsing of method " + method.format("%H.%n(%P)") + ". " +
+                            LinkAtBuildTimeSupport.singleton().errorMessageFor(method.getDeclaringClass());
+                    throw new UnresolvedElementException(message, cause);
+                } else if (cause instanceof LambdaConversionException || cause instanceof LinkageError) {
                     /*
                      * Ignore LinkageError, LambdaConversionException or IllegalAccessError if
                      * thrown from eager resolution attempt. This is usually followed by a call to
@@ -1084,7 +1089,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                      * Therefore, we cannot just treat it as "safe at build time". The class
                      * initialization is also completely useless because the invoking class must be
                      * already initialized by the time the boostrap method is executed.
-                     * 
+                     *
                      * We replicate the implementation of the bootstrap method here without doing
                      * the class initialization.
                      */
