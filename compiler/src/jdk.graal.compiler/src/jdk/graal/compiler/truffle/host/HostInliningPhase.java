@@ -603,6 +603,10 @@ public class HostInliningPhase extends AbstractInliningPhase {
             return BackPropagation.NOTHING;
         }
 
+        if (!method.hasBytecodes() || method.isNative()) {
+            return BackPropagation.NOTHING;
+        }
+
         StructuredGraph graph = lookupGraph(context, callerInvoke, method);
         FixedNode current = graph.start();
         while (current instanceof FixedWithNextNode) {
