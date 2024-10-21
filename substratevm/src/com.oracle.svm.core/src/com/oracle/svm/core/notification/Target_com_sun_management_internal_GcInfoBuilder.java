@@ -1,0 +1,64 @@
+/*
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Red Hat Inc. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+
+package com.oracle.svm.core.notification;
+
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.util.BasedOnJDKFile;
+import com.sun.management.internal.GcInfoBuilder;
+
+import java.lang.management.GarbageCollectorMXBean;
+
+@TargetClass(value = GcInfoBuilder.class, onlyWith = HasGcNotificationSupport.class)
+@SuppressWarnings("static-method")
+public final class Target_com_sun_management_internal_GcInfoBuilder {
+    @SuppressWarnings("unused") //
+    @Alias
+    public Target_com_sun_management_internal_GcInfoBuilder(GarbageCollectorMXBean gc, String[] poolNames) {
+    }
+
+    /** All GCs have 1 attribute (number of GC threads). */
+    @Substitute
+    private int getNumGcExtAttributes(@SuppressWarnings("unused") GarbageCollectorMXBean gc) {
+        return 1;
+    }
+
+    /** This is hardcoded in Hotspot. All GCs have 1 attribute (number of GC threads). */
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+14/src/hotspot/share/services/management.cpp#L1803-L1817") //
+    @Substitute
+    private void fillGcAttributeInfo(@SuppressWarnings("unused") GarbageCollectorMXBean gc,
+                    int numAttributes,
+                    String[] attributeNames,
+                    char[] types,
+                    String[] descriptions) {
+        assert numAttributes == 1;
+        attributeNames[0] = "GcThreadCount";
+        types[0] = 'I';
+        descriptions[0] = "Number of GC threads";
+    }
+}

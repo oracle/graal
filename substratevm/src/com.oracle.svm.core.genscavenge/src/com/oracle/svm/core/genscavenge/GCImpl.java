@@ -60,12 +60,15 @@ import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
 import com.oracle.svm.core.deopt.DeoptimizationSlotPacking;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
+import com.oracle.svm.core.gc.MemoryPoolMXBeansProvider;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.BasicCollectionPolicies.NeverCollect;
 import com.oracle.svm.core.genscavenge.HeapAccounting.HeapSizes;
 import com.oracle.svm.core.genscavenge.HeapChunk.Header;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
+import com.oracle.svm.core.notification.GcNotifier;
+import com.oracle.svm.core.notification.HasGcNotificationSupport;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.GC;
@@ -239,7 +242,10 @@ public final class GCImpl implements GC {
         Timer collectionTimer = timers.collection.open();
         try {
             ThreadLocalAllocation.disableAndFlushForAllThreads();
-            GenScavengeMemoryPoolMXBeans.singleton().notifyBeforeCollection();
+            MemoryPoolMXBeansProvider.get().notifyBeforeCollection();
+            if (HasGcNotificationSupport.get()) {
+                GcNotifier.singleton().beforeCollection(TimeUtils.roundNanosToMillis(collectionTimer.getOpenedTime() - Isolates.getCurrentStartNanoTime()));
+            }
             HeapImpl.getAccounting().notifyBeforeCollection();
 
             verifyHeap(Before);
@@ -254,8 +260,13 @@ public final class GCImpl implements GC {
 
         accounting.updateCollectionCountAndTime(completeCollection, collectionTimer.getMeasuredNanos());
         HeapImpl.getAccounting().notifyAfterCollection();
-        GenScavengeMemoryPoolMXBeans.singleton().notifyAfterCollection();
+        MemoryPoolMXBeansProvider.get().notifyAfterCollection();
         ChunkBasedCommittedMemoryProvider.get().afterGarbageCollection();
+
+        if (HasGcNotificationSupport.get()) {
+            GcNotifier.singleton().afterCollection(!completeCollection, cause, getCollectionEpoch().rawValue(),
+                            TimeUtils.roundNanosToMillis(collectionTimer.getClosedTime() - Isolates.getCurrentStartNanoTime()));
+        }
 
         printGCAfter(cause);
         JfrGCHeapSummaryEvent.emit(JfrGCWhen.AFTER_GC);

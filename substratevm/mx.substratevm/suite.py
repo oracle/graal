@@ -1029,6 +1029,9 @@ suite = {
                     "jdk.internal.misc",
                     "sun.security.jca",
                 ],
+                "java.management": [
+                    "sun.management",
+                ],
             },
             "checkstyle": "com.oracle.svm.test",
             "checkstyleVersion" : "10.7.0",
