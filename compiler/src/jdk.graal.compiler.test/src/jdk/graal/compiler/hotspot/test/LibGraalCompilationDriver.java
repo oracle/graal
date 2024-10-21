@@ -117,8 +117,8 @@ public class LibGraalCompilationDriver {
     private final boolean multiThreaded;
 
     /**
-     * Number of threads to use for multithreaded compilation. If 0, the value of
-     * {@code Runtime.getRuntime().availableProcessors()} is used instead.
+     * Number of threads to use for multithreaded compilation. If 0, a good default value is picked
+     * by {@link #getThreadCount()}.
      */
     private final int numThreads;
 
@@ -694,7 +694,12 @@ public class LibGraalCompilationDriver {
         if (multiThreaded) {
             threadCount = numThreads;
             if (threadCount == 0) {
-                threadCount = Runtime.getRuntime().availableProcessors();
+                /*
+                 * On very large machine there might be hundreds of processors and the compiler
+                 * doesn't really scale well enough for that so limit the max number of threads. 32
+                 * was picked as that seemed to scale well enough in testing.
+                 */
+                threadCount = Math.min(32, Runtime.getRuntime().availableProcessors());
             }
         }
         return threadCount;
