@@ -2146,20 +2146,6 @@ final class Target_jdk_internal_reflect_ReflectionFactory {
         boolean isReadOnly = isFinal && (!override || langReflectAccess.isTrustedFinalField(field));
         return UnsafeFieldAccessorFactory.newFieldAccessor(field, isReadOnly);
     }
-
-    /**
-     * Work around "JDK-8315810: Reimplement
-     * sun.reflect.ReflectionFactory::newConstructorForSerialization with method handles"
-     * [GR-48901].
-     *
-     * @see Target_jdk_internal_reflect_DirectConstructorHandleAccessor
-     */
-    @Substitute
-    @TargetElement(onlyWith = JDKLatest.class)
-    @Fold // cut off the alternative branch, already during analysis
-    static boolean useOldSerializableConstructor() {
-        return true;
-    }
 }
 
 /**
