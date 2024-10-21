@@ -107,6 +107,14 @@ public abstract class ByteArraySupport {
         return ByteArraySupports.BIG_ENDIAN;
     }
 
+    static ByteArraySupport nativeUnsafe() {
+        return ByteArraySupports.NATIVE_UNSAFE;
+    }
+
+    static ByteArraySupport nativeChecked() {
+        return ByteArraySupports.NATIVE_CHECKED;
+    }
+
     /**
      * Checks if an access is in bounds of the given buffer.
      * <p>

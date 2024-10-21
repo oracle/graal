@@ -75,11 +75,13 @@ import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindTransitiveC
 import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindTransitiveDynamicAndCachedNodeGen;
 import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindTransitiveDynamicNodeGen;
 import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindTransitiveDynamicWithLibraryNodeGen;
+import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.DefaultBindingNodeGen;
 import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.IntrospectableNodeGen;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
@@ -462,7 +464,7 @@ public class BindExpressionTest extends AbstractPolyglotTest {
         abstract void execute();
 
         @Specialization
-        void s0(@Bind("this") Node thisNode) {
+        void s0(@Bind Node thisNode) {
             assertSame(this, thisNode);
         }
     }
@@ -472,7 +474,7 @@ public class BindExpressionTest extends AbstractPolyglotTest {
         abstract void execute();
 
         @Specialization
-        void s0(@Bind("this.getParent()") Node thisNode) {
+        void s0(@Bind("$node.getParent()") Node thisNode) {
             assertSame(this.getParent(), thisNode);
         }
     }
@@ -493,7 +495,7 @@ public class BindExpressionTest extends AbstractPolyglotTest {
         @Specialization(guards = "arg == cachedArg", limit = "2")
         void s0(int arg,
                         @Cached("arg") int cachedArg,
-                        @Bind("this") Node thisNode) {
+                        @Bind Node thisNode) {
             /*
              * The specialization does not bind nodes therefore it returns the current node instead
              * of the specialization class.
@@ -506,7 +508,7 @@ public class BindExpressionTest extends AbstractPolyglotTest {
         void s1(int arg,
                         @Cached("arg") int cachedArg,
                         @Cached InlinedBranchProfile branchProfile,
-                        @Bind("this") Node thisNode) {
+                        @Bind Node thisNode) {
             /*
              * The specialization does not bind nodes therefore it returns the current node instead
              * of the specialization class.
@@ -646,6 +648,130 @@ public class BindExpressionTest extends AbstractPolyglotTest {
         void s0(@ExpectError("Cannot use 'this' with @Cached use @Bind instead.") //
         @Cached("this") Node thisNode) {
         }
+
+    }
+
+    abstract static class WarningRedundantBindingTest1 extends Node {
+
+        abstract Object execute();
+
+        @Specialization
+        Object s0(
+                        @ExpectError("Bind expression '$node' is redundant and can be automatically be resolved from the parameter type.%") //
+                        @Bind Node result) {
+            return null;
+        }
+
+    }
+
+    abstract static class WarningRedundantBindingTest2 extends Node {
+
+        abstract Object execute();
+
+        @Specialization
+        Object s0(
+                        @ExpectError("Bind expression 'INSTANCE' is redundant and can be automatically be resolved from the parameter type.%") //
+                        @Bind("INSTANCE") DefaultBindType result) {
+            return result;
+        }
+
+    }
+
+    @Test
+    public void testDefaultBinding() {
+        DefaultBindingNode node = adoptNode(DefaultBindingNodeGen.create()).get();
+        assertSame(DefaultBindType.INSTANCE, node.execute());
+    }
+
+    @Bind.DefaultExpression("INSTANCE")
+    static class DefaultBindType {
+
+        static final DefaultBindTypeSubclass INSTANCE = new DefaultBindTypeSubclass();
+    }
+
+    static class NoBindingType {
+    }
+
+    abstract static class DefaultBindingNode extends Node {
+
+        abstract Object execute();
+
+        @Specialization
+        Object s0(@Bind DefaultBindType result) {
+            return result;
+        }
+
+    }
+
+    static class DefaultBindTypeSubclass extends DefaultBindType {
+
+    }
+
+    abstract static class DefaultBindingSubclassNode extends Node {
+
+        abstract Object execute();
+
+        @Specialization
+        Object s0(@Bind DefaultBindTypeSubclass result) {
+            return result;
+        }
+
+    }
+
+    @Test
+    public void testDefaultBindingSubclass() {
+        DefaultBindingNode node = adoptNode(DefaultBindingNodeGen.create()).get();
+        assertSame(DefaultBindType.INSTANCE, node.execute());
+    }
+
+    abstract static class ErrorNoDefaultBindingTestNode extends Node {
+
+        abstract Object execute();
+
+        @Specialization
+        Object s0(
+                        @ExpectError("No expression specified for @Bind annotation and no @DefaultExpression could be resolved from the parameter type.%") //
+                        @Bind NoBindingType result) {
+            return result;
+        }
+
+    }
+
+    abstract static class BindRootNodeTestNode extends Node {
+
+        abstract Object execute();
+
+        @Specialization
+        Object s0(
+                        @ExpectError("Incompatible return type Node. The expression type must be equal to the parameter type RootNode.") //
+                        @Bind RootNode result) {
+            return result;
+        }
+
+    }
+
+    abstract static class BindNodeTestNode extends Node {
+
+        abstract Object execute();
+
+        @Specialization
+        Object s0(@Bind Node result) {
+            return result;
+        }
+
+    }
+
+    abstract static class BindThisWarningTestNode extends Node {
+
+        abstract Object execute();
+
+        @Specialization
+        Object s0(
+                        @ExpectError("This expression binds variable 'this' which should no longer be used. Use the '$node' variable instead to resolve this warning.%")//
+                        @Bind("this") Node result) {
+            return result;
+        }
+
     }
 
 }

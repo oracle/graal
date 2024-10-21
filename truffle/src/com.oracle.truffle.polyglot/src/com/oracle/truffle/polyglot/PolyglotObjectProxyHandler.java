@@ -144,7 +144,7 @@ final class PolyglotObjectProxyHandler implements InvocationHandler, PolyglotWra
 
         @Specialization
         final Object doDefault(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached ProxyInvokeNode proxyInvoke,
                         @Cached ToGuestValuesNode toGuests) {
             Method method = (Method) args[ARGUMENT_OFFSET];
@@ -204,7 +204,7 @@ final class PolyglotObjectProxyHandler implements InvocationHandler, PolyglotWra
          */
         @SuppressWarnings({"unused", "truffle-static-method"})
         protected Object doCachedMethod(PolyglotLanguageContext languageContext, Object receiver, Method method, Type genericType, Object[] arguments,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached("method") Method cachedMethod,
                         @Cached("method.getName()") String name,
                         @Cached("getMethodGenericReturnType(method, genericType)") Type returnType,

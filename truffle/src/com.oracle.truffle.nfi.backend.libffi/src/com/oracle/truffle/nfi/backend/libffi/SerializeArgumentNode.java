@@ -437,7 +437,7 @@ abstract class SerializeArgumentNode extends Node {
         @Specialization(limit = "3", replaces = {"putPointer", "putNull"})
         static void putGeneric(Object arg, NativeArgumentBuffer buffer,
                         @CachedLibrary("arg") InteropLibrary interop,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Bind("type.size") int size,
                         @Cached InlinedBranchProfile exception) throws UnsupportedTypeException {
             try {
@@ -504,7 +504,7 @@ abstract class SerializeArgumentNode extends Node {
         @Specialization(limit = "3", replaces = {"putPointer", "putString", "putNull"})
         static void putGeneric(Object value, NativeArgumentBuffer buffer,
                         @CachedLibrary("value") InteropLibrary interop,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Bind("type.size") int size,
                         @Cached InlinedBranchProfile exception) throws UnsupportedTypeException {
             try {

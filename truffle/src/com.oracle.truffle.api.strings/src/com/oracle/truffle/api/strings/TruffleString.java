@@ -3912,7 +3912,7 @@ public final class TruffleString extends AbstractTruffleString {
 
         @Specialization(guards = "codePointSet == cachedCodePointSet", limit = "1")
         static int indexOfSpecialized(AbstractTruffleString a, int fromByteIndex, int toByteIndex, CodePointSet codePointSet, boolean usePreciseCodeRange,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached @Exclusive ToIndexableNode toIndexableNode,
                         @Cached TStringInternalNodes.GetPreciseCodeRangeNode getPreciseCodeRangeNode,
                         @Cached(value = "codePointSet") CodePointSet cachedCodePointSet,
@@ -4930,7 +4930,7 @@ public final class TruffleString extends AbstractTruffleString {
 
         @Specialization(guards = "isEmpty(b)")
         static TruffleString bEmptyMutable(MutableTruffleString a, @SuppressWarnings("unused") AbstractTruffleString b, Encoding expectedEncoding, boolean lazy,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Shared("attributesNode") @Cached TStringInternalNodes.FromBufferWithStringCompactionKnownAttributesNode attributesNode) {
             CompilerAsserts.partialEvaluationConstant(lazy);
             if (AbstractTruffleString.DEBUG_STRICT_ENCODING_CHECKS) {
@@ -4942,7 +4942,7 @@ public final class TruffleString extends AbstractTruffleString {
 
         @Specialization(guards = {"!isEmpty(a)", "!isEmpty(b)"})
         static TruffleString doConcat(AbstractTruffleString a, AbstractTruffleString b, Encoding encoding, boolean lazy,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached TStringInternalNodes.GetPreciseCodeRangeNode getCodeRangeANode,
                         @Cached TStringInternalNodes.GetPreciseCodeRangeNode getCodeRangeBNode,
                         @Cached TStringInternalNodes.StrideFromCodeRangeNode getStrideNode,
@@ -6015,7 +6015,7 @@ public final class TruffleString extends AbstractTruffleString {
 
         @Specialization
         static String doUTF16(TruffleString a,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached InlinedConditionProfile cacheHit,
                         @Cached ToIndexableNode toIndexableNode,
                         @Cached @Shared TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNode,
@@ -6071,7 +6071,7 @@ public final class TruffleString extends AbstractTruffleString {
 
         @Specialization
         static String doMutable(MutableTruffleString a,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached @Shared TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNode,
                         @Cached @Shared TStringInternalNodes.GetPreciseCodeRangeNode getPreciseCodeRangeNode,
                         @Cached @Shared TStringInternalNodes.TransCodeNode transCodeNode,
@@ -6165,7 +6165,7 @@ public final class TruffleString extends AbstractTruffleString {
 
         @Specialization
         static TruffleString asNative(TruffleString a, NativeAllocator allocator, Encoding encoding, boolean useCompaction, boolean cacheResult,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached(value = "createInteropLibrary()", uncached = "getUncachedInteropLibrary()") Node interopLibrary,
                         @Cached InlinedConditionProfile isNativeProfile,
                         @Cached InlinedConditionProfile cacheHit,

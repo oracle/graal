@@ -154,7 +154,7 @@ final class FunctionsObject implements TruffleObject {
         }
 
         @ExportMessage
-        Object readArrayElement(long index, @Bind("$node") Node node, @Cached InlinedBranchProfile error) throws InvalidArrayIndexException {
+        Object readArrayElement(long index, @Bind Node node, @Cached InlinedBranchProfile error) throws InvalidArrayIndexException {
             if (!isArrayElementReadable(index)) {
                 error.enter(node);
                 throw InvalidArrayIndexException.create(index);
