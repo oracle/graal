@@ -1772,11 +1772,12 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
             return True, '{} does not exist'.format(out_file.path)
         if newestInput and out_file.isOlderThan(newestInput):
             return True, '{} is older than {}'.format(out_file, newestInput)
-        if exists(self._config_file()):
-            with open(self._config_file(), 'r') as f:
-                old_config = [l.strip() for l in f.readlines()]
-                if set(old_config) != set(self._config()):
-                    return True, 'the configuration changed'
+        if not exists(self._config_file()):
+            return True, '{} does not exits'.format(self._config_file())
+        with open(self._config_file(), 'r') as f:
+            old_config = [l.strip() for l in f.readlines()]
+            if set(old_config) != set(self._config()):
+                return True, 'the configuration changed'
         return False, None
 
     def newestOutput(self):
@@ -1800,14 +1801,16 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
         # always updated when the JDK is rebuilt.
         src_jimage = mx.TimeStampFile(join(_src_jdk.home, 'lib', 'modules'))
         return [
-            f'components: {", ".join(sorted(_components_set()))}',
             f'include sources: {_include_sources_str()}',
             f'strip jars: {mx.get_opts().strip_jars}',
             f'vendor-version: {graalvm_vendor_version()}',
+            f'use jlink{_jlink_libraries()}',
+            f'build exploded: {mx.get_env("MX_BUILD_EXPLODED") == "true"}',
             f'source jimage: {src_jimage}',
-            f'use_upgrade_module_path: {mx.get_env("GRAALVM_JIMAGE_USE_UPGRADE_MODULE_PATH", None)}',
             f'default_to_jvmci: {self.subject.default_to_jvmci}',
             f'missing_export_target_action: {self.subject.missing_export_target_action}',
+            f'jars: {sorted("{}:{}".format(d.suite, d.name) for d in self.subject.deps)}',
+            f'ignore jars: {sorted(self.subject.jimage_ignore_jars)}',
         ]
 
     def _config_file(self):
