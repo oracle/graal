@@ -4080,7 +4080,9 @@ def _infer_env(graalvm_dist):
     if isinstance(non_rebuildable_images, bool):
         non_rebuildable_images = [str(non_rebuildable_images)]
 
-    return sorted(list(dynamicImports)), sorted(components), sorted(excludeComponents), sorted(nativeImages), sorted(disableInstallables), sorted(non_rebuildable_images), _debuginfo_dists(), _no_licenses()
+    extra_image_builder_args = _parse_cmd_arg('extra_image_builder_argument', env_var_name='EXTRA_IMAGE_BUILDER_ARGUMENTS', separator=None, parse_bool=False) or []
+
+    return sorted(list(dynamicImports)), sorted(components), sorted(excludeComponents), sorted(nativeImages), sorted(disableInstallables), sorted(non_rebuildable_images), _debuginfo_dists(), _no_licenses(), sorted(extra_image_builder_args)
 
 
 def graalvm_clean_env(out_env=None):
@@ -4103,7 +4105,7 @@ def graalvm_env(out_env=None):
     """
     env = out_env or os.environ.copy()
     graalvm_dist = get_final_graalvm_distribution()
-    dynamicImports, components, exclude_components, nativeImages, disableInstallables, non_rebuildable_images, debuginfo_dists, noLicenses = _infer_env(graalvm_dist)
+    dynamicImports, components, exclude_components, nativeImages, disableInstallables, non_rebuildable_images, debuginfo_dists, noLicenses, extra_image_builder_args = _infer_env(graalvm_dist)
 
     env['GRAALVM_HOME'] = graalvm_home()
 
@@ -4113,6 +4115,7 @@ def graalvm_env(out_env=None):
     env['EXCLUDE_COMPONENTS'] = ','.join(exclude_components)
     env['DISABLE_INSTALLABLES'] = ','.join(disableInstallables)
     env['NON_REBUILDABLE_IMAGES'] = ','.join(non_rebuildable_images)
+    env['EXTRA_IMAGE_BUILDER_ARGUMENTS'] = ' '.join(extra_image_builder_args)
     if debuginfo_dists:
         env['DEBUGINFO_DISTS'] = 'true'
     if noLicenses:
@@ -4212,9 +4215,13 @@ def graalvm_show(args, forced_graalvm_dist=None):
             print("Launchers:")
             for launcher in sorted(launchers, key=lambda l: l.native_image_name):
                 suffix = ''
-                profile_cnt = len(_image_profiles(GraalVmNativeProperties.canonical_image_name(launcher.native_image_config)))
+                name = GraalVmNativeProperties.canonical_image_name(launcher.native_image_config)
+                profile_cnt = len(_image_profiles(name))
                 if profile_cnt > 0:
                     suffix += " ({} pgo profile file{})".format(profile_cnt, 's' if profile_cnt > 1 else '')
+                extra_args = _extra_image_builder_args(name)
+                if extra_args:
+                    suffix += " (" + mx.list_to_cmd_line(extra_args) + ")"
                 print(" - {name} ({native}, {rebuildable}){suffix}".format(
                     name=launcher.native_image_name,
                     native="native" if launcher.is_native() else "bash",
@@ -4237,9 +4244,13 @@ def graalvm_show(args, forced_graalvm_dist=None):
                     suffix += "rebuildable)"
                 else:
                     suffix += "non-rebuildable)"
-                profile_cnt = len(_image_profiles(GraalVmNativeProperties.canonical_image_name(library.native_image_config)))
+                name = GraalVmNativeProperties.canonical_image_name(library.native_image_config)
+                profile_cnt = len(_image_profiles(name))
                 if profile_cnt > 0:
                     suffix += " ({} pgo profile file{})".format(profile_cnt, 's' if profile_cnt > 1 else '')
+                extra_args = _extra_image_builder_args(name)
+                if extra_args:
+                    suffix += " (" + mx.list_to_cmd_line(extra_args) + ")"
                 print(" - {name}{suffix}".format(
                     name=library.native_image_name,
                     suffix=suffix))
@@ -4297,17 +4308,18 @@ def graalvm_show(args, forced_graalvm_dist=None):
                         print(f"Dependencies of the '{dist_name}' distribution:\n -", '\n - '.join(sorted(dep.name for dep in dist.deps)))
 
         if args.print_env:
-            def _print_env(name, val):
+            def _print_env(name, val, separator=','):
                 if val:
-                    print(name + '=' + ','.join(val))
+                    print(name + '=' + separator.join(val))
             print('Inferred env file:')
-            dynamic_imports, components, exclude_components, native_images, disable_installables, non_rebuildable_images, debuginfo_dists, no_licenses = _infer_env(graalvm_dist)
+            dynamic_imports, components, exclude_components, native_images, disable_installables, non_rebuildable_images, debuginfo_dists, no_licenses, extra_image_builder_args = _infer_env(graalvm_dist)
             _print_env('DYNAMIC_IMPORTS', dynamic_imports)
             _print_env('COMPONENTS', components)
             _print_env('EXCLUDE_COMPONENTS', exclude_components)
             _print_env('NATIVE_IMAGES', native_images)
             _print_env('DISABLE_INSTALLABLES', disable_installables)
             _print_env('NON_REBUILDABLE_IMAGES', non_rebuildable_images)
+            _print_env('EXTRA_IMAGE_BUILDER_ARGUMENTS', extra_image_builder_args, separator=' ')
             if debuginfo_dists:
                 print('DEBUGINFO_DISTS=true')
             if no_licenses:
@@ -4520,7 +4532,8 @@ def _extra_image_builder_args(image):
     prefix = image + ':'
     prefix_len = len(prefix)
     args = []
-    extra_args = _parse_cmd_arg('extra_image_builder_argument', env_var_name='EXTRA_IMAGE_BUILDER_ARGUMENTS', separator=None, parse_bool=False, default_value='')
+    # separator=None means any whitespace and there will be no empty elements
+    extra_args = _parse_cmd_arg('extra_image_builder_argument', env_var_name='EXTRA_IMAGE_BUILDER_ARGUMENTS', separator=None, parse_bool=False) or []
     for arg in extra_args:
         if arg.startswith(prefix):
             args.append(arg[prefix_len:])
