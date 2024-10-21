@@ -64,8 +64,7 @@ import jdk.graal.compiler.util.json.JsonWriter;
  * <li>Create a feature that enables the {@link PLTGOTOptions#EnablePLTGOT} option and registers
  * their resolver in the {@link ImageSingletons}.</li>
  * </ol>
- * For an example resolver, see
- * com.oracle.svm.enterprise.test.core.pltgot.DynamicMethodAddressResolutionTest
+ * For an example resolver, see {@link com.oracle.svm.core.pltgot.IdentityMethodAddressResolver}.
  *
  * From an implementation point of view, this feature and the supporting classes implement
  * <a href="https://maskray.me/blog/2021-09-19-all-about-procedure-linkage-table">the PLT (Procedure
@@ -109,7 +108,7 @@ import jdk.graal.compiler.util.json.JsonWriter;
  *
  * If the PLT/GOT mechanism is used for all eligible methods, the additional indirections that are
  * now present in calls can result in a slowdown that ranges from just a few percent to up to 20%
- * depending on the workload for the default enterprise configuration.
+ * depending on the workload for the default configuration.
  * </ul>
  */
 public class PLTGOTFeature implements InternalFeature {
