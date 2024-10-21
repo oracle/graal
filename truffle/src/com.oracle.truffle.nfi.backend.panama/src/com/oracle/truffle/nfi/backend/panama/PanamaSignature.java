@@ -58,6 +58,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.nfi.backend.panama.FunctionExecuteNode.SignatureExecuteNode;
 import com.oracle.truffle.nfi.backend.panama.FunctionExecuteNodeGen.SignatureExecuteNodeGen;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendSignatureBuilderLibrary;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendSignatureLibrary;
@@ -373,20 +374,20 @@ final class PanamaSignature {
             return retType;
         }
 
-        Object execute(PanamaSignature signature, Object[] args, @SuppressWarnings("preview") MemorySegment segment) {
+        Object execute(PanamaSignature signature, Object[] args, @SuppressWarnings("preview") MemorySegment segment, Node node) {
             assert signature.signatureInfo == this;
             CompilerAsserts.partialEvaluationConstant(retType);
 
-            ErrorContext ctx = PanamaNFILanguage.get(null).errorContext.get();
+            ErrorContext ctx = PanamaNFILanguage.get(node).errorContext.get();
             try {
-                int errnoMirror = ctx.getErrno();
-                if (ctx.nativeErrnoSet()) {
-                    ctx.setErrno(ctx.getNativeErrno());
+                int savedNativeErrno = ctx.getNativeErrno();
+                if (ctx.isNFIErrnoSet()) {
+                    ctx.setNativeErrno(ctx.getNFIErrno());
                 }
                 Object result = (Object) downcallHandle.invokeExact(segment, args);
 
-                ctx.setNativeErrno(ctx.getErrno());
-                ctx.setErrno(errnoMirror);
+                ctx.setNFIErrno(ctx.getNativeErrno());
+                ctx.setNativeErrno(savedNativeErrno);
 
                 if (result == null) {
                     return NativePointer.NULL;
