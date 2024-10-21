@@ -43,6 +43,8 @@ import com.oracle.svm.core.annotate.KeepOriginal;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.JDKLatest;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -123,15 +125,17 @@ public final class Target_java_lang_ref_Reference<T> {
     @KeepOriginal
     native T get();
 
-    @Substitute
-    public void clear() {
-        ReferenceInternals.clear(SubstrateUtil.cast(this, Reference.class));
-    }
+    @KeepOriginal
+    native void clear();
 
     @Substitute
     private void clear0() {
-        clear();
+        ReferenceInternals.clear(SubstrateUtil.cast(this, Reference.class));
     }
+
+    @TargetElement(onlyWith = JDKLatest.class)
+    @KeepOriginal
+    native void clearImpl();
 
     @KeepOriginal
     native boolean refersToImpl(T obj);
