@@ -29,7 +29,7 @@ import static jdk.graal.compiler.core.common.GraalOptions.InlineVTableStubs;
 import static jdk.graal.compiler.core.common.GraalOptions.OmitHotExceptionStacktrace;
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.OSR_MIGRATION_END;
 import static jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider.GENERIC_ARRAYCOPY;
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
+import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
 import static org.graalvm.word.LocationIdentity.any;
 
 import java.util.Arrays;
@@ -1015,7 +1015,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     }
 
     private void throwCachedException(BytecodeExceptionNode node) {
-        if (IS_IN_NATIVE_IMAGE) {
+        if (inImageRuntimeCode()) {
             throw new InternalError("Can't throw exception from SVM object");
         }
         Throwable exception = Exceptions.cachedExceptions.get(node.getExceptionKind());

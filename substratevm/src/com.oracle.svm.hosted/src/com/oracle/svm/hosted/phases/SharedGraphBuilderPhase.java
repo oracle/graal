@@ -49,7 +49,6 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.common.meta.MultiMethod;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.bootstrap.BootstrapMethodConfiguration;
 import com.oracle.svm.core.bootstrap.BootstrapMethodConfiguration.BootstrapMethodRecord;
 import com.oracle.svm.core.bootstrap.BootstrapMethodInfo;
@@ -868,9 +867,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         protected static boolean isDeoptimizationEnabled() {
-            boolean result = DeoptimizationSupport.enabled();
-            assert !(result && SubstrateUtil.isBuildingLibgraal()) : "Deoptimization support should not be enabled while building libgraal";
-            return result;
+            return DeoptimizationSupport.enabled();
         }
 
         protected final boolean isMethodDeoptTarget() {

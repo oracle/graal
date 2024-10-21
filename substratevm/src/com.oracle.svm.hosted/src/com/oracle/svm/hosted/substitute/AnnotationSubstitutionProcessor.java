@@ -943,12 +943,12 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     private static <T> void register(Map<T, T> substitutions, T annotated, T original, T target) {
         if (annotated != null) {
             guarantee(!substitutions.containsKey(annotated) || substitutions.get(annotated).equals(original) || substitutions.get(annotated).equals(target),
-                            "Substition: %s -> %s conflicts with previously registered: %s", annotated, target, substitutions.get(annotated));
+                            "Substitution: %s -> %s conflicts with previously registered: %s", annotated, target, substitutions.get(annotated));
             substitutions.put(annotated, target);
         }
         if (original != null) {
             guarantee(!substitutions.containsKey(original) || substitutions.get(original).equals(original) || substitutions.get(original).equals(target),
-                            "Substition: %s -> %s conflicts with previously registered: %s", original, target, substitutions.get(original));
+                            "Substitution: %s -> %s conflicts with previously registered: %s", original, target, substitutions.get(original));
             substitutions.put(original, target);
         }
     }

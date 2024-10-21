@@ -100,6 +100,7 @@ public class LibGraalClassLoader extends ClassLoader {
                     "jdk.internal.vm.ci",
                     "org.graalvm.collections",
                     "org.graalvm.word",
+                    "org.graalvm.nativeimage",
                     "jdk.graal.compiler",
                     "org.graalvm.truffle.compiler",
                     "com.oracle.graal.graal_enterprise");

@@ -27,7 +27,7 @@ package jdk.graal.compiler.hotspot;
 import java.util.BitSet;
 import java.util.List;
 
-import jdk.vm.ci.services.Services;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 
@@ -365,7 +365,7 @@ public interface HotSpotForeignCallLinkage extends ForeignCallLinkage, InvokeTar
 
         private static GlobalAtomicLong getStubData(ForeignCallSignature sig) {
             GlobalAtomicLong data;
-            if (Services.IS_IN_NATIVE_IMAGE) {
+            if (ImageInfo.inImageRuntimeCode()) {
                 data = STUBS.get(sig);
                 GraalError.guarantee(data != null, "missing global data for %s", sig);
             } else {
