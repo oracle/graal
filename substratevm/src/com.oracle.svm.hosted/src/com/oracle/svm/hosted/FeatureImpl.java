@@ -45,6 +45,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.core.graal.code.SubstrateBackend;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -766,14 +767,21 @@ public class FeatureImpl {
 
     public static class AfterAbstractImageCreationAccessImpl extends FeatureAccessImpl implements InternalFeature.AfterAbstractImageCreationAccess {
         protected final AbstractImage abstractImage;
+        protected final SubstrateBackend substrateBackend;
 
-        AfterAbstractImageCreationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, DebugContext debugContext, AbstractImage abstractImage) {
+        AfterAbstractImageCreationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, DebugContext debugContext, AbstractImage abstractImage,
+                        SubstrateBackend substrateBackend) {
             super(featureHandler, imageClassLoader, debugContext);
             this.abstractImage = abstractImage;
+            this.substrateBackend = substrateBackend;
         }
 
         public AbstractImage getImage() {
             return abstractImage;
+        }
+
+        public SubstrateBackend getSubstrateBackend() {
+            return substrateBackend;
         }
     }
 
