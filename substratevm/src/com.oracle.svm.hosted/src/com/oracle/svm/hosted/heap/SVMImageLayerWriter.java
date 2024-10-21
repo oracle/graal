@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.heap;
 
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CLASS_ID_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.C_ENTRY_POINT_LITERAL_CODE_POINTER;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.HOLDER_CLASS_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.HUB_IDENTITY_HASH_CODE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IMAGE_SINGLETON_KEYS;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IMAGE_SINGLETON_OBJECTS;
@@ -40,11 +41,13 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_FAILED_NO
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_INITIALIZED_AT_BUILD_TIME_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_INITIALIZED_NO_TRACKING_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_NO_INITIALIZER_NO_TRACKING_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.LAMBDA_TYPE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.LOCATION_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.METHOD_POINTER_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.OBJECT_OFFSET_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.STATIC_OBJECT_FIELDS_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.STATIC_PRIMITIVE_FIELDS_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.WRAPPED_TYPE_TAG;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -92,6 +95,7 @@ import com.oracle.svm.hosted.reflect.proxy.ProxyRenamingSubstitutionProcessor;
 import com.oracle.svm.hosted.reflect.proxy.ProxySubstitutionType;
 import com.oracle.svm.util.LogUtils;
 
+import jdk.graal.compiler.java.LambdaUtils;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -147,6 +151,11 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
                 AnalysisMethod classInitializerMethod = (AnalysisMethod) methodPointer.getMethod();
                 typeMap.put(INFO_CLASS_INITIALIZER_TAG, classInitializerMethod.getId());
             }
+        }
+
+        if (LambdaUtils.isLambdaType(type)) {
+            typeMap.put(WRAPPED_TYPE_TAG, LAMBDA_TYPE_TAG);
+            typeMap.put(HOLDER_CLASS_TAG, LambdaUtils.capturingClass(type.toJavaName()));
         }
 
         super.persistType(type, typeMap);
