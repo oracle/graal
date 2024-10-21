@@ -88,6 +88,10 @@ public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
 
     protected static final Set<Field> dynamicHubRelinkedFields = Set.of(companion, classInitializationInfo, name, superHub, componentType, arrayHub);
 
+    /**
+     * This map stores the field indexes that should be relinked using the hosted value of a
+     * constant from the key type.
+     */
     protected final Map<AnalysisType, Set<Integer>> fieldsToRelink = new HashMap<>();
     private final ImageClassLoader imageClassLoader;
 
