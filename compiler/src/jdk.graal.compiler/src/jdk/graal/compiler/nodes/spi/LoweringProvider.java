@@ -60,18 +60,18 @@ public interface LoweringProvider {
 
     /**
      * Indicates whether this target platform supports bulk zeroing of arbitrary size. This applies
-     * only to newly allocated memory.
+     * only eden memory such as the memory directly initialized in the allocation snippets.
      */
-    boolean supportsBulkZeroing();
+    boolean supportsBulkZeroingOfEden();
 
     /**
      * Indicates whether this target platform supports bulk zeroing arrays of arbitrary size that
-     * might not be newly allocated.
+     * might not be in eden. See {@link #supportsBulkZeroingOfEden()}.
      *
-     * @param kind the kind of the array elements
+     * @param elementKind the elementKind of the array elements
      */
-    default boolean supportsBulkClearArray(JavaKind kind) {
-        return supportsBulkZeroing();
+    default boolean supportsBulkClearArray(JavaKind elementKind) {
+        return supportsBulkZeroingOfEden();
     }
 
     /**

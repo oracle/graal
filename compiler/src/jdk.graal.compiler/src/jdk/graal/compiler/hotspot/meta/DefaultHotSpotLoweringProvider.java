@@ -356,12 +356,15 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     }
 
     @Override
-    public boolean supportsBulkClearArray(JavaKind kind) {
-        if (!supportsBulkZeroing()) {
+    public boolean supportsBulkClearArray(JavaKind elementKind) {
+        if (!supportsBulkZeroingOfEden()) {
             return false;
         }
-        // ZeroMemoryNode can't be used with Object[] unless it's known to be in eden
-        return getVMConfig().gc != HotSpotGC.Z || !kind.isObject();
+        /*
+         * In the case of ZGC, ZeroMemoryNode ZeroMemoryNode can't be used with Object[] unless it's
+         * known to be in eden.
+         */
+        return getVMConfig().gc != HotSpotGC.Z || !elementKind.isObject();
     }
 
     @Override
