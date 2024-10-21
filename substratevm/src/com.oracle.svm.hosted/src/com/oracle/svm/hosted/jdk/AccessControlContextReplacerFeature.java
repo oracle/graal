@@ -86,6 +86,11 @@ class AccessControlContextReplacerFeature implements InternalFeature {
         access.registerObjectReplacer(AccessControlContextReplacerFeature::replaceAccessControlContext);
     }
 
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return JavaVersionUtil.JAVA_SPEC <= 21;
+    }
+
     private static boolean isSimpleContext(AccessControlContext ctx) {
         /*
          * In addition to aforementioned allow-listed contexts we also allow inclusion of very
