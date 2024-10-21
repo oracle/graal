@@ -5945,7 +5945,7 @@ public class FlatNodeGenFactory {
         builder.tree(this.multiState.createSet(innerFrameState, transaction, activeQuery, false, false));
         builder.tree(this.multiState.createSet(innerFrameState, transaction, excludedQuery, true, false));
         builder.tree(this.multiState.persistTransaction(innerFrameState, transaction));
-        plugs.notifySpecialize(this, builder, frameState, specialization);
+        plugs.notifySpecialize(this, builder, innerFrameState, specialization);
 
         for (SpecializationData removeSpecialization : specializations) {
             if (useSpecializationClass(removeSpecialization)) {
@@ -8291,6 +8291,15 @@ public class FlatNodeGenFactory {
             if (local != null) {
                 method.addParameter(local.createParameter());
             }
+        }
+    }
+
+    public void loadQuickeningStateBitSets(CodeTreeBuilder b, FrameState frameState, Collection<SpecializationData> specializations) {
+        for (BitSet set : multiState.getSets()) {
+            if (!MultiStateBitSet.isRelevantForQuickening(set, specializations)) {
+                continue;
+            }
+            b.tree(set.createLoad(frameState));
         }
     }
 

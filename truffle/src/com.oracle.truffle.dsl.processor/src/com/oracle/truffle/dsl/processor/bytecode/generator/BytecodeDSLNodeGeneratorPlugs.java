@@ -232,6 +232,9 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
             if (quickenMethod == null) {
                 quickenMethod = createQuickenMethod(nodeFactory, frameState);
             }
+
+            nodeFactory.loadQuickeningStateBitSets(builder, frameState, instruction.nodeData.getReachableSpecializations());
+
             builder.startStatement();
             builder.startCall("quicken");
             for (VariableElement var : quickenMethod.getParameters()) {
