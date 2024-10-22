@@ -13,6 +13,7 @@ At runtime, premain runtime options are set along with main class' arguments in 
 * (GR-58000) Support for `GetStringUTFLengthAsLong` added in JNI_VERSION_24 ([JDK-8328877](https://bugs.openjdk.org/browse/JDK-8328877))
 * (GR-58383) The length of the printed stack trace when using `-XX:MissingRegistrationReportingMode=Warn` can now be set with `-XX:MissingRegistrationWarnContextLines=` and its default length is now 8.
 * (GR-58914) `ActiveProcessorCount` must be set at isolate or VM creation time.
+* (GR-56599) Update native image debuginfo from DWARF4 to DWARF5 and store type information for debugging in DWARF type units.
 
 ## GraalVM for JDK 23 (Internal Version 24.1.0)
 * (GR-51520) The old class initialization strategy, which was deprecated in GraalVM for JDK 22, is removed. The option `StrictImageHeap` no longer has any effect.
