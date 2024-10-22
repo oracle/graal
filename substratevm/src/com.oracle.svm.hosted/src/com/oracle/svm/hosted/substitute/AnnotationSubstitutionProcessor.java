@@ -106,13 +106,9 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     private final Map<ResolvedJavaMethod, ResolvedJavaMethod> methodSubstitutions;
     private final Map<ResolvedJavaMethod, ResolvedJavaMethod> polymorphicMethodSubstitutions;
     private final Map<ResolvedJavaField, ResolvedJavaField> fieldSubstitutions;
-<<<<<<< HEAD
+
     private ClassInitializationSupport classInitializationSupport;
-=======
-    private Map<Field, Object> unsafeAccessedFields = new HashMap<>();
-    private final ClassInitializationSupport classInitializationSupport;
     private final Set<String> disabledSubstitutions;
->>>>>>> 65e51884595 (Add option to disable substitutions)
 
     public AnnotationSubstitutionProcessor(ImageClassLoader imageClassLoader, MetaAccessProvider metaAccess, ClassInitializationSupport classInitializationSupport) {
         this.imageClassLoader = imageClassLoader;
