@@ -48,6 +48,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.hosted.DynamicAccessDetectionFeature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
@@ -120,6 +121,8 @@ public final class ReflectionPlugins {
     private final ParsingReason reason;
     private final FallbackFeature fallbackFeature;
     private final ClassInitializationSupport classInitializationSupport;
+    private final boolean trackDynamicAccess;
+    private final DynamicAccessDetectionFeature dynamicAccessDetectionFeature;
 
     private ReflectionPlugins(ImageClassLoader imageClassLoader, AnnotationSubstitutionProcessor annotationSubstitutions,
                     ClassInitializationPlugin classInitializationPlugin, AnalysisUniverse aUniverse, ParsingReason reason, FallbackFeature fallbackFeature) {
@@ -129,6 +132,9 @@ public final class ReflectionPlugins {
         this.aUniverse = aUniverse;
         this.reason = reason;
         this.fallbackFeature = fallbackFeature;
+
+        this.dynamicAccessDetectionFeature = DynamicAccessDetectionFeature.instance();
+        this.trackDynamicAccess = DynamicAccessDetectionFeature.Options.TrackDynamicAccess.hasBeenSet();
 
         this.classInitializationSupport = (ClassInitializationSupport) ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
     }
@@ -572,7 +578,12 @@ public final class ReflectionPlugins {
             return false;
         }
 
-        b.add(ReachabilityRegistrationNode.create(() -> registerForRuntimeReflection((T) receiverValue, registrationCallback), reason));
+        b.add(ReachabilityRegistrationNode.create(() -> {
+            registerForRuntimeReflection((T) receiverValue, registrationCallback);
+            if (trackDynamicAccess) {
+                dynamicAccessDetectionFeature.addFoldEntry(b.bci(), b.getMethod());
+            }
+        }, reason));
         return true;
     }
 
