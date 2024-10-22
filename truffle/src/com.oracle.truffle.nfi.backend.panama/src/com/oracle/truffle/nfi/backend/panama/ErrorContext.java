@@ -61,19 +61,15 @@ public class ErrorContext {
     }
 
     @SuppressWarnings("preview") private MemorySegment errnoLocation;
-    private Integer nfiErrno = null;
+    private int nfiErrno = 0;
     final PanamaNFIContext ctx;
-
-    public boolean isNFIErrnoSet() {
-        return (nfiErrno != null);
-    }
 
     public int getNFIErrno() {
         return nfiErrno;
     }
 
-    public void setNFIErrno(int nativeErrno) {
-        this.nfiErrno = nativeErrno;
+    public void setNFIErrno(int nfiErrno) {
+        this.nfiErrno = nfiErrno;
     }
 
     @SuppressWarnings({"preview", "restricted"})

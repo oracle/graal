@@ -58,7 +58,6 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
-import com.oracle.truffle.nfi.backend.panama.FunctionExecuteNode.SignatureExecuteNode;
 import com.oracle.truffle.nfi.backend.panama.FunctionExecuteNodeGen.SignatureExecuteNodeGen;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendSignatureBuilderLibrary;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendSignatureLibrary;
@@ -380,14 +379,11 @@ final class PanamaSignature {
 
             ErrorContext ctx = PanamaNFILanguage.get(node).errorContext.get();
             try {
-                int savedNativeErrno = ctx.getNativeErrno();
-                if (ctx.isNFIErrnoSet()) {
-                    ctx.setNativeErrno(ctx.getNFIErrno());
-                }
+                // We need to set and capture native errno as close as possible to the native call
+                // to avoid the JVM clobbering it
+                ctx.setNativeErrno(ctx.getNFIErrno());
                 Object result = (Object) downcallHandle.invokeExact(segment, args);
-
                 ctx.setNFIErrno(ctx.getNativeErrno());
-                ctx.setNativeErrno(savedNativeErrno);
 
                 if (result == null) {
                     return NativePointer.NULL;
