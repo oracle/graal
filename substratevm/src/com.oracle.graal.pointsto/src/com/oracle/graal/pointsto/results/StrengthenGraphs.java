@@ -252,6 +252,8 @@ public abstract class StrengthenGraphs {
             return;
         }
 
+        preStrengthenGraphs(graph, method);
+
         graph.resetDebug(debug);
         if (beforeCounters != null) {
             beforeCounters.collect(graph);
@@ -278,6 +280,8 @@ public abstract class StrengthenGraphs {
             }
         }
     }
+
+    protected abstract void preStrengthenGraphs(StructuredGraph graph, AnalysisMethod method);
 
     protected abstract void postStrengthenGraphs(StructuredGraph graph, AnalysisMethod method);
 

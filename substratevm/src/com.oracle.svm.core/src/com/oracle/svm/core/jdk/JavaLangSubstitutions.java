@@ -40,6 +40,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.AnalyzeJavaHomeAccessEnabled;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
@@ -403,7 +404,7 @@ final class Target_java_lang_System {
     }
 
     @Substitute
-    @NeverInlineTrivial("Used in 'java.home' access analysis: AnalyzeJavaHomeAccessPhase")
+    @NeverInlineTrivial(reason = "Used in 'java.home' access analysis: AnalyzeJavaHomeAccessPhase", onlyWith = AnalyzeJavaHomeAccessEnabled.class)
     private static String getProperty(String key) {
         checkKey(key);
         return SystemPropertiesSupport.singleton().getCurrentProperty(key);
@@ -416,7 +417,7 @@ final class Target_java_lang_System {
     }
 
     @Substitute
-    @NeverInlineTrivial("Used in 'java.home' access analysis: AnalyzeJavaHomeAccessPhase")
+    @NeverInlineTrivial(reason = "Used in 'java.home' access analysis: AnalyzeJavaHomeAccessPhase", onlyWith = AnalyzeJavaHomeAccessEnabled.class)
     private static String getProperty(String key, String def) {
         checkKey(key);
         return SystemPropertiesSupport.singleton().getCurrentProperty(key, def);

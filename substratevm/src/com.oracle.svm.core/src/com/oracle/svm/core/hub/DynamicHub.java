@@ -84,6 +84,7 @@ import java.util.StringJoiner;
 import java.util.function.BiFunction;
 import java.util.function.IntFunction;
 
+import com.oracle.svm.core.TrackDynamicAccessEnabled;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -93,6 +94,7 @@ import org.graalvm.word.WordBase;
 import com.oracle.svm.core.BuildPhaseProvider.AfterHostedUniverse;
 import com.oracle.svm.core.BuildPhaseProvider.CompileQueueFinished;
 import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.NeverInlineTrivial;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
@@ -1586,18 +1588,21 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private native Constructor<?> getEnclosingConstructor();
 
     @Substitute
+    @NeverInlineTrivial(reason = "Used in dynamic access call usage analysis: DynamicAccessDetectionPhase", onlyWith = TrackDynamicAccessEnabled.class)
     @CallerSensitive
     private static Class<?> forName(String className) throws Throwable {
         return forName(className, Reflection.getCallerClass());
     }
 
     @Substitute
+    @NeverInlineTrivial(reason = "Used in dynamic access call usage analysis: DynamicAccessDetectionPhase", onlyWith = TrackDynamicAccessEnabled.class)
     @CallerSensitiveAdapter
     private static Class<?> forName(String className, Class<?> caller) throws Throwable {
         return forName(className, true, caller == null ? ClassLoader.getSystemClassLoader() : caller.getClassLoader(), caller);
     }
 
     @Substitute
+    @NeverInlineTrivial(reason = "Used in dynamic access call usage analysis: DynamicAccessDetectionPhase", onlyWith = TrackDynamicAccessEnabled.class)
     @CallerSensitive
     private static Class<?> forName(Module module, String className) throws Throwable {
         return forName(module, className, Reflection.getCallerClass());
@@ -1617,6 +1622,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     @Substitute
+    @NeverInlineTrivial(reason = "Used in dynamic access call usage analysis: DynamicAccessDetectionPhase", onlyWith = TrackDynamicAccessEnabled.class)
     @CallerSensitive
     private static Class<?> forName(String name, boolean initialize, ClassLoader loader) throws Throwable {
         return forName(name, initialize, loader, Reflection.getCallerClass());
