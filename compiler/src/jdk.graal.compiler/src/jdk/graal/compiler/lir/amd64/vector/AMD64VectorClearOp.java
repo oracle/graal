@@ -77,7 +77,7 @@ public class AMD64VectorClearOp extends AMD64LIRInstruction {
         Register register = asRegister(result);
 
         if (kind.isMask()) {
-            KXOR_OPS[CodeUtil.log2(kind.getSizeInBytes())].emit(masm, XMM, register, register, register);
+            KXOR_OPS[CodeUtil.log2(kind.getSizeInBytes())].emit(masm, register, register, register);
             return;
         }
 
