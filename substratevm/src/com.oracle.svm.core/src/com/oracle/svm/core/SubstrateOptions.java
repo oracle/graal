@@ -1484,4 +1484,20 @@ public class SubstrateOptions {
         return !Platform.includedIn(Platform.WINDOWS.class) && ConcealedOptions.DumpRuntimeCompiledMethods.getValue();
     }
 
+    @Option(help = "file:doc-files/TrackDynamicAccessHelp.txt")//
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> TrackDynamicAccess = new HostedOptionKey<>(
+                    AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
+
+    @Option(help = "Track System.getProperty(\\\"java.home\\\") usage in reachable parts of the project.")//
+    public static final HostedOptionKey<Boolean> TrackJavaHomeAccess = new HostedOptionKey<>(false);
+
+    @Option(help = "Output all System.getProperty(\\\"java.home\\\") calls in reachable parts of the project.")//
+    public static final HostedOptionKey<Boolean> TrackJavaHomeAccessDetailed = new HostedOptionKey<>(false) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+            if (newValue) {
+                TrackJavaHomeAccess.update(values, true);
+            }
+        }
+    };
 }
