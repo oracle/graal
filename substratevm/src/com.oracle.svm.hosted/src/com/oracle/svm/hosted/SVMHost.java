@@ -43,6 +43,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiPredicate;
+import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 
 import org.graalvm.nativeimage.AnnotationAccess;
@@ -1087,8 +1088,30 @@ public class SVMHost extends HostVM {
     }
 
     public boolean neverInlineTrivial(AnalysisMethod caller, AnalysisMethod callee) {
-        if (!callee.canBeInlined() || AnnotationAccess.isAnnotationPresent(callee, NeverInlineTrivial.class)) {
+        if (!callee.canBeInlined()) {
             return true;
+        }
+        if (AnnotationAccess.isAnnotationPresent(callee, NeverInlineTrivial.class)) {
+            for (Class<?> onlyWithClass : AnnotationAccess.getAnnotation(callee, NeverInlineTrivial.class).onlyWith()) {
+                Object onlyWithProvider;
+                try {
+                    onlyWithProvider = ReflectionUtil.newInstance(onlyWithClass);
+                } catch (ReflectionUtil.ReflectionUtilError ex) {
+                    throw UserError.abort(ex.getCause(), "Class specified as onlyWith for %s cannot be loaded or instantiated: %s", callee, onlyWithClass.getTypeName());
+                }
+
+                boolean onlyWithResult;
+                if (onlyWithProvider instanceof BooleanSupplier) {
+                    onlyWithResult = ((BooleanSupplier) onlyWithProvider).getAsBoolean();
+                } else {
+                    throw UserError.abort("Class specified as onlyWith for %s does not implement %s", callee, BooleanSupplier.class.getSimpleName());
+                }
+
+                if (onlyWithResult) {
+                    return true;
+                }
+            }
+            return false;
         }
         for (var handler : neverInlineTrivialHandlers) {
             if (handler.test(caller, callee)) {
