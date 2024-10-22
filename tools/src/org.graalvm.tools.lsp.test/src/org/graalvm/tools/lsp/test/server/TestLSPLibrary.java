@@ -38,6 +38,9 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -53,7 +56,9 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
@@ -248,11 +253,12 @@ public final class TestLSPLibrary extends TruffleLSPTest {
 
         @ExportLibrary(InteropLibrary.class)
         @SuppressWarnings("static-method")
-        static final class TestScope implements TruffleObject {
+        static final class TestScope extends AbstractDocMembers {
 
             private final MaterializedFrame frame;
 
             TestScope(Frame frame) {
+                super("a", "o");
                 this.frame = frame != null ? frame.materialize() : null;
             }
 
@@ -261,30 +267,20 @@ public final class TestLSPLibrary extends TruffleLSPTest {
                 return true;
             }
 
-            @ExportMessage
-            boolean hasMembers() {
-                return true;
-            }
-
-            @ExportMessage
-            public Object getMembers(@SuppressWarnings("unused") boolean internal) {
-                return new Array("a", "o");
-            }
-
-            @ExportMessage
-            boolean isMemberReadable(String member) {
+            @Override
+            boolean isReadable(String member) {
                 return switch (member) {
                     case "a", "o" -> true;
                     default -> false;
                 };
             }
 
-            @ExportMessage
-            public Object readMember(String member) throws UnknownIdentifierException {
-                return switch (member) {
+            @Override
+            public Object read(Object member, String name) throws UnknownMemberException {
+                return switch (name) {
                     case "a" -> frame != null ? frame.getInt(0) : 0;
                     case "o" -> frame != null ? frame.getObject(1) : new Null();
-                    default -> throw UnknownIdentifierException.create(member);
+                    default -> throw UnknownMemberException.create(member);
                 };
             }
 
@@ -352,36 +348,155 @@ public final class TestLSPLibrary extends TruffleLSPTest {
         }
 
         @ExportLibrary(InteropLibrary.class)
-        @ExportLibrary(LSPLibrary.class)
         @SuppressWarnings("static-method")
-        static final class LSPEnhancedObject implements TruffleObject {
+        static final class DocMember implements TruffleObject {
 
-            private static final String DOCUMENTATION = "documentation";
-            private static final String PARAMETERS = "parameters";
+            final String name;
+
+            DocMember(String name) {
+                this.name = name;
+            }
 
             @ExportMessage
-            boolean hasMembers() {
+            boolean isMember() {
                 return true;
             }
 
             @ExportMessage
-            public Object getMembers(@SuppressWarnings("unused") boolean internal) {
-                return new Array("A", "B");
+            Object getMemberSimpleName() {
+                return name;
             }
 
             @ExportMessage
-            boolean isMemberReadable(String member) {
+            Object getMemberQualifiedName() {
+                return name;
+            }
+
+            @ExportMessage
+            boolean isMemberKindField() {
+                return true;
+            }
+
+            @ExportMessage
+            boolean isMemberKindMethod() {
+                return false;
+            }
+
+            @ExportMessage
+            boolean isMemberKindMetaObject() {
+                return false;
+            }
+        }
+
+        @ExportLibrary(InteropLibrary.class)
+        @SuppressWarnings("static-method")
+        abstract static class AbstractDocMembers implements TruffleObject {
+
+            static final int LIMIT = 3;
+            @CompilationFinal(dimensions = 1) private final String[] names;
+
+            AbstractDocMembers(String... names) {
+                this.names = names;
+            }
+
+            @ExportMessage
+            final boolean hasMembers() {
+                return true;
+            }
+
+            @ExportMessage
+            final Object getMemberObjects() {
+                Object[] members = new Object[names.length];
+                for (int i = 0; i < names.length; i++) {
+                    members[i] = new DocMember(names[i]);
+                }
+                return new Array(members);
+            }
+
+            abstract boolean isReadable(String name);
+
+            abstract Object read(Object member, String name) throws UnknownMemberException;
+
+            @ExportMessage
+            static final class IsMemberReadable {
+
+                @Specialization
+                static boolean isReadableMember(AbstractDocMembers receiver, DocMember member) {
+                    return receiver.isReadable(member.name);
+                }
+
+                @Specialization(guards = "memberLibrary.isString(memberName)")
+                static boolean isReadableString(AbstractDocMembers receiver, Object memberName,
+                                @Shared("memberLibrary") @CachedLibrary(limit = "LIMIT") InteropLibrary memberLibrary) {
+                    String name;
+                    try {
+                        name = memberLibrary.asString(memberName);
+                    } catch (UnsupportedMessageException e) {
+                        throw CompilerDirectives.shouldNotReachHere(e);
+                    }
+                    return receiver.isReadable(name);
+                }
+
+                @Fallback
+                @SuppressWarnings("unused")
+                static boolean isReadableOther(AbstractDocMembers receiver, Object unknownMember) {
+                    return false;
+                }
+            }
+
+            @ExportMessage
+            static final class ReadMember {
+
+                @Specialization
+                static Object readMember(AbstractDocMembers receiver, DocMember member) throws UnknownMemberException {
+                    return receiver.read(member, member.name);
+                }
+
+                @Specialization(guards = "memberLibrary.isString(memberName)")
+                static Object readString(AbstractDocMembers receiver, Object memberName,
+                                @Shared("memberLibrary") @CachedLibrary(limit = "LIMIT") InteropLibrary memberLibrary) throws UnknownMemberException {
+                    String name;
+                    try {
+                        name = memberLibrary.asString(memberName);
+                    } catch (UnsupportedMessageException e) {
+                        throw CompilerDirectives.shouldNotReachHere(e);
+                    }
+                    return receiver.read(memberName, name);
+                }
+
+                @Fallback
+                @SuppressWarnings("unused")
+                static Object readOther(AbstractDocMembers receiver, Object unknownMember) throws UnknownMemberException {
+                    throw UnknownMemberException.create(unknownMember);
+                }
+            }
+        }
+
+        @ExportLibrary(InteropLibrary.class)
+        @ExportLibrary(LSPLibrary.class)
+        @SuppressWarnings("static-method")
+        static final class LSPEnhancedObject extends AbstractDocMembers {
+
+            private static final String DOCUMENTATION = "documentation";
+            private static final String PARAMETERS = "parameters";
+
+            LSPEnhancedObject() {
+                super("A", "B");
+            }
+
+            @Override
+            boolean isReadable(String member) {
                 return "A".equals(member) || "B".equals(member);
             }
 
-            @ExportMessage
-            public Object readMember(String member) throws UnknownIdentifierException {
-                if ("A".equals(member)) {
+            @Override
+            public Object read(Object member, String name) throws UnknownMemberException {
+                if ("A".equals(name)) {
                     return "Value of A";
-                } else if ("B".equals(member)) {
+                } else if ("B".equals(name)) {
                     return "Value of B";
                 } else {
-                    throw UnknownIdentifierException.create(member);
+                    throw UnknownMemberException.create(member);
                 }
             }
 
@@ -406,34 +521,28 @@ public final class TestLSPLibrary extends TruffleLSPTest {
             }
 
             @ExportLibrary(InteropLibrary.class)
-            static final class LSPSignature implements TruffleObject {
+            static final class LSPSignature extends AbstractDocMembers {
 
-                @ExportMessage
-                boolean hasMembers() {
-                    return true;
+                LSPSignature() {
+                    super(DOCUMENTATION, PARAMETERS);
                 }
 
-                @ExportMessage
-                public Object getMembers(@SuppressWarnings("unused") boolean internal) {
-                    return new Array(DOCUMENTATION, PARAMETERS);
-                }
-
-                @ExportMessage
-                boolean isMemberReadable(String member) {
+                @Override
+                boolean isReadable(String member) {
                     return switch (member) {
                         case DOCUMENTATION, PARAMETERS -> true;
                         default -> false;
                     };
                 }
 
-                @ExportMessage
-                public Object readMember(String member) throws UnknownIdentifierException {
-                    return switch (member) {
+                @Override
+                public Object read(Object member, String name) throws UnknownMemberException {
+                    return switch (name) {
                         case DOCUMENTATION -> SIGNATURE_DOC;
                         case PARAMETERS -> new Array(
                                         new ParameterInformation("Test Parameter 1 Label", "Param 1 LSP Documentation"),
                                         new ParameterInformation("Test Parameter 2 Label", "Param 2 LSP Documentation"));
-                        default -> throw UnknownIdentifierException.create(member);
+                        default -> throw UnknownMemberException.create(member);
                     };
                 }
 
@@ -443,8 +552,7 @@ public final class TestLSPLibrary extends TruffleLSPTest {
                 }
             }
 
-            @ExportLibrary(InteropLibrary.class)
-            static final class ParameterInformation implements TruffleObject {
+            static final class ParameterInformation extends AbstractDocMembers {
 
                 private static final String LABEL = "label";
 
@@ -452,34 +560,25 @@ public final class TestLSPLibrary extends TruffleLSPTest {
                 private final String documentation;
 
                 ParameterInformation(String label, String documentation) {
+                    super(LABEL, DOCUMENTATION);
                     this.label = label;
                     this.documentation = documentation;
                 }
 
-                @ExportMessage
-                boolean hasMembers() {
-                    return true;
-                }
-
-                @ExportMessage
-                public Object getMembers(@SuppressWarnings("unused") boolean internal) {
-                    return new Array(LABEL, DOCUMENTATION);
-                }
-
-                @ExportMessage
-                boolean isMemberReadable(String member) {
+                @Override
+                boolean isReadable(String member) {
                     return switch (member) {
                         case LABEL, DOCUMENTATION -> true;
                         default -> false;
                     };
                 }
 
-                @ExportMessage
-                public Object readMember(String member) throws UnknownIdentifierException {
-                    return switch (member) {
+                @Override
+                public Object read(Object member, String name) throws UnknownMemberException {
+                    return switch (name) {
                         case LABEL -> label;
                         case DOCUMENTATION -> documentation;
-                        default -> throw UnknownIdentifierException.create(member);
+                        default -> throw UnknownMemberException.create(member);
                     };
                 }
             }

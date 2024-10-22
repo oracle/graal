@@ -61,17 +61,17 @@ public class TestLibrary implements TruffleObject {
     }
 
     @ExportMessage
-    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+    Object getMemberObjects() {
         return null;
     }
 
     @ExportMessage
-    boolean isMemberReadable(@SuppressWarnings("unused") String name) {
+    boolean isMemberReadable(@SuppressWarnings("unused") Object name) {
         return true;
     }
 
     @ExportMessage
-    Object readMember(String name) {
-        return new TestSymbol(name);
+    Object readMember(Object name) {
+        return new TestSymbol((String) name);
     }
 }

@@ -337,6 +337,7 @@ public class PolyglotTypeMappings {
     public static final class OptionalTypeConverter implements InternalTypeConverter {
 
         @Override
+        @SuppressWarnings("deprecation") // GR-58181
         public StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso) throws UnsupportedTypeException {
             try {
                 Object result = interop.invokeMember(value, "orElse", StaticObject.NULL);
@@ -356,6 +357,7 @@ public class PolyglotTypeMappings {
     public static final class BigDecimalTypeConverter implements InternalTypeConverter {
 
         @Override
+        @SuppressWarnings("deprecation") // GR-58181
         public StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso) throws UnsupportedTypeException {
             try {
                 // state required to reconstruct in guest

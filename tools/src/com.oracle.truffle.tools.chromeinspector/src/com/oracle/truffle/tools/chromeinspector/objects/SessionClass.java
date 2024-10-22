@@ -28,7 +28,7 @@ import java.util.function.Supplier;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.tools.chromeinspector.InspectorExecutionContext;
 
 /**
@@ -36,7 +36,7 @@ import com.oracle.truffle.tools.chromeinspector.InspectorExecutionContext;
  */
 class SessionClass extends AbstractInspectorObject {
 
-    private static final TruffleObject KEYS = new Keys(new String[0]);
+    private static final TruffleObject MEMBERS = new Members(new String[0]);
 
     private final Supplier<InspectorExecutionContext> contextSupplier;
     private final UndefinedProvider undefinedProvider;
@@ -62,8 +62,8 @@ class SessionClass extends AbstractInspectorObject {
     }
 
     @Override
-    protected TruffleObject getMembers(boolean includeInternal) {
-        return KEYS;
+    protected TruffleObject getMemberObjects() {
+        return MEMBERS;
     }
 
     @Override
@@ -82,9 +82,9 @@ class SessionClass extends AbstractInspectorObject {
     }
 
     @Override
-    protected Object invokeMember(String name, Object[] arguments) throws UnknownIdentifierException {
+    protected Object invokeMethod(String name, Object member, Object[] arguments) throws UnknownMemberException {
         CompilerDirectives.transferToInterpreter();
-        throw UnknownIdentifierException.create(name);
+        throw UnknownMemberException.create(member);
     }
 
 }

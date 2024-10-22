@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -73,7 +73,7 @@ public class VarArgsTest extends ProxyLanguageEnvTest {
     public void testStringJoin1() throws InteropException {
         TruffleObject strClass = asTruffleHostSymbol(String.class);
 
-        TruffleObject join = (TruffleObject) INTEROP.readMember(strClass, "join");
+        TruffleObject join = (TruffleObject) INTEROP.readMember(strClass, (Object) "join");
         TruffleObject delimiter = asTruffleObject(" ");
         TruffleObject elements = asTruffleObject(new String[]{"Hello", "World"});
         Object result = INTEROP.execute(join, new Object[]{delimiter, elements});
@@ -84,7 +84,7 @@ public class VarArgsTest extends ProxyLanguageEnvTest {
     public void testStringJoin2() throws InteropException {
         TruffleObject strClass = asTruffleHostSymbol(String.class);
 
-        TruffleObject join = (TruffleObject) INTEROP.readMember(strClass, "join");
+        TruffleObject join = (TruffleObject) INTEROP.readMember(strClass, (Object) "join");
         TruffleObject delimiter = asTruffleObject(" ");
         TruffleObject element1 = asTruffleObject("Hello");
         TruffleObject element2 = asTruffleObject("World");
@@ -96,7 +96,7 @@ public class VarArgsTest extends ProxyLanguageEnvTest {
     public void testStringEllipsis() throws InteropException {
         TruffleObject mainClass = asTruffleHostSymbol(Join.class);
 
-        TruffleObject ellipsis = (TruffleObject) INTEROP.readMember(mainClass, "stringEllipsis");
+        TruffleObject ellipsis = (TruffleObject) INTEROP.readMember(mainClass, (Object) "stringEllipsis");
         TruffleObject element1 = asTruffleObject("Hello");
         TruffleObject element2 = asTruffleObject("World");
         Object result = INTEROP.execute(ellipsis, new Object[]{element1, element2});
@@ -111,7 +111,7 @@ public class VarArgsTest extends ProxyLanguageEnvTest {
     public void testCharSequenceEllipsis() throws InteropException {
         TruffleObject mainClass = asTruffleHostSymbol(Join.class);
 
-        TruffleObject ellipsis = (TruffleObject) INTEROP.readMember(mainClass, "charSequenceEllipsis");
+        TruffleObject ellipsis = (TruffleObject) INTEROP.readMember(mainClass, (Object) "charSequenceEllipsis");
         TruffleObject element1 = asTruffleObject("Hello");
         TruffleObject element2 = asTruffleObject("World");
         Object result = INTEROP.execute(ellipsis, new Object[]{element1, element2});
@@ -126,13 +126,13 @@ public class VarArgsTest extends ProxyLanguageEnvTest {
     public void testPathsGet() throws InteropException {
         TruffleObject paths = asTruffleHostSymbol(Paths.class);
         TruffleObject result;
-        result = (TruffleObject) INTEROP.invokeMember(paths, "get", "dir");
+        result = (TruffleObject) INTEROP.invokeMember(paths, (Object) "get", "dir");
         assertEquals("dir", asJavaObject(Path.class, result).toString());
-        result = (TruffleObject) INTEROP.invokeMember(paths, "get", "dir1", "dir2");
+        result = (TruffleObject) INTEROP.invokeMember(paths, (Object) "get", "dir1", "dir2");
         assertEquals(String.join(File.separator, "dir1", "dir2"), asJavaObject(Path.class, result).toString());
-        result = (TruffleObject) INTEROP.invokeMember(paths, "get", "dir1", "dir2", "dir3");
+        result = (TruffleObject) INTEROP.invokeMember(paths, (Object) "get", "dir1", "dir2", "dir3");
         assertEquals(String.join(File.separator, "dir1", "dir2", "dir3"), asJavaObject(Path.class, result).toString());
-        result = (TruffleObject) INTEROP.invokeMember(paths, "get", "dir1", asTruffleObject(new String[]{"dir2", "dir3"}));
+        result = (TruffleObject) INTEROP.invokeMember(paths, (Object) "get", "dir1", asTruffleObject(new String[]{"dir2", "dir3"}));
         assertEquals(String.join(File.separator, "dir1", "dir2", "dir3"), asJavaObject(Path.class, result).toString());
     }
 
@@ -140,11 +140,11 @@ public class VarArgsTest extends ProxyLanguageEnvTest {
     public void testOverloadedVarArgsPrimitive() throws InteropException {
         TruffleObject paths = asTruffleHostSymbol(Sum.class);
         Object result;
-        result = INTEROP.invokeMember(paths, "sum", 10);
+        result = INTEROP.invokeMember(paths, (Object) "sum", 10);
         assertEquals("I", result);
-        result = INTEROP.invokeMember(paths, "sum", 10, 20);
+        result = INTEROP.invokeMember(paths, (Object) "sum", 10, 20);
         assertEquals("DD", result);
-        result = INTEROP.invokeMember(paths, "sum", 10, 20, 30);
+        result = INTEROP.invokeMember(paths, (Object) "sum", 10, 20, 30);
         assertEquals("I[I", result);
     }
 
@@ -152,7 +152,7 @@ public class VarArgsTest extends ProxyLanguageEnvTest {
     public void testGuestArray() throws InteropException {
         TruffleObject mainClass = asTruffleHostSymbol(Join.class);
 
-        TruffleObject ellipsis = (TruffleObject) INTEROP.readMember(mainClass, "stringEllipsis");
+        TruffleObject ellipsis = (TruffleObject) INTEROP.readMember(mainClass, (Object) "stringEllipsis");
         TruffleObject element1 = asTruffleObject("Hello");
         TruffleObject element2 = asTruffleObject("World");
         Object result = INTEROP.execute(ellipsis, new ListBasedTO(Arrays.asList(element1, element2)));
@@ -161,7 +161,7 @@ public class VarArgsTest extends ProxyLanguageEnvTest {
 
     @Test
     public void testGuestArray2() throws InteropException {
-        TruffleObject sum = (TruffleObject) INTEROP.readMember(asTruffleHostSymbol(Sum.class), "sum");
+        TruffleObject sum = (TruffleObject) INTEROP.readMember(asTruffleHostSymbol(Sum.class), (Object) "sum");
         Object result = INTEROP.execute(sum, 10, new ListBasedTO(Arrays.asList(20, 30)));
         Assert.assertEquals("I[I", result);
     }
@@ -171,19 +171,19 @@ public class VarArgsTest extends ProxyLanguageEnvTest {
         for (Container<?> c : new Container<?>[]{new GenericContainer<>(), new GenericContainer2<>()}) {
             TruffleObject container = asTruffleObject(c);
             Object result;
-            result = INTEROP.invokeMember(container, "withPorts", 80);
+            result = INTEROP.invokeMember(container, (Object) "withPorts", 80);
             Assert.assertEquals(container, result);
-            result = INTEROP.invokeMember(container, "getPorts");
+            result = INTEROP.invokeMember(container, (Object) "getPorts");
             Assert.assertEquals(Arrays.asList(80), asJavaObject(List.class, (TruffleObject) result));
 
-            result = INTEROP.invokeMember(container, "withPorts", new ListBasedTO(Arrays.asList(80)));
+            result = INTEROP.invokeMember(container, (Object) "withPorts", new ListBasedTO(Arrays.asList(80)));
             Assert.assertEquals(container, result);
-            result = INTEROP.invokeMember(container, "getPorts");
+            result = INTEROP.invokeMember(container, (Object) "getPorts");
             Assert.assertEquals(Arrays.asList(80), asJavaObject(List.class, (TruffleObject) result));
 
-            result = INTEROP.invokeMember(container, "withPorts", asTruffleObject(new int[]{80}));
+            result = INTEROP.invokeMember(container, (Object) "withPorts", asTruffleObject(new int[]{80}));
             Assert.assertEquals(container, result);
-            result = INTEROP.invokeMember(container, "getPorts");
+            result = INTEROP.invokeMember(container, (Object) "getPorts");
             Assert.assertEquals(Arrays.asList(80), asJavaObject(List.class, (TruffleObject) result));
         }
     }
@@ -197,8 +197,8 @@ public class VarArgsTest extends ProxyLanguageEnvTest {
         Object path = asTruffleObject(Paths.get("/tmp/a"));
 
         Object container = asTruffleObject(new PreferVarargsWithExactSignature());
-        assertEquals("copy1_2", INTEROP.invokeMember(container, "copy1", path, stream));
-        assertEquals("copy2_1", INTEROP.invokeMember(container, "copy2", path, stream));
+        assertEquals("copy1_2", INTEROP.invokeMember(container, (Object) "copy1", path, stream));
+        assertEquals("copy2_1", INTEROP.invokeMember(container, (Object) "copy2", path, stream));
     }
 
     @SuppressWarnings("unused")

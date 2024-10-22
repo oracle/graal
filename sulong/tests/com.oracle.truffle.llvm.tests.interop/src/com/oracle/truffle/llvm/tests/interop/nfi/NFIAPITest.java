@@ -43,7 +43,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -126,9 +126,9 @@ public class NFIAPITest {
             Source sigSource = Source.newBuilder("nfi", String.format("with llvm %s", signature), "signature").build();
             Object parsedSig = runWithPolyglot.getTruffleTestEnv().parseInternal(sigSource).call();
 
-            Object function = INTEROP.readMember(lib, name);
+            Object function = INTEROP.readMember(lib, (Object) name);
             return SIGNATURES.bind(parsedSig, function);
-        } catch (UnsupportedMessageException | UnknownIdentifierException ex) {
+        } catch (UnsupportedMessageException | UnknownMemberException ex) {
             throw CompilerDirectives.shouldNotReachHere(ex);
         }
     }

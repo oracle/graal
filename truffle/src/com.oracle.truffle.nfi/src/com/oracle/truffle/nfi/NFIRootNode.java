@@ -82,7 +82,7 @@ class NFIRootNode extends RootNode {
                         @CachedLibrary("library") InteropLibrary libInterop,
                         @CachedLibrary(limit = "1") SignatureLibrary signatures) {
             try {
-                Object symbol = libInterop.readMember(library, name);
+                Object symbol = libInterop.readMember(library, (Object) name);
                 Object sig = signature.execute(api);
                 return signatures.bind(sig, symbol);
             } catch (InteropException ex) {

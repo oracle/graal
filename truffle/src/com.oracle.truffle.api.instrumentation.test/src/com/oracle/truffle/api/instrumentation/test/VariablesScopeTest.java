@@ -73,7 +73,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -171,21 +171,21 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
 
     private static int getKeySize(Object object) {
         try {
-            Object keys = INTEROP.getMembers(object);
+            Object keys = INTEROP.getMemberObjects(object);
             return (int) INTEROP.getArraySize(keys);
         } catch (UnsupportedMessageException e) {
             throw CompilerDirectives.shouldNotReachHere(e);
         }
     }
 
-    private static boolean contains(Object object, String key) {
+    private static boolean contains(Object object, Object key) {
         return INTEROP.isMemberReadable(object, key);
     }
 
-    private static Object read(Object object, String key) {
+    private static Object read(Object object, Object key) {
         try {
             return INTEROP.readMember(object, key);
-        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+        } catch (UnknownMemberException | UnsupportedMessageException e) {
             throw CompilerDirectives.shouldNotReachHere(e);
         }
     }
@@ -244,19 +244,20 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
             }
         }
 
-        private static void doTestTopScope(TruffleInstrument.Env env) throws UnsupportedMessageException, UnknownIdentifierException, InvalidArrayIndexException {
+        private static void doTestTopScope(TruffleInstrument.Env env) throws UnsupportedMessageException, UnknownMemberException, InvalidArrayIndexException {
             Object scope = env.getScope(env.getLanguages().get(InstrumentationTestLanguage.ID));
             assertFalse(INTEROP.hasScopeParent(scope));
             String scopeName = INTEROP.asString(INTEROP.toDisplayString(scope));
             assertEquals("global", scopeName);
             assertFalse(INTEROP.hasSourceLocation(scope));
-            Object keys = INTEROP.getMembers(scope);
+            Object keys = INTEROP.getMemberObjects(scope);
             assertNotNull(keys);
             Number size = INTEROP.getArraySize(keys);
             assertEquals(1, size.intValue());
-            String functionName = (String) INTEROP.readArrayElement(keys, 0);
+            Object functionMember = INTEROP.readArrayElement(keys, 0);
+            String functionName = INTEROP.asString(INTEROP.getMemberSimpleName(functionMember));
             assertEquals("testFunction", functionName);
-            Object function = INTEROP.readMember(scope, functionName);
+            Object function = INTEROP.readMember(scope, functionMember);
             assertTrue(INTEROP.isExecutable(function));
         }
     }
@@ -326,7 +327,7 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
             String scopeName = INTEROP.asString(INTEROP.toDisplayString(scope));
             assertEquals("global", scopeName);
             assertFalse(INTEROP.hasSourceLocation(scope));
-            Object keys = INTEROP.getMembers(scope);
+            Object keys = INTEROP.getMemberObjects(scope);
             assertNotNull(keys);
             Number size = INTEROP.getArraySize(keys);
             assertEquals(0, size.intValue());
@@ -498,7 +499,7 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
 
             @ExportMessage
             @SuppressWarnings("static-method")
-            Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+            Object getMemberObjects() {
                 throw CompilerDirectives.shouldNotReachHere("Should never be called.");
             }
 
@@ -655,9 +656,9 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
 
             try {
                 if (frame == null) {
-                    assertEquals("V1", InteropLibrary.getUncached().readMember(scope, "value"));
+                    assertEquals("V1", InteropLibrary.getUncached().readMember(scope, (Object) "value"));
                 } else {
-                    assertEquals("V1V2V3", InteropLibrary.getUncached().readMember(scope, "value"));
+                    assertEquals("V1V2V3", InteropLibrary.getUncached().readMember(scope, (Object) "value"));
                 }
             } catch (InteropException e) {
                 throw CompilerDirectives.shouldNotReachHere(e);
@@ -714,22 +715,22 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
 
         @ExportMessage
         @SuppressWarnings("static-method")
-        Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        Object getMemberObjects() {
             return MEMBERS;
         }
 
         @ExportMessage
         @SuppressWarnings("static-method")
-        boolean isMemberReadable(String member) {
+        boolean isMemberReadable(Object member) {
             return "value".equals(member);
         }
 
         @ExportMessage
-        Object readMember(String member) throws UnknownIdentifierException {
+        Object readMember(Object member) throws UnknownMemberException {
             if ("value".equals(member)) {
                 return value;
             } else {
-                throw UnknownIdentifierException.create(member);
+                throw UnknownMemberException.create(member);
             }
         }
 
@@ -803,12 +804,54 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
             @SuppressWarnings("static-method")
             Object readArrayElement(long index) throws InvalidArrayIndexException {
                 if (index == 0) {
-                    return "value";
+                    return new TestScopeMember("value");
                 }
                 throw InvalidArrayIndexException.create(index);
             }
 
         }
+
+        @ExportLibrary(InteropLibrary.class)
+        @SuppressWarnings("static-method")
+        static final class TestScopeMember implements TruffleObject {
+
+            private final String tagName;
+
+            TestScopeMember(String tagName) {
+                this.tagName = tagName;
+            }
+
+            @ExportMessage
+            boolean isMember() {
+                return true;
+            }
+
+            @ExportMessage
+            Object getMemberSimpleName() {
+                return tagName;
+            }
+
+            @ExportMessage
+            Object getMemberQualifiedName() {
+                return tagName;
+            }
+
+            @ExportMessage
+            boolean isMemberKindField() {
+                return true;
+            }
+
+            @ExportMessage
+            boolean isMemberKindMethod() {
+                return false;
+            }
+
+            @ExportMessage
+            boolean isMemberKindMetaObject() {
+                return false;
+            }
+        }
+
     }
 
 }

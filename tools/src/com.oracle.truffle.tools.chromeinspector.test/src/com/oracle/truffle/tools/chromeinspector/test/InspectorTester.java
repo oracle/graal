@@ -52,6 +52,7 @@ import com.oracle.truffle.tools.chromeinspector.server.ConnectionWatcher;
 import com.oracle.truffle.tools.chromeinspector.server.InspectServerSession;
 import com.oracle.truffle.tools.chromeinspector.types.ExceptionDetails;
 import com.oracle.truffle.tools.chromeinspector.types.RemoteObject;
+import com.oracle.truffle.tools.chromeinspector.types.RemoteObjectNode;
 
 public final class InspectorTester {
 
@@ -116,7 +117,7 @@ public final class InspectorTester {
             exec.lock.notifyAll();
         }
         exec.join();
-        RemoteObject.resetIDs();
+        RemoteObjectNode.resetIDs();
         ExceptionDetails.resetIDs();
         InspectorExecutionContext.resetIDs();
         String error = null;

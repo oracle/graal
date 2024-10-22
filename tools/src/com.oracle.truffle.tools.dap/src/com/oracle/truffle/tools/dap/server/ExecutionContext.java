@@ -59,7 +59,6 @@ public final class ExecutionContext {
     private volatile EventBinding<ThreadsListener> thrBinding;
     private volatile BreakpointsHandler breakpointsHandler;
     private volatile StackFramesHandler stackFramesHandler;
-    private volatile VariablesHandler variablesHandler;
     private boolean linesStartAt1 = true;
     private boolean columnsStartAt1 = true;
 
@@ -82,7 +81,6 @@ public final class ExecutionContext {
         this.thrBinding = env.getInstrumenter().attachThreadsListener(threadsHandler, true);
         this.breakpointsHandler = new BreakpointsHandler(this, debuggerSession);
         this.stackFramesHandler = new StackFramesHandler(this, debuggerSession);
-        this.variablesHandler = new VariablesHandler(this);
     }
 
     public void initClient(DebugProtocolClient dpClient) {
@@ -137,10 +135,6 @@ public final class ExecutionContext {
 
     public BreakpointsHandler getBreakpointsHandler() {
         return breakpointsHandler;
-    }
-
-    public VariablesHandler getVariablesHandler() {
-        return variablesHandler;
     }
 
     public StackFramesHandler getStackFramesHandler() {

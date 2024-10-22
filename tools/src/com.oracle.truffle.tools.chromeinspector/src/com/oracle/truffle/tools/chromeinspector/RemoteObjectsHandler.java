@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,10 +33,11 @@ import java.util.Set;
 import com.oracle.truffle.api.debug.DebugValue;
 
 import com.oracle.truffle.tools.chromeinspector.types.RemoteObject;
+import com.oracle.truffle.tools.chromeinspector.types.RemoteObjectNode;
 
 public final class RemoteObjectsHandler {
 
-    private final Map<String, RemoteObject> remotesByIDs = new HashMap<>(100);
+    private final Map<String, RemoteObjectNode> remotesByIDs = new HashMap<>(100);
     private final Map<DebugValue, RemoteObject> remotesByValue = new IdentityHashMap<>(100);
     private final Map<String, DebugValue> customPreviewBodies = new HashMap<>();
     private final Map<String, DebugValue> customPreviewConfigs = new HashMap<>();
@@ -62,17 +63,17 @@ public final class RemoteObjectsHandler {
         return remote;
     }
 
-    RemoteObject getRemote(String objectId) {
+    RemoteObjectNode getRemote(String objectId) {
         synchronized (remotesByIDs) {
             return remotesByIDs.get(objectId);
         }
     }
 
-    void register(RemoteObject remote) {
+    void register(RemoteObjectNode remote) {
         register(remote, null);
     }
 
-    void register(RemoteObject remote, String objectGroup) {
+    void register(RemoteObjectNode remote, String objectGroup) {
         if (remote.getId() != null) {
             synchronized (remotesByIDs) {
                 remotesByIDs.put(remote.getId(), remote);

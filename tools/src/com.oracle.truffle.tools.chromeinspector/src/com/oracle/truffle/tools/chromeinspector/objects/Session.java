@@ -39,7 +39,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -81,13 +81,21 @@ class Session extends AbstractInspectorObject {
                     METHOD_OFF, METHOD_PREPEND_LISTENER, METHOD_PREPEND_ONCE_LISTENER,
                     METHOD_REMOVE_LISTENER, METHOD_REMOVE_ALL_LISTENERS, METHOD_LISTENERS,
                     METHOD_LISTENER_COUNT, METHOD_POST};
-    private static final TruffleObject KEYS = new Keys(METHOD_NAMES);
+    private static final TruffleObject MEMBERS = new Members(createMembers());
 
     private final AtomicLong cmdId = new AtomicLong(1);
     private final Supplier<InspectorExecutionContext> contextSupplier;
     private final UndefinedProvider undefinedProvider;
     private InspectServerSession iss;
     private Listeners listeners;
+
+    private static Object[] createMembers() {
+        Object[] members = new Object[METHOD_NAMES.length];
+        for (int i = 0; i < METHOD_NAMES.length; i++) {
+            members[i] = new MethodMember(METHOD_NAMES[i]);
+        }
+        return members;
+    }
 
     Session(Supplier<InspectorExecutionContext> contextSupplier, UndefinedProvider undefinedProvider) {
         this.contextSupplier = contextSupplier;
@@ -99,8 +107,8 @@ class Session extends AbstractInspectorObject {
     }
 
     @Override
-    protected TruffleObject getMembers(boolean includeInternal) {
-        return KEYS;
+    protected TruffleObject getMemberObjects() {
+        return MEMBERS;
     }
 
     @Override
@@ -139,7 +147,7 @@ class Session extends AbstractInspectorObject {
 
     @Override
     @CompilerDirectives.TruffleBoundary
-    protected Object invokeMember(String name, Object[] arguments) throws ArityException, UnsupportedTypeException, UnknownIdentifierException, UnsupportedMessageException {
+    protected Object invokeMethod(String name, Object member, Object[] arguments) throws ArityException, UnsupportedTypeException, UnknownMemberException, UnsupportedMessageException {
         switch (name) {
             case METHOD_CONNECT:
                 return connect();
@@ -173,7 +181,7 @@ class Session extends AbstractInspectorObject {
                 return post(arguments);
             default:
                 CompilerDirectives.transferToInterpreter();
-                throw UnknownIdentifierException.create(name);
+                throw UnknownMemberException.create(member);
         }
     }
 

@@ -44,6 +44,7 @@ import static com.oracle.truffle.tck.tests.ValueAssert.Trait.ARRAY_ELEMENTS;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.BOOLEAN;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.BUFFER_ELEMENTS;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.DATE;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.DECLARED_MEMBERS;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.DURATION;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.EXCEPTION;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.EXECUTABLE;
@@ -101,6 +102,7 @@ import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.polyglot.proxy.Proxy;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.STATIC_RECEIVER;
 
 public class ValueAssert {
 
@@ -272,6 +274,7 @@ public class ValueAssert {
                     assertFails(() -> value.putMember("", ""), UnsupportedOperationException.class);
                     assertFails(() -> value.removeMember(""), UnsupportedOperationException.class);
                     assertFails(() -> value.invokeMember(""), UnsupportedOperationException.class);
+                    assertFails(() -> value.getMembers(), UnsupportedOperationException.class);
                     assertTrue(value.getMemberKeys().isEmpty());
 
                     if (value.isNull()) {
@@ -282,6 +285,14 @@ public class ValueAssert {
                         }
                     }
 
+                    break;
+                case DECLARED_MEMBERS:
+                    assertFalse(value.hasDeclaredMembers());
+                    assertFails(() -> value.getDeclaredMembers(), UnsupportedOperationException.class);
+                    break;
+                case STATIC_RECEIVER:
+                    assertFalse(value.hasStaticReceiver());
+                    assertFails(() -> value.getStaticReceiver(), UnsupportedOperationException.class);
                     break;
                 case EXECUTABLE:
                     assertFalse(value.toString(), value.canExecute());
@@ -480,7 +491,7 @@ public class ValueAssert {
                     }
                     break;
                 default:
-                    throw new AssertionError();
+                    throw new AssertionError(unsupportedType);
             }
         }
     }
@@ -590,12 +601,34 @@ public class ValueAssert {
                 case MEMBERS:
                     assertTrue(msg, value.hasMembers());
 
+                    // String members
                     for (String key : value.getMemberKeys()) {
                         Value child = value.getMember(key);
                         if (child == null) {
                             assertTrue("A non-readable member must at least be modifiable, removable, or invocable", value.hasMember(key));
                         } else if (!isSameHostObject(value, child)) {
                             assertValueImpl(child, depth + 1, hasHostAccess, detectSupportedTypes(child));
+                        }
+                    }
+
+                    // Object members
+                    Value members;
+                    try {
+                        members = value.getMembers();
+                    } catch (UnsupportedOperationException ex) {
+                        members = null;
+                    }
+                    if (members != null) {
+                        assertTrue("Members object must be an array.", members.hasArrayElements());
+                        for (long length = members.getArraySize(), i = 0; i < length; i++) {
+                            Value member = members.getArrayElement(i);
+                            assertIsMember(member);
+                            Value child = value.getMember(member);
+                            if (child == null) {
+                                assertTrue("A non-readable member must at least be modifiable, removable, or invocable", value.hasMember(member));
+                            } else if (!isSameHostObject(value, child)) {
+                                assertValueImpl(child, depth + 1, hasHostAccess, detectSupportedTypes(child));
+                            }
                         }
                     }
 
@@ -627,6 +660,20 @@ public class ValueAssert {
                         assertNotNull(value.as(STRING_OBJECT_MAP).toString());
                         assertEquals(value.toString(), value.as(Map.class).toString());
                     }
+                    break;
+                case DECLARED_MEMBERS:
+                    assertTrue(msg, value.hasDeclaredMembers());
+                    members = value.getDeclaredMembers();
+                    assertTrue("Members object must be an array.", members.hasArrayElements());
+                    for (long length = members.getArraySize(), i = 0; i < length; i++) {
+                        Value member = members.getArrayElement(i);
+                        assertIsMember(member);
+                    }
+                    break;
+                case STATIC_RECEIVER:
+                    assertTrue(msg, value.hasStaticReceiver());
+                    Value staticReceiver = value.getStaticReceiver();
+                    assertNotNull(staticReceiver);
                     break;
                 case NATIVE:
                     assertTrue(msg, value.isNativePointer());
@@ -1054,6 +1101,33 @@ public class ValueAssert {
         }
     }
 
+    private static void assertIsMember(Value member) {
+        assertTrue("An element of members object has to be a member", member.isMember());
+        assertNotNull("The member must have a simple name.", member.getMemberSimpleName());
+        assertNotNull("The member must have a qualified name.", member.getMemberQualifiedName());
+        if (member.hasMemberSignature()) {
+            assertMemberSignature(member.getMemberSignature());
+        }
+        if (member.hasDeclaringMetaObject()) {
+            assertNotNull("Member ought to have a declaring meta object", member.getDeclaringMetaObject());
+        }
+    }
+
+    private static void assertMemberSignature(Value signature) {
+        assertNotNull("The member has a signature.", signature);
+        assertTrue("Signature object must be an array.", signature.hasArrayElements());
+        for (long length = signature.getArraySize(), i = 0; i < length; i++) {
+            Value element = signature.getArrayElement(i);
+            assertTrue("A signature element", element.isSignatureElement());
+            if (element.hasSignatureElementName()) {
+                assertNotNull("Signature element ought to have a name", element.getSignatureElementName());
+            }
+            if (element.hasSignatureElementMetaObject()) {
+                assertNotNull("Signature element ought to have a metaobject", element.getSignatureElementMetaObject());
+            }
+        }
+    }
+
     @Implementable
     public interface EmptyInterface {
 
@@ -1126,6 +1200,12 @@ public class ValueAssert {
         if (value.hasMembers()) {
             valueTypes.add(MEMBERS);
         }
+        if (value.hasDeclaredMembers()) {
+            valueTypes.add(DECLARED_MEMBERS);
+        }
+        if (value.hasStaticReceiver()) {
+            valueTypes.add(STATIC_RECEIVER);
+        }
         if (value.hasArrayElements()) {
             valueTypes.add(ARRAY_ELEMENTS);
         }
@@ -1186,6 +1266,8 @@ public class ValueAssert {
         EXECUTABLE,
         INSTANTIABLE,
         MEMBERS,
+        DECLARED_MEMBERS,
+        STATIC_RECEIVER,
         ARRAY_ELEMENTS,
         BUFFER_ELEMENTS,
         DATE,

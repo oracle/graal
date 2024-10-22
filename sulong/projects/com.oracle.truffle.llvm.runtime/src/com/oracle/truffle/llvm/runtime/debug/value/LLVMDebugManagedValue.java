@@ -41,6 +41,7 @@ import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.vector.LLVMVector;
 
 @ExportLibrary(InteropLibrary.class)
+@SuppressWarnings("truffle-abstract-export") // GR-57971
 public abstract class LLVMDebugManagedValue extends LLVMDebuggerValue {
 
     final Object llvmType;

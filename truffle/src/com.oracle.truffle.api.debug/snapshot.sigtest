@@ -122,6 +122,13 @@ supr java.lang.Object
 hfds INTEROP,NODE,event,frame,language,node,parent,root,scope,session,variables
 hcls SubtractedKeys,SubtractedVariables
 
+CLSS public final com.oracle.truffle.api.debug.DebugSignature
+meth public com.oracle.truffle.api.debug.DebugValue getReturnElement()
+meth public java.util.Collection<com.oracle.truffle.api.debug.DebugValue> getParameters()
+supr java.lang.Object
+hfds INTEROP,language,session,signature
+hcls ParameterElements
+
 CLSS public final com.oracle.truffle.api.debug.DebugStackFrame
 meth public boolean equals(java.lang.Object)
 meth public boolean isHost()
@@ -159,6 +166,7 @@ meth public abstract <%0 extends java.lang.Object> {%%0} as(java.lang.Class<{%%0
 meth public abstract boolean hasReadSideEffects()
 meth public abstract boolean hasWriteSideEffects()
 meth public abstract boolean isInternal()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="24.2")
 meth public abstract boolean isReadable()
 meth public abstract boolean isWritable()
 meth public abstract com.oracle.truffle.api.debug.DebuggerSession getSession()
@@ -189,6 +197,8 @@ meth public boolean isHashEntryRemovable(com.oracle.truffle.api.debug.DebugValue
 meth public boolean isHashEntryWritable(com.oracle.truffle.api.debug.DebugValue)
 meth public boolean isInstant()
 meth public boolean isIterator()
+meth public boolean isMember()
+meth public boolean isMemberValueReadable()
 meth public boolean isMetaInstance(com.oracle.truffle.api.debug.DebugValue)
 meth public boolean isMetaObject()
 meth public boolean isNumber()
@@ -205,26 +215,41 @@ meth public com.oracle.truffle.api.debug.DebugValue getHashValueOrDefault(com.or
 meth public com.oracle.truffle.api.debug.DebugValue getHashValuesIterator()
 meth public com.oracle.truffle.api.debug.DebugValue getIterator()
 meth public com.oracle.truffle.api.debug.DebugValue getIteratorNextElement()
+meth public com.oracle.truffle.api.debug.DebugValue getMemberValue()
+meth public com.oracle.truffle.api.debug.DebugValue getSignatureElementMetaObject()
 meth public double asDouble()
 meth public final boolean canExecute()
 meth public final boolean isArray()
+meth public final boolean isMemberKindField()
+meth public final boolean isMemberKindMetaObject()
+meth public final boolean isMemberKindMethod()
 meth public final boolean isNull()
+meth public final boolean isSignatureElement()
+meth public final com.oracle.truffle.api.debug.DebugSignature getMemberSignature()
 meth public final com.oracle.truffle.api.debug.DebugValue asInLanguage(com.oracle.truffle.api.nodes.LanguageInfo)
+meth public final com.oracle.truffle.api.debug.DebugValue getDeclaringMetaObject()
 meth public final com.oracle.truffle.api.debug.DebugValue getMetaObject()
 meth public final com.oracle.truffle.api.debug.DebugValue getProperty(java.lang.String)
+meth public final com.oracle.truffle.api.debug.DebugValue getStaticProvider()
 meth public final com.oracle.truffle.api.nodes.LanguageInfo getOriginalLanguage()
 meth public final com.oracle.truffle.api.source.SourceSection getSourceLocation()
 meth public final java.lang.String asString()
+meth public final java.lang.String getMemberQualifiedName()
+meth public final java.lang.String getMemberSimpleName()
 meth public final java.lang.String toDisplayString()
 meth public final java.lang.String toDisplayString(boolean)
+meth public final java.util.Collection<com.oracle.truffle.api.debug.DebugValue> getMembers()
 meth public final java.util.Collection<com.oracle.truffle.api.debug.DebugValue> getProperties()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="24.2")
 meth public final java.util.List<com.oracle.truffle.api.debug.Breakpoint> getRootInstanceBreakpoints()
+meth public final java.util.List<com.oracle.truffle.api.debug.DebugValue> getMetaParents()
 meth public float asFloat()
 meth public int asInt()
 meth public int hashCode()
 meth public java.lang.Object getRawValue(java.lang.Class<? extends com.oracle.truffle.api.TruffleLanguage<?>>)
 meth public java.lang.String getMetaQualifiedName()
 meth public java.lang.String getMetaSimpleName()
+meth public java.lang.String getSignatureElementName()
 meth public java.lang.String toString()
 meth public java.math.BigInteger asBigInteger()
 meth public java.time.Duration asDuration()
@@ -239,7 +264,7 @@ meth public short asShort()
 meth public void putHashEntry(com.oracle.truffle.api.debug.DebugValue,com.oracle.truffle.api.debug.DebugValue)
 supr java.lang.Object
 hfds INTEROP,preferredLanguage
-hcls AbstractDebugCachedValue,AbstractDebugValue,ArrayElementValue,HashEntriesIteratorValue,HashEntryArrayValue,HashEntryValue,HeapValue,ObjectMemberValue
+hcls AbstractDebugCachedValue,AbstractDebugValue,ArrayElementValue,HashEntriesIteratorValue,HashEntryArrayValue,HashEntryValue,HeapValue,MemberObject,PropertyValue
 
 CLSS public final com.oracle.truffle.api.debug.Debugger
 meth public !varargs com.oracle.truffle.api.debug.DebuggerSession startSession(com.oracle.truffle.api.debug.SuspendedCallback,com.oracle.truffle.api.debug.SourceElement[])
@@ -272,8 +297,10 @@ meth public com.oracle.truffle.api.debug.DebugValue createPrimitiveValue(java.la
 meth public com.oracle.truffle.api.debug.Debugger getDebugger()
 meth public com.oracle.truffle.api.source.Source resolveSource(com.oracle.truffle.api.source.Source)
 meth public java.lang.String toString()
+meth public java.util.Collection<com.oracle.truffle.api.debug.DebugValue> getExportedSymbolMembers()
 meth public java.util.List<com.oracle.truffle.api.debug.Breakpoint> getBreakpoints()
 meth public java.util.Map<java.lang.String,? extends com.oracle.truffle.api.debug.DebugValue> getExportedSymbols()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="24.2")
 meth public void close()
 meth public void resume(java.lang.Thread)
 meth public void resumeAll()
@@ -365,7 +392,7 @@ meth public void prepareUnwindFrame(com.oracle.truffle.api.debug.DebugStackFrame
 meth public void prepareUnwindFrame(com.oracle.truffle.api.debug.DebugStackFrame,com.oracle.truffle.api.debug.DebugValue)
 meth public void setReturnValue(com.oracle.truffle.api.debug.DebugValue)
 supr java.lang.Object
-hfds HOST_INTEROP_NODE_NAME,breakpoints,cachedAsyncFrames,cachedFrames,conditionFailures,context,disposed,exception,inputValuesProvider,insertableNode,materializedFrame,nextStrategy,returnValue,session,sourceSection,suspendAnchor,thread
+hfds HOST_INTEROP_NODE_NAME,breakpoints,cachedAsyncFrames,cachedFrames,conditionFailures,context,disposed,exception,inputValuesProvider,insertableNode,isUnwind,materializedFrame,nextStrategy,returnValue,session,singleStepCompleted,sourceSection,suspendAnchor,thread
 hcls DebugAsyncStackFrameLists,DebugStackFrameIterable
 
 CLSS public final com.oracle.truffle.api.debug.SuspensionFilter

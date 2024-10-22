@@ -40,7 +40,7 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.NodeLibrary;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
@@ -106,10 +106,10 @@ public class NodeLibrarySLCompilerTest extends PartialEvaluationTest {
             try {
                 Object scope = nodeLibrary.getScope(instrumentedNode, frame, true);
                 assert interop.hasMembers(scope);
-                long x = interop.asLong(interop.readMember(scope, "x"));
-                long y = interop.asLong(interop.readMember(scope, "y"));
-                interop.writeMember(scope, "z", x + y);
-            } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
+                long x = interop.asLong(interop.readMember(scope, (Object) "x"));
+                long y = interop.asLong(interop.readMember(scope, (Object) "y"));
+                interop.writeMember(scope, (Object) "z", x + y);
+            } catch (UnsupportedMessageException | UnknownMemberException | UnsupportedTypeException e) {
                 throw CompilerDirectives.shouldNotReachHere(e);
             }
         }

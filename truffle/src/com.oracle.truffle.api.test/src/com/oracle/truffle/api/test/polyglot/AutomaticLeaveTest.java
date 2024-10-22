@@ -65,7 +65,7 @@ public class AutomaticLeaveTest {
         @Override
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
             if (contextArguments[0] != null) {
-                InteropLibrary.getUncached().invokeMember(contextArguments[0], "close");
+                InteropLibrary.getUncached().invokeMember(contextArguments[0], (Object) "close");
             }
             // If the close operation automatically leaves the explicitly entered context, then
             // context thread local get fails.

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,12 +42,10 @@ package com.oracle.truffle.host;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
@@ -62,7 +60,9 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.NeverDefault;
@@ -70,10 +70,14 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownMemberException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.host.HostAdapterFactory.AdapterResult;
 import com.oracle.truffle.host.HostContextFactory.ToGuestValueNodeGen;
@@ -455,37 +459,40 @@ final class HostContext {
     }
 
     @ExportLibrary(InteropLibrary.class)
-    static final class ClassNamesObject implements TruffleObject {
+    static final class ClassMembersObject implements TruffleObject {
 
-        final ArrayList<String> names;
+        @CompilationFinal(dimensions = 1) final String[] names;
+        @CompilationFinal(dimensions = 1) final Class<?>[] classes;
 
-        private ClassNamesObject(Set<String> names) {
-            this.names = new ArrayList<>(names);
+        private ClassMembersObject(Map<String, Class<?>> classMap) {
+            int length = classMap.size();
+            names = new String[length];
+            classes = new Class<?>[length];
+            int i = 0;
+            for (Map.Entry<String, Class<?>> entry : classMap.entrySet()) {
+                names[i] = entry.getKey();
+                classes[i] = entry.getValue();
+                i++;
+            }
         }
 
-        @SuppressWarnings("static-method")
         @ExportMessage
+        @SuppressWarnings("static-method")
         boolean hasArrayElements() {
             return true;
         }
 
         @ExportMessage
-        @TruffleBoundary
         Object readArrayElement(long index) throws InvalidArrayIndexException {
             if (index < 0L || index > Integer.MAX_VALUE) {
                 throw InvalidArrayIndexException.create(index);
             }
-            try {
-                return names.get((int) index);
-            } catch (IndexOutOfBoundsException ioob) {
-                throw InvalidArrayIndexException.create(index);
-            }
+            return new ClassMember(names[(int) index], classes[(int) index]);
         }
 
         @ExportMessage
-        @TruffleBoundary
         long getArraySize() {
-            return names.size();
+            return names.length;
         }
 
         @ExportMessage
@@ -495,8 +502,53 @@ final class HostContext {
     }
 
     @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings("static-method")
+    static final class ClassMember implements TruffleObject {
+
+        private final String fqName;
+        private final Class<?> clazz;
+
+        ClassMember(String name, Class<?> clazz) {
+            this.fqName = name;
+            this.clazz = clazz;
+        }
+
+        @ExportMessage
+        boolean isMember() {
+            return true;
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        Object getMemberSimpleName() {
+            return clazz.getSimpleName();
+        }
+
+        @ExportMessage
+        Object getMemberQualifiedName() {
+            return fqName;
+        }
+
+        @ExportMessage
+        boolean isMemberKindField() {
+            return true;
+        }
+
+        @ExportMessage
+        boolean isMemberKindMethod() {
+            return false;
+        }
+
+        @ExportMessage
+        boolean isMemberKindMetaObject() {
+            return false;
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
     static final class TopScopeObject implements TruffleObject {
 
+        static final int LIMIT = 3;
         private final HostContext context;
 
         private TopScopeObject(HostContext context) {
@@ -529,20 +581,60 @@ final class HostContext {
 
         @ExportMessage
         @TruffleBoundary
-        Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-            return new ClassNamesObject(context.classCache.keySet());
+        Object getMemberObjects() {
+            return new ClassMembersObject(context.classCache);
         }
 
         @ExportMessage
-        @TruffleBoundary
-        boolean isMemberReadable(String member) {
-            return context.findClass(member) != null;
+        static final class IsMemberReadable {
+
+            @Specialization
+            @SuppressWarnings("unused")
+            static boolean isReadable(TopScopeObject scope, ClassMember member) {
+                return true;
+            }
+
+            @Specialization(guards = "memberLibrary.isString(member)", limit = "LIMIT")
+            static boolean isReadable(TopScopeObject scope, Object member,
+                            @CachedLibrary("member") InteropLibrary memberLibrary) {
+                String name = TopScopeObject.toString(member, memberLibrary);
+                return scope.context.findClass(name) != null;
+            }
+
+            @Fallback
+            @SuppressWarnings("unused")
+            static boolean isReadable(TopScopeObject fo, Object member) {
+                return false;
+            }
         }
 
         @ExportMessage
-        @TruffleBoundary
-        Object readMember(String member) {
-            return HostObject.forStaticClass(context.findClass(member), context);
+        static final class ReadMember {
+
+            @Specialization
+            static Object read(TopScopeObject scope, ClassMember member) {
+                return HostObject.forStaticClass(member.clazz, scope.context);
+            }
+
+            @Specialization(guards = "memberLibrary.isString(member)", limit = "LIMIT")
+            static Object read(TopScopeObject scope, Object member,
+                            @CachedLibrary("member") InteropLibrary memberLibrary,
+                            @Bind("$node") Node node, @Cached InlinedBranchProfile error) throws UnknownMemberException {
+                String name = TopScopeObject.toString(member, memberLibrary);
+                Class<?> clazz = scope.context.findClass(name);
+                if (clazz != null) {
+                    return HostObject.forStaticClass(clazz, scope.context);
+                } else {
+                    error.enter(node);
+                    throw UnknownMemberException.create(member);
+                }
+            }
+
+            @Fallback
+            @SuppressWarnings("unused")
+            static Object read(TopScopeObject fo, Object member) throws UnknownMemberException {
+                throw UnknownMemberException.create(member);
+            }
         }
 
         @SuppressWarnings("static-method")
@@ -550,6 +642,16 @@ final class HostContext {
         Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
             return "Static Scope";
         }
+
+        private static String toString(Object member, InteropLibrary memberLibrary) {
+            assert memberLibrary.isString(member) : member;
+            try {
+                return memberLibrary.asString(member);
+            } catch (UnsupportedMessageException ex) {
+                throw CompilerDirectives.shouldNotReachHere(ex);
+            }
+        }
+
     }
 
     public void disposeClassLoader() {

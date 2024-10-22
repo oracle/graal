@@ -26,7 +26,7 @@ package com.oracle.truffle.tools.chromeinspector.objects;
 
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import org.graalvm.shadowed.org.json.JSONArray;
 import org.graalvm.shadowed.org.json.JSONObject;
@@ -43,25 +43,26 @@ final class TruffleObject2JSON {
 
     static JSONObject fromObject(Object object) {
         JSONObject json = new JSONObject();
-        Object keys;
+        Object members;
         try {
-            keys = INTEROP.getMembers(object);
+            members = INTEROP.getMemberObjects(object);
         } catch (UnsupportedMessageException ex) {
             return json;
         }
         long size;
         try {
-            size = INTEROP.getArraySize(keys);
+            size = INTEROP.getArraySize(members);
         } catch (UnsupportedMessageException ex) {
             return json;
         }
         if (size > 0) {
             for (long i = 0; i < size; i++) {
                 try {
-                    Object key = INTEROP.readArrayElement(keys, i);
-                    Object value = INTEROP.readMember(object, INTEROP.asString(key));
-                    json.put(key.toString(), from(value));
-                } catch (UnknownIdentifierException | UnsupportedMessageException | InvalidArrayIndexException ex) {
+                    Object member = INTEROP.readArrayElement(members, i);
+                    Object value = INTEROP.readMember(object, member);
+                    String name = INTEROP.asString(INTEROP.getMemberSimpleName(member));
+                    json.put(name, from(value));
+                } catch (UnknownMemberException | UnsupportedMessageException | InvalidArrayIndexException ex) {
                     // ignore that key
                 }
             }

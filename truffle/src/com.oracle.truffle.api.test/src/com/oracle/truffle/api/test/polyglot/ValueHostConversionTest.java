@@ -48,6 +48,7 @@ import static com.oracle.truffle.tck.tests.ValueAssert.Trait.MEMBERS;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.NULL;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.NUMBER;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.PROXY_OBJECT;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.STATIC_RECEIVER;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.STRING;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -162,7 +163,7 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
 
         assertTrue(value.isHostObject());
         assertSame(obj, context.asValue(value.as(Object.class)).asHostObject());
-        assertUnsupported(value, HOST_OBJECT, MEMBERS);
+        assertUnsupported(value, HOST_OBJECT, MEMBERS, STATIC_RECEIVER);
     }
 
     /**
@@ -258,7 +259,7 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
         assertTrue(newInstance.getMetaObject().newInstance().asHostObject() instanceof JavaRecord);
         assertSame(JavaRecord.class, newInstance.getMetaObject().asHostObject());
 
-        assertValue(recordClass, Trait.INSTANTIABLE, Trait.MEMBERS, Trait.HOST_OBJECT, Trait.META);
+        assertValue(recordClass, Trait.INSTANTIABLE, Trait.MEMBERS, Trait.HOST_OBJECT, Trait.META, Trait.DECLARED_MEMBERS, Trait.STATIC_RECEIVER);
     }
 
     @Test
@@ -283,7 +284,7 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
         assertTrue(newInstance.getMetaObject().newInstance().asHostObject() instanceof JavaRecord);
         assertSame(JavaRecord.class, newInstance.getMetaObject().asHostObject());
 
-        assertValue(recordClass, Trait.INSTANTIABLE, Trait.MEMBERS, Trait.HOST_OBJECT, Trait.META);
+        assertValue(recordClass, Trait.INSTANTIABLE, Trait.MEMBERS, Trait.HOST_OBJECT, Trait.META, Trait.DECLARED_MEMBERS);
 
         Value bigIntegerStatic = context.eval("sl", "function main() { return java(\"" + BigInteger.class.getName() + "\"); }");
         assertTrue(bigIntegerStatic.hasMember("ZERO"));
@@ -316,8 +317,8 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
         assertTrue(record.hasMember("wait"));
         assertTrue(record.hasMember("notifyAll"));
 
-        assertValue(record, Trait.MEMBERS, Trait.HOST_OBJECT);
-        assertValue(record.getMetaObject(), Trait.INSTANTIABLE, Trait.MEMBERS, Trait.HOST_OBJECT, Trait.META);
+        assertValue(record, Trait.MEMBERS, Trait.HOST_OBJECT, Trait.STATIC_RECEIVER);
+        assertValue(record.getMetaObject(), Trait.INSTANTIABLE, Trait.MEMBERS, Trait.HOST_OBJECT, Trait.META, Trait.DECLARED_MEMBERS, Trait.STATIC_RECEIVER);
     }
 
     @Test

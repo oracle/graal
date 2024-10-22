@@ -666,7 +666,7 @@ public final class InspectorDebugger extends DebuggerDomain {
         if (functionObjectId == null) {
             throw new CommandProcessException("Must specify function object ID.");
         }
-        RemoteObject functionObject = context.getRemoteObjectsHandler().getRemote(functionObjectId);
+        RemoteObject functionObject = (RemoteObject) context.getRemoteObjectsHandler().getRemote(functionObjectId);
         if (functionObject != null) {
             DebugValue functionValue = functionObject.getDebugValue();
             try {

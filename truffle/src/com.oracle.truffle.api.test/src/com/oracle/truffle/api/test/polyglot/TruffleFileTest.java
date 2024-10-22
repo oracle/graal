@@ -914,7 +914,7 @@ public class TruffleFileTest {
         }
 
         private int getOpenFileCount(Object support) throws InteropException {
-            return interop.asInt(interop.invokeMember(support, "getOpenFileCount"));
+            return interop.asInt(interop.invokeMember(support, (Object) "getOpenFileCount"));
         }
 
         /**
@@ -923,7 +923,7 @@ public class TruffleFileTest {
          * side.
          */
         private void reachabilityFence(Object support, Object ref) throws InteropException {
-            interop.invokeMember(support, "reachabilityFence", new ObjectHolder(ref));
+            interop.invokeMember(support, (Object) "reachabilityFence", new ObjectHolder(ref));
         }
     }
 
@@ -1010,7 +1010,7 @@ public class TruffleFileTest {
         }
 
         private int getOpenDirCount(Object support) throws InteropException {
-            return interop.asInt(interop.invokeMember(support, "getOpenDirCount"));
+            return interop.asInt(interop.invokeMember(support, (Object) "getOpenDirCount"));
         }
 
         /**
@@ -1019,7 +1019,7 @@ public class TruffleFileTest {
          * side.
          */
         private void reachabilityFence(Object support, Object ref) throws InteropException {
-            interop.invokeMember(support, "reachabilityFence", new ObjectHolder(ref));
+            interop.invokeMember(support, (Object) "reachabilityFence", new ObjectHolder(ref));
         }
     }
 
@@ -1057,7 +1057,7 @@ public class TruffleFileTest {
          * side.
          */
         private void reachabilityFence(Object support, Object ref) throws InteropException {
-            interop.invokeMember(support, "reachabilityFence", new ObjectHolder(ref));
+            interop.invokeMember(support, (Object) "reachabilityFence", new ObjectHolder(ref));
         }
     }
 
@@ -1093,7 +1093,7 @@ public class TruffleFileTest {
          * side.
          */
         private void reachabilityFence(Object support, Object ref) throws InteropException {
-            interop.invokeMember(support, "reachabilityFence", new ObjectHolder(ref));
+            interop.invokeMember(support, (Object) "reachabilityFence", new ObjectHolder(ref));
         }
     }
 

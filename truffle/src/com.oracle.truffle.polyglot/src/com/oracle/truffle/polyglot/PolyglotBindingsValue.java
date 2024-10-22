@@ -41,8 +41,12 @@
 package com.oracle.truffle.polyglot;
 
 import java.lang.reflect.Type;
+import java.util.Arrays;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+
+import org.graalvm.polyglot.Value;
 
 /**
  * A special implementation for polyglot bindings, exposed to the embedder. The difference to a
@@ -60,8 +64,9 @@ final class PolyglotBindingsValue extends PolyglotValueDispatch {
     }
 
     @Override
-    public Object getMember(Object context, Object receiver, String key) {
-        return values.get(key);
+    public Object getMember(Object context, Object receiver, Object key) {
+        String keyName = getKeyName(context, receiver, key);
+        return values.get(keyName);
     }
 
     @Override
@@ -70,14 +75,30 @@ final class PolyglotBindingsValue extends PolyglotValueDispatch {
     }
 
     @Override
-    public boolean removeMember(Object context, Object receiver, String key) {
+    public Object getMembers(Object context, Object receiver) {
+        return impl.getAPIAccess().newValue(new MemberList(impl, context, values.keySet()), context, receiver);
+    }
+
+    @Override
+    public boolean removeMember(Object context, Object receiver, Object key) {
         Object result = values.remove(key);
         return result != null;
     }
 
     @Override
-    public void putMember(Object context, Object receiver, String key, Object member) {
-        values.put(key, ((PolyglotLanguageContext) context).context.asValue(member));
+    public void putMember(Object context, Object receiver, Object key, Object member) {
+        String keyName = getKeyName(context, receiver, key);
+        values.put(keyName, ((PolyglotLanguageContext) context).context.asValue(member));
+    }
+
+    private static String getKeyName(Object context, Object receiver, Object key) {
+        if (key instanceof String) {
+            return (String) key;
+        }
+        if (key instanceof Value) {
+            return ((Value) key).getMemberSimpleName();
+        }
+        throw PolyglotValueDispatch.nonWritableMemberKey((PolyglotLanguageContext) context, receiver, Objects.toString(key));
     }
 
     @Override
@@ -86,7 +107,7 @@ final class PolyglotBindingsValue extends PolyglotValueDispatch {
     }
 
     @Override
-    public boolean hasMember(Object context, Object receiver, String key) {
+    public boolean hasMember(Object context, Object receiver, Object key) {
         return values.containsKey(key);
     }
 
@@ -113,5 +134,89 @@ final class PolyglotBindingsValue extends PolyglotValueDispatch {
     @Override
     public Object getMetaObjectImpl(PolyglotLanguageContext context, Object receiver) {
         return impl.getAPIAccess().callValueGetMetaObject(delegateBindings);
+    }
+
+    private Object getStringMemberObject(Object context, String name) {
+        return impl.getAPIAccess().newValue(new MemberValue(impl, ((PolyglotLanguageContext) context).getLanguageInstance(), name), context, name);
+    }
+
+    @SuppressWarnings("unused")
+    private final class MemberList extends PolyglotValueDispatch {
+
+        private final String[] names;
+
+        MemberList(PolyglotImpl impl, Object context, Set<String> names) {
+            super(impl, ((PolyglotLanguageContext) context).getLanguageInstance());
+            this.names = names.toArray(new String[names.size()]);
+        }
+
+        @Override
+        public boolean hasArrayElements(Object languageContext, Object receiver) {
+            return true;
+        }
+
+        @Override
+        public long getArraySize(Object languageContext, Object receiver) {
+            return names.length;
+        }
+
+        @Override
+        public Object getArrayElement(Object languageContext, Object receiver, long index) {
+            String name = names[(int) index];
+            return getStringMemberObject(languageContext, name);
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public <T> T asClass(Object languageContext, Object receiver, Class<T> targetType) {
+            if (String.class.equals(targetType)) {
+                return (T) Arrays.toString(names);
+            }
+            return null;
+        }
+
+        @Override
+        public <T> T asTypeLiteral(Object languageContext, Object receiver, Class<T> rawType, Type genericType) {
+            return asClass(languageContext, receiver, rawType);
+        }
+    }
+
+    private static class MemberValue extends PolyglotValueDispatch {
+
+        private final String name;
+
+        MemberValue(PolyglotImpl impl, PolyglotLanguageInstance languageInstance, String name) {
+            super(impl, languageInstance);
+            this.name = name;
+        }
+
+        @Override
+        public boolean isMember(Object context, Object receiver) {
+            return true;
+        }
+
+        @Override
+        public String getMemberSimpleName(Object languageContext, Object receiver) {
+            return name;
+        }
+
+        @Override
+        public String getMemberQualifiedName(Object languageContext, Object receiver) {
+            return name;
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public <T> T asClass(Object context, Object receiver, Class<T> targetType) {
+            if (String.class.equals(targetType)) {
+                return (T) name;
+            }
+            return null;
+        }
+
+        @Override
+        public <T> T asTypeLiteral(Object context, Object receiver, Class<T> rawType, Type genericType) {
+            return asClass(context, receiver, rawType);
+        }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,7 +35,7 @@ import org.graalvm.collections.Pair;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Struct;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignDirectSuperElemPtrNode;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignGetSuperElemPtrNode;
@@ -45,7 +45,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @GenerateUncached
 public abstract class LLVMResolveForeignClassChainNode extends LLVMNode {
-    public abstract LLVMPointer execute(LLVMPointer receiver, String ident, LLVMInteropType exportType) throws UnknownIdentifierException;
+    public abstract LLVMPointer execute(LLVMPointer receiver, String ident, LLVMInteropType exportType) throws UnknownMemberException;
 
     /**
      * @param ident
@@ -72,7 +72,7 @@ public abstract class LLVMResolveForeignClassChainNode extends LLVMNode {
     @Specialization(replaces = "doClassResolvingCached")
     public LLVMPointer doClazzResolving(LLVMPointer receiver, String ident, LLVMInteropType.Clazz clazz,
                     @Cached LLVMForeignVirtualSuperElemPtrNode virtualSuperElemPtrNode,
-                    @Cached LLVMForeignDirectSuperElemPtrNode directSuperElemPtrNode) throws UnknownIdentifierException {
+                    @Cached LLVMForeignDirectSuperElemPtrNode directSuperElemPtrNode) throws UnknownMemberException {
         LLVMPointer curReceiver = receiver;
         Pair<long[], Struct> p = clazz.getSuperOffsetInformation(ident);
         for (long val : p.getLeft()) {

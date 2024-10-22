@@ -62,7 +62,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -91,38 +91,38 @@ public class RetainedSizeContextBoundaryTest extends AbstractPolyglotTest {
 
         @SuppressWarnings("static-method")
         @ExportMessage
-        final Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        final Object getMemberObjects() {
             return null;
         }
 
         @SuppressWarnings("static-method")
         @ExportMessage
-        final boolean isMemberReadable(@SuppressWarnings("unused") String member) {
+        final boolean isMemberReadable(@SuppressWarnings("unused") Object member) {
             return false;
         }
 
         @SuppressWarnings("static-method")
         @ExportMessage
-        Object readMember(@SuppressWarnings("unused") String key) {
+        Object readMember(@SuppressWarnings("unused") Object key) {
             return null;
         }
 
         @ExportMessage
         @TruffleBoundary
-        Object writeMember(String key, Object value) {
-            members.put(key, value);
+        Object writeMember(Object key, Object value) {
+            members.put((String) key, value);
             return value;
         }
 
         @SuppressWarnings("static-method")
         @ExportMessage
-        final boolean isMemberModifiable(@SuppressWarnings("unused") String member) {
+        final boolean isMemberModifiable(@SuppressWarnings("unused") Object member) {
             return true;
         }
 
         @SuppressWarnings("static-method")
         @ExportMessage
-        final boolean isMemberInsertable(@SuppressWarnings("unused") String member) {
+        final boolean isMemberInsertable(@SuppressWarnings("unused") Object member) {
             return true;
         }
 
@@ -243,8 +243,8 @@ public class RetainedSizeContextBoundaryTest extends AbstractPolyglotTest {
         @TruffleBoundary
         final Object execute(Object[] arguments) {
             try {
-                return InteropLibrary.getUncached().invokeMember(arguments[0], (String) arguments[1], arguments[2]);
-            } catch (UnsupportedMessageException | ArityException | UnknownIdentifierException | UnsupportedTypeException e) {
+                return InteropLibrary.getUncached().invokeMember(arguments[0], arguments[1], arguments[2]);
+            } catch (UnsupportedMessageException | ArityException | UnknownMemberException | UnsupportedTypeException e) {
                 throw new AssertionError(e);
             }
         }
@@ -337,38 +337,38 @@ public class RetainedSizeContextBoundaryTest extends AbstractPolyglotTest {
 
         @SuppressWarnings("static-method")
         @ExportMessage
-        final Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        final Object getMemberObjects() {
             return null;
         }
 
         @SuppressWarnings("static-method")
         @ExportMessage
-        final boolean isMemberReadable(@SuppressWarnings("unused") String member) {
+        final boolean isMemberReadable(@SuppressWarnings("unused") Object member) {
             return true;
         }
 
         @SuppressWarnings("static-method")
         @ExportMessage
         @TruffleBoundary
-        Object readMember(@SuppressWarnings("unused") String key) {
+        Object readMember(Object key) {
             return map.get(key);
         }
 
         @SuppressWarnings("unused")
         @ExportMessage
-        Object writeMember(String key, Object value) {
+        Object writeMember(Object key, Object value) {
             return value;
         }
 
         @SuppressWarnings("static-method")
         @ExportMessage
-        final boolean isMemberModifiable(@SuppressWarnings("unused") String member) {
+        final boolean isMemberModifiable(@SuppressWarnings("unused") Object member) {
             return false;
         }
 
         @SuppressWarnings("static-method")
         @ExportMessage
-        final boolean isMemberInsertable(@SuppressWarnings("unused") String member) {
+        final boolean isMemberInsertable(@SuppressWarnings("unused") Object member) {
             return false;
         }
 
@@ -458,8 +458,8 @@ public class RetainedSizeContextBoundaryTest extends AbstractPolyglotTest {
                         public Object execute(VirtualFrame frame) {
                             Object thisTestClass = LanguageContext.get(this).getEnv().lookupHostSymbol(RetainedSizeContextBoundaryTest.class.getName());
                             try {
-                                return InteropLibrary.getUncached().invokeMember(thisTestClass, "calculateRetainedSize");
-                            } catch (UnsupportedMessageException | ArityException | UnknownIdentifierException | UnsupportedTypeException e) {
+                                return InteropLibrary.getUncached().invokeMember(thisTestClass, (Object) "calculateRetainedSize");
+                            } catch (UnsupportedMessageException | ArityException | UnknownMemberException | UnsupportedTypeException e) {
                                 throw throwAssertionError(e);
                             }
                         }

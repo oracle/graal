@@ -25,7 +25,7 @@
 package org.graalvm.tools.insight.test;
 
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.source.Source;
 import java.lang.reflect.Constructor;
 import static org.junit.Assert.assertFalse;
@@ -51,22 +51,22 @@ public class SourceEventObjectTest {
 
     @Test
     public void checkUriAttr() throws Exception {
-        Object uri = iop.readMember(sourceEventObject, "uri");
+        Object uri = iop.readMember(sourceEventObject, (Object) "uri");
         assertNotNull(uri);
-        assertTrue(iop.isMemberReadable(sourceEventObject, "uri"));
-        assertTrue(iop.isMemberExisting(sourceEventObject, "uri"));
+        assertTrue(iop.isMemberReadable(sourceEventObject, (Object) "uri"));
+        assertTrue(iop.isMemberExisting(sourceEventObject, (Object) "uri"));
     }
 
     @Test
     public void checkUnknownAttr() throws Exception {
         try {
-            Object nothing = iop.readMember(sourceEventObject, "unknownMember");
+            Object nothing = iop.readMember(sourceEventObject, (Object) "unknownMember");
             fail("unknownMember shouldn't be available: " + nothing);
-        } catch (UnknownIdentifierException ex) {
+        } catch (UnknownMemberException ex) {
             // OK
         }
-        assertFalse(iop.isMemberReadable(sourceEventObject, "unknownMember"));
-        assertFalse(iop.isMemberExisting(sourceEventObject, "unknownMember"));
+        assertFalse(iop.isMemberReadable(sourceEventObject, (Object) "unknownMember"));
+        assertFalse(iop.isMemberExisting(sourceEventObject, (Object) "unknownMember"));
     }
 
 }

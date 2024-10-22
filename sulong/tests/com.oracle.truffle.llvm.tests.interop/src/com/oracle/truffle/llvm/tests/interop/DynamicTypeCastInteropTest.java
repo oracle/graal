@@ -48,6 +48,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
 import com.oracle.truffle.llvm.tests.interop.values.ArrayObject;
 
+@SuppressWarnings("deprecation") // GR-57971
 public class DynamicTypeCastInteropTest extends InteropTestBase {
 
     private static Object testLibraryInternal;
@@ -63,6 +64,7 @@ public class DynamicTypeCastInteropTest extends InteropTestBase {
 
     @ExportLibrary(InteropLibrary.class)
     @ExportLibrary(value = NativeTypeLibrary.class, useForAOT = false)
+    @SuppressWarnings("truffle-abstract-export") // GR-57971
     static class DynamicStructlikeObject implements TruffleObject {
         final HashMap<String, Object> map = new HashMap<>();
 

@@ -57,6 +57,7 @@ import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
  * {@code match_param} parameter).
  */
 @ExportLibrary(InteropLibrary.class)
+@SuppressWarnings({"truffle-abstract-export"}) // GR-58123
 public final class OracleDBFlags extends AbstractConstantKeysObject {
 
     private static final String PROP_IGNORE_CASE = "i";

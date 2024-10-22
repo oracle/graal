@@ -29,9 +29,11 @@ import java.io.IOException;
 import org.graalvm.tools.insight.Insight;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -39,53 +41,83 @@ import com.oracle.truffle.api.library.ExportMessage;
 
 @SuppressWarnings({"unused", "static-method"})
 @ExportLibrary(InteropLibrary.class)
-final class AgentObject implements TruffleObject {
+final class AgentObject extends MembersObject.AbstractReader {
+
     private final InsightInstrument insight;
     private final InsightPerSource source;
     @CompilerDirectives.CompilationFinal(dimensions = 1) private byte[] msg;
 
+    enum Members {
+        id,
+        version
+    }
+
     AgentObject(String msg, InsightInstrument insight, InsightPerSource source) {
+        super(Members.class, Members.values());
         this.msg = msg == null ? null : msg.getBytes();
         this.insight = insight;
         this.source = source;
     }
 
-    @ExportMessage
-    boolean isMemberReadable(String member) {
-        return true;
-    }
-
-    @ExportMessage
-    static boolean hasMembers(AgentObject obj) {
-        return true;
-    }
-
-    @ExportMessage
-    static Object getMembers(AgentObject obj, boolean includeInternal) {
-        return ArrayObject.array("id", "version");
-    }
-
-    @ExportMessage
-    Object readMember(String name) throws UnknownIdentifierException {
+    @Override
+    Object readInsightMember(Enum<?> e) {
         warnMsg();
-        switch (name) {
-            case "id":
+        switch ((Members) e) {
+            case id:
                 return Insight.ID;
-            case "version":
+            case version:
                 return Insight.VERSION;
+            default:
+                throw CompilerDirectives.shouldNotReachHere(e.name());
         }
-        throw UnknownIdentifierException.create(name);
+    }
+
+    @ExportMessage
+    static class IsMemberInvocable {
+
+        // Only invocation via a String name. No member object exists for the on/off methods.
+
+        @Specialization(guards = "interop.isString(memberObj)")
+        static boolean isInvocable(AgentObject receiver, Object memberObj, @Cached.Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop) {
+            try {
+                String member = interop.asString(memberObj);
+                return "on".equals(member) || "off".equals(member);
+            } catch (UnsupportedMessageException ex) {
+                CompilerDirectives.transferToInterpreter();
+                throw CompilerDirectives.shouldNotReachHere(ex);
+            }
+        }
+
+        @Fallback
+        static boolean isInvocable(AgentObject receiver, Object unknownObj) {
+            return false;
+        }
+    }
+
+    @ExportMessage
+    static class InvokeMember {
+
+        @Specialization(guards = "interop.isString(memberObj)")
+        static Object invoke(AgentObject receiver, Object memberObj, Object[] args, @Cached.Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop)
+                        throws UnknownMemberException, UnsupportedMessageException {
+            String name = interop.asString(memberObj);
+            return invokeStringMember(receiver, name, memberObj, args);
+        }
+
+        @Fallback
+        static Object invoke(AgentObject receiver, Object unknownObj, Object[] args) throws UnknownMemberException {
+            CompilerDirectives.transferToInterpreter();
+            throw UnknownMemberException.create(unknownObj);
+        }
     }
 
     @CompilerDirectives.TruffleBoundary
-    @ExportMessage
-    static Object invokeMember(AgentObject obj, String member, Object[] args,
-                    @CachedLibrary(limit = "0") InteropLibrary interop) throws UnknownIdentifierException, UnsupportedMessageException {
+    private static Object invokeStringMember(AgentObject obj, String name, Object member, Object[] args) throws UnknownMemberException, UnsupportedMessageException {
         obj.warnMsg();
         final InsightPerContext perContext = obj.insight.findCtx();
-        switch (member) {
+        switch (name) {
             case "on": {
-                AgentType type = AgentType.find(convertToString(interop, args[0]));
+                AgentType type = AgentType.find(InteropLibrary.getUncached().asString(args[0]));
                 switch (type) {
                     case SOURCE: {
                         InsightInstrument.Key b = obj.source.sourceBinding();
@@ -114,7 +146,7 @@ final class AgentObject implements TruffleObject {
                 break;
             }
             case "off": {
-                AgentType type = AgentType.find(convertToString(interop, args[0]));
+                AgentType type = AgentType.find(InteropLibrary.getUncached().asString(args[0]));
                 switch (type) {
                     case SOURCE: {
                         InsightInstrument.Key b = obj.source.sourceBinding();
@@ -132,7 +164,7 @@ final class AgentObject implements TruffleObject {
                 break;
             }
             default:
-                throw UnknownIdentifierException.create(member);
+                throw UnknownMemberException.create(member);
         }
         return obj;
     }
@@ -148,15 +180,5 @@ final class AgentObject implements TruffleObject {
                 // go on
             }
         }
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    private static String convertToString(InteropLibrary interop, Object obj) throws UnsupportedMessageException {
-        return interop.asString(obj);
-    }
-
-    @ExportMessage
-    static boolean isMemberInvocable(AgentObject obj, String member) {
-        return "on".equals(member) || "off".equals(member);
     }
 }

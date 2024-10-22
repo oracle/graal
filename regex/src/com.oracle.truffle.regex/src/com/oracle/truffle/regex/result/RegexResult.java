@@ -94,6 +94,7 @@ import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
  * </li>
  */
 @ExportLibrary(InteropLibrary.class)
+@SuppressWarnings({"truffle-abstract-export", "deprecation"}) // GR-58123
 public final class RegexResult extends AbstractConstantKeysObject {
 
     static final String PROP_IS_MATCH = "isMatch";

@@ -153,7 +153,7 @@ final class InsightHookNode extends ExecutionEventNode {
                 throw CompilerDirectives.shouldNotReachHere(e);
             }
         } else {
-            return ArrayObject.array();
+            return MembersObject.wrap();
         }
     }
 

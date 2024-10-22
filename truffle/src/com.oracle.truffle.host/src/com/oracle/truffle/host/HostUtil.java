@@ -96,6 +96,11 @@ final class HostUtil {
         return null;
     }
 
+    @CompilerDirectives.TruffleBoundary
+    private static String asString(Object value) throws UnsupportedMessageException {
+        return InteropLibrary.getUncached().asString(value);
+    }
+
     @InliningCutoff
     static Object convertToNumber(Object value, InteropLibrary interop) {
         try {

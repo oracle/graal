@@ -35,6 +35,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import com.oracle.truffle.api.InstrumentInfo;
@@ -59,9 +60,11 @@ import com.oracle.truffle.tools.chromeinspector.types.CustomPreview;
 import com.oracle.truffle.tools.chromeinspector.types.ExceptionDetails;
 import com.oracle.truffle.tools.chromeinspector.types.InternalPropertyDescriptor;
 import com.oracle.truffle.tools.chromeinspector.types.Location;
+import com.oracle.truffle.tools.chromeinspector.types.MetaMembersNode;
 import com.oracle.truffle.tools.chromeinspector.types.PropertyDescriptor;
 import com.oracle.truffle.tools.chromeinspector.types.RemoteObject;
 import com.oracle.truffle.tools.chromeinspector.types.RemoteObject.TypeMark;
+import com.oracle.truffle.tools.chromeinspector.types.RemoteObjectNode;
 import com.oracle.truffle.tools.chromeinspector.types.TypeInfo;
 
 import org.graalvm.collections.Pair;
@@ -76,6 +79,7 @@ public final class InspectorRuntime extends RuntimeDomain {
     private static final String FUNCTION_GET_ARRAY_NUM_PROPS = eliminateWhiteSpaces("function() { return [this.length, Object.keys(this).length - this.length + 2]; }");
     private static final String FUNCTION_GET_BUFFER_NUM_PROPS = eliminateWhiteSpaces("function() { return [this.length, 0]; }");
     private static final String FUNCTION_GET_COLLECTION_NUM_PROPS = eliminateWhiteSpaces("function() { return [0, Object.keys(this).length + 1]; }");
+    private static final String FUNCTION_LOCATION_NAME = "[[FunctionLocation]]";
     // Generic matcher of following function:
     // function invokeGetter(arrayStr){let result=this;const properties=JSON.parse(arrayStr);
     // for(let i=0,n=properties.length;i<n;++i)
@@ -297,10 +301,14 @@ public final class InspectorRuntime extends RuntimeDomain {
         if (objectId == null) {
             throw new CommandProcessException("An objectId required.");
         }
-        RemoteObject object = context.getRemoteObjectsHandler().getRemote(objectId);
+        RemoteObjectNode objectNode = context.getRemoteObjectsHandler().getRemote(objectId);
         String objectGroup = context.getRemoteObjectsHandler().getObjectGroupOf(objectId);
         JSONObject json = new JSONObject();
-        if (object != null) {
+        if (objectNode instanceof MetaMembersNode) {
+            InheritedMembers metaMembers = ((MetaMembersNode) objectNode).getMetaMembers();
+            putInheritedMembers(json, metaMembers, -1, null, generatePreview, objectGroup);
+        } else if (objectNode != null) {
+            RemoteObject object = (RemoteObject) objectNode;
             DebugValue value = object.getDebugValue();
             RemoteObject.IndexRange indexRange = object.getIndexRange();
             try {
@@ -323,15 +331,15 @@ public final class InspectorRuntime extends RuntimeDomain {
                                 return null;
                             }
 
-                            Collection<DebugValue> properties = null;
+                            Collection<DebugValue> members = null;
                             if (!value.hasHashEntries()) {
-                                properties = value.getProperties();
+                                members = value.getMembers();
                             }
-                            if (properties == null) {
-                                properties = Collections.emptyList();
+                            if (members == null) {
+                                members = Collections.emptyList();
                             } else if (indexRange != null && indexRange.isNamed()) {
-                                List<DebugValue> list = new ArrayList<>(properties);
-                                properties = list.subList(indexRange.start(), indexRange.end());
+                                List<DebugValue> list = new ArrayList<>(members);
+                                members = list.subList(indexRange.start(), indexRange.end());
                             }
                             Collection<DebugValue> array;
                             if (!value.isArray()) {
@@ -342,7 +350,7 @@ public final class InspectorRuntime extends RuntimeDomain {
                             } else {
                                 array = value.getArray();
                             }
-                            putResultProperties(json, value, properties, array, generatePreview, objectGroup);
+                            putResultMembers(json, value, members, array, generatePreview, objectGroup);
                             return null;
                         }
 
@@ -424,8 +432,241 @@ public final class InspectorRuntime extends RuntimeDomain {
         return json;
     }
 
+    private static InheritedMembers memberList2Tree(DebugValue meta, Collection<DebugValue> members) {
+        InheritedMembers membersTreeRoot = new InheritedMembers(meta);
+        InheritedMembers membersTreeNode = membersTreeRoot;
+        Iterator<DebugValue> membersIterator = members.iterator();
+        while (membersIterator.hasNext()) {
+            DebugValue v = null;
+            try {
+                v = membersIterator.next();
+                if (v.isReadable()) {
+                    if (v.isMemberKindField() || !v.isMemberKindMethod() && !v.isMemberKindMetaObject()) {
+                        DebugValue declaringMeta = v.getDeclaringMetaObject();
+                        if (declaringMeta == null || meta.equals(declaringMeta)) {
+                            membersTreeRoot.members.add(v);
+                        } else {
+                            if (!declaringMeta.equals(membersTreeNode.declaringMeta)) {
+                                membersTreeNode = new InheritedMembers(declaringMeta);
+                                membersTreeRoot.attach(membersTreeNode);
+                            }
+                            membersTreeNode.members.add(v);
+                        }
+                    }
+                }
+            } catch (DebugException ex) {
+                if (membersTreeRoot.exception == null) {
+                    membersTreeRoot.exception = ex;
+                    membersTreeRoot.exceptionVarName = (v != null) ? v.getName() : "<unknown>";
+                }
+            }
+        }
+        return membersTreeRoot;
+    }
+
+    private void putResultMembers(JSONObject json, DebugValue value, Collection<DebugValue> members, Collection<DebugValue> arrayElements, boolean generatePreview, String objectGroup) {
+        JSONArray result;
+        JSONArray internals = new JSONArray();
+        DebugException exception = null;
+        // Test functionLocation for executable values only
+        boolean hasFunctionLocation = value == null || !value.canExecute();
+        try {
+            if (members != null) {
+                DebugValue meta = value.getMetaObject();
+                InheritedMembers membersTreeRoot = memberList2Tree(meta, members);
+                boolean[] hasFunctionLocationMember = new boolean[]{hasFunctionLocation};
+                result = putInheritedMembers(json, membersTreeRoot, arrayElements.size(), hasFunctionLocationMember, generatePreview, objectGroup);
+                hasFunctionLocation = hasFunctionLocationMember[0];
+            } else {
+                result = new JSONArray();
+                json.put("result", result);
+            }
+            int i = 0;
+            for (DebugValue v : arrayElements) {
+                String name = Integer.toString(i++);
+                try {
+                    if (v.isReadable()) {
+                        result.put(createPropertyJSON(v, name, generatePreview, objectGroup));
+                    }
+                } catch (DebugException ex) {
+                    if (exception == null) {
+                        exception = ex;
+                    }
+                }
+            }
+            if (value != null && value.hasHashEntries()) {
+                DebugValue entries = value.getHashEntriesIterator();
+                JSONObject map2 = createPropertyJSON(entries, "[[Entries]]", false, false, true, objectGroup, true, TypeMark.MAP_ENTRIES);
+                internals.put(map2);
+            }
+        } catch (DebugException ex) {
+            if (exception == null) {
+                exception = ex;
+            }
+        }
+        if (!hasFunctionLocation) {
+            SourceSection sourceLocation = null;
+            try {
+                sourceLocation = value.getSourceLocation();
+            } catch (DebugException ex) {
+                // From property iterators, etc.
+                if (exception == null) {
+                    exception = ex;
+                }
+            }
+            if (sourceLocation != null) {
+                int scriptId = slh.getScriptId(sourceLocation.getSource());
+                if (scriptId >= 0) {
+                    // {"name":"[[FunctionLocation]]","value":{"type":"object","subtype":"internal#location","value":{"scriptId":"87","lineNumber":17,"columnNumber":26},"description":"Object"}}
+                    JSONObject location = new JSONObject();
+                    location.put("name", FUNCTION_LOCATION_NAME);
+                    JSONObject locationValue = new JSONObject();
+                    locationValue.put("type", "object");
+                    locationValue.put("subtype", "internal#location");
+                    locationValue.put("description", "Object");
+                    locationValue.put("value", new Location(scriptId, sourceLocation.getStartLine(), sourceLocation.getStartColumn()).toJSON());
+                    location.put("value", locationValue);
+                    internals.put(location);
+                }
+            }
+        }
+        json.put("internalProperties", internals);
+        if (exception != null && !json.has("exceptionDetails")) {
+            fillExceptionDetails(json, exception);
+            if (exception.isInternalError()) {
+                PrintWriter err = context.getErr();
+                if (err != null) {
+                    err.println("Exception while retrieving variable members.");
+                    exception.printStackTrace(err);
+                }
+            }
+        }
+    }
+
+    private JSONArray putInheritedMembers(JSONObject json, InheritedMembers membersTreeRoot, int arrayLength, boolean[] hasFunctionLocationMember, boolean generatePreview, String objectGroup) {
+        JSONArray result = new JSONArray();
+        DebugException exception = membersTreeRoot.exception;
+        String nameExc = membersTreeRoot.exceptionVarName;
+        boolean hasArray = arrayLength > 0;
+        boolean hasFunctionLocation = (hasFunctionLocationMember != null) ? hasFunctionLocationMember[0] : true;
+        if (!hasArray && hasFunctionLocation) {
+            for (DebugValue member : membersTreeRoot.members) {
+                try {
+                    DebugValue v = member.getMemberValue();
+                    if (v.isReadable()) {
+                        result.put(createPropertyJSON(v, generatePreview, objectGroup));
+                    }
+                } catch (DebugException ex) {
+                    if (exception == null) {
+                        exception = ex;
+                        nameExc = member.getMemberQualifiedName();
+                    }
+                }
+            }
+        } else {
+            for (DebugValue member : membersTreeRoot.members) {
+                try {
+                    DebugValue v = member.getMemberValue();
+                    if (v.isReadable()) {
+                        String name = member.getMemberSimpleName();
+                        if (hasArray) {
+                            if (isArrayIndex(name, arrayLength)) {
+                                continue;
+                            }
+                        }
+                        if (!hasFunctionLocation && FUNCTION_LOCATION_NAME.equals(name)) {
+                            hasFunctionLocation = true;
+                        }
+                        result.put(createPropertyJSON(v, generatePreview, objectGroup));
+                    }
+                } catch (DebugException ex) {
+                    if (exception == null) {
+                        exception = ex;
+                        nameExc = member.getMemberQualifiedName();
+                    }
+                }
+            }
+        }
+        if (hasFunctionLocationMember != null) {
+            hasFunctionLocationMember[0] = hasFunctionLocation;
+        }
+        for (InheritedMembers inherited : membersTreeRoot.inherited) {
+            result.put(createMetaMembersJSON(inherited, objectGroup));
+        }
+        json.put("result", result);
+        json.put("internalProperties", new JSONArray());
+        if (exception != null) {
+            fillExceptionDetails(json, exception);
+            if (exception.isInternalError()) {
+                PrintWriter err = context.getErr();
+                if (err != null) {
+                    err.println("Exception while retrieving variable " + nameExc);
+                    exception.printStackTrace(err);
+                }
+            }
+        }
+        return result;
+    }
+
+    private static boolean isArrayIndex(String name, int limit) {
+        int l = name.length();
+        if (l == 0) {
+            return false;
+        }
+        long number = 0;
+        for (int i = 0; i < l; i++) {
+            int digit = Character.digit(name.charAt(i), 10);
+            if (digit < 0) {
+                return false;
+            }
+            number = 10 * number + digit;
+            if (number > limit) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public static final class InheritedMembers {
+
+        public final DebugValue declaringMeta;
+        final Set<DebugValue> declaringMetaParents;
+        final List<DebugValue> members = new ArrayList<>();
+        final List<InheritedMembers> inherited = new ArrayList<>();
+        DebugException exception;
+        String exceptionVarName;
+
+        InheritedMembers(DebugValue declaringMeta) {
+            this.declaringMeta = declaringMeta;
+            declaringMetaParents = new HashSet<>();
+            addMetaParentsOf(declaringMeta, declaringMetaParents);
+        }
+
+        private void attach(InheritedMembers membersTreeNode) {
+            DebugValue meta = membersTreeNode.declaringMeta;
+            if (declaringMetaParents.contains(meta)) {
+                for (InheritedMembers im : inherited) {
+                    if (im.declaringMetaParents.contains(meta)) {
+                        im.attach(membersTreeNode);
+                        return;
+                    }
+                }
+            }
+            inherited.add(membersTreeNode);
+        }
+    }
+
+    private static void addMetaParentsOf(DebugValue meta, Set<DebugValue> metaSet) {
+        List<DebugValue> metaParents = meta.getMetaParents();
+        if (metaParents != null) {
+            for (DebugValue m : metaParents) {
+                metaSet.add(m);
+                addMetaParentsOf(m, metaSet);
+            }
+        }
+    }
+
     private void putResultProperties(JSONObject json, DebugValue value, Collection<DebugValue> properties, Collection<DebugValue> arrayElements, boolean generatePreview, String objectGroup) {
-        final String functionLocation = "[[FunctionLocation]]";
         JSONArray result = new JSONArray();
         JSONArray internals = new JSONArray();
         boolean hasArray = !arrayElements.isEmpty();
@@ -445,15 +686,11 @@ public final class InspectorRuntime extends RuntimeDomain {
                     try {
                         v = propertiesIterator.next();
                         if (v.isReadable()) {
-                            if (!v.isInternal()) {
-                                result.put(createPropertyJSON(v, generatePreview, objectGroup));
-                                if (storedPropertyNames != null) {
-                                    storedPropertyNames.add(v.getName());
-                                }
-                            } else {
-                                internals.put(createPropertyJSON(v, generatePreview, objectGroup));
+                            result.put(createPropertyJSON(v, generatePreview, objectGroup));
+                            if (storedPropertyNames != null) {
+                                storedPropertyNames.add(v.getName());
                             }
-                            if (!hasFunctionLocation && functionLocation.equals(v.getName())) {
+                            if (!hasFunctionLocation && FUNCTION_LOCATION_NAME.equals(v.getName())) {
                                 hasFunctionLocation = true;
                             }
                         }
@@ -512,7 +749,7 @@ public final class InspectorRuntime extends RuntimeDomain {
                 if (scriptId >= 0) {
                     // {"name":"[[FunctionLocation]]","value":{"type":"object","subtype":"internal#location","value":{"scriptId":"87","lineNumber":17,"columnNumber":26},"description":"Object"}}
                     JSONObject location = new JSONObject();
-                    location.put("name", functionLocation);
+                    location.put("name", FUNCTION_LOCATION_NAME);
                     JSONObject locationValue = new JSONObject();
                     locationValue.put("type", "object");
                     locationValue.put("subtype", "internal#location");
@@ -543,7 +780,7 @@ public final class InspectorRuntime extends RuntimeDomain {
         if (objectId == null) {
             throw new CommandProcessException("An objectId required.");
         }
-        RemoteObject object = context.getRemoteObjectsHandler().getRemote(objectId);
+        RemoteObject object = (RemoteObject) context.getRemoteObjectsHandler().getRemote(objectId);
         JSONObject json = new JSONObject();
         if (object != null) {
             DebugValue value = object.getDebugValue();
@@ -583,19 +820,19 @@ public final class InspectorRuntime extends RuntimeDomain {
                                 } else {
                                     arr.put(value.getArray().size());
                                 }
-                                Collection<DebugValue> props = value.getProperties();
-                                if (props == null) {
+                                Collection<DebugValue> members = value.getMembers();
+                                if (members == null) {
                                     arr.put(0);
                                 } else if (indexRange != null && indexRange.isNamed()) {
-                                    ArrayList<DebugValue> list = new ArrayList<>(props);
+                                    ArrayList<DebugValue> list = new ArrayList<>(members);
                                     if (indexRange.start() < 0 || indexRange.end() > list.size()) {
                                         throw new CommandProcessException("Named range out of bounds.");
                                     }
                                     arr.put(indexRange.end() - indexRange.start());
                                 } else if (LanguageChecks.isJS(value.getOriginalLanguage())) {
-                                    arr.put(props.size() + 1); // +1 for __proto__
+                                    arr.put(members.size() + 1); // +1 for __proto__
                                 } else {
-                                    arr.put(props.size());
+                                    arr.put(members.size());
                                 }
                                 result = new JSONObject();
                                 result.put("value", arr);
@@ -621,22 +858,22 @@ public final class InspectorRuntime extends RuntimeDomain {
                                 result = new JSONObject();
                                 result.put("value", arr);
                             } else if (functionNoWS.equals(FUNCTION_GET_COLLECTION_NUM_PROPS)) {
-                                Collection<DebugValue> props = value.getProperties();
-                                if (props == null) {
+                                Collection<DebugValue> members = value.getMembers();
+                                if (members == null) {
                                     throw new CommandProcessException("Expecting an Object the function is called on.");
                                 }
                                 JSONArray arr = new JSONArray();
                                 arr.put(0);
                                 if (indexRange != null && indexRange.isNamed()) {
-                                    ArrayList<DebugValue> list = new ArrayList<>(props);
+                                    ArrayList<DebugValue> list = new ArrayList<>(members);
                                     if (indexRange.start() < 0 || indexRange.end() > list.size()) {
                                         throw new CommandProcessException("Named range out of bounds.");
                                     }
                                     arr.put(indexRange.end() - indexRange.start());
                                 } else if (LanguageChecks.isJS(value.getOriginalLanguage())) {
-                                    arr.put(props.size() + 1); // +1 for __proto__
+                                    arr.put(members.size() + 1); // +1 for __proto__
                                 } else {
-                                    arr.put(props.size());
+                                    arr.put(members.size());
                                 }
                                 result = new JSONObject();
                                 result.put("value", arr);
@@ -681,8 +918,8 @@ public final class InspectorRuntime extends RuntimeDomain {
                                 context.getRemoteObjectsHandler().register(ro, objectGroup);
                                 result = ro.toJSON();
                             } else if (FUNCTION_GET_NAMED_VARS_PATTERN.matcher(functionTrimmed).matches()) {
-                                Collection<DebugValue> props = value.getProperties();
-                                if (props == null) {
+                                Collection<DebugValue> members = value.getMembers();
+                                if (members == null) {
                                     throw new CommandProcessException("Expecting an Object the function is called on.");
                                 }
                                 if (arguments == null || arguments.length() < 2) {
@@ -728,7 +965,7 @@ public final class InspectorRuntime extends RuntimeDomain {
                                         }
                                         Object id = arg.opt("objectId");
                                         if (id instanceof String) {
-                                            RemoteObject remoteArg = context.getRemoteObjectsHandler().getRemote((String) id);
+                                            RemoteObject remoteArg = (RemoteObject) context.getRemoteObjectsHandler().getRemote((String) id);
                                             if (remoteArg == null) {
                                                 throw new CommandProcessException("Cannot resolve argument by its objectId: " + id);
                                             }
@@ -851,7 +1088,7 @@ public final class InspectorRuntime extends RuntimeDomain {
         Iterable<DebugValue> properties = null;
         try {
             if (value != null) {
-                properties = value.getProperties();
+                properties = value.getMembers();
             } else {
                 properties = scope.getDeclaredValues();
             }
@@ -925,6 +1162,15 @@ public final class InspectorRuntime extends RuntimeDomain {
         return createPropertyJSON(v, defaultName, generatePreview, false, true, objectGroup, false, typeMark);
     }
 
+    private JSONObject createMetaMembersJSON(InheritedMembers metaMembers, String objectGroup) {
+        PropertyDescriptor pd;
+        RemoteObjectNode rv = new MetaMembersNode(metaMembers);
+        context.getRemoteObjectsHandler().register(rv, objectGroup);
+        String name = metaMembers.declaringMeta.getMetaSimpleName();
+        pd = new PropertyDescriptor(name, rv, false, null, null, true, true, null, true, null);
+        return pd.toJSON();
+    }
+
     private JSONObject createPropertyJSON(DebugValue v, String defaultName, boolean generatePreview, boolean readEagerly, boolean enumerable, String objectGroup, boolean forceInternal,
                     TypeMark typeMark) {
         PropertyDescriptor pd;
@@ -934,7 +1180,7 @@ public final class InspectorRuntime extends RuntimeDomain {
         if (name == null && defaultName != null) {
             name = defaultName;
         }
-        if (!(forceInternal || v.isInternal())) {
+        if (!forceInternal) {
             RemoteObject getter;
             RemoteObject setter;
             if (readEagerly) {

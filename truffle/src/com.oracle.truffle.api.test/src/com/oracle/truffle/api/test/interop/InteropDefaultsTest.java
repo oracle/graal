@@ -368,6 +368,8 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
         assertNoBoolean(v);
         assertNotNull(v);
         assertNoObject(v);
+        assertNoMember(v);
+        assertNoSignature(v);
         assertNoArray(v);
         assertNoBuffer(v);
         // assert string
@@ -449,6 +451,8 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
         assertNoBoolean(v);
         assertNotNull(v);
         assertNoObject(v);
+        assertNoMember(v);
+        assertNoSignature(v);
         assertNoArray(v);
         assertNoBuffer(v);
         assertNoString(v);
@@ -509,6 +513,8 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
         assertNoBoolean(v);
         assertNotNull(v);
         assertNoObject(v);
+        assertNoMember(v);
+        assertNoSignature(v);
         assertNoArray(v);
         assertNoBuffer(v);
         assertNoString(v);
@@ -593,6 +599,8 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
         InteropLibrary arrayLib = createLibrary(InteropLibrary.class, array);
         assertTrue(arrayLib.hasIterator(array));
         arrayLib.getIterator(array);
+        assertNoMember(array);
+        assertNoSignature(array);
     }
 
     @Test
@@ -615,6 +623,8 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
         assertTrue(iteratorLib.isIterator(iterator));
         assertTrue(iteratorLib.hasIteratorNextElement(iterator));
         iteratorLib.getIteratorNextElement(iterator);
+        assertNoMember(array);
+        assertNoSignature(array);
     }
 
     @ExportLibrary(InteropLibrary.class)
@@ -652,4 +662,30 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
 
     }
 
+    @Test
+    public void testMembersDefaults() {
+        Object empty = new TruffleObject() {
+        };
+        InteropLibrary emptyLib = createLibrary(InteropLibrary.class, empty);
+        assertFalse(emptyLib.hasMembers(empty));
+        assertUnsupported(() -> emptyLib.getMemberObjects(empty));
+        assertFalse(emptyLib.hasDeclaredMembers(empty));
+        assertUnsupported(() -> emptyLib.getDeclaredMembers(empty));
+        assertFalse(emptyLib.hasStaticReceiver(empty));
+        assertUnsupported(() -> emptyLib.getStaticReceiver(empty));
+
+        assertFalse(emptyLib.isMember(empty));
+        assertUnsupported(() -> emptyLib.getMemberSimpleName(empty));
+        assertUnsupported(() -> emptyLib.getMemberQualifiedName(empty));
+        assertFalse(emptyLib.hasDeclaringMetaObject(empty));
+        assertUnsupported(() -> emptyLib.getDeclaringMetaObject(empty));
+        assertFalse(emptyLib.hasMemberSignature(empty));
+        assertUnsupported(() -> emptyLib.getMemberSignature(empty));
+
+        assertFalse(emptyLib.isSignatureElement(empty));
+        assertFalse(emptyLib.hasSignatureElementName(empty));
+        assertUnsupported(() -> emptyLib.getSignatureElementName(empty));
+        assertFalse(emptyLib.hasSignatureElementMetaObject(empty));
+        assertUnsupported(() -> emptyLib.getSignatureElementMetaObject(empty));
+    }
 }

@@ -72,7 +72,7 @@ public abstract class SetupRootNode extends RootNode {
         Object[] prepared = prepareValues(frame);
         Runner runner = new Runner(spec, workload, prepared);
         try {
-            interop.writeMember(bindings, "run", runner);
+            interop.writeMember(bindings, (Object) "run", runner);
         } catch (InteropException e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new EvalError(this, "error writing to bindings");

@@ -50,7 +50,7 @@ import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
@@ -70,7 +70,7 @@ public abstract class SLToMemberNode extends Node {
 
     static final int LIMIT = 5;
 
-    public abstract String execute(Node node, Object value) throws UnknownIdentifierException;
+    public abstract String execute(Node node, Object value) throws UnknownMemberException;
 
     @Specialization
     protected static String fromString(String value) {
@@ -102,7 +102,7 @@ public abstract class SLToMemberNode extends Node {
     }
 
     @Specialization(limit = "LIMIT")
-    protected static String fromInterop(Object value, @CachedLibrary("value") InteropLibrary interop) throws UnknownIdentifierException {
+    protected static String fromInterop(Object value, @CachedLibrary("value") InteropLibrary interop) throws UnknownMemberException {
         try {
             if (interop.fitsInLong(value)) {
                 return longToString(interop.asLong(value));
@@ -119,8 +119,8 @@ public abstract class SLToMemberNode extends Node {
     }
 
     @TruffleBoundary
-    private static UnknownIdentifierException error(Object value) {
-        return UnknownIdentifierException.create(value.toString());
+    private static UnknownMemberException error(Object value) {
+        return UnknownMemberException.create(value);
     }
 
     @TruffleBoundary

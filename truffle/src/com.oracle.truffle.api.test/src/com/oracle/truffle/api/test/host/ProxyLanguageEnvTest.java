@@ -54,7 +54,7 @@ import org.junit.Before;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
@@ -116,8 +116,8 @@ public abstract class ProxyLanguageEnvTest {
 
     TruffleObject toJavaClass(TruffleObject obj) {
         try {
-            return (TruffleObject) InteropLibrary.getFactory().getUncached().readMember(obj, "class");
-        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+            return (TruffleObject) InteropLibrary.getFactory().getUncached().readMember(obj, (Object) "class");
+        } catch (UnknownMemberException | UnsupportedMessageException e) {
             throw new AssertionError(e);
         }
     }

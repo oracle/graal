@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,7 +54,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
@@ -376,7 +376,7 @@ public final class EventContext {
         }
         Object members;
         try {
-            members = interop.getMembers(obj);
+            members = interop.getMemberObjects(obj);
         } catch (UnsupportedMessageException e) {
             throw new AssertionError("Invalid node object: must support the getMembers message.", e);
         }
@@ -391,25 +391,19 @@ public final class EventContext {
             throw new AssertionError("Invalid node object: the returned members object must have a size.");
         }
         for (long i = 0; i < size; i++) {
-            Object key;
+            Object member;
             try {
-                key = membersInterop.readArrayElement(members, i);
+                member = membersInterop.readArrayElement(members, i);
             } catch (InvalidArrayIndexException | UnsupportedMessageException e) {
                 throw new AssertionError("Invalid node object: the returned members object must be readable at number index " + i);
             }
-            InteropLibrary keyInterop = InteropLibrary.getFactory().getUncached(key);
-            if (!keyInterop.isString(key)) {
-                throw new AssertionError("Invalid node object: the returned member must return a string at index " + i + ". But was " + key.getClass().getName() + ".");
-            }
-            String member;
-            try {
-                member = keyInterop.asString(key);
-            } catch (UnsupportedMessageException e1) {
-                throw new AssertionError("Invalid node object: the returned member must return a string  ");
+            InteropLibrary memberInterop = InteropLibrary.getFactory().getUncached(member);
+            if (!memberInterop.isMember(member)) {
+                throw new AssertionError("Invalid node object: the returned member must be an interop member at index " + i + ". But was " + member.getClass().getName() + ".");
             }
             try {
                 interop.readMember(obj, member);
-            } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+            } catch (UnknownMemberException | UnsupportedMessageException e) {
                 throw new AssertionError("Invalid node object: the returned member must be readable with identifier " + member);
             }
 
@@ -436,13 +430,13 @@ public final class EventContext {
 
     private static void isValidVarsNodeObject(Object obj, String varNameProperty) {
         InteropLibrary interop = InteropLibrary.getFactory().getUncached(obj);
-        if (!interop.isMemberReadable(obj, varNameProperty)) {
+        if (!interop.isMemberReadable(obj, (Object) varNameProperty)) {
             throw new AssertionError("Invalid node object " + obj + ", does not have " + varNameProperty + " member.");
         }
         Object varName;
         try {
-            varName = interop.readMember(obj, varNameProperty);
-        } catch (UnsupportedMessageException | UnknownIdentifierException ex) {
+            varName = interop.readMember(obj, (Object) varNameProperty);
+        } catch (UnsupportedMessageException | UnknownMemberException ex) {
             throw new AssertionError("Invalid node object " + obj + ", can not read " + varNameProperty + " member.", ex);
         }
         if (varName instanceof String) {

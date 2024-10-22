@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -82,11 +82,12 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.CallTag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -419,13 +420,13 @@ public class SLInstrumentTest {
     }
 
     private static boolean contains(Object vars, String key) {
-        return INTEROP.isMemberExisting(vars, key);
+        return INTEROP.isMemberExisting(vars, (Object) key);
     }
 
     private static Object read(Object vars, String key) {
         try {
-            return INTEROP.readMember(vars, key);
-        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+            return INTEROP.readMember(vars, (Object) key);
+        } catch (UnknownMemberException | UnsupportedMessageException e) {
             throw new AssertionError(e);
         }
     }
@@ -438,11 +439,11 @@ public class SLInstrumentTest {
         for (int s = 0; s < scopes.length; s++) {
             boolean lexical = s < scopes.length / 2;
             Object vars = scopes[s];
-            Object members = INTEROP.getMembers(vars);
+            Object members = INTEROP.getMemberObjects(vars);
             int numMembers = (int) INTEROP.getArraySize(members);
             List<String> memberNamesList = new ArrayList<>(numMembers);
             for (int i = 0; i < numMembers; i++) {
-                memberNamesList.add(INTEROP.asString(INTEROP.readArrayElement(members, i)));
+                memberNamesList.add(INTEROP.asString(INTEROP.getMemberSimpleName(INTEROP.readArrayElement(members, i))));
             }
             String memberNames = memberNamesList.toString();
             assertEquals(memberNames, expected.length / 2, numMembers);
@@ -450,10 +451,10 @@ public class SLInstrumentTest {
                 String name = (String) expected[i];
                 assertTrue(name + " not in " + memberNames, contains(vars, name));
                 Object member = INTEROP.readArrayElement(members, i / 2);
-                assertEquals(memberNames, name, INTEROP.asString(member));
+                assertEquals(memberNames, name, INTEROP.asString(INTEROP.getMemberSimpleName(member)));
                 assertTrue(INTEROP.hasSourceLocation(member));
                 if (lexical) {
-                    assertFalse(INTEROP.isMemberWritable(vars, name));
+                    assertFalse(INTEROP.isMemberWritable(vars, (Object) name));
                     assertTrue(isNull(read(vars, name)));
                 } else {
                     Object value = expected[i + 1];
@@ -462,7 +463,7 @@ public class SLInstrumentTest {
                     } else {
                         assertEquals(name, value, read(vars, name));
                     }
-                    assertTrue(INTEROP.isMemberWritable(vars, name));
+                    assertTrue(INTEROP.isMemberWritable(vars, (Object) name));
                 }
             }
         }
@@ -864,7 +865,7 @@ public class SLInstrumentTest {
         static class ReplacedTruffleObject implements TruffleObject {
 
             @ExportMessage
-            final Object readMember(@SuppressWarnings("unused") String member) {
+            final Object readMember(@SuppressWarnings("unused") Object member) {
                 return "Replaced Value";
             }
 
@@ -874,13 +875,13 @@ public class SLInstrumentTest {
             }
 
             @ExportMessage
-            final Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-                return new KeysArray(new String[]{"rp1, rp2"});
+            final Object getMemberObjects() {
+                return new KeysArray(new String[]{});
             }
 
             @ExportMessage
-            final boolean isMemberReadable(String member) {
-                return member.equals("rp1") || member.equals("rp2");
+            final boolean isMemberReadable(Object member) {
+                return "rp1".equals(member) || "rp2".equals(member);
             }
         }
     }
@@ -1007,6 +1008,62 @@ public class SLInstrumentTest {
 
             });
         }
+    }
+
+    @Test
+    public void testRWVariableNodes() throws Exception {
+        String code = "function test(n) {\n" +
+                        "  a = 1;\n" +
+                        "  b = n;\n" +
+                        "  return a + b;\n" +
+                        "}\n" +
+                        "function main() {\n" +
+                        "  test(11);\n" +
+                        "}";
+        final Source source = Source.newBuilder("sl", code, "testing").build();
+        Engine engine = Engine.newBuilder().build();
+        Instrument envInstr = engine.getInstruments().get("testEnvironmentHandlerInstrument");
+        TruffleInstrument.Env env = envInstr.lookup(Environment.class).env;
+        StringBuilder visitedVariables = new StringBuilder();
+        SourceSectionFilter varsFilter = SourceSectionFilter.newBuilder().tagIs(StandardTags.ReadVariableTag.class, StandardTags.WriteVariableTag.class).build();
+        env.getInstrumenter().attachExecutionEventListener(varsFilter, new ExecutionEventListener() {
+            @Override
+            public void onEnter(EventContext context, VirtualFrame frame) {
+                Object nodeObject = context.getNodeObject();
+                assertTrue(InteropLibrary.getUncached().hasMembers(nodeObject));
+                String varTagName;
+                if (context.hasTag(StandardTags.ReadVariableTag.class)) {
+                    visitedVariables.append("R");
+                    varTagName = StandardTags.ReadVariableTag.NAME;
+                } else {
+                    assertTrue(context.hasTag(StandardTags.WriteVariableTag.class));
+                    visitedVariables.append("W");
+                    varTagName = StandardTags.WriteVariableTag.NAME;
+                }
+                try {
+                    Object members = INTEROP.getMemberObjects(nodeObject);
+                    assertTrue(INTEROP.hasArrayElements(members));
+                    assertEquals(1, INTEROP.getArraySize(members));
+                    Object member = INTEROP.readArrayElement(members, 0);
+                    assertEquals(varTagName, INTEROP.asString(INTEROP.getMemberSimpleName(member)));
+                    String name = INTEROP.asString(INTEROP.readMember(nodeObject, member));
+                    assertEquals(name, INTEROP.asString(INTEROP.readMember(nodeObject, (Object) varTagName)));
+                    visitedVariables.append(name);
+                } catch (InteropException ex) {
+                    fail(ex.getLocalizedMessage());
+                }
+            }
+
+            @Override
+            public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+            }
+
+            @Override
+            public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+            }
+        });
+        Context.newBuilder().engine(engine).build().eval(source);
+        assertEquals("WnWaWbRnRaRb", visitedVariables.toString());
     }
 
     @TruffleInstrument.Registration(id = "testEnvironmentHandlerInstrument", services = Environment.class)

@@ -27,6 +27,7 @@ package jdk.graal.compiler.truffle.test;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -34,7 +35,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.DynamicDispatchLibrary;
@@ -186,8 +187,8 @@ public class LibrarySplittingStrategyTest extends AbstractSplittingStrategyTest 
 
         @ExportMessage
         @SuppressWarnings("unused")
-        static Object getMembers(DynamicallyDispatchedObject receiver, boolean includeInternal) {
-            return receiver;
+        static Object getMemberObjects(DynamicallyDispatchedObject receiver) {
+            throw CompilerDirectives.shouldNotReachHere("Not implemented, not called.");
         }
 
         @SuppressWarnings("static-method")
@@ -200,18 +201,18 @@ public class LibrarySplittingStrategyTest extends AbstractSplittingStrategyTest 
         @ReportPolymorphism
         abstract static class ReadMember {
 
-            static final String CACHED_NAME = "cached";
+            static final Object CACHED_NAME = "cached";
 
-            @Specialization(guards = "name == CACHED_NAME")
+            @Specialization(guards = "member == CACHED_NAME")
             @ReportPolymorphism.Exclude
-            static Object readStaticCached(DynamicallyDispatchedObject receiver, @SuppressWarnings("unused") String name,
-                            @SuppressWarnings("unused") @Cached(value = "name", neverDefault = false) String cachedName) {
+            static Object readStaticCached(DynamicallyDispatchedObject receiver, @SuppressWarnings("unused") Object member,
+                            @SuppressWarnings("unused") @Cached(value = "member", neverDefault = false) Object cachedMember) {
                 return receiver;
             }
 
-            @Specialization(limit = "3", guards = "name == cachedName")
-            static Object readCached(DynamicallyDispatchedObject receiver, @SuppressWarnings("unused") String name,
-                            @SuppressWarnings("unused") @Cached("name") String cachedName) {
+            @Specialization(limit = "3", guards = "member == cachedMember")
+            static Object readCached(DynamicallyDispatchedObject receiver, @SuppressWarnings("unused") Object member,
+                            @SuppressWarnings("unused") @Cached("member") Object cachedMember) {
                 return receiver;
             }
         }
@@ -224,11 +225,11 @@ public class LibrarySplittingStrategyTest extends AbstractSplittingStrategyTest 
         static final int LIBRARY_LIMIT = 3;
 
         @Specialization(guards = "objects.hasMembers(receiver)", limit = "LIBRARY_LIMIT")
-        protected Object readObject(Object receiver, String name,
+        protected Object readObject(Object receiver, Object member,
                         @CachedLibrary("receiver") InteropLibrary objects) {
             try {
-                return objects.readMember(receiver, name);
-            } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+                return objects.readMember(receiver, member);
+            } catch (UnsupportedMessageException | UnknownMemberException e) {
                 throw new AssertionError("Should not reach here");
             }
         }

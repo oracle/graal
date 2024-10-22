@@ -44,17 +44,24 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.utilities.TriState;
 
 @ExportLibrary(InteropLibrary.class)
 final class PolyglotBindings implements TruffleObject {
+
+    static final int CACHE_LIMIT = 3;
 
     // a bindings object for engine.
     private final PolyglotContextImpl context;
@@ -92,11 +99,32 @@ final class PolyglotBindings implements TruffleObject {
     }
 
     @ExportMessage
+    static class ReadMember {
+
+        @Specialization
+        static Object read(PolyglotBindings bindings, BindingsMember member) throws UnknownMemberException {
+            return bindings.doReadMember(member, member.name);
+        }
+
+        @Specialization(guards = "memberLibrary.isString(member)", limit = "CACHE_LIMIT")
+        static Object read(PolyglotBindings bindings, Object member,
+                        @CachedLibrary("member") InteropLibrary memberLibrary) throws UnknownMemberException {
+            String name = BindingsMember.getNameOf(member, memberLibrary);
+            return bindings.doReadMember(member, name);
+        }
+
+        @Fallback
+        @SuppressWarnings("unused")
+        static Object read(PolyglotBindings bindings, Object member) throws UnknownMemberException {
+            throw UnknownMemberException.create(member);
+        }
+    }
+
     @TruffleBoundary
-    Object readMember(String member) throws UnknownIdentifierException {
-        Object value = getBindings().get(member);
+    Object doReadMember(Object member, String name) throws UnknownMemberException {
+        Object value = getBindings().get(name);
         if (value == null) {
-            throw UnknownIdentifierException.create(member);
+            throw UnknownMemberException.create(member);
         }
         if (languageContext != null) {
             return context.toGuestValue(null, value, false);
@@ -106,38 +134,117 @@ final class PolyglotBindings implements TruffleObject {
     }
 
     @ExportMessage
+    static class WriteMember {
+
+        @Specialization
+        static void write(PolyglotBindings bindings, BindingsMember member, Object value) {
+            bindings.doWriteMember(member.name, value);
+        }
+
+        @Specialization(guards = "memberLibrary.isString(member)", limit = "CACHE_LIMIT")
+        static void write(PolyglotBindings bindings, Object member, Object value,
+                        @CachedLibrary("member") InteropLibrary memberLibrary) {
+            String name = BindingsMember.getNameOf(member, memberLibrary);
+            bindings.doWriteMember(name, value);
+        }
+
+        @Fallback
+        @SuppressWarnings("unused")
+        static void write(PolyglotBindings bindings, Object member, Object value) throws UnknownMemberException {
+            throw UnknownMemberException.create(member);
+        }
+    }
+
     @TruffleBoundary
-    void writeMember(String member, Object value) {
+    private void doWriteMember(String name, Object value) {
         Object v = (languageContext != null) ? languageContext.asValue(value) : context.asValue(value);
-        getBindings().put(member, v);
+        getBindings().put(name, v);
     }
 
     @ExportMessage
+    static class RemoveMember {
+
+        @Specialization
+        static void remove(PolyglotBindings bindings, BindingsMember member) throws UnknownMemberException {
+            bindings.doRemoveMember(member, member.name);
+        }
+
+        @Specialization(guards = "memberLibrary.isString(member)", limit = "CACHE_LIMIT")
+        static void remove(PolyglotBindings bindings, Object member,
+                        @CachedLibrary("member") InteropLibrary memberLibrary) throws UnknownMemberException {
+            String name = BindingsMember.getNameOf(member, memberLibrary);
+            bindings.doRemoveMember(member, name);
+        }
+
+        @Fallback
+        static void remove(@SuppressWarnings("unused") PolyglotBindings bindings, Object member) throws UnknownMemberException {
+            throw UnknownMemberException.create(member);
+        }
+    }
+
     @TruffleBoundary
-    void removeMember(String member) throws UnknownIdentifierException {
-        Object ret = getBindings().remove(member);
+    void doRemoveMember(Object member, String name) throws UnknownMemberException {
+        Object ret = getBindings().remove(name);
         if (ret == null) {
-            throw UnknownIdentifierException.create(member);
+            throw UnknownMemberException.create(member);
         }
     }
 
     @ExportMessage
     @TruffleBoundary
-    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+    Object getMemberObjects() {
         return new Members(getBindings().keySet());
     }
 
     @ExportMessage(name = "isMemberReadable")
     @ExportMessage(name = "isMemberModifiable")
     @ExportMessage(name = "isMemberRemovable")
+    static class ExistsMember {
+
+        @Specialization
+        static boolean exists(PolyglotBindings bindings, BindingsMember member) {
+            return bindings.doesMemberExist(member.name);
+        }
+
+        @Specialization(guards = "memberLibrary.isString(member)", limit = "CACHE_LIMIT")
+        static boolean exists(PolyglotBindings bindings, Object member,
+                        @CachedLibrary("member") InteropLibrary memberLibrary) {
+            String name = BindingsMember.getNameOf(member, memberLibrary);
+            return bindings.doesMemberExist(name);
+        }
+
+        @Fallback
+        @SuppressWarnings("unused")
+        static boolean exists(PolyglotBindings bindings, Object member) {
+            return false;
+        }
+    }
+
     @TruffleBoundary
-    boolean isMemberExisting(String member) {
+    boolean doesMemberExist(String member) {
         return getBindings().containsKey(member);
     }
 
     @ExportMessage
-    boolean isMemberInsertable(String member) {
-        return !isMemberExisting(member);
+    static class IsMemberInsertable {
+
+        @Specialization
+        static boolean insertable(PolyglotBindings bindings, BindingsMember member) {
+            return !bindings.doesMemberExist(member.name);
+        }
+
+        @Specialization(guards = "memberLibrary.isString(member)", limit = "CACHE_LIMIT")
+        static boolean insertable(PolyglotBindings bindings, Object member,
+                        @CachedLibrary("member") InteropLibrary memberLibrary) {
+            String name = BindingsMember.getNameOf(member, memberLibrary);
+            return !bindings.doesMemberExist(name);
+        }
+
+        @Fallback
+        @SuppressWarnings("unused")
+        static boolean insertable(PolyglotBindings bindings, Object member) {
+            return false;
+        }
     }
 
     @ExportLibrary(InteropLibrary.class)
@@ -165,12 +272,82 @@ final class PolyglotBindings implements TruffleObject {
             if (!isArrayElementReadable(index)) {
                 throw InvalidArrayIndexException.create(index);
             }
-            return names[(int) index];
+            return new BindingsMember(names[(int) index]);
         }
 
         @ExportMessage
         boolean isArrayElementReadable(long index) {
             return index >= 0 && index < names.length;
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings("static-method")
+    static final class BindingsMember implements TruffleObject {
+
+        private final String name;
+
+        BindingsMember(String name) {
+            this.name = name;
+        }
+
+        @ExportMessage
+        boolean isMember() {
+            return true;
+        }
+
+        @ExportMessage
+        Object getMemberSimpleName() {
+            return name;
+        }
+
+        @ExportMessage
+        Object getMemberQualifiedName() {
+            return name;
+        }
+
+        @ExportMessage
+        boolean isMemberKindField() {
+            return false;
+        }
+
+        @ExportMessage
+        boolean isMemberKindMethod() {
+            return false;
+        }
+
+        @ExportMessage
+        boolean isMemberKindMetaObject() {
+            return false;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hashCode(this.name);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            final BindingsMember other = (BindingsMember) obj;
+            return Objects.equals(this.name, other.name);
+        }
+
+        private static String getNameOf(Object member, InteropLibrary memberLibrary) {
+            assert memberLibrary.isString(member);
+            try {
+                return memberLibrary.asString(member);
+            } catch (UnsupportedMessageException ex) {
+                throw CompilerDirectives.shouldNotReachHere(ex.getMessage());
+            }
         }
     }
 

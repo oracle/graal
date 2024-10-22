@@ -222,8 +222,8 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
 
             Map<String, ExportMessageData> messages = filterDeclaredMessages(libraryExports);
 
-            CodeTypeElement uncachedClass = createUncached(libraryExports, messages);
-            CodeTypeElement cacheClass = createCached(libraryExports, messages);
+            CodeTypeElement uncachedClass = createUncached(libraryExports, messages, true);
+            CodeTypeElement cacheClass = createCached(libraryExports, messages, true);
 
             CodeTypeElement resolvedExports = createResolvedExports(libraryExports, messages, createLibraryExportsClassName(libraryBaseType), cacheClass, uncachedClass);
             resolvedExports.add(cacheClass);
@@ -551,7 +551,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         return providerClass;
     }
 
-    CodeTypeElement createCached(ExportsLibrary libraryExports, Map<String, ExportMessageData> messages) {
+    CodeTypeElement createCached(ExportsLibrary libraryExports, Map<String, ExportMessageData> messages, boolean addReplacements) {
         TypeMirror exportReceiverType = libraryExports.getReceiverType();
         final Modifier classVisibility = resolveSubclassVisibility(libraryExports);
         final boolean isFinalExports = classVisibility == Modifier.PRIVATE;
@@ -914,11 +914,72 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                     b.tree(originalBody);
                 }
             }
+            if (addReplacements) {
+                addReplacementFor(message, messages, cacheClass);
+            }
         }
 
         nodeConstants.addToClass(cacheClass);
 
         return cacheClass;
+    }
+
+    private static void addReplacementFor(LibraryMessage message, Map<String, ExportMessageData> messages, CodeTypeElement theClass) {
+        LibraryMessage replacementMessage = message.getReplacementFor();
+        if (replacementMessage != null) {
+            String replaceWith = message.getReplaceWith();
+            if (replaceWith != null) {
+                // We generate the `replacementMessage`
+                // that will automatically delegate to the `replaceWith` method
+                CodeExecutableElement replaceExecute = CodeExecutableElement.cloneNoAnnotations(replacementMessage.getExecutable());
+                if (replacementMessage.isDeprecated()) {
+                    GeneratorUtils.mergeSuppressWarnings(replaceExecute, "deprecation");
+                }
+                CodeTreeBuilder builder = replaceExecute.createBuilder();
+                builder.startReturn();
+                builder.startCall((String) null, replaceWith);
+                List<? extends VariableElement> messageParameters = message.getExecutable().getParameters();
+                int size = messageParameters.size();
+                for (int i = 0; i < size; i++) {
+                    VariableElement messageParam = messageParameters.get(i);
+                    builder.string(messageParam.getSimpleName().toString());
+                }
+                builder.end(); // call
+                builder.end(); // return
+                theClass.getEnclosedElements().add(replaceExecute);
+            } else if (!messages.containsKey(replacementMessage.getName()) || parametersDiffer(replacementMessage, messages.get(replacementMessage.getName()).getResolvedMessage())) {
+                // We generate the `replacementMessage`
+                // that will automatically delegate to the current `message`.
+                CodeExecutableElement replaceExecute = CodeExecutableElement.cloneNoAnnotations(replacementMessage.getExecutable());
+                if (replacementMessage.isDeprecated()) {
+                    GeneratorUtils.mergeSuppressWarnings(replaceExecute, "deprecation");
+                }
+                CodeTreeBuilder builder = replaceExecute.createBuilder();
+                builder.startReturn();
+                builder.startCall(null, message.getExecutable());
+                List<? extends VariableElement> messageParameters = message.getExecutable().getParameters();
+                List<? extends VariableElement> replaceParameters = replaceExecute.getParameters();
+                int size = messageParameters.size();
+                for (int i = 0; i < size; i++) {
+                    VariableElement messageParam = messageParameters.get(i);
+                    VariableElement replaceParam = replaceParameters.get(i);
+                    if (messageParam.asType().equals(replaceParam.asType())) {
+                        builder.string(replaceParam.getSimpleName().toString());
+                    } else {
+                        builder.string("(" + messageParam.asType() + ") " + replaceParam.getSimpleName());
+                    }
+                }
+                builder.end(); // call
+                builder.end(); // return
+                theClass.getEnclosedElements().add(replaceExecute);
+            }
+        }
+    }
+
+    private static boolean parametersDiffer(LibraryMessage message1, LibraryMessage message2) {
+        List<? extends VariableElement> parameters1 = message1.getExecutable().getParameters();
+        List<? extends VariableElement> parameters2 = message2.getExecutable().getParameters();
+        return !parameters1.equals(parameters2);
     }
 
     private static Map<String, ExportMessageData> filterDeclaredMessages(ExportsLibrary libraryExports) {
@@ -1190,7 +1251,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         return builder.build();
     }
 
-    CodeTypeElement createUncached(ExportsLibrary libraryExports, Map<String, ExportMessageData> messages) {
+    CodeTypeElement createUncached(ExportsLibrary libraryExports, Map<String, ExportMessageData> messages, boolean addReplacements) {
         final TypeMirror exportReceiverType = libraryExports.getReceiverType();
         final Modifier classVisibility = resolveSubclassVisibility(libraryExports);
         final boolean isFinalExports = classVisibility == Modifier.PRIVATE;
@@ -1349,6 +1410,9 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 b.tree(originalBody);
             }
 
+            if (addReplacements) {
+                addReplacementFor(message, messages, uncachedClass);
+            }
         }
         nodeConstants.addToClass(uncachedClass);
         return uncachedClass;

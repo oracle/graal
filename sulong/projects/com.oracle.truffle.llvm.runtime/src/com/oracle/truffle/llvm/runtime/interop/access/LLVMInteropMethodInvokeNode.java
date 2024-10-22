@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,7 +35,7 @@ import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -47,7 +47,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 @GenerateUncached
 public abstract class LLVMInteropMethodInvokeNode extends LLVMNode {
     abstract Object execute(LLVMPointer receiver, String methodName, LLVMInteropType.Clazz type, Method method, long virtualIndex, Object[] argumentsWithSelf)
-                    throws UnsupportedTypeException, ArityException, UnsupportedMessageException, UnknownIdentifierException;
+                    throws UnsupportedTypeException, ArityException, UnsupportedMessageException, UnknownMemberException;
 
     public static LLVMInteropMethodInvokeNode create() {
         return LLVMInteropMethodInvokeNodeGen.create();
@@ -73,10 +73,10 @@ public abstract class LLVMInteropMethodInvokeNode extends LLVMNode {
                     @Cached(value = "type.getVtableAccessNames()", allowUncached = true, dimensions = 1) String[] vtableHelpNames,
                     @Cached LLVMInteropVtableAccessNode vtableAccessNode)
                     throws UnsupportedTypeException, ArityException, UnsupportedMessageException,
-                    UnknownIdentifierException {
+                    UnknownMemberException {
         Object curReceiver = receiver;
         for (String name : vtableHelpNames) {
-            curReceiver = interop.readMember(curReceiver, name);
+            curReceiver = interop.readMember(curReceiver, (Object) name);
         }
         return vtableAccessNode.execute(curReceiver, virtualIndex, arguments);
     }
@@ -91,11 +91,11 @@ public abstract class LLVMInteropMethodInvokeNode extends LLVMNode {
     Object doVirtualCall(LLVMPointer receiver, String methodName, LLVMInteropType.Clazz type, Method method, long virtualIndex, Object[] arguments,
                     @CachedLibrary(limit = "5") InteropLibrary interop,
                     @Cached LLVMInteropVtableAccessNode vtableAccessNode)
-                    throws UnsupportedTypeException, ArityException, UnsupportedMessageException, UnknownIdentifierException {
+                    throws UnsupportedTypeException, ArityException, UnsupportedMessageException, UnknownMemberException {
         String[] vtableAccessNames = type.getVtableAccessNames();
         Object curReceiver = receiver;
         for (String name : vtableAccessNames) {
-            curReceiver = interop.readMember(curReceiver, name);
+            curReceiver = interop.readMember(curReceiver, (Object) name);
         }
         return vtableAccessNode.execute(curReceiver, virtualIndex, arguments);
     }

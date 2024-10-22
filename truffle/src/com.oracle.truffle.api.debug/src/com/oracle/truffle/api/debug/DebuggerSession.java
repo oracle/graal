@@ -45,6 +45,7 @@ import java.net.URI;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -302,12 +303,15 @@ public final class DebuggerSession implements Closeable {
      * Returns a polyglot scope - symbols explicitly exported by languages.
      *
      * @since 0.30
+     * @deprecated Use {@link #getExportedSymbolMembers()} instead.
      */
+    @Deprecated(since = "24.2")
     public Map<String, ? extends DebugValue> getExportedSymbols() {
         return new AbstractMap<>() {
             private final DebugValue polyglotBindings = new DebugValue.HeapValue(DebuggerSession.this, "polyglot", debugger.getEnv().getPolyglotBindings());
 
             @Override
+            @SuppressWarnings("deprecation")
             public Set<Map.Entry<String, DebugValue>> entrySet() {
                 Set<Map.Entry<String, DebugValue>> entries = new LinkedHashSet<>();
                 for (DebugValue property : polyglotBindings.getProperties()) {
@@ -324,6 +328,16 @@ public final class DebuggerSession implements Closeable {
                 return polyglotBindings.getProperty(name);
             }
         };
+    }
+
+    /**
+     * Returns members of a polyglot scope - symbols explicitly exported by languages.
+     *
+     * @since 24.2
+     */
+    public Collection<DebugValue> getExportedSymbolMembers() {
+        DebugValue polyglotBindings = new DebugValue.HeapValue(DebuggerSession.this, "polyglot", debugger.getEnv().getPolyglotBindings());
+        return polyglotBindings.getMembers();
     }
 
     /**

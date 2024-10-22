@@ -30,7 +30,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.StopIterationException;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
@@ -347,11 +347,11 @@ final class InsightFilter {
         Object get(String propertyName) {
             Object value;
             try {
-                value = IOP.readMember(object, propertyName);
+                value = IOP.readMember(object, (Object) propertyName);
                 if (value != null && IOP.isNull(value)) {
                     value = null;
                 }
-            } catch (UnknownIdentifierException ex) {
+            } catch (UnknownMemberException ex) {
                 value = null;
             } catch (UnsupportedMessageException ex) {
                 throw CompilerDirectives.shouldNotReachHere();

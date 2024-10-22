@@ -58,7 +58,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -243,18 +243,18 @@ final class PolyglotObjectProxyHandler implements InvocationHandler, PolyglotWra
                 boolean localInvokeFailed = this.invokeFailed;
                 if (!localInvokeFailed) {
                     try {
-                        return receivers.invokeMember(receiver, member, arguments);
-                    } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+                        return receivers.invokeMember(receiver, (Object) member, arguments);
+                    } catch (UnsupportedMessageException | UnknownMemberException e) {
                         CompilerDirectives.transferToInterpreterAndInvalidate();
                         // fallthrough to unsupported
                         invokeFailed = localInvokeFailed = true;
                     }
                 }
                 if (localInvokeFailed) {
-                    if (invokeProfile.profile(node, receivers.isMemberInvocable(receiver, member))) {
-                        return receivers.invokeMember(receiver, member, arguments);
-                    } else if (receivers.isMemberReadable(receiver, member)) {
-                        Object readMember = receivers.readMember(receiver, member);
+                    if (invokeProfile.profile(node, receivers.isMemberInvocable(receiver, (Object) member))) {
+                        return receivers.invokeMember(receiver, (Object) member, arguments);
+                    } else if (receivers.isMemberReadable(receiver, (Object) member)) {
+                        Object readMember = receivers.readMember(receiver, (Object) member);
                         if (members.isExecutable(readMember)) {
                             return members.execute(readMember, arguments);
                         } else if (arguments.length == 0) {
@@ -264,7 +264,7 @@ final class PolyglotObjectProxyHandler implements InvocationHandler, PolyglotWra
                 }
                 error.enter(node);
                 throw PolyglotInteropErrors.invokeUnsupported(polyglotContext, receiver, member);
-            } catch (UnknownIdentifierException e) {
+            } catch (UnknownMemberException e) {
                 error.enter(node);
                 throw PolyglotInteropErrors.invokeUnsupported(polyglotContext, receiver, member);
             } catch (UnsupportedTypeException e) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,8 @@ package org.graalvm.tools.insight.test;
 
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
+
 import java.lang.reflect.Constructor;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -52,10 +53,10 @@ public class EventContextObjectTest {
 
     @Test
     public void checkNameAttr() throws Exception {
-        assertTrue(iop.isMemberReadable(eventContextObject, "name"));
-        assertTrue(iop.isMemberExisting(eventContextObject, "name"));
+        assertTrue(iop.isMemberReadable(eventContextObject, (Object) "name"));
+        assertTrue(iop.isMemberExisting(eventContextObject, (Object) "name"));
         try {
-            Object name = iop.readMember(eventContextObject, "name");
+            Object name = iop.readMember(eventContextObject, (Object) "name");
             assertNotNull(name);
         } catch (NullPointerException ex) {
             // acceptable error, as we don't have mock version of EventContext
@@ -65,19 +66,19 @@ public class EventContextObjectTest {
     @Test
     public void checkUnknownAttr() throws Exception {
         try {
-            Object nothing = iop.readMember(eventContextObject, "unknownMember");
+            Object nothing = iop.readMember(eventContextObject, (Object) "unknownMember");
             fail("unknownMember shouldn't be available: " + nothing);
-        } catch (UnknownIdentifierException ex) {
+        } catch (UnknownMemberException ex) {
             // OK
         }
-        assertFalse(iop.isMemberReadable(eventContextObject, "unknownMember"));
-        assertFalse(iop.isMemberExisting(eventContextObject, "unknownMember"));
+        assertFalse(iop.isMemberReadable(eventContextObject, (Object) "unknownMember"));
+        assertFalse(iop.isMemberExisting(eventContextObject, (Object) "unknownMember"));
     }
 
     @Test
     public void enumerateAttributes() throws Exception {
         assertTrue("It has members", iop.hasMembers(eventContextObject));
-        Object members = iop.getMembers(eventContextObject);
+        Object members = iop.getMemberObjects(eventContextObject);
 
         String[] expectedNames = {
                         "name", "source", "characters",
@@ -88,7 +89,8 @@ public class EventContextObjectTest {
 
         assertEquals(expectedNames.length, iop.getArraySize(members));
         for (int i = 0; i < expectedNames.length; i++) {
-            assertEquals(expectedNames[i], iop.readArrayElement(members, i));
+            Object member = iop.readArrayElement(members, i);
+            assertEquals(expectedNames[i], iop.asString(iop.getMemberSimpleName(member)));
         }
     }
 }

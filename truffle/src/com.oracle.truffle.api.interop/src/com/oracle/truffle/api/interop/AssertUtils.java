@@ -167,6 +167,30 @@ final class AssertUtils {
         return true;
     }
 
+    static boolean validStringOrMember(Object member) {
+        if (InteropLibrary.UNCACHED.isString(member)) {
+            return true;
+        }
+        return validMemberObject(member);
+    }
+
+    static boolean validMemberObject(Object member) {
+        boolean isMember = InteropLibrary.UNCACHED.isMember(member);
+        assert isMember : violationPre(member);
+        // Test mandatory supported methods
+        try {
+            InteropLibrary.UNCACHED.getMemberSimpleName(member);
+        } catch (UnsupportedMessageException e) {
+            assert false : String.format("getMemberSimpleName() not supported for member %s", formatValue(member));
+        }
+        try {
+            InteropLibrary.UNCACHED.getMemberQualifiedName(member);
+        } catch (UnsupportedMessageException e) {
+            assert false : String.format("getMemberQualifiedName() not supported for member %s", formatValue(member));
+        }
+        return isMember;
+    }
+
     static boolean validNonInteropArgument(Object receiver, Object arg) {
         if (arg == null) {
             throw new NullPointerException(violationNonInteropArgument(receiver, arg));

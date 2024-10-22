@@ -78,6 +78,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 @ExportLibrary(value = LLVMVaListLibrary.class, useForAOT = true, useForAOTPriority = 2)
 @ExportLibrary(value = LLVMManagedReadLibrary.class, useForAOT = true, useForAOTPriority = 1)
 @ExportLibrary(InteropLibrary.class)
+@SuppressWarnings({"truffle-abstract-export", "deprecation"}) // GR-57971
 public final class LLVMX86_64_WinVaListStorage implements TruffleObject {
 
     protected LLVMPointer nativeAreaPointer;

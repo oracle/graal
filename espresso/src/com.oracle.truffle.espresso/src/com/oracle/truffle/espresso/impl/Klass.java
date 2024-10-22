@@ -106,6 +106,7 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
 
 @ExportLibrary(InteropLibrary.class)
+@SuppressWarnings({"truffle-abstract-export", "deprecation"}) // GR-58181
 public abstract class Klass extends ContextAccessImpl implements ModifiersProvider, KlassRef, TruffleObject {
 
     // region Interop
@@ -1216,6 +1217,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     /**
      * Returns {@code true} if the type is a member type.
      */
+    @ExportMessage.Ignore // GR-58181
     public abstract boolean isMember();
 
     /**

@@ -40,14 +40,19 @@
  */
 package com.oracle.truffle.nfi.backend.libffi;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
@@ -96,13 +101,13 @@ final class LibFFILibrary implements TruffleObject {
 
     @ExportMessage
     @SuppressWarnings("static-method")
-    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+    Object getMemberObjects() {
         return KEYS;
     }
 
     @ExportMessage
     @SuppressWarnings("static-method")
-    boolean isMemberReadable(@SuppressWarnings("unused") String member) {
+    boolean isMemberReadable(@SuppressWarnings("unused") Object member) {
         /**
          * Pretend all members are readable to avoid a native call for the lookup. The lookup is
          * performed only once and in #readMember().
@@ -111,14 +116,26 @@ final class LibFFILibrary implements TruffleObject {
     }
 
     @ExportMessage
-    Object readMember(String symbol,
-                    @Cached InlinedBranchProfile exception,
-                    @Bind("$node") Node node) throws UnknownIdentifierException {
-        try {
-            return LibFFIContext.get(node).lookupSymbol(this, symbol);
-        } catch (NFIUnsatisfiedLinkError ex) {
-            exception.enter(node);
-            throw UnknownIdentifierException.create(symbol);
+    static class ReadMember {
+
+        @Specialization(guards = "interop.isString(member)")
+        static Object read(LibFFILibrary receiver, Object member,
+                        @CachedLibrary(limit = "3") InteropLibrary interop,
+                        @Cached InlinedBranchProfile exception,
+                        @Bind("$node") Node node) throws UnknownMemberException, UnsupportedMessageException {
+            String symbol = interop.asString(member);
+            try {
+                return LibFFIContext.get(node).lookupSymbol(receiver, symbol);
+            } catch (NFIUnsatisfiedLinkError ex) {
+                exception.enter(node);
+                throw UnknownMemberException.create(member);
+            }
+        }
+
+        @Fallback
+        static Object read(LibFFILibrary receiver, Object unknownObj) throws UnknownMemberException {
+            CompilerDirectives.transferToInterpreter();
+            throw UnknownMemberException.create(unknownObj);
         }
     }
 

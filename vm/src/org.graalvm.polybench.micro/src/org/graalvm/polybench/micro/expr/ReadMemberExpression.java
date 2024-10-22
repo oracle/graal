@@ -28,7 +28,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import org.graalvm.polybench.micro.EvalError;
@@ -46,8 +46,8 @@ public abstract class ReadMemberExpression extends Expression {
     Object doRead(Object receiver,
                     @CachedLibrary("receiver") InteropLibrary interop) {
         try {
-            return interop.readMember(receiver, member);
-        } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+            return interop.readMember(receiver, (Object) member);
+        } catch (UnsupportedMessageException | UnknownMemberException e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new EvalError(this, "Member '%s' not found.", member);
         }

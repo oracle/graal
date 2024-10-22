@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,9 @@ package com.oracle.truffle.tools.agentscript.impl;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.instrumentation.EventContext;
@@ -34,9 +37,10 @@ import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.NodeLibrary;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
@@ -66,42 +70,59 @@ final class EventContextObject extends AbstractContextObject {
     }
 
     @ExportMessage
-    static boolean hasMembers(EventContextObject obj) {
-        return true;
-    }
+    static class IsMemberInvocable {
 
-    @ExportMessage
-    static Object getMembers(EventContextObject obj, boolean includeInternal) {
-        return MEMBERS;
-    }
+        // Only invocation via a String name. No member object exists for the on/off methods.
 
-    @ExportMessage
-    @Override
-    Object readMember(String member) throws UnknownIdentifierException {
-        return super.readMember(member);
-    }
-
-    @ExportMessage
-    static boolean isMemberReadable(EventContextObject obj, String member) {
-        return MEMBERS.contains(member);
-    }
-
-    @ExportMessage
-    static Object invokeMember(EventContextObject obj, String member, Object[] args) throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
-        if ("returnNow".equals(member)) {
-            throw InsightHookNode.returnNow(args);
-        }
-        if ("returnValue".equals(member)) {
-            if (args.length == 0 || !(args[0] instanceof VariablesObject)) {
-                return NullObject.nullCheck(null);
+        @Specialization(guards = "interop.isString(memberObj)")
+        static boolean isInvocable(EventContextObject receiver, Object memberObj, @Cached.Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop) {
+            try {
+                String member = interop.asString(memberObj);
+                return "returnNow".equals(member) || "returnValue".equals(member) || "iterateFrames".equals(member);
+            } catch (UnsupportedMessageException ex) {
+                CompilerDirectives.transferToInterpreter();
+                throw CompilerDirectives.shouldNotReachHere(ex);
             }
-            VariablesObject vars = (VariablesObject) args[0];
-            return vars.getReturnValue();
         }
-        if ("iterateFrames".equals(member)) {
-            return iterateFrames(args, obj);
+
+        @Fallback
+        static boolean isInvocable(EventContextObject receiver, Object unknownObj) {
+            return false;
         }
-        throw UnknownIdentifierException.create(member);
+    }
+
+    @ExportMessage
+    static class InvokeMember {
+
+        @Specialization(guards = "interop.isString(memberObj)")
+        static Object invoke(EventContextObject receiver, Object memberObj, Object[] args, @Cached.Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop) //
+                        throws ArityException, UnknownMemberException, UnsupportedMessageException, UnsupportedTypeException {
+            String name = interop.asString(memberObj);
+            return invokeStringMember(receiver, name, memberObj, args);
+        }
+
+        @Fallback
+        static Object invoke(EventContextObject receiver, Object unknownObj, Object[] args) throws UnknownMemberException {
+            CompilerDirectives.transferToInterpreter();
+            throw UnknownMemberException.create(unknownObj);
+        }
+    }
+
+    private static Object invokeStringMember(EventContextObject obj, String name, Object member, Object[] args) throws ArityException, UnknownMemberException, UnsupportedTypeException {
+        switch (name) {
+            case "returnNow":
+                throw InsightHookNode.returnNow(args);
+            case "returnValue":
+                if (args.length == 0 || !(args[0] instanceof VariablesObject)) {
+                    return NullObject.nullCheck(null);
+                }
+                VariablesObject vars = (VariablesObject) args[0];
+                return vars.getReturnValue();
+            case "iterateFrames":
+                return iterateFrames(args, obj);
+            default:
+                throw UnknownMemberException.create(member);
+        }
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -142,11 +163,6 @@ final class EventContextObject extends AbstractContextObject {
             return null;
         });
         return NullObject.nullCheck(retValue);
-    }
-
-    @ExportMessage
-    static boolean isMemberInvocable(EventContextObject obj, String member) {
-        return "returnNow".equals(member) || "returnValue".equals(member) || "iterateFrames".equals(member);
     }
 
     @Override

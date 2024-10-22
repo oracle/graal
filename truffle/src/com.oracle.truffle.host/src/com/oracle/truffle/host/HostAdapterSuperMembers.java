@@ -49,31 +49,40 @@ import org.graalvm.collections.Pair;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NeverDefault;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.host.HostMethodDesc.SuperMethod;
 
 /**
  * An adapter that provides access to a host adapter's super methods.
  */
 @ExportLibrary(InteropLibrary.class)
 final class HostAdapterSuperMembers implements TruffleObject {
+
+    static final int LIMIT = 3;
+
     final HostObject adapter;
 
     HostAdapterSuperMembers(HostObject adapter) {
         this.adapter = Objects.requireNonNull(adapter);
     }
 
-    public Object getAdapter() {
+    public HostObject getAdapter() {
         return adapter;
     }
 
@@ -126,53 +135,239 @@ final class HostAdapterSuperMembers implements TruffleObject {
     }
 
     @ExportMessage
-    Object readMember(String name,
-                    @Shared("cache") @Cached NameCache cache,
-                    @CachedLibrary("this.adapter") InteropLibrary interop) throws UnsupportedMessageException, UnknownIdentifierException {
-        String superMethodName = cache.getSuperMethodName(name);
-        return interop.readMember(getAdapter(), superMethodName);
-    }
+    static class ReadMember {
 
-    @ExportMessage
-    Object invokeMember(String name, Object[] args,
-                    @Shared("cache") @Cached NameCache cache,
-                    @CachedLibrary("this.adapter") InteropLibrary interop) throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException {
-        String superMethodName = cache.getSuperMethodName(name);
-        return interop.invokeMember(getAdapter(), superMethodName, args);
-    }
-
-    @ExportMessage
-    boolean isMemberReadable(String name,
-                    @Shared("cache") @Cached NameCache cache,
-                    @CachedLibrary("this.adapter") InteropLibrary interop) {
-        String superMethodName = cache.getSuperMethodName(name);
-        return interop.isMemberReadable(getAdapter(), superMethodName);
-    }
-
-    @ExportMessage
-    boolean isMemberInvocable(String name,
-                    @Shared("cache") @Cached NameCache cache,
-                    @CachedLibrary("this.adapter") InteropLibrary interop) {
-        String superMethodName = cache.getSuperMethodName(name);
-        return interop.isMemberInvocable(getAdapter(), superMethodName);
-    }
-
-    @ExportMessage
-    @TruffleBoundary
-    Object getMembers(boolean includeInternal) {
-        return new HostObject.KeysArray(includeInternal ? collectSuperMembers() : new String[0]);
-    }
-
-    @TruffleBoundary
-    private String[] collectSuperMembers() {
-        HostClassDesc classDesc = HostClassDesc.forClass(this.adapter.context, this.adapter.getLookupClass());
-        EconomicSet<String> names = EconomicSet.create();
-        Collection<String> methodNames = classDesc.getMethodNames(false, true);
-        for (String name : methodNames) {
-            if (name.startsWith(HostAdapterBytecodeGenerator.SUPER_PREFIX)) {
-                names.add(name.substring(HostAdapterBytecodeGenerator.SUPER_PREFIX.length()));
+        @Specialization(guards = {"memberLibrary.isString(memberString)"})
+        static Object read(HostAdapterSuperMembers receiver,
+                        Object memberString,
+                        @Shared("memberLibrary") @CachedLibrary(limit = "LIMIT") InteropLibrary memberLibrary,
+                        @Shared("cache") @Cached NameCache cache,
+                        @CachedLibrary("receiver.adapter") InteropLibrary interop,
+                        @Bind("$node") Node node,
+                        @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException, UnknownMemberException {
+            String name;
+            try {
+                name = memberLibrary.asString(memberString);
+            } catch (UnsupportedMessageException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
+            String superMethodName = cache.getSuperMethodName(name);
+            try {
+                return interop.readMember(receiver.getAdapter(), (Object) superMethodName);
+            } catch (UnknownMemberException ex) {
+                error.enter(node);
+                throw UnknownMemberException.create(memberString);
             }
         }
-        return names.toArray(new String[names.size()]);
+
+        @Specialization
+        static Object read(HostAdapterSuperMembers receiver,
+                        HostMethodDesc method,
+                        @CachedLibrary("receiver.adapter") InteropLibrary interop,
+                        @Bind("$node") Node node,
+                        @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException, UnknownMemberException {
+            if (!(method instanceof SuperMethod)) {
+                error.enter(node);
+                throw UnknownMemberException.create(method);
+            }
+            try {
+                return interop.readMember(receiver.getAdapter(), ((SuperMethod) method).getDelegateMethod());
+            } catch (UnknownMemberException ex) {
+                error.enter(node);
+                throw UnknownMemberException.create(method);
+            }
+        }
+
+        @Fallback()
+        static Object readOther(@SuppressWarnings("unused") HostAdapterSuperMembers receiver,
+                        Object member) throws UnknownMemberException {
+            throw UnknownMemberException.create(member);
+        }
+    }
+
+    @ExportMessage
+    static class InvokeMember {
+
+        @Specialization(guards = {"memberLibrary.isString(memberString)"})
+        static Object invoke(HostAdapterSuperMembers receiver,
+                        Object memberString,
+                        Object[] args,
+                        @Shared("memberLibrary") @CachedLibrary(limit = "LIMIT") InteropLibrary memberLibrary,
+                        @Shared("cache") @Cached NameCache cache,
+                        @CachedLibrary("receiver.adapter") InteropLibrary interop,
+                        @Bind("$node") Node node,
+                        @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException, UnknownMemberException, ArityException, UnsupportedTypeException {
+            String name;
+            try {
+                name = memberLibrary.asString(memberString);
+            } catch (UnsupportedMessageException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
+            String superMethodName = cache.getSuperMethodName(name);
+            try {
+                return interop.invokeMember(receiver.getAdapter(), (Object) superMethodName, args);
+            } catch (UnknownMemberException ex) {
+                error.enter(node);
+                throw UnknownMemberException.create(memberString);
+            }
+        }
+
+        @Specialization
+        static Object invoke(HostAdapterSuperMembers receiver,
+                        HostMethodDesc method,
+                        Object[] args,
+                        @CachedLibrary("receiver.adapter") InteropLibrary interop,
+                        @Bind("$node") Node node,
+                        @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException, UnknownMemberException, ArityException, UnsupportedTypeException {
+            if (!(method instanceof SuperMethod)) {
+                error.enter(node);
+                throw UnknownMemberException.create(method);
+            }
+            try {
+                return interop.invokeMember(receiver.getAdapter(), ((SuperMethod) method).getDelegateMethod(), args);
+            } catch (UnknownMemberException ex) {
+                error.enter(node);
+                throw UnknownMemberException.create(method);
+            }
+        }
+
+        @Fallback()
+        @SuppressWarnings("unused")
+        static Object invokeOther(HostAdapterSuperMembers receiver,
+                        Object member, Object[] args) throws UnknownMemberException {
+            throw UnknownMemberException.create(member);
+        }
+    }
+
+    @ExportMessage
+    static class IsMemberReadable {
+
+        @Specialization(guards = {"receiver.getAdapter().getLookupClass() == cachedClazz", "compareNode.execute(node, member, cachedMember)"}, limit = "LIMIT")
+        @SuppressWarnings("unused")
+        static boolean doCached(HostAdapterSuperMembers receiver, Object member,
+                        @Shared("cache") @Cached NameCache cache,
+                        @Bind("$node") Node node,
+                        @Cached("receiver.getAdapter().getLookupClass()") Class<?> cachedClazz,
+                        @Cached("member") Object cachedMember,
+                        @Shared("compareNode") @Cached HostObject.CompareMemberNode compareNode,
+                        @Cached("doGeneric(receiver, member, cache)") boolean cachedInvokable) {
+            assert cachedInvokable == doGeneric(receiver, member, cache);
+            return cachedInvokable;
+        }
+
+        @Specialization(replaces = "doCached")
+        static boolean doGeneric(HostAdapterSuperMembers receiver, Object member,
+                        @Shared("cache") @Cached NameCache cache,
+                        @Bind("$node") Node node,
+                        @CachedLibrary("receiver.adapter") InteropLibrary interop,
+                        @Shared("memberLibrary") @CachedLibrary(limit = "LIMIT") InteropLibrary memberLibrary,
+                        @Shared("seenMethod") @Cached InlinedBranchProfile seenMethod,
+                        @Shared("seenString") @Cached InlinedBranchProfile seenString,
+                        @Shared("seenUnknown") @Cached InlinedBranchProfile seenUnknown) {
+            if (member instanceof SuperMethod) {
+                seenMethod.enter(node);
+                return interop.isMemberReadable(receiver.getAdapter(), ((SuperMethod) member).getDelegateMethod());
+            } else if (memberLibrary.isString(member)) {
+                seenString.enter(node);
+                String name;
+                try {
+                    name = memberLibrary.asString(member);
+                } catch (UnsupportedMessageException e) {
+                    throw CompilerDirectives.shouldNotReachHere(e);
+                }
+                String superMethodName = cache.getSuperMethodName(name);
+                return interop.isMemberReadable(receiver.getAdapter(), (Object) superMethodName);
+            } else {
+                seenUnknown.enter(node);
+                return false;
+            }
+        }
+
+        static boolean doGeneric(HostAdapterSuperMembers receiver, Object member, NameCache cache) {
+            InlinedBranchProfile profile = InlinedBranchProfile.getUncached();
+            return doGeneric(receiver, member, cache, //
+                            null, InteropLibrary.getUncached(), InteropLibrary.getUncached(), profile, profile, profile);
+        }
+    }
+
+    @ExportMessage
+    static class IsMemberInvocable {
+
+        @Specialization(guards = {"receiver.getAdapter().getLookupClass() == cachedClazz", "compareNode.execute(node, member, cachedMember)"}, limit = "LIMIT")
+        @SuppressWarnings("unused")
+        static boolean doCached(HostAdapterSuperMembers receiver, Object member,
+                        @Shared("cache") @Cached NameCache cache,
+                        @Bind("$node") Node node,
+                        @CachedLibrary("receiver.adapter") InteropLibrary interop,
+                        @Cached("receiver.getAdapter().getLookupClass()") Class<?> cachedClazz,
+                        @Cached("member") Object cachedMember,
+                        @Shared("compareNode") @Cached HostObject.CompareMemberNode compareNode,
+                        @Cached("doGeneric(receiver, member, cache)") boolean cachedInvokable) {
+            assert cachedInvokable == doGeneric(receiver, member, cache);
+            return cachedInvokable;
+        }
+
+        @Specialization(replaces = "doCached")
+        static boolean doGeneric(HostAdapterSuperMembers receiver, Object member,
+                        @Shared("cache") @Cached NameCache cache,
+                        @Bind("$node") Node node,
+                        @CachedLibrary("receiver.adapter") InteropLibrary interop,
+                        @Shared("memberLibrary") @CachedLibrary(limit = "LIMIT") InteropLibrary memberLibrary,
+                        @Shared("seenMethod") @Cached InlinedBranchProfile seenMethod,
+                        @Shared("seenString") @Cached InlinedBranchProfile seenString,
+                        @Shared("seenUnknown") @Cached InlinedBranchProfile seenUnknown) {
+            if (member instanceof SuperMethod) {
+                seenMethod.enter(node);
+                return interop.isMemberInvocable(receiver.getAdapter(), ((SuperMethod) member).getDelegateMethod());
+            } else if (memberLibrary.isString(member)) {
+                seenString.enter(node);
+                String name;
+                try {
+                    name = memberLibrary.asString(member);
+                } catch (UnsupportedMessageException e) {
+                    throw CompilerDirectives.shouldNotReachHere(e);
+                }
+                String superMethodName = cache.getSuperMethodName(name);
+                return interop.isMemberInvocable(receiver.getAdapter(), (Object) superMethodName);
+            } else {
+                seenUnknown.enter(node);
+                return false;
+            }
+        }
+
+        static boolean doGeneric(HostAdapterSuperMembers receiver, Object member, NameCache cache) {
+            InlinedBranchProfile profile = InlinedBranchProfile.getUncached();
+            return doGeneric(receiver, member, cache, //
+                            null, InteropLibrary.getUncached(), InteropLibrary.getUncached(), profile, profile, profile);
+        }
+    }
+
+    @ExportMessage
+    Object getMemberObjects() {
+        return new HostObject.MembersArray(collectSuperMembers());
+    }
+
+    @TruffleBoundary
+    private Object[] collectSuperMembers() {
+        HostClassDesc classDesc = HostClassDesc.forClass(this.adapter.context, this.adapter.getLookupClass());
+        EconomicSet<HostMethodDesc> superMethods = EconomicSet.create();
+        Collection<HostMethodDesc> methods = classDesc.getMethodValues(false);
+        for (HostMethodDesc method : methods) {
+            if (method.hasOverloads()) {
+                for (HostMethodDesc om : method.getOverloads()) {
+                    collectSuperMethod(om, superMethods);
+                }
+            } else {
+                collectSuperMethod(method, superMethods);
+            }
+        }
+        return methods.toArray(new HostMethodDesc[methods.size()]);
+    }
+
+    private static void collectSuperMethod(HostMethodDesc method, EconomicSet<HostMethodDesc> superMethods) {
+        if (method.getName().startsWith(HostAdapterBytecodeGenerator.SUPER_PREFIX)) {
+            HostMethodDesc superMethod = new SuperMethod(method);
+            superMethods.add(superMethod);
+        }
     }
 }

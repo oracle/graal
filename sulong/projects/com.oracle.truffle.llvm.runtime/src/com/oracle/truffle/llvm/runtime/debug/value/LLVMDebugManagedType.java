@@ -36,6 +36,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
 
 @ExportLibrary(InteropLibrary.class)
+@SuppressWarnings("truffle-abstract-export") // GR-57971
 public final class LLVMDebugManagedType extends LLVMDebuggerValue {
 
     private final Object type;

@@ -51,7 +51,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 
 @ExportLibrary(InteropLibrary.class)
-@SuppressWarnings("static-method")
+@SuppressWarnings({"static-method", "truffle-abstract-export", "deprecation"})
 public final class WasmException extends AbstractTruffleException {
     private static final long serialVersionUID = -84137683950579647L;
 

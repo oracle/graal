@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,9 +45,12 @@ import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
@@ -69,8 +72,25 @@ public class InteropMapObject implements TruffleObject {
     }
 
     @ExportMessage
-    Object readMember(String member) {
-        return get(member);
+    static class ReadMember {
+
+        @Specialization(guards = "interop.isString(member)")
+        static Object read(InteropMapObject receiver, Object member,
+                        @Cached.Shared("interop") @CachedLibrary(limit = "2") InteropLibrary interop) throws UnsupportedMessageException {
+            String name = interop.asString(member);
+            return receiver.get(name);
+        }
+    }
+
+    @ExportMessage
+    static class WriteMember {
+
+        @Specialization(guards = "interop.isString(member)")
+        static void write(InteropMapObject receiver, Object member, Object value,
+                        @Cached.Shared("interop") @CachedLibrary(limit = "2") InteropLibrary interop) throws UnsupportedMessageException {
+            String name = interop.asString(member);
+            receiver.put(name, value);
+        }
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -78,24 +98,56 @@ public class InteropMapObject implements TruffleObject {
         return map.get(member);
     }
 
-    @ExportMessage
-    void writeMember(String member, Object value) {
-        put(member, value);
-    }
-
     @CompilerDirectives.TruffleBoundary
     public void put(String key, Object value) {
         map.put(key, value);
     }
 
-    @ExportMessage
-    boolean isMemberRemovable(String member) {
-        return contains(member);
+    @ExportMessage(name = "isMemberReadable")
+    @ExportMessage(name = "isMemberRemovable")
+    @ExportMessage(name = "isMemberModifiable")
+    static class IsMemberExisting {
+
+        @Specialization(guards = "interop.isString(member)")
+        static boolean isExisting(InteropMapObject receiver, Object member,
+                        @Cached.Shared("interop") @CachedLibrary(limit = "2") InteropLibrary interop) {
+            String name;
+            try {
+                name = interop.asString(member);
+            } catch (UnsupportedMessageException ex) {
+                CompilerDirectives.transferToInterpreter();
+                throw CompilerDirectives.shouldNotReachHere();
+            }
+            return receiver.contains(name);
+        }
+    }
+
+    @ExportMessage(name = "isMemberInsertable")
+    static class IsNotMemberExisting {
+
+        @Specialization(guards = "interop.isString(member)")
+        static boolean isNotExisting(InteropMapObject receiver, Object member,
+                        @Cached.Shared("interop") @CachedLibrary(limit = "2") InteropLibrary interop) {
+            String name;
+            try {
+                name = interop.asString(member);
+            } catch (UnsupportedMessageException ex) {
+                CompilerDirectives.transferToInterpreter();
+                throw CompilerDirectives.shouldNotReachHere();
+            }
+            return !receiver.contains(name);
+        }
     }
 
     @ExportMessage
-    void removeMember(String member) {
-        remove(member);
+    static class RemoveMember {
+
+        @Specialization(guards = "interop.isString(member)")
+        static void remove(InteropMapObject receiver, Object member,
+                        @Cached.Shared("interop") @CachedLibrary(limit = "2") InteropLibrary interop) throws UnsupportedMessageException {
+            String name = interop.asString(member);
+            receiver.remove(name);
+        }
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -109,28 +161,13 @@ public class InteropMapObject implements TruffleObject {
     }
 
     @ExportMessage
-    Object getMembers(boolean includeInternal) throws UnsupportedMessageException {
+    Object getMemberObjects() throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
-    }
-
-    @ExportMessage
-    boolean isMemberReadable(String member) {
-        return contains(member);
     }
 
     @CompilerDirectives.TruffleBoundary
     public boolean contains(String key) {
         return map.containsKey(key);
-    }
-
-    @ExportMessage
-    boolean isMemberModifiable(String member) {
-        return contains(member);
-    }
-
-    @ExportMessage
-    boolean isMemberInsertable(String member) {
-        return !contains(member);
     }
 
     @ExportMessage

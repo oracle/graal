@@ -53,24 +53,27 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.utilities.TriState;
 
-@SuppressWarnings("deprecation")
 @ExportLibrary(InteropLibrary.class)
 final class HostProxy implements TruffleObject {
 
@@ -247,8 +250,7 @@ final class HostProxy implements TruffleObject {
 
     @ExportMessage
     @TruffleBoundary
-    Object getMembers(@SuppressWarnings("unused") boolean includeInternal,
-                    @CachedLibrary("this") InteropLibrary library,
+    Object getMemberObjects(@CachedLibrary("this") InteropLibrary library,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws UnsupportedMessageException {
         if (cache.api.isProxyObject(proxy)) {
             Object result = guestToHostCall(library, cache.memberKeys, context, proxy);
@@ -281,7 +283,7 @@ final class HostProxy implements TruffleObject {
                     continue;
                 }
             }
-            return guestValue;
+            return new StringMembers(guestValue);
         } else {
             throw UnsupportedMessageException.create();
         }
@@ -292,17 +294,29 @@ final class HostProxy implements TruffleObject {
         throw context.hostToGuestException(new IllegalStateException(String.format(message, parameters)));
     }
 
+    static GetMemberNameNode createGetMemberNameNode() {
+        return HostProxyFactory.GetMemberNameNodeGen.create();
+    }
+
     @ExportMessage
     @TruffleBoundary
-    Object readMember(String member,
+    Object readMember(Object member,
                     @CachedLibrary("this") InteropLibrary library,
+                    @Shared("getMemberName") @Cached(value = "createGetMemberNameNode()", inline = true) GetMemberNameNode getMemberName,
+                    @Bind("$node") Node node,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache)
-                    throws UnsupportedMessageException, UnknownIdentifierException {
+                    throws UnsupportedMessageException, UnknownMemberException {
         if (cache.api.isProxyObject(proxy)) {
-            if (!isMemberExisting(member, library, cache)) {
-                throw UnknownIdentifierException.create(member);
+            if (!isMemberExisting(member, library, getMemberName, node, cache)) {
+                throw UnknownMemberException.create(member);
             }
-            Object result = guestToHostCall(library, cache.getMember, context, proxy, member);
+            String memberName = getMemberName.execute(node, member);
+            Object result;
+            try {
+                result = guestToHostCall(library, cache.getMember, context, proxy, memberName);
+            } catch (UnsupportedOperationException e) {
+                throw UnsupportedMessageException.create();
+            }
             return context.toGuestValue(library, result);
         } else {
             throw UnsupportedMessageException.create();
@@ -311,12 +325,16 @@ final class HostProxy implements TruffleObject {
 
     @ExportMessage
     @TruffleBoundary
-    void writeMember(String member, Object value,
+    void writeMember(Object member, Object value,
                     @CachedLibrary("this") InteropLibrary library,
-                    @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws UnsupportedMessageException {
+                    @Shared("getMemberName") @Cached(value = "createGetMemberNameNode()", inline = true) GetMemberNameNode getMemberName,
+                    @Bind("$node") Node node,
+                    @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache)
+                    throws UnsupportedMessageException, UnknownMemberException {
         if (cache.api.isProxyObject(proxy)) {
             Object castValue = context.asValue(library, value);
-            guestToHostCall(library, cache.putMember, context, proxy, member, castValue);
+            String memberName = getMemberName.execute(node, member);
+            guestToHostCall(library, cache.putMember, context, proxy, memberName, castValue);
         } else {
             throw UnsupportedMessageException.create();
         }
@@ -324,26 +342,16 @@ final class HostProxy implements TruffleObject {
 
     @ExportMessage
     @TruffleBoundary
-    Object invokeMember(String member, Object[] arguments, @CachedLibrary("this") InteropLibrary library,
+    Object invokeMember(Object member, Object[] arguments,
+                    @CachedLibrary("this") InteropLibrary library,
+                    @Shared("getMemberName") @Cached(value = "createGetMemberNameNode()", inline = true) GetMemberNameNode getMemberName,
+                    @Bind("$node") Node node,
                     @Shared("executables") @CachedLibrary(limit = "LIMIT") InteropLibrary executables,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache)
-                    throws UnsupportedMessageException, UnsupportedTypeException, ArityException, UnknownIdentifierException {
-        if (cache.api.isProxyObject(proxy)) {
-            if (!isMemberExisting(member, library, cache)) {
-                throw UnknownIdentifierException.create(member);
-            }
-            Object memberObject;
-            try {
-                memberObject = readMember(member, library, cache);
-            } catch (UnsupportedOperationException e) {
-                throw UnsupportedMessageException.create();
-            }
-            memberObject = context.toGuestValue(library, memberObject);
-            if (executables.isExecutable(memberObject)) {
-                return executables.execute(memberObject, arguments);
-            } else {
-                throw UnsupportedMessageException.create();
-            }
+                    throws UnsupportedMessageException, UnsupportedTypeException, ArityException, UnknownMemberException {
+        Object memberObject = readMember(member, library, getMemberName, node, cache);
+        if (executables.isExecutable(memberObject)) {
+            return executables.execute(memberObject, arguments);
         } else {
             throw UnsupportedMessageException.create();
         }
@@ -351,14 +359,16 @@ final class HostProxy implements TruffleObject {
 
     @ExportMessage
     @TruffleBoundary
-    boolean isMemberInvocable(String member, @CachedLibrary("this") InteropLibrary library,
+    boolean isMemberInvocable(Object member, @CachedLibrary("this") InteropLibrary library,
+                    @Shared("getMemberName") @Cached(value = "createGetMemberNameNode()", inline = true) GetMemberNameNode getMemberName,
+                    @Bind("$node") Node node,
                     @Shared("executables") @CachedLibrary(limit = "LIMIT") InteropLibrary executables,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) {
         if (cache.api.isProxyObject(proxy)) {
-            if (isMemberExisting(member, library, cache)) {
+            if (isMemberExisting(member, library, getMemberName, node, cache)) {
                 try {
-                    return executables.isExecutable(readMember(member, library, cache));
-                } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+                    return executables.isExecutable(readMember(member, library, getMemberName, node, cache));
+                } catch (UnsupportedMessageException | UnknownMemberException e) {
                     return false;
                 }
             }
@@ -368,16 +378,19 @@ final class HostProxy implements TruffleObject {
 
     @ExportMessage
     @TruffleBoundary
-    void removeMember(String member, @CachedLibrary("this") InteropLibrary library,
+    void removeMember(Object member, @CachedLibrary("this") InteropLibrary library,
+                    @Shared("getMemberName") @Cached(value = "createGetMemberNameNode()", inline = true) GetMemberNameNode getMemberName,
+                    @Bind("$node") Node node,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache)
-                    throws UnsupportedMessageException, UnknownIdentifierException {
+                    throws UnsupportedMessageException, UnknownMemberException {
         if (cache.api.isProxyObject(proxy)) {
-            if (!isMemberExisting(member, library, cache)) {
-                throw UnknownIdentifierException.create(member);
+            if (!isMemberExisting(member, library, getMemberName, node, cache)) {
+                throw UnknownMemberException.create(member);
             }
-            boolean result = (boolean) guestToHostCall(library, cache.removeMember, context, proxy, member);
+            String memberName = getMemberName.execute(node, member);
+            boolean result = (boolean) guestToHostCall(library, cache.removeMember, context, proxy, memberName);
             if (!result) {
-                throw UnknownIdentifierException.create(member);
+                throw UnknownMemberException.create(member);
             }
         } else {
             throw UnsupportedMessageException.create();
@@ -388,10 +401,18 @@ final class HostProxy implements TruffleObject {
     @ExportMessage(name = "isMemberModifiable")
     @ExportMessage(name = "isMemberRemovable")
     @TruffleBoundary
-    boolean isMemberExisting(String member, @CachedLibrary("this") InteropLibrary library,
+    boolean isMemberExisting(Object member, @CachedLibrary("this") InteropLibrary library,
+                    @Shared("getMemberName") @Cached(value = "createGetMemberNameNode()", inline = true) GetMemberNameNode getMemberName,
+                    @Bind("$node") Node node,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) {
         if (cache.api.isProxyObject(proxy)) {
-            return (boolean) guestToHostCall(library, cache.hasMember, context, proxy, member);
+            String memberName;
+            try {
+                memberName = getMemberName.execute(node, member);
+            } catch (UnknownMemberException e) {
+                return false;
+            }
+            return (boolean) guestToHostCall(library, cache.hasMember, context, proxy, memberName);
         } else {
             return false;
         }
@@ -399,10 +420,12 @@ final class HostProxy implements TruffleObject {
 
     @ExportMessage
     @TruffleBoundary
-    boolean isMemberInsertable(String member, @CachedLibrary("this") InteropLibrary library,
+    boolean isMemberInsertable(Object member, @CachedLibrary("this") InteropLibrary library,
+                    @Shared("getMemberName") @Cached(value = "createGetMemberNameNode()", inline = true) GetMemberNameNode getMemberName,
+                    @Bind("$node") Node node,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) {
         if (cache.api.isProxyObject(proxy)) {
-            return !isMemberExisting(member, library, cache);
+            return !isMemberExisting(member, library, getMemberName, node, cache);
         } else {
             return false;
         }
@@ -715,6 +738,135 @@ final class HostProxy implements TruffleObject {
 
     public static TruffleObject toProxyGuestObject(HostContext context, Object receiver) {
         return new HostProxy(context, receiver);
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class StringMembers implements TruffleObject {
+
+        static final int LIMIT = 5;
+        final Object keys;
+
+        StringMembers(Object keys) {
+            this.keys = keys;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean hasArrayElements() {
+            return true;
+        }
+
+        @ExportMessage
+        long getArraySize(@CachedLibrary("this.keys") InteropLibrary keysLib) throws UnsupportedMessageException {
+            return keysLib.getArraySize(keys);
+        }
+
+        @ExportMessage
+        boolean isArrayElementReadable(long idx,
+                        @CachedLibrary("this.keys") InteropLibrary keysLib) {
+            return keysLib.isArrayElementReadable(keys, idx);
+        }
+
+        @ExportMessage
+        Object readArrayElement(long idx,
+                        @CachedLibrary("this.keys") InteropLibrary keysLib, //
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary nameLib) throws InvalidArrayIndexException, UnsupportedMessageException {
+            Object member = keysLib.readArrayElement(keys, idx);
+            String simpleName = nameLib.asString(member);
+            return new StringMember(member, simpleName);
+        }
+
+        @ExportMessage
+        boolean isArrayElementRemovable(long idx,
+                        @CachedLibrary("this.keys") InteropLibrary keysLib) {
+            return keysLib.isArrayElementReadable(keys, idx);
+        }
+
+        @ExportMessage
+        void removeArrayElement(long idx, @CachedLibrary("this.keys") InteropLibrary keysLib) throws InvalidArrayIndexException, UnsupportedMessageException {
+            keysLib.removeArrayElement(keys, idx);
+        }
+    }
+
+    /**
+     * A member implementation based on a string name.
+     */
+    @ExportLibrary(value = InteropLibrary.class, delegateTo = "key")
+    @SuppressWarnings("static-method")
+    static final class StringMember implements TruffleObject {
+
+        final Object key;
+        private final String name;
+
+        StringMember(Object key, String name) {
+            this.key = key;
+            this.name = name;
+        }
+
+        @ExportMessage
+        boolean isMember() {
+            return true;
+        }
+
+        @ExportMessage
+        Object getMemberSimpleName() {
+            return name;
+        }
+
+        @ExportMessage
+        Object getMemberQualifiedName() {
+            return name;
+        }
+
+        @ExportMessage
+        boolean isMemberKindField() {
+            return false;
+        }
+
+        @ExportMessage
+        boolean isMemberKindMethod() {
+            return false;
+        }
+
+        @ExportMessage
+        boolean isMemberKindMetaObject() {
+            return false;
+        }
+
+        String getName() {
+            return name;
+        }
+    }
+
+    @GenerateInline
+    @GenerateUncached
+    abstract static class GetMemberNameNode extends Node {
+
+        static final int LIMIT = 3;
+
+        public abstract String execute(Node node, Object member) throws UnknownMemberException;
+
+        @Specialization
+        static String doMember(StringMember member) {
+            return member.getName();
+        }
+
+        @Specialization(guards = {"memberLibrary.isString(member)"}, limit = "LIMIT")
+        static String doString(Object member,
+                        @CachedLibrary("member") InteropLibrary memberLibrary) {
+            assert memberLibrary.isString(member) : member;
+            try {
+                return memberLibrary.asString(member);
+            } catch (UnsupportedMessageException e) {
+                throw CompilerDirectives.shouldNotReachHere("incompatible member");
+            }
+        }
+
+        @Fallback
+        static String doOther(Object member) throws UnknownMemberException {
+            throw UnknownMemberException.create(member);
+        }
+
     }
 
 }

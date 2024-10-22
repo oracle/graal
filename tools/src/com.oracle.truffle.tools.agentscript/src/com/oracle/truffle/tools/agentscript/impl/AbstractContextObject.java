@@ -25,75 +25,100 @@
 package com.oracle.truffle.tools.agentscript.impl;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 
-abstract class AbstractContextObject implements TruffleObject {
-    static final ArrayObject MEMBERS = ArrayObject.array(
-                    "name", "source", "characters",
-                    "line", "startLine", "endLine",
-                    "column", "startColumn", "endColumn", "charIndex", "charLength", "charEndIndex");
+abstract class AbstractContextObject extends MembersObject.AbstractReader {
+
+    enum Members {
+        name,
+        source,
+        characters,
+        line,
+        startLine,
+        endLine,
+        column,
+        startColumn,
+        endColumn,
+        charIndex,
+        charLength,
+        charEndIndex;
+    }
 
     @CompilerDirectives.CompilationFinal private String name;
     @CompilerDirectives.CompilationFinal(dimensions = 1) private int[] values;
+
+    AbstractContextObject() {
+        super(Members.class, Members.values());
+    }
 
     abstract Node getInstrumentedNode();
 
     abstract SourceSection getInstrumentedSourceSection();
 
-    Object readMember(String member) throws UnknownIdentifierException {
+    @TruffleBoundary
+    private Object getCharacters() {
+        SourceSection ss = getInstrumentedSourceSection();
+        if (ss == null) {
+            return NullObject.nullCheck(null);
+        }
+        return ss.getCharacters().toString();
+    }
+
+    @TruffleBoundary
+    private Object getSource() {
+        SourceSection ss = getInstrumentedSourceSection();
+        if (ss == null) {
+            return NullObject.nullCheck(null);
+        }
+        return new SourceEventObject(ss.getSource());
+    }
+
+    @Override
+    Object readInsightMember(Enum<?> member) {
         int index;
-        switch (member) {
-            case "name":
+        switch ((Members) member) {
+            case name:
                 if (name == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     final RootNode node = getInstrumentedNode().getRootNode();
                     name = node.getQualifiedName();
                 }
                 return NullObject.nullCheck(name);
-            case "characters": {
-                CompilerDirectives.transferToInterpreter();
-                final SourceSection ss = getInstrumentedSourceSection();
-                if (ss == null) {
-                    return NullObject.nullCheck(null);
-                }
-                return ss.getCharacters().toString();
+            case characters: {
+                return getCharacters();
             }
-            case "source": {
-                final SourceSection ss = getInstrumentedSourceSection();
-                if (ss == null) {
-                    return NullObject.nullCheck(null);
-                }
-                return new SourceEventObject(ss.getSource());
+            case source: {
+                return getSource();
             }
-            case "line":
-            case "startLine":
+            case line:
+            case startLine:
                 index = 0;
                 break;
-            case "endLine":
+            case endLine:
                 index = 1;
                 break;
-            case "column":
-            case "startColumn":
+            case column:
+            case startColumn:
                 index = 2;
                 break;
-            case "endColumn":
+            case endColumn:
                 index = 3;
                 break;
-            case "charIndex":
+            case charIndex:
                 index = 4;
                 break;
-            case "charLength":
+            case charLength:
                 index = 5;
                 break;
-            case "charEndIndex":
+            case charEndIndex:
                 index = 6;
                 break;
             default:
-                throw UnknownIdentifierException.create(member);
+                CompilerDirectives.transferToInterpreter();
+                throw CompilerDirectives.shouldNotReachHere(member.name());
         }
         if (values == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -102,7 +127,7 @@ abstract class AbstractContextObject implements TruffleObject {
         return values[index];
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private int[] valuesForContext() {
         final SourceSection section = getInstrumentedSourceSection();
         if (section == null) {

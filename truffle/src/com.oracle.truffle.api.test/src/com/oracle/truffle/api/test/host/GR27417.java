@@ -65,18 +65,18 @@ public class GR27417 extends ProxyLanguageEnvTest {
         Object zoneOffsetClass = asTruffleHostSymbol(java.time.ZoneOffset.class);
         Object localDateTimeClass = asTruffleHostSymbol(java.time.LocalDateTime.class);
 
-        Object zoneId = interop.invokeMember(zoneIdClass, "systemDefault");
-        Object zoneRules = interop.invokeMember(zoneId, "getRules");
+        Object zoneId = interop.invokeMember(zoneIdClass, (Object) "systemDefault");
+        Object zoneRules = interop.invokeMember(zoneId, (Object) "getRules");
 
         // ZoneRules.getOffset has two overloads for Instant and LocalDateTime.
         // Make sure we select the correct exact match, i.e., Instant.
-        Object now = interop.invokeMember(instantClass, "now");
-        Object offset = interop.invokeMember(zoneRules, "getOffset", now);
+        Object now = interop.invokeMember(instantClass, (Object) "now");
+        Object offset = interop.invokeMember(zoneRules, (Object) "getOffset", now);
         assertTrue(interop.isMetaInstance(zoneOffsetClass, offset));
 
         // Also check LocalDateTime overload.
-        now = interop.invokeMember(localDateTimeClass, "now");
-        offset = interop.invokeMember(zoneRules, "getOffset", now);
+        now = interop.invokeMember(localDateTimeClass, (Object) "now");
+        offset = interop.invokeMember(zoneRules, (Object) "getOffset", now);
         assertTrue(interop.isMetaInstance(zoneOffsetClass, offset));
     }
 

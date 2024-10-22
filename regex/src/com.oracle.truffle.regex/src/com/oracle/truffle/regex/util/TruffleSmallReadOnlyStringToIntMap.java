@@ -52,6 +52,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.regex.AbstractRegexObject;
 
 @ExportLibrary(InteropLibrary.class)
+@SuppressWarnings({"truffle-abstract-export", "deprecation"}) // GR-58123
 public final class TruffleSmallReadOnlyStringToIntMap extends AbstractRegexObject {
 
     public static final int MAX_SIZE = 8;

@@ -62,6 +62,7 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.test.InteropUtils;
 import com.oracle.truffle.api.test.polyglot.ValueHostInteropTest.Data;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
@@ -86,11 +87,11 @@ public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
     @Test
     public void testSystemMethod() throws InteropException {
         Object system = languageEnv.lookupHostSymbol(System.class.getName());
-        Object value = INTEROP.invokeMember(system, "getProperty", "file.separator");
+        Object value = INTEROP.invokeMember(system, (Object) "getProperty", "file.separator");
         assertThat(value, CoreMatchers.instanceOf(String.class));
         assertThat(value, CoreMatchers.anyOf(CoreMatchers.equalTo("/"), CoreMatchers.equalTo("\\")));
 
-        Object getProperty = INTEROP.readMember(system, "getProperty");
+        Object getProperty = INTEROP.readMember(system, (Object) "getProperty");
         assertThat(getProperty, CoreMatchers.instanceOf(TruffleObject.class));
         assertTrue("IS_EXECUTABLE", INTEROP.isExecutable(getProperty));
         value = INTEROP.execute(getProperty, "file.separator");
@@ -129,19 +130,13 @@ public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
         Data dataObj = new Data();
         TruffleObject data = (TruffleObject) languageEnv.asGuestValue(dataObj);
 
-        Object keys = INTEROP.getMembers(data);
-        List<Object> list = context.asValue(keys).as(List.class);
+        Object members = INTEROP.getMemberObjects(data);
+        List<String> list = InteropUtils.getMemberNames(members);
         assertThat(list, CoreMatchers.hasItems("x", "y", "arr", "value", "map", "dataMap", "data", "plus"));
 
         Method[] objectMethods = Object.class.getMethods();
         for (Method objectMethod : objectMethods) {
             assertThat("No java.lang.Object methods", list, CoreMatchers.not(CoreMatchers.hasItem(objectMethod.getName())));
-        }
-
-        keys = INTEROP.getMembers(data, true);
-        list = context.asValue(keys).as(List.class);
-        for (Method objectMethod : objectMethods) {
-            assertThat("java.lang.Object methods", list, CoreMatchers.hasItem(objectMethod.getName()));
         }
     }
 
@@ -150,14 +145,14 @@ public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
         Data data = new Data();
         TruffleObject obj = (TruffleObject) languageEnv.asGuestValue(data);
 
-        Object string = INTEROP.invokeMember(obj, "toString");
+        Object string = INTEROP.invokeMember(obj, (Object) "toString");
         assertTrue(string instanceof String && ((String) string).startsWith(Data.class.getName() + "@"));
-        Object clazz = INTEROP.invokeMember(obj, "getClass");
+        Object clazz = INTEROP.invokeMember(obj, (Object) "getClass");
         assertTrue(clazz instanceof TruffleObject && languageEnv.asHostObject(clazz) == Data.class);
-        assertEquals(true, INTEROP.invokeMember(obj, "equals", obj));
-        assertTrue(INTEROP.invokeMember(obj, "hashCode") instanceof Integer);
+        assertEquals(true, INTEROP.invokeMember(obj, (Object) "equals", obj));
+        assertTrue(INTEROP.invokeMember(obj, (Object) "hashCode") instanceof Integer);
 
-        for (String m : new String[]{"notify", "notifyAll", "wait"}) {
+        for (Object m : new String[]{"notify", "notifyAll", "wait"}) {
             assertThrowsExceptionWithCause(() -> INTEROP.invokeMember(obj, m), IllegalMonitorStateException.class);
         }
     }
@@ -249,29 +244,29 @@ public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
         assertEquals(testNumber, languageEnv.asHostObject(guestValue));
     }
 
-    private static void assertInvocable(Object expectedValue, Object receiver, String method, Object... args) throws InteropException {
+    private static void assertInvocable(Object expectedValue, Object receiver, Object method, Object... args) throws InteropException {
         TruffleObject o = (TruffleObject) receiver;
 
         assertTrue(INTEROP.isMemberReadable(receiver, method));
         assertTrue(INTEROP.isMemberInvocable(receiver, method));
         assertFalse(INTEROP.isMemberWritable(receiver, method));
         assertFalse(INTEROP.isMemberInsertable(receiver, method));
-        assertFalse(INTEROP.isMemberInternal(receiver, method));
         assertFalse(INTEROP.isMemberRemovable(receiver, method));
 
         Object methodObject = INTEROP.readMember(o, method);
         assertEquals(expectedValue, INTEROP.execute(methodObject, args));
         assertEquals(expectedValue, INTEROP.invokeMember(receiver, method, args));
-        assertHasKey(o, method);
+        assertHasKey(o, (String) method);
     }
 
     private static void assertHasKey(Object receiver, String key) throws InteropException {
         TruffleObject o = (TruffleObject) receiver;
-        Object keys = INTEROP.getMembers(o);
-        long size = INTEROP.getArraySize(keys);
+        Object members = INTEROP.getMemberObjects(o);
+        long size = INTEROP.getArraySize(members);
         List<String> allKeys = new ArrayList<>();
         for (int i = 0; i < size; i++) {
-            String search = (String) INTEROP.readArrayElement(keys, i);
+            Object member = INTEROP.readArrayElement(members, i);
+            String search = INTEROP.asString(INTEROP.getMemberSimpleName(member));
             if (search.equals(key)) {
                 return;
             }
@@ -326,19 +321,19 @@ public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
     @Test
     public void keyInfoJavaObject() {
         Object d = languageEnv.asGuestValue(new TestJavaObject());
-        assertFalse(INTEROP.isMemberExisting(d, "nnoonnee"));
+        assertFalse(INTEROP.isMemberExisting(d, (Object) "nnoonnee"));
 
-        assertTrue(INTEROP.isMemberExisting(d, "aField"));
-        assertTrue(INTEROP.isMemberReadable(d, "aField"));
-        assertTrue(INTEROP.isMemberWritable(d, "aField"));
-        assertFalse(INTEROP.isMemberInvocable(d, "aField"));
-        assertFalse(INTEROP.isMemberRemovable(d, "aField"));
+        assertTrue(INTEROP.isMemberExisting(d, (Object) "aField"));
+        assertTrue(INTEROP.isMemberReadable(d, (Object) "aField"));
+        assertTrue(INTEROP.isMemberWritable(d, (Object) "aField"));
+        assertFalse(INTEROP.isMemberInvocable(d, (Object) "aField"));
+        assertFalse(INTEROP.isMemberRemovable(d, (Object) "aField"));
 
-        assertTrue(INTEROP.isMemberExisting(d, "toString"));
-        assertTrue(INTEROP.isMemberReadable(d, "toString"));
-        assertFalse(INTEROP.isMemberWritable(d, "toString"));
-        assertTrue(INTEROP.isMemberInvocable(d, "toString"));
-        assertFalse(INTEROP.isMemberRemovable(d, "toString"));
+        assertTrue(INTEROP.isMemberExisting(d, (Object) "toString"));
+        assertTrue(INTEROP.isMemberReadable(d, (Object) "toString"));
+        assertFalse(INTEROP.isMemberWritable(d, (Object) "toString"));
+        assertTrue(INTEROP.isMemberInvocable(d, (Object) "toString"));
+        assertFalse(INTEROP.isMemberRemovable(d, (Object) "toString"));
     }
 
     private static void assertError(Callable<?> callable, Class<? extends Exception> exception) {
@@ -363,12 +358,12 @@ public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
     @Test
     public void testIsHostFunction() throws InteropException {
         TruffleObject system = (TruffleObject) languageEnv.lookupHostSymbol(System.class.getName());
-        Object exit = INTEROP.readMember(system, "exit");
+        Object exit = INTEROP.readMember(system, (Object) "exit");
         assertTrue(exit instanceof TruffleObject);
         assertFalse(languageEnv.isHostObject(exit));
         assertTrue(languageEnv.isHostFunction(exit));
 
-        Object out = INTEROP.readMember(system, "out");
+        Object out = INTEROP.readMember(system, (Object) "out");
         assertTrue(exit instanceof TruffleObject);
         assertTrue(languageEnv.isHostObject(out));
         assertFalse(languageEnv.isHostFunction(out));

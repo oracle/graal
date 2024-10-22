@@ -74,7 +74,7 @@ import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.io.TruffleProcessBuilder;
@@ -241,15 +241,15 @@ public class ProcessBuilderTest {
 
             env.newProcessBuilder("process", "param1", "param2").start();
             Object command = interop.execute(commandProvider);
-            Assert.assertArrayEquals(new String[]{"process", "param1", "param2"}, toStringArray(interop.invokeMember(command, "getCommand")));
+            Assert.assertArrayEquals(new String[]{"process", "param1", "param2"}, toStringArray(interop.invokeMember(command, (Object) "getCommand")));
 
             env.newProcessBuilder().command("process", "param1", "param2").start();
             command = interop.execute(commandProvider);
-            Assert.assertArrayEquals(new String[]{"process", "param1", "param2"}, toStringArray(interop.invokeMember(command, "getCommand")));
+            Assert.assertArrayEquals(new String[]{"process", "param1", "param2"}, toStringArray(interop.invokeMember(command, (Object) "getCommand")));
 
             env.newProcessBuilder().command(List.of("process", "param1", "param2")).start();
             command = interop.execute(commandProvider);
-            Assert.assertArrayEquals(new String[]{"process", "param1", "param2"}, toStringArray(interop.invokeMember(command, "getCommand")));
+            Assert.assertArrayEquals(new String[]{"process", "param1", "param2"}, toStringArray(interop.invokeMember(command, (Object) "getCommand")));
             return null;
         }
     }
@@ -275,11 +275,11 @@ public class ProcessBuilderTest {
             TruffleFile workDir = env.getPublicTruffleFile(workdirPath);
             env.newProcessBuilder("process").directory(workDir).start();
             Object command = interop.execute(commandProvider);
-            Assert.assertEquals(workdirPath, interop.asString(interop.invokeMember(command, "getDirectory")));
+            Assert.assertEquals(workdirPath, interop.asString(interop.invokeMember(command, (Object) "getDirectory")));
 
             env.newProcessBuilder("process").start();
             command = interop.execute(commandProvider);
-            Assert.assertEquals(env.getCurrentWorkingDirectory().getPath(), interop.asString(interop.invokeMember(command, "getDirectory")));
+            Assert.assertEquals(env.getCurrentWorkingDirectory().getPath(), interop.asString(interop.invokeMember(command, (Object) "getDirectory")));
             return null;
         }
     }
@@ -467,50 +467,50 @@ public class ProcessBuilderTest {
 
             env.newProcessBuilder("process").start();
             Object command = interop.execute(commandProvider);
-            Assert.assertFalse(interop.asBoolean(interop.invokeMember(command, "isRedirectErrorStream")));
-            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, "getInputRedirect")));
-            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, "getOutputRedirect")));
-            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, "getErrorRedirect")));
+            Assert.assertFalse(interop.asBoolean(interop.invokeMember(command, (Object) "isRedirectErrorStream")));
+            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, (Object) "getInputRedirect")));
+            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, (Object) "getOutputRedirect")));
+            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, (Object) "getErrorRedirect")));
 
             env.newProcessBuilder("process").redirectErrorStream(true).start();
             command = interop.execute(commandProvider);
-            Assert.assertTrue(interop.asBoolean(interop.invokeMember(command, "isRedirectErrorStream")));
-            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, "getInputRedirect")));
-            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, "getOutputRedirect")));
-            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, "getErrorRedirect")));
+            Assert.assertTrue(interop.asBoolean(interop.invokeMember(command, (Object) "isRedirectErrorStream")));
+            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, (Object) "getInputRedirect")));
+            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, (Object) "getOutputRedirect")));
+            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, (Object) "getErrorRedirect")));
 
             env.newProcessBuilder("process").inheritIO(true).start();
             command = interop.execute(commandProvider);
-            Assert.assertFalse(interop.asBoolean(interop.invokeMember(command, "isRedirectErrorStream")));
-            Assert.assertEquals(ProcessHandler.Redirect.INHERIT.toString(), toString(interop.invokeMember(command, "getInputRedirect")));
-            Assert.assertEquals(ProcessHandler.Redirect.INHERIT.toString(), toString(interop.invokeMember(command, "getOutputRedirect")));
-            Assert.assertEquals(ProcessHandler.Redirect.INHERIT.toString(), toString(interop.invokeMember(command, "getErrorRedirect")));
+            Assert.assertFalse(interop.asBoolean(interop.invokeMember(command, (Object) "isRedirectErrorStream")));
+            Assert.assertEquals(ProcessHandler.Redirect.INHERIT.toString(), toString(interop.invokeMember(command, (Object) "getInputRedirect")));
+            Assert.assertEquals(ProcessHandler.Redirect.INHERIT.toString(), toString(interop.invokeMember(command, (Object) "getOutputRedirect")));
+            Assert.assertEquals(ProcessHandler.Redirect.INHERIT.toString(), toString(interop.invokeMember(command, (Object) "getErrorRedirect")));
 
             env.newProcessBuilder("process").redirectInput(ProcessHandler.Redirect.INHERIT).start();
             command = interop.execute(commandProvider);
-            Assert.assertFalse(interop.asBoolean(interop.invokeMember(command, "isRedirectErrorStream")));
-            Assert.assertEquals(ProcessHandler.Redirect.INHERIT.toString(), toString(interop.invokeMember(command, "getInputRedirect")));
-            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, "getOutputRedirect")));
-            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, "getErrorRedirect")));
+            Assert.assertFalse(interop.asBoolean(interop.invokeMember(command, (Object) "isRedirectErrorStream")));
+            Assert.assertEquals(ProcessHandler.Redirect.INHERIT.toString(), toString(interop.invokeMember(command, (Object) "getInputRedirect")));
+            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, (Object) "getOutputRedirect")));
+            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, (Object) "getErrorRedirect")));
 
             env.newProcessBuilder("process").redirectOutput(ProcessHandler.Redirect.INHERIT).start();
             command = interop.execute(commandProvider);
-            Assert.assertFalse(interop.asBoolean(interop.invokeMember(command, "isRedirectErrorStream")));
-            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, "getInputRedirect")));
-            Assert.assertEquals(ProcessHandler.Redirect.INHERIT.toString(), toString(interop.invokeMember(command, "getOutputRedirect")));
-            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, "getErrorRedirect")));
+            Assert.assertFalse(interop.asBoolean(interop.invokeMember(command, (Object) "isRedirectErrorStream")));
+            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, (Object) "getInputRedirect")));
+            Assert.assertEquals(ProcessHandler.Redirect.INHERIT.toString(), toString(interop.invokeMember(command, (Object) "getOutputRedirect")));
+            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, (Object) "getErrorRedirect")));
 
             env.newProcessBuilder("process").redirectError(ProcessHandler.Redirect.INHERIT).start();
             command = interop.execute(commandProvider);
-            Assert.assertFalse(interop.asBoolean(interop.invokeMember(command, "isRedirectErrorStream")));
-            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, "getInputRedirect")));
-            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, "getOutputRedirect")));
-            Assert.assertEquals(ProcessHandler.Redirect.INHERIT.toString(), toString(interop.invokeMember(command, "getErrorRedirect")));
+            Assert.assertFalse(interop.asBoolean(interop.invokeMember(command, (Object) "isRedirectErrorStream")));
+            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, (Object) "getInputRedirect")));
+            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, (Object) "getOutputRedirect")));
+            Assert.assertEquals(ProcessHandler.Redirect.INHERIT.toString(), toString(interop.invokeMember(command, (Object) "getErrorRedirect")));
             return null;
         }
 
-        private String toString(Object hostObject) throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException, ArityException {
-            return interop.asString(interop.invokeMember(hostObject, "toString"));
+        private String toString(Object hostObject) throws UnsupportedMessageException, UnknownMemberException, UnsupportedTypeException, ArityException {
+            return interop.asString(interop.invokeMember(hostObject, (Object) "toString"));
         }
     }
 

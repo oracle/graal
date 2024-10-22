@@ -117,7 +117,7 @@ public class HeapObjectStreamTest {
         assertEquals("JAVA PROFILE 1.0.1", header);
 
         final int heapSize = heapOutput.size();
-        if (heapSize != 3964) {
+        if (heapSize != 3306) {
             fail("Heap dump should be generated to the stream: " + heapOutput.size());
         }
 

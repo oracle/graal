@@ -93,6 +93,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 @ExportLibrary(value = LLVMManagedReadLibrary.class, useForAOT = true, useForAOTPriority = 1)
 @ExportLibrary(value = LLVMManagedWriteLibrary.class, useForAOT = true, useForAOTPriority = 2)
 @ExportLibrary(value = LLVMAsForeignLibrary.class, useForAOT = true, useForAOTPriority = 3)
+@SuppressWarnings({"truffle-abstract-export", "deprecation"}) // GR-57971
 public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
     private final Assumption allocVAPointerAssumption;
     private final LLVMVAListNode allocaNode;

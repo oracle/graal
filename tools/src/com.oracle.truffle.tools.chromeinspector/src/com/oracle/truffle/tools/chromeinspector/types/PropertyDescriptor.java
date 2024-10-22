@@ -49,13 +49,13 @@ public final class PropertyDescriptor {
      * @param isOwn True if the property is owned for the object.
      * @param symbol Property symbol object, if the property is of the <code>symbol</code> type.
      */
-    public PropertyDescriptor(String name, RemoteObject value, Boolean writable,
+    public PropertyDescriptor(String name, RemoteObjectNode value, Boolean writable,
                     RemoteObject get, RemoteObject set, boolean configurable,
                     boolean enumerable, Boolean wasThrown, Boolean isOwn, RemoteObject symbol) {
         jsonObject = createJSON(name, value, writable, get, set, configurable, enumerable, wasThrown, isOwn, symbol);
     }
 
-    private static JSONObject createJSON(String name, RemoteObject value, Boolean writable,
+    private static JSONObject createJSON(String name, RemoteObjectNode value, Boolean writable,
                     RemoteObject get, RemoteObject set, boolean configurable,
                     boolean enumerable, Boolean wasThrown, Boolean isOwn, RemoteObject symbol) {
         JSONObject json = new JSONObject();

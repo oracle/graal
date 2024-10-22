@@ -165,10 +165,10 @@ public final class TypeInfo {
     static boolean isObject(DebugValue debugValue, PrintWriter err) {
         boolean isObject;
         try {
-            isObject = debugValue.getProperties() != null || debugValue.canExecute() || debugValue.isArray() || debugValue.hasHashEntries() || debugValue.isIterator();
+            isObject = debugValue.getMembers() != null || debugValue.canExecute() || debugValue.isArray() || debugValue.hasHashEntries() || debugValue.isIterator();
         } catch (DebugException ex) {
             if (err != null && ex.isInternalError()) {
-                err.println("getProperties(" + debugValue.getName() + ") has caused: " + ex);
+                err.println("getMembers(" + debugValue.getName() + ") has caused: " + ex);
                 ex.printStackTrace(err);
             }
             throw ex;

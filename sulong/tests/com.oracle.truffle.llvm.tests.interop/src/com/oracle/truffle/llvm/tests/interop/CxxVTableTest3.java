@@ -43,7 +43,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
@@ -89,9 +89,9 @@ public class CxxVTableTest3 extends InteropTestBase {
         consImpl = testCppLibrary.getMember("Impl");
 
         try {
-            getA2Internal = InteropLibrary.getUncached().readMember(testCppLibraryInternal, "getA2");
-            getA4Internal = InteropLibrary.getUncached().readMember(testCppLibraryInternal, "getA4");
-        } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+            getA2Internal = InteropLibrary.getUncached().readMember(testCppLibraryInternal, (Object) "getA2");
+            getA4Internal = InteropLibrary.getUncached().readMember(testCppLibraryInternal, (Object) "getA4");
+        } catch (UnsupportedMessageException | UnknownMemberException e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new IllegalStateException(e);
         }
@@ -104,7 +104,7 @@ public class CxxVTableTest3 extends InteropTestBase {
         Object doFoo1(Object a,
                         @CachedLibrary("a") InteropLibrary interop) {
             try {
-                return interop.invokeMember(a, methodName, args);
+                return interop.invokeMember(a, (Object) methodName, args);
             } catch (InteropException ex) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw new IllegalStateException(ex);
@@ -168,6 +168,6 @@ public class CxxVTableTest3 extends InteropTestBase {
     @Test
     public void testNonExisting() {
         UnsupportedOperationException exception = Assert.assertThrows(UnsupportedOperationException.class, () -> getA2.execute().invokeMember("a3"));
-        MatcherAssert.assertThat(exception.getMessage(), StringContains.containsString("Non readable or non-existent member key 'a3'"));
+        MatcherAssert.assertThat(exception.getMessage(), StringContains.containsString("Non readable or non-existent member 'a3'"));
     }
 }

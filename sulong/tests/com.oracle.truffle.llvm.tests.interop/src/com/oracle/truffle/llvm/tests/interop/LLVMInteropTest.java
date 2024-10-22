@@ -74,6 +74,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 @RunWith(CommonTestUtils.ExcludingTruffleRunner.class)
+@SuppressWarnings({"truffle-abstract-export", "deprecation"}) // GR-57971
 public class LLVMInteropTest {
 
     @Before

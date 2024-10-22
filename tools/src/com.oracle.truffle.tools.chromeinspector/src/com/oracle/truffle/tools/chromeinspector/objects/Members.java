@@ -31,32 +31,32 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.utilities.TriState;
 
-final class Keys extends AbstractInspectorArray {
+final class Members extends AbstractInspectorArray {
 
-    @CompilationFinal(dimensions = 1) private final String[] names;
+    @CompilationFinal(dimensions = 1) private final Object[] members;
 
-    Keys(String[] names) {
-        this.names = names;
+    Members(Object[] members) {
+        this.members = members;
     }
 
     @Override
     int getArraySize() {
-        return names.length;
+        return members.length;
     }
 
     @Override
     Object readArrayElement(long index) throws InvalidArrayIndexException {
-        if (index < 0 || index >= Inspector.NAMES.length) {
+        if (index < 0 || index >= members.length) {
             CompilerDirectives.transferToInterpreter();
             throw InvalidArrayIndexException.create(index);
         }
-        return names[(int) index];
+        return members[(int) index];
     }
 
     @Override
     TriState isIdenticalOrUndefined(Object other) {
-        if (other instanceof Keys otherKeys) {
-            return TriState.valueOf(names == otherKeys.names);
+        if (other instanceof Members otherKeys) {
+            return TriState.valueOf(members == otherKeys.members);
         } else {
             return TriState.UNDEFINED;
         }
@@ -65,7 +65,7 @@ final class Keys extends AbstractInspectorArray {
     @Override
     @CompilerDirectives.TruffleBoundary
     int identityHashCode() {
-        return Arrays.hashCode(names);
+        return Arrays.hashCode(members);
     }
 
 }
