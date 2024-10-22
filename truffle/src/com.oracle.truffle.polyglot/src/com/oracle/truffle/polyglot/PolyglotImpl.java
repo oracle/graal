@@ -487,7 +487,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                     Class<?> clazz = loader.loadClass(className);
                     if (supplier.accepts(clazz)) {
                         Module clazzModule = clazz.getModule();
-                        ModuleUtils.exportTransitivelyTo(clazzModule);
+                        JDKSupport.exportTransitivelyTo(clazzModule);
                         return clazz;
                     }
                 } catch (ClassNotFoundException e) {

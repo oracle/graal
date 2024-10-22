@@ -558,10 +558,6 @@ static void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMIn
 
         /* Allow Truffle NFI Panama to use Linker#{downcallHandle,upcallStub} without warnings. */
         vmArgs.push_back("--enable-native-access=org.graalvm.truffle");
-#if LAUNCHER_JDK_VERSION > 21
-        /* Ignore illegal native access until is GR-57817 fixed. */
-        vmArgs.push_back("--illegal-native-access=allow");
-#endif
     }
 
     jint nOptions = jvmMode ? vmArgs.size() : 1 + vmArgs.size();
@@ -857,7 +853,7 @@ static int jvm_main_thread(int argc, char *argv[], std::string exeDir, bool jvmM
                     std::cerr << "Error in GetObjectArrayElement:" << std::endl;
                     env->ExceptionDescribe();
                     return -1;
-                }    
+                }
                 const char *vmArg = env->GetStringUTFChars(vmArgString, NULL);
                 if (env->ExceptionCheck()) {
                     std::cerr << "Error in GetStringUTFChars:" << std::endl;

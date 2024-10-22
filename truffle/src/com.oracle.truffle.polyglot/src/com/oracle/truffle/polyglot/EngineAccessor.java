@@ -340,14 +340,14 @@ final class EngineAccessor extends Accessor {
                     // 2) Lookup implementations of a module aware interface
                     for (T service : ServiceLoader.load(type, loader)) {
                         if (loaderSupplier.accepts(service.getClass())) {
-                            ModuleUtils.exportTransitivelyTo(service.getClass().getModule());
+                            JDKSupport.exportTransitivelyTo(service.getClass().getModule());
                             found.putIfAbsent(service.getClass(), service);
                         }
                     }
                     // 3) Lookup implementations of a legacy interface
                     // GR-46293 Remove the deprecated service interface lookup.
                     if (legacyInterface != null && loaderSupplier.supportsLegacyProviders()) {
-                        ModuleUtils.exportToUnnamedModuleOf(loader);
+                        JDKSupport.exportToUnnamedModuleOf(loader);
                         for (T service : ServiceLoader.load(legacyInterface, loader)) {
                             if (loaderSupplier.accepts(service.getClass())) {
                                 found.putIfAbsent(service.getClass(), service);
@@ -2202,6 +2202,11 @@ final class EngineAccessor extends Accessor {
         @Override
         public long getEngineId(Object polyglotEngine) {
             return ((PolyglotEngineImpl) polyglotEngine).engineId;
+        }
+
+        @Override
+        public ModulesAccessor getModulesAccessor() {
+            return JDKSupport.getModulesAccessor();
         }
     }
 
