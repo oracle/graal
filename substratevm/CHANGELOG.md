@@ -2,6 +2,9 @@
 
 This changelog summarizes major changes to GraalVM Native Image.
 
+## GraalVM for JDK 21.0.5 (Internal Version 23.1.5)
+* (GR-20827): Introduce a dedicated caller-saved branch target register for software CFI implementations.
+
 ## GraalVM for JDK 21.0.3 (Internal Version 23.1.3)
 * (GR-51002, GR-51319) Improve intrinsification of method handles. This especially improves the performance of `equals` and `hashCode` methods for records, which use method handles that are now intrinsified.
 

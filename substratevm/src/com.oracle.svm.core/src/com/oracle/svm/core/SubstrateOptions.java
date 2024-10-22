@@ -417,6 +417,9 @@ public class SubstrateOptions {
     @Option(help = "Use only a writable native image heap (requires ld.gold linker)")//
     public static final HostedOptionKey<Boolean> ForceNoROSectionRelocations = new HostedOptionKey<>(false);
 
+    @Option(help = "Force no direct relocations to be present in the text section of the generated image", type = OptionType.Debug) //
+    public static final HostedOptionKey<Boolean> NoDirectRelocationsInText = new HostedOptionKey<>(true);
+
     @Option(help = "Support multiple isolates.") //
     public static final HostedOptionKey<Boolean> SpawnIsolates = new HostedOptionKey<>(true);
 
@@ -1032,9 +1035,6 @@ public class SubstrateOptions {
 
     @Option(help = "Allows the addresses of pinned objects to be passed to other code.", type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> PinnedObjectAddressing = new HostedOptionKey<>(true);
-
-    @Option(help = "Emit indirect branch target marker instructions.", type = OptionType.Expert) //
-    public static final HostedOptionKey<Boolean> IndirectBranchTargetMarker = new HostedOptionKey<>(false);
 
     @Option(help = "Enable and disable normal processing of flags relating to experimental options.", type = OptionType.Expert, stability = OptionStability.EXPERIMENTAL) //
     public static final HostedOptionKey<Boolean> UnlockExperimentalVMOptions = new HostedOptionKey<>(false);

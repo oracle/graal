@@ -35,6 +35,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.lir.StandardOp.BlockEndOp;
 import org.graalvm.compiler.lir.StandardOp.LabelHoldingOp;
 import org.graalvm.compiler.lir.StandardOp.LabelOp;
+import org.graalvm.compiler.lir.amd64.EndbranchOp;
 import org.graalvm.compiler.lir.gen.LIRGenerator;
 import org.graalvm.compiler.options.OptionValues;
 
@@ -282,6 +283,9 @@ public final class LIR extends LIRGenerator.VariableProvider {
                 opWithExceptionEdge = op;
                 int distanceFromEnd = lastIndex - index;
                 assert distanceFromEnd <= MAX_EXCEPTION_EDGE_OP_DISTANCE_FROM_END;
+            }
+            if (index != 1) {
+                assert !(op instanceof EndbranchOp) : String.format("EndbranchOp %s (Block %s) found at position %s", op.getClass(), block, index);
             }
             index++;
         }

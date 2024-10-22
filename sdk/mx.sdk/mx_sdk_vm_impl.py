@@ -3366,6 +3366,13 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     with_debuginfo.append(_final_graalvm_distribution)
     other_graalvm_artifact_names = []
 
+    from mx_native import TargetSelection
+    for c in _final_graalvm_distribution.components:
+        if c.extra_native_targets:
+            for t in c.extra_native_targets:
+                mx.logv(f"Selecting extra target '{t}' from GraalVM component '{c.short_name}'.")
+                TargetSelection.add_extra(t)
+
     # Add the macros if SubstrateVM is in stage1, as images could be created later with an installable Native Image
     with_svm = has_component('svm', stage1=True)
     libpolyglot_component = mx_sdk_vm.graalvm_component_by_name('libpoly', fatalIfMissing=False) if with_svm else None
@@ -3927,6 +3934,18 @@ def _infer_env(graalvm_dist):
         non_rebuildable_images = [str(non_rebuildable_images)]
 
     return sorted(list(dynamicImports)), sorted(components), sorted(excludeComponents), sorted(nativeImages), sorted(disableInstallables), sorted(non_rebuildable_images), _debuginfo_dists(), _no_licenses()
+
+
+def graalvm_clean_env(out_env=None):
+    """
+    Returns an env var that does not define variables that configure the GraalVM
+    """
+    env = out_env or os.environ.copy()
+    for env_var in ['DYNAMIC_IMPORTS', 'COMPONENTS', 'NATIVE_IMAGES', 'EXCLUDE_COMPONENTS', 'DISABLE_INSTALLABLES', 'NON_REBUILDABLE_IMAGES']:
+        if env_var in env:
+            env.pop(env)
+    return env
+
 
 def graalvm_env(out_env=None):
     """

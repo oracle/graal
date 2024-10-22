@@ -33,6 +33,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Register;
 
 public class IndirectCallTest extends AssemblerTest {
 
@@ -44,6 +45,10 @@ public class IndirectCallTest extends AssemblerTest {
     private static final int DIRECT_CALL_INSTRUCTION_CODE = 0xE8;
     private static final int DIRECT_CALL_INSTRUCTION_SIZE = 5;
 
+    private static void indirectCallHelper(AMD64MacroAssembler masm, Register callReg, boolean mitigateDecodingAsDirectCall) {
+        masm.indirectCall(AMD64MacroAssembler.PostCallAction.NONE, callReg, mitigateDecodingAsDirectCall, null, null);
+    }
+
     @Test
     public void withoutJCCErratum() {
         for (int i = 0; i < DIRECT_CALL_INSTRUCTION_SIZE; i++) {
@@ -51,7 +56,7 @@ public class IndirectCallTest extends AssemblerTest {
             // 48 8b e8
             masm.movq(AMD64.rbp, AMD64.rax);
             masm.nop(i);
-            masm.indirectCall(AMD64.rax, true);
+            indirectCallHelper(masm, AMD64.rax, true);
             assertFalse(masm.getByte(masm.position() - DIRECT_CALL_INSTRUCTION_SIZE) == DIRECT_CALL_INSTRUCTION_CODE);
         }
 
@@ -59,7 +64,7 @@ public class IndirectCallTest extends AssemblerTest {
         // 48 8b e8
         masm.movq(AMD64.rbp, AMD64.rax);
         masm.nop(2);
-        masm.indirectCall(AMD64.rax, false);
+        indirectCallHelper(masm, AMD64.rax, false);
         assertTrue(masm.getByte(masm.position() - DIRECT_CALL_INSTRUCTION_SIZE) == DIRECT_CALL_INSTRUCTION_CODE);
     }
 
@@ -70,7 +75,7 @@ public class IndirectCallTest extends AssemblerTest {
             masm.nop(i);
             // 48 8b e8
             masm.movq(AMD64.rbp, AMD64.rax);
-            masm.indirectCall(AMD64.r10, true);
+            indirectCallHelper(masm, AMD64.r10, true);
             assertFalse(masm.getByte(masm.position() - DIRECT_CALL_INSTRUCTION_SIZE) == DIRECT_CALL_INSTRUCTION_CODE);
         }
 
@@ -78,7 +83,7 @@ public class IndirectCallTest extends AssemblerTest {
         masm.nop(28);
         // 48 8b e8
         masm.movq(AMD64.rbp, AMD64.rax);
-        masm.indirectCall(AMD64.r10, false);
+        indirectCallHelper(masm, AMD64.r10, false);
         assertTrue(masm.getByte(masm.position() - DIRECT_CALL_INSTRUCTION_SIZE) == DIRECT_CALL_INSTRUCTION_CODE);
     }
 }

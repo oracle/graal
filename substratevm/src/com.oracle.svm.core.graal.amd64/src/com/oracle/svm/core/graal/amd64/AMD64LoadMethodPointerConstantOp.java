@@ -28,8 +28,6 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.HINT;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
-import com.oracle.svm.core.FrameAccess;
-import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.StandardOp;
@@ -40,7 +38,6 @@ import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
-import org.graalvm.nativeimage.Platform;
 
 public final class AMD64LoadMethodPointerConstantOp extends AMD64LIRInstruction implements StandardOp.LoadConstantOp {
     public static final LIRInstructionClass<AMD64LoadMethodPointerConstantOp> TYPE = LIRInstructionClass.create(AMD64LoadMethodPointerConstantOp.class);
@@ -56,13 +53,8 @@ public final class AMD64LoadMethodPointerConstantOp extends AMD64LIRInstruction 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         Register resultReg = asRegister(result);
-        if (!Platform.includedIn(Platform.DARWIN_AMD64.class)) {
-            crb.recordInlineDataInCode(constant);
-            masm.movq(resultReg, 0L, true);
-        } else {
-            /* [GR-43389] ld64 bug does not allow direct8 relocations in .text on darwin */
-            masm.movq(resultReg, (AMD64Address) crb.recordDataReferenceInCode(constant, FrameAccess.wordSize()));
-        }
+        crb.recordInlineDataInCode(constant);
+        masm.leaq(resultReg, masm.getPlaceholder(masm.position()));
     }
 
     @Override

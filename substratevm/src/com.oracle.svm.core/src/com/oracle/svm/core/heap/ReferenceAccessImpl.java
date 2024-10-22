@@ -30,6 +30,8 @@ import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -38,12 +40,11 @@ import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 
-@AutomaticallyRegisteredImageSingleton(ReferenceAccess.class)
-public final class ReferenceAccessImpl implements ReferenceAccess {
+public class ReferenceAccessImpl implements ReferenceAccess {
 
-    ReferenceAccessImpl() {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    protected ReferenceAccessImpl() {
     }
 
     @Override
