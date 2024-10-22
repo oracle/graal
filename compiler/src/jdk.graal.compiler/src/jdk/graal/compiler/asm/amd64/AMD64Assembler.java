@@ -2013,6 +2013,11 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRVROp KXORB  = new VexRVROp("KXORB",  VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F, VEXPrefixConfig.W0, 0x47, VEXOpAssertion.AVX512DQ_MASK);
         public static final VexRVROp KXORQ  = new VexRVROp("KXORQ",  VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F, VEXPrefixConfig.W1, 0x47, VEXOpAssertion.AVX512BW_MASK);
         public static final VexRVROp KXORD  = new VexRVROp("KXORD",  VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F, VEXPrefixConfig.W1, 0x47, VEXOpAssertion.AVX512BW_MASK);
+
+        public static final VexRVROp KXNORW = new VexRVROp("KXNORW", VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F, VEXPrefixConfig.W0, 0x46, VEXOpAssertion.AVX512F_MASK);
+        public static final VexRVROp KXNORB = new VexRVROp("KXNORB", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F, VEXPrefixConfig.W0, 0x46, VEXOpAssertion.AVX512DQ_MASK);
+        public static final VexRVROp KXNORQ = new VexRVROp("KXNORQ", VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F, VEXPrefixConfig.W1, 0x46, VEXOpAssertion.AVX512BW_MASK);
+        public static final VexRVROp KXNORD = new VexRVROp("KXNORD", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F, VEXPrefixConfig.W1, 0x46, VEXOpAssertion.AVX512BW_MASK);
         // @formatter:on
 
         protected VexRVROp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion) {
