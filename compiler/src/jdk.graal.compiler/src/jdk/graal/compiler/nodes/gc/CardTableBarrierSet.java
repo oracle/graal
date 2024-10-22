@@ -204,6 +204,7 @@ public class CardTableBarrierSet implements BarrierSet {
             case NONE:
                 return false;
             case FIELD:
+            case AS_NO_KEEPALIVE_WRITE:
             case ARRAY:
             case UNKNOWN:
                 return writeRequiresBarrier(node, writtenValue);
@@ -234,7 +235,7 @@ public class CardTableBarrierSet implements BarrierSet {
     private static void addSerialPostWriteBarrier(FixedAccessNode node, AddressNode address, StructuredGraph graph) {
         // Use a precise barrier for everything that might be an array write. Being too precise with
         // the barriers does not cause any correctness issues.
-        boolean precise = node.getBarrierType() != BarrierType.FIELD;
+        boolean precise = node.getBarrierType() != BarrierType.FIELD && node.getBarrierType() != BarrierType.AS_NO_KEEPALIVE_WRITE;
         graph.addAfterFixed(node, graph.add(new SerialWriteBarrierNode(address, precise)));
     }
 

@@ -83,6 +83,10 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
         return gc == HotSpotGraalRuntime.HotSpotGC.G1;
     }
 
+    public boolean useXGC() {
+        return gc == HotSpotGraalRuntime.HotSpotGC.X;
+    }
+
     public final HotSpotGraalRuntime.HotSpotGC gc = getSelectedGC();
 
     private HotSpotGraalRuntime.HotSpotGC getSelectedGC() throws GraalError {
@@ -431,10 +435,10 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final boolean useObjectMonitorTable = getFlag("UseObjectMonitorTable", Boolean.class, false, JDK >= 24);
 
     // JDK-8253180 & JDK-8265932
-    public final int threadPollingPageOffset = getFieldOffset("JavaThread::_poll_data", Integer.class, "SafepointMechanism::ThreadData") +
-                    getFieldOffset("SafepointMechanism::ThreadData::_polling_page", Integer.class, "volatile uintptr_t");
-    public final int threadPollingWordOffset = getFieldOffset("JavaThread::_poll_data", Integer.class, "SafepointMechanism::ThreadData") +
-                    getFieldOffset("SafepointMechanism::ThreadData::_polling_word", Integer.class, "volatile uintptr_t");
+    public final int threadPollDataOffset = JDK >= 24 ? getFieldOffset("Thread::_poll_data", Integer.class, "SafepointMechanism::ThreadData")
+                    : getFieldOffset("JavaThread::_poll_data", Integer.class, "SafepointMechanism::ThreadData");
+    public final int threadPollingPageOffset = threadPollDataOffset + getFieldOffset("SafepointMechanism::ThreadData::_polling_page", Integer.class, "volatile uintptr_t");
+    public final int threadPollingWordOffset = threadPollDataOffset + getFieldOffset("SafepointMechanism::ThreadData::_polling_word", Integer.class, "volatile uintptr_t");
     public final int savedExceptionPCOffset = getFieldOffset("JavaThread::_saved_exception_pc", Integer.class, "address");
 
     private final int threadLocalAllocBufferEndOffset = getFieldOffset("ThreadLocalAllocBuffer::_end", Integer.class, "HeapWord*");
@@ -585,6 +589,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
                     "ZBarrierSetRuntime::no_keepalive_load_barrier_on_weak_oop_field_preloaded");
     public final long zBarrierSetRuntimeNoKeepaliveLoadBarrierOnPhantomOopFieldPreloaded = getZGCAddressField(
                     "ZBarrierSetRuntime::no_keepalive_load_barrier_on_phantom_oop_field_preloaded");
+    public final long zBarrierSetRuntimeNoKeepaliveStoreBarrierOnOopFieldWithoutHealing = getZGCAddressField(
+                    "ZBarrierSetRuntime::no_keepalive_store_barrier_on_oop_field_without_healing");
     public final long zBarrierSetRuntimeStoreBarrierOnNativeOopFieldWithoutHealing = getZGCAddressField("ZBarrierSetRuntime::store_barrier_on_native_oop_field_without_healing");
     public final long zBarrierSetRuntimeStoreBarrierOnOopFieldWithHealing = getZGCAddressField("ZBarrierSetRuntime::store_barrier_on_oop_field_with_healing");
     public final long zBarrierSetRuntimeStoreBarrierOnOopFieldWithoutHealing = getZGCAddressField("ZBarrierSetRuntime::store_barrier_on_oop_field_without_healing");
