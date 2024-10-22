@@ -98,6 +98,7 @@ import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
+import org.graalvm.compiler.test.SubprocessUtil;
 import org.graalvm.word.LocationIdentity;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -450,7 +451,9 @@ public class CheckGraalInvariants extends GraalCompilerTest {
             }
         }
 
-        checkOptionFieldUsages(errors, optionFieldUsages);
+        if (!SubprocessUtil.isJaCoCoAttached()) { // GR-59030 JaCoCo disrupts this check
+            checkOptionFieldUsages(errors, optionFieldUsages);
+        }
 
         if (!errors.isEmpty()) {
             StringBuilder msg = new StringBuilder();
