@@ -38,6 +38,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.svm.hosted.AnalyzeReflectionUsageSupport;
+import com.oracle.svm.core.option.HostedOptionValues;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
@@ -353,6 +355,10 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
 
         /* Make sure array classes don't need to be registered for reflection. */
         RuntimeReflection.register(Object.class.getDeclaredMethods());
+
+        if (SubstrateOptions.TrackReflectionUsage.getValue(HostedOptionValues.singleton()) != null) {
+            ImageSingletons.add(AnalyzeReflectionUsageSupport.class, new AnalyzeReflectionUsageSupport());
+        }
     }
 
     @Override
@@ -363,6 +369,8 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
+        AnalyzeReflectionUsageSupport.instance().reportReflection();
+
         metaAccess = ((BeforeCompilationAccessImpl) access).getMetaAccess();
 
         if (ImageSingletons.contains(FallbackFeature.class)) {
