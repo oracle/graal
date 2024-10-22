@@ -40,15 +40,54 @@
  */
 package com.oracle.truffle.nfi.backend.spi;
 
+import sun.misc.Unsafe;
+
+import java.lang.reflect.Field;
+
 /**
  * Thread-local state of the NFI that is shared between different backends.
  */
 public final class NFIState {
 
+    private static final Unsafe UNSAFE;
+
+    static {
+        Field unsafeField;
+        try {
+            unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
+            unsafeField.setAccessible(true);
+        } catch (NoSuchFieldException e) {
+            throw new RuntimeException(e);
+        }
+
+        try {
+            UNSAFE = (Unsafe) unsafeField.get(null);
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    // We cannot just store the errno as an int here, because it must be accessible as an int* in
+    // native code for Sulong
+    private final long nfiErrnoAddress;
+
     private Throwable pendingException;
 
     // for faster query from JNI
     boolean hasPendingException;
+
+    public NFIState() {
+        this.nfiErrnoAddress = UNSAFE.allocateMemory(Integer.BYTES);
+        UNSAFE.putInt(nfiErrnoAddress, 0);
+    }
+
+    public int getNFIErrno() {
+        return UNSAFE.getInt(nfiErrnoAddress);
+    }
+
+    public void setNFIErrno(int nfiErrno) {
+        UNSAFE.putInt(nfiErrnoAddress, nfiErrno);
+    }
 
     public Throwable getPendingException() {
         return pendingException;
@@ -63,5 +102,9 @@ public final class NFIState {
     public void clearPendingException() {
         pendingException = null;
         hasPendingException = false;
+    }
+
+    public void dispose() {
+        UNSAFE.freeMemory(this.nfiErrnoAddress);
     }
 }

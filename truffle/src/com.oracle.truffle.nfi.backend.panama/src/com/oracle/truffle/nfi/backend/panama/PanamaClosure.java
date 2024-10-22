@@ -62,6 +62,7 @@ import com.oracle.truffle.nfi.backend.panama.PanamaSignature.CachedSignatureInfo
 import com.oracle.truffle.nfi.backend.panama.ClosureArgumentNode.GetArgumentNode;
 import com.oracle.truffle.nfi.backend.panama.ClosureArgumentNode.ConstArgumentNode;
 import com.oracle.truffle.nfi.backend.panama.PanamaClosureFactory.CallClosureNodeGen;
+import com.oracle.truffle.nfi.backend.spi.NFIState;
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 
 import java.lang.foreign.MemorySegment;
@@ -236,8 +237,10 @@ final class PanamaClosure implements TruffleObject {
         public Object execute(VirtualFrame frame) {
             // We need to capture native errno as early as possible and set it as late as possible
             // to avoid the JVM clobbering it
-            ErrorContext ctx = PanamaNFILanguage.get(this).errorContext.get();
-            ctx.setNFIErrno(ctx.getNativeErrno());
+            PanamaNFILanguage language = PanamaNFILanguage.get(this);
+            NFIState nfiState = language.getNFIState();
+            ErrorContext ctx = language.errorContext.get();
+            nfiState.setNFIErrno(ctx.getNativeErrno());
             try {
                 Object ret = callClosure.execute(frame);
                 if (interopLibrary.isNull(ret)) {
@@ -247,7 +250,7 @@ final class PanamaClosure implements TruffleObject {
             } catch (Throwable t) {
                 exceptionProfile.enter();
                 TruffleStackTrace.fillIn(t);
-                PanamaNFILanguage.get(this).getNFIState().setPendingException(t);
+                nfiState.setPendingException(t);
                 try {
                     return toJavaRet.execute("");
                 } catch (UnsupportedTypeException ex) {
@@ -255,7 +258,7 @@ final class PanamaClosure implements TruffleObject {
                     throw CompilerDirectives.shouldNotReachHere();
                 }
             } finally {
-                ctx.setNativeErrno(ctx.getNFIErrno());
+                ctx.setNativeErrno(nfiState.getNFIErrno());
             }
         }
     }
@@ -285,16 +288,18 @@ final class PanamaClosure implements TruffleObject {
         public Object execute(VirtualFrame frame) {
             // We need to capture native errno as early as possible and set it as late as possible
             // to avoid the JVM clobbering it
-            ErrorContext ctx = PanamaNFILanguage.get(this).errorContext.get();
-            ctx.setNFIErrno(ctx.getNativeErrno());
+            PanamaNFILanguage language = PanamaNFILanguage.get(this);
+            NFIState nfiState = language.getNFIState();
+            ErrorContext ctx = language.errorContext.get();
+            nfiState.setNFIErrno(ctx.getNativeErrno());
             try {
                 callClosure.execute(frame);
             } catch (Throwable t) {
                 exceptionProfile.enter();
                 TruffleStackTrace.fillIn(t);
-                PanamaNFILanguage.get(this).getNFIState().setPendingException(t);
+                nfiState.setPendingException(t);
             } finally {
-                ctx.setNativeErrno(ctx.getNFIErrno());
+                ctx.setNativeErrno(nfiState.getNFIErrno());
             }
             return null;
         }
@@ -330,8 +335,10 @@ final class PanamaClosure implements TruffleObject {
         public Object execute(VirtualFrame frame) {
             // We need to capture native errno as early as possible and set it as late as possible
             // to avoid the JVM clobbering it
-            ErrorContext ctx = PanamaNFILanguage.get(this).errorContext.get();
-            ctx.setNFIErrno(ctx.getNativeErrno());
+            PanamaNFILanguage language = PanamaNFILanguage.get(this);
+            NFIState nfiState = language.getNFIState();
+            ErrorContext ctx = language.errorContext.get();
+            nfiState.setNFIErrno(ctx.getNativeErrno());
             try {
                 Object ret = callClosure.execute(frame);
                 if (interopLibrary.isNull(ret)) {
@@ -341,7 +348,7 @@ final class PanamaClosure implements TruffleObject {
             } catch (Throwable t) {
                 exceptionProfile.enter();
                 TruffleStackTrace.fillIn(t);
-                PanamaNFILanguage.get(this).getNFIState().setPendingException(t);
+                nfiState.setPendingException(t);
                 try {
                     return toJavaRet.execute(0);
                 } catch (UnsupportedTypeException e) {
@@ -349,7 +356,7 @@ final class PanamaClosure implements TruffleObject {
                     throw CompilerDirectives.shouldNotReachHere();
                 }
             } finally {
-                ctx.setNativeErrno(ctx.getNFIErrno());
+                ctx.setNativeErrno(nfiState.getNFIErrno());
             }
         }
     }
