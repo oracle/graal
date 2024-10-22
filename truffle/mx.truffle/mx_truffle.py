@@ -195,6 +195,24 @@ def _open_module_exports_args():
         args.append('--add-exports=' + truffle_api_module_name + '/' + package + '=' + targets)
     return args
 
+def enable_truffle_native_access(vmArgs):
+    """
+    Enables native access to Truffle to allow usage of the Optimized Runtime
+    and delegation of native access to all languages and tools.
+
+    This function checks the provided VM arguments to determine if a module path
+    is used. If so, it enables the native access to `org.graalvm.truffle` module.
+    Otherwise, it enables native access to `ALL-UNNAMED`.
+
+    The function appends the appropriate `--enable-native-access` option to the list of
+    VM arguments and also returns the updated list.
+    """
+    if '-p' in vmArgs or '--module-path' in vmArgs:
+        native_access_target_module = 'org.graalvm.truffle'
+    else:
+        native_access_target_module = 'ALL-UNNAMED'
+    vmArgs.extend([f'--enable-native-access={native_access_target_module}'])
+    return vmArgs
 
 class TruffleUnittestConfig(mx_unittest.MxUnittestConfig):
 
@@ -227,10 +245,7 @@ class TruffleUnittestConfig(mx_unittest.MxUnittestConfig):
 
         # Disable VirtualThread warning
         vmArgs = vmArgs + ['-Dpolyglot.engine.WarnVirtualThreadSupport=false']
-        if mx.get_jdk().javaCompliance > '23':
-            # Ignore illegal native access until is GR-57817 fixed.
-            vmArgs = vmArgs + ['--illegal-native-access=allow']
-
+        enable_truffle_native_access(vmArgs)
         return (vmArgs, mainClass, mainClassArgs)
 
 
@@ -369,12 +384,10 @@ def _sl_command(jdk, vm_args, sl_args, use_optimized_runtime=True, use_enterpris
     else:
         main_class = ["--module", "org.graalvm.sl_launcher/com.oracle.truffle.sl.launcher.SLMain"]
 
-    if use_optimized_runtime and jdk.javaCompliance > '21':
-        if force_cp:
-            vm_args += ["--enable-native-access=ALL-UNNAMED"]
-        else:
-            # revisit once GR-57817 is fixed
-            vm_args += ["--enable-native-access=org.graalvm.truffle.runtime"]
+    if force_cp:
+        vm_args += ["--enable-native-access=ALL-UNNAMED"]
+    else:
+        vm_args += ["--enable-native-access=org.graalvm.truffle"]
 
     return [jdk.java] + jdk.processArgs(vm_args + mx.get_runtime_jvm_args(names=dist_names, force_cp=force_cp) + main_class + sl_args)
 
@@ -408,6 +421,11 @@ def _native_image_sl(jdk, vm_args, target_dir, use_optimized_runtime=True, use_e
 
     if hosted_assertions:
         native_image_args += ["-J-ea", "-J-esa"]
+
+    # Even when Truffle is on the classpath, it is loaded as a named module due to
+    # the ForceOnModulePath option in its native-image.properties
+    # GR-58290: Fixed when ForceOnModulePath is removed
+    native_image_args += ["--enable-native-access=org.graalvm.truffle"]
 
     native_image_args += mx.get_runtime_jvm_args(names=dist_names, force_cp=force_cp)
     if force_cp:
@@ -820,6 +838,7 @@ def truffle_native_unit_tests_gate(use_optimized_runtime=True, quick_build=False
         '-H:+AddAllCharsets',
         '--add-exports=org.graalvm.polyglot/org.graalvm.polyglot.impl=ALL-UNNAMED',
         '--add-exports=org.graalvm.truffle/com.oracle.truffle.api.impl.asm=ALL-UNNAMED',
+        '--enable-native-access=org.graalvm.truffle',
     ]
     run_args = run_truffle_runtime_args + [
         mx_subst.path_substitutions.substitute('-Dnative.test.path=<path:truffle:TRUFFLE_TEST_NATIVE>'),

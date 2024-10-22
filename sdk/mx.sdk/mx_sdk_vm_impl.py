@@ -3088,7 +3088,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                 'name': 'truffle.attach.library',
                 'layout_dict': {
                     'source_type': 'extracted-dependency',
-                    'dependency': 'truffle:TRUFFLE_RUNTIME',
+                    'dependency': 'truffle:TRUFFLE_API',
                     'exclude': [],
                     'path': 'META-INF/resources/engine/libtruffleattach/<os>/<arch>/bin/<lib:truffleattach>',
                 },

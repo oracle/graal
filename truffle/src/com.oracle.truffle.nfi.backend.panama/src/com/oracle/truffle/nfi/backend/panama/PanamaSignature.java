@@ -70,6 +70,7 @@ import com.oracle.truffle.nfi.backend.panama.PanamaClosure.PolymorphicClosureInf
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.Linker;
 import java.lang.foreign.MemorySegment;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
@@ -146,13 +147,13 @@ final class PanamaSignature {
     }
 
     @TruffleBoundary
-    @SuppressWarnings({"preview"})
+    @SuppressWarnings({"preview", "restricted"})
     MemorySegment bind(MethodHandle cachedHandle, Object receiver, Node location) {
         MethodHandle bound = cachedHandle.bindTo(receiver);
         @SuppressWarnings("preview")
         Arena arena = PanamaNFIContext.get(null).getContextArena();
         try {
-            return (MemorySegment) NFIPanamaAccessor.FOREIGN.upcallStub(bound, functionDescriptor, arena);
+            return Linker.nativeLinker().upcallStub(bound, functionDescriptor, arena);
         } catch (IllegalCallerException ic) {
             throw NFIError.illegalNativeAccess(location);
         }
@@ -319,8 +320,8 @@ final class PanamaSignature {
     static MethodHandle createDowncallHandle(@SuppressWarnings("preview") FunctionDescriptor descriptor, Node location) {
         int parameterCount = descriptor.argumentLayouts().size();
         try {
-            @SuppressWarnings({"preview"})
-            MethodHandle handle = NFIPanamaAccessor.FOREIGN.downcallHandle(descriptor).asSpreader(Object[].class, parameterCount).asType(
+            @SuppressWarnings({"preview", "restricted"})
+            MethodHandle handle = Linker.nativeLinker().downcallHandle(descriptor).asSpreader(Object[].class, parameterCount).asType(
                             MethodType.methodType(Object.class, new Class<?>[]{MemorySegment.class, Object[].class}));
             return handle;
         } catch (IllegalCallerException ic) {

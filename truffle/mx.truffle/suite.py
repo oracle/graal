@@ -238,25 +238,6 @@ suite = {
       "graalCompilerSourceEdition": "ignore",
     },
 
-    "com.oracle.truffle.api.jdk22" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-      ],
-      "requires" : [
-      ],
-      "overlayTarget" : "com.oracle.truffle.api",
-      "checkPackagePrefix" : "false",
-      "multiReleaseJarVersion" : "22",
-      "javaCompliance" : "22+",
-      "forceJavac": True,
-      "checkstyle" : "com.oracle.truffle.api",
-      "workingSets" : "API,Truffle",
-      "graalCompilerSourceEdition": "ignore",
-      # disable SpotBugs as long JDK 22 is unsupported [GR-49566]
-      "spotbugs" : "false",
-    },
-
     "com.oracle.truffle.api.jdk21" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -290,12 +271,19 @@ suite = {
         "sdk:POLYGLOT",
         "com.oracle.truffle.api.instrumentation",
         "com.oracle.truffle.api.exception",
+        "com.oracle.truffle.api.impl.asm",
       ],
       "requires" : [
         "java.logging",
         "jdk.management",
         "jdk.unsupported", # sun.misc.Unsafe
       ],
+      "requiresConcealed" : {
+        "java.base" : [
+          "jdk.internal.module",
+          "jdk.internal.access",
+        ],
+      },
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "17+",
@@ -327,7 +315,6 @@ suite = {
           "jdk.vm.ci.runtime"
         ],
         "java.base" : [
-          "jdk.internal.module",
           "jdk.internal.access",
         ],
       },
@@ -1288,7 +1275,7 @@ suite = {
       "graalCompilerSourceEdition": "ignore",
     },
 
-    "com.oracle.truffle.runtime.attach" : {
+    "com.oracle.truffle.attach" : {
       "subDir" : "src",
       "native" : "shared_lib",
       "deliverable" : "truffleattach",
@@ -1649,7 +1636,6 @@ suite = {
       "javaCompliance" : "17+",
       "dependencies" : [
         "com.oracle.truffle.runtime",
-        "TRUFFLE_RUNTIME_ATTACH_RESOURCES",
       ],
       "distDependencies" : [
         "sdk:JNIUTILS",
@@ -1765,6 +1751,7 @@ suite = {
         "com.oracle.truffle.host",
         "com.oracle.truffle.api.staticobject",
         "TRUFFLE_API_VERSION",
+        "TRUFFLE_ATTACH_RESOURCES",
       ],
       "distDependencies" : [
         "sdk:COLLECTIONS",
@@ -1789,7 +1776,7 @@ suite = {
       #}
     },
 
-    "TRUFFLE_RUNTIME_ATTACH_RESOURCES" : {
+    "TRUFFLE_ATTACH_RESOURCES" : {
       "type" : "dir",
       "platformDependent" : True,
       "hashEntry" :  "META-INF/resources/engine/libtruffleattach/<os>/<arch>/sha256",
@@ -1803,9 +1790,9 @@ suite = {
           "windows-aarch64",
       ],
       "layout" : {
-        "META-INF/resources/engine/libtruffleattach/<os>/<arch>/bin/" : "dependency:com.oracle.truffle.runtime.attach",
+        "META-INF/resources/engine/libtruffleattach/<os>/<arch>/bin/" : "dependency:com.oracle.truffle.attach",
       },
-      "description" : "Contains a library to provide access for the Truffle runtime to JVMCI.",
+      "description" : "Contains a library to provide access for Truffle to JDK internal classes.",
       "maven": False,
       "graalCompilerSourceEdition": "ignore",
     },

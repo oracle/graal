@@ -48,6 +48,7 @@ import static com.oracle.truffle.runtime.OptimizedTruffleRuntime.NEXT_VERSION_UP
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Set;
+import java.util.function.Consumer;
 
 import org.graalvm.home.Version;
 
@@ -140,9 +141,6 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
             }
         }
 
-        // For SharedSecrets.getJavaLangAccess().currentCarrierThread()
-        ModulesSupport.addExports(javaBase, "jdk.internal.access", runtimeModule);
-
         TruffleCompilationSupport compilationSupport;
         if (LibGraal.isAvailable()) {
             // try LibGraal
@@ -203,10 +201,27 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
                 throw new InternalError(e);
             }
         }
+        /*
+         * Ensure that HotSpotThreadLocalHandshake and HotSpotFastThreadLocal are loaded before the
+         * hooks are called. This prevents class initialization during the virtual thread hooks
+         * These hooks must not trigger class loading or suspend the VirtualThread (per their
+         * specification).
+         */
+        HotSpotThreadLocalHandshake.initializePendingOffset();
+        HotSpotFastThreadLocal.ensureLoaded();
         HotSpotTruffleRuntime rt = new HotSpotTruffleRuntime(compilationSupport);
-        HotSpotVirtualThreadHooks.ensureLoaded();
+        registerVirtualThreadMountHooks();
         compilationSupport.registerRuntime(rt);
         return rt;
+    }
+
+    private static void registerVirtualThreadMountHooks() {
+        Consumer<Thread> onMount = (t) -> {
+            HotSpotFastThreadLocal.mount();
+            HotSpotThreadLocalHandshake.setPendingFlagForVirtualThread();
+        };
+        Consumer<Thread> onUmount = (t) -> HotSpotFastThreadLocal.unmount();
+        ModulesSupport.getJavaLangSupport().registerVirtualThreadMountHooks(onMount, onUmount);
     }
 
     private static RuntimeException throwVersionError(String errorFormat, Object... args) {

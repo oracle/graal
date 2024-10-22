@@ -47,7 +47,7 @@
 
 // Library entry points
 
-JNIEXPORT void JNICALL Java_com_oracle_truffle_runtime_ModulesSupport_addExports0(JNIEnv *env, jclass clz, jobject m1, jobject pn, jobject m2) {
+JNIEXPORT void JNICALL Java_com_oracle_truffle_polyglot_JDKSupport_addExports0(JNIEnv *env, jclass clz, jobject m1, jobject pn, jobject m2) {
     jclass modulesClass = (*env)->FindClass(env, "jdk/internal/module/Modules");
     EXCEPTION_CHECK(env);
     jmethodID addExports = (*env)->GetStaticMethodID(env, modulesClass, "addExports", "(Ljava/lang/Module;Ljava/lang/String;Ljava/lang/Module;)V");
@@ -102,9 +102,7 @@ static void JNICALL unmount_callback(jvmtiEnv *jvmti, ...) {
     }
 }
 
-JNIEXPORT void JNICALL Java_com_oracle_truffle_runtime_hotspot_HotSpotVirtualThreadHooks_registerJVMTIHook(JNIEnv *env, jclass clz,
-                                                                                                           jobject handshakeClass,
-                                                                                                           jobject threadLocalClass) {
+JNIEXPORT void JNICALL Java_com_oracle_truffle_api_impl_Accessor_00024JavaLangSupport_registerJVMTIHook(JNIEnv *env, jclass clz) {
     virtualThreadHooksClass = (*env)->NewGlobalRef(env, clz);
     EXCEPTION_CHECK(env);
     CHECK_NONZERO(virtualThreadHooksClass);

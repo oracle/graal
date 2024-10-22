@@ -177,10 +177,9 @@ final class InternalResourceCache {
 
     /**
      * Installs truffleattach library. Used reflectively by
-     * {@code com.oracle.truffle.runtime.ModulesSupport}. The {@code ModulesSupport} is initialized
-     * before the Truffle runtime is created and accessor classes are initialized. For this reason,
-     * it cannot use {@code EngineSupport} to call this method, nor can this method use any
-     * accessor.
+     * {@code com.oracle.truffle.runtime.JDKSupport}. The {@code JDKSupport} is initialized before
+     * the Truffle runtime is created and accessor classes are initialized. For this reason, it
+     * cannot use {@code EngineSupport} to call this method, nor can this method use any accessor.
      */
     static Path installRuntimeResource(InternalResource resource) throws IOException {
         InternalResourceCache cache = createRuntimeResourceCache(resource);
@@ -411,7 +410,7 @@ final class InternalResourceCache {
                 continue;
             }
             StreamSupport.stream(ServiceLoader.load(InternalResourceProvider.class, loader).spliterator(), false).filter((p) -> supplier.accepts(p.getClass())).forEach((p) -> {
-                ModuleUtils.exportTransitivelyTo(p.getClass().getModule());
+                JDKSupport.exportTransitivelyTo(p.getClass().getModule());
                 String componentId = EngineAccessor.LANGUAGE_PROVIDER.getInternalResourceComponentId(p);
                 String resourceId = EngineAccessor.LANGUAGE_PROVIDER.getInternalResourceId(p);
                 var componentOptionalResources = cache.computeIfAbsent(componentId, (k) -> new HashMap<>());
