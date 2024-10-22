@@ -57,6 +57,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.nfi.backend.panama.PanamaSignature.CachedSignatureInfo;
 import com.oracle.truffle.nfi.backend.panama.ClosureArgumentNode.GetArgumentNode;
 import com.oracle.truffle.nfi.backend.panama.ClosureArgumentNode.ConstArgumentNode;
@@ -141,11 +142,10 @@ final class PanamaClosure implements TruffleObject {
         // Object closure(Object receiver, Object[] args)
         static final MethodType METHOD_TYPE = MethodType.methodType(Object.class, Object.class, Object[].class);
 
-        @Child InteropLibrary interop;
+        final BranchProfile exceptionProfile = BranchProfile.create();
 
         PanamaClosureRootNode(PanamaNFILanguage language) {
             super(language);
-            this.interop = InteropLibrary.getFactory().createDispatched(3);
         }
 
         static final MethodHandle handle_CallTarget_call;
@@ -251,6 +251,7 @@ final class PanamaClosure implements TruffleObject {
                 }
                 return toJavaRet.execute(ret);
             } catch (Throwable t) {
+                exceptionProfile.enter();
                 TruffleStackTrace.fillIn(t);
                 PanamaNFILanguage.get(this).getNFIState().setPendingException(t);
                 try {
@@ -289,6 +290,7 @@ final class PanamaClosure implements TruffleObject {
             try {
                 callClosure.execute(frame);
             } catch (Throwable t) {
+                exceptionProfile.enter();
                 TruffleStackTrace.fillIn(t);
                 PanamaNFILanguage.get(this).getNFIState().setPendingException(t);
             }
@@ -331,6 +333,7 @@ final class PanamaClosure implements TruffleObject {
                 }
                 return toJavaRet.execute(ret);
             } catch (Throwable t) {
+                exceptionProfile.enter();
                 TruffleStackTrace.fillIn(t);
                 PanamaNFILanguage.get(this).getNFIState().setPendingException(t);
                 try {
