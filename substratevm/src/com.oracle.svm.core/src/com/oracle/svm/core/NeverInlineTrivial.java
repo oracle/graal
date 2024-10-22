@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.util.function.BooleanSupplier;
 
 /**
  * Every thus annotated method is never trivially inlined by the compiler. Specific inlining to
@@ -45,4 +46,27 @@ public @interface NeverInlineTrivial {
      * Documents the reason why the annotated code must not be inlined.
      */
     String value();
+
+    /**
+     * Avoid inlining only if all of the provided predicates are true (default: class that is never
+     * inlined).
+     *
+     * The classes must implement {@link BooleanSupplier}.
+     */
+    Class<?>[] onlyWith() default NeverInlined.class;
+
+    /**
+     * A BooleanSupplier that always returns true, used to indicate methods should never be inlined.
+     * This serves as the default value for the {@link NeverInlineTrivial#onlyWith()} attribute,
+     * enforcing non-inlining by default.
+     */
+    final class NeverInlined implements BooleanSupplier {
+        NeverInlined() {
+        }
+
+        @Override
+        public boolean getAsBoolean() {
+            return true;
+        }
+    }
 }

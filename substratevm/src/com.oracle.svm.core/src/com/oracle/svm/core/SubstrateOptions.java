@@ -1413,4 +1413,21 @@ public class SubstrateOptions {
                      2. All @CEntryPoint definitions in classes loaded by the custom loader are processed.
                      3. All @TargetClass substitutions in classes loaded by the custom loader are processed.""")//
     public static final HostedOptionKey<String> LibGraalClassLoader = new HostedOptionKey<>("");
+
+    @Option(help = "file:doc-files/TrackDynamicAccessHelp.txt")//
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> TrackDynamicAccess = new HostedOptionKey<>(
+                    AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter()) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, AccumulatingLocatableMultiOptionValue.Strings oldValue, AccumulatingLocatableMultiOptionValue.Strings newValue) {
+            NeverInline.update(values, "java.lang.invoke.MethodHandles$Lookup.unreflectGetter");
+            NeverInline.update(values, "java.lang.invoke.MethodHandles$Lookup.unreflectSetter");
+            NeverInline.update(values, "java.io.ObjectInputStream.readObject");
+            NeverInline.update(values, "java.io.ObjectStreamClass.lookup");
+            NeverInline.update(values, "java.lang.reflect.Array.newInstance");
+            NeverInline.update(values, "java.lang.ClassLoader.loadClass");
+        }
+    };
+
+    @Option(help = "Output all method calls requiring metadata for dynamic access found by -H:TrackDynamicAccess to the console.")//
+    public static final HostedOptionKey<Boolean> ReportDynamicAccessToConsole = new HostedOptionKey<>(false);
 }

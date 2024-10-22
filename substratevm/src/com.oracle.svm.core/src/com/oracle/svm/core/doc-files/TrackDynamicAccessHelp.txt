@@ -1,0 +1,14 @@
+Serialize all method calls requiring metadata for dynamic access in the reachable parts of the project.
+The analysis is limited to the provided comma-separated list of classpath entries, and module or package names.
+If any dynamic access calls are found, a "dynamic-access" directory is created in the native image output,
+and the calls are serialized in "dynamic-access/<entry-name>/[reflection-calls.json][resource-calls.json]".
+
+Usage: -H:TrackDynamicAccess=[path=<classpath-entry>][,module=<module-name>][,package=<package-name>]
+
+To output the detected calls to the console as well, use -H:+ReportDynamicAccessToConsole in conjunction with -H:TrackDynamicAccess.
+
+Example of the option usage:
+
+    native-image -cp lib/app.jar:lib/util.jar:lib/tck.jar -H:TrackDynamicAccess=path=lib/app.jar,path=lib/util.jar HelloWorld
+
+    In this example, the phase will look for dynamic access calls in lib/app.jar and lib/util.jar, and will not detect any calls in lib/tck.jar.

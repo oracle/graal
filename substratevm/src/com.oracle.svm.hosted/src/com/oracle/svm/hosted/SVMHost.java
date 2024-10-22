@@ -43,7 +43,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiPredicate;
+import java.util.function.BooleanSupplier;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -1087,8 +1089,12 @@ public class SVMHost extends HostVM {
     }
 
     public boolean neverInlineTrivial(AnalysisMethod caller, AnalysisMethod callee) {
-        if (!callee.canBeInlined() || AnnotationAccess.isAnnotationPresent(callee, NeverInlineTrivial.class)) {
+        if (!callee.canBeInlined()) {
             return true;
+        }
+        if (AnnotationAccess.isAnnotationPresent(callee, NeverInlineTrivial.class)) {
+            Class<?>[] onlyWith = AnnotationAccess.getAnnotation(callee, NeverInlineTrivial.class).onlyWith();
+            return evaluateOnlyWith(onlyWith, callee.toString(), null);
         }
         for (var handler : neverInlineTrivialHandlers) {
             if (handler.test(caller, callee)) {
@@ -1096,6 +1102,34 @@ public class SVMHost extends HostVM {
             }
         }
         return false;
+    }
+
+    public static boolean evaluateOnlyWith(Class<?>[] onlyWith, String context, Class<?> originalClass) {
+        for (Class<?> onlyWithClass : onlyWith) {
+            Object onlyWithProvider;
+            try {
+                onlyWithProvider = ReflectionUtil.newInstance(onlyWithClass);
+            } catch (ReflectionUtil.ReflectionUtilError ex) {
+                throw UserError.abort(ex.getCause(), "Class specified as onlyWith for %s cannot be loaded or instantiated: %s", context, onlyWithClass.getTypeName());
+            }
+
+            boolean onlyWithResult;
+            if (onlyWithProvider instanceof BooleanSupplier) {
+                onlyWithResult = ((BooleanSupplier) onlyWithProvider).getAsBoolean();
+            } else if (onlyWithProvider instanceof Predicate) {
+                @SuppressWarnings("unchecked")
+                Predicate<Class<?>> predicate = (Predicate<Class<?>>) onlyWithProvider;
+                onlyWithResult = predicate.test(originalClass);
+            } else {
+                throw UserError.abort("Class specified as onlyWith for %s does not implement %s or %s",
+                                context, BooleanSupplier.class.getSimpleName(), Predicate.class.getSimpleName());
+            }
+
+            if (!onlyWithResult) {
+                return false;
+            }
+        }
+        return true;
     }
 
     @Override
