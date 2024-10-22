@@ -1488,7 +1488,7 @@ public class SubstrateOptions {
         return !Platform.includedIn(Platform.WINDOWS.class) && ConcealedOptions.DumpRuntimeCompiledMethods.getValue();
     }
 
-    @Option(help = "file:doc-files/TrackDynamicAccessHelp.txt")//
+    @Option(help = "file:doc-files/TrackDynamicAccessHelp.txt", stability = OptionStability.EXPERIMENTAL)//
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> TrackDynamicAccess = new HostedOptionKey<>(
                     AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
