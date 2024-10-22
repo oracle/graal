@@ -76,7 +76,7 @@ import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
-import com.oracle.svm.hosted.imagelayer.LoadImageSingletonFeature;
+import com.oracle.svm.hosted.imagelayer.LayeredImageHeapObjectAdder;
 import com.oracle.svm.hosted.meta.HostedArrayClass;
 import com.oracle.svm.hosted.meta.HostedClass;
 import com.oracle.svm.hosted.meta.HostedConstantReflectionProvider;
@@ -218,8 +218,8 @@ public final class NativeImageHeap implements ImageHeap {
         addObjectsPhase.allow();
         internStringsPhase.allow();
 
-        if (ImageSingletons.contains(LoadImageSingletonFeature.class)) {
-            ImageSingletons.lookup(LoadImageSingletonFeature.class).addInitialObjects(this, hUniverse);
+        if (ImageSingletons.contains(LayeredImageHeapObjectAdder.class)) {
+            ImageSingletons.lookup(LayeredImageHeapObjectAdder.class).addInitialObjects(this, hUniverse);
         }
 
         addStaticFields();
@@ -506,7 +506,7 @@ public final class NativeImageHeap implements ImageHeap {
                  * can never be duplicated, i.e. written as a separate object. We use the blacklist
                  * to check this.
                  */
-                if (SubstrateOptions.closedTypeWorld()) {
+                if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
                     Object typeIDSlots = readInlinedField(dynamicHubLayout.closedTypeWorldTypeCheckSlotsField, constant);
                     assert typeIDSlots != null : "Cannot read value for field " + dynamicHubLayout.closedTypeWorldTypeCheckSlotsField.format("%H.%n");
                     blacklist.add(typeIDSlots);
@@ -657,7 +657,7 @@ public final class NativeImageHeap implements ImageHeap {
         return hostedType;
     }
 
-    static RuntimeException reportIllegalType(Object object, Object reason) {
+    public static RuntimeException reportIllegalType(Object object, Object reason) {
         throw reportIllegalType(object, reason, "");
     }
 
@@ -885,7 +885,7 @@ public final class NativeImageHeap implements ImageHeap {
             return size;
         }
 
-        int getIdentityHashCode() {
+        public int getIdentityHashCode() {
             return identityHashCode;
         }
 

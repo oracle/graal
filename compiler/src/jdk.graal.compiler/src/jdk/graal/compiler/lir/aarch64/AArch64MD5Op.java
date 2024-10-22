@@ -63,8 +63,8 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/8032d640c0d34fe507392a1d4faa4ff2005c771d/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L3369-L3603",
-          sha1 = "cfd2b9fcbbb67a138b8e28e7362ba1fff6a99aec")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/1cf26a5179e619f17909426fdb26a3fb3b748483/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L3371-L3605",
+          sha1 = "c2068cb8bd0d89f8cbfe2dded139137b7e9a9099")
 // @formatter:on
 public final class AArch64MD5Op extends AArch64LIRInstruction {
 
@@ -153,15 +153,15 @@ public final class AArch64MD5Op extends AArch64LIRInstruction {
 
     private static void md5GG(AArch64MacroAssembler masm, Register[] regCache, Register reg1, Register reg2, Register reg3, Register reg4,
                     int k, int s, int t, Register rscratch1, Register rscratch2, Register rscratch3, Register rscratch4) {
-        masm.and(32, rscratch3, reg2, reg4);
-        masm.bic(32, rscratch4, reg3, reg4);
         regCacheExtractU32(masm, regCache, rscratch1, k);
         masm.mov(rscratch2, t);
-        masm.orr(32, rscratch3, rscratch3, rscratch4);
         masm.add(32, rscratch4, reg1, rscratch2);
         masm.add(32, rscratch4, rscratch4, rscratch1);
-        masm.add(32, rscratch3, rscratch3, rscratch4);
-        masm.ror(32, rscratch2, rscratch3, 32 - s);
+        masm.bic(32, rscratch2, reg3, reg4);
+        masm.and(32, rscratch3, reg2, reg4);
+        masm.add(32, rscratch2, rscratch2, rscratch4);
+        masm.add(32, rscratch2, rscratch2, rscratch3);
+        masm.ror(32, rscratch2, rscratch2, 32 - s);
         masm.add(32, reg1, rscratch2, reg2);
     }
 

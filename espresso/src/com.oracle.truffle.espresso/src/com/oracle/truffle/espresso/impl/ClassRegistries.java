@@ -263,11 +263,6 @@ public final class ClassRegistries {
     }
 
     @TruffleBoundary
-    public ObjectKlass defineKlass(Symbol<Type> type, byte[] bytes, StaticObject classLoader) throws EspressoClassLoadingException {
-        return defineKlass(type, bytes, classLoader, ClassRegistry.ClassDefinitionInfo.EMPTY);
-    }
-
-    @TruffleBoundary
     public ObjectKlass defineKlass(Symbol<Type> type, byte[] bytes, StaticObject classLoader, ClassRegistry.ClassDefinitionInfo info) throws EspressoClassLoadingException {
         assert classLoader != null;
         ClassRegistry registry = getClassRegistry(classLoader);
@@ -387,7 +382,7 @@ public final class ClassRegistries {
                 return;
             }
             // throws SecurityException if access is not allowed.
-            meta.java_lang_ClassLoader_checkPackageAccess.invokeDirect(classLoader, klass.mirror(), protectionDomain);
+            meta.java_lang_ClassLoader_checkPackageAccess.invokeDirectSpecial(classLoader, klass.mirror(), protectionDomain);
             cachedDomains.add(protectionDomain);
         }
 

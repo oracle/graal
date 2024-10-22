@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.imagelayer;
 
-import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
@@ -45,8 +44,11 @@ public abstract class DynamicImageLayerInfo {
         return ImageSingletons.lookup(DynamicImageLayerInfo.class);
     }
 
+    public record PriorLayerMethodLocation(CGlobalDataInfo base, int offset) {
+    }
+
     /**
      * Returns a (Base, Offset) pair which can be used to call a method defined in a prior layer.
      */
-    public abstract Pair<CGlobalDataInfo, Integer> getPriorLayerMethodLocation(SharedMethod method);
+    public abstract PriorLayerMethodLocation getPriorLayerMethodLocation(SharedMethod method);
 }

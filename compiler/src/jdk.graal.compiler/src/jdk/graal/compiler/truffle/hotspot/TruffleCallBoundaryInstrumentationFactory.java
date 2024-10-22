@@ -24,10 +24,12 @@
  */
 package jdk.graal.compiler.truffle.hotspot;
 
+import jdk.graal.compiler.core.ArchitectureSpecific;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.meta.HotSpotRegistersProvider;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.asm.EntryPointDecorator;
+import jdk.graal.compiler.serviceprovider.LibGraalService;
 import jdk.graal.compiler.truffle.TruffleCompilerConfiguration;
 
 import com.oracle.truffle.compiler.TruffleCompilable;
@@ -48,12 +50,11 @@ import com.oracle.truffle.compiler.TruffleCompilable;
  * // normal compiled code
  * </pre>
  */
-public abstract class TruffleCallBoundaryInstrumentationFactory {
+@LibGraalService
+public abstract class TruffleCallBoundaryInstrumentationFactory implements ArchitectureSpecific {
 
     public abstract EntryPointDecorator create(TruffleCompilerConfiguration compilerConfig, GraalHotSpotVMConfig config, HotSpotRegistersProvider registers);
 
-    /**
-     * Gets the architecture supported by this factory.
-     */
+    @Override
     public abstract String getArchitecture();
 }

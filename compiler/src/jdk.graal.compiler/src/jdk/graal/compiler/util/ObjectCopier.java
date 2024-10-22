@@ -25,18 +25,24 @@
 package jdk.graal.compiler.util;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.PrintStream;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.net.URI;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
@@ -56,8 +62,8 @@ import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.FieldIntrospection;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.serviceprovider.GraalUnsafeAccess;
-import sun.misc.Unsafe;
+import jdk.graal.compiler.replacements.SnippetTemplate;
+import jdk.internal.misc.Unsafe;
 
 /**
  * Support for deep copying an object across processes by {@linkplain #encode encoding} it to a
@@ -93,7 +99,7 @@ public class ObjectCopier {
     /**
      * A builtin is specialized support for encoded and decoding values of specific types.
      */
-    abstract static class Builtin {
+    public abstract static class Builtin {
         /**
          * The primary type for this builtin.
          */
@@ -149,7 +155,7 @@ public class ObjectCopier {
          * Encodes the value of {@code obj} to a String that does not contain {@code '\n'} or
          * {@code '\r'}.
          */
-        abstract String encode(Encoder encoder, Object obj);
+        protected abstract String encode(Encoder encoder, Object obj);
 
         /**
          * Decodes {@code encoded} to an object of a type handled by this builtin.
@@ -157,7 +163,7 @@ public class ObjectCopier {
          * @param encoding the non-default encoded used when encoded the object or null if the
          *            default encoded was used
          */
-        abstract Object decode(Decoder decoder, Class<?> concreteType, String encoding, String encoded);
+        protected abstract Object decode(Decoder decoder, Class<?> concreteType, String encoding, String encoded);
 
         @Override
         public String toString() {
@@ -183,12 +189,12 @@ public class ObjectCopier {
         }
 
         @Override
-        String encode(Encoder encoder, Object obj) {
+        protected String encode(Encoder encoder, Object obj) {
             return ((Class<?>) obj).getName();
         }
 
         @Override
-        Object decode(Decoder decoder, Class<?> concreteType, String encoding, String encoded) {
+        protected Object decode(Decoder decoder, Class<?> concreteType, String encoding, String encoded) {
             return switch (encoded) {
                 case "boolean" -> boolean.class;
                 case "byte" -> byte.class;
@@ -231,7 +237,7 @@ public class ObjectCopier {
         }
 
         @Override
-        String encode(Encoder encoder, Object obj) {
+        protected String encode(Encoder encoder, Object obj) {
             String s = obj instanceof String ? (String) obj : new String((char[]) obj);
             if ("escaped".equals(encodingName(s))) {
                 return s.replace("\\", "\\\\").replace("\n", "\\n").replace("\r", "\\r");
@@ -240,7 +246,7 @@ public class ObjectCopier {
         }
 
         @Override
-        Object decode(Decoder decoder, Class<?> concreteType, String encoding, String encoded) {
+        protected Object decode(Decoder decoder, Class<?> concreteType, String encoding, String encoded) {
             String s = encoded;
             if (encoding != null) {
                 GraalError.guarantee(encoding.equals("escaped"), "Unknown encoded: %s", encoding);
@@ -271,13 +277,13 @@ public class ObjectCopier {
         }
 
         @Override
-        String encode(Encoder encoder, Object obj) {
+        protected String encode(Encoder encoder, Object obj) {
             return ((Enum<?>) obj).name();
         }
 
         @SuppressWarnings({"unchecked", "rawtypes"})
         @Override
-        Object decode(Decoder decoder, Class<?> concreteType, String encoding, String encoded) {
+        protected Object decode(Decoder decoder, Class<?> concreteType, String encoding, String encoded) {
             return Enum.valueOf((Class) concreteType, encoded);
         }
     }
@@ -298,11 +304,13 @@ public class ObjectCopier {
         final Map<Class<?>, Supplier<?>> factories;
 
         HashMapBuiltin() {
-            super(HashMap.class, IdentityHashMap.class, LinkedHashMap.class);
+            super(HashMap.class, IdentityHashMap.class, LinkedHashMap.class, SnippetTemplate.LRUCache.class);
+            int size = SnippetTemplate.Options.MaxTemplatesPerSnippet.getDefaultValue();
             factories = Map.of(
                             HashMap.class, HashMap::new,
                             IdentityHashMap.class, IdentityHashMap::new,
-                            LinkedHashMap.class, LinkedHashMap::new);
+                            LinkedHashMap.class, LinkedHashMap::new,
+                            SnippetTemplate.LRUCache.class, () -> new SnippetTemplate.LRUCache<>(size, size));
         }
 
         @Override
@@ -312,14 +320,14 @@ public class ObjectCopier {
         }
 
         @Override
-        String encode(Encoder encoder, Object obj) {
+        protected String encode(Encoder encoder, Object obj) {
             Map<?, ?> map = (Map<?, ?>) obj;
             return encoder.encodeMap(new EconomicMapWrap<>(map));
         }
 
         @SuppressWarnings("unchecked")
         @Override
-        Object decode(Decoder decoder, Class<?> concreteType, String encoding, String encoded) {
+        protected Object decode(Decoder decoder, Class<?> concreteType, String encoding, String encoded) {
             Map<Object, Object> map = (Map<Object, Object>) factories.get(concreteType).get();
             decoder.decodeMap(encoded, map::put);
             return map;
@@ -351,12 +359,12 @@ public class ObjectCopier {
         }
 
         @Override
-        String encode(Encoder encoder, Object obj) {
+        protected String encode(Encoder encoder, Object obj) {
             return encoder.encodeMap((UnmodifiableEconomicMap<?, ?>) obj);
         }
 
         @Override
-        Object decode(Decoder decoder, Class<?> concreteType, String encoding, String encoded) {
+        protected Object decode(Decoder decoder, Class<?> concreteType, String encoding, String encoded) {
             if (EconomicMap.class.isAssignableFrom(concreteType)) {
                 EconomicMap<Object, Object> map = EconomicMap.create();
                 decoder.decodeMap(encoded, map::put);
@@ -375,8 +383,8 @@ public class ObjectCopier {
      *            have the same name in which case the descriptor includes the qualified name of the
      *            class declaring the field as a prefix.
      */
-    record ClassInfo(Class<?> clazz, Map<String, Field> fields) {
-        static ClassInfo of(Class<?> declaringClass) {
+    public record ClassInfo(Class<?> clazz, Map<String, Field> fields) {
+        public static ClassInfo of(Class<?> declaringClass) {
             Map<String, Field> fields = new HashMap<>();
             for (Class<?> c = declaringClass; !c.equals(Object.class); c = c.getSuperclass()) {
                 for (Field f : c.getDeclaredFields()) {
@@ -388,9 +396,6 @@ public class ObjectCopier {
                         }
                         Field conflict = fields.put(fieldDesc, f);
                         GraalError.guarantee(conflict == null, "Cannot support 2 fields with same name and declaring class: %s and %s", conflict, f);
-
-                        // Try to avoid problems with identity hash codes
-                        GraalError.guarantee(!f.getName().toLowerCase(Locale.ROOT).contains("hash"), "Cannot serialize hash field: %s", f);
                     }
                 }
             }
@@ -398,13 +403,13 @@ public class ObjectCopier {
         }
     }
 
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     final Map<Class<?>, ClassInfo> classInfos = new HashMap<>();
     final Map<Class<?>, Builtin> builtinClasses = new HashMap<>();
     final Set<Class<?>> notBuiltins = new HashSet<>();
 
-    final void addBuiltin(Builtin builtin) {
+    protected final void addBuiltin(Builtin builtin) {
         addBuiltin(builtin, builtin.clazz);
     }
 
@@ -440,14 +445,10 @@ public class ObjectCopier {
     }
 
     /**
-     * Encodes {@code root} to a String.
-     *
-     * @param externalValues static fields whose values should not be encoded but instead
-     *            represented as a reference to the field
+     * Encodes {@code root} to a String using {@code encoder}.
      */
-    public static String encode(Object root, List<Field> externalValues) {
-        Encoder encoder = new Encoder(externalValues);
-        int rootId = encoder.makeId(root, ObjectPath.of("[root]")).id();
+    public static String encode(Encoder encoder, Object root) {
+        int rootId = encoder.makeId(root, ObjectPath.of("[root:" + root.getClass().getName() + "]")).id();
         GraalError.guarantee(rootId == 1, "The root object should have id of 1, not %d", rootId);
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try (PrintStream ps = new PrintStream(baos)) {
@@ -458,19 +459,23 @@ public class ObjectCopier {
 
     public static Object decode(String encoded, ClassLoader loader) {
         Decoder decoder = new Decoder(loader);
+        return decode(decoder, encoded);
+    }
+
+    public static Object decode(Decoder decoder, String encoded) {
         return decoder.decode(encoded);
     }
 
-    static class Decoder extends ObjectCopier {
+    public static class Decoder extends ObjectCopier {
 
         private final Map<Integer, Object> idToObject = new HashMap<>();
         private final ClassLoader loader;
 
-        Decoder(ClassLoader loader) {
+        public Decoder(ClassLoader loader) {
             this.loader = loader;
         }
 
-        Class<?> loadClass(String className) {
+        public Class<?> loadClass(String className) {
             try {
                 return Class.forName(className, false, loader);
             } catch (ClassNotFoundException e) {
@@ -518,8 +523,7 @@ public class ObjectCopier {
             deferred = new ArrayList<>();
             lineNum = 0;
 
-            List<String> lines = encoded.lines().toList();
-            Iterator<String> iter = lines.iterator();
+            Iterator<String> iter = encoded.lines().iterator();
             try {
                 while (iter.hasNext()) {
                     String line = iter.next();
@@ -709,7 +713,8 @@ public class ObjectCopier {
                     d.runnable().run();
                 }
             } catch (Throwable e) {
-                throw new GraalError(e, "Error on line %d: %s", lineNum, lines.get(lineNum - 1));
+                String line = encoded.lines().skip(lineNum - 1).findFirst().get();
+                throw new GraalError(e, "Error on line %d: %s", lineNum, line);
             } finally {
                 deferred = null;
                 lineNum = -1;
@@ -780,26 +785,51 @@ public class ObjectCopier {
         return b;
     }
 
-    static class Encoder extends ObjectCopier {
+    public static class Encoder extends ObjectCopier {
 
         final Map<Object, ObjectID> objectToId = new IdentityHashMap<>();
         final List<Object> objects = new ArrayList<>();
 
         /**
          * Map from values to static final fields. In a serialized object graph, references to such
-         * values are encoded with a reference to the field.
+         * values are encoded using the static final field they come from. This field is then looked
+         * up via reflection when the value needs to be decoded.
          */
-        final Map<Object, Field> externalValues = new IdentityHashMap<>();
+        final Map<Object, Field> externalValues;
 
-        Encoder(List<Field> externalValues) {
-            objects.add(null);
-            objectToId.put(null, new ObjectID(0, null));
-            for (Field f : externalValues) {
-                addExternalValue(f);
-            }
+        public Encoder(List<Field> externalValueFields) {
+            this(gatherExternalValues(externalValueFields));
         }
 
-        private void addExternalValue(Field field) {
+        /**
+         * Use precomputed {@code externalValues} to avoid recomputing them.
+         */
+        public Encoder(Map<Object, Field> externalValues) {
+            objects.add(null);
+            objectToId.put(null, new ObjectID(0, null));
+            this.externalValues = externalValues;
+        }
+
+        public static Map<Object, Field> gatherExternalValues(List<Field> externalValueFields) {
+            Map<Object, Field> result = new IdentityHashMap<>();
+            for (Field f : externalValueFields) {
+                addExternalValue(result, f);
+            }
+            return result;
+        }
+
+        /**
+         * Gets a {@link ClassInfo} for encoding the fields of {@code declaringClass}.
+         * <p>
+         * A subclass can override this to enforce encoding invariants on classes or fields.
+         *
+         * @throws GraalError if an invariant is violated
+         */
+        protected ClassInfo makeClassInfo(Class<?> declaringClass) {
+            return ClassInfo.of(declaringClass);
+        }
+
+        private static void addExternalValue(Map<Object, Field> externalValues, Field field) {
             GraalError.guarantee(Modifier.isStatic(field.getModifiers()), "Field '%s' is not static. Only a static field can be used as known location for an instance.", field);
             Object value = readField(field, null);
             if (value == null) {
@@ -813,6 +843,10 @@ public class ObjectCopier {
                                 "%s and %s have different values: %s != %s", field, oldField, value, oldValue);
             }
 
+        }
+
+        public Map<Object, Field> getExternalValues() {
+            return Collections.unmodifiableMap(externalValues);
         }
 
         private String encodeMap(UnmodifiableEconomicMap<?, ?> map) {
@@ -859,8 +893,6 @@ public class ObjectCopier {
                     objectToId.put(field, id);
                     return id;
                 }
-                checkIllegalValue(Field.class, obj, objectPath, "Field type is used in object copying implementation");
-                checkIllegalValue(FieldIntrospection.class, obj, objectPath, "Graal metadata type cannot be copied");
 
                 objects.add(obj);
                 objectToId.put(obj, id);
@@ -872,6 +904,10 @@ public class ObjectCopier {
                     builtin.makeChildIds(this, obj, objectPath);
                     return id;
                 }
+
+                checkIllegalValue(Field.class, obj, objectPath, "Field type is used in object copying implementation");
+                checkIllegalValue(FieldIntrospection.class, obj, objectPath, "Graal metadata type cannot be copied");
+
                 if (clazz.isArray()) {
                     Class<?> componentType = clazz.getComponentType();
                     if (!componentType.isPrimitive()) {
@@ -886,18 +922,27 @@ public class ObjectCopier {
                     checkIllegalValue(LocationIdentity.class, obj, objectPath, "must come from a static field");
                     checkIllegalValue(HashSet.class, obj, objectPath, "hashes are typically not stable across VM executions");
 
-                    ClassInfo classInfo = classInfos.computeIfAbsent(clazz, ClassInfo::of);
+                    ClassInfo classInfo = makeClassInfo(clazz, objectPath);
                     for (Field f : classInfo.fields().values()) {
-                        makeId(f.getType(), objectPath.add(f.getName() + ":type"));
+                        String fieldName = f.getDeclaringClass().getSimpleName() + "#" + f.getName();
+                        makeId(f.getType(), objectPath.add(fieldName + ":type"));
                         if (!f.getType().isPrimitive()) {
                             Object fieldValue = readField(f, obj);
-                            makeId(fieldValue, objectPath.add(f.getName()));
+                            makeId(fieldValue, objectPath.add(fieldName));
                         }
                     }
                 }
 
             }
             return objectToId.get(obj);
+        }
+
+        private ClassInfo makeClassInfo(Class<?> clazz, ObjectPath objectPath) {
+            try {
+                return classInfos.computeIfAbsent(clazz, this::makeClassInfo);
+            } catch (Throwable e) {
+                throw new GraalError(e, "Error creating ClassInfo%n  Path: %s", objectPath);
+            }
         }
 
         private void encode(PrintStream out) {
@@ -973,6 +1018,79 @@ public class ObjectCopier {
             return f;
         } catch (NoSuchFieldException e) {
             throw GraalError.shouldNotReachHere(e);
+        }
+    }
+
+    public static List<Field> getExternalValueFields() throws IOException {
+        List<Field> externalValues = new ArrayList<>();
+        addImmutableCollectionsFields(externalValues);
+        addStaticFinalObjectFields(LocationIdentity.class, externalValues);
+
+        try (FileSystem fs = FileSystems.newFileSystem(URI.create("jrt:/"), Collections.emptyMap())) {
+            for (String module : List.of("jdk.internal.vm.ci", "jdk.graal.compiler", "com.oracle.graal.graal_enterprise")) {
+                Path top = fs.getPath("/modules/" + module);
+                try (Stream<Path> files = Files.find(top, Integer.MAX_VALUE, (path, attrs) -> attrs.isRegularFile())) {
+                    files.forEach(p -> {
+                        String fileName = p.getFileName().toString();
+                        if (fileName.endsWith(".class") && !fileName.equals("module-info.class")) {
+                            // Strip module prefix and convert to dotted form
+                            int nameCount = p.getNameCount();
+                            String className = p.subpath(2, nameCount).toString().replace('/', '.');
+                            // Strip ".class" suffix
+                            className = className.replace('/', '.').substring(0, className.length() - ".class".length());
+                            try {
+                                Class<?> graalClass = Class.forName(className);
+                                addStaticFinalObjectFields(graalClass, externalValues);
+                            } catch (ClassNotFoundException e) {
+                                throw new GraalError(e);
+                            }
+                        }
+                    });
+                }
+            }
+        }
+        return externalValues;
+    }
+
+    /**
+     * Adds the static, final, non-primitive fields of non-enum {@code declaringClass} to
+     * {@code fields}. In the process, the fields are made {@linkplain Field#setAccessible
+     * accessible}.
+     */
+    public static void addStaticFinalObjectFields(Class<?> declaringClass, List<Field> fields) {
+        if (Enum.class.isAssignableFrom(declaringClass)) {
+            return;
+        }
+        for (Field field : declaringClass.getDeclaredFields()) {
+            int fieldModifiers = field.getModifiers();
+            int fieldMask = Modifier.STATIC | Modifier.FINAL;
+            if ((fieldModifiers & fieldMask) != fieldMask) {
+                continue;
+            }
+            if (field.getType().isPrimitive()) {
+                continue;
+            }
+            field.setAccessible(true);
+            fields.add(field);
+        }
+    }
+
+    /**
+     * Adds the EMPTY* fields from {@code java.util.ImmutableCollections} to {@code fields}, making
+     * them {@linkplain Field#setAccessible accessible} in the process.
+     */
+    private static void addImmutableCollectionsFields(List<Field> fields) {
+        Class<?> c = List.of().getClass().getDeclaringClass();
+        GraalError.guarantee(c.getName().equals("java.util.ImmutableCollections"), "Incompatible ImmutableCollections class");
+        for (Field f : c.getDeclaredFields()) {
+            if (f.getName().startsWith("EMPTY")) {
+                int modifiers = f.getModifiers();
+                GraalError.guarantee(Modifier.isStatic(modifiers), "Expect %s to be static", f);
+                GraalError.guarantee(Modifier.isFinal(modifiers), "Expect %s to be final", f);
+                GraalError.guarantee(!f.getType().isPrimitive(), "Expect %s to be non-primitive", f);
+                f.setAccessible(true);
+                fields.add(f);
+            }
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -26,6 +26,12 @@
 
 package com.oracle.objectfile.elf.dwarf;
 
+import java.nio.ByteOrder;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Stream;
+
 import com.oracle.objectfile.BasicProgbitsSectionImpl;
 import com.oracle.objectfile.BuildDependency;
 import com.oracle.objectfile.LayoutDecision;
@@ -39,27 +45,22 @@ import com.oracle.objectfile.debugentry.FileEntry;
 import com.oracle.objectfile.debugentry.HeaderTypeEntry;
 import com.oracle.objectfile.debugentry.MethodEntry;
 import com.oracle.objectfile.debugentry.PrimitiveTypeEntry;
-import com.oracle.objectfile.debugentry.range.Range;
 import com.oracle.objectfile.debugentry.StructureTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
+import com.oracle.objectfile.debugentry.range.Range;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueInfo;
-import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.AbbrevCode;
 import com.oracle.objectfile.elf.ELFMachine;
 import com.oracle.objectfile.elf.ELFObjectFile;
+import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.AbbrevCode;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfExpressionOpcode;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfFlag;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfTag;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfVersion;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.graal.compiler.debug.DebugContext;
 
-import java.nio.ByteOrder;
-import java.nio.charset.StandardCharsets;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Stream;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * A class from which all DWARF debug sections inherit providing common behaviours.
@@ -575,26 +576,16 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
      * link-time heap base address.
      */
     protected int writeHeapLocationExprLoc(long offset, byte[] buffer, int p) {
-        return writeHeapLocationExprLoc(offset, dwarfSections.useHeapBase(), buffer, p);
-    }
-
-    /*
-     * Write a heap location expression preceded by a ULEB block size count as appropriate for an
-     * attribute with FORM exprloc. If useHeapBase is true the generated expression computes the
-     * location as a constant offset from the runtime heap base register. If useHeapBase is false it
-     * computes the location as a fixed, relocatable offset from the link-time heap base address.
-     */
-    protected int writeHeapLocationExprLoc(long offset, boolean useHeapBase, byte[] buffer, int p) {
         int pos = p;
         /*
          * We have to size the DWARF location expression by writing it to the scratch buffer so we
          * can write its size as a ULEB before the expression itself.
          */
-        int size = writeHeapLocation(offset, useHeapBase, null, 0);
+        int size = writeHeapLocation(offset, null, 0);
 
         /* Write the size and expression into the output buffer. */
         pos = writeULEB(size, buffer, pos);
-        return writeHeapLocation(offset, useHeapBase, buffer, pos);
+        return writeHeapLocation(offset, buffer, pos);
     }
 
     /*
@@ -610,7 +601,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         int lenPos = pos;
         // write dummy length
         pos = writeShort(len, buffer, pos);
-        pos = writeHeapLocation(offset, dwarfSections.useHeapBase(), buffer, pos);
+        pos = writeHeapLocation(offset, buffer, pos);
         pos = writeExprOpcode(DwarfExpressionOpcode.DW_OP_stack_value, buffer, pos);
         // backpatch length
         len = (short) (pos - (lenPos + 2));
@@ -624,8 +615,8 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
      * heap base register. If useHeapBase is false it computes the location as a fixed, relocatable
      * offset from the link-time heap base address.
      */
-    protected int writeHeapLocation(long offset, boolean useHeapBase, byte[] buffer, int p) {
-        if (useHeapBase) {
+    protected int writeHeapLocation(long offset, byte[] buffer, int p) {
+        if (dwarfSections.useHeapBase()) {
             return writeHeapLocationBaseRelative(offset, buffer, p);
         } else {
             return writeHeapLocationRelocatable(offset, buffer, p);

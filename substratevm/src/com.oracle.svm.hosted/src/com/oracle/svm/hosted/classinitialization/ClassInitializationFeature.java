@@ -75,8 +75,8 @@ public class ClassInitializationFeature implements InternalFeature {
     public static void processClassInitializationOptions(ClassInitializationSupport initializationSupport) {
         initializeNativeImagePackagesAtBuildTime(initializationSupport);
         ClassInitializationOptions.ClassInitialization.getValue().getValuesWithOrigins().forEach(entry -> {
-            for (String optionValue : entry.getLeft().split(",")) {
-                processClassInitializationOption(initializationSupport, optionValue, entry.getRight());
+            for (String optionValue : entry.value().split(",")) {
+                processClassInitializationOption(initializationSupport, optionValue, entry.origin());
             }
         });
     }
@@ -183,11 +183,11 @@ public class ClassInitializationFeature implements InternalFeature {
 
             msg += classInitializationSupport.objectInstantiationTraceMessage(obj, "2) ", culprit -> {
                 if (culprit == null) {
-                    return "If if it is not intended that objects of type '" + typeName + "' are persisted in the image heap, examine the stack trace and use " +
+                    return "If it is not intended that objects of type '" + typeName + "' are persisted in the image heap, examine the stack trace and use " +
                                     SubstrateOptionsParser.commandArgument(ClassInitializationOptions.ClassInitialization, "<culprit>", "initialize-at-run-time", true, true) +
                                     "to prevent instantiation of this object." + System.lineSeparator();
                 } else {
-                    return "If if it is not intended that objects of type '" + typeName + "' are persisted in the image heap, examine the stack trace and use " +
+                    return "If it is not intended that objects of type '" + typeName + "' are persisted in the image heap, examine the stack trace and use " +
                                     SubstrateOptionsParser.commandArgument(ClassInitializationOptions.ClassInitialization, culprit, "initialize-at-run-time", true, true) +
                                     "to prevent instantiation of the culprit object.";
                 }

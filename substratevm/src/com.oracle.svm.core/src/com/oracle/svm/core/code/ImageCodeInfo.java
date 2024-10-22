@@ -41,7 +41,6 @@ import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
@@ -87,27 +86,21 @@ public class ImageCodeInfo implements MultiLayeredImageSingleton, UnsavedSinglet
 
     @Uninterruptible(reason = "Executes during isolate creation.")
     CodeInfo prepareCodeInfo() {
-        if (!ImageLayerBuildingSupport.buildingImageLayer()) {
-            ImageCodeInfo imageCodeInfo = CodeInfoTable.getImageCodeCache();
-            CodeInfoImpl codeInfo = ImageCodeInfoStorage.get();
-            return ImageCodeInfo.prepareCodeInfo0(imageCodeInfo, codeInfo, WordFactory.nullPointer());
-        } else {
-            ImageCodeInfo[] imageCodeInfos = MultiLayeredImageSingleton.getAllLayers(ImageCodeInfo.class);
-            ImageCodeInfoStorage[] runtimeCodeInfos = MultiLayeredImageSingleton.getAllLayers(ImageCodeInfoStorage.class);
-            int size = imageCodeInfos.length;
-            for (int i = 0; i < size; i++) {
-                ImageCodeInfo imageCodeInfo = imageCodeInfos[i];
-                CodeInfoImpl codeInfoImpl = runtimeCodeInfos[i].getData();
-                CodeInfoImpl nextCodeInfoImpl = i + 1 < size ? runtimeCodeInfos[i + 1].getData() : WordFactory.nullPointer();
+        ImageCodeInfo[] imageCodeInfos = MultiLayeredImageSingleton.getAllLayers(ImageCodeInfo.class);
+        ImageCodeInfoStorage[] runtimeCodeInfos = MultiLayeredImageSingleton.getAllLayers(ImageCodeInfoStorage.class);
+        int size = imageCodeInfos.length;
+        for (int i = 0; i < size; i++) {
+            ImageCodeInfo imageCodeInfo = imageCodeInfos[i];
+            CodeInfoImpl codeInfoImpl = runtimeCodeInfos[i].getData();
+            CodeInfoImpl nextCodeInfoImpl = i + 1 < size ? runtimeCodeInfos[i + 1].getData() : WordFactory.nullPointer();
 
-                ImageCodeInfo.prepareCodeInfo0(imageCodeInfo, codeInfoImpl, nextCodeInfoImpl);
-            }
-            return runtimeCodeInfos[0].getData();
+            ImageCodeInfo.prepareCodeInfo0(imageCodeInfo, codeInfoImpl, nextCodeInfoImpl);
         }
+        return runtimeCodeInfos[0].getData();
     }
 
     @Uninterruptible(reason = "Executes during isolate creation.")
-    private static CodeInfo prepareCodeInfo0(ImageCodeInfo imageCodeInfo, CodeInfoImpl infoImpl, CodeInfo next) {
+    private static void prepareCodeInfo0(ImageCodeInfo imageCodeInfo, CodeInfoImpl infoImpl, CodeInfo next) {
         assert infoImpl.getCodeStart().isNull() : "already initialized";
 
         infoImpl.setObjectFields(NonmovableArrays.fromImageHeap(imageCodeInfo.objectFields));
@@ -128,8 +121,6 @@ public class ImageCodeInfo implements MultiLayeredImageSingleton, UnsavedSinglet
         infoImpl.setMethodTableFirstId(imageCodeInfo.methodTableFirstId);
         infoImpl.setIsAOTImageCode(true);
         infoImpl.setNextImageCodeInfo(next);
-
-        return infoImpl;
     }
 
     /**

@@ -26,11 +26,10 @@ package com.oracle.svm.core.graal.code;
 
 import java.util.List;
 
-import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.graph.NodeSourcePosition;
 
-public final class SubstrateCompilationResult extends CompilationResult {
+public final class SubstrateCompilationResult extends SharedCompilationResult {
 
     private List<NodeSourcePosition> deoptimizationSourcePositions;
 

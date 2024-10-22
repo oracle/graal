@@ -36,7 +36,6 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.spi.LocaleServiceProvider;
 
-import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -46,14 +45,21 @@ import com.oracle.svm.util.ReflectionUtil;
 import sun.util.locale.provider.LocaleProviderAdapter;
 
 public class OptimizedLocalizationSupport extends LocalizationSupport {
-    public final Map<Pair<Class<? extends LocaleServiceProvider>, Locale>, LocaleProviderAdapter> adaptersByClass = new HashMap<>();
+
+    public record AdaptersByClassKey(Class<? extends LocaleServiceProvider> providerClass, Locale candidateLocale) {
+    }
+
+    public final Map<AdaptersByClassKey, LocaleProviderAdapter> adaptersByClass = new HashMap<>();
     public final Map<LocaleProviderAdapter.Type, LocaleProviderAdapter> adaptersByType = new HashMap<>();
     public final Map<Class<? extends LocaleServiceProvider>, Object> providerPools = new HashMap<>();
 
-    final Map<Pair<String, Locale>, ResourceBundle> resourceBundles = new HashMap<>();
+    private record BundleCacheKey(String bundleName, Locale locale) {
+    }
 
-    public OptimizedLocalizationSupport(Locale defaultLocale, Set<Locale> locales, Charset defaultCharset) {
-        super(defaultLocale, locales, defaultCharset);
+    final Map<BundleCacheKey, ResourceBundle> resourceBundles = new HashMap<>();
+
+    public OptimizedLocalizationSupport(Set<Locale> locales, Charset defaultCharset) {
+        super(locales, defaultCharset);
     }
 
     @Override
@@ -69,7 +75,7 @@ public class OptimizedLocalizationSupport extends LocalizationSupport {
     public ResourceBundle getCached(String baseName, Locale locale) throws MissingResourceException {
         /*- Try out the whole candidate chain as JVM does */
         for (Locale candidateLocale : control.getCandidateLocales(baseName, locale)) {
-            ResourceBundle result = resourceBundles.get(Pair.create(baseName, candidateLocale));
+            ResourceBundle result = resourceBundles.get(new BundleCacheKey(baseName, candidateLocale));
             if (result != null) {
                 return result;
             }
@@ -103,7 +109,7 @@ public class OptimizedLocalizationSupport extends LocalizationSupport {
     @Override
     public void prepareBundle(String bundleName, ResourceBundle bundle, Function<String, Optional<Module>> findModule, Locale locale, boolean jdkBundle) {
         bundle.keySet();
-        this.resourceBundles.put(Pair.create(bundleName, locale), bundle);
+        this.resourceBundles.put(new BundleCacheKey(bundleName, locale), bundle);
     }
 
     private static Locale extractLocale(Class<?> bundleClass) {

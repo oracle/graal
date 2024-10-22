@@ -31,6 +31,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import com.oracle.svm.core.jdk.JDKLatest;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 
 import jdk.internal.foreign.MemorySessionImpl;
 
@@ -39,6 +40,8 @@ import jdk.internal.foreign.MemorySessionImpl;
  * <p>
  * It seems like this could be easily supported once thread-local handshakes are supported.
  */
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+15/src/java.base/share/classes/jdk/internal/misc/X-ScopedMemoryAccess-bin.java.template")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+15/src/java.base/share/classes/jdk/internal/misc/X-ScopedMemoryAccess.java.template")
 @TargetClass(className = "jdk.internal.misc.ScopedMemoryAccess", onlyWith = ForeignFunctionsEnabled.class)
 public final class Target_jdk_internal_misc_ScopedMemoryAccess {
     @Substitute

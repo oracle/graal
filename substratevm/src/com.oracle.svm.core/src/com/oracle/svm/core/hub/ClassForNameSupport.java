@@ -26,6 +26,7 @@ package com.oracle.svm.core.hub;
 
 import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrationErrors;
 
+import java.util.EnumSet;
 import java.util.Objects;
 
 import org.graalvm.collections.EconomicMap;
@@ -37,19 +38,28 @@ import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.configure.RuntimeConditionSet;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 
 @AutomaticallyRegisteredImageSingleton
-public final class ClassForNameSupport {
+public final class ClassForNameSupport implements MultiLayeredImageSingleton, UnsavedSingleton {
 
     public static ClassForNameSupport singleton() {
         return ImageSingletons.lookup(ClassForNameSupport.class);
     }
 
-    /** The map used to collect registered classes. */
+    /**
+     * The map used to collect registered classes.
+     */
     private final EconomicMap<String, ConditionalRuntimeValue<Object>> knownClasses = ImageHeapMap.create();
+    /**
+     * The map used to collect unsafe allocated classes.
+     */
+    private final EconomicMap<Class<?>, RuntimeConditionSet> unsafeInstantiatedClasses = ImageHeapMap.create();
 
     private static final Object NEGATIVE_QUERY = new Object();
 
@@ -71,11 +81,11 @@ public final class ClassForNameSupport {
 
             /* TODO: Remove workaround once GR-53985 is implemented */
             if (currentValue instanceof Class<?> currentClazz && clazz.getClassLoader() != currentClazz.getClassLoader()) {
-                /* Ensure runtime lookup of GuestGraalClassLoader classes */
-                if (isGuestGraalClass(currentClazz)) {
+                /* Ensure runtime lookup of LibGraalClassLoader classes */
+                if (isLibGraalClass(currentClazz)) {
                     return;
                 }
-                if (isGuestGraalClass(clazz)) {
+                if (isLibGraalClass(clazz)) {
                     currentValue = null;
                 }
             }
@@ -105,12 +115,12 @@ public final class ClassForNameSupport {
         }
     }
 
-    private static boolean isGuestGraalClass(Class<?> clazz) {
+    private static boolean isLibGraalClass(Class<?> clazz) {
         var loader = clazz.getClassLoader();
         if (loader == null) {
             return false;
         }
-        return "GuestGraalClassLoader".equals(loader.getName());
+        return "LibGraalClassLoader".equals(loader.getName());
     }
 
     public static ConditionalRuntimeValue<Object> updateConditionalValue(ConditionalRuntimeValue<Object> existingConditionalValue, Object newValue,
@@ -138,6 +148,16 @@ public final class ClassForNameSupport {
         updateCondition(condition, className, NEGATIVE_QUERY);
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void registerUnsafeAllocated(ConfigurationCondition condition, Class<?> clazz) {
+        if (!clazz.isArray()) {
+            var conditionSet = unsafeInstantiatedClasses.putIfAbsent(clazz, RuntimeConditionSet.createHosted(condition));
+            if (conditionSet != null) {
+                conditionSet.addCondition(condition);
+            }
+        }
+    }
+
     private void updateCondition(ConfigurationCondition condition, String className, Object value) {
         synchronized (knownClasses) {
             var runtimeConditions = knownClasses.putIfAbsent(className, new ConditionalRuntimeValue<>(RuntimeConditionSet.createHosted(condition), value));
@@ -147,7 +167,7 @@ public final class ClassForNameSupport {
         }
     }
 
-    public Class<?> forNameOrNull(String className, ClassLoader classLoader) {
+    public static Class<?> forNameOrNull(String className, ClassLoader classLoader) {
         try {
             return forName(className, classLoader, true);
         } catch (ClassNotFoundException e) {
@@ -155,23 +175,17 @@ public final class ClassForNameSupport {
         }
     }
 
-    public Class<?> forName(String className, ClassLoader classLoader) throws ClassNotFoundException {
+    public static Class<?> forName(String className, ClassLoader classLoader) throws ClassNotFoundException {
         return forName(className, classLoader, false);
     }
 
-    private Class<?> forName(String className, ClassLoader classLoader, boolean returnNullOnException) throws ClassNotFoundException {
+    private static Class<?> forName(String className, ClassLoader classLoader, boolean returnNullOnException) throws ClassNotFoundException {
         if (className == null) {
             return null;
         }
-        var conditional = knownClasses.get(className);
-        Object result = conditional == null ? null : conditional.getValue();
-        if (result == NEGATIVE_QUERY || className.endsWith("[]")) {
-            /* Querying array classes with their "TypeName[]" name always throws */
-            result = new ClassNotFoundException(className);
-        }
-        if (result == null) {
-            result = PredefinedClassesSupport.getLoadedForNameOrNull(className, classLoader);
-        }
+        ClassForNameSupport classForNameSupport = singleton();
+        Object result = classForNameSupport.getSingletonData(classForNameSupport, MultiLayeredImageSingleton.getAllLayers(ClassForNameSupport.class),
+                        singleton -> singleton.forName0(className, classLoader));
         // Note: for non-predefined classes, we (currently) don't need to check the provided loader
         // TODO rewrite stack traces (GR-42813)
         if (result instanceof Class<?>) {
@@ -200,17 +214,50 @@ public final class ClassForNameSupport {
         throw VMError.shouldNotReachHere("Class.forName result should be Class, ClassNotFoundException or Error: " + result);
     }
 
+    private Object forName0(String className, ClassLoader classLoader) {
+        var conditional = knownClasses.get(className);
+        Object result = conditional == null ? null : conditional.getValue();
+        if (result == NEGATIVE_QUERY || className.endsWith("[]")) {
+            /* Querying array classes with their "TypeName[]" name always throws */
+            result = new ClassNotFoundException(className);
+        }
+        if (result == null) {
+            result = PredefinedClassesSupport.getLoadedForNameOrNull(className, classLoader);
+        }
+        return result;
+    }
+
     public int count() {
         return knownClasses.size();
     }
 
-    public RuntimeConditionSet getConditionFor(Class<?> jClass) {
+    public static RuntimeConditionSet getConditionFor(Class<?> jClass) {
         Objects.requireNonNull(jClass);
-        ConditionalRuntimeValue<Object> conditionalClass = knownClasses.get(jClass.getName());
+        String jClassName = jClass.getName();
+        ClassForNameSupport classForNameSupport = singleton();
+        ConditionalRuntimeValue<Object> conditionalClass = classForNameSupport.getSingletonData(classForNameSupport, MultiLayeredImageSingleton.getAllLayers(ClassForNameSupport.class),
+                        singleton -> singleton.knownClasses.get(jClassName));
         if (conditionalClass == null) {
             return RuntimeConditionSet.unmodifiableEmptySet();
         } else {
             return conditionalClass.getConditions();
         }
+    }
+
+    /**
+     * Checks whether {@code hub} can be instantiated with {@code Unsafe.allocateInstance}. Note
+     * that arrays can't be instantiated and this function will always return false for array types.
+     */
+    public static boolean canUnsafeInstantiateAsInstance(DynamicHub hub) {
+        Class<?> clazz = DynamicHub.toClass(hub);
+        ClassForNameSupport classForNameSupport = singleton();
+        RuntimeConditionSet conditionSet = classForNameSupport.getSingletonData(classForNameSupport, MultiLayeredImageSingleton.getAllLayers(ClassForNameSupport.class),
+                        singleton -> singleton.unsafeInstantiatedClasses.get(clazz));
+        return conditionSet != null && conditionSet.satisfied();
+    }
+
+    @Override
+    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+        return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
     }
 }

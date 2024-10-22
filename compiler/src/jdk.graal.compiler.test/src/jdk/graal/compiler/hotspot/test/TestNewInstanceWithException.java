@@ -60,16 +60,15 @@ import jdk.graal.compiler.nodes.java.NewInstanceWithExceptionNode;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.serviceprovider.GraalUnsafeAccess;
 import jdk.graal.compiler.test.SubprocessUtil;
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.code.InvalidInstalledCodeException;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import sun.misc.Unsafe;
 
 public class TestNewInstanceWithException extends SubprocessTest {
 
-    static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+    static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     static final boolean TRACE_DEOPT = false;
 

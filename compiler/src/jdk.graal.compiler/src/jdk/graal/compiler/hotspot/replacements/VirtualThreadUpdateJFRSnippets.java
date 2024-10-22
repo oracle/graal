@@ -64,8 +64,8 @@ import jdk.vm.ci.code.Register;
  * Snippet for updating JFR thread local data on {@code Thread#setCurrentThread} events.
  */
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/aaaa86b57172d45d1126c50efc270c6e49aba7a5/src/hotspot/share/opto/library_call.cpp#L3514-L3640",
-          sha1 = "1f980401f5d7d9a363577635fd57fc1e24505d91")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/dcac4b0a532f2ca6cb374da7ece331e8266ab351/src/hotspot/share/opto/library_call.cpp#L3546-L3672",
+          sha1 = "564050736d9601fe43c16d9c393706b4e67f05d2")
 // @formatter:on
 public class VirtualThreadUpdateJFRSnippets implements Snippets {
 

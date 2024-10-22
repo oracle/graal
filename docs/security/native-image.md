@@ -4,6 +4,7 @@ toc_group: security-guide
 link_title: Security Considerations in Native Image
 permalink: /security-guide/native-image/
 ---
+
 # Security Considerations in Native Image
 
 The `native-image` builder generates a snapshot of an application after startup and bundles it in a binary executable.
@@ -23,8 +24,9 @@ Developers should run the `native-image` builder in a dedicated environment, suc
 
 ## Software Bill of Materials
 
-GraalVM Native Image can embed a Software Bill of Materials (SBOM) at build time to detect any libraries that may be susceptible to known security vulnerabilities.
-Native Image provides the `--enable-sbom` option to embed an SBOM into a native executable (only available in Oracle GraalVM).
+GraalVM Native Image can assemble a Software Bill of Materials (SBOM) at build time to detect any libraries that may be susceptible to known security vulnerabilities.
+Native Image provides the `--enable-sbom` option to embed an SBOM into a native executable (only available in Oracle GraalVM). 
+In addition to being embedded, the SBOM can be added to the classpath or exported as a JSON by using `--enable-sbom=classpath,export`. 
 
 The CycloneDX format is supported and the default. 
 To embed a CycloneDX SBOM into a native executable, pass the `--enable-sbom` option to the `native-image` command. 
@@ -86,7 +88,7 @@ This functionality should not be used on native image executables from unknown o
 ## Java serialization in Native Image
 
 Native Image supports Serialization to help users deserialize the constructors for classes, contained in a native executable.
-Unless picked up by native image analysis automatically, [these classes have to be prespecified](../reference-manual/native-image/Reflection.md#manual-configuration), as classes not contained in a native executable cannot be deserialized.
+Unless picked up by native image analysis automatically, [these classes have to be prespecified](../reference-manual/native-image/ReachabilityMetadata.md#reflection), as classes not contained in a native executable cannot be deserialized.
 Native Image cannot prevent exploitation of deserialization vulnerabilities in isolation.
 The [serialization and deserialization Secure Coding Guidelines for Java SE](https://www.oracle.com/java/technologies/javase/seccodeguide.html#8) should be followed.
 
@@ -108,5 +110,5 @@ Attempting to set a security manager will trigger a runtime error.
 ## Related Documentation
 
 - [Security Guide](security-guide.md)
-- [Polyglot Sandboxing](polyglot-sandbox.md)
+- [Sandboxing](polyglot-sandbox.md)
 - [Jipher JCE with Native Image](JipherJCE.md)

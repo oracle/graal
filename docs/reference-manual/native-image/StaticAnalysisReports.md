@@ -58,7 +58,32 @@ For invokes of inline methods the `<invoke-bci>` is a list of bci values, separa
 
 ### CSV Format
 When using the `CSV` format a set of files containing raw data for methods and their relationships is generated.
-The aim of these files is to enable this raw data to be easily imported into a graph database.
+In particular, three files are generated&mdash;they represent methods, method invocations, and call targets.
+The `call_tree_methods_*.csv` has the following columns:
+
+* `Id`: The unique identifier of this method.
+* `Name`: The name of the method.
+* `Type`: The declaring type.
+* `Parameters`: A space-separated list of parameter types.
+* `Return`: The return type.
+* `Display`: A shortened version of the qualified name of the method, useful for visualizations.
+* `Flags`: Other metadata such as visibility modifiers, synchronization, and so on.
+* `IsEntryPoint`: If `true`, the method is an entry point (root method) in the call graph, `false` otherwise.
+
+The `call_tree_invokes_*.csv` has the following columns:
+
+* `Id`: The unique identifier of the invocation.
+* `MethodId`: The identifier of the method in which the invocation is located.
+* `BytecodeIndexes`: The bytecode index of the invocation. It can be a chain of bytecode indexes connected via `->` if
+  the method was inlined.
+* `TargetId`: The id of the target method.
+* `IsDirect`: If `true`, the invocation is direct, `false` otherwise.
+
+The `call_tree_targets_*.csv`  has two columns: `InvokeId` and `TargetId`, connecting invocations with their call
+targets.
+
+The aim of these files is to enable the raw data to be easily processed by custom scripts or imported into a graph
+database.
 A graph database can provide the following functionality:
 
 * Sophisticated graphical visualization of the call tree graph that provides a different perspective compared to text-based formats.
@@ -68,7 +93,7 @@ A graph database can provide the following functionality:
 The process to import the files into a graph database is specific to each database.
 Please follow the instructions provided by the graph database provider.
 
-##  Object tree
+##  Object Tree
 The object tree is an exhaustive expansion of the objects included in the native binary heap.
 The tree is obtained by a depth first walk of the native binary heap object graph.
 It is enabled using the `-H:+PrintImageObjectTree` option.

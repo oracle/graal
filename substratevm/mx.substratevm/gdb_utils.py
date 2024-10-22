@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
 # Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
@@ -29,7 +29,7 @@
 import gdb
 import re
 import sys
-import os
+
 
 # set various gdb operating modes to desired setting
 
@@ -49,12 +49,13 @@ def configure_gdb():
 # execute a gdb command and return the resulting output as a string
 
 def execute(command):
-    print('(gdb) %s'%(command))
+    print(f'(gdb) {command}')
     try:
         return gdb.execute(command, to_string=True)
     except gdb.error as e:
         print(e)
         sys.exit(1)
+
 
 # a variety of useful regular expression patterns
 
@@ -68,10 +69,12 @@ package_pattern = '[a-z/]+'
 package_file_pattern = '[a-zA-Z0-9_/]+\\.java'
 varname_pattern = '[a-zA-Z0-9_]+'
 wildcard_pattern = '.*'
-no_arg_values_pattern = "\(\)"
-arg_values_pattern = "\(([a-zA-Z0-9$_]+=[a-zA-Z0-9$_<> ]+)(, [a-zA-Z0-9$_]+=[a-zA-Z0-9$_<> ]+)*\)"
-no_param_types_pattern = "\(\)"
-param_types_pattern = "\(([a-zA-Z0-9[.*$_\]]+)(, [a-zA-Z0-9[.*$_\]]+)*\)"
+no_arg_values_pattern = r"\(\)"
+arg_values_pattern = r"\(([a-zA-Z0-9$_]+=[a-zA-Z0-9$_<> ]+)(, [a-zA-Z0-9$_]+=[a-zA-Z0-9$_<> ]+)*\)"
+no_param_types_pattern = r"\(\)"
+param_types_pattern = r"\(([a-zA-Z0-9[.*$_\]]+)(, [a-zA-Z0-9[.*$_\]]+)*\)"
+compressed_pattern = r"_z_\."
+
 
 # A helper class which checks that a sequence of lines of output
 # from a gdb command matches a sequence of per-line regular
@@ -104,15 +107,15 @@ class Checker:
         num_rexps = len(rexps)
         line_idx = 0
         matches = []
-        for i in range(0, (num_rexps)):
+        for i in range(0, num_rexps):
             rexp = rexps[i]
             match = None
             while line_idx < num_lines and match is None:
                 line = lines[line_idx]
                 match = rexp.match(line)
-                if  match is None:
+                if match is None:
                     if not skip_fails:
-                        print('Checker %s: match %d failed at line %d %s\n'%(self.name, i, line_idx, line))
+                        print(f'Checker {self.name}: match {i:d} failed at line {line_idx:d} {line}\n')
                         print(self)
                         print(text)
                         sys.exit(1)
@@ -120,7 +123,7 @@ class Checker:
                     matches.append(match)
                 line_idx += 1
         if len(matches) < num_rexps:
-            print('Checker %s: insufficient matching lines %d for regular expressions %d'%(self.name, len(matches), num_rexps))
+            print(f'Checker {self.name}: insufficient matching lines {len(matches):d} for regular expressions {num_rexps:d}')
             print(self)
             print(text)
             sys.exit(1)
@@ -130,25 +133,18 @@ class Checker:
     # Format a Checker as a string
     def __str__(self):
         rexps = self.rexps
-        result = 'Checker %s '%(self.name)
+        result = f'Checker {self.name} '
         result += '{\n'
         for rexp in rexps:
-            result += '  %s\n'%(rexp)
+            result += f'  {rexp}\n'
         result += '}\n'
         return result
 
+
 def match_gdb_version():
     # obtain the gdb version
-    # n.b. we can only test printing in gdb 10.1 upwards
-    exec_string=execute("show version")
+    exec_string = execute("show version")
     checker = Checker('show version',
-                      r"GNU gdb %s (%s)\.(%s)%s"%(wildcard_pattern, digits_pattern, digits_pattern, wildcard_pattern))
+                      fr"GNU gdb {wildcard_pattern} ({digits_pattern})\.({digits_pattern}){wildcard_pattern}")
     matches = checker.check(exec_string, skip_fails=False)
     return matches[0]
-
-def check_print_data(major, minor):
-    # printing does not always work on gdb 10.x or earlier
-    can_print_data = major > 10
-    if os.environ.get('GDB_CAN_PRINT', '') == 'True':
-        can_print_data = True
-    return can_print_data

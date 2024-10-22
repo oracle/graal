@@ -43,7 +43,13 @@
 #include <type_traits>
 
 #ifndef NATIVE_IMAGE
+
+namespace svm_container {
+
 class oopDesc;
+
+} // namespace svm_container
+
 #endif // !NATIVE_IMAGE
 
 // Defaults for macros that might be defined per compiler.
@@ -189,6 +195,9 @@ class oopDesc;
 #endif  // _LP64
 
 // Convert pointer to intptr_t, for use in printing pointers.
+
+namespace svm_container {
+
 inline intptr_t p2i(const volatile void* p) {
   return (intptr_t) p;
 }
@@ -230,9 +239,9 @@ FORBID_C_FUNCTION(void* reallocf(void *ptr, size_t size), "don't use");
 const int LogBytesPerShort   = 1;
 const int LogBytesPerInt     = 2;
 #ifdef _LP64
-const int LogBytesPerWord    = 3;
+constexpr int LogBytesPerWord    = 3;
 #else
-const int LogBytesPerWord    = 2;
+constexpr int LogBytesPerWord    = 2;
 #endif
 const int LogBytesPerLong    = 3;
 
@@ -241,16 +250,16 @@ const int BytesPerInt        = 1 << LogBytesPerInt;
 const int BytesPerWord       = 1 << LogBytesPerWord;
 const int BytesPerLong       = 1 << LogBytesPerLong;
 
-const int LogBitsPerByte     = 3;
+constexpr int LogBitsPerByte     = 3;
 const int LogBitsPerShort    = LogBitsPerByte + LogBytesPerShort;
 const int LogBitsPerInt      = LogBitsPerByte + LogBytesPerInt;
-const int LogBitsPerWord     = LogBitsPerByte + LogBytesPerWord;
+constexpr int LogBitsPerWord     = LogBitsPerByte + LogBytesPerWord;
 const int LogBitsPerLong     = LogBitsPerByte + LogBytesPerLong;
 
 const int BitsPerByte        = 1 << LogBitsPerByte;
 const int BitsPerShort       = 1 << LogBitsPerShort;
 const int BitsPerInt         = 1 << LogBitsPerInt;
-const int BitsPerWord        = 1 << LogBitsPerWord;
+constexpr int BitsPerWord        = 1 << LogBitsPerWord;
 const int BitsPerLong        = 1 << LogBitsPerLong;
 
 const int WordAlignmentMask  = (1 << LogBytesPerWord) - 1;
@@ -308,6 +317,9 @@ inline size_t heap_word_size(size_t byte_size) {
 
 inline jfloat jfloat_cast(jint x);
 inline jdouble jdouble_cast(jlong x);
+
+} // namespace svm_container
+
 #endif // !NATIVE_IMAGE
 
 //-------------------------------------------
@@ -316,6 +328,9 @@ inline jdouble jdouble_cast(jlong x);
 // Build a 64bit integer constant
 #define CONST64(x)  (x ## LL)
 #define UCONST64(x) (x ## ULL)
+
+
+namespace svm_container {
 
 const jlong min_jlong = CONST64(0x8000000000000000);
 const jlong max_jlong = CONST64(0x7fffffffffffffff);
@@ -346,6 +361,7 @@ const int NANOUNITS_PER_MILLIUNIT = NANOUNITS / MILLIUNITS;
 
 const jlong NANOSECS_PER_SEC      = CONST64(1000000000);
 const jint  NANOSECS_PER_MILLISEC = 1000000;
+
 
 #ifndef NATIVE_IMAGE
 // Unit conversion functions
@@ -397,8 +413,13 @@ inline T byte_size_in_proper_unit(T s) {
 #define PROPERFMT             SIZE_FORMAT "%s"
 #define PROPERFMTARGS(s)      byte_size_in_proper_unit(s), proper_unit_for_byte_size(s)
 
+// Printing a range, with start and bytes given
 #define RANGEFMT              "[" PTR_FORMAT " - " PTR_FORMAT "), (" SIZE_FORMAT " bytes)"
 #define RANGEFMTARGS(p1, size) p2i(p1), p2i(p1 + size), size
+
+// Printing a range, with start and end given
+#define RANGE2FMT             "[" PTR_FORMAT " - " PTR_FORMAT "), (" SIZE_FORMAT " bytes)"
+#define RANGE2FMTARGS(p1, p2) p2i(p1), p2i(p2), ((uintptr_t)p2 - (uintptr_t)p1)
 
 inline const char* exact_unit_for_byte_size(size_t s) {
 #ifdef _LP64
@@ -556,7 +577,13 @@ typedef jshort s2;
 typedef jint   s4;
 typedef jlong  s8;
 
+
+} // namespace svm_container
+
 #ifndef NATIVE_IMAGE
+
+namespace svm_container {
+
 const jbyte min_jbyte = -(1 << 7);       // smallest jbyte
 const jbyte max_jbyte = (1 << 7) - 1;    // largest jbyte
 const jshort min_jshort = -(1 << 15);    // smallest jshort
@@ -605,6 +632,9 @@ extern uint64_t OopEncodingHeapMax;
 
 // Machine dependent stuff
 
+
+} // namespace svm_container
+
 #include CPU_HEADER(globalDefinitions)
 
 // The maximum size of the code cache.  Can be overridden by targets.
@@ -622,11 +652,23 @@ extern uint64_t OopEncodingHeapMax;
 // by Luc Maranget, Susmit Sarkar and Peter Sewell, INRIA/Cambridge)
 #ifdef CPU_MULTI_COPY_ATOMIC
 // Not needed.
+
+namespace svm_container {
+
 const bool support_IRIW_for_not_multiple_copy_atomic_cpu = false;
+
+} // namespace svm_container
+
 #else
 // From all non-multi-copy-atomic architectures, only PPC64 supports IRIW at the moment.
 // Final decision is subject to JEP 188: Java Memory Model Update.
+
+namespace svm_container {
+
 const bool support_IRIW_for_not_multiple_copy_atomic_cpu = PPC64_ONLY(true) NOT_PPC64(false);
+
+} // namespace svm_container
+
 #endif
 
 // The expected size in bytes of a cache line.
@@ -647,6 +689,9 @@ const bool support_IRIW_for_not_multiple_copy_atomic_cpu = PPC64_ONLY(true) NOT_
 // All fabs() callers should call this function instead, which will implicitly
 // convert the operand to double, avoiding a dependency on __fabsf which
 // doesn't exist in early versions of Solaris 8.
+
+namespace svm_container {
+
 inline double fabsd(double value) {
   return fabs(value);
 }
@@ -1064,8 +1109,8 @@ const intptr_t badDispHeaderOSR   = 0xDEAD05A0;             // value to fill unu
 
 // (These must be implemented as #defines because C++ compilers are
 // not obligated to inline non-integral constants!)
-#define       badAddress        ((address)::badAddressVal)
-#define       badHeapWord       (::badHeapWordVal)
+#define       badAddress        ((address)svm_container::badAddressVal)
+#define       badHeapWord       (svm_container::badHeapWordVal)
 
 // Default TaskQueue size is 16K (32-bit) or 128K (64-bit)
 const uint TASKQUEUE_SIZE = (NOT_LP64(1<<14) LP64_ONLY(1<<17));
@@ -1113,6 +1158,9 @@ inline intptr_t bitfield(intptr_t x, int start_bit_no, int field_length) {
 #ifdef min
 #undef min
 #endif
+
+} // namespace svm_container
+
 #endif // !NATIVE_IMAGE
 
 // It is necessary to use templates here. Having normal overloaded
@@ -1120,6 +1168,9 @@ inline intptr_t bitfield(intptr_t x, int start_bit_no, int field_length) {
 // and 64-bit overloaded functions, which does not work, and having
 // explicitly-typed versions of these routines (i.e., MAX2I, MAX2L)
 // will be even more error-prone than macros.
+
+namespace svm_container {
+
 template<class T> constexpr T MAX2(T a, T b)           { return (a > b) ? a : b; }
 template<class T> constexpr T MIN2(T a, T b)           { return (a < b) ? a : b; }
 #ifndef NATIVE_IMAGE
@@ -1375,5 +1426,8 @@ std::add_rvalue_reference_t<T> declval() noexcept;
 // handled.
 bool IEEE_subnormal_handling_OK();
 #endif // !NATIVE_IMAGE
+
+
+} // namespace svm_container
 
 #endif // SHARE_UTILITIES_GLOBALDEFINITIONS_HPP

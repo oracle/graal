@@ -25,9 +25,21 @@
 package com.oracle.svm.hosted.heap;
 
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CLASS_ID_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.C_ENTRY_POINT_LITERAL_CODE_POINTER;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.HUB_IDENTITY_HASH_CODE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IMAGE_SINGLETON_KEYS;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IMAGE_SINGLETON_OBJECTS;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INFO_CLASS_INITIALIZER_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INFO_HAS_INITIALIZER_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INFO_IS_BUILD_TIME_INITIALIZED_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INFO_IS_INITIALIZED_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INFO_IS_IN_ERROR_STATE_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INFO_IS_LINKED_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INFO_IS_TRACKED_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_FAILED_NO_TRACKING_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_INITIALIZED_AT_BUILD_TIME_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_INITIALIZED_NO_TRACKING_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_NO_INITIALIZER_NO_TRACKING_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.LOCATION_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.METHOD_POINTER_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.OBJECT_OFFSET_TAG;
@@ -35,6 +47,7 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.STATIC_OBJEC
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.STATIC_PRIMITIVE_FIELDS_TAG;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -42,18 +55,20 @@ import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.c.function.RelocatedPointer;
+import org.graalvm.nativeimage.impl.CEntryPointLiteralCodePointer;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageLayerWriter;
-import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.core.FunctionPointerHolder;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
@@ -61,8 +76,10 @@ import com.oracle.svm.core.layeredimagesingleton.RuntimeOnlyWrapper;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
+import com.oracle.svm.hosted.imagelayer.HostedDynamicLayerInfo;
 import com.oracle.svm.hosted.lambda.LambdaSubstitutionType;
 import com.oracle.svm.hosted.lambda.StableLambdaProxyNameFeature;
 import com.oracle.svm.hosted.meta.HostedField;
@@ -81,34 +98,58 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class SVMImageLayerWriter extends ImageLayerWriter {
     private NativeImageHeap nativeImageHeap;
+    private HostedUniverse hUniverse;
 
-    public SVMImageLayerWriter() {
-        super(new SVMImageLayerSnapshotUtil());
+    public SVMImageLayerWriter(boolean useSharedLayerGraphs) {
+        super(useSharedLayerGraphs);
     }
 
     public void setNativeImageHeap(NativeImageHeap nativeImageHeap) {
         this.nativeImageHeap = nativeImageHeap;
     }
 
-    @Override
-    protected void persistHook(Universe universe, AnalysisUniverse analysisUniverse) {
-        HostedUniverse hostedUniverse = (HostedUniverse) universe;
+    public void setHostedUniverse(HostedUniverse hUniverse) {
+        this.hUniverse = hUniverse;
+    }
 
-        ImageHeapConstant staticPrimitiveFields = (ImageHeapConstant) hostedUniverse.getSnippetReflection().forObject(StaticFieldsSupport.getStaticPrimitiveFields());
-        ImageHeapConstant staticObjectFields = (ImageHeapConstant) hostedUniverse.getSnippetReflection().forObject(StaticFieldsSupport.getStaticObjectFields());
+    @Override
+    protected void persistHook() {
+        ImageHeapConstant staticPrimitiveFields = (ImageHeapConstant) hUniverse.getSnippetReflection().forObject(StaticFieldsSupport.getStaticPrimitiveFields());
+        ImageHeapConstant staticObjectFields = (ImageHeapConstant) hUniverse.getSnippetReflection().forObject(StaticFieldsSupport.getStaticObjectFields());
 
         jsonMap.put(STATIC_PRIMITIVE_FIELDS_TAG, getConstantId(staticPrimitiveFields));
         jsonMap.put(STATIC_OBJECT_FIELDS_TAG, getConstantId(staticObjectFields));
     }
 
     @Override
-    protected void persistType(AnalysisType type, AnalysisUniverse analysisUniverse, EconomicMap<String, Object> typeMap) {
-        HostVM hostVM = analysisUniverse.hostVM();
+    protected void persistType(AnalysisType type, EconomicMap<String, Object> typeMap) {
+        HostVM hostVM = aUniverse.hostVM();
         SVMHost svmHost = (SVMHost) hostVM;
         DynamicHub hub = svmHost.dynamicHub(type);
         typeMap.put(HUB_IDENTITY_HASH_CODE_TAG, System.identityHashCode(hub));
 
-        super.persistType(type, analysisUniverse, typeMap);
+        typeMap.put(IS_INITIALIZED_AT_BUILD_TIME_TAG, ClassInitializationSupport.singleton().maybeInitializeAtBuildTime(type));
+
+        ClassInitializationInfo info = hub.getClassInitializationInfo();
+        if (info != null) {
+            typeMap.put(IS_NO_INITIALIZER_NO_TRACKING_TAG, info == ClassInitializationInfo.forNoInitializerInfo(false));
+            typeMap.put(IS_INITIALIZED_NO_TRACKING_TAG, info == ClassInitializationInfo.forInitializedInfo(false));
+            typeMap.put(IS_FAILED_NO_TRACKING_TAG, info == ClassInitializationInfo.forFailedInfo(false));
+            typeMap.put(INFO_IS_INITIALIZED_TAG, info.isInitialized());
+            typeMap.put(INFO_IS_IN_ERROR_STATE_TAG, info.isInErrorState());
+            typeMap.put(INFO_IS_LINKED_TAG, info.isLinked());
+            typeMap.put(INFO_HAS_INITIALIZER_TAG, info.hasInitializer());
+            typeMap.put(INFO_IS_BUILD_TIME_INITIALIZED_TAG, info.isBuildTimeInitialized());
+            typeMap.put(INFO_IS_TRACKED_TAG, info.isTracked());
+            FunctionPointerHolder classInitializer = info.getClassInitializer();
+            if (classInitializer != null) {
+                MethodPointer methodPointer = (MethodPointer) classInitializer.functionPointer;
+                AnalysisMethod classInitializerMethod = (AnalysisMethod) methodPointer.getMethod();
+                typeMap.put(INFO_CLASS_INITIALIZER_TAG, classInitializerMethod.getId());
+            }
+        }
+
+        super.persistType(type, typeMap);
     }
 
     @Override
@@ -154,40 +195,38 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     }
 
     @Override
-    protected void persistField(AnalysisField field, Universe universe, EconomicMap<String, Object> fieldMap) {
-        HostedUniverse hostedUniverse = (HostedUniverse) universe;
-        HostedField hostedField = hostedUniverse.lookup(field);
+    public void persistMethod(AnalysisMethod method, EconomicMap<String, Object> methodMap) {
+        super.persistMethod(method, methodMap);
+
+        // register this method as persisted for name resolution
+        HostedDynamicLayerInfo.singleton().recordPersistedMethod(hUniverse.lookup(method));
+    }
+
+    @Override
+    protected void persistField(AnalysisField field, EconomicMap<String, Object> fieldMap) {
+        HostedField hostedField = hUniverse.lookup(field);
         int location = hostedField.getLocation();
         if (hostedField.isStatic() && location > 0) {
             fieldMap.put(LOCATION_TAG, location);
         }
-        super.persistField(field, universe, fieldMap);
+        super.persistField(field, fieldMap);
     }
 
     @Override
-    protected void persistConstant(AnalysisUniverse analysisUniverse, ImageHeapConstant imageHeapConstant, EconomicMap<String, Object> constantMap, EconomicMap<String, Object> constantsMap) {
+    protected void persistConstant(int parentId, int index, ImageHeapConstant imageHeapConstant, EconomicMap<String, Object> constantMap) {
         ObjectInfo objectInfo = nativeImageHeap.getConstantInfo(imageHeapConstant);
         if (objectInfo != null) {
             constantMap.put(OBJECT_OFFSET_TAG, String.valueOf(objectInfo.getOffset()));
         }
-        super.persistConstant(analysisUniverse, imageHeapConstant, constantMap, constantsMap);
+        super.persistConstant(parentId, index, imageHeapConstant, constantMap);
     }
 
     @Override
     public void persistConstantRelinkingInfo(EconomicMap<String, Object> constantMap, BigBang bb, Class<?> clazz, JavaConstant hostedObject, int id) {
         ResolvedJavaType type = bb.getConstantReflectionProvider().asJavaType(hostedObject);
         if (type instanceof AnalysisType analysisType) {
-            /*
-             * Until another solution for implementing a stable name for $$TypeSwitch classes is
-             * found, the constant containing a DynamicHub corresponding to a $$TypeSwitch class is
-             * not persisted as it would not be possible to relink it. Considering that those
-             * classes are only used as a container for a static method, recreating the constant in
-             * the extension image alongside the class should not cause too much issues.
-             */
-            if (!isTypeSwitch(analysisType)) {
-                constantMap.put(CLASS_ID_TAG, analysisType.getId());
-                constantsToRelink.add(id);
-            }
+            constantMap.put(CLASS_ID_TAG, analysisType.getId());
+            constantsToRelink.add(id);
         } else {
             super.persistConstantRelinkingInfo(constantMap, bb, clazz, hostedObject, id);
         }
@@ -196,14 +235,21 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     @Override
     protected boolean delegateProcessing(List<List<Object>> data, Object constant) {
         if (constant instanceof RelocatableConstant relocatableConstant) {
-            data.add(List.of(METHOD_POINTER_TAG, getRelocatableConstantMethodId(relocatableConstant)));
-            return true;
+            RelocatedPointer pointer = relocatableConstant.getPointer();
+            if (pointer instanceof MethodPointer methodPointer) {
+                data.add(List.of(METHOD_POINTER_TAG, getRelocatableConstantMethodId(methodPointer)));
+                return true;
+            } else if (pointer instanceof CEntryPointLiteralCodePointer cEntryPointLiteralCodePointer) {
+                data.add(List.of(C_ENTRY_POINT_LITERAL_CODE_POINTER, cEntryPointLiteralCodePointer.methodName, cEntryPointLiteralCodePointer.definingClass.getName(),
+                                Arrays.stream(cEntryPointLiteralCodePointer.parameterTypes).map(Class::getName)));
+                return true;
+            }
         }
         return super.delegateProcessing(data, constant);
     }
 
-    private static int getRelocatableConstantMethodId(RelocatableConstant relocatableConstant) {
-        ResolvedJavaMethod method = ((MethodPointer) relocatableConstant.getPointer()).getMethod();
+    private static int getRelocatableConstantMethodId(MethodPointer methodPointer) {
+        ResolvedJavaMethod method = methodPointer.getMethod();
         if (method instanceof HostedMethod hostedMethod) {
             return getMethodId(hostedMethod.wrapped);
         } else {

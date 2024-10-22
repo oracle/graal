@@ -41,7 +41,6 @@ import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-import jdk.graal.compiler.nodes.spi.LoopsDataProvider;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.word.WordTypes;
@@ -68,9 +67,9 @@ public class SubstrateGraalCompilerSetup {
     }
 
     public SharedRuntimeConfigurationBuilder createRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, AnalysisUniverse aUniverse, UniverseMetaAccess metaAccess,
-                    Function<Providers, SubstrateBackend> backendProvider, ClassInitializationSupport classInitializationSupport, LoopsDataProvider loopsDataProvider,
-                    SubstratePlatformConfigurationProvider platformConfig, SnippetReflectionProvider snippetReflection) {
+                    Function<Providers, SubstrateBackend> backendProvider, ClassInitializationSupport classInitializationSupport, SubstratePlatformConfigurationProvider platformConfig,
+                    SnippetReflectionProvider snippetReflection) {
         return new SubstrateRuntimeConfigurationBuilder(options, hostVM, aUniverse, metaAccess, backendProvider, classInitializationSupport,
-                        loopsDataProvider, platformConfig, snippetReflection);
+                        platformConfig, snippetReflection);
     }
 }

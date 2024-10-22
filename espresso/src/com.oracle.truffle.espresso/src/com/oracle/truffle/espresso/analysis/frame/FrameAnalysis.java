@@ -894,13 +894,20 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
         // The state stored in the states has already been applied liveness analysis.
         assert targetState.isRecord();
         Builder merged = f.mergeInto(targetState, target, withStackMaps, klassResolver);
+        la.performOnEdge(merged, from, target);
         if (merged == targetState) {
             if (!processStatus.get(target)) {
                 push(target);
             }
             return;
         }
+        /*
+         * We can only run into the case that some slots fail to merge if liveness analysis was not
+         * enabled and stack maps are not in use. Both liveness analysis and stack maps should have
+         * already made such slots illegal.
+         */
         assert la.isEmpty();
+        assert !withStackMaps;
         registerState(target, merged);
         processStatus.clear(target);
         push(target);

@@ -1,0 +1,8 @@
+{
+  "resources":[
+    {
+      "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.impl.duration.impl.ResourceBasedPeriodFormatterDataService" },
+      "pattern":"org/graalvm/shadowed/com/ibm/icu/impl/duration/impl/data/.*"
+    }
+  ]
+}

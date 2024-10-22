@@ -27,8 +27,6 @@ package com.oracle.svm.core.option;
 import java.nio.file.Path;
 import java.util.List;
 
-import org.graalvm.collections.Pair;
-
 import com.oracle.svm.common.option.LocatableOption;
 import com.oracle.svm.common.option.MultiOptionValue;
 import com.oracle.svm.core.util.VMError;
@@ -46,7 +44,7 @@ public abstract class AccumulatingLocatableMultiOptionValue<T> extends Locatable
     @Override
     public void valueUpdate(Object value) {
         Object rawValue = LocatableOption.rawValue(value);
-        String origin = LocatableOption.valueOrigin(value);
+        OptionOrigin origin = OptionOrigin.from(LocatableOption.valueOrigin(value));
         Class<?> rawValueClass = rawValue.getClass();
         boolean multipleElements = rawValueClass.isArray();
         Class<?> rawValueElementType = multipleElements ? rawValueClass.getComponentType() : rawValueClass;
@@ -55,10 +53,10 @@ public abstract class AccumulatingLocatableMultiOptionValue<T> extends Locatable
         }
         if (multipleElements) {
             for (Object singleRawValue : (Object[]) rawValue) {
-                values.add(Pair.create(valueType.cast(singleRawValue), origin));
+                values.add(new ValueWithOrigin<>(valueType.cast(singleRawValue), origin));
             }
         } else {
-            values.add(Pair.create(valueType.cast(rawValue), origin));
+            values.add(new ValueWithOrigin<>(valueType.cast(rawValue), origin));
         }
     }
 
@@ -83,7 +81,7 @@ public abstract class AccumulatingLocatableMultiOptionValue<T> extends Locatable
         }
 
         public boolean contains(String s) {
-            return values.stream().map(Pair::getLeft).anyMatch(val -> val.equals(s));
+            return values.stream().map(ValueWithOrigin::value).anyMatch(val -> val.equals(s));
         }
 
         public void removeFirst() {

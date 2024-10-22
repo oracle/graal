@@ -28,17 +28,16 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-import java.util.Set;
 
 import com.oracle.svm.core.reflect.proxy.DynamicProxySupport;
 
 import jdk.graal.compiler.util.json.JsonPrinter;
 import jdk.graal.compiler.util.json.JsonWriter;
 
-public record ProxyConfigurationTypeDescriptor(String[] interfaceNames) implements ConfigurationTypeDescriptor {
+public record ProxyConfigurationTypeDescriptor(List<String> interfaceNames) implements ConfigurationTypeDescriptor {
 
-    public ProxyConfigurationTypeDescriptor(String[] interfaceNames) {
-        this.interfaceNames = Arrays.stream(interfaceNames).map(ConfigurationTypeDescriptor::checkQualifiedJavaName).toArray(String[]::new);
+    public ProxyConfigurationTypeDescriptor(List<String> interfaceNames) {
+        this.interfaceNames = interfaceNames.stream().map(ConfigurationTypeDescriptor::checkQualifiedJavaName).toList();
     }
 
     @Override
@@ -48,33 +47,28 @@ public record ProxyConfigurationTypeDescriptor(String[] interfaceNames) implemen
 
     @Override
     public String toString() {
-        return DynamicProxySupport.proxyTypeDescriptor(interfaceNames);
+        return DynamicProxySupport.proxyTypeDescriptor(interfaceNames.toArray(String[]::new));
     }
 
     @Override
     public Collection<String> getAllQualifiedJavaNames() {
-        return Set.of(interfaceNames);
+        return interfaceNames;
     }
 
     @Override
     public int compareTo(ConfigurationTypeDescriptor other) {
         if (other instanceof ProxyConfigurationTypeDescriptor proxyOther) {
-            return Arrays.compare(interfaceNames, proxyOther.interfaceNames);
+            return Arrays.compare(interfaceNames.toArray(String[]::new), proxyOther.interfaceNames.toArray(String[]::new));
         } else {
             return getDescriptorType().compareTo(other.getDescriptorType());
         }
     }
 
     @Override
-    public boolean definedAsType() {
-        return true;
-    }
-
-    @Override
     public void printJson(JsonWriter writer) throws IOException {
-        writer.append("{").indent().newline();
-        writer.quote("proxy").append(":");
-        JsonPrinter.printCollection(writer, List.of(interfaceNames), null, (String p, JsonWriter w) -> w.quote(p));
-        writer.unindent().newline().append("}");
+        writer.appendObjectStart();
+        writer.quote("proxy").appendFieldSeparator();
+        JsonPrinter.printCollection(writer, interfaceNames, null, (String p, JsonWriter w) -> w.quote(p));
+        writer.appendObjectEnd();
     }
 }

@@ -30,6 +30,9 @@
 
 #ifdef ASSERT
 // error reporting helper functions
+
+namespace svm_container {
+
 [[noreturn]]
 void report_vm_error(const char* file, int line, const char* error_msg);
 
@@ -37,6 +40,9 @@ void report_vm_error(const char* file, int line, const char* error_msg);
 ATTRIBUTE_PRINTF(4, 5)
 void report_vm_error(const char* file, int line, const char* error_msg,
                      const char* detail_fmt, ...);
+
+} // namespace svm_container
+
 #endif
 
 #ifdef ASSERT
@@ -64,7 +70,13 @@ do {                                                                           \
 #ifndef PRINT_WARNINGS
 #define warning(format, ...)
 #else
+
+namespace svm_container {
+
 void warning(const char* format, ...);
+
+} // namespace svm_container
+
 #endif
 
 #define STATIC_ASSERT(Cond) static_assert((Cond), #Cond)

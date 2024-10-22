@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@ import org.graalvm.wasm.predefined.wasi.types.Fdflags;
 import org.graalvm.wasm.predefined.wasi.types.Filetype;
 import org.graalvm.wasm.predefined.wasi.types.Rights;
 
+import java.io.IOException;
 import java.io.OutputStream;
 
 import static org.graalvm.wasm.predefined.wasi.FlagUtils.flags;
@@ -76,5 +77,39 @@ final class OutputStreamFd extends Fd {
             return Errno.Notcapable;
         }
         return FdUtils.writeToStream(node, memory, outputStream, iovecArrayAddress, iovecCount, sizeAddress);
+    }
+
+    @Override
+    public Errno pwrite(Node node, WasmMemory memory, int iovecArrayAddress, int iovecCount, long offset, int sizeAddress) {
+        if (!isSet(fsRightsBase, Rights.FdWrite)) {
+            return Errno.Notcapable;
+        }
+        return Errno.Spipe;
+    }
+
+    @Override
+    public Errno datasync() {
+        if (!isSet(fsRightsBase, Rights.FdDatasync)) {
+            return Errno.Notcapable;
+        }
+        try {
+            outputStream.flush();
+        } catch (IOException e) {
+            return Errno.Io;
+        }
+        return Errno.Success;
+    }
+
+    @Override
+    public Errno sync() {
+        if (!isSet(fsRightsBase, Rights.FdSync)) {
+            return Errno.Notcapable;
+        }
+        try {
+            outputStream.flush();
+        } catch (IOException e) {
+            return Errno.Io;
+        }
+        return Errno.Success;
     }
 }

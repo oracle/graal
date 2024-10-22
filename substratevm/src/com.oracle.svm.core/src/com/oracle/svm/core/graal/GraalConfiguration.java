@@ -28,6 +28,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
 
+import jdk.graal.compiler.nodes.loop.LoopsDataProviderImpl;
+import jdk.graal.compiler.nodes.spi.LoopsDataProvider;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -163,5 +165,9 @@ public class GraalConfiguration {
      */
     public ListIterator<BasePhase<? super HighTierContext>> createHostedInliners(@SuppressWarnings("unused") PhaseSuite<HighTierContext> highTier) {
         return null;
+    }
+
+    public LoopsDataProvider createLoopsDataProvider() {
+        return new LoopsDataProviderImpl();
     }
 }

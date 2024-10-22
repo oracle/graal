@@ -44,6 +44,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
@@ -116,9 +117,13 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     public final ResolvedJavaMethod wrapped;
 
+    private AnalysisMethod indirectCallTarget = null;
+    public boolean invalidIndirectCallTarget = false;
+
     private final int id;
     /** Marks a method loaded from a base layer. */
     private final boolean isInBaseLayer;
+    private final boolean analyzedInPriorLayer;
     private final boolean hasNeverInlineDirective;
     private final ExceptionHandler[] exceptionHandlers;
     private final LocalVariableTable localVariableTable;
@@ -177,28 +182,37 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     @SuppressWarnings("unused") private volatile Object allImplementations;
 
     /**
-     * Indicates that this method returns all instantiated types. This is necessary when there are
-     * control flows present which cannot be tracked by analysis, which happens for continuation
-     * support.
+     * Indicates that this method has opaque return. This is necessary when there are control flows
+     * present which cannot be tracked by analysis, which happens for continuation support.
      *
      * This should only be set via calling
      * {@code FeatureImpl.BeforeAnalysisAccessImpl#registerOpaqueMethodReturn}.
      */
-    private boolean returnsAllInstantiatedTypes;
+    private boolean hasOpaqueReturn;
 
-    @SuppressWarnings("this-escape")
+    @SuppressWarnings({"this-escape", "unchecked"})
     protected AnalysisMethod(AnalysisUniverse universe, ResolvedJavaMethod wrapped, MultiMethodKey multiMethodKey, Map<MultiMethodKey, MultiMethod> multiMethodMap) {
         this.wrapped = wrapped;
 
         declaringClass = universe.lookup(wrapped.getDeclaringClass());
-        signature = getUniverse().lookup(wrapped.getSignature(), wrapped.getDeclaringClass());
+        var wrappedSignature = wrapped.getSignature();
+        if (wrappedSignature instanceof ResolvedSignature<?> resolvedSignature) {
+            /* BaseLayerMethods return fully resolved signatures */
+            if (resolvedSignature.getReturnType() instanceof AnalysisType) {
+                signature = (ResolvedSignature<AnalysisType>) resolvedSignature;
+            } else {
+                signature = getUniverse().lookup(wrappedSignature, wrapped.getDeclaringClass());
+            }
+        } else {
+            signature = getUniverse().lookup(wrappedSignature, wrapped.getDeclaringClass());
+        }
         hasNeverInlineDirective = universe.hostVM().hasNeverInlineDirective(wrapped);
 
         name = createName(wrapped, multiMethodKey);
         qualifiedName = format("%H.%n(%P)");
         modifiers = wrapped.getModifiers();
 
-        if (universe.hostVM().useBaseLayer()) {
+        if (universe.hostVM().useBaseLayer() && declaringClass.isInBaseLayer()) {
             int mid = universe.getImageLayerLoader().lookupHostedMethodInBaseLayer(this);
             if (mid != -1) {
                 /*
@@ -215,6 +229,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
             id = universe.computeNextMethodId();
             isInBaseLayer = false;
         }
+        analyzedInPriorLayer = isInBaseLayer && universe.hostVM().analyzedInPriorLayer(this);
 
         ExceptionHandler[] original = wrapped.getExceptionHandlers();
         exceptionHandlers = new ExceptionHandler[original.length];
@@ -257,6 +272,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         wrapped = original.wrapped;
         id = original.id;
         isInBaseLayer = original.isInBaseLayer;
+        analyzedInPriorLayer = original.analyzedInPriorLayer;
         declaringClass = original.declaringClass;
         signature = original.signature;
         hasNeverInlineDirective = original.hasNeverInlineDirective;
@@ -271,7 +287,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         this.multiMethodKey = multiMethodKey;
         assert original.multiMethodMap != null;
         multiMethodMap = original.multiMethodMap;
-        returnsAllInstantiatedTypes = original.returnsAllInstantiatedTypes;
+        hasOpaqueReturn = original.hasOpaqueReturn;
 
         if (PointstoOptions.TrackAccessChain.getValue(declaringClass.universe.hostVM().options())) {
             startTrackInvocations();
@@ -313,6 +329,76 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     public AnalysisUniverse getUniverse() {
         /* Access the universe via the declaring class to avoid storing it here. */
         return declaringClass.getUniverse();
+    }
+
+    private static boolean matchingSignature(AnalysisMethod o1, AnalysisMethod o2) {
+        if (o1.equals(o2)) {
+            return true;
+        }
+
+        if (!o1.getName().equals(o2.getName())) {
+            return false;
+        }
+
+        return o1.getSignature().equals(o2.getSignature());
+    }
+
+    private AnalysisMethod setIndirectCallTarget(AnalysisMethod method, boolean foundMatch) {
+        indirectCallTarget = method;
+        invalidIndirectCallTarget = !foundMatch;
+        return indirectCallTarget;
+    }
+
+    /**
+     * For methods where its {@link #getDeclaringClass()} does not explicitly declare the method,
+     * find an alternative explicit declaration for the method which can be used as an indirect call
+     * target. This logic is currently used for deciding the target of virtual/interface calls when
+     * using the open type world.
+     */
+    public AnalysisMethod getIndirectCallTarget() {
+        if (indirectCallTarget != null) {
+            return indirectCallTarget;
+        }
+        if (isStatic()) {
+            /*
+             * Static methods must always be explicitly declared.
+             */
+            return setIndirectCallTarget(this, true);
+        }
+
+        var dispatchTableMethods = declaringClass.getOrCalculateOpenTypeWorldDispatchTableMethods();
+
+        if (isConstructor()) {
+            /*
+             * Constructors can only be found in their declaring class.
+             */
+            return setIndirectCallTarget(this, dispatchTableMethods.contains(this));
+        }
+
+        if (dispatchTableMethods.contains(this)) {
+            return setIndirectCallTarget(this, true);
+        }
+
+        for (AnalysisType interfaceType : declaringClass.getAllInterfaces()) {
+            if (interfaceType.equals(declaringClass)) {
+                // already checked
+                continue;
+            }
+            dispatchTableMethods = interfaceType.getOrCalculateOpenTypeWorldDispatchTableMethods();
+            for (AnalysisMethod candidate : dispatchTableMethods) {
+                if (matchingSignature(candidate, this)) {
+                    return setIndirectCallTarget(candidate, true);
+                }
+            }
+        }
+
+        /*
+         * For some methods (e.g., methods labeled as @PolymorphicSignature or @Delete), we
+         * currently do not find matches. However, these methods will not be indirect calls within
+         * our generated code, so it is not necessary to determine an accurate virtual/interface
+         * call target.
+         */
+        return setIndirectCallTarget(this, false);
     }
 
     public void cleanupAfterAnalysis() {
@@ -365,6 +451,10 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     public boolean isInBaseLayer() {
         return isInBaseLayer;
+    }
+
+    public boolean analyzedInPriorLayer() {
+        return analyzedInPriorLayer;
     }
 
     /**
@@ -502,6 +592,10 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         return AtomicUtils.isSet(this, isDirectRootMethodUpdater);
     }
 
+    public boolean isSimplyInvoked() {
+        return AtomicUtils.isSet(this, isInvokedUpdater);
+    }
+
     public boolean isSimplyImplementationInvoked() {
         return AtomicUtils.isSet(this, isImplementationInvokedUpdater);
     }
@@ -513,7 +607,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         return isIntrinsicMethod() || isVirtualRootMethod() || isDirectRootMethod() || AtomicUtils.isSet(this, isInvokedUpdater);
     }
 
-    protected Object getInvokedReason() {
+    public Object getInvokedReason() {
         return isInvoked;
     }
 
@@ -817,6 +911,10 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     }
 
     public Executable getJavaMethod() {
+        if (wrapped instanceof BaseLayerMethod) {
+            /* We don't know the corresponding Java method. */
+            return null;
+        }
         return OriginalMethodProvider.getJavaMethod(this);
     }
 
@@ -825,6 +923,10 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      */
     public AnalysisParsedGraph reparseGraph(BigBang bb) {
         return ensureGraphParsedHelper(bb, true);
+    }
+
+    public Object getGraph() {
+        return parsedGraphCacheState.get();
     }
 
     /**
@@ -849,7 +951,12 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
              */
 
             if (curState == GRAPH_CACHE_UNPARSED || (forceReparse && curState instanceof AnalysisParsedGraph)) {
-                AnalysisParsedGraph graph = parseGraph(bb, curState);
+                AnalysisParsedGraph graph;
+                if (isInBaseLayer && getUniverse().getImageLayerLoader().hasAnalysisParsedGraph(this)) {
+                    graph = getBaseLayerGraph(curState);
+                } else {
+                    graph = parseGraph(bb, curState);
+                }
                 if (graph != null) {
                     return graph;
                 }
@@ -871,7 +978,15 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         }
     }
 
+    private AnalysisParsedGraph getBaseLayerGraph(Object expectedValue) {
+        return setGraph(expectedValue, () -> getUniverse().getImageLayerLoader().getAnalysisParsedGraph(this));
+    }
+
     private AnalysisParsedGraph parseGraph(BigBang bb, Object expectedValue) {
+        return setGraph(expectedValue, () -> AnalysisParsedGraph.parseBytecode(bb, this));
+    }
+
+    private AnalysisParsedGraph setGraph(Object expectedValue, Supplier<AnalysisParsedGraph> graphSupplier) {
         ReentrantLock lock = new ReentrantLock();
         lock.lock();
         try {
@@ -884,7 +999,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
                 return null;
             }
 
-            AnalysisParsedGraph graph = AnalysisParsedGraph.parseBytecode(bb, this);
+            AnalysisParsedGraph graph = graphSupplier.get();
 
             /*
              * Since we still hold the parsing lock, the transition form "parsing" to "parsed"
@@ -964,6 +1079,10 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         this.analyzedGraph = analyzedGraph;
     }
 
+    public void clearAnalyzedGraph() {
+        this.analyzedGraph = null;
+    }
+
     public EncodedGraph getAnalyzedGraph() {
         return analyzedGraph;
     }
@@ -1022,12 +1141,12 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      * This should only be set via calling
      * {@code FeatureImpl.BeforeAnalysisAccessImpl#registerOpaqueMethodReturn}.
      */
-    public void setReturnsAllInstantiatedTypes() {
-        returnsAllInstantiatedTypes = true;
+    public void setOpaqueReturn() {
+        hasOpaqueReturn = true;
     }
 
-    public boolean getReturnsAllInstantiatedTypes() {
-        return returnsAllInstantiatedTypes;
+    public boolean hasOpaqueReturn() {
+        return hasOpaqueReturn;
     }
 
     protected abstract AnalysisMethod createMultiMethod(AnalysisMethod analysisMethod, MultiMethodKey newMultiMethodKey);

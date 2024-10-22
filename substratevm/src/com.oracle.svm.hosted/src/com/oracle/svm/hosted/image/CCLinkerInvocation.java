@@ -48,14 +48,16 @@ import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.libc.BionicLibC;
 import com.oracle.svm.core.c.libc.LibCBase;
-import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.c.libc.HostedLibCBase;
+import com.oracle.svm.hosted.imagelayer.HostedDynamicLayerInfo;
 import com.oracle.svm.hosted.jdk.JNIRegistrationSupport;
 
 import jdk.graal.compiler.options.Option;
@@ -270,9 +272,13 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                 /* Perform garbage collection of unused input sections. */
                 additionalPreOptions.add("-Wl,--gc-sections");
             }
-            if (SubstrateOptions.IgnoreUndefinedReferences.getValue()) {
-                /* Ignore references to undefined symbols from the object files. */
-                additionalPreOptions.add("-Wl,--unresolved-symbols=ignore-in-object-files");
+
+            if (!imageKind.isExecutable) {
+                /*
+                 * We do not want interposition to affect the resolution of symbols we define and
+                 * reference within this library.
+                 */
+                additionalPreOptions.add("-Wl,-Bsymbolic");
             }
 
             /* Use --version-script to control the visibility of image symbols. */
@@ -298,7 +304,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
 
             additionalPreOptions.addAll(HostedLibCBase.singleton().getAdditionalLinkerOptions(imageKind));
 
-            if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
+            if (SubstrateOptions.DeleteLocalSymbols.getValue() && !SubstrateOptions.StripDebugInfo.getValue()) {
                 additionalPreOptions.add("-Wl,-x");
             }
         }
@@ -339,7 +345,9 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
             }
             for (String lib : libs) {
                 String linkingMode = null;
-                if (dynamicLibC) {
+                if (ImageLayerBuildingSupport.buildingImageLayer() && HostedDynamicLayerInfo.singleton().isImageLayerLib(lib)) {
+                    linkingMode = "dynamic";
+                } else if (dynamicLibC) {
                     linkingMode = LIB_C_NAMES.contains(lib) ? "dynamic" : "static";
                 } else if (staticLibCpp) {
                     linkingMode = lib.equals("stdc++") ? "static" : "dynamic";
@@ -406,7 +414,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                 VMError.shouldNotReachHere(e);
             }
 
-            if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
+            if (SubstrateOptions.DeleteLocalSymbols.getValue() && !SubstrateOptions.StripDebugInfo.getValue()) {
                 additionalPreOptions.add("-Wl,-x");
             }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,8 @@ package org.graalvm.wasm.predefined.wasi.fd;
 import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.predefined.wasi.types.Advice;
+import org.graalvm.wasm.predefined.wasi.types.Dirent;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
 import org.graalvm.wasm.predefined.wasi.types.Fdflags;
 import org.graalvm.wasm.predefined.wasi.types.Filetype;
@@ -121,8 +123,7 @@ public abstract class Fd implements Closeable {
      * Rights that will apply to file descriptors derived from this.
      * <p>
      * This is <strong>not</strong> a subset of {@link #fsRightsBase}. This is an additional
-     * constraint. Rights of derived file descriptors are subsets of or equal to
-     * <code>({@link #fsRightsInheriting} & {@link #fsRightsBase})</code>.
+     * constraint. Rights of derived file descriptors are subsets of or equal to this set.
      */
     protected long fsRightsInheriting;
 
@@ -176,7 +177,7 @@ public abstract class Fd implements Closeable {
      */
     public Errno pathOpen(Node node, WasmMemory memory, int dirflags, int pathAddress, int pathLength, short oflags, long childFsRightsBase, long childFsRightsInheriting, short fdflags,
                     int fdAddress) {
-        if (!isSet(fsRightsBase, Rights.PathOpen) || !isSubsetOf(childFsRightsBase, fsRightsBase) || !isSubsetOf(childFsRightsBase, fsRightsInheriting)) {
+        if (!isSet(fsRightsBase, Rights.PathOpen)) {
             return Errno.Notcapable;
         }
         return Errno.Acces;
@@ -236,6 +237,95 @@ public abstract class Fd implements Closeable {
 
     /**
      * Implementation of WASI <a href=
+     * "https://github.com/WebAssembly/WASI/blob/df4d4f385ba7930d0433a504184ff94c1becbdad/legacy/preview1/docs.md#-fd_pwritefd-fd-iovs-ciovec_array-offset-filesize---resultsize-errno"><code>fd_pwrite</code></a>:
+     * writes {@code iovecCount} buffers of data described by {@code iovecArrayAddress} to the file
+     * represented by this file descriptor without using and updating the file descriptor's offset.
+     * <p>
+     * Similar to POSIX <a href="https://linux.die.net/man/2/pwritev"><code>pwritev</code></a>.
+     *
+     * @param node the calling node, used as location for any thrown {@link WasmException}
+     * @param memory the {@link WasmMemory} from which to read and write
+     * @param iovecArrayAddress {@code {buf: u8*, buf_len: u32}*}: start address of an array of
+     *            <a href=
+     *            "https://github.com/WebAssembly/WASI/blob/a206794fea66118945a520f6e0af3754cc51860b/phases/snapshot/docs.md#-iovec-struct"><code>iovc</code></a>
+     * @param iovecCount number of <a href=
+     *            "https://github.com/WebAssembly/WASI/blob/a206794fea66118945a520f6e0af3754cc51860b/phases/snapshot/docs.md#-iovec-struct"><code>iovc</code></a>
+     * @param offset {@code u64}: the offset within the file at which to write
+     * @param sizeAddress {@code u32*}: the address at which to write the number of bytes written
+     * @return {@link Errno#Success} in case of success, or another {@link Errno} in case of error
+     * @throws WasmException if an error happens while writing or reading to {@code memory}
+     */
+    public Errno pwrite(Node node, WasmMemory memory, int iovecArrayAddress, int iovecCount, long offset, int sizeAddress) {
+        if (!isSet(fsRightsBase, Rights.FdWrite)) {
+            return Errno.Notcapable;
+        }
+        return Errno.Acces;
+    }
+
+    /**
+     * Implementation of WASI <a href=
+     * "https://github.com/WebAssembly/WASI/blob/df4d4f385ba7930d0433a504184ff94c1becbdad/legacy/preview1/docs.md#-fd_preadfd-fd-iovs-iovec_array-offset-filesize---resultsize-errno"><code>fd_pread</code></a>:
+     * reads {@code iovecCount} buffers of data described by {@code iovecArrayAddress} from the file
+     * represented by this file descriptor without using and updating the file descriptor's offset.
+     * <p>
+     * Similar to POSIX <a href="https://linux.die.net/man/2/preadv"><code>preadv</code></a>.
+     *
+     * @param node the calling node, used as location for any thrown {@link WasmException}
+     * @param memory the {@link WasmMemory} from which to read and write
+     * @param iovecArrayAddress {@code {buf: u8*, buf_len: u32}*}: start address of an array of
+     *            <a href=
+     *            "https://github.com/WebAssembly/WASI/blob/a206794fea66118945a520f6e0af3754cc51860b/phases/snapshot/docs.md#-iovec-struct"><code>iovc</code></a>
+     * @param iovecCount number of <a href=
+     *            "https://github.com/WebAssembly/WASI/blob/a206794fea66118945a520f6e0af3754cc51860b/phases/snapshot/docs.md#-iovec-struct"><code>iovc</code></a>
+     * @param offset {@code u64}: the offset within the file at which to read
+     * @param sizeAddress {@code u32*}: the address at which to write the number of bytes written
+     * @return {@link Errno#Success} in case of success, or another {@link Errno} in case of error
+     * @throws WasmException if an error happens while writing or reading to {@code memory}
+     */
+    public Errno pread(Node node, WasmMemory memory, int iovecArrayAddress, int iovecCount, long offset, int sizeAddress) {
+        if (!isSet(fsRightsBase, Rights.FdRead)) {
+            return Errno.Notcapable;
+        }
+        return Errno.Acces;
+    }
+
+    /**
+     * Implementation of WASI <a href=
+     * "https://github.com/WebAssembly/WASI/blob/df4d4f385ba7930d0433a504184ff94c1becbdad/legacy/preview1/docs.md#-fd_readdirfd-fd-buf-pointeru8-buf_len-size-cookie-dircookie---resultsize-errno"><code>fd_readdir</code></a>:
+     * reads directory entries from a directory.
+     * <p>
+     * When successful, the contents of the output buffer consist of a sequence of directory
+     * entries. Each directory entry consists of a {@link Dirent} object, followed by
+     * {@link Dirent#writeDNamlen} bytes holding the name of the directory entry.
+     * </p>
+     * <p>
+     * This function fills the output buffer as much as possible, potentially truncating the last
+     * directory entry. This allows the caller to grow its read buffer size in case it's too small
+     * to fit a single large directory entry, or skip the oversized directory entry.
+     * </p>
+     * <p>
+     * Entries for the special {@code .} and {@code ..} directory entries are included in the
+     * sequence.
+     * </p>
+     *
+     * @param node the calling node, used as location for any thrown {@link WasmException}
+     * @param memory the {@link WasmMemory} from which to read and write
+     * @param bufAddress {@code u8*}: the address of the buffer where directory entries are stored
+     * @param bufLength {@code u32}: the length of the buffer where directory entries are stored
+     * @param cookie {@code u64}: the location within the directory to start reading
+     * @param sizeAddress {@code u32*}: the address at which to write the number of bytes written
+     * @return {@link Errno#Success} in case of success, or another {@link Errno} in case of error
+     * @throws WasmException if an error happens while writing or reading to {@code memory}
+     */
+    public Errno readdir(Node node, WasmMemory memory, int bufAddress, int bufLength, long cookie, int sizeAddress) {
+        if (!isSet(fsRightsBase, Rights.FdReaddir)) {
+            return Errno.Notcapable;
+        }
+        return Errno.Acces;
+    }
+
+    /**
+     * Implementation of WASI <a href=
      * "https://github.com/WebAssembly/WASI/blob/a206794fea66118945a520f6e0af3754cc51860b/phases/snapshot/docs.md#fd_seek"><code>fd_seek</code></a>:
      * moves the offset of this file descriptor.
      * <p>
@@ -245,7 +335,7 @@ public abstract class Fd implements Closeable {
      * @param memory the {@link WasmMemory} from which to read and write
      * @param offset the number of bytes to move
      * @param whence the base from which the {@code offset} is relative
-     * @param newOffsetAddress {@code u32*}: the address at which to write the new offset of this
+     * @param newOffsetAddress {@code u64*}: the address at which to write the new offset of this
      *            file descriptor, relative to the start of the file.
      * @return {@link Errno#Success} in case of success, or another {@link Errno} in case of error
      * @throws WasmException if an error happens while writing or reading to {@code memory}
@@ -255,6 +345,36 @@ public abstract class Fd implements Closeable {
             return Errno.Notcapable;
         }
         return Errno.Acces;
+    }
+
+    /**
+     * Implementation of WASI <a href=
+     * "https://github.com/WebAssembly/WASI/blob/df4d4f385ba7930d0433a504184ff94c1becbdad/legacy/preview1/docs.md#fd_tell"><code>fd_tell</code></a>:
+     * gets the offset of this file descriptor.
+     * <p>
+     * Similar to POSIX
+     * <a href="https://linux.die.net/man/2/lseek"><code>lseek(fd, 0, SEEK_CUR)</code></a>.
+     *
+     * @param node the calling node, used as location for any thrown {@link WasmException}
+     * @param memory the {@link WasmMemory} from which to read and write
+     * @param offsetAddress {@code u64*}: the address at which to write the offset of this file
+     *            descriptor, relative to the start of the file.
+     * @return {@link Errno#Success} in case of success, or another {@link Errno} in case of error
+     * @throws WasmException if an error happens while writing or reading to {@code memory}
+     */
+    public Errno tell(Node node, WasmMemory memory, int offsetAddress) {
+        if (!isSet(fsRightsBase, Rights.FdTell)) {
+            return Errno.Notcapable;
+        }
+        return Errno.Acces;
+    }
+
+    @SuppressWarnings("unused")
+    public Errno advise(long offset, long length, Advice advice) {
+        if (!isSet(fsRightsBase, Rights.FdAdvise)) {
+            return Errno.Notcapable;
+        }
+        return Errno.Success;
     }
 
     /**
@@ -296,6 +416,44 @@ public abstract class Fd implements Closeable {
     }
 
     /**
+     * Implementation of WASI <a href=
+     * "https://github.com/WebAssembly/WASI/blob/df4d4f385ba7930d0433a504184ff94c1becbdad/legacy/preview1/docs.md#-fd_fdstat_set_rightsfd-fd-fs_rights_base-rights-fs_rights_inheriting-rights---result-errno"><code>fd_fdstat_set_rights</code></a>:
+     * adjusts the rights associated with this file descriptor.
+     *
+     * @param newFsRightsBase the desired rights of the file descriptor, bitmap of {@link Rights}
+     * @param newFsRightsInheriting the desired rights of derived file descriptors, bitmap of
+     *            {@link Rights}
+     * @return {@link Errno#Success} in case of success, or another {@link Errno} in case of error
+     */
+    public Errno fdstatSetRights(long newFsRightsBase, long newFsRightsInheriting) {
+        // Note that fsRightsInheriting is not necessarily a subset of fsRightsBase.
+        // See the javadoc for fsRightsInheriting.
+        if (!isSubsetOf(newFsRightsBase, fsRightsBase) || !isSubsetOf(newFsRightsInheriting, fsRightsInheriting)) {
+            return Errno.Notcapable;
+        }
+        fsRightsBase = newFsRightsBase;
+        fsRightsInheriting = newFsRightsInheriting;
+        return Errno.Success;
+    }
+
+    /**
+     *
+     * Implementation of WASI <a href=
+     * "https://github.com/WebAssembly/WASI/blob/df4d4f385ba7930d0433a504184ff94c1becbdad/legacy/preview1/docs.md#fd_filestat_set_size"><code>fd_fdstat_set_size</code></a>:
+     * adjusts the size of an open file.
+     *
+     * @param node the calling node, used as location for any thrown {@link WasmException}
+     * @param size the desired file size
+     * @return {@link Errno#Success} in case of success, or another {@link Errno} in case of error
+     */
+    public Errno filestatSetSize(Node node, long size) {
+        if (!isSet(fsRightsBase, Rights.FdFilestatSetSize)) {
+            return Errno.Notcapable;
+        }
+        return Errno.Acces;
+    }
+
+    /**
      *
      * Implementation of WASI <a href=
      * "https://github.com/WebAssembly/WASI/blob/main/legacy/preview1/docs.md#fd_filestat_set_times"><code>fd_fdstat_set_times</code></a>:
@@ -307,7 +465,7 @@ public abstract class Fd implements Closeable {
      * @param fstFlags bitmap of {@link Fstflags}
      * @return {@link Errno#Success} in case of success, or another {@link Errno} in case of error
      */
-    public Errno fdstatSetTimes(Node node, long atim, long mtim, int fstFlags) {
+    public Errno filestatSetTimes(Node node, long atim, long mtim, int fstFlags) {
         if (!isSet(fsRightsBase, Rights.FdFilestatSetTimes)) {
             return Errno.Notcapable;
         }
@@ -480,11 +638,13 @@ public abstract class Fd implements Closeable {
      * @param pathLength length of the path to get, in bytes, including the trailing null character
      * @param buf the buffer to which to write the contents of the symbolic link
      * @param bufLen the length of the buffer
+     * @param sizeAddress {@code size*}: address at which to write the number of bytes written to
+     *            {@code buf}
      * @return {@link Errno#Success} in case of success, or another {@link Errno} in case of error
      * @throws WasmException if an error happens while writing or reading to {@code memory}
      * @see <a href="#preopened">Pre-opened directories</a>
      */
-    public int pathReadLink(Node node, WasmMemory memory, int pathAddress, int pathLength, int buf, int bufLen) {
+    public int pathReadLink(Node node, WasmMemory memory, int pathAddress, int pathLength, int buf, int bufLen, int sizeAddress) {
         if (!isSet(fsRightsBase, Rights.PathReadlink)) {
             return Errno.Notcapable.ordinal();
         }
@@ -586,8 +746,35 @@ public abstract class Fd implements Closeable {
         return Errno.Acces;
     }
 
+    /**
+     * Implementation of WASI <a href=
+     * "https://github.com/WebAssembly/WASI/blob/df4d4f385ba7930d0433a504184ff94c1becbdad/legacy/preview1/docs.md#-fd_datasyncfd-fd---result-errno"><code>fd_datasync</code></a>:
+     * Synchronize the data of a file to disk.
+     *
+     * @return {@link Errno#Success} in case of success, or another {@link Errno} in case of error
+     */
+    public Errno datasync() {
+        if (!isSet(fsRightsBase, Rights.FdDatasync)) {
+            return Errno.Notcapable;
+        }
+        return Errno.Inval;
+    }
+
+    /**
+     * Implementation of WASI <a href=
+     * "https://github.com/WebAssembly/WASI/blob/f922a15d49f9e79e9184b5da6eca7a6f863981df/legacy/preview1/docs.md#fd_sync"><code>fd_sync</code></a>:
+     * Synchronize the data and metadata of a file to disk.
+     *
+     * @return {@link Errno#Success} in case of success, or another {@link Errno} in case of error
+     */
+    public Errno sync() {
+        if (!isSet(fsRightsBase, Rights.FdSync)) {
+            return Errno.Notcapable;
+        }
+        return Errno.Inval;
+    }
+
     @Override
     public void close() throws IOException {
     }
-
 }

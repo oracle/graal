@@ -79,6 +79,7 @@ import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.BuildArtifacts;
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
@@ -516,7 +517,7 @@ public final class TruffleBaseFeature implements InternalFeature {
         }
 
         if (needsAllEncodings) {
-            RuntimeResourceSupport.singleton().addResources(ConfigurationCondition.alwaysTrue(), "org/graalvm/shadowed/org/jcodings/tables/.*bin$");
+            RuntimeResourceSupport.singleton().addResources(ConfigurationCondition.alwaysTrue(), "org/graalvm/shadowed/org/jcodings/tables/.*bin$", "Truffle needsAllEncodings flag is set");
         }
     }
 
@@ -1273,8 +1274,8 @@ final class Target_com_oracle_truffle_api_staticobject_ArrayBasedStaticShape {
 
     private static class MapCleaner implements FieldValueTransformerWithAvailability {
         @Override
-        public ValueAvailability valueAvailability() {
-            return ValueAvailability.AfterCompilation;
+        public boolean isAvailable() {
+            return BuildPhaseProvider.isCompilationFinished();
         }
 
         @Override
@@ -1318,8 +1319,8 @@ final class StaticPropertyOffsetTransformer implements FieldValueTransformerWith
     }
 
     @Override
-    public ValueAvailability valueAvailability() {
-        return ValueAvailability.AfterAnalysis;
+    public boolean isAvailable() {
+        return BuildPhaseProvider.isHostedUniverseBuilt();
     }
 
     @Override
@@ -1389,8 +1390,8 @@ final class ArrayBasedShapeGeneratorOffsetTransformer implements FieldValueTrans
     }
 
     @Override
-    public ValueAvailability valueAvailability() {
-        return ValueAvailability.AfterAnalysis;
+    public boolean isAvailable() {
+        return BuildPhaseProvider.isHostedUniverseBuilt();
     }
 
     @Override
@@ -1460,12 +1461,7 @@ final class Target_com_oracle_truffle_polyglot_InternalResourceCache {
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = UseInternalResourcesComputer.class, isFinal = true) //
     private static boolean useInternalResources;
 
-    private static final class UseInternalResourcesComputer implements FieldValueTransformerWithAvailability {
-        @Override
-        public ValueAvailability valueAvailability() {
-            return ValueAvailability.BeforeAnalysis;
-        }
-
+    private static final class UseInternalResourcesComputer implements FieldValueTransformer {
         @Override
         public Object transform(Object receiver, Object originalValue) {
             return SubstrateOptions.TruffleStableOptions.CopyLanguageResources.getValue();
@@ -1513,8 +1509,8 @@ final class Target_com_oracle_truffle_api_nodes_NodeClassImpl_NodeFieldData {
 
     private static class OffsetComputer implements FieldValueTransformerWithAvailability {
         @Override
-        public ValueAvailability valueAvailability() {
-            return ValueAvailability.AfterAnalysis;
+        public boolean isAvailable() {
+            return BuildPhaseProvider.isHostedUniverseBuilt();
         }
 
         @Override
@@ -1545,8 +1541,8 @@ final class Target_com_oracle_truffle_api_dsl_InlineSupport_UnsafeField {
 
     private static class OffsetComputer implements FieldValueTransformerWithAvailability {
         @Override
-        public ValueAvailability valueAvailability() {
-            return ValueAvailability.AfterAnalysis;
+        public boolean isAvailable() {
+            return BuildPhaseProvider.isHostedUniverseBuilt();
         }
 
         @Override

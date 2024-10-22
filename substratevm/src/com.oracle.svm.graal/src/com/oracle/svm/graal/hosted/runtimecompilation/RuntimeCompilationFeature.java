@@ -61,7 +61,6 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.graal.pointsto.util.ParallelExecutionException;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.ParsingReason;
@@ -151,6 +150,7 @@ import jdk.graal.compiler.truffle.phases.DeoptimizeOnExceptionPhase;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -378,12 +378,11 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
     private void installRuntimeConfig(BeforeAnalysisAccessImpl config) {
         Function<Providers, SubstrateBackend> backendProvider = TruffleRuntimeCompilationSupport.getRuntimeBackendProvider();
         ClassInitializationSupport classInitializationSupport = config.getHostVM().getClassInitializationSupport();
-        Providers originalProviders = GraalAccess.getOriginalProviders();
         SubstratePlatformConfigurationProvider platformConfig = new SubstratePlatformConfigurationProvider(
                         ImageSingletons.lookup(BarrierSetProvider.class).createBarrierSet(config.getMetaAccess()));
         RuntimeConfiguration runtimeConfig = ImageSingletons.lookup(SubstrateGraalCompilerSetup.class)
                         .createRuntimeConfigurationBuilder(RuntimeOptionValues.singleton(), config.getHostVM(), config.getUniverse(), config.getMetaAccess(),
-                                        backendProvider, classInitializationSupport, originalProviders.getLoopsDataProvider(), platformConfig,
+                                        backendProvider, classInitializationSupport, platformConfig,
                                         config.getBigBang().getSnippetReflectionProvider())
                         .build();
 
@@ -1142,6 +1141,16 @@ class GraphPrepareMetaAccessExtensionProvider implements MetaAccessExtensionProv
     @Override
     public boolean canVirtualize(ResolvedJavaType instanceType) {
         return true;
+    }
+
+    @Override
+    public ResolvedJavaField getStaticFieldForAccess(JavaConstant base, long offset, JavaKind accessKind) {
+        /*
+         * The base of unsafe static field accesses is not constant until low tier for SVM. See
+         * com.oracle.svm.core.StaticFieldsSupport for details on the static field base during
+         * analysis, compilation, and JIT compilation.
+         */
+        return null;
     }
 }
 

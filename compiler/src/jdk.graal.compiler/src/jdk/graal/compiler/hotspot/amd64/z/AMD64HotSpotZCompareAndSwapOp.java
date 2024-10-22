@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.hotspot.amd64.z;
 
+import static jdk.graal.compiler.hotspot.amd64.z.AMD64HotSpotZBarrierSetLIRGenerator.zColor;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
@@ -78,14 +79,13 @@ public final class AMD64HotSpotZCompareAndSwapOp extends AMD64HotSpotZStoreBarri
         GraalError.guarantee(accessKind == AMD64Kind.QWORD, "ZGC only supports uncompressed oops");
         assert LIRValueUtil.differentRegisters(cmpValue, newValue, storeAddress);
 
-        Register newReg = asRegister(newValue);
-        emitStoreBarrier(crb, masm, asRegister(tmp), newReg, false, null);
-        Register ref1 = asRegister(cmpValue);
-        AMD64HotSpotZBarrierSetLIRGenerator.zColor(crb, masm, ref1);
+        emitPreWriteBarrier(crb, masm, asRegister(tmp), null);
+        zColor(crb, masm, asRegister(tmp), asRegister(newValue));
+        AMD64HotSpotZBarrierSetLIRGenerator.zColor(crb, masm, asRegister(cmpValue));
         if (crb.target.isMP) {
             masm.lock();
         }
-        masm.cmpxchgq(asRegister(tmp), storeAddress.toAddress());
+        masm.cmpxchgq(asRegister(tmp), storeAddress.toAddress(masm));
         if (!isLogic) {
             Register ref = asRegister(cmpValue);
             AMD64HotSpotZBarrierSetLIRGenerator.zUncolor(crb, masm, ref);

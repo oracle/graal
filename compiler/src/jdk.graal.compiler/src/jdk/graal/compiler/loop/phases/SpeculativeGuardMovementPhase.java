@@ -335,7 +335,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
             InductionVariable otherIV;
             ValueNode bound;
             boolean mirrored;
-            if (ivX == null || (ivY != null && ivY.getLoop().loop().getDepth() > ivX.getLoop().loop().getDepth())) {
+            if (ivX == null || (ivY != null && ivY.getLoop().getCFGLoop().getDepth() > ivX.getLoop().getCFGLoop().getDepth())) {
                 iv = ivY;
                 otherIV = ivX;
                 bound = compare.getX();
@@ -348,11 +348,11 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
             }
 
             if (tryOptimizeCompare(compare, iv, bound, mirrored, guard)) {
-                return iv.getLoop().loop();
+                return iv.getLoop().getCFGLoop();
             }
             if (otherIV != null) {
                 if (tryOptimizeCompare(compare, otherIV, iv.valueNode(), !mirrored, guard)) {
-                    return otherIV.getLoop().loop();
+                    return otherIV.getLoop().getCFGLoop();
                 }
             }
 
@@ -552,7 +552,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
             }
 
             Loop loopEx = iv.getLoop();
-            CFGLoop<HIRBlock> ivLoop = loopEx.loop();
+            CFGLoop<HIRBlock> ivLoop = loopEx.getCFGLoop();
             HIRBlock guardAnchorBlock = earliestBlock(guard.getAnchor().asNode());
             if (isInverted(iv.getLoop())) {
                 /*
@@ -617,7 +617,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
             CFGLoop<HIRBlock> l = guardAnchorBlock.getLoop();
             if (isInverted(loopEx)) {
                 // guard is anchored outside the loop but the condition might still be in the loop
-                l = iv.getLoop().loop();
+                l = iv.getLoop().getCFGLoop();
             }
             if (l == null) {
                 return null;
@@ -638,7 +638,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
              * If the guard anchor is already outside the loop, the condition may still be inside
              * the loop, thus we still want to try hoisting the guard.
              */
-            if (!isInverted(iv.getLoop()) && !guardAnchorBlock.dominates(iv.getLoop().loop().getHeader())) {
+            if (!isInverted(iv.getLoop()) && !guardAnchorBlock.dominates(iv.getLoop().getCFGLoop().getHeader())) {
                 if (!ignoreFrequency && !shouldHoistBasedOnFrequency(ivLoop.getHeader().getDominator(), guardAnchorBlock)) {
                     debug.log("hoisting is not beneficial based on frequency", guard);
                     return null;
@@ -687,7 +687,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                  * in the inner loop and check if we statically fold to a deopting scenario, in
                  * which case the guard would anyway always fail at runtime.
                  */
-                if (iv.getLoop().loop().getDepth() > 1 && iv.getLoop().loopBegin().loopExits().count() > 1) {
+                if (iv.getLoop().getCFGLoop().getDepth() > 1 && iv.getLoop().loopBegin().loopExits().count() > 1) {
                     InductionVariable currentIv = iv;
                     Loop currentLoop = iv.getLoop();
                     /*
@@ -695,7 +695,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                      * loop IV we also have to compute a different max trip count node for this
                      * purpose.
                      */
-                    InductionVariable countedLoopInitModifiedIV = iv.getLoop().counted().getBodyIV();
+                    InductionVariable countedLoopInitModifiedIV = iv.getLoop().counted().getLimitCheckedIV();
                     boolean initIsParentIV = false;
                     boolean initIsParentPhi = false;
                     ValueNode currentRootInit = currentIv.getRootIV().initNode();

@@ -120,8 +120,10 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
     public static boolean nonMethodFlow(TypeFlow<?> flow) {
         /*
          * These flows do not belong to any method, but can be reachable from a use.
+         * 
+         * AnyPrimitiveFlow can be either global (source == null) or local (source != null)
          */
-        return flow instanceof AllInstantiatedTypeFlow || flow instanceof AllSynchronizedTypeFlow || flow instanceof AnyPrimitiveSourceTypeFlow;
+        return flow instanceof AllInstantiatedTypeFlow || flow instanceof AllSynchronizedTypeFlow || (flow instanceof AnyPrimitiveSourceTypeFlow && flow.getSource() == null);
     }
 
     /**
@@ -448,6 +450,7 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
         AnalysisError.guarantee(bb.isBaseLayerAnalysisEnabled());
         for (TypeFlow<?> parameter : getParameters()) {
             if (parameter != null && parameter.canSaturate()) {
+                parameter.enableFlow(bb);
                 parameter.onSaturated(bb);
             }
         }
@@ -464,6 +467,7 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
         if (miscEntryFlows != null) {
             for (TypeFlow<?> miscEntryFlow : miscEntryFlows) {
                 if (miscEntryFlow != null && miscEntryFlow.canSaturate()) {
+                    miscEntryFlow.enableFlow(bb);
                     miscEntryFlow.onSaturated(bb);
                 }
             }

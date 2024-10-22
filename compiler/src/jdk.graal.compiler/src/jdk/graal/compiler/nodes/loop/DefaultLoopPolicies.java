@@ -131,7 +131,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
             }
         }
 
-        if (loop.loop().getChildren().size() > 0) {
+        if (loop.getCFGLoop().getChildren().size() > 0) {
             // This loop has child loops. Loop peeling could explode graph size.
             return false;
         }
@@ -369,7 +369,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
      * invariant is used 750 times.
      */
     private static double splitLocalLoopFrequency(Loop loop, List<ControlSplitNode> controlSplits) {
-        int loopDepth = loop.loop().getDepth();
+        int loopDepth = loop.getCFGLoop().getDepth();
         double loopLocalFrequency = loop.localLoopFrequency();
         ControlFlowGraph cfg = loop.loopsData().getCFG();
         double loopRelativeFrequency = cfg.blockFor(loop.loopBegin()).getRelativeFrequency();

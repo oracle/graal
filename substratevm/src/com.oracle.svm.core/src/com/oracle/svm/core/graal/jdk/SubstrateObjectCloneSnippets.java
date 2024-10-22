@@ -127,7 +127,7 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
         int firstFieldOffset = ConfigurationValues.getObjectLayout().getFirstFieldOffset();
         int curOffset = firstFieldOffset;
 
-        NonmovableArray<Byte> referenceMapEncoding = DynamicHubSupport.getReferenceMapEncoding();
+        NonmovableArray<Byte> referenceMapEncoding = DynamicHubSupport.forLayer(hub.getLayerId()).getReferenceMapEncoding();
         int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
         int referenceMapIndex = hub.getReferenceMapIndex();
         int entryCount = NonmovableByteArrayReader.getS4(referenceMapEncoding, referenceMapIndex);

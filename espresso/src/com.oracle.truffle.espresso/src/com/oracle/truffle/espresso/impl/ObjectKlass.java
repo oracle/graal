@@ -894,7 +894,7 @@ public final class ObjectKlass extends Klass {
                     host = thisPool.resolvedKlassAt(this, nestHost.hostClassIndex);
                 } catch (AbstractTruffleException e) {
                     if (getJavaVersion().java15OrLater()) {
-                        getContext().getLogger().log(Level.FINE, "Exception while loading nest host class for " + this.getExternalName(), e);
+                        getContext().getLogger().log(Level.FINE, e, () -> "Exception while loading nest host class for " + this.getExternalName());
                         // JVMS sect. 5.4.4: Any exception thrown as a result of failure of class or
                         // interface resolution is not rethrown.
                         host = this;
@@ -904,7 +904,7 @@ public final class ObjectKlass extends Klass {
                 }
                 if (host != this && !host.nestMembersCheck(this)) {
                     if (getJavaVersion().java15OrLater()) {
-                        getContext().getLogger().log(Level.FINE, "Failed nest host class checks for " + this.getExternalName());
+                        getContext().getLogger().log(Level.FINE, () -> "Failed nest host class checks for " + this.getExternalName());
                         host = this;
                     } else {
                         Meta meta = getMeta();
@@ -930,9 +930,7 @@ public final class ObjectKlass extends Klass {
         RuntimeConstantPool pool = getConstantPool();
         for (int index : nestMembers.getClasses()) {
             if (k.getName().equals(pool.classAt(index).getName(pool))) {
-                if (k == pool.resolvedKlassAt(this, index)) {
-                    return true;
-                }
+                return true;
             }
         }
         return false;
@@ -983,22 +981,31 @@ public final class ObjectKlass extends Klass {
         klasses.add(nest());
         for (int i = 0; i < nestMembers.getClasses().length; i++) {
             int index = nestMembers.getClasses()[i];
+            Klass k;
             try {
-                klasses.add(pool.resolvedKlassAt(this, index));
-            } catch (EspressoException e) {
+                k = pool.resolvedKlassAt(this, index);
+            } catch (AbstractTruffleException e) {
                 /*
                  * Don't allow badly constructed nest members to break execution here, only report
                  * well-constructed entries.
                  */
+                getContext().getLogger().log(Level.FINE, e, () -> "Exception while loading nest host class for " + this.getExternalName());
+                continue;
             }
+            if (k.nest() != this) {
+                getContext().getLogger().log(Level.FINE, () -> "Skipping nest member with a different nest host class for " + this.getExternalName() + " member " + k + " with host " + k.nest());
+                continue;
+            }
+            klasses.add(k);
         }
         return klasses.toArray(Klass.EMPTY_ARRAY);
     }
 
     Field lookupFieldTableImpl(int slot) {
         if (slot >= 0) {
-            assert slot < fieldTable.length && !fieldTable[slot].isHidden();
-            return fieldTable[slot];
+            Field field = fieldTable[slot];
+            assert !field.isHidden();
+            return field;
         } else { // negative values used for extension fields
             ObjectKlass objectKlass = this;
             while (objectKlass != null) {
@@ -1016,7 +1023,6 @@ public final class ObjectKlass extends Klass {
 
     Field lookupStaticFieldTableImpl(int slot) {
         if (slot >= 0) {
-            assert slot < staticFieldTable.length;
             return staticFieldTable[slot];
         } else { // negative values used for extension fields
             return extensionFieldsMetadata.getStaticFieldAtSlot(slot);

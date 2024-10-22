@@ -172,6 +172,10 @@ public abstract class HostVM {
         return false;
     }
 
+    public boolean analyzedInPriorLayer(@SuppressWarnings("unused") AnalysisMethod method) {
+        return false;
+    }
+
     /**
      * Check if an {@link AnalysisType} is initialized.
      */
@@ -324,6 +328,10 @@ public abstract class HostVM {
 
     @SuppressWarnings("unused")
     public boolean isFieldIncluded(BigBang bb, Field field) {
+        return true;
+    }
+
+    public boolean isClosedTypeWorld() {
         return true;
     }
 

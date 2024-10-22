@@ -25,7 +25,6 @@
  */
 package com.oracle.svm.core.configure;
 
-import java.util.Arrays;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
@@ -68,7 +67,7 @@ public abstract class SerializationConfigurationParser<C> extends ConfigurationP
         if (targetSerializationClass instanceof NamedConfigurationTypeDescriptor namedClass) {
             serializationSupport.registerWithTargetConstructorClass(condition, namedClass.name(), customTargetConstructorClass);
         } else if (targetSerializationClass instanceof ProxyConfigurationTypeDescriptor proxyClass) {
-            serializationSupport.registerProxyClass(condition, Arrays.asList(proxyClass.interfaceNames()));
+            serializationSupport.registerProxyClass(condition, proxyClass.interfaceNames());
         } else {
             throw new JsonParserException("Unknown configuration type descriptor: %s".formatted(targetSerializationClass.toString()));
         }

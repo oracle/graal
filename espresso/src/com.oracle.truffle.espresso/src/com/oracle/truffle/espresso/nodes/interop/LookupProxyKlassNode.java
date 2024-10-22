@@ -50,7 +50,7 @@ public abstract class LookupProxyKlassNode extends EspressoNode {
     LookupProxyKlassNode() {
     }
 
-    public abstract WrappedProxyKlass execute(Object metaObject, String metaName, Klass targetType) throws ClassCastException;
+    public abstract WrappedProxyKlass execute(Object metaObject, String metaName, Klass targetType);
 
     @SuppressWarnings("unused")
     @Specialization(guards = {"targetType == cachedTargetType", "cachedMetaName.equals(metaName)"}, limit = "LIMIT")
@@ -59,14 +59,14 @@ public abstract class LookupProxyKlassNode extends EspressoNode {
                     @Cached("targetType") Klass cachedTargetType,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                     @Cached("metaName") String cachedMetaName,
-                    @Cached("doUncached(metaObject, metaName, targetType, interop)") WrappedProxyKlass cachedProxyKlass) throws ClassCastException {
+                    @Cached("doUncached(metaObject, metaName, targetType, interop)") WrappedProxyKlass cachedProxyKlass) {
         return cachedProxyKlass;
     }
 
     @TruffleBoundary
     @Specialization(replaces = "doCached")
     WrappedProxyKlass doUncached(Object metaObject, String metaName, Klass targetType,
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws ClassCastException {
+                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
         if (!getContext().interfaceMappingsEnabled()) {
             return null;
         }
@@ -79,18 +79,18 @@ public abstract class LookupProxyKlassNode extends EspressoNode {
             if (parentInterfaces.isEmpty()) {
                 if (superKlass != getMeta().java_lang_Object) {
                     if (!targetType.isAssignableFrom(superKlass)) {
-                        throw new ClassCastException("super klass is not instance of expected type: " + targetType.getName());
+                        return null;
                     }
                     return new WrappedProxyKlass(superKlass);
                 }
                 return null;
             }
-            proxyBytes = EspressoForeignProxyGenerator.getProxyKlassBytes(metaName, parentInterfaces.toArray(new ObjectKlass[parentInterfaces.size()]), superKlass, getContext());
+            proxyBytes = EspressoForeignProxyGenerator.getProxyKlassBytes(metaName, parentInterfaces.toArray(ObjectKlass.EMPTY_ARRAY), superKlass, getContext());
         }
         Klass proxyKlass = lookupOrDefineInBindingsLoader(proxyBytes, getContext());
 
         if (!targetType.isAssignableFrom(proxyKlass)) {
-            throw new ClassCastException("proxy object is not instance of expected type: " + targetType.getName());
+            return null;
         }
         return proxyBytes.getProxyKlass((ObjectKlass) proxyKlass);
     }
@@ -100,14 +100,21 @@ public abstract class LookupProxyKlassNode extends EspressoNode {
 
         Symbol<Symbol.Type> proxyName = context.getTypes().fromClassGetName(proxyBytes.name);
         Klass proxyKlass = registry.findLoadedKlass(context.getClassLoadingEnv(), proxyName);
-        if (proxyKlass == null) {
-            try {
-                proxyKlass = registry.defineKlass(context, proxyName, proxyBytes.bytes);
-            } catch (EspressoClassLoadingException e) {
-                throw EspressoError.shouldNotReachHere(e);
-            }
+        if (proxyKlass != null) {
+            return proxyKlass;
         }
-        return proxyKlass;
+        // double-checked locking on the proxy name
+        synchronized (proxyName) {
+            proxyKlass = registry.findLoadedKlass(context.getClassLoadingEnv(), proxyName);
+            if (proxyKlass == null) {
+                try {
+                    proxyKlass = registry.defineKlass(context, proxyName, proxyBytes.bytes);
+                } catch (EspressoClassLoadingException e) {
+                    throw EspressoError.shouldNotReachHere(e);
+                }
+            }
+            return proxyKlass;
+        }
     }
 
     private static ObjectKlass fillParents(Object metaObject, InteropLibrary interop, PolyglotTypeMappings mappings, Set<ObjectKlass> parents, EspressoContext context) throws ClassCastException {

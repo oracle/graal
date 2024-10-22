@@ -113,6 +113,10 @@ public final class ClassValueFeature implements InternalFeature {
             throw VMError.shouldNotReachHere(ex);
         }
 
+        int numTypes = impl.getUniverse().getTypes().size();
         mapsToRescan.forEach(impl::rescanObject);
+        if (numTypes != impl.getUniverse().getTypes().size()) {
+            access.requireAnalysisIteration();
+        }
     }
 }

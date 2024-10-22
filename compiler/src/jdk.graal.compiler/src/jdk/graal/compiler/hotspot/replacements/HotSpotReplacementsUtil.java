@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package jdk.graal.compiler.hotspot.replacements;
 
 import static jdk.graal.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
+import static jdk.graal.compiler.hotspot.GraalHotSpotVMConfigAccess.JDK;
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.VERIFY_OOP;
 
 import java.lang.ref.Reference;
@@ -36,11 +37,13 @@ import jdk.graal.compiler.api.replacements.Fold.InjectedParameter;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
+import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.TypeReference;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
 import jdk.graal.compiler.graph.Node.NodeIntrinsic;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
+import jdk.graal.compiler.hotspot.meta.HotSpotLoweringProvider;
 import jdk.graal.compiler.hotspot.word.KlassPointer;
 import jdk.graal.compiler.nodes.CanonicalizableLocation;
 import jdk.graal.compiler.nodes.CompressionNode;
@@ -67,6 +70,7 @@ import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
+import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -80,14 +84,24 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
  */
 public class HotSpotReplacementsUtil {
 
+    /**
+     * Base class for location specific read optimizations. Many of these optimizations are normally
+     * performed on high level nodes before lowering but opportunities can arise once they have been
+     * lowered into reads. By examining the values involved in those reads it may be possible to
+     * infer exact types.
+     */
     abstract static class HotSpotOptimizingLocationIdentity extends NamedLocationIdentity implements CanonicalizableLocation {
 
         HotSpotOptimizingLocationIdentity(String name) {
-            super(name, true);
+            this(name, true);
+        }
+
+        HotSpotOptimizingLocationIdentity(String name, boolean immutable) {
+            super(name, immutable);
         }
 
         @Override
-        public abstract ValueNode canonicalizeRead(ValueNode read, ValueNode object, ValueNode location, CoreProviders tool);
+        public abstract ValueNode canonicalizeRead(ValueNode read, ValueNode object, ValueNode location, NodeView view, CoreProviders tool);
 
         protected ValueNode findReadHub(ValueNode object) {
             ValueNode base = object;
@@ -306,6 +320,10 @@ public class HotSpotReplacementsUtil {
 
     public static final LocationIdentity JAVA_THREAD_LOCK_STACK_LOCATION = NamedLocationIdentity.mutable("JavaThread::_lock_stack");
 
+    public static final LocationIdentity JAVA_THREAD_OM_CACHE_LOCATION = NamedLocationIdentity.mutable("JavaThread::_om_cache");
+
+    public static final LocationIdentity JAVA_THREAD_UNLOCKED_INFLATED_MONITOR_LOCATION = NamedLocationIdentity.mutable("JavaThread::_unlocked_inflated_monitor");
+
     @Fold
     public static JavaKind getWordKind() {
         return runtime().getHostJVMCIBackend().getCodeCache().getTarget().wordJavaKind;
@@ -324,6 +342,17 @@ public class HotSpotReplacementsUtil {
     public static final LocationIdentity PROTOTYPE_MARK_WORD_LOCATION = NamedLocationIdentity.mutable("PrototypeMarkWord");
 
     public static final LocationIdentity KLASS_ACCESS_FLAGS_LOCATION = NamedLocationIdentity.immutable("Klass::_access_flags");
+    public static final LocationIdentity KLASS_MISC_FLAGS_LOCATION = NamedLocationIdentity.immutable("Klass::_misc_flags");
+
+    @Fold
+    public static boolean shouldUseKlassMiscFlags() {
+        return JDK >= 24;
+    }
+
+    @Fold
+    public static int klassMiscFlagsOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.klassMiscFlagsOffset;
+    }
 
     @Fold
     public static int klassAccessFlagsOffset(@InjectedParameter GraalHotSpotVMConfig config) {
@@ -337,7 +366,7 @@ public class HotSpotReplacementsUtil {
 
     public static final LocationIdentity KLASS_LAYOUT_HELPER_LOCATION = new HotSpotOptimizingLocationIdentity("Klass::_layout_helper") {
         @Override
-        public ValueNode canonicalizeRead(ValueNode read, ValueNode object, ValueNode location, CoreProviders tool) {
+        public ValueNode canonicalizeRead(ValueNode read, ValueNode object, ValueNode location, NodeView view, CoreProviders tool) {
             ValueNode javaObject = findReadHub(object);
             if (javaObject != null) {
                 if (javaObject.stamp(NodeView.DEFAULT) instanceof ObjectStamp) {
@@ -378,26 +407,6 @@ public class HotSpotReplacementsUtil {
         return config.allocatePrefetchStepSize;
     }
 
-    @Fold
-    public static int invocationCounterIncrement(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.invocationCounterIncrement;
-    }
-
-    @Fold
-    public static int invocationCounterOffset(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.invocationCounterOffset;
-    }
-
-    @Fold
-    public static int backedgeCounterOffset(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.backedgeCounterOffset;
-    }
-
-    @Fold
-    public static int invocationCounterShift(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.invocationCounterShift;
-    }
-
     @NodeIntrinsic(value = KlassLayoutHelperNode.class)
     public static native int readLayoutHelper(KlassPointer object);
 
@@ -434,7 +443,7 @@ public class HotSpotReplacementsUtil {
 
     public static final LocationIdentity HUB_LOCATION = new HotSpotOptimizingLocationIdentity("Hub") {
         @Override
-        public ValueNode canonicalizeRead(ValueNode read, ValueNode object, ValueNode location, CoreProviders tool) {
+        public ValueNode canonicalizeRead(ValueNode read, ValueNode object, ValueNode location, NodeView view, CoreProviders tool) {
             TypeReference constantType = StampTool.typeReferenceOrNull(object);
             if (constantType != null && constantType.isExact()) {
                 return ConstantNode.forConstant(read.stamp(NodeView.DEFAULT), tool.getConstantReflection().asObjectHub(constantType.getType()), tool.getMetaAccess());
@@ -445,7 +454,7 @@ public class HotSpotReplacementsUtil {
 
     public static final LocationIdentity COMPRESSED_HUB_LOCATION = new HotSpotOptimizingLocationIdentity("CompressedHub") {
         @Override
-        public ValueNode canonicalizeRead(ValueNode read, ValueNode object, ValueNode location, CoreProviders tool) {
+        public ValueNode canonicalizeRead(ValueNode read, ValueNode object, ValueNode location, NodeView view, CoreProviders tool) {
             TypeReference constantType = StampTool.typeReferenceOrNull(object);
             if (constantType != null && constantType.isExact()) {
                 return ConstantNode.forConstant(read.stamp(NodeView.DEFAULT), ((HotSpotMetaspaceConstant) tool.getConstantReflection().asObjectHub(constantType.getType())).compress(),
@@ -466,11 +475,6 @@ public class HotSpotReplacementsUtil {
     }
 
     @Fold
-    public static boolean useHeavyMonitors(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.lockingMode == config.lockingModeMonitor;
-    }
-
-    @Fold
     public static boolean useStackLocking(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.lockingMode == config.lockingModeStack;
     }
@@ -481,23 +485,23 @@ public class HotSpotReplacementsUtil {
     }
 
     @Fold
-    public static int unlockedMask(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.unlockedMask;
+    public static boolean useObjectMonitorTable(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.useObjectMonitorTable;
     }
 
     @Fold
-    public static int monitorMask(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.monitorMask;
+    public static int unlockedValue(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.unlockedValue;
+    }
+
+    @Fold
+    public static int monitorValue(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.monitorValue;
     }
 
     @Fold
     public static int objectMonitorOwnerOffset(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.objectMonitorOwner;
-    }
-
-    @Fold
-    public static long objectMonitorAnonymousOwner(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.objectMonitorAnonymousOwner;
     }
 
     @Fold
@@ -528,11 +532,6 @@ public class HotSpotReplacementsUtil {
     @Fold
     public static int lockMaskInPlace(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.lockMaskInPlace;
-    }
-
-    @Fold
-    public static int ageMaskInPlace(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.ageMaskInPlace;
     }
 
     @Fold
@@ -653,7 +652,7 @@ public class HotSpotReplacementsUtil {
         return config.secondarySupersOffset;
     }
 
-    public static final LocationIdentity DISPLACED_MARK_WORD_LOCATION = NamedLocationIdentity.mutable("DisplacedMarkWord");
+    public static final LocationIdentity BASICLOCK_METADATA_LOCATION = NamedLocationIdentity.mutable("BasicLock::_metadata");
 
     public static final LocationIdentity OBJECT_MONITOR_OWNER_LOCATION = NamedLocationIdentity.mutable("ObjectMonitor::_owner");
 
@@ -666,8 +665,8 @@ public class HotSpotReplacementsUtil {
     public static final LocationIdentity OBJECT_MONITOR_SUCC_LOCATION = NamedLocationIdentity.mutable("ObjectMonitor::_succ");
 
     @Fold
-    public static int lockDisplacedMarkOffset(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.basicLockDisplacedHeaderOffset;
+    public static int lockMetadataOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.basicLockMetadataOffset;
     }
 
     @Fold
@@ -683,6 +682,26 @@ public class HotSpotReplacementsUtil {
     @Fold
     static int javaThreadLockStackEndOffset(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.lockStackEndOffset;
+    }
+
+    @Fold
+    static int javaThreadOomCacheOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.threadOmCacheOffset;
+    }
+
+    @Fold
+    public static int javaThreadUnlockedInflatedMonitorOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.threadUnlockedInflatedMonitorOffset;
+    }
+
+    @Fold
+    static int omCacheOopToOopDifference(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.omCacheOopToOopDifference;
+    }
+
+    @Fold
+    static int omCacheOopToMonitorDifference(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.omCacheOopToMonitorDifference;
     }
 
     @Fold
@@ -828,7 +847,7 @@ public class HotSpotReplacementsUtil {
     }
 
     static byte readInstanceKlassInitState(KlassPointer hub) {
-        return hub.readByte(instanceKlassInitStateOffset(INJECTED_VMCONFIG), CLASS_INIT_STATE_LOCATION);
+        return hub.readByteVolatile(instanceKlassInitStateOffset(INJECTED_VMCONFIG), CLASS_INIT_STATE_LOCATION);
     }
 
     static Word readInstanceKlassInitThread(KlassPointer hub) {
@@ -837,21 +856,16 @@ public class HotSpotReplacementsUtil {
 
     public static final LocationIdentity KLASS_MODIFIER_FLAGS_LOCATION = NamedLocationIdentity.immutable("Klass::_modifier_flags");
 
-    @Fold
-    public static int klassModifierFlagsOffset(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.klassModifierFlagsOffset;
-    }
-
     public static final LocationIdentity CLASS_KLASS_LOCATION = new HotSpotOptimizingLocationIdentity("Class._klass") {
         @Override
-        public ValueNode canonicalizeRead(ValueNode read, ValueNode object, ValueNode location, CoreProviders tool) {
+        public ValueNode canonicalizeRead(ValueNode read, ValueNode object, ValueNode location, NodeView view, CoreProviders tool) {
             return foldIndirection(read, object, CLASS_MIRROR_LOCATION);
         }
     };
 
     public static final LocationIdentity CLASS_ARRAY_KLASS_LOCATION = new HotSpotOptimizingLocationIdentity("Class._array_klass") {
         @Override
-        public ValueNode canonicalizeRead(ValueNode read, ValueNode object, ValueNode location, CoreProviders tool) {
+        public ValueNode canonicalizeRead(ValueNode read, ValueNode object, ValueNode location, NodeView view, CoreProviders tool) {
             return foldIndirection(read, object, ARRAY_KLASS_COMPONENT_MIRROR);
         }
     };
@@ -906,6 +920,9 @@ public class HotSpotReplacementsUtil {
     public static final LocationIdentity HOTSPOT_JAVA_THREAD_IS_IN_TMP_VTMS_TRANSITION = NamedLocationIdentity.mutable("JavaThread::_is_in_tmp_VTMS_transition");
     public static final LocationIdentity HOTSPOT_JAVA_THREAD_IS_DISABLE_SUSPEND = NamedLocationIdentity.mutable("JavaThread::_is_disable_suspend");
     public static final LocationIdentity HOTSPOT_JAVA_LANG_THREAD_IS_IN_VTMS_TRANSITION = NamedLocationIdentity.mutable("Thread::_is_in_VTMS_transition");
+    public static final LocationIdentity HOTSPOT_JAVA_THREAD_CONT_ENTRY = NamedLocationIdentity.mutable("JavaThread::_cont_entry");
+
+    public static final LocationIdentity HOTSPOT_CONTINUATION_ENTRY_PIN_COUNT = NamedLocationIdentity.mutable("ContinuationEntry::_pin_count");
 
     @Fold
     public static int layoutHelperHeaderSizeShift(@InjectedParameter GraalHotSpotVMConfig config) {
@@ -939,24 +956,17 @@ public class HotSpotReplacementsUtil {
         return "referent";
     }
 
-    @Fold
     public static long referentOffset(@InjectedParameter MetaAccessProvider metaAccessProvider) {
         return referentField(metaAccessProvider).getOffset();
     }
 
-    @Fold
     public static ResolvedJavaField referentField(@InjectedParameter MetaAccessProvider metaAccessProvider) {
-        return getField(referenceType(metaAccessProvider), referentFieldName());
-    }
-
-    @Fold
-    public static ResolvedJavaType referenceType(@InjectedParameter MetaAccessProvider metaAccessProvider) {
-        return metaAccessProvider.lookupJavaType(Reference.class);
+        return getField(metaAccessProvider.lookupJavaType(Reference.class), referentFieldName());
     }
 
     public static final LocationIdentity OBJ_ARRAY_KLASS_ELEMENT_KLASS_LOCATION = new HotSpotOptimizingLocationIdentity("ObjArrayKlass::_element_klass") {
         @Override
-        public ValueNode canonicalizeRead(ValueNode read, ValueNode object, ValueNode location, CoreProviders tool) {
+        public ValueNode canonicalizeRead(ValueNode read, ValueNode object, ValueNode location, NodeView view, CoreProviders tool) {
             ValueNode javaObject = findReadHub(object);
             if (javaObject != null) {
                 ResolvedJavaType type = StampTool.typeOrNull(javaObject);
@@ -1022,9 +1032,34 @@ public class HotSpotReplacementsUtil {
         return config.javaLangThreadTIDOffset;
     }
 
-    public static final LocationIdentity PRIMARY_SUPERS_LOCATION = NamedLocationIdentity.immutable("PrimarySupers");
+    /**
+     * This location identity is intended for accesses to {@code Klass::_primary_supers}, which is
+     * immutable. However, in {@link TypeCheckSnippetUtils#checkUnknownSubType}, it is possible to
+     * trigger context insensitive constant folding of the corresponding read in the dead code where
+     * the read's displacement is {@link GraalHotSpotVMConfig#secondarySuperCacheOffset}, i.e.,
+     * pointing to the mutable {@code Klass::_secondary_super_cache}. Hence, we only fold
+     * corresponding reads when the displacement is not
+     * {@link GraalHotSpotVMConfig#secondarySuperCacheOffset}.
+     */
+    public static final LocationIdentity PRIMARY_SUPERS_LOCATION = new HotSpotOptimizingLocationIdentity("PrimarySupers", false) {
+        @Override
+        public ValueNode canonicalizeRead(ValueNode read, ValueNode object, ValueNode offset, NodeView view, CoreProviders tool) {
+            int secondarySuperCacheOffset = ((HotSpotLoweringProvider) tool.getLowerer()).getVMConfig().secondarySuperCacheOffset;
+
+            if (object instanceof ConstantNode && offset instanceof ConstantNode) {
+                long displacement = offset.asJavaConstant().asLong();
+                if (displacement != secondarySuperCacheOffset) {
+                    Stamp accessStamp = read.stamp(view);
+                    Constant constant = accessStamp.readConstant(tool.getConstantReflection().getMemoryAccessProvider(), object.asConstant(), displacement, accessStamp);
+                    return ConstantNode.forConstant(accessStamp, constant, 0, false, tool.getMetaAccess());
+                }
+            }
+            return read;
+        }
+    };
 
     public static final LocationIdentity METASPACE_ARRAY_LENGTH_LOCATION = NamedLocationIdentity.immutable("MetaspaceArrayLength");
 
     public static final LocationIdentity SECONDARY_SUPERS_ELEMENT_LOCATION = NamedLocationIdentity.immutable("SecondarySupersElement");
+
 }

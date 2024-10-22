@@ -24,27 +24,23 @@
  */
 package jdk.graal.compiler.java;
 
+import static jdk.graal.compiler.bytecode.Bytecodes.INVOKEDYNAMIC;
+import static jdk.graal.compiler.bytecode.Bytecodes.INVOKEINTERFACE;
+import static jdk.graal.compiler.bytecode.Bytecodes.INVOKESPECIAL;
+import static jdk.graal.compiler.bytecode.Bytecodes.INVOKESTATIC;
+import static jdk.graal.compiler.bytecode.Bytecodes.INVOKEVIRTUAL;
+
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.nodes.Invoke;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.phases.OptimisticOptimizations;
-import jdk.graal.compiler.phases.tiers.HighTierContext;
-import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.bytecode.BytecodeStream;
 import jdk.graal.compiler.util.Digest;
 import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.ConstantPool;
+import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -56,12 +52,6 @@ public final class LambdaUtils {
     public static final String SERIALIZATION_TEST_LAMBDA_CLASS_SUBSTRING = "$$Lambda";
     public static final String SERIALIZATION_TEST_LAMBDA_CLASS_SPLIT_PATTERN = "\\$\\$Lambda";
     public static final String ADDRESS_PREFIX = ".0x";
-
-    private static GraphBuilderConfiguration buildLambdaParserConfig(ClassInitializationPlugin cip) {
-        GraphBuilderConfiguration.Plugins plugins = new GraphBuilderConfiguration.Plugins(new InvocationPlugins());
-        plugins.setClassInitializationPlugin(cip);
-        return GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true);
-    }
 
     private LambdaUtils() {
     }
@@ -82,35 +72,17 @@ public final class LambdaUtils {
      * parameters are Object types) and serves as a wrapper that casts parameters to specialized
      * types and calls an original method.
      *
-     * @param cip plugin to
-     *            {@link ClassInitializationPlugin#loadReferencedType(GraphBuilderContext, jdk.vm.ci.meta.ConstantPool, int, int)
-     *            load} new types
-     * @param providers providers to use when processing the lambda code
      * @param lambdaType the lambda type to analyze
-     * @param options options to use when analyzing the lamda code
-     * @param debug debug context to nest the analysis into
-     * @param ctx context to use for the
-     *            {@link DebugContext#scope(java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object)}
      * @return stable name for the lambda class
      */
     @SuppressWarnings("try")
-    public static String findStableLambdaName(ClassInitializationPlugin cip, Providers providers, ResolvedJavaType lambdaType, OptionValues options, DebugContext debug, Object ctx,
-                    Function<GraphBuilderConfiguration, GraphBuilderPhase.Instance> graphBuilderSupplier)
-                    throws RuntimeException {
+    public static String findStableLambdaName(ResolvedJavaType lambdaType) {
         ResolvedJavaMethod[] lambdaProxyMethods = Arrays.stream(lambdaType.getDeclaredMethods(false)).filter(m -> !m.isBridge() && m.isPublic()).toArray(ResolvedJavaMethod[]::new);
         /*
-         * Take only the first method to build a graph, because the graph for all other methods will
-         * be the same.
+         * Take only the first method to find invoked methods, because the result would be the same
+         * for all other methods.
          */
-        StructuredGraph graph = new StructuredGraph.Builder(options, debug).method(lambdaProxyMethods[0]).build();
-        try (DebugContext.Scope ignored = debug.scope("Lambda target method analysis", graph, lambdaType, ctx)) {
-            GraphBuilderPhase.Instance lambdaParserPhase = graphBuilderSupplier.apply(buildLambdaParserConfig(cip));
-            HighTierContext context = new HighTierContext(providers, null, OptimisticOptimizations.NONE);
-            lambdaParserPhase.apply(graph, context);
-        } catch (Throwable e) {
-            throw debug.handle(e);
-        }
-        List<ResolvedJavaMethod> invokedMethods = StreamSupport.stream(graph.getInvokes().spliterator(), false).map(Invoke::getTargetMethod).collect(Collectors.toList());
+        List<JavaMethod> invokedMethods = findInvokedMethods(lambdaProxyMethods[0]);
         if (invokedMethods.isEmpty()) {
             StringBuilder sb = new StringBuilder();
             sb.append("Lambda without a target invoke: ").append(lambdaType.toClassName());
@@ -120,6 +92,37 @@ public final class LambdaUtils {
             throw new JVMCIError(sb.toString());
         }
         return createStableLambdaName(lambdaType, invokedMethods);
+    }
+
+    /**
+     * Finds the methods invoked in the bytecode of the provided method.
+     *
+     * @param method the method whose bytecode is parsed
+     * @return the list of invoked methods
+     */
+    public static List<JavaMethod> findInvokedMethods(ResolvedJavaMethod method) {
+        ConstantPool constantPool = method.getConstantPool();
+        List<JavaMethod> invokedMethods = new ArrayList<>();
+        for (BytecodeStream stream = new BytecodeStream(method.getCode()); stream.currentBCI() < stream.endBCI(); stream.next()) {
+            int opcode = stream.currentBC();
+            int cpi;
+            switch (opcode) {
+                case INVOKEVIRTUAL: // fall through
+                case INVOKESPECIAL: // fall through
+                case INVOKESTATIC: // fall through
+                case INVOKEINTERFACE:
+                    cpi = stream.readCPI();
+                    invokedMethods.add(constantPool.lookupMethod(cpi, opcode, method));
+                    break;
+                case INVOKEDYNAMIC:
+                    cpi = stream.readCPI4();
+                    invokedMethods.add(constantPool.lookupMethod(cpi, opcode, method));
+                    break;
+                default:
+                    break;
+            }
+        }
+        return invokedMethods;
     }
 
     /**
@@ -138,7 +141,7 @@ public final class LambdaUtils {
         return isLambdaClassName(name) && lambdaMatcher(name).find();
     }
 
-    private static String createStableLambdaName(ResolvedJavaType lambdaType, List<ResolvedJavaMethod> targetMethods) {
+    private static String createStableLambdaName(ResolvedJavaType lambdaType, List<JavaMethod> targetMethods) {
         final String lambdaName = lambdaType.getName();
         assert lambdaMatcher(lambdaName).find() : "Stable name should be created for lambda types: " + lambdaName;
 
@@ -146,7 +149,7 @@ public final class LambdaUtils {
         StringBuilder sb = new StringBuilder();
         targetMethods.forEach((targetMethod) -> sb.append(targetMethod.format("%H.%n(%P)%R")));
         // Take parameter types of constructor into consideration, see GR-52837
-        for (ResolvedJavaMethod ctor : lambdaType.getDeclaredConstructors()) {
+        for (JavaMethod ctor : lambdaType.getDeclaredConstructors()) {
             sb.append(ctor.format("%P"));
         }
         return m.replaceFirst(Matcher.quoteReplacement(LAMBDA_CLASS_NAME_SUBSTRING + ADDRESS_PREFIX + Digest.digestAsHex(sb.toString()) + ";"));

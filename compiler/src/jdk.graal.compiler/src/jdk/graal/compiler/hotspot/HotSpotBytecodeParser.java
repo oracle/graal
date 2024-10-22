@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,8 +34,10 @@ import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
 
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaField;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -88,5 +90,14 @@ public class HotSpotBytecodeParser extends BytecodeParser {
     @Override
     protected boolean mustClearNonLiveLocalsAtOSREntry() {
         return !HotSpotGraalServices.hasGetOopMapAt();
+    }
+
+    @Override
+    protected boolean needBarrierAfterFieldStore(ResolvedJavaField field) {
+        if (method.isConstructor() && field instanceof HotSpotResolvedJavaField hfield && hfield.isStable()) {
+            return true;
+        }
+
+        return super.needBarrierAfterFieldStore(field);
     }
 }

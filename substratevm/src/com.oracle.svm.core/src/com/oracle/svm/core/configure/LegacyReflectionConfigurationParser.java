@@ -26,7 +26,6 @@ package com.oracle.svm.core.configure;
 
 import java.net.URI;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -38,7 +37,7 @@ import com.oracle.svm.core.TypeResult;
 
 final class LegacyReflectionConfigurationParser<C, T> extends ReflectionConfigurationParser<C, T> {
 
-    private static final List<String> OPTIONAL_REFLECT_CONFIG_OBJECT_ATTRS = Arrays.asList("name", "type", "allDeclaredConstructors", "allPublicConstructors",
+    private static final List<String> OPTIONAL_REFLECT_CONFIG_OBJECT_ATTRS = Arrays.asList("allDeclaredConstructors", "allPublicConstructors",
                     "allDeclaredMethods", "allPublicMethods", "allDeclaredFields", "allPublicFields",
                     "allDeclaredClasses", "allRecordComponents", "allPermittedSubclasses", "allNestMembers", "allSigners",
                     "allPublicClasses", "methods", "queriedMethods", "fields", CONDITIONAL_KEY,
@@ -59,13 +58,13 @@ final class LegacyReflectionConfigurationParser<C, T> extends ReflectionConfigur
 
     @Override
     protected void parseClass(EconomicMap<String, Object> data) {
-        checkAttributes(data, "reflection class descriptor object", Collections.emptyList(), OPTIONAL_REFLECT_CONFIG_OBJECT_ATTRS);
-        checkHasExactlyOneAttribute(data, "reflection class descriptor object", List.of(NAME_KEY, TYPE_KEY));
+        checkAttributes(data, "reflection class descriptor object", List.of(NAME_KEY), OPTIONAL_REFLECT_CONFIG_OBJECT_ATTRS);
 
-        Optional<ConfigurationTypeDescriptor> type = parseTypeOrName(data, treatAllNameEntriesAsType);
+        Optional<TypeDescriptorWithOrigin> type = parseName(data, treatAllNameEntriesAsType);
         if (type.isEmpty()) {
             return;
         }
+        ConfigurationTypeDescriptor typeDescriptor = type.get().typeDescriptor();
         /*
          * Classes registered using the old ("name") syntax requires elements (fields, methods,
          * constructors, ...) to be registered for runtime queries, whereas the new ("type") syntax
@@ -84,9 +83,9 @@ final class LegacyReflectionConfigurationParser<C, T> extends ReflectionConfigur
          * allow getDeclaredMethods() and similar bulk queries at run time.
          */
         C condition = conditionResult.get();
-        TypeResult<T> result = delegate.resolveType(condition, type.get(), true);
+        TypeResult<T> result = delegate.resolveType(condition, typeDescriptor, true);
         if (!result.isPresent()) {
-            handleMissingElement("Could not resolve " + type.get() + " for reflection configuration.", result.getException());
+            handleMissingElement("Could not resolve " + typeDescriptor + " for reflection configuration.", result.getException());
             return;
         }
 

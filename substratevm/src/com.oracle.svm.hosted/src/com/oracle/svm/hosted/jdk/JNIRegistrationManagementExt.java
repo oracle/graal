@@ -24,21 +24,12 @@
  */
 package com.oracle.svm.hosted.jdk;
 
-import java.lang.reflect.Method;
-
-import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.nativeimage.c.type.CCharPointer;
-
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
-import com.oracle.svm.core.jdk.management.LibManagementExtSupport;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
-import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
-import com.oracle.svm.hosted.code.CEntryPointData;
-import com.oracle.svm.util.ReflectionUtil;
 
 @AutomaticallyRegisteredFeature
 public class JNIRegistrationManagementExt extends JNIRegistrationUtil implements InternalFeature {
@@ -60,14 +51,6 @@ public class JNIRegistrationManagementExt extends JNIRegistrationUtil implements
         nativeLibraries.addStaticNonJniLibrary("management_ext", "java");
         if (isWindows()) {
             nativeLibraries.addDynamicNonJniLibrary("psapi");
-        } else {
-            /*
-             * Register our port of the native function `throw_internal_error`. This avoids linking
-             * the entire object file of the original function, which is necessary to prevent linker
-             * errors such as JDK-8264047.
-             */
-            Method method = ReflectionUtil.lookupMethod(LibManagementExtSupport.class, "throwInternalError", IsolateThread.class, CCharPointer.class);
-            CEntryPointCallStubSupport.singleton().registerStubForMethod(method, () -> CEntryPointData.create(method));
         }
     }
 }

@@ -58,7 +58,6 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.HotSpotMarkId;
 import jdk.graal.compiler.hotspot.ZWriteBarrierSetLIRGeneratorTool;
-import jdk.graal.compiler.hotspot.amd64.AMD64HotSpotBackend;
 import jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import jdk.graal.compiler.lir.LIRFrameState;
@@ -76,6 +75,7 @@ import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.MemoryBarriers;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -104,7 +104,7 @@ public class AMD64HotSpotZBarrierSetLIRGenerator implements AMD64ReadBarrierSetL
     }
 
     /**
-     * Convert a normal oop into a colored pointer.
+     * Convert a normal oop into a colored pointer in a single register.
      */
     @SyncPort(from = "https://github.com/openjdk/jdk/blob/4acafb809c66589fbbfee9c9a4ba7820f848f0e4/src/hotspot/cpu/x86/gc/z/z_x86_64.ad#L37-L42", sha1 = "344c51c07478c916bdaabb0c697a053e7a2f64dd")
     public static void zColor(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register ref) {
@@ -112,6 +112,15 @@ public class AMD64HotSpotZBarrierSetLIRGenerator implements AMD64ReadBarrierSetL
         masm.shlq(ref, UNPATCHED);
         masm.orqImm32(ref, UNPATCHED);
         crb.recordMark(HotSpotMarkId.Z_BARRIER_RELOCATION_FORMAT_STORE_GOOD_AFTER_OR);
+    }
+
+    /**
+     * Move a normal oop into a new register and convert it into a colored pointer.
+     */
+    public static void zColor(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register resultReg, Register writeValue) {
+        Assembler.guaranteeDifferentRegisters(writeValue, resultReg);
+        masm.movq(resultReg, writeValue);
+        zColor(crb, masm, resultReg);
     }
 
     /**
@@ -129,90 +138,76 @@ public class AMD64HotSpotZBarrierSetLIRGenerator implements AMD64ReadBarrierSetL
      */
     @SyncPort(from = "https://github.com/openjdk/jdk/blob/4acafb809c66589fbbfee9c9a4ba7820f848f0e4/src/hotspot/cpu/x86/gc/z/zBarrierSetAssembler_x86.cpp#L304-L321", sha1 = "9a628c1771df79ae8b4cee89d2863fbd4a4964bc")
     @SyncPort(from = "https://github.com/openjdk/jdk/blob/4acafb809c66589fbbfee9c9a4ba7820f848f0e4/src/hotspot/cpu/x86/gc/z/zBarrierSetAssembler_x86.cpp#L370-L414", sha1 = "7688e7aeab5f1aa413690066355a17c18a4273fa")
-    public static void emitStoreBarrier(CompilationResultBuilder crb,
+    public static void emitPreWriteBarrier(CompilationResultBuilder crb,
                     AMD64MacroAssembler masm,
                     LIRInstruction op,
                     GraalHotSpotVMConfig config,
                     AMD64Address address,
                     Register result,
-                    Register writeValue,
                     StoreKind storeKind,
                     Register tmp,
                     Register tmp2,
                     ForeignCallLinkage callTarget,
-                    LIRFrameState state,
-                    boolean isInitMemory) {
+                    LIRFrameState state) {
         // This is the label for the out of line handling, starting at the medium path
         final Label mediumPath = new Label();
         // Label for the return to main line execution
         final Label mediumPathContinuation = new Label();
 
-        if (isInitMemory) {
-            masm.movq(result, writeValue);
-            zColor(crb, masm, result);
+        // Possible jump to mediumPath and binds mediumPathContinuation
+        Assembler.guaranteeDifferentRegisters(result, address.getBase(), address.getIndex());
+        if (storeKind == StoreKind.Atomic) {
+            /*
+             * Atomic operations must ensure that the contents of memory are store-good before an
+             * atomic operation can execute. A not relocatable object could have spurious raw null
+             * pointers in its fields after getting promoted to the old generation.
+             */
+            if (state != null) {
+                crb.recordImplicitException(masm.position(), state);
+            }
+            masm.cmpwImm16(address, UNPATCHED);
+            crb.recordMark(HotSpotMarkId.Z_BARRIER_RELOCATION_FORMAT_STORE_GOOD_AFTER_CMP);
         } else {
-            // Possible jump to mediumPath and binds mediumPathContinuation
-            if (writeValue != null) {
-                Assembler.guaranteeDifferentRegisters(writeValue, result);
+            /*
+             * Stores on relocatable objects never need to deal with raw null pointers in fields.
+             * Raw null pointers may only exist in the young generation, as they get pruned when the
+             * object is relocated to old. And no pre-write barrier needs to perform any action in
+             * the young generation.
+             */
+            if (state != null) {
+                crb.recordImplicitException(masm.position(), state);
             }
-            Assembler.guaranteeDifferentRegisters(result, address.getBase(), address.getIndex());
-            if (storeKind == StoreKind.Atomic) {
-                /*
-                 * Atomic operations must ensure that the contents of memory are store-good before
-                 * an atomic operation can execute. A not relocatable object could have spurious raw
-                 * null pointers in its fields after getting promoted to the old generation.
-                 */
-                if (state != null) {
-                    crb.recordImplicitException(masm.position(), state);
-                }
-                masm.cmpwImm16(address, UNPATCHED);
-                crb.recordMark(HotSpotMarkId.Z_BARRIER_RELOCATION_FORMAT_STORE_GOOD_AFTER_CMP);
-            } else {
-                /*
-                 * Stores on relocatable objects never need to deal with raw null pointers in
-                 * fields. Raw null pointers may only exist in the young generation, as they get
-                 * pruned when the object is relocated to old. And no pre-write barrier needs to
-                 * perform any action in the young generation.
-                 */
-                if (state != null) {
-                    crb.recordImplicitException(masm.position(), state);
-                }
-                masm.testl(address, UNPATCHED);
-                crb.recordMark(HotSpotMarkId.Z_BARRIER_RELOCATION_FORMAT_STORE_BAD_AFTER_TEST);
-            }
-            masm.jcc(NotEqual, mediumPath);
-            masm.bind(mediumPathContinuation);
-            if (writeValue != null) {
-                masm.movq(result, writeValue);
-                zColor(crb, masm, result);
-            }
-            crb.getLIR().addSlowPath(op, () -> {
-                masm.bind(mediumPath);
-
-                Label slow = new Label();
-                Label slowContinuation = new Label();
-                storeBarrierMedium(crb, masm, address,
-                                tmp, tmp2,
-                                storeKind,
-                                mediumPathContinuation,
-                                slow,
-                                slowContinuation, config);
-
-                masm.bind(slow);
-
-                masm.leaq(tmp, address);
-
-                CallingConvention cc = callTarget.getOutgoingCallingConvention();
-                AMD64Address cArg0 = (AMD64Address) crb.asAddress(cc.getArgument(0));
-
-                masm.movq(cArg0, tmp);
-                AMD64Call.directCall(crb, masm, callTarget, null, false, null);
-                assert cc.getReturn().equals(Value.ILLEGAL) : cc + " " + callTarget;
-
-                // Stub exit
-                masm.jmp(slowContinuation);
-            });
+            masm.testl(address, UNPATCHED);
+            crb.recordMark(HotSpotMarkId.Z_BARRIER_RELOCATION_FORMAT_STORE_BAD_AFTER_TEST);
         }
+        masm.jcc(NotEqual, mediumPath);
+        masm.bind(mediumPathContinuation);
+        crb.getLIR().addSlowPath(op, () -> {
+            masm.bind(mediumPath);
+
+            Label slow = new Label();
+            Label slowContinuation = new Label();
+            storeBarrierMedium(crb, masm, address,
+                            tmp, tmp2,
+                            storeKind,
+                            mediumPathContinuation,
+                            slow,
+                            slowContinuation, config);
+
+            masm.bind(slow);
+
+            masm.leaq(tmp, address);
+
+            CallingConvention cc = callTarget.getOutgoingCallingConvention();
+            AMD64Address cArg0 = (AMD64Address) crb.asAddress(cc.getArgument(0));
+
+            masm.movq(cArg0, tmp);
+            AMD64Call.directCall(crb, masm, callTarget, null, false, null);
+            assert cc.getReturn().equals(Value.ILLEGAL) : cc + " " + callTarget;
+
+            // Stub exit
+            masm.jmp(slowContinuation);
+        });
     }
 
     /**
@@ -317,11 +312,9 @@ public class AMD64HotSpotZBarrierSetLIRGenerator implements AMD64ReadBarrierSetL
 
     /**
      * Emits the basic Z read barrier pattern with some customization. Normally this code is used
-     * from a {@link LIRInstruction} where the frame has already been set up. If an
-     * {@code frameContext} is passed in then a frame will be setup and torn down around the call.
-     * The call itself is done with a special stack-only calling convention that saves and restores
-     * all registers around the call. This simplifies the code generation as no extra registers are
-     * required.
+     * from a {@link LIRInstruction} where the frame has already been set up. The call itself is
+     * done with a special stack-only calling convention that saves and restores all registers
+     * around the call. This simplifies the code generation as no extra registers are required.
      */
     @SyncPort(from = "https://github.com/openjdk/jdk/blob/4acafb809c66589fbbfee9c9a4ba7820f848f0e4/src/hotspot/cpu/x86/gc/z/zBarrierSetAssembler_x86.cpp#L219-L302", sha1 = "16f5bff0a0f68ae40be8dd980b7728d7ee60cd2c")
     public static void emitLoadBarrier(CompilationResultBuilder crb,
@@ -330,7 +323,6 @@ public class AMD64HotSpotZBarrierSetLIRGenerator implements AMD64ReadBarrierSetL
                     ForeignCallLinkage callTarget,
                     AMD64Address address,
                     LIRInstruction op,
-                    AMD64HotSpotBackend.HotSpotFrameContext frameContext,
                     boolean isNotStrong) {
         assert !resultReg.equals(address.getBase()) && !resultReg.equals(address.getIndex()) : Assertions.errorMessage(resultReg, address);
 
@@ -349,10 +341,6 @@ public class AMD64HotSpotZBarrierSetLIRGenerator implements AMD64ReadBarrierSetL
         crb.getLIR().addSlowPath(op, () -> {
             masm.bind(entryPoint);
 
-            if (frameContext != null) {
-                frameContext.rawEnter(crb);
-            }
-
             CallingConvention cc = callTarget.getOutgoingCallingConvention();
             AMD64Address cArg0 = (AMD64Address) crb.asAddress(cc.getArgument(0));
             AMD64Address cArg1 = (AMD64Address) crb.asAddress(cc.getArgument(1));
@@ -365,10 +353,6 @@ public class AMD64HotSpotZBarrierSetLIRGenerator implements AMD64ReadBarrierSetL
             masm.movq(cArg1, resultReg);
             AMD64Call.directCall(crb, masm, callTarget, null, false, null);
             masm.movq(resultReg, cArg0);
-
-            if (frameContext != null) {
-                frameContext.rawLeave(crb);
-            }
 
             // Return to inline code
             masm.jmp(continuation);
@@ -448,7 +432,7 @@ public class AMD64HotSpotZBarrierSetLIRGenerator implements AMD64ReadBarrierSetL
     }
 
     /**
-     * Efficiently store a color null value.
+     * Efficiently store a colored null value.
      */
     static class ZStoreNullOp extends AMD64BinaryConsumer.MemoryConstOp {
         public static final LIRInstructionClass<ZStoreNullOp> TYPE = LIRInstructionClass.create(ZStoreNullOp.class);
@@ -484,6 +468,7 @@ public class AMD64HotSpotZBarrierSetLIRGenerator implements AMD64ReadBarrierSetL
         GraalError.guarantee(kind == AMD64Kind.QWORD, "unexpected kind for ZGC");
 
         boolean isConstantNull = isJavaConstant(value) && asJavaConstant(value).isDefaultForKind();
+        LIRFrameState nullCheckState = state;
         Value writeValue = value;
         if (!location.isInit() || !isConstantNull) {
             StoreKind storeKind = location instanceof HotSpotReplacementsUtil.OopHandleLocationIdentity ? StoreKind.Native : StoreKind.Normal;
@@ -494,14 +479,22 @@ public class AMD64HotSpotZBarrierSetLIRGenerator implements AMD64ReadBarrierSetL
             AllocatableValue tmp2 = tool.newVariable(tool.toRegisterKind(accessKind));
             ForeignCallLinkage callTarget = getWriteBarrierStub(barrierType, storeKind);
             tool.getResult().getFrameMapBuilder().callsMethod(callTarget.getOutgoingCallingConvention());
-            tool.append(new AMD64HotSpotZPreWriteBarrierOp(tool.asAllocatable(value), addressValue, tmp, tmp2, config, callTarget, result, storeKind,
-                            location.isInit() && barrierType != BarrierType.POST_INIT_WRITE, state));
+            boolean emitPreWriteBarrier = !location.isInit() || barrierType == BarrierType.POST_INIT_WRITE;
+            tool.append(new AMD64HotSpotZPreWriteBarrierOp(isConstantNull ? Value.ILLEGAL : tool.asAllocatable(value), addressValue, tmp, tmp2, config, callTarget, result, storeKind,
+                            emitPreWriteBarrier, emitPreWriteBarrier ? state : null));
+            if (emitPreWriteBarrier) {
+                // The pre write barrier performed any necessary null check
+                nullCheckState = null;
+            }
             writeValue = result;
         }
         if (isConstantNull) {
-            tool.append(new ZStoreNullOp(QWORD, storeAddress, state));
+            tool.append(new ZStoreNullOp(QWORD, storeAddress, nullCheckState));
+            if (memoryOrder == MemoryOrderMode.VOLATILE) {
+                lirTool.emitMembar(MemoryBarriers.STORE_LOAD);
+            }
         } else {
-            tool.getArithmetic().emitStore(lirKind, address, writeValue, state, memoryOrder);
+            tool.getArithmetic().emitStore(lirKind, address, writeValue, nullCheckState, memoryOrder);
         }
     }
 }

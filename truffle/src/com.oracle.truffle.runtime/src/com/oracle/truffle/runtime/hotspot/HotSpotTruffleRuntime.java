@@ -51,6 +51,7 @@ import java.util.function.Consumer;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.impl.AbstractFastThreadLocal;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
@@ -98,6 +99,7 @@ import sun.misc.Unsafe;
  * native-image shared library).
  */
 public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
+
     static final int JAVA_SPEC = Runtime.version().feature();
 
     static final sun.misc.Unsafe UNSAFE = getUnsafe();
@@ -149,7 +151,7 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
     }
 
     private int pendingTransferToInterpreterOffset = -1;
-    private boolean traceTransferToInterpreter;
+    private volatile boolean traceTransferToInterpreter;
     private Boolean profilingEnabled;
 
     private volatile Lazy lazy;
@@ -303,8 +305,6 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
                  * strong reference to the root node to avoid memory leaks.
                  */
                 OptimizedCallTarget initCallTarget = createInitializationCallTarget(engine);
-
-                profilingEnabled = engine.profilingEnabled;
                 HotSpotTruffleCompiler compiler = (HotSpotTruffleCompiler) newTruffleCompiler();
                 compiler.initialize(initCallTarget, true);
                 this.initializeCallTarget = initCallTarget;
@@ -318,12 +318,31 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
                 installReservedOopMethods(compiler);
 
                 truffleCompiler = compiler;
-                traceTransferToInterpreter = engine.traceTransferToInterpreter;
                 truffleCompilerInitialized = true;
             } catch (Throwable e) {
                 truffleCompilerInitializationException = e;
             }
         }
+    }
+
+    @Override
+    protected void onEngineCreated(EngineData engine) {
+        this.traceTransferToInterpreter = engine.traceTransferToInterpreter;
+        this.profilingEnabled = engine.profilingEnabled;
+
+        if (engine.traceTransferToInterpreter != StaticOptions.TRACE_TRANSFER_TO_INTERPRETER) {
+            printStaticOptionWarning(engine, "engine.TraceTransferToInterpreter", StaticOptions.TRACE_TRANSFER_TO_INTERPRETER, traceTransferToInterpreter);
+        }
+    }
+
+    private static void printStaticOptionWarning(EngineData engine, String optionName, Boolean oldValue, Boolean newValue) {
+        engine.getEngineLogger().warning(String.format(
+                        "The option '%s' was set to '%s', but it was previously initialized with '%s'. " +
+                                        "The option has therefore no effect. This option must be set to the same value for the first engine of a process to have an effect on HotSpot. " +
+                                        "It is recommended to use the -Dpolyglot.%s=true Java command line option to make sure it is set for all engines.",
+                        optionName, newValue.toString(), oldValue.toString(),
+                        optionName));
+
     }
 
     private void rethrowTruffleCompilerInitializationException() {
@@ -528,18 +547,42 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
 
     @Override
     public void notifyTransferToInterpreter() {
-        if (CompilerDirectives.inInterpreter() && traceTransferToInterpreter) {
+        if (CompilerDirectives.inInterpreter() && StaticOptions.TRACE_TRANSFER_TO_INTERPRETER) {
             traceTransferToInterpreter();
+        }
+    }
+
+    /**
+     * We need to be careful that this option class is not initialized too early. So do only use the
+     * static options of this class as soon as the
+     * {@link HotSpotTruffleRuntime#onEngineCreated(EngineData)} was at least called once.
+     */
+    static final class StaticOptions {
+
+        static final boolean TRACE_TRANSFER_TO_INTERPRETER;
+
+        static {
+            HotSpotTruffleRuntime runtime = ((HotSpotTruffleRuntime) Truffle.getRuntime());
+            boolean enabled = runtime.traceTransferToInterpreter;
+            if (!enabled) {
+                // even if the flag is not set to true for the first engine we observe
+                // we still try to read the system property in case there was an engine
+                String property = System.getProperty("polyglot.engine.TraceTransferToInterpreter");
+                enabled = property != null && property.equals("true");
+            }
+            TRACE_TRANSFER_TO_INTERPRETER = enabled;
         }
     }
 
     private void traceTransferToInterpreter() {
         TruffleCompiler compiler = truffleCompiler;
-        assert compiler != null;
-        assert pendingTransferToInterpreterOffset != -1;
-
+        int offset = pendingTransferToInterpreterOffset;
+        if (compiler == null || offset == -1) {
+            // compiler not yet initialized it is not possible we see a deopt yet
+            return;
+        }
         long threadStruct = UNSAFE.getLong(JAVA_LANG_ACCESS.currentCarrierThread(), THREAD_EETOP_OFFSET);
-        long pendingTransferToInterpreterAddress = threadStruct + pendingTransferToInterpreterOffset;
+        long pendingTransferToInterpreterAddress = threadStruct + offset;
         boolean deoptimized = UNSAFE.getByte(pendingTransferToInterpreterAddress) != 0;
         if (deoptimized) {
             logTransferToInterpreter(pendingTransferToInterpreterAddress);

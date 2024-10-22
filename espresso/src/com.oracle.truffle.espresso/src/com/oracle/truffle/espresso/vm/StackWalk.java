@@ -116,7 +116,7 @@ public final class StackWalk {
             throw meta.throwException(meta.java_lang_InternalError);
         }
         register(fw);
-        Object result = meta.java_lang_StackStreamFactory_AbstractStackWalker_doStackWalk.invokeDirect(stackStream, fw.anchor, skipframes, batchSize, startIndex, startIndex + decoded);
+        Object result = meta.java_lang_StackStreamFactory_AbstractStackWalker_doStackWalk.invokeDirectSpecial(stackStream, fw.anchor, skipframes, batchSize, startIndex, startIndex + decoded);
         unAnchor(fw);
         return (StaticObject) result;
     }

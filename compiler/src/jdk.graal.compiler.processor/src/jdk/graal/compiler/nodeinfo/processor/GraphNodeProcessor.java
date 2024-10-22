@@ -126,7 +126,7 @@ public class GraphNodeProcessor extends AbstractProcessor {
     @Override
     public boolean doProcess(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         if (roundEnv.processingOver()) {
-            return false;
+            return true;
         }
 
         GraphNodeVerifier verifier = new GraphNodeVerifier(this);
@@ -172,7 +172,7 @@ public class GraphNodeProcessor extends AbstractProcessor {
                 scope = null;
             }
         }
-        return false;
+        return true;
     }
 
     /**

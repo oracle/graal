@@ -97,12 +97,6 @@ final class HostInteropErrors {
     }
 
     @TruffleBoundary
-    static RuntimeException bufferReadUnsupported(HostContext context, Object receiver, Type componentType) {
-        String message = String.format("Unsupported buffer read operation for %s[] %s.", formatComponentType(componentType), getValueInfo(context, receiver));
-        throw HostEngineException.unsupported(context.access, message);
-    }
-
-    @TruffleBoundary
     static RuntimeException invalidExecuteArgumentType(HostContext context, Object receiver, Object[] arguments) {
         String[] formattedArgs = formatArgs(context, arguments);
         String message = String.format("Invalid argument when executing %s with arguments %s.", getValueInfo(context, receiver), Arrays.asList(formattedArgs));

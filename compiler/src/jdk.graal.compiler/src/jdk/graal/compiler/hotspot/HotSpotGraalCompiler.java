@@ -284,7 +284,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
                         null,
                         this,
                         true));
-        graph.getOptimizationLog().emit(new HotSpotStableMethodNameFormatter(providers, graph.getDebug()));
+        graph.getOptimizationLog().emit();
         if (!isOSR) {
             profilingInfo.setCompilerIRSize(StructuredGraph.class, graph.getNodeCount());
         }
@@ -346,6 +346,9 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
         if (eagerResolving) {
             graphBuilderConfig = graphBuilderConfig.withEagerResolving(true);
             graphBuilderConfig = graphBuilderConfig.withUnresolvedIsError(true);
+        }
+        if (graalRuntime.getVMConfig().alwaysSafeConstructors) {
+            graphBuilderConfig = graphBuilderConfig.withAlwaysSafeConstructors();
         }
         GraphBuilderPhase newGraphBuilderPhase = new HotSpotGraphBuilderPhase(graphBuilderConfig);
         newGbs.findPhase(GraphBuilderPhase.class).set(newGraphBuilderPhase);

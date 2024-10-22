@@ -65,7 +65,7 @@ public abstract class AMD64HotSpotXBarrieredOp extends AMD64LIRInstruction {
      * Emit a barrier testing a specific register.
      */
     protected void emitBarrier(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register register, Label success) {
-        AMD64HotSpotXBarrierSetLIRGenerator.emitBarrier(crb, masm, success, register, config, callTarget, loadAddress.toAddress(), this, null);
+        AMD64HotSpotXBarrierSetLIRGenerator.emitBarrier(crb, masm, success, register, config, callTarget, loadAddress.toAddress(masm), this);
     }
 
     /**

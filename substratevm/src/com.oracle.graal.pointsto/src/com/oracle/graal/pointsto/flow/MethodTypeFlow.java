@@ -125,7 +125,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
     public MethodFlowsGraph getMethodFlowsGraph() {
         ensureFlowsGraphSealed();
 
-        assert flowsGraph != null;
+        assert flowsGraph != null : "Flows graph not available yet.";
         return flowsGraph;
     }
 
@@ -171,7 +171,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
                 }
                 bb.numParsedGraphs.incrementAndGet();
 
-                boolean computeIndex = !method.getReturnsAllInstantiatedTypes() && bb.getHostVM().getMultiMethodAnalysisPolicy().canComputeReturnedParameterIndex(method.getMultiMethodKey());
+                boolean computeIndex = !method.hasOpaqueReturn() && bb.getHostVM().getMultiMethodAnalysisPolicy().canComputeReturnedParameterIndex(method.getMultiMethodKey());
                 returnedParameterIndex = computeIndex ? computeReturnedParameterIndex(builder.graph) : -1;
 
                 /* Set the flows graph after fully built. */
@@ -248,7 +248,11 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
      * Return the type state of the original flow.
      */
     public TypeState foldTypeFlow(@SuppressWarnings("unused") PointsToAnalysis bb, TypeFlow<?> originalTypeFlow) {
-        return originalTypeFlow == null ? null : originalTypeFlow.getState();
+        if (originalTypeFlow == null) {
+            return null;
+        }
+        assert !originalTypeFlow.isSaturated() : "Saturated flows should not be accessed here: " + originalTypeFlow;
+        return originalTypeFlow.getState();
     }
 
     /**

@@ -26,6 +26,10 @@ package com.oracle.svm.core.configure;
 
 import java.util.Collection;
 
+import org.graalvm.nativeimage.ImageInfo;
+
+import com.oracle.svm.util.LogUtils;
+
 import jdk.graal.compiler.util.json.JsonPrintable;
 import jdk.vm.ci.meta.MetaUtil;
 
@@ -68,9 +72,9 @@ public interface ConfigurationTypeDescriptor extends Comparable<ConfigurationTyp
     Collection<String> getAllQualifiedJavaNames();
 
     static String checkQualifiedJavaName(String javaName) {
-        assert javaName.indexOf('/') == -1 || javaName.indexOf('/') > javaName.lastIndexOf('.') : "Requires qualified Java name, not internal representation: %s".formatted(javaName);
+        if (ImageInfo.inImageBuildtimeCode() && !(javaName.indexOf('/') == -1 || javaName.indexOf('/') > javaName.lastIndexOf('.'))) {
+            LogUtils.warning("Type descriptor requires qualified Java name, not internal representation: %s", javaName);
+        }
         return canonicalizeTypeName(javaName);
     }
-
-    boolean definedAsType();
 }

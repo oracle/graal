@@ -47,6 +47,7 @@ import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -86,6 +87,10 @@ import java.util.logging.LogRecord;
 import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.InternalResource;
+import com.oracle.truffle.api.TruffleStackTrace;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.test.ReflectionUtils;
 import org.graalvm.collections.Pair;
 import org.graalvm.options.OptionCategory;
@@ -2904,6 +2909,44 @@ public class ContextPreInitializationTest {
             assertEquals(0, firstLangCtx2.disposeContextCount);
             assertEquals(1, firstLangCtx2.initializeThreadCount);
             assertEquals(0, firstLangCtx2.disposeThreadCount);
+        }
+    }
+
+    @Test
+    public void testGR57292() throws Exception {
+        String message = "Test exception";
+        BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, (env) -> {
+            if (env.getContext().getParent() == null) {
+                try (TruffleContext innerContext = env.newInnerContextBuilder(FIRST).build()) {
+                    try {
+                        innerContext.evalPublic(null, com.oracle.truffle.api.source.Source.newBuilder(FIRST, "", "test").build());
+                        fail("Should not reach here.");
+                    } catch (Exception e) {
+                        InteropLibrary exceptions = InteropLibrary.getUncached();
+                        assertTrue(exceptions.isException(e));
+                        try {
+                            assertEquals(message, exceptions.asString(exceptions.getExceptionMessage(e)));
+                        } catch (UnsupportedMessageException um) {
+                            throw CompilerDirectives.shouldNotReachHere(um);
+                        }
+                    }
+                }
+            } else {
+                TruffleExceptionImpl truffleException = new TruffleExceptionImpl(message);
+                TruffleStackTrace.fillIn(truffleException);
+                throw truffleException;
+            }
+        });
+        setPatchable(FIRST);
+        doContextPreinitialize(FIRST);
+        Context.create(FIRST).close();
+    }
+
+    @SuppressWarnings("serial")
+    private static final class TruffleExceptionImpl extends AbstractTruffleException {
+
+        TruffleExceptionImpl(String message) {
+            super(message);
         }
     }
 

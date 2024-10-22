@@ -69,6 +69,7 @@ import jdk.graal.compiler.hotspot.nodes.HotSpotCompressionNode;
 import jdk.graal.compiler.hotspot.nodes.HotSpotDirectCallTargetNode;
 import jdk.graal.compiler.hotspot.nodes.HotSpotIndirectCallTargetNode;
 import jdk.graal.compiler.hotspot.nodes.KlassBeingInitializedCheckNode;
+import jdk.graal.compiler.hotspot.nodes.KlassFullyInitializedCheckNode;
 import jdk.graal.compiler.hotspot.nodes.VMErrorNode;
 import jdk.graal.compiler.hotspot.nodes.VirtualThreadUpdateJFRNode;
 import jdk.graal.compiler.hotspot.nodes.type.HotSpotNarrowOopStamp;
@@ -93,7 +94,6 @@ import jdk.graal.compiler.hotspot.replacements.MonitorSnippets;
 import jdk.graal.compiler.hotspot.replacements.ObjectCloneSnippets;
 import jdk.graal.compiler.hotspot.replacements.ObjectSnippets;
 import jdk.graal.compiler.hotspot.replacements.RegisterFinalizerSnippets;
-import jdk.graal.compiler.hotspot.replacements.StringToBytesSnippets;
 import jdk.graal.compiler.hotspot.replacements.UnsafeCopyMemoryNode;
 import jdk.graal.compiler.hotspot.replacements.UnsafeSetMemoryNode;
 import jdk.graal.compiler.hotspot.replacements.UnsafeSnippets;
@@ -139,7 +139,6 @@ import jdk.graal.compiler.nodes.calc.SignedDivNode;
 import jdk.graal.compiler.nodes.calc.SignedFloatingIntegerDivNode;
 import jdk.graal.compiler.nodes.calc.SignedFloatingIntegerRemNode;
 import jdk.graal.compiler.nodes.calc.SignedRemNode;
-import jdk.graal.compiler.nodes.debug.StringToBytesNode;
 import jdk.graal.compiler.nodes.debug.VerifyHeapNode;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
 import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
@@ -193,6 +192,7 @@ import jdk.graal.compiler.nodes.spi.PlatformConfigurationProvider;
 import jdk.graal.compiler.nodes.spi.StampProvider;
 import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.DefaultJavaLoweringProvider;
 import jdk.graal.compiler.replacements.IdentityHashCodeSnippets;
 import jdk.graal.compiler.replacements.IsArraySnippets;
@@ -203,6 +203,7 @@ import jdk.graal.compiler.replacements.nodes.AssertionNode;
 import jdk.graal.compiler.replacements.nodes.CStringConstant;
 import jdk.graal.compiler.replacements.nodes.LogNode;
 import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.graal.compiler.serviceprovider.LibGraalService;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
@@ -248,10 +249,11 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     /**
      * Service provider interface for discovering {@link Extension}s.
      */
+    @LibGraalService
     public interface Extensions {
         /**
          * Gets the extensions provided by this object.
-         *
+         * <p>
          * In the context of service caching done when building a libgraal image, implementations of
          * this method must return a new value each time to avoid sharing extensions between
          * different {@link DefaultHotSpotLoweringProvider}s.
@@ -272,7 +274,6 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     protected AssertionSnippets.Templates assertionSnippets;
     protected LogSnippets.Templates logSnippets;
     protected ArrayCopySnippets.Templates arraycopySnippets;
-    protected StringToBytesSnippets.Templates stringToBytesSnippets;
     protected ObjectSnippets.Templates objectSnippets;
     protected UnsafeSnippets.Templates unsafeSnippets;
     protected ObjectCloneSnippets.Templates objectCloneSnippets;
@@ -325,8 +326,6 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         assertionSnippets = new AssertionSnippets.Templates(options, providers);
         logSnippets = new LogSnippets.Templates(options, providers);
         arraycopySnippets = arraycopySnippetTemplates;
-        stringToBytesSnippets = new StringToBytesSnippets.Templates(options, providers);
-        identityHashCodeSnippets = new IdentityHashCodeSnippets.Templates(new HotSpotHashCodeSnippets(), options, providers, HotSpotReplacementsUtil.MARK_WORD_LOCATION);
         isArraySnippets = new IsArraySnippets.Templates(new HotSpotIsArraySnippets(), options, providers);
         objectCloneSnippets = new ObjectCloneSnippets.Templates(options, providers);
         foreignCallSnippets = new ForeignCallSnippets.Templates(options, providers);
@@ -353,6 +352,11 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
                 ext.initialize(providers, options, config, (HotSpotHostForeignCallsProvider) foreignCalls, factories);
             }
         }
+    }
+
+    @Override
+    protected IdentityHashCodeSnippets.Templates createIdentityHashCodeSnippets(OptionValues options, Providers providers) {
+        return new IdentityHashCodeSnippets.Templates(new HotSpotHashCodeSnippets(), options, providers, HotSpotReplacementsUtil.MARK_WORD_LOCATION);
     }
 
     public HotSpotAllocationSnippets.Templates getAllocationSnippets() {
@@ -532,10 +536,6 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
             assertionSnippets.lower((AssertionNode) n, tool);
         } else if (n instanceof LogNode) {
             logSnippets.lower((LogNode) n, tool);
-        } else if (n instanceof StringToBytesNode) {
-            if (graph.getGuardsStage().areDeoptsFixed()) {
-                stringToBytesSnippets.lower((StringToBytesNode) n, tool);
-            }
         } else if (n instanceof AbstractDeoptimizeNode || n instanceof UnwindNode || n instanceof RemNode || n instanceof SafepointNode) {
             /* No lowering, we generate LIR directly for these nodes. */
         } else if (n instanceof ClassGetHubNode) {
@@ -549,6 +549,10 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         } else if (n instanceof KlassBeingInitializedCheckNode) {
             if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
                 getAllocationSnippets().lower((KlassBeingInitializedCheckNode) n, tool);
+            }
+        } else if (n instanceof KlassFullyInitializedCheckNode) {
+            if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
+                getAllocationSnippets().lower((KlassFullyInitializedCheckNode) n, tool);
             }
         } else if (n instanceof FastNotifyNode) {
             if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
@@ -955,9 +959,9 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
                 graph.addBeforeFixed(migrationEnd, beginLockScope);
 
                 // write the displaced mark to the correct stack slot
-                AddressNode addressDisplacedMark = createOffsetAddress(graph, beginLockScope, runtime.getVMConfig().basicLockDisplacedHeaderOffset);
+                AddressNode addressDisplacedMark = createOffsetAddress(graph, beginLockScope, runtime.getVMConfig().basicLockMetadataOffset);
                 WriteNode writeStackSlot = graph.add(
-                                new WriteNode(addressDisplacedMark, HotSpotReplacementsUtil.DISPLACED_MARK_WORD_LOCATION, loadDisplacedHeader, BarrierType.NONE, MemoryOrderMode.PLAIN));
+                                new WriteNode(addressDisplacedMark, HotSpotReplacementsUtil.BASICLOCK_METADATA_LOCATION, loadDisplacedHeader, BarrierType.NONE, MemoryOrderMode.PLAIN));
                 graph.addBeforeFixed(migrationEnd, writeStackSlot);
 
                 // load the lock object from the osr buffer
@@ -1153,5 +1157,10 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
 
     private void lowerRegisterFinalizer(RegisterFinalizerNode n, LoweringTool tool) {
         registerFinalizerSnippets.lower(n, tool);
+    }
+
+    @Override
+    public GraalHotSpotVMConfig getVMConfig() {
+        return runtime.getVMConfig();
     }
 }

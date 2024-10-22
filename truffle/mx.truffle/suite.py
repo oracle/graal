@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "7.27.1",
+  "mxversion": "7.33.0",
   "name" : "truffle",
   "version" : "24.2.0",
   "release" : False,
@@ -238,6 +238,25 @@ suite = {
       "graalCompilerSourceEdition": "ignore",
     },
 
+    "com.oracle.truffle.api.jdk22" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+      ],
+      "requires" : [
+      ],
+      "overlayTarget" : "com.oracle.truffle.api",
+      "checkPackagePrefix" : "false",
+      "multiReleaseJarVersion" : "22",
+      "javaCompliance" : "22+",
+      "forceJavac": True,
+      "checkstyle" : "com.oracle.truffle.api",
+      "workingSets" : "API,Truffle",
+      "graalCompilerSourceEdition": "ignore",
+      # disable SpotBugs as long JDK 22 is unsupported [GR-49566]
+      "spotbugs" : "false",
+    },
+
     "com.oracle.truffle.api.jdk21" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -303,6 +322,9 @@ suite = {
           "jdk.vm.ci.services",
           "jdk.vm.ci.code",
           "jdk.vm.ci.code.stack",
+          "jdk.vm.ci.common",
+          "jdk.vm.ci.hotspot",
+          "jdk.vm.ci.runtime"
         ],
         "java.base" : [
           "jdk.internal.module",
@@ -1173,6 +1195,8 @@ suite = {
         "java.desktop",
       ],
       "dependencies" : [
+        "sdk:NATIVEIMAGE",
+        "truffle:TRUFFLE_XZ",
       ],
       "shadedDependencies" : [
         "truffle:ICU4J",
@@ -1200,20 +1224,31 @@ suite = {
           "com/ibm/icu/ICUConfig.properties" : {
             "com\\.ibm\\.icu\\." : "org.graalvm.shadowed.com.ibm.icu.",
           },
-          "com/ibm/icu/util/VTimeZone.java" : {
-            # confuses the codesnippet doclet
-            " (BEGIN|END):(\\w+)\\b" : " \'\\1:\\2\'",
-          },
           "com/ibm/icu/impl/ICUBinary.java" : {
             # we want to make this code unreachable in native image builds
             "addDataFilesFromPath\\(dataPath, icuDataFiles\\);" : "// \\g<0>",
           },
           "com/ibm/icu/impl/ICUData.java" : {
             # [GR-47166] we load an absolute path from ICUData.class, to
-            # workaround an issue we don't understand when this is on the
-            # module path
+            # workaround an issue we don't understand when on the module path
             "ICU_DATA_PATH = \"(?!/)" : "\\g<0>/",
-            "loader.getResourceAsStream\\(resourceName\\)": "(loader == ICUData.class.getClassLoader() ? ICUData.class.getResourceAsStream(resourceName) : \\g<0>)",
+            "root.getResourceAsStream\\(resourceName\\)": "getResourceStream(null, root, resourceName)",
+            "loader.getResourceAsStream\\(resourceName\\)": "getResourceStream(loader, null, resourceName)",
+            "private static InputStream getStream": """
+    private static InputStream getResourceStream(ClassLoader loader, Class<?> root, String resourceName) {
+        Class<?> refClass = root;
+        if (refClass == null && loader == ICUData.class.getClassLoader()) {
+            refClass = ICUData.class;
+        }
+        InputStream inputStream;
+        if (refClass != null) {
+            inputStream = refClass.getResourceAsStream(resourceName);
+        } else {
+            inputStream = loader.getResourceAsStream(resourceName);
+        }
+        return inputStream;
+    }
+    \\g<0>""",
           },
           "com/ibm/icu/impl/URLHandler.java" : {
             # we want to make this code unreachable in native image builds
@@ -1678,7 +1713,7 @@ suite = {
           "com.oracle.truffle.api.strings.provider",
 
           # Qualified exports
-          "com.oracle.truffle.api.impl to org.graalvm.locator, org.graalvm.truffle.runtime, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm",
+          "com.oracle.truffle.api.impl to org.graalvm.locator, org.graalvm.truffle.runtime, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm, com.oracle.truffle.truffle_nfi_panama",
           "com.oracle.truffle.object to com.oracle.truffle.enterprise, org.graalvm.truffle.runtime, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm",
         ],
         "opens" : [
@@ -1711,7 +1746,7 @@ suite = {
           "com.oracle.truffle.api.library.provider",
           # Qualified exports
           "com.oracle.truffle.api* to org.graalvm.locator, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm",
-          "com.oracle.truffle.api.impl to org.graalvm.locator, org.graalvm.truffle.runtime, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime.svm,com.oracle.truffle.enterprise.svm",
+          "com.oracle.truffle.api.impl to org.graalvm.locator, org.graalvm.truffle.runtime, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime.svm,com.oracle.truffle.enterprise.svm, com.oracle.truffle.truffle_nfi_panama",
           "com.oracle.truffle.object to org.graalvm.truffle.runtime, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm",
         ],
       },
@@ -2309,6 +2344,7 @@ suite = {
         "requires" : [
           "static java.xml",
           "static java.desktop",
+          "static org.graalvm.shadowed.xz",
         ],
         "exports" : [
           # Qualified exports.
@@ -2328,8 +2364,8 @@ suite = {
         "org.graalvm.shadowed.com.ibm.icu",
       ],
       "distDependencies" : [
-      ],
-      "exclude" : [
+        "sdk:NATIVEIMAGE",
+        "truffle:TRUFFLE_XZ",
       ],
       "description" : "ICU4J shaded module.",
       "allowsJavadocWarnings" : True,
@@ -2351,8 +2387,8 @@ suite = {
         ],
         "exports" : [
           # Qualified exports.
-          "org.graalvm.shadowed.org.tukaani.xz to org.graalvm.py, org.graalvm.r",
-          "org.graalvm.shadowed.org.tukaani.xz.* to org.graalvm.py, org.graalvm.r",
+          "org.graalvm.shadowed.org.tukaani.xz to org.graalvm.py, org.graalvm.r, org.graalvm.shadowed.icu4j",
+          "org.graalvm.shadowed.org.tukaani.xz.* to org.graalvm.py, org.graalvm.r, org.graalvm.shadowed.icu4j",
         ],
       },
       "subDir" : "src",

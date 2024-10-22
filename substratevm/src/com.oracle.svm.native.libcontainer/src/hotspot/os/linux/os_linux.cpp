@@ -160,13 +160,22 @@
 #ifdef MUSL_LIBC
 // dlvsym is not a part of POSIX
 // and musl libc doesn't implement it.
+
+namespace svm_container {
+
 static void *dlvsym(void *handle,
                     const char *symbol,
                     const char *version) {
    // load the latest version of symbol
    return dlsym(handle, symbol);
 }
+
+} // namespace svm_container
+
 #endif
+
+
+namespace svm_container {
 
 enum CoredumpFilterBit {
   FILE_BACKED_PVT_BIT = 1 << 2,
@@ -174,10 +183,16 @@ enum CoredumpFilterBit {
   LARGEPAGES_BIT = 1 << 6,
   DAX_SHARED_BIT = 1 << 8
 };
+
+} // namespace svm_container
+
 #endif // !NATIVE_IMAGE
 
 ////////////////////////////////////////////////////////////////////////////////
 // global variables
+
+namespace svm_container {
+
 julong os::Linux::_physical_memory = 0;
 
 #ifndef NATIVE_IMAGE
@@ -886,7 +901,7 @@ static void *thread_native_entry(Thread *thread) {
   log_info(os, thread)("Thread finished (tid: " UINTX_FORMAT ", pthread id: " UINTX_FORMAT ").",
     os::current_thread_id(), (uintx) pthread_self());
 
-  return 0;
+  return nullptr;
 }
 
 // On Linux, glibc places static TLS blocks (for __thread variables) on
@@ -3057,15 +3072,10 @@ void os::pd_realign_memory(char *addr, size_t bytes, size_t alignment_hint) {
   }
 }
 
-void os::pd_free_memory(char *addr, size_t bytes, size_t alignment_hint) {
-  // This method works by doing an mmap over an existing mmaping and effectively discarding
-  // the existing pages. However it won't work for SHM-based large pages that cannot be
-  // uncommitted at all. We don't do anything in this case to avoid creating a segment with
-  // small pages on top of the SHM segment. This method always works for small pages, so we
-  // allow that in any case.
-  if (alignment_hint <= os::vm_page_size() || can_commit_large_page_memory()) {
-    commit_memory(addr, bytes, alignment_hint, !ExecMem);
-  }
+// Hints to the OS that the memory is no longer needed and may be reclaimed by the OS when convenient.
+// The memory will be re-acquired on touch without needing explicit recommitting.
+void os::pd_disclaim_memory(char *addr, size_t bytes) {
+   ::madvise(addr, bytes, MADV_DONTNEED);
 }
 
 size_t os::pd_pretouch_memory(void* first, void* last, size_t page_size) {
@@ -4476,7 +4486,7 @@ void os::init(void) {
   check_pax();
 
   // Check the availability of MADV_POPULATE_WRITE.
-  FLAG_SET_DEFAULT(UseMadvPopulateWrite, (::madvise(0, 0, MADV_POPULATE_WRITE) == 0));
+  FLAG_SET_DEFAULT(UseMadvPopulateWrite, (::madvise(nullptr, 0, MADV_POPULATE_WRITE) == 0));
 
   os::Posix::init();
 }
@@ -4629,7 +4639,7 @@ static void workaround_expand_exec_shield_cs_limit() {
     return; // No matter, we tried, best effort.
   }
 
-  MemTracker::record_virtual_memory_type((address)codebuf, mtInternal);
+  MemTracker::record_virtual_memory_tag((address)codebuf, mtInternal);
 
   log_info(os)("[CS limit NX emulation work-around, exec code at: %p]", codebuf);
 
@@ -5557,3 +5567,6 @@ bool os::pd_dll_unload(void* libhandle, char* ebuf, int ebuflen) {
 } // end: os::pd_dll_unload()
 
 #endif // !NATIVE_IMAGE
+
+} // namespace svm_container
+

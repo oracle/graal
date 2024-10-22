@@ -26,23 +26,29 @@
 #include "memory/allocation.hpp"
 #include "runtime/os.hpp"
 
+
+namespace svm_container {
+
 char* AllocateHeap(size_t size,
-                   MEMFLAGS flags,
+                   MemTag mem_tag,
                    AllocFailType alloc_failmode /* = AllocFailStrategy::EXIT_OOM*/) {
   // Note that we do not use AllocFailType. Instead, we always just return the value that the OS returns.
   // If it is null, we will run into a segfault which is the best that we can do because we must not call
   // exit or abort on the C++ side.
-  return (char*)os::malloc(size, flags);
+  return (char*)os::malloc(size, mem_tag);
 }
 
 char* ReallocateHeap(char* old,
                     size_t size,
-                    MEMFLAGS flag,
+                    MemTag mem_tag,
                     AllocFailType alloc_failmode) {
-  return (char*) os::realloc(old, size, flag);
+  return (char*) os::realloc(old, size, mem_tag);
 }
 
 // handles null pointers
 void FreeHeap(void* p) {
   os::free(p);
 }
+
+} // namespace svm_container
+

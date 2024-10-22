@@ -50,6 +50,8 @@ import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
@@ -59,6 +61,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
 import com.oracle.svm.util.LogUtils;
+import com.oracle.svm.util.ModuleSupport;
 
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.internal.misc.Unsafe;
@@ -164,6 +167,9 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
      * arbitrary user code.
      */
     public boolean maybeInitializeAtBuildTime(ResolvedJavaType type) {
+        if (type instanceof AnalysisType analysisType && analysisType.getWrapped() instanceof BaseLayerType baseLayerType) {
+            return baseLayerType.initializedAtBuildTime();
+        }
         return maybeInitializeAtBuildTime(OriginalClassProvider.getJavaClass(type));
     }
 
@@ -507,12 +513,10 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
     }
 
     public boolean isAlwaysReached(Class<?> jClass) {
-        Set<String> systemModules = Set.of("org.graalvm.nativeimage.builder", "org.graalvm.nativeimage", "org.graalvm.nativeimage.base", "com.oracle.svm.svm_enterprise",
-                        "org.graalvm.word", "jdk.internal.vm.ci", "jdk.graal.compiler", "com.oracle.graal.graal_enterprise");
         Set<String> jdkModules = Set.of("java.base", "jdk.management", "java.management", "org.graalvm.collections");
 
         String classModuleName = jClass.getModule().getName();
-        boolean alwaysReachedModule = classModuleName != null && (systemModules.contains(classModuleName) || jdkModules.contains(classModuleName));
+        boolean alwaysReachedModule = classModuleName != null && (ModuleSupport.SYSTEM_MODULES.contains(classModuleName) || jdkModules.contains(classModuleName));
         return jClass.isPrimitive() ||
                         jClass.isArray() ||
                         alwaysReachedModule ||

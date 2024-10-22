@@ -945,8 +945,7 @@ final class HostObject implements TruffleObject {
         }
 
         @Specialization(guards = {"receiver.isByteSequence()"})
-        static boolean doByteSequence(HostObject receiver,
-                        @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache) {
+        static boolean doByteSequence(HostObject receiver) {
             return false;
         }
 
@@ -1799,9 +1798,7 @@ final class HostObject implements TruffleObject {
 
     @TruffleBoundary
     private static void getByteSequenceBytesBoundary(APIAccess apiAccess, Object byteSequence, int index, byte[] destination, int destinationOffset, int byteLength) {
-        for (int i = index; i < index + byteLength; i++) {
-            destination[destinationOffset + (i - index)] = apiAccess.byteSequenceByteAt(byteSequence, i);
-        }
+        System.arraycopy(apiAccess.byteSequenceToByteArray(apiAccess.byteSequenceSubSequence(byteSequence, index, byteLength)), 0, destination, destinationOffset, byteLength);
     }
 
     @TruffleBoundary

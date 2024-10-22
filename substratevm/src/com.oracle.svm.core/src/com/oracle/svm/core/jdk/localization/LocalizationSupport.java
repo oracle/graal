@@ -77,8 +77,6 @@ public class LocalizationSupport {
 
     public final Map<String, Charset> charsets = new HashMap<>();
 
-    public final Locale defaultLocale;
-
     public final Locale[] allLocales;
 
     public final Set<String> supportedLanguageTags;
@@ -91,8 +89,7 @@ public class LocalizationSupport {
 
     private final EconomicMap<String, RuntimeConditionSet> registeredBundles = ImageHeapMap.create();
 
-    public LocalizationSupport(Locale defaultLocale, Set<Locale> locales, Charset defaultCharset) {
-        this.defaultLocale = defaultLocale;
+    public LocalizationSupport(Set<Locale> locales, Charset defaultCharset) {
         this.allLocales = locales.toArray(new Locale[0]);
         this.defaultCharset = defaultCharset;
         this.supportedLanguageTags = locales.stream().map(Locale::toString).collect(Collectors.toSet());
@@ -144,6 +141,7 @@ public class LocalizationSupport {
         if (bundle instanceof PropertyResourceBundle) {
             String[] bundleNameWithModule = SubstrateUtil.split(bundleName, ":", 2);
             String resourceName;
+            String origin = "Added for PropertyResourceBundle: " + bundleName;
             if (bundleNameWithModule.length < 2) {
                 resourceName = toSlashSeparated(control.toBundleName(bundleName, locale)).concat(".properties");
 
@@ -151,18 +149,18 @@ public class LocalizationSupport {
                 Set<Module> modules = packageToModules.getOrDefault(packageName(bundleName), Collections.emptySet());
 
                 for (Module m : modules) {
-                    ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(m, resourceName);
+                    ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(m, resourceName, origin);
                 }
 
                 if (modules.isEmpty()) {
-                    ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(null, resourceName);
+                    ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(null, resourceName, origin);
                 }
             } else {
                 if (findModule != null) {
                     resourceName = toSlashSeparated(control.toBundleName(bundleNameWithModule[1], locale)).concat(".properties");
                     Optional<Module> module = findModule.apply(bundleNameWithModule[0]);
                     String finalResourceName = resourceName;
-                    module.ifPresent(m -> ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(m, finalResourceName));
+                    module.ifPresent(m -> ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(m, finalResourceName, origin));
                 }
             }
         }
@@ -176,21 +174,6 @@ public class LocalizationSupport {
             return ""; /* unnamed package */
         }
         return uniformBundleName.substring(0, classSep);
-    }
-
-    public String getResultingPattern(String bundleName, Locale locale) {
-        String fixedBundleName = bundleName.replace("$", "\\$");
-        return getBundleName(fixedBundleName, locale);
-    }
-
-    private String getBundleName(String fixedBundleName, Locale locale) {
-        String[] bundleNameWithModule = SubstrateUtil.split(fixedBundleName, ":", 2);
-        if (bundleNameWithModule.length < 2) {
-            return toSlashSeparated(control.toBundleName(fixedBundleName, locale));
-        } else {
-            String patternWithLocale = toSlashSeparated(control.toBundleName(bundleNameWithModule[1], locale));
-            return bundleNameWithModule[0] + ':' + patternWithLocale;
-        }
     }
 
     public void registerRequiredReflectionAndResourcesForBundle(String baseName, Collection<Locale> wantedLocales, boolean jdkBundle) {

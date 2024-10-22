@@ -50,6 +50,7 @@ import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.calc.UnsignedMath;
 import jdk.graal.compiler.word.Word;
 
@@ -389,8 +390,9 @@ public class RealLog extends Log {
         if (decimals > 0) {
             character('.');
 
-            long positiveNumerator = Math.abs(numerator);
-            long positiveDenominator = Math.abs(denominator);
+            // we don't care if overflow happens in these abs
+            long positiveNumerator = NumUtil.unsafeAbs(numerator);
+            long positiveDenominator = NumUtil.unsafeAbs(denominator);
 
             long remainder = positiveNumerator % positiveDenominator;
             for (int i = 0; i < decimals; i++) {

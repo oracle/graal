@@ -40,37 +40,6 @@
  */
 package com.oracle.truffle.tck.tests;
 
-import org.graalvm.polyglot.HostAccess.Implementable;
-import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.TypeLiteral;
-import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.proxy.Proxy;
-
-import java.lang.reflect.Modifier;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.Callable;
-import java.util.function.Function;
-
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.ARRAY_ELEMENTS;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.BOOLEAN;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.BUFFER_ELEMENTS;
@@ -100,6 +69,38 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+
+import java.lang.reflect.Modifier;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.function.Function;
+
+import org.graalvm.polyglot.HostAccess.Implementable;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.TypeLiteral;
+import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.ByteSequence;
+import org.graalvm.polyglot.proxy.Proxy;
 
 public class ValueAssert {
 
@@ -838,6 +839,11 @@ public class ValueAssert {
                 value.writeBufferDouble(ByteOrder.LITTLE_ENDIAN, i, result);
             }
         }
+
+        byte[] dest = new byte[(int) value.getBufferSize()];
+        value.readBuffer(0, dest, 0, (int) value.getBufferSize());
+        value.as(ByteSequence.class).toByteArray();
+        value.as(byte[].class);
     }
 
     private static void assertCollectionEqualValues(Collection<? extends Object> expected, Collection<? extends Object> actual) {

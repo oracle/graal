@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.nodes.java;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeCycles;
@@ -36,7 +38,6 @@ import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
 import jdk.graal.compiler.nodes.spi.Lowerable;
 import jdk.graal.compiler.nodes.spi.Simplifiable;
 import jdk.graal.compiler.nodes.spi.SimplifierTool;
-import org.graalvm.word.LocationIdentity;
 
 /**
  * This node represents the class type checks for a {@link DynamicNewInstanceNode} and throws any
@@ -58,7 +59,7 @@ public final class ValidateNewInstanceClassNode extends WithExceptionNode implem
 
     public static final NodeClass<ValidateNewInstanceClassNode> TYPE = NodeClass.create(ValidateNewInstanceClassNode.class);
 
-    protected ValidateNewInstanceClassNode(ValueNode clazz) {
+    public ValidateNewInstanceClassNode(ValueNode clazz) {
         super(TYPE, AbstractPointerStamp.pointerNonNull(clazz.stamp(NodeView.DEFAULT)));
         this.clazz = clazz;
     }

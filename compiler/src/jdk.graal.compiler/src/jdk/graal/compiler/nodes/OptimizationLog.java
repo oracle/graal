@@ -274,12 +274,9 @@ public interface OptimizationLog {
 
         /**
          * Does not emit the optimization log, because it is disabled.
-         *
-         * @param methodNameFormatter a function that formats method names (ignored)
          */
         @Override
-        public void emit(Function<ResolvedJavaMethod, String> methodNameFormatter) {
-
+        public void emit() {
         }
     }
 
@@ -462,10 +459,7 @@ public interface OptimizationLog {
 
     /**
      * Depending on the {@link DebugOptions#OptimizationLog OptimizationLog} option, prints the
-     * optimization log to the standard output, JSON files and/or dumps it. Method names are
-     * formatted using the provided formatter.
-     *
-     * @param methodNameFormatter a function that formats method names
+     * optimization log to the standard output, JSON files and/or dumps it.
      */
-    void emit(Function<ResolvedJavaMethod, String> methodNameFormatter);
+    void emit();
 }

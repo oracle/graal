@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,10 @@
  */
 package jdk.graal.compiler.jtt.jdk;
 
+import org.junit.Test;
+
 import jdk.graal.compiler.jtt.JTTTest;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
-import org.junit.Test;
 
 public class Unsafe_compareAndSwapNullCheck extends JTTTest {
 
@@ -39,7 +40,7 @@ public class Unsafe_compareAndSwapNullCheck extends JTTTest {
     static final long valueOffset;
     static {
         try {
-            valueOffset = getObjectFieldOffset(Unsafe_compareAndSwapNullCheck.class.getDeclaredField("value"));
+            valueOffset = UNSAFE.objectFieldOffset(Unsafe_compareAndSwapNullCheck.class.getDeclaredField("value"));
         } catch (Exception ex) {
             throw new Error(ex);
         }
@@ -51,7 +52,7 @@ public class Unsafe_compareAndSwapNullCheck extends JTTTest {
     public static void test(Unsafe_compareAndSwapNullCheck u, long expected, long newValue) {
         @SuppressWarnings("unused")
         long l = u.lng;
-        UNSAFE.compareAndSwapLong(u, valueOffset, expected, newValue);
+        UNSAFE.compareAndSetLong(u, valueOffset, expected, newValue);
     }
 
     @Test

@@ -48,8 +48,6 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.meta.CompressedNullConstant;
-import com.oracle.svm.core.interpreter.InterpreterSupport;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -83,6 +81,8 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
 import com.oracle.svm.core.graal.code.SubstrateDataBuilder;
+import com.oracle.svm.core.interpreter.InterpreterSupport;
+import com.oracle.svm.core.meta.CompressedNullConstant;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -93,12 +93,12 @@ import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.DeadlockWatchdog;
 import com.oracle.svm.hosted.NativeImageOptions;
+import com.oracle.svm.hosted.code.CodeSectionLayouter;
 import com.oracle.svm.hosted.code.DeoptimizationUtils;
 import com.oracle.svm.hosted.code.HostedImageHeapConstantPatch;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives.DeoptSourceFrameInfo;
 import com.oracle.svm.hosted.image.NativeImage.NativeTextSectionImpl;
-import com.oracle.svm.hosted.imagelayer.PriorLayerSymbolTracker;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -129,7 +129,6 @@ import jdk.vm.ci.meta.VMConstant;
 public abstract class NativeImageCodeCache {
 
     private final Map<Constant, Object> embeddedConstants = new HashMap<>();
-    private final Set<HostedMethod> baseLayerMethods;
 
     public static class Options {
         @Option(help = "Verify that all possible deoptimization entry points have been properly compiled and registered in the metadata")//
@@ -151,11 +150,7 @@ public abstract class NativeImageCodeCache {
     private final Map<Constant, String> constantReasons = new HashMap<>();
 
     public NativeImageCodeCache(Map<HostedMethod, CompilationResult> compilationResultMap, NativeImageHeap imageHeap) {
-        this(compilationResultMap, imageHeap, ImageSingletons.lookup(Platform.class), null);
-    }
-
-    public NativeImageCodeCache(Map<HostedMethod, CompilationResult> compilationResultMap, NativeImageHeap imageHeap, Set<HostedMethod> baseLayerMethods) {
-        this(compilationResultMap, imageHeap, ImageSingletons.lookup(Platform.class), baseLayerMethods);
+        this(compilationResultMap, imageHeap, ImageSingletons.lookup(Platform.class));
     }
 
     public void purge() {
@@ -165,14 +160,8 @@ public abstract class NativeImageCodeCache {
 
     @SuppressWarnings("this-escape")//
     public NativeImageCodeCache(Map<HostedMethod, CompilationResult> compilations, NativeImageHeap imageHeap, Platform targetPlatform) {
-        this(compilations, imageHeap, targetPlatform, null);
-    }
-
-    @SuppressWarnings("this-escape")//
-    public NativeImageCodeCache(Map<HostedMethod, CompilationResult> compilations, NativeImageHeap imageHeap, Platform targetPlatform, Set<HostedMethod> baseLayerMethods) {
         this.compilations = compilations;
         this.imageHeap = imageHeap;
-        this.baseLayerMethods = baseLayerMethods;
         this.dataSection = new DataSection();
         this.targetPlatform = targetPlatform;
         this.orderedCompilations = computeCompilationOrder(compilations);
@@ -198,9 +187,9 @@ public abstract class NativeImageCodeCache {
     }
 
     protected List<Pair<HostedMethod, CompilationResult>> computeCompilationOrder(Map<HostedMethod, CompilationResult> compilationMap) {
-        return compilationMap.entrySet().stream() //
-                        .map(e -> Pair.create(e.getKey(), e.getValue())) //
-                        .sorted(Comparator.comparing(o -> o.getLeft().wrapped.format("%H.%n(%P):%R"))) //
+        var orderedMethods = ImageSingletons.lookup(CodeSectionLayouter.class).layout(compilationMap);
+        return orderedMethods.stream()
+                        .map(hm -> Pair.create(hm, compilations.get(hm)))
                         .collect(Collectors.toList());
     }
 
@@ -208,13 +197,9 @@ public abstract class NativeImageCodeCache {
         return orderedCompilations;
     }
 
-    public Set<HostedMethod> getBaseLayerMethods() {
-        return baseLayerMethods;
-    }
-
     public abstract int codeSizeFor(HostedMethod method);
 
-    protected CompilationResult compilationResultFor(HostedMethod method) {
+    public CompilationResult compilationResultFor(HostedMethod method) {
         return compilations.get(method);
     }
 
@@ -269,9 +254,13 @@ public abstract class NativeImageCodeCache {
         return embeddedConstants;
     }
 
-    public void addConstantsToHeap() {
+    public Map<Constant, Object> getEmbeddedConstants() {
         VMError.guarantee(!embeddedConstants.isEmpty(), "Embedded constants should already be computed.");
-        embeddedConstants.forEach((constant, reason) -> addConstantToHeap(constant, reason instanceof BytecodePosition position ? position.getMethod().getName() : reason));
+        return Collections.unmodifiableMap(embeddedConstants);
+    }
+
+    public void addConstantsToHeap() {
+        getEmbeddedConstants().forEach((constant, reason) -> addConstantToHeap(constant, reason instanceof BytecodePosition position ? position.getMethod().getName() : reason));
     }
 
     private void addConstantToHeap(Constant constant, Object reason) {
@@ -406,13 +395,9 @@ public abstract class NativeImageCodeCache {
             }
         }));
 
-        var symbolTracker = PriorLayerSymbolTracker.singletonOrNull();
         configurationExecutables.forEach((declaringClass, classMethods) -> classMethods.forEach((analysisMethod, reflectMethod) -> {
             if (includedMethods.add(analysisMethod)) {
                 HostedMethod method = hUniverse.lookup(analysisMethod);
-                if (analysisMethod.isInBaseLayer()) {
-                    symbolTracker.registerPriorLayerReference(method);
-                }
                 Object accessor = reflectionSupport.getAccessor(analysisMethod);
                 runtimeMetadataEncoder.addReflectionExecutableMetadata(hMetaAccess, method, reflectMethod, accessor);
             }

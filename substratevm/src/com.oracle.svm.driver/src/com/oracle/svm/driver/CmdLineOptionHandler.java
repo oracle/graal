@@ -33,7 +33,6 @@ import java.util.regex.PatternSyntaxException;
 
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.option.OptionOrigin;
-import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.driver.NativeImage.ArgumentQueue;
 import com.oracle.svm.util.LogUtils;
@@ -77,29 +76,19 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     private boolean consume(ArgumentQueue args, String headArg) {
         switch (headArg) {
             case "--help":
-                args.poll();
-                singleArgumentCheck(args, headArg);
                 nativeImage.showMessage(HELP_TEXT);
                 nativeImage.showNewline();
                 nativeImage.apiOptionHandler.printOptions(nativeImage::showMessage, false);
                 nativeImage.showNewline();
-                nativeImage.optionRegistry.showOptions(null, true, nativeImage::showMessage);
-                nativeImage.showNewline();
                 System.exit(ExitStatus.OK.getValue());
                 return true;
             case "--version":
-                args.poll();
-                singleArgumentCheck(args, headArg);
                 printVersion();
                 System.exit(ExitStatus.OK.getValue());
                 return true;
             case "--help-extra":
-                args.poll();
-                singleArgumentCheck(args, headArg);
                 nativeImage.showMessage(HELP_EXTRA_TEXT);
                 nativeImage.apiOptionHandler.printOptions(nativeImage::showMessage, true);
-                nativeImage.showNewline();
-                nativeImage.optionRegistry.showOptions(OptionUtils.MacroOptionKind.Macro, true, nativeImage::showMessage);
                 nativeImage.showNewline();
                 System.exit(ExitStatus.OK.getValue());
                 return true;
@@ -238,12 +227,6 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         String javaVMVersion = System.getProperty("java.vm.version");
         String javaVMInfo = System.getProperty("java.vm.info");
         nativeImage.showMessage("%s%s (%sbuild %s, %s)", javaVMName, vendorVersion, jdkDebugLevel, javaVMVersion, javaVMInfo);
-    }
-
-    private static void singleArgumentCheck(ArgumentQueue args, String arg) {
-        if (!args.isEmpty()) {
-            NativeImage.showError("Option " + arg + " cannot be combined with other options.");
-        }
     }
 
     @Override

@@ -55,6 +55,11 @@ public interface JsonPrinter<T> {
      * @see JsonWriter#print(Object)
      */
     static <T> void printCollection(JsonWriter writer, Collection<T> collection, Comparator<T> comparator, JsonPrinter<T> elementPrinter) throws IOException {
+        if (collection.isEmpty()) {
+            writer.append("[]");
+            return;
+        }
+
         Collection<T> ordered = collection;
         if (comparator != null) {
             ordered = new ArrayList<>(collection);

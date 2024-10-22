@@ -35,6 +35,9 @@ import com.oracle.svm.core.configure.SerializationConfigurationParser;
 import jdk.graal.compiler.util.json.JsonPrintable;
 import jdk.graal.compiler.util.json.JsonWriter;
 
+import static com.oracle.svm.core.configure.ConfigurationParser.NAME_KEY;
+import static com.oracle.svm.core.configure.ConfigurationParser.TYPE_KEY;
+
 public class SerializationConfigurationType implements JsonPrintable, Comparable<SerializationConfigurationType> {
     private final UnresolvedConfigurationCondition condition;
     private final String qualifiedJavaName;
@@ -66,15 +69,23 @@ public class SerializationConfigurationType implements JsonPrintable, Comparable
 
     @Override
     public void printJson(JsonWriter writer) throws IOException {
-        writer.append('{').indent().newline();
-        ConfigurationConditionPrintable.printConditionAttribute(condition, writer);
-        writer.quote(SerializationConfigurationParser.TYPE_KEY).append(':').quote(qualifiedJavaName);
+        printJson(writer, true);
+    }
+
+    public void printLegacyJson(JsonWriter writer) throws IOException {
+        printJson(writer, false);
+    }
+
+    private void printJson(JsonWriter writer, boolean combinedFile) throws IOException {
+        writer.appendObjectStart();
+        ConfigurationConditionPrintable.printConditionAttribute(condition, writer, combinedFile);
+        writer.quote(combinedFile ? TYPE_KEY : NAME_KEY).appendFieldSeparator().quote(qualifiedJavaName);
         if (qualifiedCustomTargetConstructorJavaName != null) {
-            writer.append(',').newline();
-            writer.quote(SerializationConfigurationParser.CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY).append(':')
+            writer.appendSeparator();
+            writer.quote(SerializationConfigurationParser.CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY).appendFieldSeparator()
                             .quote(qualifiedCustomTargetConstructorJavaName);
         }
-        writer.unindent().newline().append('}');
+        writer.appendObjectEnd();
     }
 
     @Override

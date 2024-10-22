@@ -134,7 +134,7 @@ class NativeImageBenchmarkConfig:
         self.bm_suite = bm_suite
         self.benchmark_suite_name = bm_suite.benchSuiteName(args)
         self.benchmark_name = bm_suite.benchmarkName()
-        self.executable, self.classpath_arguments, self.modulepath_arguments, self.system_properties, self.image_vm_args, image_run_args, self.split_run = NativeImageVM.extract_benchmark_arguments(args)
+        self.executable, self.classpath_arguments, self.modulepath_arguments, self.system_properties, self.image_vm_args, image_run_args, self.split_run = NativeImageVM.extract_benchmark_arguments(args, bm_suite.all_command_line_args_are_vm_args())
         self.extra_image_build_arguments: List[str] = bm_suite.extra_image_build_argument(self.benchmark_name, args)
         # use list() to create fresh copies to safeguard against accidental modification
         self.image_run_args = bm_suite.extra_run_arg(self.benchmark_name, args, list(image_run_args))
@@ -177,6 +177,7 @@ class NativeImageBenchmarkConfig:
         base_image_build_args += ['-H:+ReportExceptionStackTraces']
         base_image_build_args += bm_suite.build_assertions(self.benchmark_name, vm.is_gate)
         base_image_build_args += self.system_properties
+        base_image_build_args += self.build_report_args(vm.is_gate, vm.graalvm_edition)
 
         # Path to the X.nib bundle file --bundle-apply is specified
         bundle_apply_path = self.get_bundle_path_if_present()
@@ -226,6 +227,8 @@ class NativeImageBenchmarkConfig:
             base_image_build_args += ['-Ob']
         if vm.use_string_inlining:
             base_image_build_args += ['-H:+UseStringInlining']
+        if vm.use_open_type_world:
+            base_image_build_args += ['-H:-ClosedTypeWorld']
         if vm.is_llvm:
             base_image_build_args += ['--features=org.graalvm.home.HomeFinderFeature'] + ['-H:CompilerBackend=llvm', '-H:DeadlockWatchdogInterval=0']
         if vm.gc:
@@ -262,6 +265,11 @@ class NativeImageBenchmarkConfig:
 
         if bundle_create_path and Stage.INSTRUMENT_IMAGE in bm_suite.stages_info.effective_stages:
             mx.warn("Building instrumented benchmarks with --bundle-create is untested and may behave in unexpected ways")
+
+    def build_report_args(self, is_gate: bool, graalvm_edition: str):
+        # Generate Build Report only when the benchmark is a part of EE gate.
+        return ['--emit=build-report'] if is_gate and graalvm_edition == "ee" else []
+
 
     def get_build_output_json_file(self, stage: Stage) -> Path:
         """
@@ -521,6 +529,7 @@ class NativeImageVM(GraalVm):
         self.gc = None
         self.native_architecture = False
         self.use_upx = False
+        self.use_open_type_world = False
         self.graalvm_edition = None
         self.config: Optional[NativeImageBenchmarkConfig] = None
         self.stages_info: Optional[StagesInfo] = None
@@ -552,7 +561,7 @@ class NativeImageVM(GraalVm):
             return
 
         # This defines the allowed config names for NativeImageVM. The ones registered will be available via --jvm-config
-        rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-ctx-insens-|pgo-sampler-)?(?P<inliner>inline-)?' \
+        rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<otw>otw-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-ctx-insens-|pgo-sampler-)?(?P<inliner>inline-)?' \
                r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-|2obj1h-|3obj2h-|4obj3h-)?(?P<no_inlining_before_analysis>no-inline-)?(?P<jdk_profiles>jdk-profiles-collect-|adopted-jdk-pgo-)?' \
                r'(?P<profile_inference>profile-inference-feature-extraction-|profile-inference-pgo-|profile-inference-debug-)?(?P<sampler>safepoint-sampler-|async-sampler-)?(?P<optimization_level>O0-|O1-|O2-|O3-|Os-)?(?P<edition>ce-|ee-)?$'
 
@@ -577,6 +586,10 @@ class NativeImageVM(GraalVm):
         if matching.group("upx") is not None:
             mx.logv(f"'upx' is enabled for {config_name}")
             self.use_upx = True
+
+        if matching.group("otw") is not None:
+            mx.logv(f"'otw' is enabled for {config_name}")
+            self.use_open_type_world = True
 
         if matching.group("quickbuild") is not None:
             mx.logv(f"'quickbuild' is enabled for {config_name}")
@@ -733,7 +746,10 @@ class NativeImageVM(GraalVm):
                                     '--patch-module', '--boot-class-path', '--source-path', '-cp', '-classpath', '-p']
 
     @staticmethod
-    def _split_vm_arguments(args):
+    def _split_vm_arguments(args, all_args_are_vm_args):
+        if all_args_are_vm_args:
+            return args, [], []
+
         i = 0
         while i < len(args):
             arg = args[i]
@@ -749,7 +765,7 @@ class NativeImageVM(GraalVm):
         mx.abort('No executable found in args: ' + str(args))
 
     @staticmethod
-    def extract_benchmark_arguments(args):
+    def extract_benchmark_arguments(args, all_args_are_vm_args):
         i = 0
         clean_args = args[:]
         split_run = None
@@ -763,7 +779,7 @@ class NativeImageVM(GraalVm):
             else:
                 i += 1
         clean_args = [x for x in clean_args if "-Dnative-image" not in x]
-        vm_args, executable, image_run_args = NativeImageVM._split_vm_arguments(clean_args)
+        vm_args, executable, image_run_args = NativeImageVM._split_vm_arguments(clean_args, all_args_are_vm_args)
 
         classpath_arguments = []
         modulepath_arguments = []
@@ -980,6 +996,7 @@ class NativeImageVM(GraalVm):
         rules = []
         for i in range(0, len(metric_objects)):
             rules += self._get_image_build_stats_rules({
+                "bench-suite": self.config.benchmark_suite_name,
                 "benchmark": benchmarks[0],
                 "metric.name": "image-build-stats",
                 "metric.type": "numeric",
@@ -1000,6 +1017,7 @@ class NativeImageVM(GraalVm):
             phase = measured_phases[i]
             value_name = phase + "_time"
             rules += self._get_image_build_stats_rules({
+                "bench-suite": self.config.benchmark_suite_name,
                 "benchmark": benchmarks[0],
                 "metric.name": "compile-time",
                 "metric.type": "numeric",
@@ -1012,6 +1030,7 @@ class NativeImageVM(GraalVm):
             }, [value_name])
             value_name = phase + "_memory"
             rules += self._get_image_build_stats_rules({
+                "bench-suite": self.config.benchmark_suite_name,
                 "benchmark": benchmarks[0],
                 "metric.name": "compile-time",
                 "metric.type": "numeric",
@@ -1398,7 +1417,7 @@ class AgentScriptJsBenchmarkSuite(mx_benchmark.VmBenchmarkSuite, mx_benchmark.Av
         assert len(benchmarks) == 1
         return [
             mx_benchmark.StdOutRule(r'^Hundred thousand prime numbers in (?P<time>[0-9]+) ms$', {
-                "bench-suite": self.name(),
+                "bench-suite": self.benchSuiteName(),
                 "benchmark": (benchmarks[0], str),
                 "metric.name": "warmup",
                 "metric.type": "numeric",
@@ -1682,7 +1701,7 @@ class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
             mx_benchmark.StdOutRule(
                 FileSizeBenchmarkSuite.SZ_RGX_PATTERN,
                 {
-                    "bench-suite": self.name(),
+                    "bench-suite": self.benchSuiteName(),
                     "benchmark": ("<image_name>", str),
                     "benchmark-configuration": ("<path>", str),
                     "vm": "svm",
@@ -1824,7 +1843,7 @@ def register_graalvm_vms():
         if any(component.short_name == short_name for component in mx_sdk_vm_impl.registered_graalvm_components(stage1=False)):
             for main_config in ['default', 'gate', 'llvm', 'native-architecture'] + analysis_context_sensitivity + analysis_context_sensitivity_no_inline:
                 final_config_name = f'{main_config}-{config_suffix}'
-                mx_benchmark.add_java_vm(NativeImageVM('native-image', final_config_name), _suite, 10)
+                mx_benchmark.add_java_vm(NativeImageVM('native-image', final_config_name, ['--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED']), _suite, 10)
                 # ' '  force the empty O<> configs as well
             for main_config in ['llvm', 'native-architecture', 'g1gc', 'native-architecture-g1gc', ''] + analysis_context_sensitivity + analysis_context_sensitivity_no_inline:
                 for optimization_level in optimization_levels:
@@ -1832,7 +1851,7 @@ def register_graalvm_vms():
                         final_config_name = f'{main_config}-{optimization_level}-{config_suffix}'
                     else:
                         final_config_name = f'{optimization_level}-{config_suffix}'
-                    mx_benchmark.add_java_vm(NativeImageVM('native-image', final_config_name), _suite, 10)
+                    mx_benchmark.add_java_vm(NativeImageVM('native-image', final_config_name, ['--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED']), _suite, 10)
 
 
     # Adding JAVA_HOME VMs to be able to run benchmarks on GraalVM binaries without the need of building it first

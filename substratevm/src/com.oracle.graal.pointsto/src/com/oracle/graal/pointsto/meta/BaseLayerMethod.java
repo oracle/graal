@@ -27,12 +27,15 @@ package com.oracle.graal.pointsto.meta;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
 
+import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
+
 import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ExceptionHandler;
 import jdk.vm.ci.meta.LineNumberTable;
 import jdk.vm.ci.meta.LocalVariableTable;
+import jdk.vm.ci.meta.MethodHandleAccessProvider.IntrinsicMethod;
 import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -46,36 +49,69 @@ import jdk.vm.ci.meta.SpeculationLog;
  * created yet in the new layer. If this method cannot be looked up by name, a
  * {@link BaseLayerMethod} is created and put in an {@link AnalysisMethod} to represent this missing
  * method, using the information from the base layer.
- * <p>
- * At the moment, very little information about the method from the base layer is needed, but in the
- * future, if those methods are used in other places, more information could be persisted from the
- * base layer in the {@link com.oracle.graal.pointsto.heap.ImageLayerWriter} and the
- * {@link com.oracle.graal.pointsto.heap.ImageLayerLoader}
  */
-public class BaseLayerMethod implements ResolvedJavaMethod {
+public class BaseLayerMethod extends BaseLayerElement implements ResolvedJavaMethod {
+    private final int id;
+    private final ResolvedJavaType declaringClass;
+    private final String name;
+    private final boolean isVarArgs;
+    private final ResolvedSignature<AnalysisType> signature;
+    private final boolean canBeStaticallyBound;
+    private final boolean isConstructor;
+    private final int modifiers;
+    private final boolean isSynthetic;
+    private final byte[] code;
+    private final int codeSize;
+    private final IntrinsicMethod methodHandleIntrinsic;
+
+    public BaseLayerMethod(int id, AnalysisType declaringClass, String name, boolean isVarArgs, ResolvedSignature<AnalysisType> signature, boolean canBeStaticallyBound, boolean isConstructor,
+                    int modifiers, boolean isSynthetic, byte[] code, int codeSize, IntrinsicMethod methodHandleIntrinsic, Annotation[] annotations) {
+        super(annotations);
+        this.id = id;
+        this.declaringClass = declaringClass.getWrapped();
+        this.name = name;
+        this.isVarArgs = isVarArgs;
+        this.signature = signature;
+        this.canBeStaticallyBound = canBeStaticallyBound;
+        this.isConstructor = isConstructor;
+        this.modifiers = modifiers;
+        this.isSynthetic = isSynthetic;
+        this.code = code;
+        this.codeSize = codeSize;
+        this.methodHandleIntrinsic = methodHandleIntrinsic;
+    }
+
+    public int getBaseLayerId() {
+        return id;
+    }
+
+    public IntrinsicMethod getMethodHandleIntrinsic() {
+        return methodHandleIntrinsic;
+    }
+
     @Override
     public byte[] getCode() {
-        throw GraalError.unimplemented("This method is incomplete and should not be used.");
+        return code;
     }
 
     @Override
     public int getCodeSize() {
-        throw GraalError.unimplemented("This method is incomplete and should not be used.");
+        return codeSize;
     }
 
     @Override
     public String getName() {
-        throw GraalError.unimplemented("This method is incomplete and should not be used.");
+        return name;
     }
 
     @Override
     public ResolvedJavaType getDeclaringClass() {
-        throw GraalError.unimplemented("This method is incomplete and should not be used.");
+        return declaringClass;
     }
 
     @Override
     public Signature getSignature() {
-        throw GraalError.unimplemented("This method is incomplete and should not be used.");
+        return signature;
     }
 
     @Override
@@ -90,12 +126,12 @@ public class BaseLayerMethod implements ResolvedJavaMethod {
 
     @Override
     public boolean isSynthetic() {
-        throw GraalError.unimplemented("This method is incomplete and should not be used.");
+        return isSynthetic;
     }
 
     @Override
     public boolean isVarArgs() {
-        throw GraalError.unimplemented("This method is incomplete and should not be used.");
+        return isVarArgs;
     }
 
     @Override
@@ -115,17 +151,17 @@ public class BaseLayerMethod implements ResolvedJavaMethod {
 
     @Override
     public boolean isConstructor() {
-        throw GraalError.unimplemented("This method is incomplete and should not be used.");
+        return isConstructor;
     }
 
     @Override
     public boolean canBeStaticallyBound() {
-        throw GraalError.unimplemented("This method is incomplete and should not be used.");
+        return canBeStaticallyBound;
     }
 
     @Override
     public ExceptionHandler[] getExceptionHandlers() {
-        throw GraalError.unimplemented("This method is incomplete and should not be used.");
+        return new ExceptionHandler[0];
     }
 
     @Override
@@ -175,12 +211,12 @@ public class BaseLayerMethod implements ResolvedJavaMethod {
 
     @Override
     public LineNumberTable getLineNumberTable() {
-        throw GraalError.unimplemented("This method is incomplete and should not be used.");
+        return null;
     }
 
     @Override
     public LocalVariableTable getLocalVariableTable() {
-        throw GraalError.unimplemented("This method is incomplete and should not be used.");
+        return null;
     }
 
     @Override
@@ -215,6 +251,6 @@ public class BaseLayerMethod implements ResolvedJavaMethod {
 
     @Override
     public int getModifiers() {
-        throw GraalError.unimplemented("This method is incomplete and should not be used.");
+        return modifiers;
     }
 }

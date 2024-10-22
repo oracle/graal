@@ -48,6 +48,7 @@ import com.oracle.svm.core.configure.ConfigurationConditionResolver;
 import com.oracle.svm.core.configure.ConfigurationParser;
 import com.oracle.svm.core.configure.ResourceConfigurationParser;
 import com.oracle.svm.core.configure.ResourcesRegistry;
+import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.resources.CompressedGlobTrie.GlobUtils;
 import com.oracle.svm.core.util.VMError;
 
@@ -65,17 +66,17 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
         }
 
         @Override
-        public void addResources(UnresolvedConfigurationCondition condition, String pattern) {
+        public void addResources(UnresolvedConfigurationCondition condition, String pattern, Object origin) {
             configuration.classifyAndAddPattern(new ConditionalElement<>(condition, pattern));
         }
 
         @Override
-        public void addGlob(UnresolvedConfigurationCondition condition, String module, String glob) {
+        public void addGlob(UnresolvedConfigurationCondition condition, String module, String glob, Object origin) {
             configuration.addedGlobs.add(new ConditionalElement<>(condition, new ResourceEntry(glob, module)));
         }
 
         @Override
-        public void addResourceEntry(Module module, String resourcePath) {
+        public void addResourceEntry(Module module, String resourcePath, Object origin) {
             throw VMError.shouldNotReachHere("Unused function.");
         }
 
@@ -85,7 +86,7 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
         }
 
         @Override
-        public void injectResource(Module module, String resourcePath, byte[] resourceContent) {
+        public void injectResource(Module module, String resourcePath, byte[] resourceContent, Object origin) {
             VMError.shouldNotReachHere("Resource injection is only supported via Feature implementation");
         }
 
@@ -210,7 +211,12 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
     }
 
     public void addGlobPattern(UnresolvedConfigurationCondition condition, String pattern, String module) {
-        ResourceEntry element = new ResourceEntry(escapePossibleGlobWildcards(pattern), module);
+        /*
+         * prevent patterns discovered by the agent to be written in the non-canonical form. Example
+         * canonical path: foo/1.txt; non-canonical path: foo/bar/../1.txt
+         */
+        String canonicalPattern = Resources.toCanonicalForm(pattern);
+        ResourceEntry element = new ResourceEntry(escapePossibleGlobWildcards(canonicalPattern), module);
         addedGlobs.add(new ConditionalElement<>(condition, element));
     }
 
@@ -336,41 +342,41 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
     @Override
     public void printJson(JsonWriter writer) throws IOException {
         printGlobsJson(writer, true);
-        writer.appendSeparator().newline();
-        printBundlesJson(writer);
+        writer.appendSeparator();
+        printBundlesJson(writer, true);
     }
 
     @Override
     public void printLegacyJson(JsonWriter writer) throws IOException {
-        writer.appendObjectStart().indent().newline();
+        writer.appendObjectStart();
         printResourcesJson(writer);
-        writer.appendSeparator().newline();
-        printBundlesJson(writer);
-        writer.appendSeparator().newline();
+        writer.appendSeparator();
+        printBundlesJson(writer, false);
+        writer.appendSeparator();
         printGlobsJson(writer, false);
-        writer.unindent().newline().appendObjectEnd();
+        writer.appendObjectEnd();
     }
 
     void printResourcesJson(JsonWriter writer) throws IOException {
-        writer.quote(RESOURCES_KEY).append(':').append('{').indent().newline();
-        writer.quote("includes").append(':');
+        writer.quote(RESOURCES_KEY).appendFieldSeparator().appendObjectStart();
+        writer.quote("includes").appendFieldSeparator();
         JsonPrinter.printCollection(writer, addedResources, ConditionalElement.comparator(), ResourceConfiguration::conditionalRegexElementJson);
         if (!ignoredResources.isEmpty()) {
-            writer.append(',').newline();
-            writer.quote("excludes").append(':');
+            writer.appendSeparator();
+            writer.quote("excludes").appendFieldSeparator();
             JsonPrinter.printCollection(writer, ignoredResources.keySet(), ConditionalElement.comparator(), ResourceConfiguration::conditionalRegexElementJson);
         }
-        writer.unindent().newline().append('}');
+        writer.appendObjectEnd();
     }
 
-    void printBundlesJson(JsonWriter writer) throws IOException {
-        writer.quote(BUNDLES_KEY).append(':');
-        JsonPrinter.printCollection(writer, bundles.keySet(), ConditionalElement.comparator(), (p, w) -> printResourceBundle(bundles.get(p), w));
+    void printBundlesJson(JsonWriter writer, boolean combinedFile) throws IOException {
+        writer.quote(BUNDLES_KEY).appendFieldSeparator();
+        JsonPrinter.printCollection(writer, bundles.keySet(), ConditionalElement.comparator(), (p, w) -> printResourceBundle(bundles.get(p), w, combinedFile));
     }
 
-    void printGlobsJson(JsonWriter writer, boolean useResourcesFieldName) throws IOException {
-        writer.quote(useResourcesFieldName ? RESOURCES_KEY : GLOBS_KEY).appendFieldSeparator();
-        JsonPrinter.printCollection(writer, addedGlobs, ConditionalElement.comparator(ResourceEntry.comparator()), ResourceConfiguration::conditionalGlobElementJson);
+    void printGlobsJson(JsonWriter writer, boolean combinedFile) throws IOException {
+        writer.quote(combinedFile ? RESOURCES_KEY : GLOBS_KEY).appendFieldSeparator();
+        JsonPrinter.printCollection(writer, addedGlobs, ConditionalElement.comparator(ResourceEntry.comparator()), (p, w) -> conditionalGlobElementJson(p, w, combinedFile));
     }
 
     @Override
@@ -378,24 +384,24 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
         return ResourceConfigurationParser.create(strictMetadata, ConfigurationConditionResolver.identityResolver(), new ResourceConfiguration.ParserAdapter(this), true);
     }
 
-    private static void printResourceBundle(BundleConfiguration config, JsonWriter writer) throws IOException {
-        writer.append('{').indent().newline();
-        ConfigurationConditionPrintable.printConditionAttribute(config.condition, writer);
-        writer.quote("name").append(':').quote(config.baseName);
+    private static void printResourceBundle(BundleConfiguration config, JsonWriter writer, boolean combinedFile) throws IOException {
+        writer.appendObjectStart();
+        ConfigurationConditionPrintable.printConditionAttribute(config.condition, writer, combinedFile);
+        writer.quote("name").appendFieldSeparator().quote(config.baseName);
         if (!config.locales.isEmpty()) {
-            writer.append(',').newline().quote("locales").append(":");
+            writer.appendSeparator().quote("locales").appendFieldSeparator();
             JsonPrinter.printCollection(writer, config.locales, Comparator.naturalOrder(), (String p, JsonWriter w) -> w.quote(p));
         }
         if (!config.classNames.isEmpty()) {
-            writer.append(',').newline().quote("classNames").append(":");
+            writer.appendSeparator().quote("classNames").appendFieldSeparator();
             JsonPrinter.printCollection(writer, config.classNames, Comparator.naturalOrder(), (String p, JsonWriter w) -> w.quote(p));
         }
-        writer.unindent().newline().append('}');
+        writer.appendObjectEnd();
     }
 
     @Override
     public boolean isEmpty() {
-        return addedResources.isEmpty() && bundles.isEmpty();
+        return addedResources.isEmpty() && bundles.isEmpty() && addedGlobs.isEmpty();
     }
 
     @Override
@@ -411,23 +417,23 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
         return true;
     }
 
-    private static void conditionalGlobElementJson(ConditionalElement<ResourceEntry> p, JsonWriter w) throws IOException {
+    private static void conditionalGlobElementJson(ConditionalElement<ResourceEntry> p, JsonWriter w, boolean combinedFile) throws IOException {
         String pattern = p.element().pattern();
         String module = p.element().module();
-        w.append('{').indent().newline();
-        ConfigurationConditionPrintable.printConditionAttribute(p.condition(), w);
+        w.appendObjectStart();
+        ConfigurationConditionPrintable.printConditionAttribute(p.condition(), w, combinedFile);
         if (module != null) {
-            w.quote("module").append(':').quote(module).append(',').newline();
+            w.quote("module").appendFieldSeparator().quote(module).appendSeparator();
         }
-        w.quote("glob").append(':').quote(pattern);
-        w.unindent().newline().append('}');
+        w.quote("glob").appendFieldSeparator().quote(pattern);
+        w.appendObjectEnd();
     }
 
     private static void conditionalRegexElementJson(ConditionalElement<String> p, JsonWriter w) throws IOException {
-        w.append('{').indent().newline();
-        ConfigurationConditionPrintable.printConditionAttribute(p.condition(), w);
-        w.quote("pattern").append(':').quote(p.element());
-        w.unindent().newline().append('}');
+        w.appendObjectStart();
+        ConfigurationConditionPrintable.printConditionAttribute(p.condition(), w, false);
+        w.quote("pattern").appendFieldSeparator().quote(p.element());
+        w.appendObjectEnd();
     }
 
     public interface Predicate {

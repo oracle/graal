@@ -107,8 +107,9 @@ import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.image.RelocatableBuffer.Info;
+import com.oracle.svm.hosted.imagelayer.HostedDynamicLayerInfo;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
-import com.oracle.svm.hosted.imagelayer.PriorLayerSymbolTracker;
+import com.oracle.svm.hosted.imagelayer.LayeredDispatchTableSupport;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
@@ -509,9 +510,11 @@ public abstract class NativeImage extends AbstractImage {
             defineDataSymbol(Isolates.IMAGE_HEAP_WRITABLE_BEGIN_SYMBOL_NAME, heapSection, heapLayout.getWritableOffset() - heapLayout.getStartOffset());
             defineDataSymbol(Isolates.IMAGE_HEAP_WRITABLE_END_SYMBOL_NAME, heapSection, heapLayout.getWritableOffset() + heapLayout.getWritableSize() - heapLayout.getStartOffset());
 
-            var symbolTracker = PriorLayerSymbolTracker.singletonOrNull();
-            if (symbolTracker != null) {
-                symbolTracker.defineSymbols(objectFile);
+            if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
+                HostedDynamicLayerInfo.singleton().defineSymbolsForPriorLayerMethods(objectFile);
+            }
+            if (ImageLayerBuildingSupport.buildingImageLayer()) {
+                LayeredDispatchTableSupport.singleton().defineDispatchTableSlotSymbols(objectFile, textSection, codeCache, metaAccess);
             }
 
             // Mark the sections with the relocations from the maps.
@@ -628,13 +631,15 @@ public abstract class NativeImage extends AbstractImage {
         MethodPointer methodPointer = (MethodPointer) info.getTargetObject();
         ResolvedJavaMethod method = methodPointer.getMethod();
         HostedMethod target = (method instanceof HostedMethod) ? (HostedMethod) method : heap.hUniverse.lookup(method);
-        if (!target.isCompiled() && !target.wrapped.isInBaseLayer()) {
+        boolean injectedNotCompiled = false;
+        if (!target.isCompiled() && !target.isCompiledInPriorLayer()) {
             target = metaAccess.lookupJavaMethod(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD);
+            injectedNotCompiled = true;
         }
 
         assert checkMethodPointerRelocationKind(info);
         // A reference to a method. Mark the relocation site using the symbol name.
-        relocationProvider.markMethodPointerRelocation(sectionImpl, offset, info.getRelocationKind(), target, info.getAddend(), methodPointer.isAbsolute());
+        relocationProvider.markMethodPointerRelocation(sectionImpl, offset, info.getRelocationKind(), target, info.getAddend(), methodPointer, injectedNotCompiled);
     }
 
     private static boolean isAddendAligned(Architecture arch, long addend, RelocationKind kind) {
@@ -758,6 +763,22 @@ public abstract class NativeImage extends AbstractImage {
         }
     }
 
+    private static String getUniqueShortName(ResolvedJavaMethod sm) {
+        String name;
+        if (sm instanceof HostedMethod hMethod) {
+            if (hMethod.isCompiledInPriorLayer()) {
+                // ensure we use a consistent symbol name across layers
+                name = HostedDynamicLayerInfo.singleton().loadMethodNameInfo(hMethod.getWrapped()).uniqueShortName();
+            } else {
+                name = hMethod.getUniqueShortName();
+            }
+        } else {
+            name = SubstrateUtil.uniqueShortName(sm);
+        }
+
+        return name;
+    }
+
     /**
      * Given a {@link ResolvedJavaMethod}, compute what symbol name of its start address (if any) in
      * the image. The symbol name returned is the one that would be used for local references (e.g.
@@ -769,7 +790,7 @@ public abstract class NativeImage extends AbstractImage {
      *         does)
      */
     public static String localSymbolNameForMethod(ResolvedJavaMethod sm) {
-        return SubstrateOptions.ImageSymbolsPrefix.getValue() + (sm instanceof HostedMethod ? ((HostedMethod) sm).getUniqueShortName() : SubstrateUtil.uniqueShortName(sm));
+        return SubstrateOptions.ImageSymbolsPrefix.getValue() + getUniqueShortName(sm);
     }
 
     /**
@@ -799,7 +820,7 @@ public abstract class NativeImage extends AbstractImage {
      *         does)
      */
     public static String globalSymbolNameForMethod(ResolvedJavaMethod sm) {
-        return mangleName((sm instanceof HostedMethod ? ((HostedMethod) sm).getUniqueShortName() : SubstrateUtil.uniqueShortName(sm)));
+        return mangleName(getUniqueShortName(sm));
     }
 
     @Override
@@ -947,14 +968,6 @@ public abstract class NativeImage extends AbstractImage {
 
                 final Map<String, HostedMethod> methodsBySignature = new HashMap<>();
                 // 1. fq with return type
-
-                if (codeCache.getBaseLayerMethods() != null) {
-                    // register base layer methods symbols
-                    var symbolTracker = PriorLayerSymbolTracker.singletonOrNull();
-                    for (HostedMethod current : codeCache.getBaseLayerMethods()) {
-                        symbolTracker.registerPriorLayerReference(current);
-                    }
-                }
 
                 for (Pair<HostedMethod, CompilationResult> pair : codeCache.getOrderedCompilations()) {
                     HostedMethod current = pair.getLeft();

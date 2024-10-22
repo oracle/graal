@@ -41,16 +41,18 @@
 package com.oracle.truffle.runtime.jfr.impl;
 
 import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
+import com.oracle.truffle.runtime.jfr.RootFunctionEvent;
+
+import jdk.jfr.Description;
 import jdk.jfr.Event;
 import jdk.jfr.Label;
-import jdk.jfr.Description;
-import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.runtime.jfr.RootFunctionEvent;
-import com.oracle.truffle.api.nodes.RootNode;
 
 abstract class RootFunctionEventImpl extends Event implements RootFunctionEvent {
 
+    @Label("EngineId") @Description("Truffle Engine Unique Id") public long engineId;
     @Label("Id") @Description("Truffle Compilable Unique Id") public long id;
     @Label("Source") @Description("Compiled Source") public String source;
     @Label("Language") @Description("Guest Language") public String language;
@@ -59,7 +61,8 @@ abstract class RootFunctionEventImpl extends Event implements RootFunctionEvent 
     RootFunctionEventImpl() {
     }
 
-    RootFunctionEventImpl(long id, String source, String language, String rootFunction) {
+    RootFunctionEventImpl(long engineId, long id, String source, String language, String rootFunction) {
+        this.engineId = engineId;
         this.id = id;
         this.source = source;
         this.language = language;
@@ -68,6 +71,7 @@ abstract class RootFunctionEventImpl extends Event implements RootFunctionEvent 
 
     @Override
     public void setRootFunction(OptimizedCallTarget target) {
+        this.engineId = target.engineId();
         this.id = target.id;
         RootNode rootNode = target.getRootNode();
         this.source = targetName(rootNode);
@@ -87,7 +91,7 @@ abstract class RootFunctionEventImpl extends Event implements RootFunctionEvent 
     private static String targetName(RootNode rootNode) {
         SourceSection sourceSection = rootNode.getSourceSection();
         if (sourceSection != null && sourceSection.getSource() != null) {
-            return sourceSection.getSource().getName() + ":" + sourceSection.getStartLine();
+            return sourceSection.getSource().getName() + ":" + sourceSection.getStartLine() + " 0x" + Integer.toHexString(sourceSection.getSource().hashCode());
         }
         return null;
     }

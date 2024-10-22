@@ -229,7 +229,7 @@ public class RuntimeCompiledMethodSupport {
              * The graph in the analysis universe is no longer necessary once it is transplanted
              * into the hosted universe.
              */
-            aMethod.setAnalyzedGraph(null);
+            aMethod.clearAnalyzedGraph();
 
             if (!trackNodeSourcePosition) {
                 /*
@@ -392,21 +392,12 @@ public class RuntimeCompiledMethodSupport {
         }
 
         @Override
-        protected void addObject(Object object) {
-            super.addObject(hostedToRuntime(object));
-        }
-
-        @Override
-        protected void writeObjectId(Object object) {
-            super.writeObjectId(hostedToRuntime(object));
-        }
-
-        @Override
         protected GraphDecoder graphDecoderForVerification(StructuredGraph decodedGraph) {
             return new RuntimeCompilationGraphDecoder(architecture, decodedGraph, heapScanner);
         }
 
-        private Object hostedToRuntime(Object object) {
+        @Override
+        protected Object replaceObjectForEncoding(Object object) {
             if (object instanceof ImageHeapConstant heapConstant) {
                 return SubstrateGraalUtils.hostedToRuntime(heapConstant, heapScanner.getConstantReflection());
             } else if (object instanceof ObjectLocationIdentity oli && oli.getObject() instanceof ImageHeapConstant heapConstant) {

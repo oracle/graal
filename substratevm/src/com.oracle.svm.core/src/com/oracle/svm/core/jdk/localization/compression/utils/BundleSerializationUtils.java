@@ -24,18 +24,19 @@
  */
 package com.oracle.svm.core.jdk.localization.compression.utils;
 
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.ReflectionUtil;
-import org.graalvm.collections.Pair;
-import jdk.graal.compiler.debug.GraalError;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.ResourceBundle;
+
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
+
+import jdk.graal.compiler.debug.GraalError;
 
 public class BundleSerializationUtils {
 
@@ -60,11 +61,14 @@ public class BundleSerializationUtils {
         throw VMError.shouldNotReachHere("Failed to extract content for " + bundle + " of type " + bundle.getClass());
     }
 
+    public record SerializedContent(String text, int[] indices) {
+    }
+
     /**
      * @param content content of the bundle to be serialized
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static Pair<String, int[]> serializeContent(Map<String, Object> content) {
+    public static SerializedContent serializeContent(Map<String, Object> content) {
         List<Integer> indices = new ArrayList<>();
         StringBuilder builder = new StringBuilder();
         for (Map.Entry<String, Object> entry : content.entrySet()) {
@@ -93,7 +97,7 @@ public class BundleSerializationUtils {
         for (int i = 0; i < indices.size(); i++) {
             res[i] = indices.get(i);
         }
-        return Pair.create(builder.toString(), res);
+        return new SerializedContent(builder.toString(), res);
     }
 
     public static Map<String, Object> deserializeContent(int[] indices, String text) {

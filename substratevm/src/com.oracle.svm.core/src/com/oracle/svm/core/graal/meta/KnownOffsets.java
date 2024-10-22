@@ -24,6 +24,11 @@
  */
 package com.oracle.svm.core.graal.meta;
 
+import java.lang.reflect.Field;
+import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.function.Predicate;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -31,6 +36,12 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
@@ -72,10 +83,39 @@ public final class KnownOffsets {
         this.imageCodeInfoCodeStartOffset = imageCodeInfoCodeStartOffset;
 
         assert isFullyInitialized();
+
+        if (ImageLayerBuildingSupport.buildingImageLayer()) {
+            int[] currentValues = {
+                            vtableBaseOffset,
+                            vtableEntrySize,
+                            typeIDSlotsOffset,
+                            componentHubOffset,
+                            javaFrameAnchorLastSPOffset,
+                            javaFrameAnchorLastIPOffset,
+                            vmThreadStatusOffset,
+                            imageCodeInfoCodeStartOffset,
+            };
+            var numFields = Arrays.stream(KnownOffsets.class.getDeclaredFields()).filter(Predicate.not(Field::isSynthetic)).count();
+            VMError.guarantee(numFields == currentValues.length, "Missing fields");
+
+            if (ImageLayerBuildingSupport.buildingInitialLayer()) {
+                ImageSingletons.add(PriorKnownOffsets.class, new PriorKnownOffsets(currentValues));
+            } else {
+                VMError.guarantee(Arrays.equals(currentValues, ImageSingletons.lookup(PriorKnownOffsets.class).priorValues));
+            }
+        }
     }
 
     private boolean isFullyInitialized() {
         return vtableEntrySize > 0;
+    }
+
+    public int getVTableBaseOffset() {
+        return vtableBaseOffset;
+    }
+
+    public int getVTableEntrySize() {
+        return vtableEntrySize;
     }
 
     /**
@@ -93,7 +133,7 @@ public final class KnownOffsets {
     }
 
     public int getTypeIDSlotsOffset() {
-        assert isFullyInitialized() && SubstrateOptions.closedTypeWorld();
+        assert isFullyInitialized() && SubstrateOptions.useClosedTypeWorldHubLayout();
         return typeIDSlotsOffset;
     }
 
@@ -121,5 +161,30 @@ public final class KnownOffsets {
     public int getImageCodeInfoCodeStartOffset() {
         assert isFullyInitialized();
         return imageCodeInfoCodeStartOffset;
+    }
+
+    static class PriorKnownOffsets implements LayeredImageSingleton {
+        final int[] priorValues;
+
+        PriorKnownOffsets(int[] priorValues) {
+            this.priorValues = priorValues;
+        }
+
+        @Override
+        public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+            return LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS_ONLY;
+        }
+
+        @Override
+        public PersistFlags preparePersist(ImageSingletonWriter writer) {
+            writer.writeIntList("priorValues", Arrays.stream(priorValues).boxed().toList());
+            return PersistFlags.CREATE;
+        }
+
+        @SuppressWarnings("unused")
+        public static Object createFromLoader(ImageSingletonLoader loader) {
+            int[] priorValues = loader.readIntList("priorValues").stream().mapToInt(e -> e).toArray();
+            return new PriorKnownOffsets(priorValues);
+        }
     }
 }

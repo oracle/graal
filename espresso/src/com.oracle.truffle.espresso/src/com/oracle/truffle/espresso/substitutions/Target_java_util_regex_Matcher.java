@@ -52,8 +52,11 @@ import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.espresso.impl.Field;
+import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.EspressoInlineNode;
 import com.oracle.truffle.espresso.nodes.bytecodes.InvokeInterface;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.JavaVersion;
@@ -330,7 +333,7 @@ public final class Target_java_util_regex_Matcher {
 
     @GenerateInline
     @GenerateUncached
-    abstract static class JavaRegexCompileNode extends Node {
+    abstract static class JavaRegexCompileNode extends EspressoInlineNode {
         public abstract Object execute(Node node, StaticObject self, RegexAction action, Field destination, EspressoContext context);
 
         @Specialization
@@ -354,25 +357,49 @@ public final class Target_java_util_regex_Matcher {
             meta.java_util_regex_Pattern_capturingGroupCount.setInt(patternObject, groupCount);
             reallocateGroupsArrayIfNecessary(self, patternObject, meta);
 
-            if (meta.java_util_regex_Pattern_namedGroups_field.getObject(patternObject) == null) {
+            StaticObject existingNamedGroups = meta.java_util_regex_Pattern_namedGroups_field.getObject(patternObject);
+            if (StaticObject.isNull(existingNamedGroups)) {
                 Object map = getGroups(regexObject, regexObjectInterop);
                 Object keys = getMembers(map, mapInterop);
                 long size = getArraySize(keys, arrayInterop);
 
                 StaticObject guestMap = meta.java_util_HashMap.allocateInstance();
-                meta.java_util_HashMap_init.invokeDirect(guestMap, (int) size);
+                meta.java_util_HashMap_init.invokeDirectSpecial(guestMap, (int) size);
 
                 for (long i = 0; i < size; i++) {
                     String key = getKey(keys, i, stringInterop, arrayInterop);
                     Object value = getValue(map, key, mapInterop);
                     StaticObject guestKey = meta.toGuestString(key);
 
-                    Object integerValue = meta.java_lang_Integer_valueOf.invokeDirect(value);
+                    Object integerValue = meta.java_lang_Integer_valueOf.invokeDirectStatic(value);
+                    // no need for virtual dispatch, we know the receiver type
                     meta.java_util_HashMap_put.invokeDirect(guestMap, guestKey, integerValue);
                 }
                 meta.java_util_regex_Pattern_namedGroups_field.setObject(patternObject, guestMap);
+            } else {
+                assert checkNamedGroups(regexObject, existingNamedGroups, meta);
             }
             return regexObject;
+        }
+
+        private static boolean checkNamedGroups(Object regexObject, StaticObject existingNamedGroups, Meta meta) {
+            InteropLibrary library = InteropLibrary.getUncached();
+            Object map = getGroups(regexObject, library);
+            Object keys = getMembers(map, library);
+            long size = getArraySize(keys, library);
+
+            Method getMethod = ((ObjectKlass) existingNamedGroups.getKlass()).itableLookup(meta.java_util_Map, meta.java_util_Map_get.getITableIndex());
+            int existingSize = (int) meta.java_util_Map_size.invokeDirectInterface(existingNamedGroups);
+            assert existingSize == size : "Expected groups of size " + size + " but found " + existingSize;
+            for (long i = 0; i < size; i++) {
+                String key = getKey(keys, i, library, library);
+                int index = (int) getValue(map, key, library);
+                StaticObject exitingValue = (StaticObject) getMethod.invokeDirect(map, meta.toGuestString(key));
+                assert StaticObject.notNull(exitingValue) : "Expected index for group " + key + " to be " + index + " but it was not found";
+                int existingIntValue = meta.unboxInteger(exitingValue);
+                assert existingIntValue == index : "Expected index for group " + key + " to be " + index + " but found " + existingIntValue;
+            }
+            return true;
         }
     }
 
@@ -432,7 +459,7 @@ public final class Target_java_util_regex_Matcher {
 
     @GenerateInline
     @GenerateUncached
-    public abstract static class JavaRegexExecNode extends Node {
+    public abstract static class JavaRegexExecNode extends EspressoInlineNode {
         public abstract boolean execute(Node node, Object regexObject, StaticObject self, int from, Meta meta);
 
         @Specialization
@@ -531,7 +558,7 @@ public final class Target_java_util_regex_Matcher {
     private static void compileFallBackIfRequired(StaticObject self, Meta meta) {
         StaticObject parentPattern = meta.java_util_regex_Matcher_parentPattern.getObject(self);
         if (StaticObject.isNull(meta.java_util_regex_Pattern_root.getObject(parentPattern))) {
-            meta.java_util_regex_Pattern_compile.invokeDirect(parentPattern);
+            meta.java_util_regex_Pattern_compile.invokeDirectSpecial(parentPattern);
             reallocateGroupsArrayIfNecessary(self, parentPattern, meta);
 
             int localCount = meta.java_util_regex_Pattern_localCount.getInt(parentPattern);

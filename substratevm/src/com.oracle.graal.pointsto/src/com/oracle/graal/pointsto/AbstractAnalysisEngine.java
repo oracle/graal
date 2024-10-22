@@ -232,6 +232,9 @@ public abstract class AbstractAnalysisEngine implements BigBang {
 
         universe.getHeapScanner().cleanupAfterAnalysis();
         universe.getHeapVerifier().cleanupAfterAnalysis();
+        if (universe.getImageLayerLoader() != null) {
+            universe.getImageLayerLoader().cleanupAfterAnalysis();
+        }
     }
 
     @Override
@@ -361,6 +364,13 @@ public abstract class AbstractAnalysisEngine implements BigBang {
             Arrays.stream(getOrDefault(cls, Class::getDeclaredFields, new Field[0]))
                             .filter(classInclusionPolicy::isFieldIncluded)
                             .forEach(classInclusionPolicy::includeField);
+        }
+    }
+
+    @Override
+    public void registerMethodForBaseImage(AnalysisMethod method) {
+        if (classInclusionPolicy.isMethodIncluded(method)) {
+            classInclusionPolicy.includeMethod(method);
         }
     }
 

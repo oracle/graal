@@ -25,15 +25,20 @@ package com.oracle.truffle.espresso.nodes.quick.invoke;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.analysis.frame.EspressoFrameDescriptor;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.ContinuableMethodWithBytecode;
 import com.oracle.truffle.espresso.nodes.ContinuableMethodWithBytecodeFactory;
+import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.vm.continuation.HostFrameRecord;
 import com.oracle.truffle.espresso.vm.continuation.UnwindContinuationException;
 
+@GenerateWrapper(resumeMethodPrefix = "resumeContinuation", //
+                yieldExceptions = BytecodeNode.EspressoOSRReturnException.class)
 public class InvokeContinuableNode extends InvokeQuickNode {
     @Child InvokeQuickNode original;
     @Child ContinuableMethodWithBytecode.ResumeNextContinuationNode resumeNext;
@@ -44,14 +49,16 @@ public class InvokeContinuableNode extends InvokeQuickNode {
         this.resumeNext = ContinuableMethodWithBytecodeFactory.ResumeNextContinuationNodeGen.create();
     }
 
-    @Override
-    public boolean isInstrumentable() {
-        return false;
+    InvokeContinuableNode(InvokeContinuableNode copy) {
+        super(copy.method, copy.top, copy.getCallerBCI());
+        this.original = copy.original;
     }
 
     // Normal execution path.
+    // Note: this method is not instrumented. Instrumentation of the original node should be what is
+    // important in the non-resume case.
     @Override
-    public int execute(VirtualFrame frame, boolean isContinuationResume) {
+    public final int execute(VirtualFrame frame, boolean isContinuationResume) {
         if (isContinuationResume) {
             return resumeContinuation(frame);
         } else {
@@ -60,7 +67,7 @@ public class InvokeContinuableNode extends InvokeQuickNode {
     }
 
     // Resuming execution path.
-    private int resumeContinuation(VirtualFrame frame) {
+    protected int resumeContinuation(VirtualFrame frame) {
         ContinuableMethodWithBytecode continuableNode = getContinuableNode();
         HostFrameRecord hfr = continuableNode.getFrameRecords(frame);
 
@@ -76,8 +83,12 @@ public class InvokeContinuableNode extends InvokeQuickNode {
             // Keep rewinding, then push the result.
             return pushResult(frame, resumeNext.execute(next));
         } catch (UnwindContinuationException unwind) {
-            // Small optimization: we can re-use the previously computed frame.
-            // TODO(GR-54336): maybe re-import frame, if something modified its contents
+            // Small optimization: we can re-use the previously computed frame, unless the frame
+            // is tainted.
+            if (EspressoFrame.isTainted(frame)) {
+                fd.importFromFrame(frame, hfr.objects, hfr.primitives);
+                hfr.untaint();
+            }
             hfr.next = unwind.head;
             unwind.head = hfr;
             // Hijack the early return mechanism of OSR to prevent processing of this unwind in the
@@ -93,5 +104,10 @@ public class InvokeContinuableNode extends InvokeQuickNode {
             parent = parent.getParent();
         }
         return (ContinuableMethodWithBytecode) parent;
+    }
+
+    @Override
+    public WrapperNode createWrapper(ProbeNode probeNode) {
+        return new InvokeContinuableNodeWrapper(this, this, probeNode);
     }
 }

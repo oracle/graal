@@ -377,6 +377,22 @@ class TestPrintCollections(unittest.TestCase):
         self.assertIn('[3] = java.util.ArrayList(0) = {...}', exec_string)
         self.assertTrue(exec_string.endswith('}'))
 
+    def test_lambda_type(self):
+        gdb_set_breakpoint("com.oracle.svm.test.debug.helper.PrettyPrinterTest::testLambda")
+        gdb_run()
+        type_name = gdb_output("(('java.lang.Object' *)lambda).hub.name").strip('"')  # strip enclosing quotes
+        try:
+            exec_string = gdb_print_type(f"'{type_name}'")
+            print(type_name)
+            print(exec_string)
+            self.assertFalse(exec_string.startswith('No symbol'), "Lambda runtime type names do not match lambda type symbol names")
+            self.assertTrue(exec_string.startswith(f'type = class {type_name}'), f"GDB output: '{exec_string}'")
+            self.assertIn('java.lang.Object * apply(java.lang.Object *);', exec_string)  # check for function
+        except Exception:
+            self.fail("Lambda runtime type names do not match lambda type symbol names")
+
 
 # redirect unittest output to terminal
-unittest.main(testRunner=unittest.TextTestRunner(stream=sys.__stdout__))
+result = unittest.main(testRunner=unittest.TextTestRunner(stream=sys.__stdout__), exit=False)
+# close gdb
+gdb_quit(0 if result.result.wasSuccessful() else 1)

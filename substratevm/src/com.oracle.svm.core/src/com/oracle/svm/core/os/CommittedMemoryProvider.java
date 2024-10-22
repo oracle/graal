@@ -30,6 +30,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.IsolateArguments;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 
@@ -54,6 +55,12 @@ public interface CommittedMemoryProvider {
     @Uninterruptible(reason = "Still being initialized.")
     int initialize(WordPointer heapBasePointer, CEntryPointCreateIsolateParameters parameters);
 
+    @Uninterruptible(reason = "Still being initialized.")
+    default int initialize(WordPointer heapBasePointer, IsolateArguments arguments) {
+        // The default implementation of this method is temporary.
+        return initialize(heapBasePointer, arguments.getParameters());
+    }
+
     /**
      * Tear down <em>for the current isolate</em>. This must be the last method of this interface
      * that is called in an isolate.
@@ -72,39 +79,8 @@ public interface CommittedMemoryProvider {
         return VirtualMemoryProvider.get().getGranularity();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    Pointer allocateAlignedChunk(UnsignedWord nbytes, UnsignedWord alignment);
-
-    Pointer allocateUnalignedChunk(UnsignedWord nbytes);
-
     Pointer allocateExecutableMemory(UnsignedWord nbytes, UnsignedWord alignment);
-
-    /**
-     * This method returns {@code true} if the memory returned by {@link #allocateUnalignedChunk} is
-     * guaranteed to be zeroed.
-     */
-    boolean areUnalignedChunksZeroed();
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    void freeAlignedChunk(PointerBase start, UnsignedWord nbytes, UnsignedWord alignment);
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    void freeUnalignedChunk(PointerBase start, UnsignedWord nbytes);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void freeExecutableMemory(PointerBase start, UnsignedWord nbytes, UnsignedWord alignment);
-
-    /**
-     * Called by the garbage collector before a collection is started, as an opportunity to perform
-     * lazy operations, sanity checks or clean-ups.
-     */
-    default void beforeGarbageCollection() {
-    }
-
-    /**
-     * Called by the garbage collector after a collection has ended, as an opportunity to perform
-     * lazy operations, sanity checks or clean-ups.
-     */
-    default void afterGarbageCollection() {
-    }
 }

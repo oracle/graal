@@ -24,10 +24,11 @@
  */
 package jdk.graal.compiler.hotspot.amd64.z;
 
+import static jdk.graal.compiler.hotspot.amd64.z.AMD64HotSpotZBarrierSetLIRGenerator.zColor;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.vm.ci.code.ValueUtil.isIllegal;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
@@ -37,6 +38,7 @@ import jdk.graal.compiler.lir.LIRFrameState;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.amd64.AMD64AddressValue;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
+import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
@@ -47,7 +49,7 @@ public class AMD64HotSpotZPreWriteBarrierOp extends AMD64HotSpotZStoreBarrieredO
     public static final LIRInstructionClass<AMD64HotSpotZPreWriteBarrierOp> TYPE = LIRInstructionClass.create(AMD64HotSpotZPreWriteBarrierOp.class);
 
     @Alive({REG, ILLEGAL}) protected Value writeValue;
-    private final boolean isInitMemory;
+    private final boolean emitPreWriteBarrier;
     @State protected LIRFrameState state;
 
     protected AMD64HotSpotZPreWriteBarrierOp(Value writeValue,
@@ -58,16 +60,23 @@ public class AMD64HotSpotZPreWriteBarrierOp extends AMD64HotSpotZStoreBarrieredO
                     ForeignCallLinkage callTarget,
                     AllocatableValue result,
                     StoreKind storeKind,
-                    boolean isInitMemory,
+                    boolean emitPreWriteBarrier,
                     LIRFrameState state) {
         super(TYPE, result, loadAddress, tmp, tmp2, config, callTarget, storeKind);
         this.writeValue = writeValue;
-        this.isInitMemory = isInitMemory;
+        this.emitPreWriteBarrier = emitPreWriteBarrier;
         this.state = state;
+        assert emitPreWriteBarrier || state == null : "implicit null check is only performed with preWriteBarrier";
     }
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        emitStoreBarrier(crb, masm, asRegister(result), isIllegal(writeValue) ? null : asRegister(writeValue), isInitMemory, state);
+        Register resultReg = asRegister(result);
+        if (emitPreWriteBarrier) {
+            emitPreWriteBarrier(crb, masm, resultReg, state);
+        }
+        if (isRegister(writeValue)) {
+            zColor(crb, masm, resultReg, asRegister(writeValue));
+        }
     }
 }

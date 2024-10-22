@@ -220,12 +220,16 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
                  * receiver of a wrong type. The code will later be removed as dead code, and in
                  * most cases the field read would also be rejected as illegal by the HotSpot
                  * constant reflection provider doing the actual field load. But there are several
-                 * other ways how a field can be accessed, e.g., our ReadableJavaField mechanism or
-                 * fields of classes that are initialized at image run time. To avoid any surprises,
-                 * we abort the field reading here early.
+                 * other ways how a field can be accessed, e.g., fields of classes that are
+                 * initialized at image run time. To avoid any surprises, we abort the field reading
+                 * here early.
                  */
                 return null;
             }
+        }
+
+        if (receiver instanceof ImageHeapInstance imageHeapInstance && imageHeapInstance.isInBaseLayer() && imageHeapInstance.nullFieldValues()) {
+            return null;
         }
 
         VMError.guarantee(receiver == null || receiver instanceof ImageHeapConstant, "Expected ImageHeapConstant, found: %s", receiver);

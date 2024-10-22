@@ -21,7 +21,7 @@
 # questions.
 #
 suite = {
-    "mxversion": "7.27.0",
+    "mxversion": "7.33.0",
     "name": "tools",
     "defaultLicense" : "GPLv2-CPE",
 
@@ -302,6 +302,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "org.graalvm.tools.lsp",
+                "truffle:TRUFFLE_TEST",
                 "truffle:TRUFFLE_SL",
                 "mx:JUNIT"
             ],
@@ -777,7 +778,7 @@ suite = {
             "distDependencies" : [
                 "LSP",
                 "truffle:TRUFFLE_SL",
-                "truffle:TRUFFLE_TEST",  # runtime dependency for unittest config
+                "truffle:TRUFFLE_TEST",
             ],
             "exclude": [
               "mx:HAMCREST",

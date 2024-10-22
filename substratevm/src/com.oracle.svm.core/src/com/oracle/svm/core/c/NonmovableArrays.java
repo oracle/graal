@@ -31,6 +31,7 @@ import java.util.Arrays;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -54,6 +55,7 @@ import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.nodes.extended.MembarNode;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 import jdk.graal.compiler.word.Word;
 
@@ -101,8 +103,8 @@ public final class NonmovableArrays {
         ObjectHeader header = Heap.getHeap().getObjectHeader();
         Word encodedHeader = header.encodeAsUnmanagedObjectHeader(hub);
         header.initializeHeaderOfNewObject(array, encodedHeader, true);
-
-        array.writeInt(ConfigurationValues.getObjectLayout().getArrayLengthOffset(), length);
+        array.writeInt(ConfigurationValues.getObjectLayout().getArrayLengthOffset(), length, LocationIdentity.INIT_LOCATION);
+        MembarNode.memoryBarrier(MembarNode.FenceKind.ALLOCATION_INIT, LocationIdentity.INIT_LOCATION);
         // already zero-initialized thanks to calloc()
         trackUnmanagedArray((NonmovableArray<?>) array);
         return (T) array;

@@ -30,6 +30,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -163,6 +164,9 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     private final AnalysisType[] interfaces;
     private AnalysisMethod[] declaredMethods;
+    private Set<AnalysisMethod> dispatchTableMethods;
+
+    private AnalysisType[] allInterfaces;
 
     /* isArray is an expensive operation so we eagerly compute it */
     private final boolean isArray;
@@ -364,6 +368,36 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return dimension;
     }
 
+    /**
+     * @return All interfaces this type inherits (including itself if it is an interface).
+     */
+    public AnalysisType[] getAllInterfaces() {
+        if (allInterfaces != null) {
+            return allInterfaces;
+        }
+
+        Set<AnalysisType> allInterfaceSet = new HashSet<>();
+
+        if (isInterface()) {
+            allInterfaceSet.add(this);
+        }
+
+        if (this.superClass != null) {
+            allInterfaceSet.addAll(Arrays.asList(this.superClass.getAllInterfaces()));
+        }
+
+        for (AnalysisType i : interfaces) {
+            allInterfaceSet.addAll(Arrays.asList(i.getAllInterfaces()));
+        }
+
+        var result = allInterfaceSet.toArray(AnalysisType[]::new);
+
+        // ensure result is fully visible across threads
+        VarHandle.storeStoreFence();
+        allInterfaces = result;
+        return allInterfaces;
+    }
+
     public void cleanupAfterAnalysis() {
         instantiatedTypes = null;
         instantiatedTypesNonNull = null;
@@ -455,8 +489,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     public AllInstantiatedTypeFlow instantiatedTypesNonNull;
 
     /*
-     * Returns a type flow containing all types that are assignable from this type and are also
-     * instantiated.
+     * Returns a generic type flow containing a) all types that are assignable from this type and
+     * are also instantiated for objects or b) any primitive value for primitives.
      */
     public TypeFlow<?> getTypeFlow(@SuppressWarnings("unused") BigBang bb, boolean includeNull) {
         if (isPrimitive() || isWordType()) {
@@ -1071,7 +1105,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
                 ResolvedJavaType originalCallerType = originalMethod.getDeclaringClass();
 
                 try {
-                    newResolvedMethod = universe.lookup(wrapped.resolveConcreteMethod(originalMethod, originalCallerType));
+                    var concreteMethod = originalMethod instanceof BaseLayerMethod ? originalMethod : wrapped.resolveConcreteMethod(originalMethod, originalCallerType);
+                    newResolvedMethod = universe.lookup(concreteMethod);
                     if (newResolvedMethod == null) {
                         newResolvedMethod = getUniverse().getBigbang().fallbackResolveConcreteMethod(this, (AnalysisMethod) method);
                     }
@@ -1255,6 +1290,73 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     public AnalysisMethod[] getDeclaredConstructors(boolean forceLink) {
         GraalError.guarantee(forceLink == false, "only use getDeclaredConstructors without forcing to link, because linking can throw LinkageError");
         return universe.lookup(wrapped.getDeclaredConstructors(forceLink));
+    }
+
+    public AnalysisMethod findConstructor(Signature signature) {
+        if (wrapped instanceof BaseLayerType) {
+            return null;
+        }
+        for (AnalysisMethod ctor : getDeclaredConstructors(false)) {
+            if (ctor.getSignature().equals(signature)) {
+                return ctor;
+            }
+        }
+        return null;
+    }
+
+    public Set<AnalysisMethod> getOpenTypeWorldDispatchTableMethods() {
+        Objects.requireNonNull(dispatchTableMethods);
+        return dispatchTableMethods;
+    }
+
+    /*
+     * Calculates all methods in this class which should be included in its dispatch table.
+     */
+    public Set<AnalysisMethod> getOrCalculateOpenTypeWorldDispatchTableMethods() {
+        if (dispatchTableMethods != null) {
+            return dispatchTableMethods;
+        }
+        if (isPrimitive()) {
+            dispatchTableMethods = Set.of();
+            return dispatchTableMethods;
+        }
+        if (getWrapped() instanceof BaseLayerType) {
+            // GR-58587 implement proper support.
+            dispatchTableMethods = Set.of();
+            return dispatchTableMethods;
+        }
+
+        Set<ResolvedJavaMethod> wrappedMethods = new HashSet<>();
+        wrappedMethods.addAll(Arrays.asList(getWrapped().getDeclaredMethods(false)));
+        wrappedMethods.addAll(Arrays.asList(getWrapped().getDeclaredConstructors(false)));
+
+        var resultSet = new HashSet<AnalysisMethod>();
+        for (ResolvedJavaMethod m : wrappedMethods) {
+            if (m.isStatic()) {
+                /* Only looking at member methods and constructors */
+                continue;
+            }
+            try {
+                AnalysisMethod aMethod = universe.lookup(m);
+                resultSet.add(aMethod);
+            } catch (UnsupportedFeatureException t) {
+                /*
+                 * Methods which are deleted or not available on this platform will throw an error
+                 * during lookup - ignore and continue execution
+                 *
+                 * Note it is not simple to create a check to determine whether calling
+                 * universe#lookup will trigger an error by creating an analysis object for a type
+                 * not supported on this platform, as creating a method requires, in addition to the
+                 * types of its return type and parameters, all of the super types of its return and
+                 * parameters to be created as well.
+                 */
+            }
+        }
+
+        // ensure result is fully visible across threads
+        VarHandle.storeStoreFence();
+        dispatchTableMethods = resultSet;
+        return dispatchTableMethods;
     }
 
     @Override

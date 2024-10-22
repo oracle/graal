@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,8 @@ package jdk.graal.compiler.core.test.ea;
 
 import java.lang.reflect.Field;
 
+import org.junit.Test;
+
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -34,9 +36,7 @@ import jdk.graal.compiler.nodes.extended.RawStoreNode;
 import jdk.graal.compiler.nodes.virtual.CommitAllocationNode;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
-import org.junit.Test;
-
-import sun.misc.Unsafe;
+import jdk.internal.misc.Unsafe;
 
 public class TrufflePEATest extends GraalCompilerTest {
 
@@ -68,12 +68,12 @@ public class TrufflePEATest extends GraalCompilerTest {
     static {
         try {
             Field primitiveField0 = DynamicObject.class.getDeclaredField("primitiveField0");
-            long offset = getObjectFieldOffset(primitiveField0);
+            long offset = UNSAFE.objectFieldOffset(primitiveField0);
             if (offset % 8 == 0) {
                 primitiveField0Offset = offset;
             } else {
                 Field primitiveField1 = DynamicObject.class.getDeclaredField("primitiveField1");
-                offset = getObjectFieldOffset(primitiveField1);
+                offset = UNSAFE.objectFieldOffset(primitiveField1);
                 assert offset % 8 == 0;
                 primitiveField0Offset = offset;
             }

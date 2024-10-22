@@ -39,14 +39,12 @@ import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberAccessibility;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberDeclaration;
-
 import com.oracle.svm.core.configure.ConfigurationTypeDescriptor;
 
+import jdk.graal.compiler.util.SignatureUtil;
 import jdk.graal.compiler.util.json.JsonPrintable;
 import jdk.graal.compiler.util.json.JsonPrinter;
 import jdk.graal.compiler.util.json.JsonWriter;
-
-import jdk.graal.compiler.util.SignatureUtil;
 
 /**
  * Type usage information, part of a {@link TypeConfiguration}. Unlike other configuration classes
@@ -461,9 +459,9 @@ public class ConfigurationType implements JsonPrintable {
 
     @Override
     public synchronized void printJson(JsonWriter writer) throws IOException {
-        writer.append('{').indent().newline();
-        ConfigurationConditionPrintable.printConditionAttribute(condition, writer);
-        writer.quote("type").append(":");
+        writer.appendObjectStart();
+        ConfigurationConditionPrintable.printConditionAttribute(condition, writer, true);
+        writer.quote("type").appendFieldSeparator();
         typeDescriptor.printJson(writer);
 
         printJsonBooleanIfSet(writer, allDeclaredFieldsAccess == ConfigurationMemberAccessibility.ACCESSED, "allDeclaredFields");
@@ -475,13 +473,13 @@ public class ConfigurationType implements JsonPrintable {
         printJsonBooleanIfSet(writer, unsafeAllocated, "unsafeAllocated");
 
         if (fields != null) {
-            writer.append(',').newline().quote("fields").append(':');
+            writer.appendSeparator().quote("fields").appendFieldSeparator();
             JsonPrinter.printCollection(writer, fields.entrySet(), Map.Entry.comparingByKey(), ConfigurationType::printField);
         }
         if (methods != null) {
             Set<ConfigurationMethod> accessedMethods = getMethodsByAccessibility(ConfigurationMemberAccessibility.ACCESSED);
             if (!accessedMethods.isEmpty()) {
-                writer.append(',').newline().quote("methods").append(':');
+                writer.appendSeparator().quote("methods").appendFieldSeparator();
                 JsonPrinter.printCollection(writer,
                                 accessedMethods,
                                 Comparator.comparing(ConfigurationMethod::getName).thenComparing(Comparator.nullsFirst(Comparator.comparing(ConfigurationMethod::getInternalSignature))),
@@ -489,7 +487,7 @@ public class ConfigurationType implements JsonPrintable {
             }
         }
 
-        writer.unindent().newline().append('}');
+        writer.appendObjectEnd();
     }
 
     private Set<ConfigurationMethod> getMethodsByAccessibility(ConfigurationMemberAccessibility accessibility) {
@@ -497,11 +495,11 @@ public class ConfigurationType implements JsonPrintable {
     }
 
     private static void printField(Map.Entry<String, FieldInfo> entry, JsonWriter w) throws IOException {
-        w.append('{').quote("name").append(':').quote(entry.getKey());
+        w.appendObjectStart().quote("name").appendFieldSeparator().quote(entry.getKey());
         if (entry.getValue().isFinalButWritable()) {
-            w.append(", ").quote("allowWrite").append(':').append("true");
+            w.appendSeparator().quote("allowWrite").appendFieldSeparator().append("true");
         }
-        w.append('}');
+        w.appendObjectEnd();
     }
 
     private static void printJsonBooleanIfSet(JsonWriter writer, boolean predicate, String attribute) throws IOException {
@@ -511,7 +509,7 @@ public class ConfigurationType implements JsonPrintable {
     }
 
     private static void printJsonBoolean(JsonWriter writer, boolean value, String attribute) throws IOException {
-        writer.append(',').newline().quote(attribute).append(":").append(Boolean.toString(value));
+        writer.appendSeparator().quote(attribute).appendFieldSeparator().append(Boolean.toString(value));
     }
 
     private void removeFields(ConfigurationMemberDeclaration declaration, ConfigurationMemberAccessibility accessibility) {

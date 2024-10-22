@@ -207,6 +207,7 @@ public class JmxCommonFeature implements InternalFeature {
                         "[B", "com.oracle.svm.core.jdk.UnsupportedFeatureError",
                         "java.io.IOException", "java.lang.Boolean", "java.lang.ClassCastException", "java.lang.Error",
                         "java.lang.Exception", "java.lang.IllegalArgumentException", "java.lang.IllegalStateException",
+                        "java.lang.Double",
                         "java.lang.Integer", "[Ljava.lang.Integer;", "java.lang.Long", "java.lang.NoSuchMethodException",
                         "java.lang.NullPointerException",
                         "java.lang.Number", "[Ljava.lang.Object;", "java.lang.ReflectiveOperationException",

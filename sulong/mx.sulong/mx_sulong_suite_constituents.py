@@ -32,7 +32,7 @@ from __future__ import print_function
 
 import abc
 import fnmatch
-import pipes
+import shlex
 
 import mx
 import mx_cmake
@@ -419,7 +419,7 @@ class BootstrapToolchainLauncherBuildTask(mx.BuildTask):
     def contents(self, tool, exe):
         # platform support
         all_params = '%*' if mx.is_windows() else '"$@"'
-        _quote = _quote_windows if mx.is_windows() else pipes.quote
+        _quote = _quote_windows if mx.is_windows() else shlex.quote
         # build command line
         java = mx.get_jdk().java
         classpath_deps = [dep for dep in self.subject.buildDependencies if isinstance(dep, mx.ClasspathDependency)]

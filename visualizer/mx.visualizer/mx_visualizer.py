@@ -22,8 +22,6 @@
 import mx
 import mx_util
 import os
-import tempfile
-import zipfile
 import shutil
 from os.path import join, exists
 from argparse import ArgumentParser
@@ -47,7 +45,8 @@ class NetBeansProject(mx.ArchivableProject, mx.ClasspathDependency):
             self.buildDependencies = []
         self.buildDependencies += self.mxLibs
         self.output_dirs = ['idealgraphvisualizer'] if self.dist else []
-        self.build_commands = args.get('buildCommands') or []
+        # by default skip the unit tests in a build
+        self.build_commands = ["package", "-DskipTests"]
         self.subDir = args.get('subDir') or None
         self.baseDir = os.path.join(self.dir, self.subDir or 'IdealGraphVisualizer')
 
@@ -60,11 +59,11 @@ class NetBeansProject(mx.ArchivableProject, mx.ClasspathDependency):
     def classpath_repr(self, resolve=True):
         src = os.path.join(self.dir, 'IdealGraphVisualizer', self.name, 'src')
         if not os.path.exists(src):
-            mx.abort("Cannot find {0}".format(src))
+            mx.abort(f"Cannot find {src}")
         return src
 
     def output_dir(self, relative=False):
-        outdir = os.path.join(_suite.dir, 'IdealGraphVisualizer', 'dist')
+        outdir = os.path.join(_suite.dir, 'IdealGraphVisualizer', 'application', 'target')
         return outdir
 
     def source_gen_dir(self):
@@ -108,7 +107,7 @@ class NetBeansBuildTask(mx.BuildTask):
         self.vmbuild = vmbuild
 
     def __str__(self):
-        return 'Building NetBeans for {}'.format(self.subject)
+        return f'Building NetBeans for {self.subject}'
 
     def needsBuild(self, newestInput):
         return (True, 'Let us re-build everytime')
@@ -124,28 +123,22 @@ class NetBeansBuildTask(mx.BuildTask):
                 lib_path = lib.classpath_repr(resolve=False)
                 link_name = os.path.join(libs_dir, os.path.basename(lib_path))
                 from_path = os.path.relpath(lib_path, os.path.dirname(link_name))
-                mx.log("Symlink {0}, {1}".format(from_path, link_name))
+                mx.log(f"Symlink {from_path}, {link_name}")
                 os.symlink(from_path, link_name)
         mx.log('Symlinks must be copied!')
 
-        # HACK: since the maven executable plugin does not configure the
-        # java executable that is used we unfortunately need to append it to the PATH
-        javaHome = os.getenv('JAVA_HOME')
-        if javaHome:
-            os.environ["PATH"] = os.environ["JAVA_HOME"] + '/bin' + os.pathsep + os.environ["PATH"]
+        env = os.environ.copy()
+        env["MAVEN_OPTS"] = "-Djava.awt.headless=true -Dpolyglot.engine.WarnInterpreterOnly=false"
 
-        mx.logv('Setting PATH to {}'.format(os.environ["PATH"]))
-        mx.logv('Calling java -version')
-        mx.run(['java', '-version'])
+        mx.logv(f"Setting PATH to {os.environ['PATH']}")
 
-        for build_command in self.subject.build_commands:
-            mx.log('Invoking ant for {} for {} in {}'.format(build_command, self.subject.name, self.subject.baseDir))
-            run_ant([build_command, '-quiet'], nonZeroIsFatal=True, cwd=self.subject.baseDir)
+        mx.log(f"Invoking maven for {' '.join(self.subject.build_commands)} for {self.subject.name} in {self.subject.baseDir}")
+        run_maven(self.subject.build_commands, nonZeroIsFatal=True, cwd=self.subject.baseDir, env=env)
 
         for output_dir in self.subject.output_dirs:
             os.chmod(os.path.join(self.subject.output_dir(), output_dir, 'bin', 'idealgraphvisualizer'), 0o755)
 
-        mx.log('...finished build of {}'.format(self.subject))
+        mx.log(f'...finished build of {self.subject}')
 
     def clean(self, forBuild=False):
         if self.subject.mxLibs:
@@ -157,120 +150,43 @@ class NetBeansBuildTask(mx.BuildTask):
                     os.unlink(link_name)
         if forBuild:
             return
-        run_ant(['distclean', '-quiet'], resolve=False, nonZeroIsFatal=True, cwd=igvDir)
+        env = os.environ.copy()
+        env["MAVEN_OPTS"] = "-Djava.awt.headless=true"
+        run_maven(['clean', '--quiet'], resolve=False, nonZeroIsFatal=True, cwd=igvDir, env=env)
 
-def run_ant(args, resolve=True, **kwargs):
-    # download the bundle using mx
-    platform_lib = mx.library('NETBEANS_14').get_path(resolve=resolve)
-
-    # override the download URL to ensure it's taken from mx
-    return mx.run(['ant', '-Dide.dist.url=file:' + platform_lib] + args, **kwargs)
+def run_maven(args, resolve=True, **kwargs):
+    return mx.run(['mvn'] + args, **kwargs)
 
 @mx.command(_suite.name, 'igv')
 def igv(args):
-    """run the Ideal Graph Visualizer"""
-    if not mx.get_opts().verbose:
-        args.append('-J-Dnetbeans.logger.console=false')
-    mx.run([join(igvDir, 'dist', 'idealgraphvisualizer', 'bin', 'idealgraphvisualizer.exe' if mx.is_windows() else 'idealgraphvisualizer'), '--jdkhome', mx.get_jdk().home] + args)
+    """run the newly built Ideal Graph Visualizer"""
+    # force a build if it hasn't been built yet
+    if not os.path.exists(os.path.join(_suite.dir, 'IdealGraphVisualizer', 'application', 'target', 'idealgraphvisualizer')):
+        mx.build(['--dependencies', 'IGV'])
 
-def json_exporter(args, **kwargs):
-    _json_exporter(args, **kwargs)
-
-@mx.command(_suite.name, 'bgv2json')
-def _json_exporter(args, extra_vm_args=None, env=None, jdk=None, extra_dists=None, cp_prefix=None, cp_suffix=None, **kwargs):
-    """Export bgv graphs as json"""
-
-    dists = ['IGV_JSONEXPORTER', 'IGV_DATA_SETTINGS']
-
-    vm_args, prog_args = mx.extract_VM_args(args, useDoubleDash=True, defaultAllVMArgs=False)
-
-    if extra_dists:
-        dists += extra_dists
-
-    vm_args += mx.get_runtime_jvm_args(dists, jdk=jdk, cp_prefix=cp_prefix, cp_suffix=cp_suffix)
-
-    if extra_vm_args:
-        vm_args += extra_vm_args
-
-    vm_args.append("org.graalvm.visualizer.JSONExporter")
-    return mx.run_java(vm_args + prog_args, jdk=jdk, env=env, **kwargs)
-
-
-@mx.command(_suite.name, 'build-release')
-def build_release(args):
-    """Make a release build of Ideal Graph Visualizer"""
-    # Clean first to ensure the version number is picked up in the result
-    mx.clean([])
-
-    # Ensure the batik library is installed
-    mx.build(['--dep', 'libs.batik'])
-
-    # The current released version number is 0.31.  This mainly controls the
-    # location of preferences and log files and is not normally changed.
-    run_ant(['build-zip', '-quiet', '-Dapp.version=0.31'], nonZeroIsFatal=True, cwd=igvDir)
-    os.chmod(os.path.join(igvDir, 'dist', 'idealgraphvisualizer', 'bin', 'idealgraphvisualizer'), 0o755)
-
+    if mx.get_opts().verbose:
+        args.append('-J-Dnetbeans.logger.console=true')
+    mx.run([join(igvDir, 'application', 'target', 'idealgraphvisualizer', 'bin', 'idealgraphvisualizer.exe' if mx.is_windows() else 'idealgraphvisualizer'), '--jdkhome', mx.get_jdk().home] + args)
 
 @mx.command(_suite.name, 'unittest')
 def test(args):
-    """Run Ideal Graph Visualizer unit tests
-        Single arguments is used as test java class in IGV
-    """
-    run_ant(['patch-test', '-silent'], nonZeroIsFatal=True, cwd=igvDir)
-    add = ['-Dtest.run.args=-ea', '-Djava.awt.headless=true']
-    if len(args) == 1:
-        add += ['-Dtest.includes=**/*' + args[0] + '.class']
-    elif len(args) != 0:
-        mx.abort('Only single argument expected')
-    run_ant(['test'] + add, nonZeroIsFatal=True, cwd=igvDir)
+    """Run Ideal Graph Visualizer unit tests"""
+    run_maven(['package'], nonZeroIsFatal=True, cwd=igvDir)
 
-@mx.command(_suite.name, 'spotbugs')
-def igv_spotbugs(args):
-    """run spotbugs on IGV modules"""
-    spotbugsVersion = _suite.getMxCompatibility().spotbugs_version()
-    if spotbugsVersion == '3.0.0':
-        jarFileNameBase = 'findbugs'
-    else:
-        jarFileNameBase = 'spotbugs'
-
-    findBugsHome = mx.get_env('SPOTBUGS_HOME', mx.get_env('FINDBUGS_HOME', None))
-    if findBugsHome:
-        spotbugsLib = join(findBugsHome, 'lib')
-    else:
-        spotbugsLib = join(mx._mx_suite.get_output_root(), 'spotbugs-' + spotbugsVersion)
-        if not exists(spotbugsLib):
-            tmp = tempfile.mkdtemp(prefix='spotbugs-download-tmp', dir=mx._mx_suite.dir)
-            try:
-                spotbugsDist = mx.library('SPOTBUGS_' + spotbugsVersion).get_path(resolve=True)
-                with zipfile.ZipFile(spotbugsDist) as zf:
-                    candidates = [e for e in zf.namelist() if e.endswith('/lib/' + jarFileNameBase + ".jar")]
-                    assert len(candidates) == 1, candidates
-                    libDirInZip = os.path.dirname(candidates[0])
-                    zf.extractall(tmp)
-                shutil.copytree(join(tmp, libDirInZip), spotbugsLib)
-            finally:
-                shutil.rmtree(tmp)
-    assert exists(spotbugsLib)
-    spotbugsResults = join(_suite.dir, 'spotbugs.results')
-    exitcode = run_ant(['-Dspotbugs.lib=' + spotbugsLib,
-                        '-Dspotbugs.results=' + spotbugsResults,
-                        '-buildfile', join(join(_suite.dir, 'IdealGraphVisualizer'), 'build.xml'),
-                        'spotbugs'], nonZeroIsFatal=False)
-    if exitcode != 0:
-        with open(spotbugsResults) as fp:
-            mx.log(fp.read())
-    os.unlink(spotbugsResults)
-    return exitcode
+@mx.command(_suite.name, 'release')
+def release(args):
+    """Build a released version using mvn release:prepare"""
+    run_maven(['-B', 'release:clean', 'release:prepare'], nonZeroIsFatal=True, cwd=igvDir)
 
 @mx.command(_suite.name, 'verify-graal-graphio')
 def verify_graal_graphio(args):
-    """Verify org.graalvm.graphio is the unchanged"""
+    """Verify org.graalvm.graphio is unchanged between the compiler and visualizer folders"""
     parser = ArgumentParser(prog='mx verify-graal-graphio')
-    parser.add_argument('-s', '--sync', action='store_true', help='synchronize with graal configuration')
+    parser.add_argument('-s', '--sync-from', choices=['compiler', 'visualizer'], help='original source folder for synchronization')
     parser.add_argument('-q', '--quiet', action='store_true', help='Only produce output if something is changed')
     args = parser.parse_args(args)
 
-    visualizer_dir = 'IdealGraphVisualizer/Data/src/jdk/graal/compiler/graphio'
+    visualizer_dir = 'IdealGraphVisualizer/Data/src/main/java/jdk/graal/compiler/graphio'
     if not exists(visualizer_dir):
         mx.log(f"Error: {visualizer_dir} doesn't exist")
         mx.abort(1)
@@ -281,15 +197,16 @@ def verify_graal_graphio(args):
         mx.abort(1)
 
     def _handle_error(msg, base_file, dest_file):
-        if args.sync:
+        if args.sync_from is not None:
             mx.log(f"Overriding {os.path.normpath(dest_file)} from {os.path.normpath(base_file)}")
+            os.makedirs(os.path.dirname(dest_file), exist_ok=True)
             shutil.copy(base_file, dest_file)
         else:
             mx.log(msg + ": " + os.path.normpath(dest_file))
             mx.log("Try synchronizing:")
-            mx.log("  " + base_file)
-            mx.log("  " + dest_file)
-            mx.log("Or execute 'mx verify-graal-graphio' with the  '--sync' option.")
+            mx.log("  " + os.path.normpath(base_file))
+            mx.log("  " + os.path.normpath(dest_file))
+            mx.log("Or execute 'mx verify-graal-graphio' with the  '--sync-from' option.")
             mx.abort(1)
 
     def _common_string_end(s1, s2):
@@ -305,14 +222,19 @@ def verify_graal_graphio(args):
             _handle_error('file mismatch', base_file, dest_file)
         mx.logv(f"File '{_common_string_end(base_file, dest_file)}' matches.")
 
+    source_dir = graal_dir
+    dest_dir = visualizer_dir
+    if args.sync_from == "visualizer":
+        # Reverse synchronization direction
+        dest_dir, source_dir = source_dir, dest_dir
 
     verified = 0
-    for root, _, files in os.walk(graal_dir):
-        rel_root = os.path.relpath(root, graal_dir)
+    for root, _, files in os.walk(source_dir):
+        rel_root = os.path.relpath(root, source_dir)
         for f in files:
-            graal_file = join(graal_dir, rel_root, f)
-            visualizer_file = join(visualizer_dir, rel_root, f)
-            _verify_file(graal_file, visualizer_file)
+            source_file = join(source_dir, rel_root, f)
+            dest_file = join(dest_dir, rel_root, f)
+            _verify_file(source_file, dest_file)
             verified += 1
 
     if verified == 0:
@@ -321,4 +243,4 @@ def verify_graal_graphio(args):
 
 
     if not args.quiet:
-        mx.log("org.graalvm.graphio is unchanged.")
+        mx.log("jdk.graal.compiler.graphio is unchanged.")

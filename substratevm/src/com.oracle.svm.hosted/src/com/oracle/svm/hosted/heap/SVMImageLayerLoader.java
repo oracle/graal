@@ -24,56 +24,195 @@
  */
 package com.oracle.svm.hosted.heap;
 
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.ANNOTATIONS_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CLASS_ID_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.C_ENTRY_POINT_LITERAL_CODE_POINTER;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IMAGE_SINGLETON_KEYS;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IMAGE_SINGLETON_OBJECTS;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INFO_CLASS_INITIALIZER_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INFO_HAS_INITIALIZER_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INFO_IS_BUILD_TIME_INITIALIZED_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INFO_IS_INITIALIZED_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INFO_IS_IN_ERROR_STATE_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INFO_IS_LINKED_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INFO_IS_TRACKED_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_FAILED_NO_TRACKING_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_INITIALIZED_NO_TRACKING_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_NO_INITIALIZER_NO_TRACKING_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.METHOD_POINTER_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.PERSISTED;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.TYPES_TAG;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
+import org.graalvm.nativeimage.impl.CEntryPointLiteralCodePointer;
 
+import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapInstance;
 import com.oracle.graal.pointsto.heap.ImageLayerLoader;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.BaseLayerMethod;
-import com.oracle.graal.pointsto.util.AnalysisFuture;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.TypeResult;
+import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
+import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton.PersistFlags;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.c.CGlobalDataFeature;
+import com.oracle.svm.hosted.imagelayer.HostedDynamicLayerInfo;
+import com.oracle.svm.hosted.meta.HostedArrayClass;
+import com.oracle.svm.hosted.meta.HostedField;
+import com.oracle.svm.hosted.meta.HostedInstanceClass;
+import com.oracle.svm.hosted.meta.HostedInterface;
+import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.hosted.meta.HostedPrimitiveType;
+import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.RelocatableConstant;
 import com.oracle.svm.hosted.util.IdentityHashCodeUtil;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.nodes.EncodedGraph;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
+import sun.reflect.annotation.AnnotationParser;
+import sun.reflect.annotation.AnnotationType;
 
 public class SVMImageLayerLoader extends ImageLayerLoader {
 
     private final Field dynamicHubArrayHubField;
 
-    public SVMImageLayerLoader(List<Path> loaderPaths) {
-        super(new SVMImageLayerSnapshotUtil(), loaderPaths);
+    private HostedUniverse hostedUniverse;
+    private final ImageClassLoader imageClassLoader;
+
+    public SVMImageLayerLoader(List<FilePaths> loadPaths, ImageClassLoader imageClassLoader) {
+        super(loadPaths);
         dynamicHubArrayHubField = ReflectionUtil.lookupField(DynamicHub.class, "arrayHub");
+        this.imageClassLoader = imageClassLoader;
+    }
+
+    public void setHostedUniverse(HostedUniverse hostedUniverse) {
+        this.hostedUniverse = hostedUniverse;
+    }
+
+    public HostedUniverse getHostedUniverse() {
+        return hostedUniverse;
+    }
+
+    public ClassInitializationInfo getClassInitializationInfo(AnalysisType type) {
+        int tid = type.getId();
+        EconomicMap<String, Object> typesMap = get(jsonMap, TYPES_TAG);
+        EconomicMap<String, Object> typeMap = get(typesMap, typeIdToIdentifier.get(tid));
+
+        boolean isNoInitializerNoTracking = get(typeMap, IS_NO_INITIALIZER_NO_TRACKING_TAG);
+        boolean isInitializedNoTracking = get(typeMap, IS_INITIALIZED_NO_TRACKING_TAG);
+        boolean isFailedNoTracking = get(typeMap, IS_FAILED_NO_TRACKING_TAG);
+
+        if (isNoInitializerNoTracking) {
+            return ClassInitializationInfo.forNoInitializerInfo(false);
+        } else if (isInitializedNoTracking) {
+            return ClassInitializationInfo.forInitializedInfo(false);
+        } else if (isFailedNoTracking) {
+            return ClassInitializationInfo.forFailedInfo(false);
+        } else {
+            boolean isInitialized = get(typeMap, INFO_IS_INITIALIZED_TAG);
+            boolean isInErrorState = get(typeMap, INFO_IS_IN_ERROR_STATE_TAG);
+            boolean isLinked = get(typeMap, INFO_IS_LINKED_TAG);
+            boolean hasInitializer = get(typeMap, INFO_HAS_INITIALIZER_TAG);
+            boolean isBuildTimeInitialized = get(typeMap, INFO_IS_BUILD_TIME_INITIALIZED_TAG);
+            boolean isTracked = get(typeMap, INFO_IS_TRACKED_TAG);
+
+            ClassInitializationInfo.InitState initState;
+            if (isInitialized) {
+                initState = ClassInitializationInfo.InitState.FullyInitialized;
+            } else if (isInErrorState) {
+                initState = ClassInitializationInfo.InitState.InitializationError;
+            } else {
+                assert isLinked : "Invalid state";
+                Integer classInitializerId = get(typeMap, INFO_CLASS_INITIALIZER_TAG);
+                MethodPointer classInitializer = classInitializerId == null ? null : new MethodPointer(getAnalysisMethod(classInitializerId));
+                return new ClassInitializationInfo(classInitializer, isTracked);
+            }
+
+            return new ClassInitializationInfo(initState, hasInitializer, isBuildTimeInitialized, isTracked);
+        }
+    }
+
+    @Override
+    public Class<?> lookupClass(boolean optional, String className) {
+        TypeResult<Class<?>> typeResult = imageClassLoader.findClass(className);
+        if (!typeResult.isPresent()) {
+            if (optional) {
+                return null;
+            } else {
+                throw AnalysisError.shouldNotReachHere("Class not found: " + className);
+            }
+        }
+        return typeResult.get();
+    }
+
+    @Override
+    protected Annotation[] getAnnotations(EconomicMap<String, Object> elementData) {
+        List<String> annotationNames = get(elementData, ANNOTATIONS_TAG);
+
+        return annotationNames.stream().map(s -> {
+            Class<? extends Annotation> annotationType = cast(lookupBaseLayerTypeInHostVM(s));
+            return AnnotationParser.annotationForMap(annotationType, AnnotationType.getInstance(annotationType).memberDefaults());
+        }).toList().toArray(new Annotation[0]);
+    }
+
+    @Override
+    protected void initializeBaseLayerMethod(AnalysisMethod analysisMethod, EconomicMap<String, Object> methodData) {
+        if (!HostedDynamicLayerInfo.singleton().compiledInPriorLayer(analysisMethod) && hasAnalysisParsedGraph(analysisMethod)) {
+            /*
+             * GR-55294: When the analysis elements from the base layer will be able to be
+             * materialized after the analysis, this will not be needed anymore.
+             */
+            analysisMethod.ensureGraphParsed(universe.getBigbang());
+            analysisMethod.setAnalyzedGraph(((AnalysisParsedGraph) analysisMethod.getGraph()).getEncodedGraph());
+        }
+        super.initializeBaseLayerMethod(analysisMethod, methodData);
+    }
+
+    @Override
+    protected void afterGraphDecodeHook(EncodedGraph encodedGraph) {
+        super.afterGraphDecodeHook(encodedGraph);
+        for (int i = 0; i < encodedGraph.getNumObjects(); ++i) {
+            if (encodedGraph.getObject(i) instanceof CGlobalDataInfo cGlobalDataInfo) {
+                encodedGraph.setObject(i, CGlobalDataFeature.singleton().registerAsAccessedOrGet(cGlobalDataInfo.getData()));
+            }
+        }
+    }
+
+    @Override
+    protected void loadEncodedGraphLineAnalysisElements(String line) {
+        if (line.contains(HostedInstanceClass.class.getName()) || line.contains(HostedPrimitiveType.class.getName()) || line.contains(HostedArrayClass.class.getName()) ||
+                        line.contains(HostedInterface.class.getName())) {
+            getAnalysisType(getId(line));
+        } else if (line.contains(HostedMethod.class.getName())) {
+            getAnalysisMethod(getId(line));
+        } else if (line.contains(HostedField.class.getName())) {
+            getAnalysisField(getId(line));
+        } else {
+            super.loadEncodedGraphLineAnalysisElements(line);
+        }
     }
 
     @Override
@@ -87,44 +226,27 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     @Override
-    protected boolean delegateProcessing(String constantType, Object constantValue, Object[] values, int i) {
+    protected boolean delegateProcessing(String constantType, Object constantValue, List<Object> constantData, Object[] values, int i) {
         if (constantType.equals(METHOD_POINTER_TAG)) {
             AnalysisType methodPointerType = metaAccess.lookupJavaType(MethodPointer.class);
             int mid = (int) constantValue;
-            AnalysisMethod method = methods.get(mid);
-            if (method != null) {
-                values[i] = new RelocatableConstant(new MethodPointer(method), methodPointerType);
-            } else {
-                AnalysisFuture<JavaConstant> task = new AnalysisFuture<>(() -> {
-                    ResolvedJavaMethod resolvedMethod = methods.get(mid);
-                    if (resolvedMethod == null) {
-                        /*
-                         * The method is not loaded yet, so we use a placeholder until it is
-                         * available.
-                         */
-                        resolvedMethod = new BaseLayerMethod();
-                        missingMethodTasks.computeIfAbsent(mid, unused -> ConcurrentHashMap.newKeySet()).add(new AnalysisFuture<>(() -> {
-                            AnalysisMethod analysisMethod = methods.get(mid);
-                            VMError.guarantee(analysisMethod != null, "Method with method id %d should be loaded.", mid);
-                            RelocatableConstant constant = new RelocatableConstant(new MethodPointer(analysisMethod), methodPointerType);
-                            values[i] = constant;
-                            return constant;
-                        }));
-                    }
-                    JavaConstant methodPointer = new RelocatableConstant(new MethodPointer(resolvedMethod), methodPointerType);
-                    values[i] = methodPointer;
-                    return methodPointer;
-                });
-                values[i] = task;
-                missingMethodTasks.computeIfAbsent(mid, unused -> ConcurrentHashMap.newKeySet()).add(task);
-            }
+            AnalysisMethod method = getAnalysisMethod(mid);
+            values[i] = new RelocatableConstant(new MethodPointer(method), methodPointerType);
+            return true;
+        } else if (constantType.equals(C_ENTRY_POINT_LITERAL_CODE_POINTER)) {
+            AnalysisType cEntryPointerLiteralPointerType = metaAccess.lookupJavaType(CEntryPointLiteralCodePointer.class);
+            String methodName = (String) constantValue;
+            Class<?> definingClass = lookupBaseLayerTypeInHostVM((String) constantData.get(2));
+            List<String> parameters = cast(constantData.get(3));
+            Class<?>[] parameterTypes = parameters.stream().map(this::lookupBaseLayerTypeInHostVM).toList().toArray(new Class<?>[0]);
+            values[i] = new RelocatableConstant(new CEntryPointLiteralCodePointer(definingClass, methodName, parameterTypes), cEntryPointerLiteralPointerType);
             return true;
         }
-        return super.delegateProcessing(constantType, constantValue, values, i);
+        return super.delegateProcessing(constantType, constantValue, constantData, values, i);
     }
 
     @Override
-    protected JavaConstant getHostedObject(EconomicMap<String, Object> baseLayerConstant, Class<?> clazz) {
+    protected JavaConstant lookupHostedObject(EconomicMap<String, Object> baseLayerConstant, Class<?> clazz) {
         if (clazz.equals(Class.class)) {
             Integer tid = get(baseLayerConstant, CLASS_ID_TAG);
             /* DynamicHub corresponding to $$TypeSwitch classes are not relinked */
@@ -132,14 +254,13 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
                 return getDynamicHub(tid);
             }
         }
-        return super.getHostedObject(baseLayerConstant, clazz);
+        return super.lookupHostedObject(baseLayerConstant, clazz);
     }
 
     private JavaConstant getDynamicHub(int tid) {
-        getAnalysisType(tid);
-        AnalysisType type = universe.getType(tid);
+        AnalysisType type = getAnalysisType(tid);
         DynamicHub hub = ((SVMHost) universe.hostVM()).dynamicHub(type);
-        return getHostedObject(hub);
+        return hostedValuesProvider.forObject(hub);
     }
 
     @Override
@@ -215,7 +336,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     public Map<Object, Set<Class<?>>> loadImageSingletons(Object forbiddenObject) {
-        loadJsonMap();
+        openFilesAndLoadJsonMap();
         return loadImageSingletons0(forbiddenObject);
     }
 
@@ -231,9 +352,9 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             // create singleton object instance
             Object result;
             try {
-                Class<?> clazz = ReflectionUtil.lookupClass(false, className);
+                Class<?> clazz = lookupClass(false, className);
                 Method createMethod = ReflectionUtil.lookupMethod(clazz, "createFromLoader", ImageSingletonLoader.class);
-                result = createMethod.invoke(null, new ImageSingletonLoaderImpl(keyStore));
+                result = createMethod.invoke(null, new ImageSingletonLoaderImpl(keyStore, imageClassLoader));
             } catch (Throwable t) {
                 throw VMError.shouldNotReachHere("Failed to recreate image singleton", t);
             }
@@ -251,12 +372,12 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             if (persistInfo == PersistFlags.CREATE) {
                 assert id != -1 : "Create image singletons should be linked to an object";
                 Object singletonObject = idToObjectMap.get(id);
-                Class<?> clazz = ReflectionUtil.lookupClass(false, key);
+                Class<?> clazz = lookupClass(false, key);
                 singletonInitializationMap.computeIfAbsent(singletonObject, (k) -> new HashSet<>());
                 singletonInitializationMap.get(singletonObject).add(clazz);
             } else if (persistInfo == PersistFlags.FORBIDDEN) {
                 assert id == -1 : "Unrestored image singleton should not be linked to an object";
-                Class<?> clazz = ReflectionUtil.lookupClass(false, key);
+                Class<?> clazz = lookupClass(false, key);
                 singletonInitializationMap.computeIfAbsent(forbiddenObject, (k) -> new HashSet<>());
                 singletonInitializationMap.get(forbiddenObject).add(clazz);
             } else {
@@ -272,9 +393,11 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
 
 class ImageSingletonLoaderImpl implements ImageSingletonLoader {
     private final UnmodifiableEconomicMap<String, Object> keyStore;
+    private final ImageClassLoader imageClassLoader;
 
-    ImageSingletonLoaderImpl(UnmodifiableEconomicMap<String, Object> keyStore) {
+    ImageSingletonLoaderImpl(UnmodifiableEconomicMap<String, Object> keyStore, ImageClassLoader imageClassLoader) {
         this.keyStore = keyStore;
+        this.imageClassLoader = imageClassLoader;
     }
 
     @SuppressWarnings("unchecked")
@@ -321,5 +444,10 @@ class ImageSingletonLoaderImpl implements ImageSingletonLoader {
         String type = cast(value.get(0));
         assert type.equals("S(") : type;
         return cast(value.get(1));
+    }
+
+    @Override
+    public Class<?> lookupClass(String className) {
+        return imageClassLoader.findClass(className).get();
     }
 }

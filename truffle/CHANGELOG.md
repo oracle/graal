@@ -2,6 +2,15 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 24.2.0
+* GR-57658 Added `TruffleLanguage.Env.getLanguageInfo(Class<? extends TruffleLanguage>)` to lookup a `LanguageInfo` instance for a language class returned by `InteropLibrary.getLanguage(Object)`.
+* GR-57164 Added support for reading unaligned ints, shorts and long to `ByteArraySupport`.
+* GR-57164 `RootNode.translateStackTraceElement()` is now always consulted for polyglot and debugger stack traces. Stack traces now use the source section, the executable name, the name of the declared meta-object to build `StackTraceElement` instances.
+* GR-57322 Added `TruffleLanguage.Env.getHostLanguage()` returning the host language info. This allows languages to lookup the top scope of the host language using `Env.getScopeInternal(LanguageInfo)`.
+* GR-57550 Added support for long-width dispatch targets to Bytecode OSR.
+* PR-8266  Allow control of `throwDeniedThreadAccess` via `TruffleContext.threadAccessDeniedHandler`
+
+
 ## Version 24.1.0
 * GR-43839 Added optional parameter to TruffleString.ByteIndexOfCodePointSetNode to choose whether the node may calculate the input string's precise code range.
 * GR-51253 Extend allowed DynamicObject shape flags from 8 to 16 bits.

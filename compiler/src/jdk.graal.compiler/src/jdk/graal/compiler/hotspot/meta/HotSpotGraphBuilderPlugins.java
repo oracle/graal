@@ -40,9 +40,13 @@ import static jdk.graal.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVM
 import static jdk.graal.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_UNMOUNT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32C;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_CONTINUATION_ENTRY_PIN_COUNT;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_JAVA_THREAD_CONT_ENTRY;
 import static jdk.graal.compiler.java.BytecodeParserOptions.InlineDuringParsing;
 import static jdk.graal.compiler.nodes.ConstantNode.forBoolean;
+import static jdk.graal.compiler.nodes.ProfileData.BranchProbabilityData.injected;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
+import static jdk.vm.ci.meta.DeoptimizationReason.TypeCheckedInliningViolated;
 import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 
 import java.lang.annotation.Annotation;
@@ -73,6 +77,7 @@ import jdk.graal.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import jdk.graal.compiler.hotspot.nodes.CurrentJavaThreadNode;
 import jdk.graal.compiler.hotspot.nodes.HotSpotLoadReservedReferenceNode;
 import jdk.graal.compiler.hotspot.nodes.HotSpotStoreReservedReferenceNode;
+import jdk.graal.compiler.hotspot.nodes.KlassFullyInitializedCheckNode;
 import jdk.graal.compiler.hotspot.replacements.CallSiteTargetNode;
 import jdk.graal.compiler.hotspot.replacements.DigestBaseSnippets;
 import jdk.graal.compiler.hotspot.replacements.FastNotifyNode;
@@ -98,8 +103,6 @@ import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.MergeNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.PiNode;
-import jdk.graal.compiler.nodes.ProfileData;
-import jdk.graal.compiler.nodes.ProfileData.BranchProbabilityData;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.ValuePhiNode;
@@ -116,12 +119,13 @@ import jdk.graal.compiler.nodes.calc.SubNode;
 import jdk.graal.compiler.nodes.calc.UnsignedRightShiftNode;
 import jdk.graal.compiler.nodes.calc.XorNode;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
-import jdk.graal.compiler.nodes.extended.FixedValueAnchorNode;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.nodes.extended.JavaReadNode;
 import jdk.graal.compiler.nodes.extended.JavaWriteNode;
 import jdk.graal.compiler.nodes.extended.LoadHubNode;
+import jdk.graal.compiler.nodes.extended.MembarNode;
 import jdk.graal.compiler.nodes.extended.ObjectIsArrayNode;
+import jdk.graal.compiler.nodes.extended.PublishWritesNode;
 import jdk.graal.compiler.nodes.gc.BarrierSet;
 import jdk.graal.compiler.nodes.graphbuilderconf.ForeignCallPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedPluginFactory;
@@ -137,6 +141,7 @@ import jdk.graal.compiler.nodes.java.DynamicNewArrayNode;
 import jdk.graal.compiler.nodes.java.DynamicNewInstanceNode;
 import jdk.graal.compiler.nodes.java.DynamicNewInstanceWithExceptionNode;
 import jdk.graal.compiler.nodes.java.NewArrayNode;
+import jdk.graal.compiler.nodes.java.ValidateNewInstanceClassNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.nodes.spi.Replacements;
@@ -212,7 +217,7 @@ public class HotSpotGraphBuilderPlugins {
                     OptionValues options,
                     TargetDescription target,
                     BarrierSet barrierSet) {
-        InvocationPlugins invocationPlugins = new HotSpotInvocationPlugins(graalRuntime, config, compilerConfiguration, options);
+        InvocationPlugins invocationPlugins = new HotSpotInvocationPlugins(graalRuntime, config, compilerConfiguration, options, target);
 
         Plugins plugins = new Plugins(invocationPlugins);
         plugins.appendNodePlugin(new HotSpotExceptionDispatchPlugin(config, wordTypes.getWordKind()));
@@ -245,6 +250,7 @@ public class HotSpotGraphBuilderPlugins {
                 registerSystemPlugins(invocationPlugins);
                 registerThreadPlugins(invocationPlugins, config, replacements);
                 registerVirtualThreadPlugins(invocationPlugins, config, replacements);
+                registerContinuationPlugins(invocationPlugins, config, replacements);
                 registerCallSitePlugins(invocationPlugins);
                 registerReflectionPlugins(invocationPlugins, replacements, config);
                 registerAESPlugins(invocationPlugins, config, replacements, target.arch);
@@ -272,7 +278,7 @@ public class HotSpotGraphBuilderPlugins {
 
         });
         if (!IS_IN_NATIVE_IMAGE) {
-            // In libgraal all NodeIntrinsics been converted into special nodes so the plugins
+            // In libgraal, all NodeIntrinsics have been converted into special nodes so the plugins
             // aren't needed.
             NodeIntrinsificationProvider nodeIntrinsificationProvider = new NodeIntrinsificationProvider(metaAccess, snippetReflection, foreignCalls, wordTypes, target);
             invocationPlugins.defer(() -> {
@@ -436,9 +442,10 @@ public class HotSpotGraphBuilderPlugins {
                     ValueNode klass = helper.readKlassFromClass(receiver.get(true));
                     // Primitive Class case returns false
                     ValueNode nonNullKlass = helper.emitNullReturnGuard(klass, ConstantNode.forBoolean(false), GraalDirectives.UNLIKELY_PROBABILITY);
-                    // return (Klass::_access_flags & jvmAccIsHiddenClass) == 0 ? false : true
-                    ValueNode accessFlags = helper.readKlassAccessFlags(nonNullKlass);
-                    LogicNode test = IntegerTestNode.create(accessFlags, ConstantNode.forInt(config.jvmAccIsHiddenClass), NodeView.DEFAULT);
+                    // return (Klass::_misc_flags & jvmAccIsHiddenClass) != 0
+                    // or return (Klass::_access_flags & jvmAccIsHiddenClass) != 0 on JDK 21
+                    ValueNode flags = JavaVersionUtil.JAVA_SPEC >= 24 ? helper.readKlassMiscFlags(nonNullKlass) : helper.readKlassAccessFlags(nonNullKlass);
+                    LogicNode test = IntegerTestNode.create(flags, ConstantNode.forInt(config.jvmAccIsHiddenClass), NodeView.DEFAULT);
                     helper.emitFinalReturn(JavaKind.Boolean, ConditionalNode.create(test, ConstantNode.forBoolean(false), ConstantNode.forBoolean(true), NodeView.DEFAULT));
                 }
                 return true;
@@ -529,16 +536,18 @@ public class HotSpotGraphBuilderPlugins {
                 }
                 /* Emits a null-check for the otherwise unused receiver. */
                 unsafe.get(true);
+
+                ValidateNewInstanceClassNode clazzLegal = b.add(new ValidateNewInstanceClassNode(clazz));
                 /*
-                 * Note that the provided clazz might not be initialized. The HotSpot lowering
-                 * snippet for DynamicNewInstanceNode performs the necessary class initialization
-                 * check. Such a DynamicNewInstanceNode is also never constant folded to a
-                 * NewInstanceNode.
+                 * Note that the provided clazz might not be initialized. The lowering snippet for
+                 * KlassFullyInitializedCheckNode performs the necessary initialization check.
                  */
+                b.add(new KlassFullyInitializedCheckNode(clazzLegal));
+
                 if (b.currentBlockCatchesOOM()) {
-                    DynamicNewInstanceWithExceptionNode.createAndPush(b, clazz, true);
+                    b.addPush(JavaKind.Object, new DynamicNewInstanceWithExceptionNode(clazzLegal, true));
                 } else {
-                    DynamicNewInstanceNode.createAndPush(b, clazz, true);
+                    b.addPush(JavaKind.Object, new DynamicNewInstanceNode(clazzLegal, true));
                 }
                 return true;
             }
@@ -602,10 +611,11 @@ public class HotSpotGraphBuilderPlugins {
                     b.add(new ArrayCopyCallNode(foreignCalls, wordTypes, value, srcBegin, newArray, ConstantNode.forInt(0), length, JavaKind.Char, LocationIdentity.init(), false, true, true,
                                     vmConfig.heapWordSize));
 
-                    // Writes to init must be protected by a FixedValueAnchorNode so that floating
+                    // Writes to init must be protected by a PublishWritesNode so that floating
                     // reads don't bypass the ArrayCopyCallNode above.
                     b.pop(JavaKind.Object);
-                    b.addPush(JavaKind.Object, new FixedValueAnchorNode(newArray));
+                    b.addPush(JavaKind.Object, new PublishWritesNode(newArray));
+                    b.add(MembarNode.forInitialization());
                 }
                 return true;
             }
@@ -712,8 +722,8 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/aaaa86b57172d45d1126c50efc270c6e49aba7a5/src/hotspot/share/opto/library_call.cpp#L2906-L2961",
-              sha1 = "5c117a305e90a48f0a6fe86ace2c15942393c0ab")
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/dcac4b0a532f2ca6cb374da7ece331e8266ab351/src/hotspot/share/opto/library_call.cpp#L2918-L2972",
+              sha1 = "353e0d45b0f63ac58af86dcab5b19777950da7e2")
     // @formatter:on
     private static void inlineNativeNotifyJvmtiFunctions(GraalHotSpotVMConfig config, GraphBuilderContext b, ResolvedJavaMethod targetMethod, ForeignCallDescriptor descriptor,
                     ValueNode virtualThread, ValueNode hide) {
@@ -732,8 +742,7 @@ public class HotSpotGraphBuilderPlugins {
             BeginNode trueSuccessor = graph.add(new BeginNode());
             BeginNode falseSuccessor = graph.add(new BeginNode());
 
-            ProfileData.BranchProbabilityData probability = ProfileData.BranchProbabilityData.injected(NOT_FREQUENT_PROBABILITY);
-            b.add(new IfNode(testNotifyJvmtiEnabled, trueSuccessor, falseSuccessor, probability));
+            b.add(new IfNode(testNotifyJvmtiEnabled, trueSuccessor, falseSuccessor, injected(NOT_FREQUENT_PROBABILITY)));
 
             // if notifyJvmti enabled then make a call to the given runtime function
             ForeignCallNode runtimeCall = graph.add(new ForeignCallNode(descriptor, virtualThread, hide, javaThread));
@@ -758,6 +767,62 @@ public class HotSpotGraphBuilderPlugins {
             MergeNode merge = b.add(new MergeNode());
             merge.addForwardEnd(trueSuccessorEnd);
             merge.addForwardEnd(falseSuccessorEnd);
+        }
+    }
+
+    // @formatter:off
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/dcac4b0a532f2ca6cb374da7ece331e8266ab351/src/hotspot/share/opto/library_call.cpp#L3752-L3835",
+              sha1 = "d65356dbc0235df26aa56b233bcd100462a5dab4")
+    // @formatter:on
+    private static class ContinuationPinningPlugin extends InvocationPlugin {
+
+        private final GraalHotSpotVMConfig config;
+        private final boolean pin;
+
+        ContinuationPinningPlugin(GraalHotSpotVMConfig config, boolean pin) {
+            super(pin ? "pin" : "unpin");
+            this.config = config;
+            this.pin = pin;
+        }
+
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+            try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
+                // @formatter:off
+                // if (currentThread::_cont_entry != null)
+                //   uint pin_count = currentThread::_cont_entry::_pin_count;
+                //   if (pin_count == (pin ? 0xFFFFFFFFUL : 0)) deoptimize;
+                //   else currentThread::_cont_entry::_pin_count = pin_count + (pin ? 1 : -1);
+                // @formatter:on
+                StructuredGraph graph = b.getGraph();
+                CurrentJavaThreadNode javaThread = graph.addOrUniqueWithInputs(new CurrentJavaThreadNode(helper.getWordKind()));
+
+                GraalError.guarantee(config.contEntry != -1, "JavaThread::_cont_entry is not exported");
+                OffsetAddressNode lastContinuationAddr = graph.addOrUniqueWithInputs(new OffsetAddressNode(javaThread, helper.asWord(config.contEntry)));
+                ValueNode lastContinuation = b.add(new JavaReadNode(JavaKind.Object, lastContinuationAddr, HOTSPOT_JAVA_THREAD_CONT_ENTRY, BarrierType.NONE, MemoryOrderMode.PLAIN, false));
+                ValueNode nonNullLastContinuation = helper.emitNullReturnGuard(lastContinuation, null, NOT_FREQUENT_PROBABILITY);
+
+                GraalError.guarantee(config.pinCount != -1, "ContinuationEntry::_pin_count is not exported");
+                OffsetAddressNode pinCountAddr = graph.addOrUniqueWithInputs(new OffsetAddressNode(nonNullLastContinuation, helper.asWord(config.pinCount)));
+                ValueNode pinCount = b.add(new JavaReadNode(JavaKind.Int, pinCountAddr, HOTSPOT_CONTINUATION_ENTRY_PIN_COUNT, BarrierType.NONE, MemoryOrderMode.PLAIN, false));
+
+                LogicNode overFlow = IntegerEqualsNode.create(pinCount, pin ? ConstantNode.forInt(-1) : ConstantNode.forInt(0), NodeView.DEFAULT);
+                // TypeCheckedInliningViolated (Reason_type_checked_inlining) is aliasing
+                // Reason_intrinsic
+                b.append(new FixedGuardNode(overFlow, TypeCheckedInliningViolated, DeoptimizationAction.None, true));
+                ValueNode newPinCount = b.add(AddNode.create(pinCount, pin ? ConstantNode.forInt(1) : ConstantNode.forInt(-1), NodeView.DEFAULT));
+                b.add(new JavaWriteNode(JavaKind.Int, pinCountAddr, HOTSPOT_CONTINUATION_ENTRY_PIN_COUNT, newPinCount, BarrierType.NONE, false));
+                helper.emitFinalReturn(JavaKind.Void, null);
+            }
+            return true;
+        }
+    }
+
+    private static void registerContinuationPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
+        Registration r = new Registration(plugins, "jdk.internal.vm.Continuation", replacements);
+        if (JavaVersionUtil.JAVA_SPEC >= 24) {
+            r.register(new ContinuationPinningPlugin(config, true));
+            r.register(new ContinuationPinningPlugin(config, false));
         }
     }
 
@@ -1374,7 +1439,7 @@ public class HotSpotGraphBuilderPlugins {
                     ValueNode layoutHelperLong = b.add(SignExtendNode.create(layoutHelper, JavaKind.Long.getBitCount(), NodeView.DEFAULT));
                     ValueNode instanceSizeLong = b.add(AndNode.create(layoutHelperLong, ConstantNode.forLong(-((long) JavaKind.Long.getByteCount())), NodeView.DEFAULT));
 
-                    b.add(new IfNode(isArray, arrayLengthNode, instanceBranch, BranchProbabilityData.injected(0.5D)));
+                    b.add(new IfNode(isArray, arrayLengthNode, instanceBranch, injected(0.5D)));
                     MergeNode merge = b.append(new MergeNode());
                     merge.addForwardEnd(arrayBranch);
                     merge.addForwardEnd(instanceBranch);

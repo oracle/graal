@@ -38,6 +38,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -67,7 +68,6 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
-import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.util.json.JsonParser;
 import jdk.graal.compiler.util.json.JsonPrettyWriter;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -153,11 +153,11 @@ public final class ProfileReplaySupport {
      * either throw an exception or emit a warning in this case.
      * </p>
      */
-    public static ProfileReplaySupport profileReplayPrologue(DebugContext debug, Providers providers, int entryBCI, ResolvedJavaMethod method,
+    public static ProfileReplaySupport profileReplayPrologue(DebugContext debug, int entryBCI, ResolvedJavaMethod method,
                     StableProfileProvider profileProvider, TypeFilter profileSaveFilter) {
         if (SaveProfiles.getValue(debug.getOptions()) || LoadProfiles.getValue(debug.getOptions()) != null) {
             LambdaNameFormatter lambdaNameFormatter = new LambdaNameFormatter() {
-                private final StableMethodNameFormatter stableFormatter = new HotSpotStableMethodNameFormatter(providers, debug, true);
+                private final StableMethodNameFormatter stableFormatter = new StableMethodNameFormatter(true);
 
                 @Override
                 public boolean isLambda(ResolvedJavaMethod m) {
@@ -203,13 +203,22 @@ public final class ProfileReplaySupport {
                         throw GraalError.shouldNotReachHere(String.format("No file for method %s found in %s, strict profiles, abort", s, loadDir)); // ExcludeFromJacocoGeneratedReport
                     }
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    boolean wasSet = profileReplayPrologueExceptionPrinted.getAndSet(true);
+                    if (!wasSet) {
+                        e.printStackTrace();
+                    }
                 }
             }
             return new ProfileReplaySupport(lambdaNameFormatter, expectedResult, expectedCodeSignature, expectedGraphSignature, profileFilter, profileSaveFilter);
         }
         return null;
     }
+
+    /**
+     * Guard to prevent flood of stack traces when CTRL-C'ing tasks such as
+     * {@code mx benchmark compile-all:fuzzedClasses}.
+     */
+    private static final AtomicBoolean profileReplayPrologueExceptionPrinted = new AtomicBoolean();
 
     /**
      * Finishes a previously started profile record/replay (see {@link #profileReplayPrologue}.

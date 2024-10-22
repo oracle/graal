@@ -45,8 +45,10 @@ public interface ResourcesRegistry<C> extends RuntimeResourceSupport<C> {
      * {@link RuntimeResourceSupport} they are also needed here for legacy code that accesses them
      * reflectively.
      */
-    @Override
-    void addResources(C condition, String pattern);
+    @Deprecated
+    default void addResources(C condition, String pattern) {
+        addResources(condition, pattern, "unknown");
+    }
 
     @Override
     void ignoreResources(C condition, String pattern);

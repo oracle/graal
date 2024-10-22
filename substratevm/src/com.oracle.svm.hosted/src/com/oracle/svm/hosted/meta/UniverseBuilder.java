@@ -57,6 +57,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.meta.BaseLayerMethod;
 import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.graal.pointsto.results.StrengthenGraphs;
 import com.oracle.svm.common.meta.MultiMethod;
@@ -83,6 +84,7 @@ import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
 import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
@@ -96,8 +98,9 @@ import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.heap.PodSupport;
+import com.oracle.svm.hosted.imagelayer.HostedDynamicLayerInfo;
+import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
-import com.oracle.svm.hosted.substitute.ComputedValueField;
 import com.oracle.svm.hosted.substitute.DeletedMethod;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -136,11 +139,6 @@ public class UniverseBuilder {
      */
     @SuppressWarnings("try")
     public void build(DebugContext debug) {
-        for (AnalysisField aField : aUniverse.getFields()) {
-            if (aField.wrapped instanceof ComputedValueField) {
-                ((ComputedValueField) aField.wrapped).processAnalysis(aMetaAccess);
-            }
-        }
         aUniverse.seal();
 
         try (Indent indent = debug.logAndIndent("build universe")) {
@@ -337,7 +335,10 @@ public class UniverseBuilder {
         AnalysisType aDeclaringClass = aMethod.getDeclaringClass();
         HostedType hDeclaringClass = lookupType(aDeclaringClass);
         ResolvedSignature<HostedType> signature = makeSignature(aMethod.getSignature());
-        ConstantPool constantPool = makeConstantPool(aMethod.getConstantPool(), aDeclaringClass);
+        ConstantPool constantPool = null;
+        if (!(aMethod.getWrapped() instanceof BaseLayerMethod)) {
+            constantPool = makeConstantPool(aMethod.getConstantPool(), aDeclaringClass);
+        }
 
         ExceptionHandler[] aHandlers = aMethod.getExceptionHandlers();
         ExceptionHandler[] sHandlers = new ExceptionHandler[aHandlers.length];
@@ -353,6 +354,9 @@ public class UniverseBuilder {
         }
 
         HostedMethod hMethod = HostedMethod.create(hUniverse, aMethod, hDeclaringClass, signature, constantPool, sHandlers);
+        if (HostedImageLayerBuildingSupport.buildingExtensionLayer()) {
+            HostedDynamicLayerInfo.singleton().registerHostedMethod(hMethod);
+        }
 
         boolean isCFunction = aMethod.getAnnotation(CFunction.class) != null;
         boolean hasCFunctionOptions = aMethod.getAnnotation(CFunctionOptions.class) != null;
@@ -516,7 +520,7 @@ public class UniverseBuilder {
             assert fieldBytes >= intSize;
             reserve(usedBytes, minimumFirstFieldOffset, fieldBytes);
 
-            if (SubstrateOptions.closedTypeWorld()) {
+            if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
                 /* Each type check id slot is 2 bytes. */
                 assert numTypeCheckSlots != TypeCheckBuilder.UNINITIALIZED_TYPECHECK_SLOTS : "numTypeCheckSlots is uninitialized";
                 int slotsSize = numTypeCheckSlots * 2;
@@ -865,7 +869,6 @@ public class UniverseBuilder {
             hUniverse.hostVM().recordActivity();
 
             int layoutHelper;
-            boolean canUnsafeInstantiateAsInstance = false;
             int monitorOffset = 0;
             int identityHashOffset = 0;
             if (type.isInstanceClass()) {
@@ -879,10 +882,8 @@ public class UniverseBuilder {
                     JavaKind storageKind = hybridLayout.getArrayElementStorageKind();
                     boolean isObject = (storageKind == JavaKind.Object);
                     layoutHelper = LayoutEncoding.forHybrid(type, isObject, hybridLayout.getArrayBaseOffset(), ol.getArrayIndexShift(storageKind));
-                    canUnsafeInstantiateAsInstance = type.wrapped.isUnsafeAllocated() && HybridLayout.canInstantiateAsInstance(type);
                 } else {
                     layoutHelper = LayoutEncoding.forPureInstance(type, ConfigurationValues.getObjectLayout().alignUp(instanceClass.getInstanceSize()));
-                    canUnsafeInstantiateAsInstance = type.wrapped.isUnsafeAllocated();
                 }
                 monitorOffset = instanceClass.getMonitorFieldOffset();
                 identityHashOffset = instanceClass.getIdentityHashOffset();
@@ -908,10 +909,9 @@ public class UniverseBuilder {
             long referenceMapIndex = referenceMapEncoder.lookupEncoding(referenceMap);
 
             DynamicHub hub = type.getHub();
-            hub.setSharedData(layoutHelper, monitorOffset, identityHashOffset,
-                            referenceMapIndex, type.isInstantiated(), canUnsafeInstantiateAsInstance);
+            hub.setSharedData(layoutHelper, monitorOffset, identityHashOffset, referenceMapIndex, type.isInstantiated());
 
-            if (SubstrateOptions.closedTypeWorld()) {
+            if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
                 CFunctionPointer[] vtable = new CFunctionPointer[type.closedTypeWorldVTable.length];
                 for (int idx = 0; idx < type.closedTypeWorldVTable.length; idx++) {
                     /*
@@ -1000,9 +1000,6 @@ public class UniverseBuilder {
         var fieldValueInterceptionSupport = FieldValueInterceptionSupport.singleton();
         for (HostedField hField : hUniverse.fields.values()) {
             AnalysisField aField = hField.wrapped;
-            if (aField.wrapped instanceof ComputedValueField) {
-                ((ComputedValueField) aField.wrapped).processSubstrate(hMetaAccess);
-            }
 
             if (hField.isReachable() && !hField.hasLocation() && Modifier.isStatic(hField.getModifiers()) && !aField.isWritten() && fieldValueInterceptionSupport.isValueAvailable(aField)) {
                 hField.setUnmaterializedStaticConstant();
@@ -1017,6 +1014,8 @@ final class InvalidVTableEntryFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
-        access.registerAsRoot(InvalidMethodPointerHandler.INVALID_VTABLE_ENTRY_HANDLER_METHOD, true, "Registered in " + InvalidVTableEntryFeature.class);
+        if (ImageLayerBuildingSupport.lastImageBuild()) {
+            access.registerAsRoot(InvalidMethodPointerHandler.INVALID_VTABLE_ENTRY_HANDLER_METHOD, true, "Registered in " + InvalidVTableEntryFeature.class);
+        }
     }
 }

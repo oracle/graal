@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,11 @@
  */
 
 #ifndef _WIN64
+
+#ifdef __linux__
+#define _GNU_SOURCE
+#include <sys/mman.h>
+#endif
 
 #include <stdio.h>
 #include <fcntl.h>
@@ -52,5 +57,11 @@ int openatISII(int dirfd, const char *pathname, int flags, int mode)
 {
     return openat(dirfd, pathname, flags, mode);
 }
+
+#ifdef __linux__
+void *mremapP(void *old_address, size_t old_size, size_t new_size, int flags, void *new_address) {
+    return mremap(old_address, old_size, new_size, flags, new_address);
+}
+#endif
 
 #endif

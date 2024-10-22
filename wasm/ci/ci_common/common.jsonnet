@@ -48,20 +48,6 @@ local graal_suite_root = root_ci.graal_suite_root;
 
   windows_amd64:: common.windows_amd64 + self.windows_common,
 
-  wabt:: {
-    downloads+: {
-      WABT_DIR: {name: 'wabt', version: '1.0.32', platformspecific: true},
-    },
-    environment+: {
-      WABT_DIR: '$WABT_DIR/bin',
-    },
-    packages+: if self.os == "linux" then {
-      # wabt was built with GCC 8 and needs a newer version of libstdc++.so.6
-      # than what is typically available on OL7
-      gcc: '==8.3.0',
-    } else {},
-  },
-
   emsdk:: {
     downloads+: {
       EMSDK_DIR: {name: 'emsdk', version: '1.39.13', platformspecific: true},
@@ -126,7 +112,7 @@ local graal_suite_root = root_ci.graal_suite_root;
     },
   },
 
-  gate_graalwasm_full:: self.wabt + self.setup_common + {
+  gate_graalwasm_full:: common.deps.wasm + self.setup_common + {
     run+: [
       gate_cmd_full
     ],
@@ -177,7 +163,7 @@ local graal_suite_root = root_ci.graal_suite_root;
   },
 
   eclipse_jdt              :: common.deps.pylint + common.deps.eclipse + common.deps.jdt,
-  wabt_emsdk               :: self.wabt    + self.emsdk,
-  wabt_emsdk_ocamlbuild    :: self.wabt    + self.emsdk + self.ocamlbuild,
+  wabt_emsdk               :: common.deps.wasm + self.emsdk,
+  wabt_emsdk_ocamlbuild    :: common.deps.wasm + self.emsdk + self.ocamlbuild,
 
 }

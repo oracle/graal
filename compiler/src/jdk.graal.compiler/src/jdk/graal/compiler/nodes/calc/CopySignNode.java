@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,6 +52,12 @@ public final class CopySignNode extends BinaryNode implements ArithmeticLIRLower
     }
 
     public static Stamp computeStamp(Stamp magnitude, Stamp sign) {
+        if (magnitude.isEmpty()) {
+            return magnitude;
+        } else if (sign.isEmpty()) {
+            return sign;
+        }
+
         FloatStamp magnitudeStamp = (FloatStamp) magnitude;
         FloatStamp signStamp = (FloatStamp) sign;
         if (magnitudeStamp.isNaN()) {
@@ -67,11 +73,11 @@ public final class CopySignNode extends BinaryNode implements ArithmeticLIRLower
                 if (magnitudeStamp.upperBound() < 0) {
                     // We know that the entire range is below 0
                     // flip [lower, upper] to [-upper, -lower]
-                    return new FloatStamp(magnitudeStamp.getBits(), -magnitudeStamp.upperBound(), -magnitudeStamp.lowerBound(), magnitudeStamp.isNonNaN());
+                    return FloatStamp.create(magnitudeStamp.getBits(), -magnitudeStamp.upperBound(), -magnitudeStamp.lowerBound(), magnitudeStamp.isNonNaN());
                 }
                 // We know lowerBound <= 0 and upperBound >= 0:
                 // the new range is [0, Math.max(-lower, upper)]
-                return new FloatStamp(magnitudeStamp.getBits(), 0,
+                return FloatStamp.create(magnitudeStamp.getBits(), 0,
                                 Math.max(-magnitudeStamp.lowerBound(), magnitudeStamp.upperBound()), magnitudeStamp.isNonNaN());
             }
             if (signStamp.upperBound() < 0) {
@@ -83,11 +89,11 @@ public final class CopySignNode extends BinaryNode implements ArithmeticLIRLower
                 if (magnitudeStamp.lowerBound() > 0) {
                     // We know that the entire range is above 0
                     // flip [lower, upper] to [-upper,-lower]
-                    return new FloatStamp(magnitudeStamp.getBits(), -magnitudeStamp.upperBound(), -magnitudeStamp.lowerBound(), magnitudeStamp.isNonNaN());
+                    return FloatStamp.create(magnitudeStamp.getBits(), -magnitudeStamp.upperBound(), -magnitudeStamp.lowerBound(), magnitudeStamp.isNonNaN());
                 }
                 // We know lowerBound <= 0 and upperBound >= 0
                 // the new range is [Math.min(lower, -upper), 0]
-                return new FloatStamp(magnitudeStamp.getBits(), Math.min(magnitudeStamp.lowerBound(), -magnitudeStamp.upperBound()),
+                return FloatStamp.create(magnitudeStamp.getBits(), Math.min(magnitudeStamp.lowerBound(), -magnitudeStamp.upperBound()),
                                 0, magnitudeStamp.isNonNaN());
             }
         }
@@ -95,7 +101,7 @@ public final class CopySignNode extends BinaryNode implements ArithmeticLIRLower
          * We have no information on whether the range will be flipped or not. Hence, we have to
          * expand the result to be the union of [lower, upper] and [-upper, -lower].
          */
-        return new FloatStamp(magnitudeStamp.getBits(), Math.min(magnitudeStamp.lowerBound(), -magnitudeStamp.upperBound()), Math.max(-magnitudeStamp.lowerBound(), magnitudeStamp.upperBound()),
+        return FloatStamp.create(magnitudeStamp.getBits(), Math.min(magnitudeStamp.lowerBound(), -magnitudeStamp.upperBound()), Math.max(-magnitudeStamp.lowerBound(), magnitudeStamp.upperBound()),
                         magnitudeStamp.isNonNaN());
     }
 

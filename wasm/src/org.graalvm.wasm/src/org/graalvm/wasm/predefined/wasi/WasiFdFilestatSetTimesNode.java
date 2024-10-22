@@ -72,7 +72,7 @@ public class WasiFdFilestatSetTimesNode extends WasmBuiltinRootNode {
         if (handle == null) {
             return Errno.Badf.ordinal();
         }
-        return handle.fdstatSetTimes(this, atim, mtim, fstFlags).ordinal();
+        return handle.filestatSetTimes(this, atim, mtim, fstFlags).ordinal();
     }
 
     @Override

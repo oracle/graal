@@ -95,7 +95,18 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     // region open-world only fields
 
     protected HostedType[] typeCheckInterfaceOrder;
+    /**
+     * Flattened array of all dispatch tables methods installed in the hub for this type.
+     */
     protected HostedMethod[] openTypeWorldDispatchTables;
+    /**
+     * Used for tracking original call targets contained within the dispatch table. This is in
+     * contrast with {@link #openTypeWorldDispatchTables}, which contains the resolved methods for
+     * each of the targets for this given type. In other words,
+     *
+     * <code> openTypeWorldDispatchTables[i] = resolveMethod(openTypeWorldDispatchTableSlotTargets[i], [HostedType]) </code>
+     */
+    protected HostedMethod[] openTypeWorldDispatchTableSlotTargets;
     protected int[] itableStartingOffsets;
 
     /**
@@ -149,13 +160,18 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
         return closedTypeWorldVTable;
     }
 
-    protected HostedMethod[] getOpenTypeWorldDispatchTables() {
+    public HostedMethod[] getOpenTypeWorldDispatchTables() {
         assert openTypeWorldDispatchTables != null;
         return openTypeWorldDispatchTables;
     }
 
+    public HostedMethod[] getOpenTypeWorldDispatchTableSlotTargets() {
+        assert openTypeWorldDispatchTableSlotTargets != null;
+        return openTypeWorldDispatchTableSlotTargets;
+    }
+
     public HostedMethod[] getVTable() {
-        return SubstrateOptions.closedTypeWorld() ? getClosedTypeWorldVTable() : getOpenTypeWorldDispatchTables();
+        return SubstrateOptions.useClosedTypeWorldHubLayout() ? getClosedTypeWorldVTable() : getOpenTypeWorldDispatchTables();
     }
 
     @Override
@@ -165,79 +181,79 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     }
 
     public void setTypeCheckRange(short typeCheckStart, short typeCheckRange) {
-        assert SubstrateOptions.closedTypeWorld();
+        assert SubstrateOptions.useClosedTypeWorldHubLayout();
         this.typeCheckStart = typeCheckStart;
         this.typeCheckRange = typeCheckRange;
     }
 
     public void setTypeCheckSlot(short typeCheckSlot) {
-        assert SubstrateOptions.closedTypeWorld();
+        assert SubstrateOptions.useClosedTypeWorldHubLayout();
         this.typeCheckSlot = typeCheckSlot;
     }
 
     public void setClosedTypeWorldTypeCheckSlots(short[] closedTypeWorldTypeCheckSlots) {
-        assert SubstrateOptions.closedTypeWorld();
+        assert SubstrateOptions.useClosedTypeWorldHubLayout();
         this.closedTypeWorldTypeCheckSlots = closedTypeWorldTypeCheckSlots;
     }
 
     public short getTypeCheckStart() {
-        assert SubstrateOptions.closedTypeWorld();
+        assert SubstrateOptions.useClosedTypeWorldHubLayout();
         return typeCheckStart;
     }
 
     public short getTypeCheckRange() {
-        assert SubstrateOptions.closedTypeWorld();
+        assert SubstrateOptions.useClosedTypeWorldHubLayout();
         return typeCheckRange;
     }
 
     public short getTypeCheckSlot() {
-        assert SubstrateOptions.closedTypeWorld();
+        assert SubstrateOptions.useClosedTypeWorldHubLayout();
         return typeCheckSlot;
     }
 
     public short[] getClosedTypeWorldTypeCheckSlots() {
-        assert SubstrateOptions.closedTypeWorld();
+        assert SubstrateOptions.useClosedTypeWorldHubLayout();
         assert closedTypeWorldTypeCheckSlots != null;
         return closedTypeWorldTypeCheckSlots;
     }
 
     public void setTypeIDDepth(int typeIDDepth) {
-        assert !SubstrateOptions.closedTypeWorld();
+        assert !SubstrateOptions.useClosedTypeWorldHubLayout();
         this.typeIDDepth = typeIDDepth;
     }
 
     public void setNumClassTypes(int numClassTypes) {
-        assert !SubstrateOptions.closedTypeWorld();
+        assert !SubstrateOptions.useClosedTypeWorldHubLayout();
         this.numClassTypes = numClassTypes;
     }
 
     public void setNumInterfaceTypes(int numInterfaceTypes) {
-        assert !SubstrateOptions.closedTypeWorld();
+        assert !SubstrateOptions.useClosedTypeWorldHubLayout();
         this.numInterfaceTypes = numInterfaceTypes;
     }
 
     public void setOpenTypeWorldTypeCheckSlots(int[] openTypeWorldTypeCheckSlots) {
-        assert !SubstrateOptions.closedTypeWorld();
+        assert !SubstrateOptions.useClosedTypeWorldHubLayout();
         this.openTypeWorldTypeCheckSlots = openTypeWorldTypeCheckSlots;
     }
 
     public int getTypeIDDepth() {
-        assert !SubstrateOptions.closedTypeWorld();
+        assert !SubstrateOptions.useClosedTypeWorldHubLayout();
         return typeIDDepth;
     }
 
     public int getNumClassTypes() {
-        assert !SubstrateOptions.closedTypeWorld();
+        assert !SubstrateOptions.useClosedTypeWorldHubLayout();
         return numClassTypes;
     }
 
     public int getNumInterfaceTypes() {
-        assert !SubstrateOptions.closedTypeWorld();
+        assert !SubstrateOptions.useClosedTypeWorldHubLayout();
         return numInterfaceTypes;
     }
 
     public int[] getOpenTypeWorldTypeCheckSlots() {
-        assert !SubstrateOptions.closedTypeWorld();
+        assert !SubstrateOptions.useClosedTypeWorldHubLayout();
         assert openTypeWorldTypeCheckSlots != null : this;
         return openTypeWorldTypeCheckSlots;
     }

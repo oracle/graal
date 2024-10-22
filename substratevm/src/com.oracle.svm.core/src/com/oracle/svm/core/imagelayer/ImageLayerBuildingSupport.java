@@ -25,10 +25,13 @@
 package com.oracle.svm.core.imagelayer;
 
 import org.graalvm.nativeimage.ImageSingletons;
-
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.util.ModuleSupport;
+
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.util.ObjectCopier;
 
 /**
  * Support for tracking the image layer stage of this native-image build. When image layers are
@@ -59,7 +62,7 @@ import org.graalvm.nativeimage.Platforms;
  * Note this is intentionally not a LayeredImageSingleton itself to prevent circular dependencies.
  */
 public abstract class ImageLayerBuildingSupport {
-    protected final boolean buildingImageLayer;
+    public final boolean buildingImageLayer;
     private final boolean buildingInitialLayer;
     private final boolean buildingApplicationLayer;
 
@@ -67,6 +70,16 @@ public abstract class ImageLayerBuildingSupport {
         this.buildingImageLayer = buildingImageLayer;
         this.buildingInitialLayer = buildingInitialLayer;
         this.buildingApplicationLayer = buildingApplicationLayer;
+    }
+
+    /**
+     * To allow the {@link ObjectCopier} to access private fields by reflection, some modules needs
+     * to be opened when a layer is built.
+     */
+    public static void openModules() {
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, ObjectCopier.class, false, "java.base", "java.lang");
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, ObjectCopier.class, false, "java.base", "java.util");
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, ObjectCopier.class, false, "java.base", "java.util.concurrent");
     }
 
     private static ImageLayerBuildingSupport singleton() {

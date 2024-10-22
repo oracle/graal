@@ -30,11 +30,8 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 
 import com.oracle.svm.core.ParsingReason;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
-import com.oracle.svm.core.c.function.CEntryPointSetup;
-import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
@@ -46,7 +43,6 @@ import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.hosted.nodes.ReadReservedRegister;
 
 import jdk.graal.compiler.nodes.AbstractBeginNode;
-import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
@@ -176,11 +172,7 @@ public class CEntryPointSupport implements InternalFeature {
         r.register(new RequiredInvocationPlugin("getIsolate") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                if (SubstrateOptions.SpawnIsolates.getValue()) {
-                    b.addPush(JavaKind.Object, ReadReservedRegister.createReadHeapBaseNode(b.getGraph()));
-                } else {
-                    b.addPush(JavaKind.Object, ConstantNode.forIntegerKind(ConfigurationValues.getWordKind(), CEntryPointSetup.SINGLE_ISOLATE_SENTINEL.rawValue()));
-                }
+                b.addPush(JavaKind.Object, ReadReservedRegister.createReadHeapBaseNode(b.getGraph()));
                 return true;
             }
         });

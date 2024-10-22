@@ -34,8 +34,6 @@ public interface GeneratedPluginInjectionProvider {
      * Gets a stamp denoting a given type and non-nullness property.
      *
      * @param type the type the returned stamp represents
-     * @param nonNull specifies if the returned stamp denotes a value that is guaranteed to be
-     *            non-null
      */
-    Stamp getInjectedStamp(Class<?> type, boolean nonNull);
+    Stamp getInjectedStamp(Class<?> type);
 }

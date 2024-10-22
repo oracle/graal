@@ -307,14 +307,15 @@ def ctw(args, extraVMarguments=None):
         # To be able to load all classes in the JRT with Class.forName,
         # all JDK modules need to be made root modules.
         limitmods = frozenset(args.limitmods.split(',')) if args.limitmods else None
-        nonBootJDKModules = [m.name for m in jdk.get_modules() if not m.boot and (limitmods is None or m.name in limitmods)]
+        graaljdk = get_graaljdk()
+        nonBootJDKModules = [m.name for m in graaljdk.get_modules() if not m.boot and (limitmods is None or m.name in limitmods)]
         if nonBootJDKModules:
             vmargs.append('--add-modules=' + ','.join(nonBootJDKModules))
         if args.limitmods:
             vmargs.append('-DCompileTheWorld.limitmods=' + args.limitmods)
         if cp is not None:
             vmargs.append('-DCompileTheWorld.Classpath=' + cp)
-        cp = _remove_redundant_entries(mx.classpath('GRAAL_TEST', jdk=jdk))
+        cp = _remove_redundant_entries(mx.classpath('GRAAL_TEST', jdk=graaljdk))
         vmargs.extend(_ctw_jvmci_export_args() + ['-cp', cp])
         mainClassAndArgs = ['jdk.graal.compiler.hotspot.test.CompileTheWorld']
 
@@ -417,13 +418,11 @@ def _compiler_error_options(default_compilation_failure_action='ExitVM', vmargs=
             res.append(prefix + 'ShowDumpFiles=true')
     return res
 
-def _gate_dacapo(name, iterations, extraVMarguments=None, force_serial_gc=True, set_start_heap_size=True, threads=None):
+def _gate_dacapo(name, iterations, extraVMarguments=None, force_serial_gc=True, threads=None):
     if iterations == -1:
         return
     vmargs = ['-XX:+UseSerialGC'] if force_serial_gc else []
-    if set_start_heap_size:
-        vmargs += ['-Xms2g']
-    vmargs += ['-XX:-UseCompressedOops', '-Djava.net.preferIPv4Stack=true'] + _compiler_error_options() + _remove_empty_entries(extraVMarguments, filter_gcs=force_serial_gc)
+    vmargs += ['-Xmx8g', '-XX:-UseCompressedOops', '-Djava.net.preferIPv4Stack=true'] + _compiler_error_options() + _remove_empty_entries(extraVMarguments, filter_gcs=force_serial_gc)
     args = ['-n', str(iterations), '--preserve']
     if threads is not None:
         args += ['-t', str(threads)]
@@ -437,7 +436,7 @@ def jdk_includes_corba(jdk):
 def _gate_scala_dacapo(name, iterations, extraVMarguments=None):
     if iterations == -1:
         return
-    vmargs = ['-Xms2g', '-XX:+UseSerialGC', '-XX:-UseCompressedOops'] + _compiler_error_options() + _remove_empty_entries(extraVMarguments, filter_gcs=True)
+    vmargs = ['-Xmx8g', '-XX:+UseSerialGC', '-XX:-UseCompressedOops'] + _compiler_error_options() + _remove_empty_entries(extraVMarguments, filter_gcs=True)
     args = ['-n', str(iterations), '--preserve']
     return _run_benchmark('scala-dacapo', name, args, vmargs)
 
@@ -445,12 +444,14 @@ def _gate_scala_dacapo(name, iterations, extraVMarguments=None):
 def _gate_renaissance(name, iterations, extraVMarguments=None):
     if iterations == -1:
         return
-    vmargs = ['-Xms2g', '-XX:-UseCompressedOops'] + _compiler_error_options() + _remove_empty_entries(extraVMarguments)
+    vmargs = ['-Xmx8g', '-XX:-UseCompressedOops'] + _compiler_error_options() + _remove_empty_entries(extraVMarguments)
     args = ['-r', str(iterations)]
     return _run_benchmark('renaissance', name, args, vmargs)
 
 
 def _run_benchmark(suite, name, args, vmargs):
+    if not [vmarg for vmarg in vmargs if vmarg.startswith('-Xmx')]:
+        vmargs += ['-Xmx8g']
     out = mx.TeeOutputCapture(mx.OutputCapture())
     exit_code, suite, results = mx_benchmark.gate_mx_benchmark(["{}:{}".format(suite, name), "--tracker=none", "--"] + vmargs + ["--"] + args, out=out, err=out, nonZeroIsFatal=False)
     if exit_code != 0:
@@ -604,7 +605,7 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
     # ensure we can run with --enable-preview
     with Task(prefix + 'DaCapo_enable-preview:fop', tasks, tags=GraalTags.test, report=task_report_component) as t:
         if t:
-            _gate_dacapo('fop', 8, ['--enable-preview', '-Djdk.graal.CompilationFailureAction=ExitVM'])
+            _gate_dacapo('fop', 8, benchVmArgs + ['--enable-preview', '-Djdk.graal.CompilationFailureAction=ExitVM'])
 
     # run Scala DaCapo benchmarks #
     ###############################
@@ -692,11 +693,11 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
 
     # ensure -XX:+PreserveFramePointer  still works
     with Task(prefix + 'DaCapo_pmd:PreserveFramePointer', tasks, tags=GraalTags.test, report=task_report_component) as t:
-        if t: _gate_dacapo('pmd', default_iterations, benchVmArgs + ['-Xmx256M', '-XX:+PreserveFramePointer'], threads=4, force_serial_gc=False, set_start_heap_size=False)
+        if t: _gate_dacapo('pmd', default_iterations, benchVmArgs + ['-Xmx256M', '-XX:+PreserveFramePointer'], threads=4, force_serial_gc=False)
 
     # stress entry barrier deopt
     with Task(prefix + 'DaCapo_pmd:DeoptimizeNMethodBarriersALot', tasks, tags=GraalTags.test, report=task_report_component) as t:
-        if t: _gate_dacapo('pmd', default_iterations, benchVmArgs + ['-Xmx256M', '-XX:+UnlockDiagnosticVMOptions', '-XX:+DeoptimizeNMethodBarriersALot'], threads=4, force_serial_gc=False, set_start_heap_size=False)
+        if t: _gate_dacapo('pmd', default_iterations, benchVmArgs + ['-Xmx256M', '-XX:+UnlockDiagnosticVMOptions', '-XX:+DeoptimizeNMethodBarriersALot'], threads=4, force_serial_gc=False)
 
 graal_unit_test_runs = [
     UnitTestRun('UnitTests', [], tags=GraalTags.unittest + GraalTags.coverage),
@@ -710,6 +711,7 @@ _registers = {
 if mx.get_arch() not in _registers:
     mx.warn('No registers for register pressure tests are defined for architecture ' + mx.get_arch())
 
+_bootstrapFlags = ['-XX:-UseJVMCINativeLibrary']
 _defaultFlags = ['-Djdk.graal.CompilationWatchDogStartDelay=60']
 _assertionFlags = ['-esa', '-Djdk.graal.DetailedAsserts=true']
 _graalErrorFlags = _compiler_error_options()
@@ -722,14 +724,14 @@ _exceptionFlags = ['-Djdk.graal.StressInvokeWithExceptionNode=true']
 _registerPressureFlags = ['-Djdk.graal.RegisterPressure=' + _registers[mx.get_arch()]]
 
 graal_bootstrap_tests = [
-    BootstrapTest('BootstrapWithSystemAssertionsFullVerify', _defaultFlags + _assertionFlags + _verificationFlags + _graalErrorFlags, tags=GraalTags.bootstrapfullverify),
-    BootstrapTest('BootstrapWithSystemAssertions', _defaultFlags + _assertionFlags + _graalErrorFlags, tags=GraalTags.bootstraplite),
-    BootstrapTest('BootstrapWithSystemAssertionsNoCoop', _defaultFlags + _assertionFlags + _coopFlags + _graalErrorFlags, tags=GraalTags.bootstrap),
-    BootstrapTest('BootstrapWithGCVerification', _defaultFlags + _gcVerificationFlags + _graalErrorFlags, tags=GraalTags.bootstrap, suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
-    BootstrapTest('BootstrapWithG1GCVerification', _defaultFlags + _g1VerificationFlags + _gcVerificationFlags + _graalErrorFlags, tags=GraalTags.bootstrap, suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
-    BootstrapTest('BootstrapWithSystemAssertionsEconomy', _defaultFlags + _assertionFlags + _graalEconomyFlags + _graalErrorFlags, tags=GraalTags.bootstrapeconomy),
-    BootstrapTest('BootstrapWithSystemAssertionsExceptionEdges', _defaultFlags + _assertionFlags + _exceptionFlags + _graalErrorFlags, tags=GraalTags.bootstrap),
-    BootstrapTest('BootstrapWithSystemAssertionsRegisterPressure', _defaultFlags + _assertionFlags + _registerPressureFlags + _graalErrorFlags, tags=GraalTags.bootstrap),
+    BootstrapTest('BootstrapWithSystemAssertionsFullVerify', _bootstrapFlags + _defaultFlags + _assertionFlags + _verificationFlags + _graalErrorFlags, tags=GraalTags.bootstrapfullverify),
+    BootstrapTest('BootstrapWithSystemAssertions', _bootstrapFlags + _defaultFlags + _assertionFlags + _graalErrorFlags, tags=GraalTags.bootstraplite),
+    BootstrapTest('BootstrapWithSystemAssertionsNoCoop', _bootstrapFlags + _defaultFlags + _assertionFlags + _coopFlags + _graalErrorFlags, tags=GraalTags.bootstrap),
+    BootstrapTest('BootstrapWithGCVerification', _bootstrapFlags + _defaultFlags + _gcVerificationFlags + _graalErrorFlags, tags=GraalTags.bootstrap, suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
+    BootstrapTest('BootstrapWithG1GCVerification', _bootstrapFlags + _defaultFlags + _g1VerificationFlags + _gcVerificationFlags + _graalErrorFlags, tags=GraalTags.bootstrap, suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
+    BootstrapTest('BootstrapWithSystemAssertionsEconomy', _bootstrapFlags + _defaultFlags + _assertionFlags + _graalEconomyFlags + _graalErrorFlags, tags=GraalTags.bootstrapeconomy),
+    BootstrapTest('BootstrapWithSystemAssertionsExceptionEdges', _bootstrapFlags + _defaultFlags + _assertionFlags + _exceptionFlags + _graalErrorFlags, tags=GraalTags.bootstrap),
+    BootstrapTest('BootstrapWithSystemAssertionsRegisterPressure', _bootstrapFlags + _defaultFlags + _assertionFlags + _registerPressureFlags + _graalErrorFlags, tags=GraalTags.bootstrap),
 ]
 
 def _graal_gate_runner(args, tasks):
@@ -818,6 +820,11 @@ class GraalUnittestConfig(mx_unittest.MxUnittestConfig):
                 if limited_modules is None or jmd.name in limited_modules:
                     mainClassArgs.extend(['-JUnitOpenPackages', jmd.name + '/*'])
                     vmArgs.append('--add-modules=' + jmd.name)
+                    for dependency, packages in jmd.concealedRequires.items():
+                        if dependency != "jdk.internal.vm.ci":
+                            # JVMCI exporting is done dynamically
+                            for p in packages:
+                                vmArgs.append(f'--add-exports={dependency}/{p}={jmd.name}')
 
         vmArgs.append('-Djdk.graal.TrackNodeSourcePosition=true')
         vmArgs.append('-esa')
@@ -826,12 +833,17 @@ class GraalUnittestConfig(mx_unittest.MxUnittestConfig):
         if _get_XX_option_value(vmArgs, 'UseJVMCICompiler', None) is None:
             vmArgs.append('-XX:-UseJVMCICompiler')
 
+        # Always run unit tests without UseJVMCINativeLibrary unless explicitly requested
+        if _get_XX_option_value(vmArgs, 'UseJVMCINativeLibrary', None) is None:
+            vmArgs.append('-XX:-UseJVMCINativeLibrary')
+
         # The type-profile width 8 is the default when using the JVMCI compiler.
         # This value must be forced, because we do not used the JVMCI compiler
         # in the unit tests by default.
         if _get_XX_option_value(vmArgs, 'TypeProfileWidth', None) is None:
             vmArgs.append('-XX:TypeProfileWidth=8')
 
+        vmArgs.append('--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED')
         # TODO: GR-31197, this should be removed.
         vmArgs.append('-Dpolyglot.engine.DynamicCompilationThresholds=false')
         vmArgs.append('-Dpolyglot.engine.AllowExperimentalOptions=true')

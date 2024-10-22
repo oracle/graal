@@ -39,9 +39,11 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
+import com.oracle.graal.pointsto.heap.ImageLayerWriter;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccessExtensionProvider;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.results.StrengthenGraphs;
 import com.oracle.objectfile.ObjectFile;
@@ -62,11 +64,15 @@ import com.oracle.svm.hosted.code.CompileQueue;
 import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.config.HybridLayoutSupport;
+import com.oracle.svm.hosted.heap.SVMImageLayerLoaderHelper;
+import com.oracle.svm.hosted.heap.SVMImageLayerSnapshotUtil;
+import com.oracle.svm.hosted.heap.SVMImageLayerWriterHelper;
 import com.oracle.svm.hosted.image.LIRNativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageCodeCacheFactory;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.image.ObjectFileFactory;
+import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
@@ -183,7 +189,7 @@ public class HostedConfiguration {
         int closedTypeWorldTypeCheckSlotSize;
 
         Set<HostedField> ignoredFields;
-        if (SubstrateOptions.closedTypeWorld()) {
+        if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
             closedTypeWorldTypeCheckSlotsOffset = layout.getArrayLengthOffset() + layout.sizeInBytes(JavaKind.Int);
             closedTypeWorldTypeCheckSlotSize = layout.sizeInBytes(closedTypeWorldTypeCheckSlotsField.getType().getComponentType().getStorageKind());
 
@@ -228,6 +234,18 @@ public class HostedConfiguration {
         return new SVMHost(options, loader, classInitializationSupport, annotationSubstitutions, missingRegistrationSupport);
     }
 
+    public SVMImageLayerWriterHelper createSVMImageLayerWriterHelper(ImageLayerWriter imageLayerWriter) {
+        return new SVMImageLayerWriterHelper(imageLayerWriter);
+    }
+
+    public SVMImageLayerLoaderHelper createSVMImageLayerLoaderHelper() {
+        return new SVMImageLayerLoaderHelper(HostedImageLayerBuildingSupport.singleton().getLoader());
+    }
+
+    public SVMImageLayerSnapshotUtil createSVMImageLayerSnapshotUtil(ImageClassLoader imageClassLoader) {
+        return new SVMImageLayerSnapshotUtil(imageClassLoader);
+    }
+
     public CompileQueue createCompileQueue(DebugContext debug, FeatureHandler featureHandler, HostedUniverse hostedUniverse, RuntimeConfiguration runtimeConfiguration, boolean deoptimizeAll) {
         return new CompileQueue(debug, featureHandler, hostedUniverse, runtimeConfiguration, deoptimizeAll, Collections.emptyList());
     }
@@ -236,8 +254,8 @@ public class HostedConfiguration {
         return new SVMMethodTypeFlowBuilder(bb, method, flowsGraph, graphKind);
     }
 
-    public MetaAccessExtensionProvider createAnalysisMetaAccessExtensionProvider() {
-        return new AnalysisMetaAccessExtensionProvider();
+    public MetaAccessExtensionProvider createAnalysisMetaAccessExtensionProvider(AnalysisUniverse aUniverse) {
+        return new AnalysisMetaAccessExtensionProvider(aUniverse);
     }
 
     public MetaAccessExtensionProvider createCompilationMetaAccessExtensionProvider(@SuppressWarnings("unused") MetaAccessProvider metaAccess) {
@@ -333,7 +351,7 @@ public class HostedConfiguration {
         return new NativeImageCodeCacheFactory() {
             @Override
             public NativeImageCodeCache newCodeCache(CompileQueue compileQueue, NativeImageHeap heap, Platform targetPlatform, Path tempDir) {
-                return new LIRNativeImageCodeCache(compileQueue.getCompilationResults(), compileQueue.getBaseLayerMethods(), heap);
+                return new LIRNativeImageCodeCache(compileQueue.getCompilationResults(), heap);
             }
         };
     }

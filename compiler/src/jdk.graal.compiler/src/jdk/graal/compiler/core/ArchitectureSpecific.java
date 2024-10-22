@@ -30,7 +30,8 @@ import jdk.vm.ci.code.Architecture;
 public interface ArchitectureSpecific {
     /**
      * Gets the {@linkplain Architecture#getName() name} of the architecture this Graal component is
-     * associated with.
+     * associated with. Note that the JVMCI architecture names are somewhat inconsistent wrt case
+     * (i.e., "AMD64", "aarch64" and "riscv64").
      */
     String getArchitecture();
 }

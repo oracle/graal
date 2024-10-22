@@ -71,15 +71,15 @@ public class GraalServiceThread extends Thread {
     }
 
     /**
-     * Substituted by {@code com.oracle.svm.graal.hotspot.libgraal.
-     * Target_jdk_graal_compiler_core_GraalServiceThread} to attach to the peer runtime if required.
+     * Substituted by {@code Target_jdk_graal_compiler_core_GraalServiceThread} to attach to the
+     * peer runtime if required.
      */
     private void afterRun() {
     }
 
     /**
-     * Substituted by {@code com.oracle.svm.graal.hotspot.libgraal.
-     * Target_jdk_graal_compiler_core_GraalServiceThread} to attach to the peer runtime if required.
+     * Substituted by {@code Target_jdk_graal_compiler_core_GraalServiceThread} to attach to the
+     * peer runtime if required.
      */
     private void beforeRun() {
     }

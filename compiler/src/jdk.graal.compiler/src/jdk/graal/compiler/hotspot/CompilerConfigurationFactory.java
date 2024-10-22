@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import jdk.graal.compiler.serviceprovider.LibGraalService;
 import org.graalvm.collections.EconomicMap;
 import jdk.graal.compiler.core.Instrumentation;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
@@ -58,6 +59,7 @@ import jdk.vm.ci.services.Services;
  * have a unique {@link #name} and {@link #autoSelectionPriority}. The latter imposes a total
  * ordering between factories for the purpose of auto-selecting the factory to use.
  */
+@LibGraalService
 public abstract class CompilerConfigurationFactory implements Comparable<CompilerConfigurationFactory> {
 
     public enum ShowConfigurationLevel {
@@ -282,6 +284,13 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
     }
 
     private static String nativeImageLocationQualifier;
+
+    /**
+     * Gets the qualifier for the libgraal library (e.g., "PGO optimized").
+     */
+    public static String getNativeImageLocationQualifier() {
+        return nativeImageLocationQualifier;
+    }
 
     /**
      * Records a qualifier for the libgraal library (e.g., "PGO optimized").

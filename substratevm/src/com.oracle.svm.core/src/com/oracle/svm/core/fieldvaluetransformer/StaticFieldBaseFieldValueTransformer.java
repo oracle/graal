@@ -26,22 +26,22 @@ package com.oracle.svm.core.fieldvaluetransformer;
 
 import java.lang.reflect.Field;
 
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.StaticFieldsSupport;
+import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.vm.ci.meta.JavaConstant;
 
-public final class StaticFieldBaseFieldValueTransformer implements FieldValueTransformerWithAvailability {
-    private final Field targetField;
-
-    public StaticFieldBaseFieldValueTransformer(Field targetField) {
-        this.targetField = targetField;
-    }
+/**
+ * Implements the field value transformation semantics of {@link Kind#StaticFieldBase}.
+ */
+public record StaticFieldBaseFieldValueTransformer(Field targetField) implements FieldValueTransformerWithAvailability {
 
     @Override
-    public ValueAvailability valueAvailability() {
-        return ValueAvailability.AfterAnalysis;
+    public boolean isAvailable() {
+        return BuildPhaseProvider.isHostedUniverseBuilt();
     }
 
     @Override

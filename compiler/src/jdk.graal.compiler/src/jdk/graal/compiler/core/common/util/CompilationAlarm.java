@@ -35,6 +35,7 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.vm.ci.services.Services;
 
@@ -63,9 +64,42 @@ public final class CompilationAlarm implements AutoCloseable {
     public static final boolean LOG_PROGRESS_DETECTION = !Services.IS_IN_NATIVE_IMAGE &&
                     Boolean.parseBoolean(GraalServices.getSavedProperty("debug." + CompilationAlarm.class.getName() + ".logProgressDetection"));
 
+    /**
+     * The previously installed alarm.
+     */
+    private final CompilationAlarm previous;
+
+    @SuppressWarnings("this-escape")
     private CompilationAlarm(double period) {
-        this.period = period;
-        this.expiration = period == 0.0D ? 0L : System.currentTimeMillis() + (long) (period * 1000);
+        this.previous = currentAlarm.get();
+        reset(period);
+    }
+
+    /**
+     * Use the option value defined compilation expiration period and reset this alarm. See
+     * {@link #reset(double)}.
+     */
+    public void reset(OptionValues options) {
+        double optionPeriod = Options.CompilationExpirationPeriod.getValue(options);
+        if (optionPeriod > 0) {
+            reset(scaleExpirationPeriod(optionPeriod, options));
+        }
+    }
+
+    /**
+     * Scale the compilation alarm expiration period to account for different system properties. The
+     * period has a default value or can be set by users. Global context flags like assertions can
+     * slow down compilation significantly and we want to avoid false positives of the alarm.
+     */
+    public static double scaleExpirationPeriod(double period, OptionValues options) {
+        double p = period;
+        if (Assertions.assertionsEnabled()) {
+            p *= 2;
+        }
+        if (Assertions.detailedAssertionsEnabled(options)) {
+            p *= 2;
+        }
+        return p;
     }
 
     /**
@@ -98,7 +132,36 @@ public final class CompilationAlarm implements AutoCloseable {
      *         period} seconds, {@code false} otherwise
      */
     public boolean hasExpired() {
-        return this != NEVER_EXPIRES && System.currentTimeMillis() > expiration;
+        /*
+         * We have multiple ways to mark a disabled alarm: it can be NEVER_EXPIRES which is shared
+         * among all threads and thus must not be altered, or it can be an Alarm object with an
+         * expiration=0. We cannot share disabled timers across threads because we record the
+         * previous timer to continue afterwards with the actual timer.
+         */
+        return this != NEVER_EXPIRES && expiration != 0 && System.currentTimeMillis() > expiration;
+    }
+
+    public long elapsed() {
+        return this == NEVER_EXPIRES ? -1 : System.currentTimeMillis() - start();
+    }
+
+    private long start() {
+        return this == NEVER_EXPIRES ? -1 : expiration - (long) (period * 1000);
+    }
+
+    /**
+     * Resets the compilation alarm with a new period for expiration. See
+     * {@link #trackCompilationPeriod} for details about tracking compilation periods.
+     */
+    public void reset(double newPeriod) {
+        if (this != NEVER_EXPIRES) {
+            this.period = newPeriod;
+            this.expiration = newPeriod == 0.0D ? 0L : System.currentTimeMillis() + (long) (newPeriod * 1000);
+        }
+    }
+
+    public boolean isEnabled() {
+        return this != NEVER_EXPIRES;
     }
 
     /**
@@ -106,27 +169,195 @@ public final class CompilationAlarm implements AutoCloseable {
      */
     public void checkExpiration() {
         if (hasExpired()) {
-            throw new PermanentBailoutException("Compilation exceeded %.3f seconds", period);
+
+            setCurrentNodeDuration(currentNode.name);
+
+            /*
+             * We clone the phase tree here for the sake of the error message. We want to fix up the
+             * root timings and also annotate in which phase(s) the timeout happens. We do not do
+             * this on the original tree because that one can still be in IGV dumps.
+             */
+            PhaseTreeNode cloneTree = cloneTree(root, null);
+            StringBuilder sb = new StringBuilder();
+            // also update the root time to be consistent for the error message
+            cloneTree.durationMS = elapsed();
+            printTree("", sb, cloneTree, true);
+
+            throw new PermanentBailoutException("Compilation exceeded %.3f seconds. %n Phase timings:%n %s <===== TIMEOUT HERE", period, sb.toString().trim());
         }
     }
 
     @Override
     public void close() {
-        if (this != NEVER_EXPIRES) {
-            currentAlarm.set(null);
-            resetProgressDetection();
-        }
+        currentAlarm.set(previous);
+        resetProgressDetection();
     }
 
     /**
      * Expiration period (in seconds) of this alarm.
      */
-    private final double period;
+    private double period;
 
     /**
      * The time at which this alarm expires.
      */
-    private final long expiration;
+    private long expiration;
+
+    /**
+     * Signal the execution of the phase identified by {@code name} starts.
+     */
+    public void enterPhase(String name) {
+        if (!isEnabled()) {
+            return;
+        }
+        PhaseTreeNode node = new PhaseTreeNode(name);
+        node.parent = currentNode;
+        node.startTimeSystemMillis = System.currentTimeMillis();
+        currentNode.addChild(node);
+        currentNode = node;
+    }
+
+    /**
+     * Signal the execution of the phase identified by {@code name} is over.
+     */
+    public void exitPhase(String name) {
+        if (!isEnabled()) {
+            return;
+        }
+        assert currentNode.name.equals(name) : Assertions.errorMessage("Must see the same phase that was opened in the close operation", name, elapsedPhaseTreeAsString());
+        setCurrentNodeDuration(name);
+        currentNode.closed = true;
+        currentNode.parent.durationMS += currentNode.durationMS;
+        currentNode = currentNode.parent;
+    }
+
+    private void setCurrentNodeDuration(String name) {
+        assert currentNode.startTimeSystemMillis >= 0 : Assertions.errorMessage("Must have a positive start time", name, elapsedPhaseTreeAsString());
+        currentNode.durationMS = System.currentTimeMillis() - currentNode.startTimeSystemMillis;
+    }
+
+    /**
+     * The phase tree root node during compilation. Special marker node to avoid null checking
+     * logic.
+     */
+    private PhaseTreeNode root = new PhaseTreeNode("Root");
+
+    /**
+     * The current tree node to add children to. That is, the phase that currently runs in the
+     * compiler.
+     */
+    private PhaseTreeNode currentNode = root;
+
+    /**
+     * Tree data structure representing phase nesting and the respective wall clock time of each
+     * phase.
+     */
+    private class PhaseTreeNode {
+
+        /**
+         * Link to the parent node.
+         */
+        private PhaseTreeNode parent;
+
+        /**
+         * All children of this node.
+         */
+        private PhaseTreeNode[] children;
+
+        /**
+         * The next free index to add child nodes.
+         */
+        private int childIndex = 0;
+
+        /**
+         * The name of this node, normally the {@link BasePhase#contractorName()}.
+         */
+        private final String name;
+
+        /**
+         * The time stamp in ms when this phase started running.
+         */
+        private long startTimeSystemMillis = -1L;
+
+        /**
+         * The wall clock time spent in milliseconds in this phase.
+         */
+        private long durationMS = 0;
+
+        /**
+         * Determines if this phase was already properly closed.
+         */
+        public boolean closed;
+
+        PhaseTreeNode(String name) {
+            this.name = name;
+        }
+
+        private void addChild(PhaseTreeNode child) {
+            if (children == null) {
+                children = new PhaseTreeNode[CHILD_TREE_INIT_SIZE];
+                children[childIndex++] = child;
+                return;
+            }
+            // double the array if it needs expanding
+            if (childIndex >= children.length) {
+                children = Arrays.copyOf(children, children.length * 2);
+            }
+            children[childIndex++] = child;
+        }
+
+        @Override
+        public String toString() {
+            return name + "->" + durationMS + "ms elapsed [startMS=" + startTimeSystemMillis + "]";
+        }
+
+    }
+
+    private PhaseTreeNode cloneTree(PhaseTreeNode clonee, PhaseTreeNode parent) {
+        PhaseTreeNode clone = new PhaseTreeNode(clonee.name);
+        clone.parent = parent;
+        if (clone.parent != null) {
+            clone.parent.addChild(clone);
+        }
+        clone.durationMS = clonee.durationMS;
+        clone.startTimeSystemMillis = clonee.startTimeSystemMillis;
+        clone.closed = clonee.closed;
+        if (clonee.children != null) {
+            for (int i = 0; i < clonee.childIndex; i++) {
+                cloneTree(clonee.children[i], clone);
+            }
+        }
+        return clone;
+    }
+
+    /**
+     * Initial size of a {@link PhaseTreeNode} children array.
+     */
+    private static final int CHILD_TREE_INIT_SIZE = 2;
+
+    /**
+     * Recursively print the phase tree represented by {@code node}.
+     */
+    private void printTree(String indent, StringBuilder sb, PhaseTreeNode node, boolean printRoot) {
+        sb.append(indent);
+        if (!printRoot && node == root) {
+            sb.append(node.name);
+        } else {
+            sb.append(node);
+        }
+        sb.append(System.lineSeparator());
+        if (node.children != null) {
+            for (int i = 0; i < node.childIndex; i++) {
+                printTree(indent + "\t", sb, node.children[i], printRoot);
+            }
+        }
+    }
+
+    public StringBuilder elapsedPhaseTreeAsString() {
+        StringBuilder sb = new StringBuilder();
+        printTree("", sb, root, false);
+        return sb;
+    }
 
     /**
      * Starts an alarm for setting a time limit on a compilation if there isn't already an active
@@ -154,6 +385,16 @@ public final class CompilationAlarm implements AutoCloseable {
             }
         }
         return null;
+    }
+
+    /**
+     * Disable the compilation alarm. The returned value should be used in a try-with-resource
+     * statement to restore the previous alarm state.
+     */
+    public static CompilationAlarm disable() {
+        CompilationAlarm current = new CompilationAlarm(0);
+        currentAlarm.set(current);
+        return current;
     }
 
     /**

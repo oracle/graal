@@ -40,12 +40,11 @@
  */
 package com.oracle.truffle.dsl.processor.java.transform;
 
+import static com.oracle.truffle.dsl.processor.java.ElementUtils.elementEquals;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.findNearestEnclosingType;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getDeclaredTypes;
-import static com.oracle.truffle.dsl.processor.java.ElementUtils.getPackageName;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getQualifiedName;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getSuperTypes;
-import static com.oracle.truffle.dsl.processor.java.ElementUtils.elementEquals;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -60,6 +59,7 @@ import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.TypeParameterElement;
 import javax.lang.model.element.VariableElement;
@@ -205,18 +205,19 @@ public final class OrganizedImports {
     }
 
     private boolean needsImport(Element enclosed, TypeMirror importType) {
-        String importPackagName = getPackageName(importType);
+        PackageElement importPackageElement = ElementUtils.getPackageElement(importType);
         TypeElement enclosedType = findNearestEnclosingType(enclosed).orElse(null);
-
-        if (importPackagName == null) {
+        if (importPackageElement == null) {
             return false;
-        } else if (importPackagName.equals("java.lang")) {
+        } else if (importPackageElement.getQualifiedName().contentEquals("java.lang")) {
             return false;
-        } else if (importPackagName.equals(getPackageName(topLevelClass)) &&
+        }
+        PackageElement topLevelPackage = ElementUtils.findPackageElement(topLevelClass);
+        if (ElementUtils.nameEquals(importPackageElement.getQualifiedName(), topLevelPackage.getQualifiedName()) &&
                         (anyEqualEnclosingTypes(enclosed, ElementUtils.castTypeElement(importType)) ||
                                         importFromEnclosingScope(enclosedType, ElementUtils.castTypeElement(importType)))) {
             return false; // same enclosing element -> no import
-        } else if (importType instanceof GeneratedTypeMirror && importPackagName.isEmpty()) {
+        } else if (importType instanceof GeneratedTypeMirror && importPackageElement.getQualifiedName().contentEquals("")) {
             return false;
         } else if (ElementUtils.isDeprecated(importType)) {
             return false;
@@ -259,9 +260,7 @@ public final class OrganizedImports {
         if (!enclosingElement.getKind().isClass() || !importEnclosingElement.getKind().isClass()) {
             return false;
         }
-        String qualified1 = ElementUtils.getQualifiedName((TypeElement) enclosingElement);
-        String qualified2 = ElementUtils.getQualifiedName((TypeElement) importEnclosingElement);
-        if (qualified1.equals(qualified2)) {
+        if (ElementUtils.elementEquals(enclosingElement, importEnclosingElement)) {
             return true;
         }
         return anyEqualEnclosingTypes(enclosingElement, importElement) || anyEqualEnclosingTypes(importElement, enclosingElement);

@@ -38,6 +38,9 @@
 # include <mach/mach_time.h>
 #endif
 
+
+namespace svm_container {
+
 class frame;
 class JvmtiAgent;
 
@@ -155,9 +158,15 @@ const bool ExecMem = true;
 typedef void (*java_call_t)(JavaValue* value, const methodHandle& method, JavaCallArguments* args, JavaThread* thread);
 
 class MallocTracker;
+
+} // namespace svm_container
+
 #endif // !NATIVE_IMAGE
 
 // Preserve errno across a range of calls
+
+
+namespace svm_container {
 
 class ErrnoPreserver {
   int _e;
@@ -237,7 +246,7 @@ class os: AllStatic {
                            char *addr, size_t bytes, bool read_only = false,
                            bool allow_exec = false);
   static bool   pd_unmap_memory(char *addr, size_t bytes);
-  static void   pd_free_memory(char *addr, size_t bytes, size_t alignment_hint);
+  static void   pd_disclaim_memory(char *addr, size_t bytes);
   static void   pd_realign_memory(char *addr, size_t bytes, size_t alignment_hint);
 
   // Returns 0 if pretouch is done via platform dependent method, or otherwise
@@ -462,14 +471,14 @@ class os: AllStatic {
   inline static size_t cds_core_region_alignment();
 
   // Reserves virtual memory.
-  static char*  reserve_memory(size_t bytes, bool executable = false, MEMFLAGS flags = mtNone);
+  static char*  reserve_memory(size_t bytes, bool executable = false, MemTag mem_tag = mtNone);
 
   // Reserves virtual memory that starts at an address that is aligned to 'alignment'.
   static char*  reserve_memory_aligned(size_t size, size_t alignment, bool executable = false);
 
   // Attempts to reserve the virtual memory at [addr, addr + bytes).
   // Does not overwrite existing mappings.
-  static char*  attempt_reserve_memory_at(char* addr, size_t bytes, bool executable = false, MEMFLAGS flag = mtNone);
+  static char*  attempt_reserve_memory_at(char* addr, size_t bytes, bool executable = false, MemTag mem_tag = mtNone);
 
   // Given an address range [min, max), attempts to reserve memory within this area, with the given alignment.
   // If randomize is true, the location will be randomized.
@@ -521,18 +530,18 @@ class os: AllStatic {
   static int create_file_for_heap(const char* dir);
   // Map memory to the file referred by fd. This function is slightly different from map_memory()
   // and is added to be used for implementation of -XX:AllocateHeapAt
-  static char* map_memory_to_file(size_t size, int fd, MEMFLAGS flag = mtNone);
-  static char* map_memory_to_file_aligned(size_t size, size_t alignment, int fd, MEMFLAGS flag = mtNone);
+  static char* map_memory_to_file(size_t size, int fd, MemTag mem_tag = mtNone);
+  static char* map_memory_to_file_aligned(size_t size, size_t alignment, int fd, MemTag mem_tag = mtNone);
   static char* map_memory_to_file(char* base, size_t size, int fd);
-  static char* attempt_map_memory_to_file_at(char* base, size_t size, int fd, MEMFLAGS flag = mtNone);
+  static char* attempt_map_memory_to_file_at(char* base, size_t size, int fd, MemTag mem_tag = mtNone);
   // Replace existing reserved memory with file mapping
   static char* replace_existing_mapping_with_file_mapping(char* base, size_t size, int fd);
 
   static char*  map_memory(int fd, const char* file_name, size_t file_offset,
                            char *addr, size_t bytes, bool read_only = false,
-                           bool allow_exec = false, MEMFLAGS flags = mtNone);
+                           bool allow_exec = false, MemTag mem_tag = mtNone);
   static bool   unmap_memory(char *addr, size_t bytes);
-  static void   free_memory(char *addr, size_t bytes, size_t alignment_hint);
+  static void   disclaim_memory(char *addr, size_t bytes);
   static void   realign_memory(char *addr, size_t bytes, size_t alignment_hint);
 
   // NUMA-specific interface
@@ -877,9 +886,9 @@ class os: AllStatic {
   static frame      current_frame();
 
   static void print_hex_dump(outputStream* st, const_address start, const_address end, int unitsize, bool print_ascii,
-                             int bytes_per_line, const_address logical_start);
-  static void print_hex_dump(outputStream* st, const_address start, const_address end, int unitsize, bool print_ascii = true) {
-    print_hex_dump(st, start, end, unitsize, print_ascii, /*bytes_per_line=*/16, /*logical_start=*/start);
+                             int bytes_per_line, const_address logical_start, const_address highlight_address = nullptr);
+  static void print_hex_dump(outputStream* st, const_address start, const_address end, int unitsize, bool print_ascii = true, const_address highlight_address = nullptr) {
+    print_hex_dump(st, start, end, unitsize, print_ascii, /*bytes_per_line=*/16, /*logical_start=*/start, highlight_address);
   }
 
   // returns a string to describe the exception/signal;
@@ -922,20 +931,20 @@ class os: AllStatic {
 
   // General allocation (must be MT-safe)
 #ifndef NATIVE_IMAGE
-  static void* malloc  (size_t size, MEMFLAGS flags, const NativeCallStack& stack);
+  static void* malloc  (size_t size, MemTag mem_tag, const NativeCallStack& stack);
 #endif // !NATIVE_IMAGE
-  static void* malloc  (size_t size, MEMFLAGS flags);
+  static void* malloc  (size_t size, MemTag mem_tag);
 #ifndef NATIVE_IMAGE
-  static void* realloc (void *memblock, size_t size, MEMFLAGS flag, const NativeCallStack& stack);
+  static void* realloc (void *memblock, size_t size, MemTag mem_tag, const NativeCallStack& stack);
 #endif // !NATIVE_IMAGE
-  static void* realloc (void *memblock, size_t size, MEMFLAGS flag);
+  static void* realloc (void *memblock, size_t size, MemTag mem_tag);
 
   // handles null pointers
   static void  free    (void *memblock);
-  static char* strdup(const char *, MEMFLAGS flags = mtInternal);  // Like strdup
+  static char* strdup(const char *, MemTag mem_tag = mtInternal);  // Like strdup
 #ifndef NATIVE_IMAGE
   // Like strdup, but exit VM when strdup() returns null
-  static char* strdup_check_oom(const char*, MEMFLAGS flags = mtInternal);
+  static char* strdup_check_oom(const char*, MemTag mem_tag = mtInternal);
 
   // SocketInterface (ex HPI SocketInterface )
   static int socket_close(int fd);
@@ -1123,5 +1132,8 @@ class os: AllStatic {
 
 extern "C" int SpinPause();
 #endif // !NATIVE_IMAGE
+
+
+} // namespace svm_container
 
 #endif // SHARE_RUNTIME_OS_HPP

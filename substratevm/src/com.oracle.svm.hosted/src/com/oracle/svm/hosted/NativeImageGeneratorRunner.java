@@ -92,7 +92,18 @@ public class NativeImageGeneratorRunner {
     public static final String IMAGE_BUILDER_ARG_FILE_OPTION = "--image-args-file=";
 
     public static void main(String[] args) {
-        new NativeImageGeneratorRunner().start(args);
+        List<NativeImageGeneratorRunnerProvider> providers = new ArrayList<>();
+        ServiceLoader.load(NativeImageGeneratorRunnerProvider.class).forEach(providers::add);
+
+        if (providers.isEmpty()) {
+            new NativeImageGeneratorRunner().start(args);
+        } else {
+            if (providers.size() > 1) {
+                throw VMError.shouldNotReachHere("There are multiple services provided under %s: %s", NativeImageGeneratorRunnerProvider.class.getName(), providers);
+            }
+
+            providers.getFirst().run(args);
+        }
     }
 
     protected void start(String[] args) {
@@ -189,6 +200,7 @@ public class NativeImageGeneratorRunner {
 
         Set<String> expectedBuilderDependencies = Set.of(
                         "java.base",
+                        "java.instrument",
                         "java.management",
                         "java.logging",
                         // workaround for GR-47773 on the module-path which requires java.sql (like
@@ -397,13 +409,13 @@ public class NativeImageGeneratorRunner {
                 NativeImageKind imageKind = null;
                 boolean isStaticExecutable = SubstrateOptions.StaticExecutable.getValue(parsedHostedOptions);
                 boolean isSharedLibrary = SubstrateOptions.SharedLibrary.getValue(parsedHostedOptions);
-                boolean isImageLayer = SubstrateOptions.ImageLayer.getValue(parsedHostedOptions);
+                boolean isImageLayer = SubstrateOptions.LayerCreate.hasBeenSet(parsedHostedOptions);
                 if (isStaticExecutable && isSharedLibrary) {
                     reportConflictingOptions(SubstrateOptions.SharedLibrary, SubstrateOptions.StaticExecutable);
                 } else if (isStaticExecutable && isImageLayer) {
-                    reportConflictingOptions(SubstrateOptions.StaticExecutable, SubstrateOptions.ImageLayer);
+                    reportConflictingOptions(SubstrateOptions.StaticExecutable, SubstrateOptions.LayerCreate);
                 } else if (isSharedLibrary && isImageLayer) {
-                    reportConflictingOptions(SubstrateOptions.SharedLibrary, SubstrateOptions.ImageLayer);
+                    reportConflictingOptions(SubstrateOptions.SharedLibrary, SubstrateOptions.LayerCreate);
                 } else if (isSharedLibrary) {
                     imageKind = NativeImageKind.SHARED_LIBRARY;
                 } else if (isImageLayer) {
@@ -587,7 +599,7 @@ public class NativeImageGeneratorRunner {
         return ExitStatus.OK.getValue();
     }
 
-    private static void reportConflictingOptions(HostedOptionKey<Boolean> o1, HostedOptionKey<Boolean> o2) {
+    private static void reportConflictingOptions(HostedOptionKey<Boolean> o1, HostedOptionKey<?> o2) {
         throw UserError.abort("Cannot pass both options: %s and %s", SubstrateOptionsParser.commandArgument(o1, "+"), SubstrateOptionsParser.commandArgument(o2, "+"));
     }
 

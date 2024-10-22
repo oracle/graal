@@ -25,6 +25,18 @@
 package jdk.graal.compiler.hotspot.replacements;
 
 import static jdk.graal.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_BITMAP_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_HASH_SLOT_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_SUPER_CHECK_OFFSET_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.METASPACE_ARRAY_LENGTH_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.PRIMARY_SUPERS_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.SECONDARY_SUPERS_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.SECONDARY_SUPER_CACHE_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.klassBitmapOffset;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.klassHashSlotOffset;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.metaspaceArrayLengthOffset;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.secondarySuperCacheOffset;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.superCheckOffsetOffset;
 import static jdk.graal.compiler.hotspot.stubs.LookUpSecondarySupersTableStub.SECONDARY_SUPERS_TABLE_MASK;
 import static jdk.graal.compiler.hotspot.stubs.LookUpSecondarySupersTableStub.loadSecondarySupersElement;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.FREQUENT_PROBABILITY;
@@ -33,7 +45,6 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probabilit
 
 import java.util.Arrays;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.hotspot.nodes.type.KlassPointerStamp;
 import jdk.graal.compiler.hotspot.stubs.LookUpSecondarySupersTableStub;
@@ -56,14 +67,9 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  */
 public class TypeCheckSnippetUtils {
 
-    @Fold
-    static boolean isJDK21() {
-        return JavaVersionUtil.JAVA_SPEC == 21;
-    }
-
     static boolean checkSecondarySubType(KlassPointer t, KlassPointer sNonNull, Counters counters) {
         // if (S.cache == T) return true
-        if (isJDK21() && sNonNull.readKlassPointer(HotSpotReplacementsUtil.secondarySuperCacheOffset(INJECTED_VMCONFIG), HotSpotReplacementsUtil.SECONDARY_SUPER_CACHE_LOCATION).equal(t)) {
+        if (JavaVersionUtil.JAVA_SPEC == 21 && sNonNull.readKlassPointer(secondarySuperCacheOffset(INJECTED_VMCONFIG), SECONDARY_SUPER_CACHE_LOCATION).equal(t)) {
             counters.cacheHit.inc();
             return true;
         }
@@ -73,30 +79,25 @@ public class TypeCheckSnippetUtils {
 
     static boolean checkUnknownSubType(KlassPointer t, KlassPointer sNonNull, Counters counters) {
         // int off = T.offset
-        int superCheckOffset = t.readInt(HotSpotReplacementsUtil.superCheckOffsetOffset(INJECTED_VMCONFIG), HotSpotReplacementsUtil.KLASS_SUPER_CHECK_OFFSET_LOCATION);
-        boolean primary = superCheckOffset != HotSpotReplacementsUtil.secondarySuperCacheOffset(INJECTED_VMCONFIG);
+        int superCheckOffset = t.readInt(superCheckOffsetOffset(INJECTED_VMCONFIG), KLASS_SUPER_CHECK_OFFSET_LOCATION);
+        boolean primary = superCheckOffset != secondarySuperCacheOffset(INJECTED_VMCONFIG);
 
-        // if (T = S[off]) return true
-        if (sNonNull.readKlassPointer(superCheckOffset, HotSpotReplacementsUtil.PRIMARY_SUPERS_LOCATION).equal(t)) {
-            if (primary) {
-                counters.cacheHit.inc();
-            } else {
-                counters.displayHit.inc();
-            }
-            return true;
-        }
-
-        // if (off != &cache) return false
         if (primary) {
-            counters.displayMiss.inc();
-            return false;
+            if (sNonNull.readKlassPointer(superCheckOffset, PRIMARY_SUPERS_LOCATION).equal(t)) {
+                // if (T = S[off]) return true
+                counters.displayHit.inc();
+                return true;
+            } else {
+                counters.displayMiss.inc();
+                return false;
+            }
+        } else {
+            return checkSecondarySubType(t, sNonNull, counters);
         }
-
-        return checkSelfAndSupers(t, sNonNull, counters);
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/8032d640c0d34fe507392a1d4faa4ff2005c771d/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L4786-L4881",
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/fbe8a81d1900d0de1920ad1df6ad574f3da4bd51/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L4791-L4886",
               sha1 = "c0e2fdd973dc975757d58080ba94efe628d6a380")
     // @formatter:on
     static boolean checkSelfAndSupers(KlassPointer t, KlassPointer s, Counters counters) {
@@ -106,13 +107,13 @@ public class TypeCheckSnippetUtils {
             return true;
         }
 
-        Word secondarySupers = s.readWord(HotSpotReplacementsUtil.secondarySupersOffset(INJECTED_VMCONFIG), HotSpotReplacementsUtil.SECONDARY_SUPERS_LOCATION);
+        Word secondarySupers = s.readWord(HotSpotReplacementsUtil.secondarySupersOffset(INJECTED_VMCONFIG), SECONDARY_SUPERS_LOCATION);
 
-        if (isJDK21()) {
-            int length = secondarySupers.readInt(HotSpotReplacementsUtil.metaspaceArrayLengthOffset(INJECTED_VMCONFIG), HotSpotReplacementsUtil.METASPACE_ARRAY_LENGTH_LOCATION);
+        if (JavaVersionUtil.JAVA_SPEC == 21) {
+            int length = secondarySupers.readInt(metaspaceArrayLengthOffset(INJECTED_VMCONFIG), METASPACE_ARRAY_LENGTH_LOCATION);
             for (int i = 0; i < length; i++) {
                 if (probability(NOT_LIKELY_PROBABILITY, t.equal(loadSecondarySupersElement(secondarySupers, i)))) {
-                    s.writeKlassPointer(HotSpotReplacementsUtil.secondarySuperCacheOffset(INJECTED_VMCONFIG), t, HotSpotReplacementsUtil.SECONDARY_SUPER_CACHE_LOCATION);
+                    s.writeKlassPointer(secondarySuperCacheOffset(INJECTED_VMCONFIG), t, SECONDARY_SUPER_CACHE_LOCATION);
                     counters.secondariesHit.inc();
                     return true;
                 }
@@ -148,8 +149,8 @@ public class TypeCheckSnippetUtils {
         // Long.bitCount(S.bitmap << (63 - T.hash)) - 1
 
         // bit will be folded when T is constant.
-        int bit = t.readByte(HotSpotReplacementsUtil.klassHashSlotOffset(INJECTED_VMCONFIG), HotSpotReplacementsUtil.KLASS_HASH_SLOT_LOCATION);
-        long bitmap = s.readLong(HotSpotReplacementsUtil.klassBitmapOffset(INJECTED_VMCONFIG), HotSpotReplacementsUtil.KLASS_BITMAP_LOCATION);
+        int bit = t.readByte(klassHashSlotOffset(INJECTED_VMCONFIG), KLASS_HASH_SLOT_LOCATION);
+        long bitmap = s.readLong(klassBitmapOffset(INJECTED_VMCONFIG), KLASS_BITMAP_LOCATION);
 
         long bitmapShifted = bitmap << (SECONDARY_SUPERS_TABLE_MASK - bit);
         if (probability(NOT_LIKELY_PROBABILITY, bitmapShifted >= 0)) {

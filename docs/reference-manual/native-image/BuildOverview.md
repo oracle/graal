@@ -10,7 +10,7 @@ redirect_from: /reference-manual/native-image/Build-Overview/
 
 The syntax of the `native-image` command is:
 
-- `native-image [options] <mainclass> [imagename] [options]` to build a native binary from the main class in the current working directory. The classpath may optionally be provided with the `-cp <classpath>` option where `<classpath>` is a colon-separated (on Windows, semicolon-separated) list of paths to directories and JAR files.
+- `native-image [options] <mainclass> [imagename] [options]` to build a native binary from the main class in the current working directory. The class path may optionally be provided with the `-cp <classpath>` option where `<classpath>` is a colon-separated (on Windows, semicolon-separated) list of paths to directories and JAR files.
 - `native-image [options] -jar jarfile [imagename] [options]` to build a native binary from a JAR file.
 - `native-image [options] -m <module>/<mainClass> [imagename] [options]` to build a native binary from a Java module.
 
@@ -60,3 +60,5 @@ If you are new to GraalVM Native Image or have little experience using it, see t
 For more tweaks and how to properly configure the `native-image` tool, see [Build Configuration](BuildConfiguration.md#order-of-arguments-evaluation).
 
 Native Image outputs the progress and various statistics when building a native binary. To learn more about the output, and the different build phases, see [Build Output](BuildOutput.md).
+
+For more detailed information about the build process, its phases, and the contents of a produced native binary, see [Build Report](BuildReport.md).

@@ -60,15 +60,14 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
-import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.ClassLoaderSupport;
+import com.oracle.svm.core.ClassLoaderSupport.ConditionWithOrigin;
 import com.oracle.svm.core.ClassLoaderSupport.ResourceCollector;
 import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.configure.ConfigurationConditionResolver;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
@@ -154,16 +153,16 @@ public class ResourcesFeature implements InternalFeature {
 
         private static final String EMBEDDED_RESOURCES_FILE_NAME = "embedded-resources.json";
         @Option(help = "Create a " + EMBEDDED_RESOURCES_FILE_NAME + " file in the build directory. The output conforms to the JSON schema located at: " +
-                        "docs/reference-manual/native-image/assets/embedded-resources-schema-v1.0.0.json", type = OptionType.User)//
+                        "docs/reference-manual/native-image/assets/embedded-resources-schema-v1.1.0.json", type = OptionType.User)//
         public static final HostedOptionKey<Boolean> GenerateEmbeddedResourcesFile = new HostedOptionKey<>(false);
     }
 
     private boolean sealed = false;
 
-    private record ConditionalPattern(ConfigurationCondition condition, String pattern) {
+    private record ConditionalPattern(ConfigurationCondition condition, String pattern, Object origin) {
     }
 
-    private record CompiledConditionalPattern(ConfigurationCondition condition, ResourcePattern compiledPattern) {
+    private record CompiledConditionalPattern(ConfigurationCondition condition, ResourcePattern compiledPattern, Object origin) {
     }
 
     private Set<ConditionalPattern> resourcePatternWorkSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
@@ -180,18 +179,19 @@ public class ResourcesFeature implements InternalFeature {
         }
 
         @Override
-        public void addResources(ConfigurationCondition condition, String pattern) {
+        public void addResources(ConfigurationCondition condition, String pattern, Object origin) {
             try {
-                resourcePatternWorkSet.add(new ConditionalPattern(condition, pattern));
+                resourcePatternWorkSet.add(new ConditionalPattern(condition, pattern, origin));
             } catch (UnsupportedOperationException e) {
                 throw UserError.abort("Resource registration should be performed before beforeAnalysis phase.");
             }
         }
 
         @Override
-        public void addGlob(ConfigurationCondition condition, String module, String glob) {
-            String resolvedGlob = GlobUtils.transformToTriePath(glob, module);
-            globWorkSet.add(new ConditionalPattern(condition, resolvedGlob));
+        public void addGlob(ConfigurationCondition condition, String module, String glob, Object origin) {
+            String canonicalGlob = Resources.toCanonicalForm(glob);
+            String resolvedGlob = GlobUtils.transformToTriePath(canonicalGlob, module);
+            globWorkSet.add(new ConditionalPattern(condition, resolvedGlob, origin));
         }
 
         @Override
@@ -204,21 +204,21 @@ public class ResourcesFeature implements InternalFeature {
 
         /* Adds single resource defined with its module and name */
         @Override
-        public void addResourceEntry(Module module, String resourcePath) {
+        public void addResourceEntry(Module module, String resourcePath, Object origin) {
             if (!shouldRegisterResource(module, resourcePath)) {
                 return;
             }
 
             if (module != null && module.isNamed()) {
-                processResourceFromModule(module, resourcePath);
+                processResourceFromModule(module, resourcePath, origin);
             } else {
-                processResourceFromClasspath(resourcePath);
+                processResourceFromClasspath(resourcePath, origin);
             }
         }
 
         @Override
-        public void injectResource(Module module, String resourcePath, byte[] resourceContent) {
-            EmbeddedResourcesInfo.singleton().declareResourceAsRegistered(module, resourcePath, "INJECTED");
+        public void injectResource(Module module, String resourcePath, byte[] resourceContent, Object origin) {
+            EmbeddedResourcesInfo.singleton().declareResourceAsRegistered(module, resourcePath, "INJECTED", origin);
             Resources.singleton().registerResource(module, resourcePath, resourceContent);
         }
 
@@ -281,7 +281,7 @@ public class ResourcesFeature implements InternalFeature {
             }
         }
 
-        private void processResourceFromModule(Module module, String resourcePath) {
+        private void processResourceFromModule(Module module, String resourcePath, Object origin) {
             try {
                 String resourcePackage = jdk.internal.module.Resources.toPackageName(resourcePath);
                 if (!resourcePackage.isEmpty()) {
@@ -304,14 +304,14 @@ public class ResourcesFeature implements InternalFeature {
                 var resolvedModule = module.getLayer().configuration().findModule(module.getName());
                 if (resolvedModule.isPresent()) {
                     Optional<URI> location = resolvedModule.get().reference().location();
-                    location.ifPresent(uri -> EmbeddedResourcesInfo.singleton().declareResourceAsRegistered(module, resourcePath, uri.toString()));
+                    location.ifPresent(uri -> EmbeddedResourcesInfo.singleton().declareResourceAsRegistered(module, resourcePath, uri.toString(), origin));
                 }
             } catch (IOException e) {
                 Resources.singleton().registerIOException(module, resourcePath, e, LinkAtBuildTimeSupport.singleton().packageOrClassAtBuildTime(resourcePath));
             }
         }
 
-        private void processResourceFromClasspath(String resourcePath) {
+        private void processResourceFromClasspath(String resourcePath, Object origin) {
             Enumeration<URL> urls;
             try {
                 /*
@@ -347,7 +347,7 @@ public class ResourcesFeature implements InternalFeature {
                     }
 
                     String source = ResourcesUtils.getResourceSource(url, resourcePath, fromJar);
-                    EmbeddedResourcesInfo.singleton().declareResourceAsRegistered(null, resourcePath, source);
+                    EmbeddedResourcesInfo.singleton().declareResourceAsRegistered(null, resourcePath, source, origin);
                 } catch (IOException e) {
                     Resources.singleton().registerIOException(null, resourcePath, e, LinkAtBuildTimeSupport.singleton().packageOrClassAtBuildTime(resourcePath));
                     return;
@@ -409,28 +409,26 @@ public class ResourcesFeature implements InternalFeature {
                         ConfigurationFile.RESOURCES.getFileName());
 
         /* prepare globs for resource registration */
-        List<CompressedGlobTrie.GlobWithInfo> patternsWithInfo = globWorkSet
+        List<CompressedGlobTrie.GlobWithInfo<ConditionWithOrigin>> patternsWithInfo = globWorkSet
                         .stream()
-                        .map(entry -> new CompressedGlobTrie.GlobWithInfo(entry.pattern(), entry.condition().getType().getName())).toList();
-        GlobTrieNode trie = CompressedGlobTrie.CompressedGlobTrieBuilder.build(patternsWithInfo);
-        ImageSingletons.add(GlobTrieNode.class, trie);
+                        .map(entry -> new CompressedGlobTrie.GlobWithInfo<>(entry.pattern(), new ConditionWithOrigin(entry.condition(), entry.origin()))).toList();
+        GlobTrieNode<ConditionWithOrigin> trie = CompressedGlobTrie.CompressedGlobTrieBuilder.build(patternsWithInfo);
+        Resources.singleton().setResourcesTrieRoot(trie);
 
         /* prepare regex patterns for resource registration */
         resourcePatternWorkSet.addAll(Options.IncludeResources.getValue()
-                        .values()
-                        .stream()
-                        .map(e -> new ConditionalPattern(ConfigurationCondition.alwaysTrue(), e))
+                        .getValuesWithOrigins()
+                        .map(e -> new ConditionalPattern(ConfigurationCondition.alwaysTrue(), e.value(), e.origin()))
                         .toList());
         Set<CompiledConditionalPattern> includePatterns = resourcePatternWorkSet
                         .stream()
-                        .map(e -> new CompiledConditionalPattern(e.condition(), makeResourcePattern(e.pattern())))
+                        .map(e -> new CompiledConditionalPattern(e.condition(), makeResourcePattern(e.pattern()), e.origin()))
                         .collect(Collectors.toSet());
 
         excludedResourcePatterns.addAll(Options.ExcludeResources.getValue().values());
         ResourcePattern[] excludePatterns = compilePatterns(excludedResourcePatterns);
 
-        FeatureImpl.BeforeAnalysisAccessImpl beforeAnalysisAccess = (FeatureImpl.BeforeAnalysisAccessImpl) access;
-        ResourceCollectorImpl collector = new ResourceCollectorImpl(includePatterns, excludePatterns, beforeAnalysisAccess.getImageClassLoader());
+        ResourceCollectorImpl collector = new ResourceCollectorImpl(includePatterns, excludePatterns);
         /*
          * register all included patterns in Resources singleton (if we are throwing
          * MissingRegistrationErrors), so they can be queried at runtime to detect missing entries
@@ -472,16 +470,14 @@ public class ResourcesFeature implements InternalFeature {
         private boolean initialReport;
         private volatile String currentlyProcessedEntry;
         ScheduledExecutorService scheduledExecutor;
-        ConfigurationConditionResolver<ConfigurationCondition> conditionResolver;
 
-        private ResourceCollectorImpl(Set<CompiledConditionalPattern> includePatterns, ResourcePattern[] excludePatterns, ImageClassLoader imageClassLoader) {
+        private ResourceCollectorImpl(Set<CompiledConditionalPattern> includePatterns, ResourcePattern[] excludePatterns) {
             this.includePatterns = includePatterns;
             this.excludePatterns = excludePatterns;
 
             this.reachedResourceEntries = new LongAdder();
             this.initialReport = true;
             this.currentlyProcessedEntry = null;
-            this.conditionResolver = new NativeImageConditionResolver(imageClassLoader, ClassInitializationSupport.singleton());
         }
 
         private void prepareProgressReporter() {
@@ -505,7 +501,7 @@ public class ResourcesFeature implements InternalFeature {
         }
 
         @Override
-        public List<ConfigurationCondition> isIncluded(Module module, String resourceName, URI resource) {
+        public List<ConditionWithOrigin> isIncluded(Module module, String resourceName, URI resource) {
             this.currentlyProcessedEntry = resource.getScheme().equals("jrt") ? (resource + "/" + resourceName) : resource.toString();
 
             this.reachedResourceEntries.increment();
@@ -530,13 +526,13 @@ public class ResourcesFeature implements InternalFeature {
             }
 
             /* Possibly we can have multiple conditions for one resource */
-            List<ConfigurationCondition> conditions = new ArrayList<>();
+            List<ConditionWithOrigin> conditions = new ArrayList<>();
             for (CompiledConditionalPattern rp : includePatterns) {
                 if (!rp.compiledPattern().moduleNameMatches(moduleName)) {
                     continue;
                 }
                 if (rp.compiledPattern().pattern.matcher(resourceName).matches() || rp.compiledPattern().pattern.matcher(relativePathWithTrailingSlash).matches()) {
-                    conditions.add(rp.condition());
+                    conditions.add(new ConditionWithOrigin(rp.condition(), rp.origin()));
                 }
             }
 
@@ -546,29 +542,24 @@ public class ResourcesFeature implements InternalFeature {
             return conditions;
         }
 
-        private List<ConfigurationCondition> getConditionsFromGlobTrie(Module module, String resourceName) {
+        private static List<ConditionWithOrigin> getConditionsFromGlobTrie(Module module, String resourceName) {
             String pattern = GlobUtils.transformToTriePath(resourceName, module == null ? "" : module.getName());
-            List<String> types = CompressedGlobTrie.getAdditionalContentIfMatched(ImageSingletons.lookup(GlobTrieNode.class), pattern);
+            List<ConditionWithOrigin> types = CompressedGlobTrie.getHostedOnlyContentIfMatched(Resources.singleton().getResourcesTrieRoot(), pattern);
             if (types == null) {
                 return Collections.emptyList();
             }
-
-            return types.stream()
-                            .map(type -> UnresolvedConfigurationCondition.create(type, false))
-                            .map(conditionResolver::resolveCondition)
-                            .map(TypeResult::get)
-                            .toList();
+            return types;
         }
 
         @Override
-        public void addResourceEntry(Module module, String resourceName) {
-            ImageSingletons.lookup(RuntimeResourceSupport.class).addResourceEntry(module, resourceName);
+        public void addResourceEntry(Module module, String resourceName, Object origin) {
+            ImageSingletons.lookup(RuntimeResourceSupport.class).addResourceEntry(module, resourceName, origin);
         }
 
         @Override
-        public void addResourceConditionally(Module module, String resourceName, ConfigurationCondition condition) {
+        public void addResourceConditionally(Module module, String resourceName, ConfigurationCondition condition, Object origin) {
             registerConditionalConfiguration(condition, cnd -> {
-                addResourceEntry(module, resourceName);
+                addResourceEntry(module, resourceName, origin);
                 ImageSingletons.lookup(RuntimeResourceSupport.class).addCondition(cnd, module, resourceName);
             });
         }
@@ -580,7 +571,7 @@ public class ResourcesFeature implements InternalFeature {
 
         @Override
         public void registerNegativeQuery(Module module, String resourceName) {
-            EmbeddedResourcesInfo.singleton().declareResourceAsRegistered(module, resourceName, "");
+            EmbeddedResourcesInfo.singleton().declareResourceAsRegistered(module, resourceName, "", "");
             Resources.singleton().registerNegativeQuery(module, resourceName);
         }
 
@@ -637,8 +628,8 @@ public class ResourcesFeature implements InternalFeature {
         }
 
         /* prepare resources GlobTrie for runtime */
-        GlobTrieNode root = ImageSingletons.lookup(GlobTrieNode.class);
-        CompressedGlobTrie.removeNodes(root, (type) -> !access.isReachable(access.findClassByName(type)));
+        GlobTrieNode<ConditionWithOrigin> root = Resources.singleton().getResourcesTrieRoot();
+        CompressedGlobTrie.removeNodes(root, (conditionWithOrigin) -> !access.isReachable(conditionWithOrigin.condition().getType()));
         CompressedGlobTrie.finalize(root);
     }
 

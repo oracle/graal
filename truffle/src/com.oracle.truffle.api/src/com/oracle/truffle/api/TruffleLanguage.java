@@ -2816,6 +2816,22 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
+         * Retrieves the host language used in this environment. The returned language can be used
+         * to obtain the host language top scope object using
+         * {@link #getScopeInternal(LanguageInfo)} method.
+         *
+         * @since 24.2
+         */
+        @TruffleBoundary
+        public LanguageInfo getHostLanguage() {
+            try {
+                return LanguageAccessor.engineAccess().getHostLanguage(polyglotLanguageContext);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
+        }
+
+        /**
          * Returns all languages that are installed and publicly accessible in the environment.
          * Using the language instance additional services can be
          * {@link #lookup(LanguageInfo, Class) looked up}. {@link #parsePublic(Source, String...)}
@@ -2829,6 +2845,26 @@ public abstract class TruffleLanguage<C> {
         public Map<String, LanguageInfo> getPublicLanguages() {
             try {
                 return LanguageAccessor.engineAccess().getPublicLanguages(polyglotLanguageContext);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
+        }
+
+        /**
+         * Returns the {@link LanguageInfo language info} for a given language class if available.
+         * The class may be obtained with <code>InteropLibrary.getLanguage(Object)</code>. Throws an
+         * {@link IllegalArgumentException} if the provided language is not registered.
+         *
+         * @param languageClass the language class to convert
+         * @return the associated language info
+         * @throws IllegalArgumentException if the language class is not valid.
+         * @since 24.2
+         */
+        @TruffleBoundary
+        public LanguageInfo getLanguageInfo(Class<? extends TruffleLanguage<?>> languageClass) {
+            try {
+                Objects.requireNonNull(languageClass);
+                return LanguageAccessor.engineAccess().getLanguageInfo(polyglotLanguageContext, languageClass);
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }

@@ -36,6 +36,8 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.methodhandle.MHInvokeGenericNode;
+import com.oracle.truffle.espresso.resolver.LinkResolver;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 public interface ClassMethodRefConstant extends MethodRefConstant {
@@ -167,27 +169,18 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
         @Override
         public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, ObjectKlass accessingKlass) {
             METHODREF_RESOLVE_COUNT.inc();
-
             EspressoContext context = pool.getContext();
-            Klass holderKlass = getResolvedHolderKlass(accessingKlass, pool);
-
             Meta meta = context.getMeta();
-            if (holderKlass.isInterface()) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, meta.toGuestString(getName(pool)));
-            }
 
+            Klass holderKlass = getResolvedHolderKlass(accessingKlass, pool);
             Symbol<Name> name = getName(pool);
             Symbol<Signature> signature = getSignature(pool);
 
-            Method method = holderKlass.lookupMethod(name, signature);
-            if (method == null) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError, meta.toGuestString(holderKlass.getNameAsString() + "." + getName(pool) + signature));
-            }
+            Method method = LinkResolver.resolveSymbol(meta, accessingKlass, name, signature, holderKlass, false, true, true);
 
-            MemberRefConstant.doAccessCheck(accessingKlass, holderKlass, method, meta);
-
-            if (!method.isPolySignatureIntrinsic()) {
-                method.checkLoadingConstraints(accessingKlass.getDefiningClassLoader(), method.getDeclaringKlass().getDefiningClassLoader());
+            if (method.isInvokeIntrinsic()) {
+                MHInvokeGenericNode.MethodHandleInvoker invoker = MHInvokeGenericNode.linkMethod(meta.getLanguage(), meta, accessingKlass, method, name, signature);
+                return new ResolvedWithInvoker(method, invoker);
             }
 
             return new Resolved(method);
@@ -211,7 +204,7 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
         }
     }
 
-    final class Resolved implements InterfaceMethodRefConstant, Resolvable.ResolvedConstant {
+    class Resolved implements ClassMethodRefConstant, Resolvable.ResolvedConstant {
         private final Method resolved;
 
         Resolved(Method resolved) {
@@ -219,23 +212,44 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
         }
 
         @Override
-        public Method value() {
+        public final Method value() {
             return resolved;
         }
 
         @Override
-        public Symbol<Name> getHolderKlassName(ConstantPool pool) {
+        public final Symbol<Name> getHolderKlassName(ConstantPool pool) {
             throw EspressoError.shouldNotReachHere("Method already resolved");
         }
 
         @Override
-        public Symbol<Name> getName(ConstantPool pool) {
+        public final Symbol<Name> getName(ConstantPool pool) {
             return resolved.getName();
         }
 
         @Override
-        public Symbol<? extends Descriptor> getDescriptor(ConstantPool pool) {
+        public final Symbol<? extends Descriptor> getDescriptor(ConstantPool pool) {
             return resolved.getRawSignature();
+        }
+    }
+
+    /**
+     * This is used for
+     * {@link com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics#InvokeGeneric}
+     * polymorphic signature methods. The invoker object contains the method and appendix that
+     * should be used to implement the intrinsic's behaviour. This is provided by the JDK
+     * ({@code MethodHandleNatives.linkMethod}).
+     */
+    final class ResolvedWithInvoker extends Resolved {
+        private final MHInvokeGenericNode.MethodHandleInvoker invoker;
+
+        ResolvedWithInvoker(Method resolved, MHInvokeGenericNode.MethodHandleInvoker invoker) {
+            super(resolved);
+            this.invoker = Objects.requireNonNull(invoker);
+        }
+
+        @Override
+        public MHInvokeGenericNode.MethodHandleInvoker invoker() {
+            return invoker;
         }
     }
 }

@@ -262,6 +262,8 @@ def registered_graalvm_components(stage1=False):
 def _get_component_type_base(c, graalvm_dist_for_substitutions=None):
     if isinstance(c, mx_sdk.GraalVmLanguage):
         result = '<jre_base>/languages/'
+    elif isinstance(c, mx_sdk.GraalVmSvmTool):
+        result = _get_svm_component_base(graalvm_dist_for_substitutions) + '/tools/'
     elif isinstance(c, mx_sdk.GraalVmTool):
         result = '<jre_base>/tools/'
     elif isinstance(c, mx_sdk.GraalVmJdkComponent):
@@ -269,9 +271,7 @@ def _get_component_type_base(c, graalvm_dist_for_substitutions=None):
     elif isinstance(c, mx_sdk.GraalVmJreComponent):
         result = '<jre_base>/lib/'
     elif isinstance(c, mx_sdk.GraalVMSvmMacro):
-        # Get the 'svm' component, even if it's not part of the GraalVM image
-        svm_component = mx_sdk_vm.graalvm_component_by_name('svm', fatalIfMissing=True)
-        result = _get_component_type_base(svm_component, graalvm_dist_for_substitutions=graalvm_dist_for_substitutions) + svm_component.dir_name + '/macros/'
+        result = _get_svm_component_base(graalvm_dist_for_substitutions) + '/macros/'
     elif isinstance(c, mx_sdk.GraalVmComponent):
         result = '<jdk_base>/'
     else:
@@ -279,6 +279,12 @@ def _get_component_type_base(c, graalvm_dist_for_substitutions=None):
     if graalvm_dist_for_substitutions is not None:
         result = graalvm_dist_for_substitutions.path_substitutions.substitute(result)
     return result
+
+
+def _get_svm_component_base(graalvm_dist_for_substitutions=None) -> str:
+    # Get the 'svm' component, even if it's not part of the GraalVM image
+    svm_component = mx_sdk_vm.graalvm_component_by_name('svm', fatalIfMissing=True)
+    return _get_component_type_base(svm_component, graalvm_dist_for_substitutions=graalvm_dist_for_substitutions) + svm_component.dir_name
 
 
 def _get_jdk_base(jdk):
@@ -2502,7 +2508,6 @@ class PolyglotIsolateLibraryBuildTask(GraalVmLibraryBuildTask):
             '-H:APIFunctionPrefix=truffle_isolate_',
         ] + svm_experimental_options([
             '-H:+IgnoreMaxHeapSizeWhileInVMOperation',
-            '-H:+BuildOutputPrefix',
             '-H:+GenerateBuildArtifactsFile',  # generate 'build-artifacts.json'
         ]) + mx.get_runtime_jvm_args(self.subject.native_image_jar_distributions) + \
         project.native_image_config.build_args + project.native_image_config.build_args_enterprise
@@ -3275,6 +3280,10 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
             **kwargs
         )
 
+    def isJDKDependent(self):
+        # because of -DLAUNCHER_JDK_VERSION (GR-57817)
+        return True
+
     @staticmethod
     def library_launcher_project_name(language_library_config, for_jvm_standalone=False):
         return "org.graalvm.launcher.native." + ("jvm_standalone." if for_jvm_standalone else "") + language_library_config.language
@@ -3292,6 +3301,8 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
             '-DCP_SEP=' + os.pathsep,
             '-DDIR_SEP=' + ('\\\\' if mx.is_windows() else '/'),
             '-DGRAALVM_VERSION=' + _suite.release_version(),
+            # Might not be needed anymore if GR-57817 gets fixed.
+            f'-DLAUNCHER_JDK_VERSION={mx_sdk_vm.base_jdk_version()}',
         ]
         if not mx.is_windows():
             _dynamic_cflags += ['-pthread']

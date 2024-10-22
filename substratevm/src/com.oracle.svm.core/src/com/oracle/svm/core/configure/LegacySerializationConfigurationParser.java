@@ -28,7 +28,6 @@ import java.net.URI;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
@@ -85,31 +84,26 @@ final class LegacySerializationConfigurationParser<C> extends SerializationConfi
         if (lambdaCapturingType) {
             checkAttributes(data, "serialization descriptor object", Collections.singleton(NAME_KEY), Collections.singleton(CONDITIONAL_KEY));
         } else {
-            checkAttributes(data, "serialization descriptor object", Collections.emptySet(), Arrays.asList(TYPE_KEY, NAME_KEY, CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY, CONDITIONAL_KEY));
-            checkHasExactlyOneAttribute(data, "serialization descriptor object", List.of(TYPE_KEY, NAME_KEY));
+            checkAttributes(data, "serialization descriptor object", Collections.singleton(NAME_KEY), Arrays.asList(CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY, CONDITIONAL_KEY));
         }
 
-        Optional<ConfigurationTypeDescriptor> targetSerializationClass = parseTypeOrName(data, false);
-        if (targetSerializationClass.isEmpty()) {
-            return;
-        }
-
-        UnresolvedConfigurationCondition unresolvedCondition = parseCondition(data, targetSerializationClass.get().definedAsType());
+        ConfigurationTypeDescriptor targetSerializationClass = new NamedConfigurationTypeDescriptor(asString(data.get(NAME_KEY)));
+        UnresolvedConfigurationCondition unresolvedCondition = parseCondition(data, false);
         var condition = conditionResolver.resolveCondition(unresolvedCondition);
         if (!condition.isPresent()) {
             return;
         }
 
         if (lambdaCapturingType) {
-            String className = ((NamedConfigurationTypeDescriptor) targetSerializationClass.get()).name();
+            String className = ((NamedConfigurationTypeDescriptor) targetSerializationClass).name();
             serializationSupport.registerLambdaCapturingClass(condition.get(), className);
         } else {
             Object optionalCustomCtorValue = data.get(CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY);
             String customTargetConstructorClass = optionalCustomCtorValue != null ? asString(optionalCustomCtorValue) : null;
-            if (targetSerializationClass.get() instanceof NamedConfigurationTypeDescriptor namedClass) {
+            if (targetSerializationClass instanceof NamedConfigurationTypeDescriptor namedClass) {
                 serializationSupport.registerWithTargetConstructorClass(condition.get(), namedClass.name(), customTargetConstructorClass);
-            } else if (targetSerializationClass.get() instanceof ProxyConfigurationTypeDescriptor proxyClass) {
-                serializationSupport.registerProxyClass(condition.get(), Arrays.asList(proxyClass.interfaceNames()));
+            } else if (targetSerializationClass instanceof ProxyConfigurationTypeDescriptor proxyClass) {
+                serializationSupport.registerProxyClass(condition.get(), proxyClass.interfaceNames());
             } else {
                 throw new JsonParserException("Unknown configuration type descriptor: %s".formatted(targetSerializationClass.toString()));
             }

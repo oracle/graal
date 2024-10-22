@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,9 @@ package jdk.graal.compiler.core.test;
 
 import static jdk.graal.compiler.api.directives.GraalDirectives.opaque;
 
+import org.junit.Assert;
+import org.junit.Test;
+
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
@@ -38,10 +41,7 @@ import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.HighTierLoweringPhase;
 import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
 import jdk.graal.compiler.virtual.phases.ea.ReadEliminationPhase;
-import org.junit.Assert;
-import org.junit.Test;
-
-import sun.misc.Unsafe;
+import jdk.internal.misc.Unsafe;
 
 public class UnsafeReadEliminationTest extends GraalCompilerTest {
 

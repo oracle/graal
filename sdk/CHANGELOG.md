@@ -2,6 +2,10 @@
 
 This changelog summarizes major changes between GraalVM SDK versions. The main focus is on APIs exported by GraalVM SDK.
 
+## Version 24.2.0
+* GR-54905 When using Truffle NFI with the Panama backend, native access must now be granted to the Truffle module instead of the NFI Panama module. Use the `--enable-native-access=org.graalvm.truffle` Java command line option to enable the native access for the NFI Panama backend.
+* GR-57681 Added the ability to use `Value#as(byte[].class)` to copy the contents of a guest language byte buffer (`Value#hasBufferElements()`) to a new byte array. The new functionality has precedence over accessing the guest object as array (`Value#hasArrayElements()`) if both ways are available. 
+
 ## Version 24.1.0
 * GR-51177 Enable random offsets of runtime compiled function entry points for the UNTRUSTED polyglot sandbox policy.
 * GR-51962 Added the system property `polyglot.engine.userResourceCache`, which enables embedders to override the default location of the resources cache folder for polyglot applications running on the JVM. By default, the resources cache folder is located in the `org.graalvm.polyglot` directory within the OS specific cache folder in the user's home directory. The main rationale behind this override is to accommodate applications running in containers where the user's home directory may not be writable.
@@ -12,8 +16,9 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 * GR-47956 Added the option `engine.InterpreterCallStackHeadRoom` to protect against stack overflow in the middle of a guest method execution in the interpreter. The new option is available only in the AOT mode.
 * GR-40931 Added experimental support for virtual threads on HotSpot. Not all languages are currently supported for use with virtual threads, please check the language changelog for further information. Truffle debugging, CPU time limits and some memory limits are currently not supported on virtual threads.
 * GR-40931 Using virtual threads in a native-image will now emulate virtual threads using platform threads until Loom support for Truffle languages in native-image is implemented.
-* GR-48481: It is now possible to depend on platform-specific Maven artifacts when using polyglot isolates. The `-isolate` Maven artifacts remain platform-independent. However, if platform specific builds are required, consider adding a platform specific suffix to the Maven artifact name, such as `-isolate-linux-amd64`. The reduced binary size of platform specific dependencies can improve build times and reduce the distribution size of your application. For more details, see [Embedding Languages](https://www.graalvm.org/latest/reference-manual/embed-languages/#polyglot-isolates).
+* GR-48481: It is now possible to depend on platform-specific Maven artifacts when using polyglot isolates. The `-isolate` Maven artifacts remain platform-independent. However, if platform specific builds are required, consider adding a platform specific suffix to the Maven artifact name, such as `-isolate-linux-amd64`. The reduced binary size of platform specific dependencies can improve build times and reduce the distribution size of your application. For more details, see [Embedding Languages](https://www.graalvm.org/latest/reference-manual/embed-languages/).
 * GR-48481: The Python language is now available as a polyglot isolate.
+* GR-54674: Added the options `engine.TraceSourceCache` and `engine.TraceSourceCacheDetails` to allow tracing of source cache hits, misses, failures and evictions. 
 
 ## Version 24.0.0
 * (GR-49334) Deprecated the `FileSystems#allowLanguageHomeAccess()` method and introduced `FileSystem#allowInternalResourceAccess()` as a replacement. To ensure compatibility, both methods now provide support for language homes and internal resources.

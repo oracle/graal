@@ -51,10 +51,12 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
+import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -68,6 +70,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
@@ -348,12 +351,15 @@ public class FeatureImpl {
         private final NativeLibraries nativeLibraries;
         private final boolean concurrentReachabilityHandlers;
         private final ReachabilityHandler reachabilityHandler;
+        private ClassForNameSupport classForNameSupport;
 
-        public BeforeAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, NativeLibraries nativeLibraries, DebugContext debugContext) {
+        public BeforeAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, NativeLibraries nativeLibraries,
+                        DebugContext debugContext) {
             super(featureHandler, imageClassLoader, bb, debugContext);
             this.nativeLibraries = nativeLibraries;
             this.concurrentReachabilityHandlers = SubstrateOptions.RunReachabilityHandlersConcurrently.getValue(bb.getOptions());
             this.reachabilityHandler = concurrentReachabilityHandlers ? ConcurrentReachabilityHandler.singleton() : ReachabilityHandlerFeature.singleton();
+            this.classForNameSupport = ClassForNameSupport.singleton();
         }
 
         public NativeLibraries getNativeLibraries() {
@@ -396,6 +402,7 @@ public class FeatureImpl {
                 throw UserError.abort("Cannot register an abstract class as instantiated: " + aType.toJavaName(true));
             }
             aType.registerAsUnsafeAllocated("From feature");
+            classForNameSupport.registerUnsafeAllocated(ConfigurationCondition.alwaysTrue(), aType.getJavaClass());
         }
 
         @Override
@@ -485,16 +492,11 @@ public class FeatureImpl {
         /**
          * Registers a method as having an analysis-opaque return value. This designation limits the
          * type-flow analysis performed on the method's return value.
-         *
-         * Currently we expect only methods with the Object return type to be registered via this
-         * method; however, the underlying analysis support can handle other object types (including
-         * untrusted interfaces).
          */
         public void registerOpaqueMethodReturn(Method method) {
             AnalysisMethod aMethod = bb.getMetaAccess().lookupJavaMethod(method);
             VMError.guarantee(aMethod.getAllMultiMethods().size() == 1, "Opaque method return called for method with >1 multimethods: %s ", method);
-            VMError.guarantee(method.getReturnType().equals(Object.class), "Called registerOpaqueMethodReturn for a method with a non-Object return type: %s", method);
-            aMethod.setReturnsAllInstantiatedTypes();
+            aMethod.setOpaqueReturn();
         }
     }
 
@@ -630,6 +632,10 @@ public class FeatureImpl {
 
         public Collection<? extends SharedMethod> getMethods() {
             return hUniverse.getMethods();
+        }
+
+        public ImageHeapScanner getHeapScanner() {
+            return aUniverse.getHeapScanner();
         }
     }
 

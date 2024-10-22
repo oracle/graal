@@ -131,9 +131,11 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
     public class HotSpotFrameContext implements FrameContext {
 
         final boolean isStub;
+        private final EntryPointDecorator entryPointDecorator;
 
-        HotSpotFrameContext(boolean isStub) {
+        HotSpotFrameContext(boolean isStub, EntryPointDecorator entryPointDecorator) {
             this.isStub = isStub;
+            this.entryPointDecorator = entryPointDecorator;
         }
 
         @Override
@@ -166,6 +168,10 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
                 emitNmethodEntryBarrier(crb, asm);
             } else {
                 crb.recordMark(HotSpotMarkId.FRAME_COMPLETE);
+            }
+
+            if (entryPointDecorator != null) {
+                entryPointDecorator.emitEntryPoint(crb, false);
             }
 
             if (ZapStackOnMethodEntry.getValue(crb.getOptions())) {
@@ -259,7 +265,8 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
     }
 
     @Override
-    public CompilationResultBuilder newCompilationResultBuilder(LIRGenerationResult lirGenRen, FrameMap frameMap, CompilationResult compilationResult, CompilationResultBuilderFactory factory) {
+    public CompilationResultBuilder newCompilationResultBuilder(LIRGenerationResult lirGenRen, FrameMap frameMap, CompilationResult compilationResult, CompilationResultBuilderFactory factory,
+                    EntryPointDecorator entryPointDecorator) {
         // Omit the frame if the method:
         // - has no spill slots or other slots allocated during register allocation
         // - has no callee-saved registers
@@ -274,7 +281,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
 
         Stub stub = gen.getStub();
         AMD64MacroAssembler masm = new AMD64HotSpotMacroAssembler(config, getTarget(), options, getProviders(), config.CPU_HAS_INTEL_JCC_ERRATUM);
-        HotSpotFrameContext frameContext = new HotSpotFrameContext(stub != null);
+        HotSpotFrameContext frameContext = new HotSpotFrameContext(stub != null, entryPointDecorator);
         DataBuilder dataBuilder = new HotSpotDataBuilder(getCodeCache().getTarget());
         CompilationResultBuilder crb = factory.createBuilder(getProviders(), frameMap, masm, dataBuilder, frameContext, options, debug, compilationResult, Register.None, lir);
         crb.setTotalFrameSize(frameMap.totalFrameSize());
@@ -309,7 +316,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
         emitCodePrefix(installedCodeOwner, crb, asm, regConfig);
 
         if (entryPointDecorator != null) {
-            entryPointDecorator.emitEntryPoint(crb);
+            entryPointDecorator.emitEntryPoint(crb, true);
         }
 
         // Emit code for the LIR

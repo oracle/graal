@@ -1,7 +1,7 @@
 ---
 layout: docs
 toc_group: embedding
-link_title: Embedding Reference
+link_title: Embedding Languages
 permalink: /reference-manual/embed-languages/
 ---
 
@@ -25,21 +25,20 @@ permalink: /reference-manual/embed-languages/
 * [Setting the Heap Size](#setting-the-heap-size)
 * [Compatibility with JSR-223 ScriptEngine](#compatibility-with-jsr-223-scriptengine)
 
-The GraalVM Polyglot API lets you embed and run code from guest languages in JVM-based host applications.
+The [GraalVM Polyglot API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/package-summary.html) lets you embed and run code from guest languages in Java host applications.
 
-Throughout this section, you will learn how to create a host application in Java that runs on GraalVM and directly calls a guest language.
+Throughout this section, you will learn how to create a host application in Java that runs on GraalVM and directly calls a guest language. 
 You can use the tabs beneath each code example to choose between JavaScript, R, Ruby, and Python.
 
-> Note: The usage description for polyglot embeddings was revised with the GraalVM for JDK 22 (24.0.0) release. If you are still using a GraalVM version older than 23.1.x, ensure the correct version of the documentation is displayed. More information on the change can be found in the [release notes](https://www.graalvm.org/release-notes/JDK_21/#graalvm-for-jdk-21).
+> Note: The usage description for polyglot embeddings was revised with GraalVM for JDK 21 and Polyglot API version 23.1.0. If you are still using Polyglot API version older than 23.1.0, ensure the correct version of the documentation is displayed. More information on the change can be found in the [release notes](https://www.graalvm.org/release-notes/JDK_21/#graalvm-for-jdk-21).
 
 ## Dependency Setup
 
-Since GraalVM Polyglot API version 23.1.0, all necessary artifacts can be downloaded directly from Maven Central.
-All artifacts relevant to embedders can be found in the Maven dependency group [`org.graalvm.polyglot`](https://central.sonatype.com/namespace/org.graalvm.polyglot).
+Since Polyglot API version 23.1.0, all necessary artifacts can be downloaded directly from Maven Central.
+Artifacts relevant to embedders can be found in the Maven dependency group [`org.graalvm.polyglot`](https://central.sonatype.com/namespace/org.graalvm.polyglot).
 See the [polyglot embedding demonstration](https://github.com/graalvm/polyglot-embedding-demo) on GitHub for a complete runnable example.
 
 Here is an example Maven dependency setup that you can put into your project:
-
 ```xml
 <dependency> 
 	<groupId>org.graalvm.polyglot</groupId> 
@@ -47,34 +46,32 @@ Here is an example Maven dependency setup that you can put into your project:
 	<version>${graalvm.polyglot.version}</version>
 </dependency>
 <dependency> 
-	<groupId>org.graalvm.polyglot</groupId> 
-	<!-- Select language: js, ruby, python, java, llvm, wasm, languages-->
+	<groupId>org.graalvm.polyglot</groupId>
+	<!-- Select a language: js, ruby, python, java, llvm, wasm, languages-->
 	<artifactId>js</artifactId> 
 	<version>${graalvm.polyglot.version}</version>
 	<type>pom</type>
 </dependency>
-<!-- add additional languages if needed -->
+<!-- Add additional languages if needed -->
 <dependency> 
 	<groupId>org.graalvm.polyglot</groupId> 
-	<!-- Select tools: profiler, inspect, coverage, dap, tools -->
-	<artifactId>tools</artifactId> 
+    <!-- Select a tool: profiler, inspect, coverage, dap, tools -->
+	<artifactId>profiler</artifactId> 
 	<version>${graalvm.polyglot.version}</version>
 	<type>pom</type>
 </dependency>
-<!-- add specific tools if needed -->
 ```
+
+> The `pom` type is a requirement for language or tool dependencies.
 
 Language and tool dependencies use the [GraalVM Free Terms and Conditions (GFTC)](https://www.oracle.com/downloads/licenses/graal-free-license.html) license.
 To use community-licensed versions instead, add the `-community` suffix to each artifact (for example, `js-community`).
 To access [polyglot isolate](#polyglot-isolates) artifacts, use the `-isolate` suffix instead (for example, `js-isolate`).
 
-The artifacts `polyglot` and `tools` include all available languages and tools as dependencies. 
+The artifacts `languages` and `tools` include all available languages and tools as dependencies. 
 This artifact might grow or shrink between major releases. We recommend selecting only the needed language(s) for a production deployment.
 
-> The `pom` type is a requirement for language or tool dependencies.
-
-Additionally, your _module-info.java_ file should require `org.graalvm.polyglot` when using Java modules.
-
+Additionally, your _module-info.java_ file should require `org.graalvm.polyglot` when using Java modules:
 ```java
 module com.mycompany.app {
   requires org.graalvm.polyglot;
@@ -84,19 +81,19 @@ module com.mycompany.app {
 Whether your configuration can run with a Truffle runtime optimization depends on the GraalVM JDK you use.
 For further details, refer to the [Runtime Compilation section](#runtime-optimization-support).
 
-We recommend configuring polyglot embeddings using modules and the module-path whenever possible. 
-Be aware that using polyglot from the class-path instead will enable access to unsafe APIs for all libraries on the class-path.
-If the application is not yet modularized, hybrid use of the class and module-path is possible.
+We recommend configuring polyglot embeddings using modules and the module path whenever possible. 
+Be aware that using `org.graalvm.polyglot` from the class path instead will enable access to unsafe APIs for all libraries on the class path.
+If the application is not yet modularized, hybrid use of the class path and module path is possible.
 For example:
 ```
-$JAVA_HOME/bin/java -classpath=lib --module-path=lib/polyglot --add-modules=org.graalvm.polyglot ...
+$java -classpath=lib --module-path=lib/polyglot --add-modules=org.graalvm.polyglot ...
 ```
 In this example, `lib/polyglot` directory should contain all polyglot and language JAR files.
-In order to access polyglot classes from the class-path you also need to specify the `--add-modules=org.graalvm.polyglot` JVM option.
-If you are using [native-image](https://www.graalvm.org/latest/reference-manual/embed-languages/#build-native-executables-from-polyglot-applications) polyglot modules on the class-path will be automatically upgraded to the module-path.
+To access polyglot classes from the class path, you must also specify the `--add-modules=org.graalvm.polyglot` JVM option.
+If you are using [GraalVM Native Image](#build-native-executables-from-polyglot-applications), polyglot modules on the class path will be automatically upgraded to the module path.
 
-While we do support creating single uber JAR files from polyglot libraries, for example using the Maven Assembly plugin, we do not recommend it.
-Also note that uber JAR files are not supported in combination with creating native-images.
+While we do support creating single uber JAR files from polyglot libraries, for example, using the Maven Assembly plugin, but we do not recommend it.
+Also note that uber JAR files are not supported when creating native binaries with GraalVM Native Image.
 
 ## Compile and Run a Polyglot Application
 
@@ -116,12 +113,12 @@ Complete the steps in this section to create a sample polyglot application that 
 
 4. Update the Maven [pom.xml](https://github.com/graalvm/polyglot-embedding-demo/blob/main/pom.xml) dependency configuration to include the languages to run as described in the [previous section](#dependency-setup).
 
-5. [Download and setup GraalVM](../../getting-started/graalvm-community/get-started-graalvm-community.md) by setting the `JAVA_HOME` environment variable to point to a GraalVM JDK.
+5. [Download and install GraalVM](../../getting-started/get-started.md) by setting the value of the `JAVA_HOME` environment variable to the location of a GraalVM JDK.
 
 6. Run `mvn package exec:exec` to build and execute the sample code.
 
 You now have a polyglot application that consists of a Java host application and guest language code, running on GraalVM.
-You can use this application with other code examples to demonstrate more advanced capabilities of the Polyglot API.
+You can use this application with other code examples to demonstrate more advanced capabilities of the GraalVM Polyglot API.
 
 ## Define Guest Language Functions as Java Values
 
@@ -499,7 +496,7 @@ If the runtime was excluded successfully, you should see the following log messa
 ```
 [engine] WARNING: The polyglot engine uses a fallback runtime that does not support runtime compilation to native code.
 Execution without runtime compilation will negatively impact the guest application performance.
-The following cause was found: No optimizing Truffle runtime found on the module or class-path.
+The following cause was found: No optimizing Truffle runtime found on the module or class path.
 For more information see: https://www.graalvm.org/latest/reference-manual/embed-languages/.
 To disable this warning use the '--engine.WarnInterpreterOnly=false' option or the '-Dpolyglot.engine.WarnInterpreterOnly=false' system property.
 ```
@@ -568,7 +565,7 @@ The language home options remain functional for compatibility reasons but may be
 ### Configuring Native Host Reflection
 
 Accessing host Java code from the guest application requires Java reflection in order to work.
-When reflection is used within a native executable, the [reflection configuration file](../native-image/Reflection.md) is required.
+When reflection is used within a native executable, the [reflection configuration file](../native-image/ReachabilityMetadata.md#reflection) is required.
 
 For this example we use JavaScript to show host access with native executables.
 Copy the following code in a new file named `AccessJavaFromJS.java`.
@@ -604,13 +601,18 @@ public class AccessJavaFromJS {
 }
 ```
 
-Copy the following code into `reflect.json`:
+Copy the following code into `reachability-metadata.json`:
+```json
+{
+  "reflection": [
+     { "type": "AccessJavaFromJS$MyClass", "allPublicFields": true },
+     { "type": "java.util.concurrent.Callable", "allPublicMethods": true }
+  ]
+}
+```
 
-{% highlight java %}
-{% include embed/access_java_from_reflection_config.json %}
-{% endhighlight %}
 
-Now, you can create a native executable that supports host access and add the additional `-H:ReflectionConfigurationFiles=reflect.json` build-time option.
+Now, you can add `reachability-metadata.json` to `META-INF/native-image/<group-id>/` of your project.
 
 ## Code Caching Across Multiple Contexts
 
@@ -684,7 +686,7 @@ To summarize, the code cache can be controlled by keeping and maintaining strong
 
 On Oracle GraalVM, a polyglot engine can be configured to run in a dedicated Native Image isolate.
 A polyglot engine in this mode executes within a VM-level fault domain with a dedicated garbage collector and JIT compiler.
-Polyglot isolates are useful for [polyglot sandboxing](../../security/polyglot-sandbox.md).
+Polyglot isolates are useful for [sandboxing](../../security/polyglot-sandbox.md).
 Running languages in an isolate works with HotSpot and Native Image host virtual machines.
 
 Languages used as polyglot isolates can be downloaded from Maven Central using the `-isolate` suffix.
@@ -974,7 +976,7 @@ Alternatively, the factory can be registered via `javax.script.ScriptEngineManag
 The best practice is to close the `ScriptEngine` when no longer used rather than relying on finalizers.
 To close it, use `((AutoCloseable) scriptEngine).close();` since `ScriptEngine` does not have a `close()` method.
 
-Note that [Graal.js](../js/) provides [a ScriptEngine implementation](../js/ScriptEngine/) for users migrating from the Nashorn JavaScript engine that was deprecated in JDK 11, so this method here is not needed.
+Note that [GraalJS](https://www.graalvm.org/reference-manual/js/) provides [a ScriptEngine implementation](https://www.graalvm.org/reference-manual/js/ScriptEngine/) for users migrating from the Nashorn JavaScript engine that was deprecated in JDK 11, so this method here is not needed.
 
 <details>
 <summary>Expand to see the <code>ScriptEngineFactory</code> implementation for Truffle languages in a single file.</summary>

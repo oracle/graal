@@ -336,9 +336,9 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
                 String moduleName = "foreign.proxy";
                 String pkgName = PROXY_PACKAGE_PREFIX + "." + moduleName;
 
-                StaticObject moduleDescriptor = (StaticObject) meta.polyglot.VMHelper_getDynamicModuleDescriptor.invokeDirect(null, meta.toGuestString(moduleName), meta.toGuestString(pkgName));
+                StaticObject moduleDescriptor = (StaticObject) meta.polyglot.VMHelper_getDynamicModuleDescriptor.invokeDirectStatic(meta.toGuestString(moduleName), meta.toGuestString(pkgName));
                 // define the module in guest
-                StaticObject module = (StaticObject) meta.jdk_internal_module_Modules_defineModule.invokeDirect(null, loader, moduleDescriptor, StaticObject.NULL);
+                StaticObject module = (StaticObject) meta.jdk_internal_module_Modules_defineModule.invokeDirectStatic(loader, moduleDescriptor, StaticObject.NULL);
                 ModuleTable.ModuleEntry moduleEntry = ModulesHelperVM.extractToModuleEntry(module, meta, null);
                 moduleEntry.setCanReadAllUnnamed();
 

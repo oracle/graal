@@ -235,11 +235,11 @@ public class InlineBeforeAnalysisPolicyUtils {
         if (!Uninterruptible.Utils.inliningAllowed(caller, callee)) {
             return false;
         }
-        if (callee.getReturnsAllInstantiatedTypes()) {
+        if (callee.hasOpaqueReturn()) {
             /*
-             * When a callee returns all instantiated types then it cannot be inlined. Inlining the
-             * method would expose the method's return values instead of treating it as an
-             * AllInstantiatedTypeFlow.
+             * When a callee has opaque return then it cannot be inlined. Inlining the method would
+             * expose the method's return values, which might change e.g. due to later
+             * intrinsification of the invoke.
              */
             return false;
         }

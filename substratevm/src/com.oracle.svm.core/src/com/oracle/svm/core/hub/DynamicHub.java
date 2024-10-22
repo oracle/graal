@@ -312,10 +312,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     /** Indicates whether the type has been discovered as instantiated by the static analysis. */
     private static final int IS_INSTANTIATED_BIT = 0;
-    /** Can this class be instantiated as an instance. */
-    private static final int CAN_UNSAFE_INSTANTIATE_AS_INSTANCE_BIT = 1;
-
-    private static final int IS_REGISTERED_FOR_SERIALIZATION = 2;
 
     /**
      * The {@link Modifier modifiers} of this class.
@@ -366,6 +362,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
      */
     @UnknownPrimitiveField(availability = AfterHostedUniverse.class)//
     private int referenceMapIndex;
+
+    private final byte layerId;
 
     /**
      * Back link to the SubstrateType used by the substrate meta access. Only used for the subset of
@@ -436,7 +434,10 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHub(Class<?> hostedJavaClass, String name, int hubType, ReferenceType referenceType, DynamicHub superType, DynamicHub componentHub, String sourceFileName, int modifiers,
                     ClassLoader classLoader, boolean isHidden, boolean isRecord, Class<?> nestHost, boolean assertionStatus, boolean hasDefaultMethods, boolean declaresDefaultMethods,
-                    boolean isSealed, boolean isVMInternal, boolean isLambdaFormHidden, boolean isLinked, String simpleBinaryName, Object declaringClass, String signature, boolean isProxyClass) {
+                    boolean isSealed, boolean isVMInternal, boolean isLambdaFormHidden, boolean isLinked, String simpleBinaryName, Object declaringClass, String signature, boolean isProxyClass,
+                    int layerId) {
+        VMError.guarantee(layerId == (byte) layerId, "Layer id %d not in expected range", layerId);
+
         this.hostedJavaClass = hostedJavaClass;
         this.module = hostedJavaClass.getModule();
         this.name = name;
@@ -450,6 +451,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         this.simpleBinaryName = simpleBinaryName;
         this.declaringClass = declaringClass;
         this.signature = signature;
+        this.layerId = (byte) layerId;
 
         this.flags = NumUtil.safeToUShort(makeFlag(IS_PRIMITIVE_FLAG_BIT, hostedJavaClass.isPrimitive()) |
                         makeFlag(IS_INTERFACE_FLAG_BIT, hostedJavaClass.isInterface()) |
@@ -492,8 +494,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setSharedData(int layoutEncoding, int monitorOffset, int identityHashOffset, long referenceMapIndex,
-                    boolean isInstantiated, boolean canUnsafeInstantiateAsInstance) {
-        assert !(!isInstantiated && canUnsafeInstantiateAsInstance);
+                    boolean isInstantiated) {
         VMError.guarantee(monitorOffset == (char) monitorOffset, "Class %s has an invalid monitor field offset. Most likely, its objects are larger than supported.", name);
         VMError.guarantee(identityHashOffset == (char) identityHashOffset, "Class %s has an invalid identity hash code field offset. Most likely, its objects are larger than supported.", name);
 
@@ -505,8 +506,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             throw VMError.shouldNotReachHere("Reference map index not within integer range, need to switch field from int to long");
         }
         this.referenceMapIndex = (int) referenceMapIndex;
-        this.additionalFlags = NumUtil.safeToUByte(makeFlag(IS_INSTANTIATED_BIT, isInstantiated) |
-                        makeFlag(CAN_UNSAFE_INSTANTIATE_AS_INSTANCE_BIT, canUnsafeInstantiateAsInstance));
+        this.additionalFlags = NumUtil.safeToUByte(makeFlag(IS_INSTANTIATED_BIT, isInstantiated));
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -743,12 +743,31 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return referenceMapIndex;
     }
 
+    /**
+     * The identifier of the {@linkplain com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport
+     * layer} that introduces this type which is an index into the array returned by
+     * {@link com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton#getAllLayers}.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public int getLayerId() {
+        return layerId;
+    }
+
     public boolean isInstantiated() {
         return isFlagSet(additionalFlags, IS_INSTANTIATED_BIT);
     }
 
-    public boolean canUnsafeInstantiateAsInstance() {
-        return isFlagSet(additionalFlags, CAN_UNSAFE_INSTANTIATE_AS_INSTANCE_BIT);
+    public boolean canUnsafeInstantiateAsInstanceFastPath() {
+        return companion.canUnsafeAllocate();
+    }
+
+    public boolean canUnsafeInstantiateAsInstanceSlowPath() {
+        if (ClassForNameSupport.canUnsafeInstantiateAsInstance(this)) {
+            companion.setUnsafeAllocate();
+            return true;
+        } else {
+            return false;
+        }
     }
 
     public boolean isProxyClass() {
@@ -1091,7 +1110,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     private RuntimeConditionSet getConditions() {
-        return ClassForNameSupport.singleton().getConditionFor(DynamicHub.toClass(this));
+        return ClassForNameSupport.getConditionFor(DynamicHub.toClass(this));
     }
 
     @Substitute
@@ -1479,7 +1498,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         }
         Class<?> result;
         try {
-            result = ClassForNameSupport.singleton().forName(name, loader);
+            result = ClassForNameSupport.forName(name, loader);
         } catch (ClassNotFoundException e) {
             if (loader != null && PredefinedClassesSupport.hasBytecodeClasses()) {
                 result = loader.loadClass(name); // may throw
@@ -1558,7 +1577,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if (hubMetadata == null || hubMetadata.signersEncodingIndex == NO_DATA) {
             return null;
         }
-        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseObjects(hubMetadata.signersEncodingIndex);
+        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseObjects(hubMetadata.signersEncodingIndex, this);
     }
 
     @Substitute
@@ -1706,7 +1725,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if (hubMetadata == null || hubMetadata.enclosingMethodInfoIndex == NO_DATA) {
             return null;
         }
-        Object[] enclosingMethod = ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseEnclosingMethod(hubMetadata.enclosingMethodInfoIndex);
+        Object[] enclosingMethod = ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseEnclosingMethod(hubMetadata.enclosingMethodInfoIndex, this);
         if (enclosingMethod != null) {
             PredefinedClassesSupport.throwIfUnresolvable((Class<?>) enclosingMethod[0], getClassLoader0());
         }
@@ -1742,7 +1761,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if (hubMetadata == null || hubMetadata.annotationsIndex == NO_DATA) {
             return null;
         }
-        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseByteArray(hubMetadata.annotationsIndex);
+        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseByteArray(hubMetadata.annotationsIndex, this);
     }
 
     @Substitute
@@ -1750,7 +1769,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if (hubMetadata == null || hubMetadata.typeAnnotationsIndex == NO_DATA) {
             return null;
         }
-        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseByteArray(hubMetadata.typeAnnotationsIndex);
+        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseByteArray(hubMetadata.typeAnnotationsIndex, this);
     }
 
     @Substitute
@@ -1787,7 +1806,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if (hubMetadata == null || hubMetadata.classesEncodingIndex == NO_DATA) {
             return new Class<?>[0];
         }
-        Class<?>[] declaredClasses = ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseClasses(hubMetadata.classesEncodingIndex);
+        Class<?>[] declaredClasses = ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseClasses(hubMetadata.classesEncodingIndex, this);
         for (Class<?> clazz : declaredClasses) {
             PredefinedClassesSupport.throwIfUnresolvable(clazz, getClassLoader0());
         }
@@ -1806,7 +1825,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if (hubMetadata == null || hubMetadata.nestMembersEncodingIndex == NO_DATA) {
             return new Class<?>[]{DynamicHub.toClass(this)};
         }
-        Class<?>[] nestMembers = ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseClasses(hubMetadata.nestMembersEncodingIndex);
+        Class<?>[] nestMembers = ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseClasses(hubMetadata.nestMembersEncodingIndex, this);
         for (Class<?> clazz : nestMembers) {
             PredefinedClassesSupport.throwIfUnresolvable(clazz, getClassLoader0());
         }
@@ -1858,7 +1877,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if (hubMetadata == null || hubMetadata.permittedSubclassesEncodingIndex == NO_DATA) {
             return new Class<?>[0];
         }
-        Class<?>[] permittedSubclasses = ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseClasses(hubMetadata.permittedSubclassesEncodingIndex);
+        Class<?>[] permittedSubclasses = ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseClasses(hubMetadata.permittedSubclassesEncodingIndex, this);
         for (Class<?> clazz : permittedSubclasses) {
             PredefinedClassesSupport.throwIfUnresolvable(clazz, getClassLoader0());
         }

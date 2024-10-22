@@ -30,10 +30,11 @@
 
 // os::Linux defines the interface to Linux operating systems
 
+
+namespace svm_container {
+
 class os::Linux {
-  friend class CgroupSubsystem;
   friend class os;
-  friend class OSContainer;
 
 #ifndef NATIVE_IMAGE
   static int (*_pthread_getcpuclockid)(pthread_t, clockid_t *);
@@ -63,7 +64,6 @@ class os::Linux {
   static julong free_memory();
 #endif // !NATIVE_IMAGE
 
-  static int active_processor_count();
 
 #ifdef NATIVE_IMAGE
  public:
@@ -102,6 +102,9 @@ class os::Linux {
     bool     has_steal_ticks;
   };
 
+#endif // !NATIVE_IMAGE
+  static int active_processor_count();
+#ifndef NATIVE_IMAGE
   static void kernel_version(long* major, long* minor);
 
   // which_logical_cpu=-1 returns accumulated ticks for all cpus.
@@ -441,5 +444,8 @@ class os::Linux {
 #endif // GLIBC
 #endif // !NATIVE_IMAGE
 };
+
+
+} // namespace svm_container
 
 #endif // OS_LINUX_OS_LINUX_HPP

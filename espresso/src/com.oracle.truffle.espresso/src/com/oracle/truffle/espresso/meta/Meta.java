@@ -237,6 +237,7 @@ public final class Meta extends ContextAccessImpl {
         java_lang_Throwable_getStackTrace = java_lang_Throwable.requireDeclaredMethod(Name.getStackTrace, Signature.StackTraceElement_array);
         java_lang_Throwable_getMessage = java_lang_Throwable.requireDeclaredMethod(Name.getMessage, Signature.String);
         java_lang_Throwable_getCause = java_lang_Throwable.requireDeclaredMethod(Name.getCause, Signature.Throwable);
+        java_lang_Throwable_printStackTrace = java_lang_Throwable.requireDeclaredMethod(Name.printStackTrace, Signature._void);
         HIDDEN_FRAMES = java_lang_Throwable.requireHiddenField(Name.HIDDEN_FRAMES);
         HIDDEN_EXCEPTION_WRAPPER = java_lang_Throwable.requireHiddenField(Name.HIDDEN_EXCEPTION_WRAPPER);
         java_lang_Throwable_backtrace = java_lang_Throwable.requireDeclaredField(Name.backtrace, Type.java_lang_Object);
@@ -273,6 +274,11 @@ public final class Meta extends ContextAccessImpl {
         java_lang_IllegalArgumentException = knownKlass(Type.java_lang_IllegalArgumentException);
         java_lang_IllegalStateException = knownKlass(Type.java_lang_IllegalStateException);
         java_lang_NullPointerException = knownKlass(Type.java_lang_NullPointerException);
+        if (getJavaVersion().java14OrLater()) {
+            java_lang_NullPointerException_extendedMessageState = java_lang_NullPointerException.requireDeclaredField(Name.extendedMessageState, Type._int);
+        } else {
+            java_lang_NullPointerException_extendedMessageState = null;
+        }
         java_lang_ClassNotFoundException = knownKlass(Type.java_lang_ClassNotFoundException);
         java_lang_NoClassDefFoundError = knownKlass(Type.java_lang_NoClassDefFoundError);
         java_lang_InterruptedException = knownKlass(Type.java_lang_InterruptedException);
@@ -836,6 +842,10 @@ public final class Meta extends ContextAccessImpl {
             java_lang_invoke_MethodHandleNatives_linkDynamicConstant = null;
         }
 
+        ObjectKlass lambdaMetafactory = knownKlass(Type.java_lang_invoke_LambdaMetafactory);
+        java_lang_invoke_LambdaMetafactory_metafactory = lambdaMetafactory.requireDeclaredMethod(Name.metafactory, Signature.CallSite_Lookup_String_MethodType_MethodType_MethodHandle_MethodType);
+        java_lang_invoke_LambdaMetafactory_altMetafactory = lambdaMetafactory.requireDeclaredMethod(Name.altMetafactory, Signature.CallSite_Lookup_String_MethodType_Object_array);
+
         // Interop
         java_time_Duration = knownKlass(Type.java_time_Duration);
         java_time_Duration_seconds = java_time_Duration.requireDeclaredField(Name.seconds, Type._long);
@@ -1054,8 +1064,8 @@ public final class Meta extends ContextAccessImpl {
             java_util_regex_IntHashSet = null;
         }
 
-        java_util_concurrent_locks_abstractOwnableSynchronizer = knownKlass(Type.java_util_concurrent_locks_AbstractOwnableSynchronizer);
-        java_util_concurrent_locks_AbstractOwnableSynchronizer_exclusiveOwnerThread = java_util_concurrent_locks_abstractOwnableSynchronizer.requireDeclaredField(Name.exclusiveOwnerThread,
+        java_util_concurrent_locks_AbstractOwnableSynchronizer = knownKlass(Type.java_util_concurrent_locks_AbstractOwnableSynchronizer);
+        java_util_concurrent_locks_AbstractOwnableSynchronizer_exclusiveOwnerThread = java_util_concurrent_locks_AbstractOwnableSynchronizer.requireDeclaredField(Name.exclusiveOwnerThread,
                         Type.java_lang_Thread);
         java_util_concurrent_locks_ReentrantLock_Sync = knownKlass(Type.java_util_concurrent_locks_ReentrantLock_Sync);
         java_util_concurrent_locks_ReentrantReadWriteLock_Sync = knownKlass(Type.java_util_concurrent_locks_ReentrantReadWriteLock_Sync);
@@ -1255,11 +1265,9 @@ public final class Meta extends ContextAccessImpl {
     }
 
     public @JavaType(Set.class) StaticObject extendedStringSet(@JavaType(Set.class) StaticObject original, Collection<String> extraStrings) {
-        Method getSizeImpl = ((ObjectKlass) original.getKlass()).itableLookup(java_util_Set, java_util_Collection_size.getITableIndex());
-        int origSize = (int) getSizeImpl.invokeDirect(original);
+        int origSize = (int) java_util_Collection_size.invokeDirectInterface(original);
         StaticObject stringArray = java_lang_String.allocateReferenceArray(origSize + extraStrings.size());
-        Method toArrayImpl = ((ObjectKlass) original.getKlass()).itableLookup(java_util_Set, java_util_Collection_toArray.getITableIndex());
-        StaticObject toArrayResult = (StaticObject) toArrayImpl.invokeDirect(original, stringArray);
+        StaticObject toArrayResult = (StaticObject) java_util_Collection_toArray.invokeDirectInterface(original, stringArray);
         assert toArrayResult == stringArray;
         StaticObject[] unwrappedStringArray = stringArray.unwrap(getLanguage());
         int idx = origSize;
@@ -1267,7 +1275,7 @@ public final class Meta extends ContextAccessImpl {
             assert StaticObject.isNull(unwrappedStringArray[idx]);
             unwrappedStringArray[idx++] = toGuestString(extraPackage);
         }
-        return (StaticObject) java_util_Set_of.invokeDirect(null, stringArray);
+        return (StaticObject) java_util_Set_of.invokeDirectStatic(stringArray);
     }
 
     private DiffVersionLoadHelper diff() {
@@ -1467,6 +1475,7 @@ public final class Meta extends ContextAccessImpl {
     public final ObjectKlass java_lang_IllegalMonitorStateException;
     public final ObjectKlass java_lang_IllegalStateException;
     public final ObjectKlass java_lang_NullPointerException;
+    public final Field java_lang_NullPointerException_extendedMessageState;
     public final ObjectKlass java_lang_ClassNotFoundException;
     public final ObjectKlass java_lang_NoClassDefFoundError;
     public final ObjectKlass java_lang_InterruptedException;
@@ -1503,6 +1512,7 @@ public final class Meta extends ContextAccessImpl {
     public final Method java_lang_Throwable_getStackTrace;
     public final Method java_lang_Throwable_getMessage;
     public final Method java_lang_Throwable_getCause;
+    public final Method java_lang_Throwable_printStackTrace;
     public final Field HIDDEN_FRAMES;
     public final Field HIDDEN_EXCEPTION_WRAPPER;
     public final Field java_lang_Throwable_backtrace;
@@ -1702,6 +1712,9 @@ public final class Meta extends ContextAccessImpl {
     public final Method java_lang_invoke_MethodHandleNatives_linkCallSite;
     public final Method java_lang_invoke_MethodHandleNatives_linkDynamicConstant;
 
+    public final Method java_lang_invoke_LambdaMetafactory_metafactory;
+    public final Method java_lang_invoke_LambdaMetafactory_altMetafactory;
+
     public final Method java_lang_Object_wait;
     public final Method java_lang_Object_toString;
 
@@ -1888,7 +1901,7 @@ public final class Meta extends ContextAccessImpl {
     public final Field java_util_regex_Matcher_requireEnd;
     public final Method java_util_regex_Matcher_groupCount;
 
-    public final ObjectKlass java_util_concurrent_locks_abstractOwnableSynchronizer;
+    public final ObjectKlass java_util_concurrent_locks_AbstractOwnableSynchronizer;
     public final Field java_util_concurrent_locks_AbstractOwnableSynchronizer_exclusiveOwnerThread;
     public final ObjectKlass java_util_concurrent_locks_ReentrantLock_Sync;
     public final ObjectKlass java_util_concurrent_locks_ReentrantReadWriteLock_Sync;
@@ -2396,7 +2409,7 @@ public final class Meta extends ContextAccessImpl {
 
     private StaticObject getPlatformClassLoader() {
         if (cachedPlatformClassLoader == null) {
-            cachedPlatformClassLoader = (StaticObject) jdk_internal_loader_ClassLoaders_platformClassLoader.invokeDirect(StaticObject.NULL);
+            cachedPlatformClassLoader = (StaticObject) jdk_internal_loader_ClassLoaders_platformClassLoader.invokeDirectStatic();
         }
         return cachedPlatformClassLoader;
     }
@@ -2670,61 +2683,61 @@ public final class Meta extends ContextAccessImpl {
     // region Guest boxing
 
     public @JavaType(Boolean.class) StaticObject boxBoolean(boolean value) {
-        return (StaticObject) java_lang_Boolean_valueOf.invokeDirect(null, value);
+        return (StaticObject) java_lang_Boolean_valueOf.invokeDirectStatic(value);
     }
 
     public @JavaType(Byte.class) StaticObject boxByte(byte value) {
-        return (StaticObject) java_lang_Byte_valueOf.invokeDirect(null, value);
+        return (StaticObject) java_lang_Byte_valueOf.invokeDirectStatic(value);
     }
 
     public @JavaType(Character.class) StaticObject boxCharacter(char value) {
-        return (StaticObject) java_lang_Character_valueOf.invokeDirect(null, value);
+        return (StaticObject) java_lang_Character_valueOf.invokeDirectStatic(value);
     }
 
     public @JavaType(Short.class) StaticObject boxShort(short value) {
-        return (StaticObject) java_lang_Short_valueOf.invokeDirect(null, value);
+        return (StaticObject) java_lang_Short_valueOf.invokeDirectStatic(value);
     }
 
     public @JavaType(Float.class) StaticObject boxFloat(float value) {
-        return (StaticObject) java_lang_Float_valueOf.invokeDirect(null, value);
+        return (StaticObject) java_lang_Float_valueOf.invokeDirectStatic(value);
     }
 
     public @JavaType(Integer.class) StaticObject boxInteger(int value) {
-        return (StaticObject) java_lang_Integer_valueOf.invokeDirect(null, value);
+        return (StaticObject) java_lang_Integer_valueOf.invokeDirectStatic(value);
     }
 
     public @JavaType(Double.class) StaticObject boxDouble(double value) {
-        return (StaticObject) java_lang_Double_valueOf.invokeDirect(null, value);
+        return (StaticObject) java_lang_Double_valueOf.invokeDirectStatic(value);
     }
 
     public @JavaType(Long.class) StaticObject boxLong(long value) {
-        return (StaticObject) java_lang_Long_valueOf.invokeDirect(null, value);
+        return (StaticObject) java_lang_Long_valueOf.invokeDirectStatic(value);
     }
 
     public StaticObject boxPrimitive(Object hostPrimitive) {
         if (hostPrimitive instanceof Integer) {
-            return (StaticObject) getMeta().java_lang_Integer_valueOf.invokeDirect(null, (int) hostPrimitive);
+            return (StaticObject) getMeta().java_lang_Integer_valueOf.invokeDirectStatic((int) hostPrimitive);
         }
         if (hostPrimitive instanceof Boolean) {
-            return (StaticObject) getMeta().java_lang_Boolean_valueOf.invokeDirect(null, (boolean) hostPrimitive);
+            return (StaticObject) getMeta().java_lang_Boolean_valueOf.invokeDirectStatic((boolean) hostPrimitive);
         }
         if (hostPrimitive instanceof Byte) {
-            return (StaticObject) getMeta().java_lang_Byte_valueOf.invokeDirect(null, (byte) hostPrimitive);
+            return (StaticObject) getMeta().java_lang_Byte_valueOf.invokeDirectStatic((byte) hostPrimitive);
         }
         if (hostPrimitive instanceof Character) {
-            return (StaticObject) getMeta().java_lang_Character_valueOf.invokeDirect(null, (char) hostPrimitive);
+            return (StaticObject) getMeta().java_lang_Character_valueOf.invokeDirectStatic((char) hostPrimitive);
         }
         if (hostPrimitive instanceof Short) {
-            return (StaticObject) getMeta().java_lang_Short_valueOf.invokeDirect(null, (short) hostPrimitive);
+            return (StaticObject) getMeta().java_lang_Short_valueOf.invokeDirectStatic((short) hostPrimitive);
         }
         if (hostPrimitive instanceof Float) {
-            return (StaticObject) getMeta().java_lang_Float_valueOf.invokeDirect(null, (float) hostPrimitive);
+            return (StaticObject) getMeta().java_lang_Float_valueOf.invokeDirectStatic((float) hostPrimitive);
         }
         if (hostPrimitive instanceof Double) {
-            return (StaticObject) getMeta().java_lang_Double_valueOf.invokeDirect(null, (double) hostPrimitive);
+            return (StaticObject) getMeta().java_lang_Double_valueOf.invokeDirectStatic((double) hostPrimitive);
         }
         if (hostPrimitive instanceof Long) {
-            return (StaticObject) getMeta().java_lang_Long_valueOf.invokeDirect(null, (long) hostPrimitive);
+            return (StaticObject) getMeta().java_lang_Long_valueOf.invokeDirectStatic((long) hostPrimitive);
         }
 
         throw EspressoError.shouldNotReachHere("Not a boxed type " + hostPrimitive);

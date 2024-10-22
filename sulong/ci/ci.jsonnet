@@ -27,7 +27,10 @@ local sc = (import "ci_common/sulong-common.jsonnet");
     guard+: {
       includes+: [
         # sulong and its dependencies
-        "<graal>/.git/**",
+        "<graal>/.git/**",  # This ensure the .git directory is preserved in apply-predicates
+        "<graal>/ci.jsonnet",
+        "<graal>/ci/**",
+        "<graal>/common.json",
         "<graal>/sdk/**",
         "<graal>/truffle/**",
         "<graal>/sulong/**",
@@ -35,7 +38,6 @@ local sc = (import "ci_common/sulong-common.jsonnet");
         "<graal>/compiler/**",
         "<graal>/regex/**",
         "<graal>/java-benchmarks/**",
-        "<graal>/common.json",
       ] + (if standalone then [
         # substratevm and its dependencies
         "<graal>/substratevm/**",
@@ -124,7 +126,7 @@ local sc = (import "ci_common/sulong-common.jsonnet");
     [
       { name: "weekly-sulong-coverage-jdk21-linux-amd64",    timelimit: "2:00:00" },
       { name: "weekly-sulong-coverage-jdk21-darwin-amd64",   timelimit: "1:30:00" },
-      { name: "weekly-sulong-coverage-jdk21-windows-amd64",  timelimit: "1:30:00" },
+      { name: "weekly-sulong-coverage-jdk21-windows-amd64",  timelimit: "2:30:00" },
       { name: "weekly-sulong-coverage-jdk21-linux-aarch64",  timelimit: "1:30:00" },
       { name: "weekly-sulong-coverage-jdk21-darwin-aarch64", timelimit: "1:00:00" },
     ]),

@@ -94,7 +94,7 @@ public final class RuntimeSupport implements VMRuntimeSupport {
     public void initialize() {
         boolean shouldInitialize = initializationState.compareAndSet(InitializationState.Uninitialized, InitializationState.InProgress);
         if (shouldInitialize) {
-            IsolateArgumentParser.verifyOptionValues();
+            IsolateArgumentParser.singleton().verifyOptionValues();
             HeapSizeVerifier.verifyHeapOptions();
 
             executeHooks(startupHooks);

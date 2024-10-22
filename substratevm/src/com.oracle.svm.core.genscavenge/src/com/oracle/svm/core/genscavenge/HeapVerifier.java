@@ -73,7 +73,7 @@ public class HeapVerifier {
 
     protected boolean verifyImageHeap() {
         boolean success = true;
-        for (ImageHeapInfo info = HeapImpl.getFirstImageHeapInfo(); info != null; info = info.next) {
+        for (ImageHeapInfo info : HeapImpl.getImageHeapInfos()) {
             success &= verifyAlignedChunks(null, info.getFirstWritableAlignedChunk());
             success &= verifyUnalignedChunks(null, info.getFirstWritableUnalignedChunk(), info.getLastWritableUnalignedChunk());
         }
@@ -83,7 +83,7 @@ public class HeapVerifier {
     private static boolean verifyYoungGeneration(Occasion occasion) {
         boolean success = true;
         YoungGeneration youngGeneration = HeapImpl.getHeapImpl().getYoungGeneration();
-        if (occasion == HeapVerifier.Occasion.AFTER_COLLECTION) {
+        if (occasion == Occasion.During || occasion == Occasion.After) {
             Space eden = youngGeneration.getEden();
             if (!eden.isEmpty()) {
                 Log.log().string("Eden contains chunks after a collection: firstAlignedChunk: ").zhex(eden.getFirstAlignedHeapChunk()).string(", firstUnalignedChunk: ")
@@ -120,25 +120,16 @@ public class HeapVerifier {
          * After we are done with all other verifications, it is guaranteed that the heap is in a
          * reasonable state. Now, we can verify the remembered sets without having to worry about
          * basic heap consistency.
-         */
-        if (!SerialGCOptions.useRememberedSet() || !SerialGCOptions.VerifyRememberedSet.getValue()) {
-            return true;
-        }
-
-        /*
+         * 
          * It would be nice to assert that all cards in the image heap and old generation are clean
          * after a garbage collection. For the image heap, it is pretty much impossible to do that
          * as the GC itself dirties the card table. For the old generation, it is also not possible
          * at the moment because the reference handling may result in dirty cards.
          */
-
         boolean success = true;
         RememberedSet rememberedSet = RememberedSet.get();
-        /*
-         * For the image heap, we can't verify that all cards are clean after a GC because the GC
-         * itself may result in dirty cards.
-         */
-        for (ImageHeapInfo info = HeapImpl.getFirstImageHeapInfo(); info != null; info = info.next) {
+
+        for (ImageHeapInfo info : HeapImpl.getImageHeapInfos()) {
             success &= rememberedSet.verify(info.getFirstWritableAlignedChunk());
             success &= rememberedSet.verify(info.getFirstWritableUnalignedChunk(), info.getLastWritableUnalignedChunk());
         }
@@ -188,6 +179,7 @@ public class HeapVerifier {
 
     private static boolean verifyAlignedChunks(Space space, AlignedHeader firstAlignedHeapChunk) {
         boolean success = true;
+
         AlignedHeader aChunk = firstAlignedHeapChunk;
         while (aChunk.isNonNull()) {
             if (space != aChunk.getSpace()) {
@@ -215,6 +207,7 @@ public class HeapVerifier {
 
     private static boolean verifyUnalignedChunks(Space space, UnalignedHeader firstUnalignedHeapChunk, UnalignedHeader lastUnalignedHeapChunk) {
         boolean success = true;
+
         UnalignedHeader uChunk = firstUnalignedHeapChunk;
         while (uChunk.isNonNull()) {
             if (space != uChunk.getSpace()) {
@@ -257,6 +250,11 @@ public class HeapVerifier {
 
         if (ObjectHeaderImpl.isForwardedHeader(header)) {
             Log.log().string("Object ").zhex(ptr).string(" has a forwarded header: ").zhex(header).newline();
+            return false;
+        }
+
+        if (!HeapImpl.getHeap().getObjectHeader().isEncodedObjectHeader(header)) {
+            Log.log().string("Object ").zhex(ptr).string(" does not have a valid hub: ").zhex(header).newline();
             return false;
         }
 
@@ -311,12 +309,6 @@ public class HeapVerifier {
             }
         }
 
-        DynamicHub hub = KnownIntrinsics.readHub(obj);
-        if (!HeapImpl.getHeapImpl().isInImageHeap(hub)) {
-            Log.log().string("Object ").zhex(ptr).string(" references a hub that is not in the image heap: ").zhex(Word.objectToUntrackedPointer(hub)).newline();
-            return false;
-        }
-
         return verifyReferences(obj);
     }
 
@@ -361,11 +353,29 @@ public class HeapVerifier {
             return false;
         }
 
-        if (!ObjectHeaderImpl.getObjectHeaderImpl().pointsToObjectHeader(referencedObject)) {
+        Word header = ObjectHeader.readHeaderFromPointer(referencedObject);
+        if (!ObjectHeaderImpl.getObjectHeaderImpl().isEncodedObjectHeader(header)) {
             Log.log().string("Object reference at ").zhex(reference).string(" does not point to a Java object or the object header of the Java object is invalid: ").zhex(referencedObject)
                             .string(". ");
             printParent(parentObject);
             return false;
+        }
+
+        if (ObjectHeaderImpl.isAlignedHeader(header)) {
+            AlignedHeader chunk = AlignedHeapChunk.getEnclosingChunkFromObjectPointer(referencedObject);
+            if (referencedObject.belowThan(AlignedHeapChunk.getObjectsStart(chunk)) || referencedObject.aboveOrEqual(HeapChunk.getTopPointer(chunk))) {
+                Log.log().string("Object reference ").zhex(reference).string(" points to ").zhex(referencedObject).string(", which is outside the usable part of the corresponding aligned chunk.");
+                printParent(parentObject);
+                return false;
+            }
+        } else {
+            assert ObjectHeaderImpl.isUnalignedHeader(header);
+            UnalignedHeader chunk = UnalignedHeapChunk.getEnclosingChunkFromObjectPointer(referencedObject);
+            if (referencedObject != UnalignedHeapChunk.getObjectStart(chunk)) {
+                Log.log().string("Object reference ").zhex(reference).string(" points to ").zhex(referencedObject).string(", which is outside the usable part of the corresponding unaligned chunk.");
+                printParent(parentObject);
+                return false;
+            }
         }
 
         return true;
@@ -421,7 +431,8 @@ public class HeapVerifier {
     }
 
     public enum Occasion {
-        BEFORE_COLLECTION,
-        AFTER_COLLECTION
+        Before,
+        During,
+        After
     }
 }

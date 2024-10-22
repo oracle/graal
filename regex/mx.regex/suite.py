@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "7.27.0",
+  "mxversion": "7.33.0",
 
   "name" : "regex",
 

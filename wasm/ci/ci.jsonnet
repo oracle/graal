@@ -32,7 +32,7 @@ jdks + wasm_common +
     $.jdkLatest + $.linux_amd64     + $.gate         + $.gate_graalwasm_emsdk_full  + {environment+: {GATE_TAGS: 'buildall,wasmextratest'}}        + {name: 'gate-graalwasm-extra-unittest' + self.name_suffix},
     $.jdkLatest + $.linux_amd64     + $.gate         + $.gate_graalwasm_emsdk_full  + {environment+: {GATE_TAGS: 'buildall,wasmbenchtest'}}        + {name: 'gate-graalwasm-benchtest' + self.name_suffix},
 
-    $.jdkLatest + $.linux_amd64     + $.weekly       + $.gate_graalwasm_coverage                                                                   + {name: 'weekly-graalwasm-coverage' + self.name_suffix},
+    $.jdk21     + $.linux_amd64     + $.weekly       + $.gate_graalwasm_coverage                                                                   + {name: 'weekly-graalwasm-coverage' + self.name_suffix},
 
     # Benchmark jobs.
     $.jdk21     + $.linux_amd64     + $.bench_daily  + $.bench_graalwasm_emsdk_full + {

@@ -61,7 +61,6 @@ import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.LoadFieldTypeFlow.LoadInstanceFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.LoadFieldTypeFlow.LoadStaticFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.MergeTypeFlow;
-import com.oracle.graal.pointsto.flow.MonitorEnterTypeFlow;
 import com.oracle.graal.pointsto.flow.NewInstanceTypeFlow;
 import com.oracle.graal.pointsto.flow.NullCheckTypeFlow;
 import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.LoadIndexedTypeFlow;
@@ -297,8 +296,8 @@ public class PointsToStats {
                             TypeFlowStats stats = e.getValue();
 
                             doWrite(out, String.format("%-35s\t%-10d\t%-10d\t%-10b\t%-10b\t%-10d\t%-10d\t%-10d\t%-10s\t%-10d\t%10d\t%10d\t%10s%n",
-                                            asString(flow), stateToId.get(flow.getState()), objectsCount(flow.getState()),
-                                            flow.getState().canBeNull(), flow.isClone(),
+                                            asString(flow), stateToId.get(flow.getRawState()), objectsCount(flow.getRawState()),
+                                            flow.getRawState().canBeNull(), flow.isClone(),
                                             flow.getUses().size(), flow.getObservers().size(), flow.getUses().size() + flow.getObservers().size(),
                                             retainReson.getOrDefault(flow, ""),
                                             stats.queuedUpdatesCount(), stats.successfulUpdatesCount(), stats.allUpdatesCount(),
@@ -506,9 +505,6 @@ public class PointsToStats {
             return "Source @ " + formatSource(flow);
         } else if (flow instanceof CloneTypeFlow) {
             return "Clone @ " + formatSource(flow);
-        } else if (flow instanceof MonitorEnterTypeFlow) {
-            MonitorEnterTypeFlow monitor = (MonitorEnterTypeFlow) flow;
-            return "MonitorEnter @ " + formatMethod(monitor.getSource().getMethod());
         } else {
             return ClassUtil.getUnqualifiedName(flow.getClass()) + "@" + formatSource(flow);
         }

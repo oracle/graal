@@ -43,7 +43,7 @@
          "--kill-with-sigquit",
          "gate",
          "--strict-mode",
-         "--extra-vm-argument=-Djdk.graal.DumpOnError=true -Djdk.graal.PrintGraphFile=true -Djdk.graal.PrintBackendCFG=true -DGCUtils.saveHeapDumpTo=." +
+         "--extra-vm-argument=-Djdk.graal.DumpOnError=true -Djdk.graal.PrintGraph=File -Djdk.graal.PrintBackendCFG=true -DGCUtils.saveHeapDumpTo=." +
            (if extra_vm_args == "" then "" else " " + extra_vm_args)
       ] + (if extra_unittest_args != "" then [
         "--extra-unittest-argument=" + extra_unittest_args,
@@ -84,7 +84,8 @@
   },
 
   test:: s.base(no_warning_as_error=true),
-  test_zgc:: s.base(no_warning_as_error=true, extra_vm_args="-XX:+UseZGC -XX:-ZGenerational"),
+  test_zgc:: s.base(no_warning_as_error=true, extra_vm_args="-XX:+UseZGC"),
+  test_singlegen_zgc:: s.base(no_warning_as_error=true, extra_vm_args="-XX:+UseZGC -XX:-ZGenerational"),
   test_serialgc:: s.base(no_warning_as_error=true, extra_vm_args="-XX:+UseSerialGC"),
 
 
@@ -93,7 +94,7 @@
 
   coverage_base(ctw):: s.base(tags="build,%s" % if ctw then "ctw" else "coverage",
                               cmd_suffix=s.jacoco_gate_args,
-                              extra_vm_args=if !ctw then "" else "-DCompileTheWorld.MaxClasses=5000" /*GR-23372*/) +
+                              extra_vm_args=if !ctw then "" else "-DCompileTheWorld.MaxClasses=5000 -Djdk.graal.CompilationFailureAction=Print" /*GR-23372 for MaxClasses*/) +
   {
     teardown+: [
       s.upload_coverage,
@@ -128,6 +129,18 @@
                   "-Dpolyglot.engine.CompileImmediately=true " +
                   "-Dpolyglot.engine.BackgroundCompilation=false " +
                   "-Dtck.inlineVerifierInstrument=false " +
+                  "-XX:+UseZGC",
+    extra_unittest_args="--verbose truffle") + {
+      environment+: {"TRACE_COMPILATION": "true"},
+      logs+: ["*/*_compilation.log"],
+      components+: ["truffle"],
+    },
+
+  truffle_xcomp_singlegen_zgc:: s.base("build,unittest",
+    extra_vm_args="-Dpolyglot.engine.AllowExperimentalOptions=true " +
+                  "-Dpolyglot.engine.CompileImmediately=true " +
+                  "-Dpolyglot.engine.BackgroundCompilation=false " +
+                  "-Dtck.inlineVerifierInstrument=false " +
                   "-XX:+UseZGC -XX:-ZGenerational",
     extra_unittest_args="--verbose truffle") + {
       environment+: {"TRACE_COMPILATION": "true"},
@@ -148,19 +161,22 @@
     },
 
   ctw:: s.base("build,ctw", no_warning_as_error=true),
-  ctw_zgc:: s.base("build,ctw", no_warning_as_error=true, extra_vm_args="-XX:+UseZGC -XX:-ZGenerational"),
+  ctw_zgc:: s.base("build,ctw", no_warning_as_error=true, extra_vm_args="-XX:+UseZGC"),
+  ctw_singlegen_zgc:: s.base("build,ctw", no_warning_as_error=true, extra_vm_args="-XX:+UseZGC -XX:-ZGenerational"),
 
   ctw_economy:: s.base("build,ctweconomy", extra_vm_args="-Djdk.graal.CompilerConfiguration=economy"),
   ctw_phaseplan_fuzzing:: s.base("build,ctwphaseplanfuzzing"),
 
   # Runs some benchmarks as tests
   benchmarktest:: s.base("build,benchmarktest") + jmh_benchmark_test,
-  benchmarktest_zgc:: s.base("build,benchmarktest", extra_vm_args="-XX:+UseZGC -XX:-ZGenerational") + jmh_benchmark_test,
+  benchmarktest_zgc:: s.base("build,benchmarktest", extra_vm_args="-XX:+UseZGC") + jmh_benchmark_test,
+  benchmarktest_singlegen_zgc:: s.base("build,benchmarktest", extra_vm_args="-XX:+UseZGC -XX:-ZGenerational") + jmh_benchmark_test,
 
   bootstrap:: s.base("build,bootstrap", no_warning_as_error=true),
   bootstrap_lite:: s.base("build,bootstraplite", no_warning_as_error=true),
   bootstrap_full:: s.base("build,bootstrapfullverify", no_warning_as_error=true),
-  bootstrap_full_zgc:: s.base("build,bootstrapfullverify", no_warning_as_error=true, extra_vm_args="-XX:+UseZGC -XX:-ZGenerational"),
+  bootstrap_full_zgc:: s.base("build,bootstrapfullverify", no_warning_as_error=true, extra_vm_args="-XX:+UseZGC"),
+  bootstrap_full_singlegen_zgc:: s.base("build,bootstrapfullverify", no_warning_as_error=true, extra_vm_args="-XX:+UseZGC -XX:-ZGenerational"),
   bootstrap_economy:: s.base("build,bootstrapeconomy", no_warning_as_error=true, extra_vm_args="-Djdk.graal.CompilerConfiguration=economy"),
 
   style:: c.deps.eclipse + c.deps.jdt + s.base("style,fullbuild,javadoc") + galahad.exclude,
@@ -244,12 +260,7 @@
     "gate-compiler-benchmarktest_zgc-labsjdk-latest-linux-amd64": {},
 
     "gate-compiler-truffle_xcomp-labsjdk-latest-linux-amd64": t("1:30:00"),
-    "gate-compiler-truffle_xcomp_zgc-labsjdk-latest-linux-amd64": t("1:30:00"),
-
-    "gate-compiler-bootstrap_lite-labsjdk-latest-darwin-amd64": t("1:00:00"),
-
-    "gate-compiler-bootstrap_full-labsjdk-latest-linux-amd64": s.many_cores,
-    "gate-compiler-bootstrap_full_zgc-labsjdk-latest-linux-amd64": s.many_cores
+    "gate-compiler-truffle_xcomp_zgc-labsjdk-latest-linux-amd64": t("1:30:00")
   },
 
   # This map defines the builders that run as gates. Each key in this map
@@ -271,6 +282,11 @@
     "daily-compiler-ctw_economy-labsjdk-latest-linux-aarch64": {},
     "daily-compiler-ctw_economy-labsjdk-latest-darwin-amd64": {},
     "daily-compiler-ctw_economy-labsjdk-latest-darwin-aarch64": {},
+
+    "daily-compiler-bootstrap_lite-labsjdk-latest-darwin-amd64": t("1:00:00"),
+
+    "daily-compiler-bootstrap_full-labsjdk-latest-linux-amd64": s.many_cores,
+    "daily-compiler-bootstrap_full_zgc-labsjdk-latest-linux-amd64": s.many_cores
   } + $.as_dailies(gate_jobs),
 
   # This map defines the builders that run weekly. Each key in this map
@@ -437,7 +453,7 @@
      self.make_build("21", "linux-amd64", "coverage_avx3").build
   ],
 
-    # Test ZGC on support platforms.  Windows requires version 1083 or later which will
+    # Test ZGC on supported platforms.  Windows requires version 1083 or later which will
     # probably require adding some capabilities.
     local all_zgc_builds = [self.make_build(jdk, os_arch, task).build + galahad.exclude
       for jdk in [
@@ -454,7 +470,12 @@
         "truffle_xcomp_zgc",
         "ctw_zgc",
         "benchmarktest_zgc",
-        "bootstrap_full_zgc"
+        "bootstrap_full_zgc",
+        "test_singlegen_zgc",
+        "truffle_xcomp_singlegen_zgc",
+        "ctw_singlegen_zgc",
+        "benchmarktest_singlegen_zgc",
+        "bootstrap_full_singlegen_zgc",
       ]
     ],
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,126 +24,83 @@
  */
 package com.oracle.svm.graal.hotspot.libgraal;
 
-import static com.oracle.svm.graal.hotspot.libgraal.HotSpotGraalOptionValuesUtil.compilerOptionDescriptors;
-import static com.oracle.svm.graal.hotspot.libgraal.HotSpotGraalOptionValuesUtil.vmOptionDescriptors;
+import static java.lang.invoke.MethodType.methodType;
 
-import java.io.PrintStream;
-import java.lang.annotation.Annotation;
-import java.lang.reflect.Field;
-import java.util.ArrayDeque;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodHandles.Lookup;
+import java.lang.invoke.MethodType;
+import java.lang.reflect.Modifier;
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Deque;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.SortedSet;
-import java.util.TreeSet;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.regex.Pattern;
 
+import com.oracle.graal.pointsto.ObjectScanner;
+import com.oracle.graal.pointsto.meta.ObjectReachableCallback;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.graal.hotspot.GetCompilerConfig;
+import com.oracle.svm.graal.hotspot.GetJNIConfig;
+import jdk.graal.compiler.hotspot.CompilerConfigurationFactory;
+import jdk.graal.compiler.hotspot.libgraal.BuildTime;
+import jdk.graal.compiler.options.OptionDescriptor;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.serviceprovider.LibGraalService;
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.MapCursor;
+import org.graalvm.jniutils.NativeBridgeSupport;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.ObjectScanner;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.graal.pointsto.meta.InvokeInfo;
-import com.oracle.graal.pointsto.meta.ObjectReachableCallback;
-import com.oracle.svm.core.RuntimeAssertionsSupport;
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.Delete;
-import com.oracle.svm.core.annotate.InjectAccessors;
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
-import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
-import com.oracle.svm.core.heap.UnknownObjectField;
-import com.oracle.svm.core.option.RuntimeOptionKey;
-import com.oracle.svm.core.option.RuntimeOptionValues;
-import com.oracle.svm.core.option.XOptions;
-import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.graal.hosted.GraalCompilerFeature;
-import com.oracle.svm.graal.hotspot.GetJNIConfig;
-import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.reports.CallTreePrinter;
+import com.oracle.svm.core.SubstrateTargetDescription;
+import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
-import com.oracle.svm.hosted.ImageClassLoader;
-import com.oracle.svm.hosted.jni.JNIFeature;
-import com.oracle.svm.hosted.reflect.ReflectionFeature;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.graal.compiler.code.DisassemblerProvider;
-import jdk.graal.compiler.core.GraalServiceThread;
-import jdk.graal.compiler.core.target.Backend;
-import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.hotspot.EncodedSnippets;
-import jdk.graal.compiler.hotspot.HotSpotBackend;
-import jdk.graal.compiler.hotspot.HotSpotCodeCacheListener;
-import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage;
-import jdk.graal.compiler.hotspot.HotSpotGraalCompiler;
-import jdk.graal.compiler.hotspot.HotSpotReplacementsImpl;
-import jdk.graal.compiler.hotspot.SnippetObjectConstant;
-import jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
-import jdk.graal.compiler.hotspot.meta.HotSpotInvocationPluginProvider;
-import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
-import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedPluginFactory;
-import jdk.graal.compiler.nodes.spi.SnippetParameterInfo;
-import jdk.graal.compiler.options.OptionDescriptor;
-import jdk.graal.compiler.options.OptionDescriptors;
-import jdk.graal.compiler.options.OptionDescriptorsMap;
-import jdk.graal.compiler.options.OptionGroup;
-import jdk.graal.compiler.options.OptionKey;
-import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.options.OptionsParser;
-import jdk.graal.compiler.phases.util.Providers;
-import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
-import jdk.graal.compiler.serviceprovider.GraalServices;
-import jdk.graal.compiler.serviceprovider.SpeculationReasonGroup;
-import jdk.graal.compiler.truffle.PartialEvaluatorConfiguration;
-import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
-import jdk.graal.compiler.truffle.hotspot.HotSpotTruffleCompilerImpl;
-import jdk.graal.compiler.truffle.hotspot.TruffleCallBoundaryInstrumentationFactory;
-import jdk.graal.compiler.truffle.substitutions.GraphBuilderInvocationPluginProvider;
-import jdk.graal.compiler.truffle.substitutions.GraphDecoderInvocationPluginProvider;
-import jdk.internal.misc.Unsafe;
-import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
-import jdk.vm.ci.hotspot.HotSpotJVMCIBackendFactory;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.services.Services;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
+import jdk.graal.compiler.options.Option;
+import jdk.vm.ci.code.TargetDescription;
 
-public class LibGraalFeature implements InternalFeature {
+/**
+ * This feature builds the libgraal shared library (e.g., libjvmcicompiler.so on linux).
+ * <p>
+ * With use of {@code -H:LibGraalJavaHome}, the Graal and JVMCI classes from which libgraal is built
+ * can be from a "guest" JDK that may be different from the JDK on which Native Image is running.
+ * <p>
+ * This feature is composed of these key classes:
+ * <ul>
+ * <li>{@link LibGraalClassLoader}</li>
+ * <li>{@link LibGraalEntryPoints}</li>
+ * <li>{@link LibGraalSubstitutions}</li>
+ * </ul>
+ */
+@Platforms(Platform.HOSTED_ONLY.class)
+public final class LibGraalFeature implements Feature {
 
-    private final OptionCollector optionCollector = new OptionCollector();
-    private HotSpotReplacementsImpl hotSpotSubstrateReplacements;
-
-    public LibGraalFeature() {
-        /* Open up all modules needed to build LibGraal image */
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, LibGraalFeature.class, false, "java.base", "jdk.internal.misc");
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, LibGraalFeature.class, false, "jdk.internal.vm.ci");
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, LibGraalFeature.class, false, "jdk.graal.compiler");
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, LibGraalFeature.class, false, "jdk.graal.compiler.management");
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, LibGraalFeature.class, false, "org.graalvm.collections");
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, LibGraalFeature.class, false, "org.graalvm.word");
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, LibGraalFeature.class, false, "org.graalvm.nativeimage", "org.graalvm.nativeimage.impl");
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, LibGraalFeature.class, false, "org.graalvm.nativeimage.base");
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, LibGraalFeature.class, false, "org.graalvm.nativeimage.builder");
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, LibGraalFeature.class, true, "org.graalvm.nativeimage.llvm");
-    }
-
-    @Override
-    public List<Class<? extends Feature>> getRequiredFeatures() {
-        return List.of(JNIFeature.class, GraalCompilerFeature.class, ReflectionFeature.class);
+    static class Options {
+        @Option(help = "The value of the java.home system property reported by the Java " +
+                        "installation that includes the Graal classes in its runtime image " +
+                        "from which libgraal will be built. If not provided, the java.home " +
+                        "of the Java installation running native-image will be used.") //
+        public static final HostedOptionKey<Path> LibGraalJavaHome = new HostedOptionKey<>(Path.of(System.getProperty("java.home")));
     }
 
     public static final class IsEnabled implements BooleanSupplier {
@@ -154,403 +111,391 @@ public class LibGraalFeature implements InternalFeature {
     }
 
     @Override
-    public void duringSetup(DuringSetupAccess a) {
-        DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
-        access.registerObjectReachableCallback(OptionKey.class, optionCollector::doCallback);
+    public List<Class<? extends Feature>> getRequiredFeatures() {
+        return List.of(LibGraalFieldsOffsetsFeature.class);
+    }
 
-        ImageClassLoader imageClassLoader = access.getImageClassLoader();
-        GetJNIConfig.register(imageClassLoader.getClassLoader());
+    final MethodHandles.Lookup mhl = MethodHandles.lookup();
+
+    /**
+     * Loader used for loading classes from the guest GraalVM.
+     */
+    LibGraalClassLoader loader;
+
+    /**
+     * Handle to {@link BuildTime} in the guest.
+     */
+    Class<?> buildTimeClass;
+
+    /**
+     * Handle to {@link jdk.graal.compiler.phases.BasePhase} in the guest.
+     */
+    private Class<?> basePhaseClass;
+
+    private Function<Class<?>, Object> newBasePhaseStatistics;
+
+    /**
+     * Handle to {@link jdk.graal.compiler.lir.phases.LIRPhase} in the guest.
+     */
+    private Class<?> lirPhaseClass;
+
+    private Function<Class<?>, Object> newLIRPhaseStatistics;
+
+    MethodHandle handleGlobalAtomicLongGetInitialValue;
+
+    public LibGraalClassLoader getLoader() {
+        return loader;
     }
 
     /**
-     * Collects all {@link OptionKey}s that are reachable at run time.
+     * Performs tasks once this feature is registered.
+     * <ul>
+     * <li>Create the {@link LibGraalClassLoader} instance.</li>
+     * <li>Get a handle to the {@link BuildTime} class in the guest.</li>
+     * <li>Initializes the options in the guest.</li>
+     * <li>Initializes some state needed by {@link LibGraalSubstitutions}.</li>
+     * </ul>
      */
-    private static class OptionCollector implements ObjectReachableCallback<OptionKey<?>> {
-        final ConcurrentHashMap<OptionKey<?>, OptionKey<?>> options = new ConcurrentHashMap<>();
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        // LibGraalEntryPoints uses a number of classes in org.graalvm.nativeimage.builder
+        accessModulesToClass(ModuleSupport.Access.EXPORT, LibGraalFeature.class,
+                        "org.graalvm.nativeimage.builder");
+
+        // LibGraalFeature accesses a few Graal classes (see import statements above)
+        accessModulesToClass(ModuleSupport.Access.EXPORT, LibGraalFeature.class, "jdk.graal.compiler");
+
+        // LibGraalTruffleToLibGraalEntryPoints access TruffleToLibGraal.Id
+        accessModulesToClass(ModuleSupport.Access.EXPORT, LibGraalFeature.class, "org.graalvm.truffle.compiler");
+
+        ImageSingletons.add(NativeBridgeSupport.class, new LibGraalNativeBridgeSupport());
+        // Target_jdk_graal_compiler_serviceprovider_VMSupport.getIsolateID needs access to
+        // org.graalvm.nativeimage.impl.IsolateSupport
+        accessModulesToClass(ModuleSupport.Access.EXPORT, LibGraalFeature.class, "org.graalvm.nativeimage");
+
+        loader = new LibGraalClassLoader(Options.LibGraalJavaHome.getValue().resolve(Path.of("lib", "modules")));
+
+        buildTimeClass = loader.loadClassOrFail("jdk.graal.compiler.hotspot.libgraal.BuildTime");
+
+        // Guest JVMCI and Graal need access to some JDK internal packages
+        String[] basePackages = {"jdk.internal.misc", "jdk.internal.util"};
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, null, false, "java.base", basePackages);
+
+        try {
+            /*
+             * Get GlobalAtomicLong.getInitialValue() method from LibGraalClassLoader for
+             * LibGraalGraalSubstitutions.GlobalAtomicLongAddressProvider FieldValueTransformer
+             */
+            handleGlobalAtomicLongGetInitialValue = mhl.findVirtual(loader.loadClassOrFail("jdk.graal.compiler.serviceprovider.GlobalAtomicLong"),
+                            "getInitialValue", methodType(long.class));
+
+        } catch (Throwable e) {
+            VMError.shouldNotReachHere(e);
+        }
+    }
+
+    private static void accessModulesToClass(ModuleSupport.Access access, Class<?> accessingClass, String... moduleNames) {
+        for (String moduleName : moduleNames) {
+            var module = getBootModule(moduleName);
+            ModuleSupport.accessPackagesToClass(access, accessingClass, false,
+                            module.getName(), module.getPackages().toArray(String[]::new));
+        }
+    }
+
+    static Module getBootModule(String moduleName) {
+        return ModuleLayer.boot().findModule(moduleName).orElseThrow();
+    }
+
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        try {
+            var basePhaseStatisticsClass = loader.loadClassOrFail("jdk.graal.compiler.phases.BasePhase$BasePhaseStatistics");
+            var lirPhaseStatisticsClass = loader.loadClassOrFail("jdk.graal.compiler.lir.phases.LIRPhase$LIRPhaseStatistics");
+            MethodType statisticsCTorType = methodType(void.class, Class.class);
+            var basePhaseStatisticsCTor = mhl.findConstructor(basePhaseStatisticsClass, statisticsCTorType);
+            var lirPhaseStatisticsCTor = mhl.findConstructor(lirPhaseStatisticsClass, statisticsCTorType);
+            newBasePhaseStatistics = new StatisticsCreator(basePhaseStatisticsCTor)::create;
+            newLIRPhaseStatistics = new StatisticsCreator(lirPhaseStatisticsCTor)::create;
+
+            basePhaseClass = loader.loadClassOrFail("jdk.graal.compiler.phases.BasePhase");
+            lirPhaseClass = loader.loadClassOrFail("jdk.graal.compiler.lir.phases.LIRPhase");
+
+            ImageSingletons.add(LibGraalCompilerSupport.class, new LibGraalCompilerSupport());
+        } catch (Throwable e) {
+            throw VMError.shouldNotReachHere("Failed to invoke jdk.graal.compiler.hotspot.libgraal.BuildTime methods", e);
+        }
+
+        DuringSetupAccessImpl accessImpl = (DuringSetupAccessImpl) access;
+        accessImpl.registerClassReachabilityListener(this::registerPhaseStatistics);
+        optionCollector = new OptionCollector(LibGraalEntryPoints.vmOptionDescriptors);
+        accessImpl.registerObjectReachableCallback(OptionKey.class, optionCollector::doCallback);
+        accessImpl.registerObjectReachableCallback(loader.loadClassOrFail(OptionKey.class.getName()), optionCollector::doCallback);
+        GetJNIConfig.register(loader);
+    }
+
+    private OptionCollector optionCollector;
+
+    /**
+     * Collects all options that are reachable at run time. Reachable options are the
+     * {@link OptionKey} instances reached by the static analysis. The VM options are instances of
+     * {@link OptionKey} loaded by the {@link com.oracle.svm.hosted.NativeImageClassLoader} and
+     * compiler options are instances of {@link OptionKey} loaded by the
+     * {@link LibGraalClassLoader}.
+     */
+    private class OptionCollector implements ObjectReachableCallback<Object> {
+        private final Set<Object> options = Collections.newSetFromMap(new ConcurrentHashMap<>());
+
+        /**
+         * Libgraal VM options.
+         */
+        private final EconomicMap<String, OptionDescriptor> vmOptionDescriptors;
+
+        /**
+         * Libgraal compiler options info.
+         */
+        private final Object compilerOptionsInfo;
+
         private boolean sealed;
 
+        OptionCollector(EconomicMap<String, OptionDescriptor> vmOptionDescriptors) {
+            this.vmOptionDescriptors = vmOptionDescriptors;
+            try {
+                MethodType mt = methodType(Object.class);
+                MethodHandle mh = mhl.findStatic(buildTimeClass, "initLibgraalOptions", mt);
+                compilerOptionsInfo = mh.invoke();
+            } catch (Throwable e) {
+                throw VMError.shouldNotReachHere(e);
+            }
+        }
+
         @Override
-        public void doCallback(DuringAnalysisAccess access, OptionKey<?> option, ObjectScanner.ScanReason reason) {
+        public void doCallback(DuringAnalysisAccess access, Object option, ObjectScanner.ScanReason reason) {
             if (sealed) {
-                GraalError.guarantee(options.contains(option), "All options must have been discovered during static analysis");
+                VMError.guarantee(options.contains(option), "All options must have been discovered during static analysis: %s", option);
             } else {
-                options.put(option, option);
+                options.add(option);
             }
         }
 
-        public void setSealed() {
+        @SuppressWarnings("unchecked")
+        void afterAnalysis(AfterAnalysisAccess access) {
             sealed = true;
-        }
-    }
-
-    @Override
-    public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers substrateProviders,
-                    Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
-        hotSpotSubstrateReplacements = getReplacements();
-    }
-
-    @SuppressWarnings({"try", "unchecked"})
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        FeatureImpl.BeforeAnalysisAccessImpl impl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
-        BigBang bb = impl.getBigBang();
-
-        // Services that will not be loaded if native-image is run
-        // with -XX:-UseJVMCICompiler.
-        GraalServices.load(TruffleCallBoundaryInstrumentationFactory.class);
-        GraalServices.load(GraphBuilderInvocationPluginProvider.class);
-        GraalServices.load(GraphDecoderInvocationPluginProvider.class);
-        GraalServices.load(PartialEvaluatorConfiguration.class);
-        GraalServices.load(HotSpotCodeCacheListener.class);
-        GraalServices.load(DisassemblerProvider.class);
-        GraalServices.load(HotSpotInvocationPluginProvider.class);
-        GraalServices.load(TruffleHostEnvironment.Lookup.class);
-
-        // Instantiate the truffle compiler to ensure the backends it uses are initialized.
-        List<HotSpotBackend> truffleBackends = HotSpotTruffleCompilerImpl.ensureBackendsInitialized(RuntimeOptionValues.singleton());
-
-        // Filter out any cached services which are for a different architecture
-        try {
-            HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) HotSpotJVMCIRuntime.runtime().getCompiler();
-            String osArch = compiler.getGraalRuntime().getVMConfig().osArch;
-            String archPackage = "." + osArch + ".";
-
-            final Field servicesCacheField = ReflectionUtil.lookupField(Services.class, "servicesCache");
-            Map<Class<?>, List<?>> servicesCache = (Map<Class<?>, List<?>>) servicesCacheField.get(null);
-            filterArchitectureServices(archPackage, servicesCache);
-            servicesCache.remove(GeneratedPluginFactory.class);
-
-            final Field graalServicesCacheField = ReflectionUtil.lookupField(GraalServices.class, "servicesCache");
-            Map<Class<?>, List<?>> graalServicesCache = (Map<Class<?>, List<?>>) graalServicesCacheField.get(null);
-            filterArchitectureServices(archPackage, graalServicesCache);
-            graalServicesCache.remove(GeneratedPluginFactory.class);
-
-            Field cachedHotSpotJVMCIBackendFactoriesField = ReflectionUtil.lookupField(HotSpotJVMCIRuntime.class, "cachedHotSpotJVMCIBackendFactories");
-            List<HotSpotJVMCIBackendFactory> cachedHotSpotJVMCIBackendFactories = (List<HotSpotJVMCIBackendFactory>) cachedHotSpotJVMCIBackendFactoriesField.get(null);
-            cachedHotSpotJVMCIBackendFactories.removeIf(factory -> !factory.getArchitecture().equalsIgnoreCase(osArch));
-        } catch (ReflectiveOperationException ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
-
-        // Force construction of all stubs so their types are known.
-        HotSpotProviders providers = getReplacements().getProviders();
-        registerForeignCalls(providers);
-
-        for (Backend backend : truffleBackends) {
-            registerForeignCalls((HotSpotProviders) backend.getProviders());
-        }
-
-        hotSpotSubstrateReplacements.encode(bb.getOptions());
-        if (!RuntimeAssertionsSupport.singleton().desiredAssertionStatus(SnippetParameterInfo.class)) {
-            // Clear the saved names if assertions aren't enabled
-            hotSpotSubstrateReplacements.clearSnippetParameterNames();
-        }
-
-        // Mark all the Node classes as allocated so they are available during graph decoding.
-        EncodedSnippets encodedSnippets = HotSpotReplacementsImpl.getEncodedSnippets();
-        for (NodeClass<?> nodeClass : encodedSnippets.getSnippetNodeClasses()) {
-            impl.getMetaAccess().lookupJavaType(nodeClass.getClazz()).registerAsInstantiated("All " + NodeClass.class.getName() + " classes are marked as instantiated eagerly.");
-        }
-    }
-
-    private static void registerForeignCalls(HotSpotProviders providers) {
-        HotSpotHostForeignCallsProvider foreignCalls = providers.getForeignCalls();
-        foreignCalls.forEachForeignCall((sig, linkage) -> {
-            if (linkage == null || linkage.isCompiledStub()) {
-                if (HotSpotForeignCallLinkage.Stubs.initStub(sig)) {
-                    if (linkage != null) {
-                        // Construct the stub so that all types it uses are registered in
-                        // SymbolicSnippetEncoder.snippetTypes
-                        foreignCalls.lookupForeignCall(sig);
+            List<Object> compilerOptions = new ArrayList<>(options.size());
+            for (Object option : options) {
+                if (option instanceof OptionKey<?> optionKey) {
+                    OptionDescriptor descriptor = optionKey.getDescriptor();
+                    if (descriptor.isServiceLoaded()) {
+                        VMError.guarantee(access.isReachable(option.getClass()), "%s", option.getClass());
+                        VMError.guarantee(access.isReachable(descriptor.getClass()), "%s", descriptor.getClass());
+                        vmOptionDescriptors.put(optionKey.getName(), descriptor);
                     }
+                } else {
+                    ClassLoader optionCL = option.getClass().getClassLoader();
+                    VMError.guarantee(optionCL == loader, "unexpected option loader: %s", optionCL);
+                    compilerOptions.add(option);
                 }
             }
-        });
-    }
-
-    private static void filterArchitectureServices(String archPackage, Map<Class<?>, List<?>> services) {
-        for (List<?> list : services.values()) {
-            list.removeIf(o -> {
-                String name = o.getClass().getName();
-                if (name.contains(".aarch64.") || name.contains(".amd64.") || name.contains(".riscv64.")) {
-                    return !name.contains(archPackage);
+            try {
+                MethodType mt = methodType(Iterable.class, List.class, Object.class, Map.class);
+                MethodHandle mh = mhl.findStatic(buildTimeClass, "finalizeLibgraalOptions", mt);
+                Map<String, String> modules = loader.getModules();
+                Iterable<Object> values = (Iterable<Object>) mh.invoke(compilerOptions, compilerOptionsInfo, modules);
+                for (Object descriptor : values) {
+                    VMError.guarantee(access.isReachable(descriptor.getClass()), "%s", descriptor.getClass());
                 }
-                return false;
-            });
+            } catch (Throwable e) {
+                VMError.shouldNotReachHere(e);
+            }
         }
     }
 
+    private record StatisticsCreator(MethodHandle ctorHandle) {
+        Object create(Class<?> clazz) {
+            try {
+                return ctorHandle.invoke(clazz);
+            } catch (Throwable e) {
+                throw VMError.shouldNotReachHere("Failed to create new instance of Statistics clazz with MethodHandle " + ctorHandle, e);
+            }
+        }
+    }
+
+    private void registerPhaseStatistics(DuringAnalysisAccess a, Class<?> newlyReachableClass) {
+        DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
+
+        if (!Modifier.isAbstract(newlyReachableClass.getModifiers())) {
+            boolean requireAnalysisIteration = true;
+            if (basePhaseClass.isAssignableFrom(newlyReachableClass)) {
+                LibGraalCompilerSupport.registerStatistics(newlyReachableClass, LibGraalCompilerSupport.get().basePhaseStatistics,
+                                newBasePhaseStatistics.apply(newlyReachableClass));
+
+            } else if (lirPhaseClass.isAssignableFrom(newlyReachableClass)) {
+                LibGraalCompilerSupport.registerStatistics(newlyReachableClass, LibGraalCompilerSupport.get().lirPhaseStatistics,
+                                newLIRPhaseStatistics.apply(newlyReachableClass));
+            } else {
+                requireAnalysisIteration = false;
+            }
+
+            if (requireAnalysisIteration) {
+                access.requireAnalysisIteration();
+            }
+        }
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess baa) {
+        BeforeAnalysisAccessImpl impl = (BeforeAnalysisAccessImpl) baa;
+        var bb = impl.getBigBang();
+
+        /* Contains static fields that depend on HotSpotJVMCIRuntime */
+        RuntimeClassInitialization.initializeAtRunTime(loader.loadClassOrFail("jdk.vm.ci.hotspot.HotSpotModifiers"));
+        RuntimeClassInitialization.initializeAtRunTime(loader.loadClassOrFail("jdk.vm.ci.hotspot.HotSpotCompiledCodeStream"));
+        RuntimeClassInitialization.initializeAtRunTime(loader.loadClassOrFail("jdk.vm.ci.hotspot.HotSpotCompiledCodeStream$Tag"));
+        /* ThreadLocal in static field jdk.graal.compiler.debug.DebugContext.activated */
+        RuntimeClassInitialization.initializeAtRunTime(loader.loadClassOrFail("jdk.graal.compiler.debug.DebugContext"));
+
+        /* Needed for runtime calls to BoxingSnippets.Templates.getCacheClass(JavaKind) */
+        RuntimeReflection.registerAllDeclaredClasses(Character.class);
+        RuntimeReflection.register(ReflectionUtil.lookupField(ReflectionUtil.lookupClass("java.lang.Character$CharacterCache"), "cache"));
+        RuntimeReflection.registerAllDeclaredClasses(Byte.class);
+        RuntimeReflection.register(ReflectionUtil.lookupField(ReflectionUtil.lookupClass("java.lang.Byte$ByteCache"), "cache"));
+        RuntimeReflection.registerAllDeclaredClasses(Short.class);
+        RuntimeReflection.register(ReflectionUtil.lookupField(ReflectionUtil.lookupClass("java.lang.Short$ShortCache"), "cache"));
+        RuntimeReflection.registerAllDeclaredClasses(Integer.class);
+        RuntimeReflection.register(ReflectionUtil.lookupField(ReflectionUtil.lookupClass("java.lang.Integer$IntegerCache"), "cache"));
+        RuntimeReflection.registerAllDeclaredClasses(Long.class);
+        RuntimeReflection.register(ReflectionUtil.lookupField(ReflectionUtil.lookupClass("java.lang.Long$LongCache"), "cache"));
+
+        /* Configure static state of Graal. */
+        try {
+            TargetDescription targetDescription = ImageSingletons.lookup(SubstrateTargetDescription.class);
+            String arch = targetDescription.arch.getName();
+
+            Consumer<Class<?>> registerAsInHeap = nodeClass -> impl.getMetaAccess().lookupJavaType(nodeClass)
+                            .registerAsInstantiated("All NodeClass classes are marked as instantiated eagerly.");
+
+            Consumer<List<Class<?>>> hostedGraalSetFoldNodePluginClasses = GeneratedInvocationPlugin::setFoldNodePluginClasses;
+
+            List<Class<?>> guestServiceClasses = new ArrayList<>();
+            List<Class<?>> serviceClasses = impl.getImageClassLoader().findAnnotatedClasses(LibGraalService.class, false);
+            serviceClasses.stream().map(c -> loader.loadClassOrFail(c.getName())).forEach(guestServiceClasses::add);
+
+            // Transfer libgraal qualifier (e.g. "PGO optimized") from host to guest.
+            String nativeImageLocationQualifier = CompilerConfigurationFactory.getNativeImageLocationQualifier();
+
+            MethodHandle configureGraalForLibGraal = mhl.findStatic(buildTimeClass,
+                            "configureGraalForLibGraal",
+                            methodType(void.class,
+                                            String.class, // arch
+                                            List.class, // guestServiceClasses
+                                            Consumer.class, // registerAsInHeap
+                                            Consumer.class, // hostedGraalSetFoldNodePluginClasses
+                                            String.class, // nativeImageLocationQualifier
+                                            String.class // encodedGuestObjects
+                            ));
+            GetCompilerConfig.Result configResult = GetCompilerConfig.from(Options.LibGraalJavaHome.getValue(), bb.getOptions());
+            for (var e : configResult.opens().entrySet()) {
+                for (String source : e.getValue()) {
+                    ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, buildTimeClass, false, e.getKey(), source);
+                }
+            }
+
+            configureGraalForLibGraal.invoke(arch,
+                            guestServiceClasses,
+                            registerAsInHeap,
+                            hostedGraalSetFoldNodePluginClasses,
+                            nativeImageLocationQualifier,
+                            configResult.encodedConfig());
+
+            initGraalRuntimeHandles(mhl.findStatic(buildTimeClass, "getRuntimeHandles", methodType(Map.class)));
+            initializeTruffle();
+        } catch (Throwable e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void initGraalRuntimeHandles(MethodHandle getRuntimeHandles) throws Throwable {
+        ImageSingletons.add(LibGraalEntryPoints.class, new LibGraalEntryPoints((Map<String, MethodHandle>) getRuntimeHandles.invoke()));
+    }
+
+    @SuppressWarnings("unchecked")
+    private void initializeTruffle() throws Throwable {
+        Class<?> truffleBuildTimeClass = loader.loadClassOrFail("jdk.graal.compiler.hotspot.libgraal.truffle.BuildTime");
+        MethodHandle getLookup = mhl.findStatic(truffleBuildTimeClass, "initializeLookup", methodType(Map.Entry.class, Lookup.class, Class.class, Class.class));
+        Map.Entry<Lookup, Class<?>> truffleLibGraal = (Map.Entry<Lookup, Class<?>>) getLookup.invoke(mhl, TruffleFromLibGraalStartPoints.class, NativeImageHostEntryPoints.class);
+        ImageSingletons.add(LibGraalTruffleToLibGraalEntryPoints.class, new LibGraalTruffleToLibGraalEntryPoints(truffleLibGraal.getKey(), truffleLibGraal.getValue()));
+        MethodHandle truffleConfigureGraalForLibGraal = mhl.findStatic(truffleBuildTimeClass, "configureGraalForLibGraal", methodType(void.class));
+        truffleConfigureGraalForLibGraal.invoke();
+    }
+
+    @SuppressWarnings("try")
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        optionCollector.setSealed();
+        /*
+         * Verify we only have JVMCI & Graal classes reachable that are coming from
+         * LibGraalClassLoader except for hosted JVMCI & Graal classes that are legitimately used by
+         * SubstrateVM runtime implementation classes (mostly from package com.oracle.svm.core).
+         */
+        List<Pattern> hostedAllowed = List.of(
+                        classesPattern("jdk.graal.compiler.core.common",
+                                        "NumUtil"),
+                        classesPattern("jdk.graal.compiler.core.common.util",
+                                        "AbstractTypeReader", "TypeConversion", "TypeReader", "UnsafeArrayTypeReader"),
+                        classesPattern("jdk.graal.compiler.core.common.type",
+                                        "CompressibleConstant"),
+                        classesPattern("jdk.graal.compiler.debug",
+                                        "GraalError"),
+                        classesPattern("jdk.graal.compiler.options",
+                                        "ModifiableOptionValues", "Option.*"),
+                        classesPattern("jdk.graal.compiler.util.json",
+                                        "JsonWriter", "JsonBuilder.*"),
+                        classesPattern("org.graalvm.collections",
+                                        "EconomicMap.*", "EmptyMap.*", "Equivalence.*", "Pair"),
+                        classesPattern("jdk.vm.ci.amd64",
+                                        "AMD64.*"),
+                        classesPattern("jdk.vm.ci.aarch64",
+                                        "AArch64.*"),
+                        classesPattern("jdk.vm.ci.riscv64",
+                                        "RISCV64.*"),
+                        classesPattern("jdk.vm.ci.code",
+                                        "Architecture", "Register.*", "TargetDescription"),
+                        classesPattern("jdk.vm.ci.meta",
+                                        "JavaConstant", "JavaKind", "MetaUtil", "NullConstant", "PrimitiveConstant"));
 
-        verifyReachableTruffleClasses(access);
-        registerReachableOptions(access);
-    }
+        Set<String> forbiddenHostedModules = Set.of("jdk.internal.vm.ci", "org.graalvm.collections", "org.graalvm.word", "jdk.graal.compiler");
 
-    private void registerReachableOptions(AfterAnalysisAccess access) {
-        compilerOptionDescriptors = EconomicMap.create();
-        vmOptionDescriptors = EconomicMap.create();
-        for (OptionKey<?> option : optionCollector.options.keySet()) {
-            VMError.guarantee(access.isReachable(option.getClass()));
-            OptionDescriptor descriptor = option.getDescriptor();
-            OptionGroup group = descriptor.getDeclaringClass().getAnnotation(OptionGroup.class);
-            if (group != null && !group.registerAsService()) {
-                // Ignore options (such as TruffleCompilerOptions) that should not
-                // be service loaded.
-                continue;
-            }
-            if (!isNativeImageOption(option)) {
-                compilerOptionDescriptors.put(option.getName(), option.getDescriptor());
-            } else {
-                vmOptionDescriptors.put(option.getName(), option.getDescriptor());
-            }
-        }
+        AfterAnalysisAccessImpl accessImpl = (AfterAnalysisAccessImpl) access;
+        BigBang bigBang = accessImpl.getBigBang();
+        CallTreePrinter callTreePrinter = new CallTreePrinter(bigBang);
+        callTreePrinter.buildCallTree();
 
-    }
-
-    /**
-     * Verifies that the Truffle compiler does not bring Truffle API types into an image. We need to
-     * use the points to analysis to verify that the Truffle API types are not reachable.
-     */
-    private static void verifyReachableTruffleClasses(AfterAnalysisAccess access) {
-        AnalysisUniverse universe = ((FeatureImpl.AfterAnalysisAccessImpl) access).getUniverse();
-        Map<AnalysisMethod, Object> seen = new LinkedHashMap<>();
-        for (AnalysisMethod analysisMethod : universe.getMethods()) {
-            if (analysisMethod.isDirectRootMethod() && analysisMethod.isSimplyImplementationInvoked()) {
-                seen.put(analysisMethod, "direct root");
-            }
-            if (analysisMethod.isVirtualRootMethod()) {
-                for (AnalysisMethod impl : analysisMethod.collectMethodImplementations(false)) {
-                    VMError.guarantee(impl.isImplementationInvoked());
-                    seen.put(impl, "virtual root");
+        DebugContext debug = bigBang.getDebug();
+        List<String> forbiddenReachableTypes = new ArrayList<>();
+        try (DebugContext.Scope ignored = debug.scope("LibGraalEntryPoints")) {
+            for (AnalysisType analysisType : callTreePrinter.usedAnalysisTypes()) {
+                Class<?> reachableType = analysisType.getJavaClass();
+                if (reachableType.getClassLoader() == loader || reachableType.isArray()) {
+                    continue;
                 }
-            }
-        }
-        Deque<AnalysisMethod> todo = new ArrayDeque<>(seen.keySet());
-        SortedSet<String> disallowedTypes = new TreeSet<>();
-        while (!todo.isEmpty()) {
-            AnalysisMethod m = todo.removeFirst();
-            String className = m.getDeclaringClass().toClassName();
-            if (!isAllowedType(className)) {
-                StringBuilder msg = new StringBuilder(className);
-                Object reason = m;
-                while (true) {
-                    msg.append("<-");
-                    if (reason instanceof ResolvedJavaMethod) {
-                        msg.append(((ResolvedJavaMethod) reason).format("%H.%n(%p)"));
-                        reason = seen.get(reason);
-                    } else {
-                        msg.append(reason);
-                        break;
+                Module module = reachableType.getModule();
+                if (module.isNamed() && forbiddenHostedModules.contains(module.getName())) {
+                    String fqn = reachableType.getName();
+                    if (hostedAllowed.stream().anyMatch(pattern -> pattern.matcher(fqn).matches())) {
+                        debug.log("Allowing hosted class %s from %s", fqn, module);
+                        continue;
                     }
-                }
-                disallowedTypes.add(msg.toString());
-            }
-            for (InvokeInfo invoke : m.getInvokes()) {
-                for (AnalysisMethod callee : invoke.getOriginalCallees()) {
-                    if (seen.putIfAbsent(callee, m) == null) {
-                        todo.add(callee);
-                    }
+                    forbiddenReachableTypes.add(String.format("%s/%s", module.getName(), fqn));
                 }
             }
         }
-        if (!disallowedTypes.isEmpty()) {
-            throw UserError.abort("Following non allowed Truffle types are reachable on heap: %s", String.join(", ", disallowedTypes));
+        if (!forbiddenReachableTypes.isEmpty()) {
+            CallTreePrinter.print(bigBang, "reports", "report");
+            VMError.shouldNotReachHere("LibGraalEntryPoints build found forbidden hosted types as reachable: %s", String.join(", ", forbiddenReachableTypes));
         }
+        optionCollector.afterAnalysis(access);
     }
 
-    private static boolean isAllowedType(String className) {
-        if (className.startsWith("com.oracle.truffle.")) {
-            return className.startsWith("com.oracle.truffle.compiler.");
-        }
-        return true;
+    private static Pattern classesPattern(String packageName, String... regexes) {
+        return Pattern.compile("%s(%s)".formatted(Pattern.quote(packageName + '.'), String.join("|", regexes)));
     }
-
-    static HotSpotReplacementsImpl getReplacements() {
-        HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) HotSpotJVMCIRuntime.runtime().getCompiler();
-        HotSpotProviders originalProvider = compiler.getGraalRuntime().getHostProviders();
-        return (HotSpotReplacementsImpl) originalProvider.getReplacements();
-    }
-
-    private static boolean isNativeImageOption(OptionKey<?> key) {
-        return key instanceof RuntimeOptionKey;
-    }
-}
-
-@TargetClass(className = "jdk.graal.compiler.options.OptionsParser", onlyWith = LibGraalFeature.IsEnabled.class)
-final class Target_jdk_graal_compiler_options_OptionsParser {
-    @Alias @InjectAccessors(OptionsParserAccessors.class) //
-    private static volatile List<OptionDescriptors> cachedOptionDescriptors;
-}
-
-class OptionsParserAccessors {
-    private static List<OptionDescriptors> cachedOptions;
-
-    @SuppressWarnings("unused")
-    static List<OptionDescriptors> getCachedOptionDescriptors() {
-        List<OptionDescriptors> result = cachedOptions;
-        if (result == null) {
-            result = initialize();
-        }
-        return result;
-    }
-
-    @SuppressWarnings("unused")
-    static void setCachedOptionDescriptors(List<OptionDescriptors> value) {
-        throw VMError.shouldNotReachHereAtRuntime();
-    }
-
-    private static synchronized List<OptionDescriptors> initialize() {
-        List<OptionDescriptors> result = cachedOptions;
-        if (result == null) {
-            result = Collections.singletonList(new OptionDescriptorsMap(compilerOptionDescriptors));
-
-            /* Ensure that all stores are visible before we publish the data. */
-            Unsafe.getUnsafe().storeFence();
-            cachedOptions = result;
-        }
-        return result;
-    }
-}
-
-@TargetClass(className = "jdk.vm.ci.hotspot.SharedLibraryJVMCIReflection", onlyWith = LibGraalFeature.IsEnabled.class)
-final class Target_jdk_vm_ci_hotspot_SharedLibraryJVMCIReflection {
-
-    @Substitute
-    static Object convertUnknownValue(Object object) {
-        return object;
-    }
-
-    // Annotations are currently unsupported in libgraal. These substitutions will turn their use
-    // into an image time build error.
-    @Delete
-    static native Annotation[] getClassAnnotations(String className);
-
-    @Delete
-    static native Annotation[][] getParameterAnnotations(String className, String methodName);
-
-    @Delete
-    static native Annotation[] getMethodAnnotationsInternal(ResolvedJavaMethod javaMethod);
-}
-
-@TargetClass(value = SpeculationReasonGroup.class, onlyWith = LibGraalFeature.IsEnabled.class)
-final class Target_jdk_graal_compiler_serviceprovider_SpeculationReasonGroup {
-
-    /**
-     * Delete this constructor to ensure {@link SpeculationReasonGroup} ids are in the libgraal
-     * image and thus global across all libgraal isolates.
-     */
-    @Delete
-    @TargetElement(name = TargetElement.CONSTRUCTOR_NAME)
-    native void constructor(String name, Class<?>... signature);
-}
-
-/**
- * {@link HotSpotConstantReflectionProvider#forObject} can only be used to wrap compiler objects so
- * interpose to return a {@link SnippetObjectConstant}.
- */
-@TargetClass(className = "jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider", onlyWith = LibGraalFeature.IsEnabled.class)
-final class Target_jdk_vm_ci_hotspot_HotSpotConstantReflectionProvider {
-
-    @Substitute
-    public JavaConstant forString(String value) {
-        return forObject(value);
-    }
-
-    @Substitute
-    @SuppressWarnings({"static-method", "unused"})
-    public JavaConstant forObject(Object value) {
-        return new SnippetObjectConstant(value);
-    }
-}
-
-@TargetClass(className = "jdk.vm.ci.hotspot.DirectHotSpotObjectConstantImpl", onlyWith = LibGraalFeature.IsEnabled.class)
-final class Target_jdk_vm_ci_hotspot_DirectHotSpotObjectConstantImpl {
-
-    @Substitute
-    @SuppressWarnings({"static-method", "unused"})
-    @TargetElement(name = TargetElement.CONSTRUCTOR_NAME)
-    void constructor(Object object, boolean compressed) {
-        throw new InternalError("DirectHotSpotObjectConstantImpl unsupported");
-    }
-}
-
-@TargetClass(className = "jdk.graal.compiler.hotspot.HotSpotGraalOptionValues", onlyWith = LibGraalFeature.IsEnabled.class)
-final class Target_jdk_graal_compiler_hotspot_HotSpotGraalOptionValues {
-
-    @Substitute
-    private static void notifyLibgraalOptions(EconomicMap<OptionKey<?>, Object> compilerOptionValues, EconomicMap<String, String> vmOptionSettings) {
-        HotSpotGraalOptionValuesUtil.initializeOptions(compilerOptionValues, vmOptionSettings);
-    }
-
-    @Substitute
-    private static void printLibgraalProperties(PrintStream out, String prefix) {
-        RuntimeOptionValues vmOptions = RuntimeOptionValues.singleton();
-        Iterable<OptionDescriptors> vmOptionLoader = Collections.singletonList(new OptionDescriptorsMap(vmOptionDescriptors));
-        vmOptions.printHelp(vmOptionLoader, out, prefix, true);
-    }
-}
-
-final class HotSpotGraalOptionValuesUtil {
-    // Support for CrashAtThrowsOOME
-    static final GlobalAtomicLong OOME_CRASH_DONE = new GlobalAtomicLong(0);
-
-    /**
-     * Options configuring the Graal compiler.
-     */
-    @UnknownObjectField(fullyQualifiedTypes = "org.graalvm.collections.EconomicMapImpl") //
-    static EconomicMap<String, OptionDescriptor> compilerOptionDescriptors;
-
-    /**
-     * Options configuring the VM in which libgraal is running.
-     */
-    @UnknownObjectField(fullyQualifiedTypes = "org.graalvm.collections.EconomicMapImpl") //
-    static EconomicMap<String, OptionDescriptor> vmOptionDescriptors;
-
-    static void initializeOptions(EconomicMap<OptionKey<?>, Object> compilerOptionValues, EconomicMap<String, String> vmOptionSettings) {
-
-        RuntimeOptionValues vmOptions = RuntimeOptionValues.singleton();
-        vmOptions.update(compilerOptionValues);
-
-        if (!vmOptionSettings.isEmpty()) {
-            MapCursor<String, String> entries = vmOptionSettings.getEntries();
-            while (entries.advance()) {
-                String key = entries.getKey();
-                String value = entries.getValue();
-                if (key.startsWith("X") && value.isEmpty()) {
-                    String xarg = key.substring(1);
-                    if (XOptions.setOption(xarg)) {
-                        entries.remove();
-                    }
-                }
-            }
-            EconomicMap<OptionKey<?>, Object> vmOptionValues = OptionValues.newOptionMap();
-            Iterable<OptionDescriptors> vmOptionLoader = Collections.singletonList(new OptionDescriptorsMap(vmOptionDescriptors));
-            OptionsParser.parseOptions(vmOptionSettings, vmOptionValues, vmOptionLoader);
-            vmOptions.update(vmOptionValues);
-        }
-    }
-}
-
-@TargetClass(className = "jdk.graal.compiler.core.GraalServiceThread", onlyWith = LibGraalFeature.IsEnabled.class)
-final class Target_jdk_graal_compiler_core_GraalServiceThread {
-    @Substitute()
-    void beforeRun() {
-        GraalServiceThread thread = SubstrateUtil.cast(this, GraalServiceThread.class);
-        if (!LibGraal.attachCurrentThread(thread.isDaemon(), null)) {
-            throw new InternalError("Couldn't attach to HotSpot runtime");
-        }
-    }
-
-    @Substitute
-    @SuppressWarnings("static-method")
-    void afterRun() {
-        LibGraal.detachCurrentThread(false);
-    }
-}
-
-@TargetClass(className = "jdk.graal.compiler.hotspot.SymbolicSnippetEncoder", onlyWith = LibGraalFeature.IsEnabled.class)
-@Delete("shouldn't appear in libgraal")
-final class Target_jdk_graal_compiler_hotspot_SymbolicSnippetEncoder {
 }

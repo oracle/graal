@@ -26,8 +26,6 @@ package com.oracle.svm.core.genscavenge;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.nodes.PauseNode;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
@@ -41,6 +39,9 @@ import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.nodes.PauseNode;
 
 abstract class AbstractCollectionPolicy implements CollectionPolicy {
 
@@ -326,10 +327,8 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         long optionMax = SubstrateGCOptions.MaxHeapSize.getValue();
         if (optionMax > 0L) {
             maxHeap = WordFactory.unsigned(optionMax);
-        } else if (!PhysicalMemory.isInitialized()) {
-            maxHeap = addressSpaceSize;
         } else {
-            maxHeap = PhysicalMemory.getCachedSize().unsignedDivide(100).multiply(HeapParameters.getMaximumHeapSizePercent());
+            maxHeap = PhysicalMemory.size().unsignedDivide(100).multiply(HeapParameters.getMaximumHeapSizePercent());
         }
         UnsignedWord unadjustedMaxHeap = maxHeap;
         maxHeap = UnsignedUtils.clamp(alignDown(maxHeap), minAllSpaces, alignDown(addressSpaceSize));

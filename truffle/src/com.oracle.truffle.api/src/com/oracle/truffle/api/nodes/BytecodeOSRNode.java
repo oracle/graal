@@ -58,6 +58,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
  * proxy accesses to it.</li>
  * <li>The node should call {@link BytecodeOSRNode#pollOSRBackEdge} and
  * {@link BytecodeOSRNode#tryOSR} as described by their documentation.</li>
+ * <li>The node should implement either {@link #executeOSR(VirtualFrame, int, Object)} or
+ * {@link #executeOSR(VirtualFrame, long, Object)} (see note below).
  * </ol>
  *
  * <p>
@@ -72,13 +74,21 @@ import com.oracle.truffle.api.frame.VirtualFrame;
  * This method will be called before compilation, and can be useful to avoid deoptimizing inside
  * compiled code.
  *
+ * <p>
+ * Starting in 24.2, Bytecode OSR supports {@code long} values for {@code target} dispatch
+ * locations. An interpreter can use {@code long} targets by invoking
+ * {@link #tryOSR(BytecodeOSRNode, long, Object, Runnable, VirtualFrame)} (instead of
+ * {@link #tryOSR(BytecodeOSRNode, int, Object, Runnable, VirtualFrame)}). Refer to the
+ * documentation for the {@code long} overload for more details.
+ *
  * @since 21.3
  */
 public interface BytecodeOSRNode extends NodeInterface {
 
     /**
-     * Entrypoint to invoke this node through OSR. This method should execute from the
-     * {@code target} location.
+     * Entrypoint to invoke this node through OSR. Implementers must override this method (or its
+     * {@link #executeOSR(VirtualFrame, long, Object) long overload}). The implementation should
+     * execute bytecode starting from the given {@code target} location (e.g., bytecode index).
      *
      * <p>
      * The {@code osrFrame} may be the parent frame, but for performance reasons could also be a new
@@ -110,11 +120,31 @@ public interface BytecodeOSRNode extends NodeInterface {
      * @param osrFrame the frame to use for OSR.
      * @param target the target location to execute from (e.g., bytecode index).
      * @param interpreterState other interpreter state used to resume execution. See
-     *            {@link BytecodeOSRNode#tryOSR} for more details.
+     *            {@link #tryOSR(BytecodeOSRNode, int, Object, Runnable, VirtualFrame)} for more
+     *            details.
      * @return the result of execution.
+     * @see #executeOSR(VirtualFrame, long, Object)
      * @since 21.3
      */
-    Object executeOSR(VirtualFrame osrFrame, int target, Object interpreterState);
+    @SuppressWarnings("unused")
+    default Object executeOSR(VirtualFrame osrFrame, int target, Object interpreterState) {
+        throw new AbstractMethodError();
+    }
+
+    /**
+     * Overload of {@link #executeOSR(VirtualFrame, int, Object)} with a {@code long} target. An
+     * interpreter that uses {@code long} targets must override this method.
+     *
+     * @since 24.2
+     * @see #tryOSR(BytecodeOSRNode, long, Object, Runnable, VirtualFrame)
+     */
+    default Object executeOSR(VirtualFrame osrFrame, long target, Object interpreterState) {
+        int intTarget = (int) target;
+        if (intTarget != target) {
+            throw CompilerDirectives.shouldNotReachHere("long target used without implementing long overload of executeOSR");
+        }
+        return executeOSR(osrFrame, intTarget, interpreterState);
+    }
 
     /**
      * Gets the OSR metadata for this instance.
@@ -144,7 +174,7 @@ public interface BytecodeOSRNode extends NodeInterface {
      * Note that if this method is implemented, the
      * {@link #copyIntoOSRFrame(VirtualFrame, VirtualFrame, int, Object) preferred one} will not be
      * used.
-     * 
+     *
      * @since 21.3
      * @deprecated since 22.2
      * @see #copyIntoOSRFrame(VirtualFrame, VirtualFrame, int, Object)
@@ -168,8 +198,36 @@ public interface BytecodeOSRNode extends NodeInterface {
      * @param targetMetadata Additional metadata associated with this {@code target} for the default
      *            frame transfer behavior.
      * @since 22.2
+     * @see #copyIntoOSRFrame(VirtualFrame, VirtualFrame, long, Object)
      */
     default void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target, Object targetMetadata) {
+        NodeAccessor.RUNTIME.transferOSRFrame(this, parentFrame, osrFrame, target, targetMetadata);
+    }
+
+    /**
+     * Overload of {@link #copyIntoOSRFrame(VirtualFrame, VirtualFrame, int, Object)} with a
+     * {@code long} target. An interpreter that uses {@code long} targets must override this method.
+     *
+     * @since 24.2
+     * @see #tryOSR(BytecodeOSRNode, long, Object, Runnable, VirtualFrame)
+     */
+    default void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, long target, Object targetMetadata) {
+        int intTarget = (int) target;
+        if (intTarget != target) {
+            throw CompilerDirectives.shouldNotReachHere("long target used without implementing long overload of copyIntoOSRFrame");
+        }
+        copyIntoOSRFrame(osrFrame, parentFrame, intTarget, targetMetadata);
+    }
+
+    /**
+     * Helper method that can be called by implementations of
+     * {@link #copyIntoOSRFrame(VirtualFrame, VirtualFrame, long, Object)}. Should not be
+     * overridden.
+     *
+     * @since 24.2
+     * @see #tryOSR(BytecodeOSRNode, long, Object, Runnable, VirtualFrame)
+     */
+    default void transferOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, long target, Object targetMetadata) {
         NodeAccessor.RUNTIME.transferOSRFrame(this, parentFrame, osrFrame, target, targetMetadata);
     }
 
@@ -217,9 +275,26 @@ public interface BytecodeOSRNode extends NodeInterface {
      *
      * @param target the target location OSR will execute from (e.g., bytecode index).
      * @since 21.3
+     * @see #prepareOSR(long)
      */
+    @SuppressWarnings("unused")
     default void prepareOSR(int target) {
         // do nothing
+    }
+
+    /**
+     * Overload of {@link #prepareOSR(int)} with a {@code long} target. An interpreter that uses
+     * {@code long} targets must override this method.
+     *
+     * @since 24.2
+     * @see #tryOSR(BytecodeOSRNode, long, Object, Runnable, VirtualFrame)
+     */
+    default void prepareOSR(long target) {
+        int intTarget = (int) target;
+        if (intTarget != target) {
+            throw CompilerDirectives.shouldNotReachHere("long target used without implementing long overload of prepareOSR");
+        }
+        prepareOSR(intTarget);
     }
 
     /**
@@ -307,8 +382,32 @@ public interface BytecodeOSRNode extends NodeInterface {
      * @param parentFrame frame at the current point of execution.
      * @return the result if OSR was performed, or {@code null} otherwise.
      * @since 21.3
+     * @see #tryOSR(BytecodeOSRNode, long, Object, Runnable, VirtualFrame)
      */
     static Object tryOSR(BytecodeOSRNode osrNode, int target, Object interpreterState, Runnable beforeTransfer, VirtualFrame parentFrame) {
+        CompilerAsserts.neverPartOfCompilation();
+        return NodeAccessor.RUNTIME.tryBytecodeOSR(osrNode, target, interpreterState, beforeTransfer, parentFrame);
+    }
+
+    /**
+     * Overload of {@link #tryOSR(BytecodeOSRNode, int, Object, Runnable, VirtualFrame)} with a
+     * {@code long} target. An interpreter that uses {@code long} targets should call this method.
+     * <p>
+     * If an interpreter uses a {@code long} representation, it <strong>must</strong> override the
+     * hooks that define {@code long} overloads, namely
+     * {@link #executeOSR(VirtualFrame, long, Object)},
+     * {@link #copyIntoOSRFrame(VirtualFrame, VirtualFrame, long, Object)}, and
+     * {@link #prepareOSR(long)}. Overriding is necessary because the default {@code long} overloads
+     * call their {@code int} overloads for backwards compatibility, and these calls will fail for
+     * {@code long}-sized targets.
+     *
+     * @since 24.2
+     * @see #tryOSR(BytecodeOSRNode, int, Object, Runnable, VirtualFrame)
+     * @see #executeOSR(VirtualFrame, long, Object)
+     * @see #copyIntoOSRFrame(VirtualFrame, VirtualFrame, long, Object)
+     * @see #prepareOSR(long)
+     */
+    static Object tryOSR(BytecodeOSRNode osrNode, long target, Object interpreterState, Runnable beforeTransfer, VirtualFrame parentFrame) {
         CompilerAsserts.neverPartOfCompilation();
         return NodeAccessor.RUNTIME.tryBytecodeOSR(osrNode, target, interpreterState, beforeTransfer, parentFrame);
     }

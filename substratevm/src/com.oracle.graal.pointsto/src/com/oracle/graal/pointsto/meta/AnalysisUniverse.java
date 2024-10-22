@@ -50,6 +50,7 @@ import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.heap.ImageLayerLoader;
+import com.oracle.graal.pointsto.heap.ImageLayerWriter;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
@@ -97,7 +98,7 @@ public class AnalysisUniverse implements Universe {
     private boolean sealed;
 
     private volatile AnalysisType[] typesById = new AnalysisType[ESTIMATED_NUMBER_OF_TYPES];
-    final AtomicInteger nextTypeId = new AtomicInteger();
+    final AtomicInteger nextTypeId = new AtomicInteger(1);
     final AtomicInteger nextMethodId = new AtomicInteger(1);
     final AtomicInteger nextFieldId = new AtomicInteger(1);
 
@@ -120,6 +121,7 @@ public class AnalysisUniverse implements Universe {
     private final JavaKind wordKind;
     private AnalysisPolicy analysisPolicy;
     private ImageHeapScanner heapScanner;
+    private ImageLayerWriter imageLayerWriter;
     private ImageLayerLoader imageLayerLoader;
     private HeapSnapshotVerifier heapVerifier;
     private BigBang bb;
@@ -213,6 +215,9 @@ public class AnalysisUniverse implements Universe {
         AnalysisType result = optionalLookup(type);
         if (result == null) {
             result = createType(type);
+            if (hostVM.useBaseLayer()) {
+                imageLayerLoader.initializeBaseLayerType(result);
+            }
         }
         assert typesById[result.getId()].equals(result) : result;
         return result;
@@ -370,11 +375,20 @@ public class AnalysisUniverse implements Universe {
             return null;
         }
         AnalysisField newValue = analysisFactory.createField(this, field);
-        AnalysisField oldValue = fields.putIfAbsent(field, newValue);
-        if (oldValue == null && newValue.isInBaseLayer()) {
-            getImageLayerLoader().loadFieldFlags(newValue);
+        AnalysisField result = fields.computeIfAbsent(field, f -> {
+            if (newValue.isInBaseLayer()) {
+                getImageLayerLoader().addBaseLayerField(newValue);
+            }
+            return newValue;
+        });
+
+        if (result.equals(newValue)) {
+            if (newValue.isInBaseLayer()) {
+                getImageLayerLoader().initializeBaseLayerField(newValue);
+            }
         }
-        return oldValue != null ? oldValue : newValue;
+
+        return result;
     }
 
     @Override
@@ -416,15 +430,22 @@ public class AnalysisUniverse implements Universe {
             return null;
         }
         AnalysisMethod newValue = analysisFactory.createMethod(this, method);
-        AnalysisMethod oldValue = methods.putIfAbsent(method, newValue);
-
-        if (oldValue == null) {
+        AnalysisMethod result = methods.computeIfAbsent(method, m -> {
             if (newValue.isInBaseLayer()) {
-                getImageLayerLoader().patchBaseLayerMethod(newValue);
+                getImageLayerLoader().addBaseLayerMethod(newValue);
             }
+            return newValue;
+        });
+
+        if (result.equals(newValue)) {
+            if (newValue.isInBaseLayer()) {
+                getImageLayerLoader().initializeBaseLayerMethod(newValue);
+            }
+
             prepareMethodImplementations(newValue);
         }
-        return oldValue != null ? oldValue : newValue;
+
+        return result;
     }
 
     /** Prepare information that {@link AnalysisMethod#collectMethodImplementations} needs. */
@@ -542,6 +563,29 @@ public class AnalysisUniverse implements Universe {
         return methods.get(resolvedJavaMethod);
     }
 
+    /**
+     * Returns the root {@link AnalysisMethod}s. Accessing the roots is useful when traversing the
+     * call graph.
+     *
+     * @param universe the universe from which the roots are derived from.
+     * @return the call tree roots.
+     */
+    public static List<AnalysisMethod> getCallTreeRoots(AnalysisUniverse universe) {
+        List<AnalysisMethod> roots = new ArrayList<>();
+        for (AnalysisMethod m : universe.getMethods()) {
+            if (m.isDirectRootMethod() && m.isSimplyImplementationInvoked()) {
+                roots.add(m);
+            }
+            if (m.isVirtualRootMethod()) {
+                for (AnalysisMethod impl : m.collectMethodImplementations(false)) {
+                    AnalysisError.guarantee(impl.isImplementationInvoked());
+                    roots.add(impl);
+                }
+            }
+        }
+        return roots;
+    }
+
     public Map<Constant, Object> getEmbeddedRoots() {
         return embeddedRoots;
     }
@@ -601,6 +645,10 @@ public class AnalysisUniverse implements Universe {
     }
 
     public JavaConstant replaceObjectWithConstant(Object source) {
+        return replaceObjectWithConstant(source, getHostedValuesProvider()::forObject);
+    }
+
+    public JavaConstant replaceObjectWithConstant(Object source, Function<Object, JavaConstant> converter) {
         assert !(source instanceof ImageHeapConstant) : source;
 
         var replacedObject = replaceObject0(source, true);
@@ -608,7 +656,7 @@ public class AnalysisUniverse implements Universe {
             return constant;
         }
 
-        return getHostedValuesProvider().forObject(replacedObject);
+        return converter.apply(replacedObject);
     }
 
     /**
@@ -747,6 +795,14 @@ public class AnalysisUniverse implements Universe {
         return heapScanner;
     }
 
+    public void setImageLayerWriter(ImageLayerWriter imageLayerWriter) {
+        this.imageLayerWriter = imageLayerWriter;
+    }
+
+    public ImageLayerWriter getImageLayerWriter() {
+        return imageLayerWriter;
+    }
+
     public void setImageLayerLoader(ImageLayerLoader imageLayerLoader) {
         this.imageLayerLoader = imageLayerLoader;
     }
@@ -779,7 +835,7 @@ public class AnalysisUniverse implements Universe {
         /* No type was created yet, so the array can be overwritten without any concurrency issue */
         typesById = new AnalysisType[startTid];
 
-        setStartId(nextTypeId, startTid, 0);
+        setStartId(nextTypeId, startTid, 1);
     }
 
     public void setStartMethodId(int startMid) {

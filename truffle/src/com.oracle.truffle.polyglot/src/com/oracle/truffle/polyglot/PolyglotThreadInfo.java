@@ -42,8 +42,8 @@ package com.oracle.truffle.polyglot;
 
 import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 
-import java.util.BitSet;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
@@ -80,6 +80,7 @@ final class PolyglotThreadInfo {
     private volatile int enteredCount;
     private volatile TruffleSafepoint.Interrupter leaveAndEnterInterrupter;
     final LinkedList<Object[]> explicitContextStack = new LinkedList<>();
+    boolean interruptSent;
     volatile boolean cancelled;
     volatile boolean leaveAndEnterInterrupted;
     private Object originalContextClassLoader = NULL_CLASS_LOADER;
@@ -97,6 +98,12 @@ final class PolyglotThreadInfo {
     private boolean finalizationComplete;
 
     private final List<ProbeNode> probesEnterList;
+
+    /*
+     * Set only for dead embedder threads (Thread#isAlive() == false) to claim the finalization of
+     * the dead embedder threads by another embedder thread that is just entering the context.
+     */
+    boolean finalizingDeadThread;
 
     private static final boolean ASSERT_ENTER_RETURN_PARITY;
 
@@ -154,6 +161,16 @@ final class PolyglotThreadInfo {
 
     Thread getThread() {
         return thread.get();
+    }
+
+    boolean isFinalizingDeadThread() {
+        assert Thread.holdsLock(context);
+        return finalizingDeadThread;
+    }
+
+    void setFinalizingDeadThread() {
+        assert Thread.holdsLock(context);
+        this.finalizingDeadThread = true;
     }
 
     boolean isLanguageContextInitialized(PolyglotLanguage language) {

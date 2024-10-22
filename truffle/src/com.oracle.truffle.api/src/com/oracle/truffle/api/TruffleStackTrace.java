@@ -47,6 +47,7 @@ import java.util.ListIterator;
 import java.util.Objects;
 
 import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostLanguageService;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
@@ -270,7 +271,12 @@ public final class TruffleStackTrace extends Exception {
 
     private static boolean isHostException(Throwable throwable) {
         Object polyglotEngine = LanguageAccessor.ENGINE.getCurrentPolyglotEngine();
-        return polyglotEngine != null && LanguageAccessor.ENGINE.getHostService(polyglotEngine).isHostException(throwable);
+        if (polyglotEngine == null) {
+            return false;
+        }
+        AbstractHostLanguageService hostService = LanguageAccessor.ENGINE.getHostService(polyglotEngine);
+        // hostService is null during context pre-initialization
+        return hostService != null && hostService.isHostException(throwable);
     }
 
     private static final class TracebackElement {

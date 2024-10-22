@@ -30,8 +30,6 @@ import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.I
 import java.util.ArrayList;
 
 import org.graalvm.collections.EconomicMap;
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -48,6 +46,9 @@ import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.word.Word;
 
 /**
  * Used to create and manage performance data entries.
@@ -110,7 +111,7 @@ public class PerfManager {
 
     public static boolean usePerfData() {
         int optionIndex = IsolateArgumentParser.getOptionIndex(SubstrateOptions.ConcealedOptions.UsePerfData);
-        return VMInspectionOptions.hasJvmstatSupport() && IsolateArgumentParser.getBooleanOptionValue(optionIndex);
+        return VMInspectionOptions.hasJvmstatSupport() && IsolateArgumentParser.singleton().getBooleanOptionValue(optionIndex);
     }
 
     /** Returns a pointer into the image heap. */

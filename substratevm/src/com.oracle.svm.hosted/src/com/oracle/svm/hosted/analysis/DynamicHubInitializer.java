@@ -39,11 +39,11 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.jdk.ClassLoaderSupport;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.BootLoaderSupport;
@@ -52,6 +52,8 @@ import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
+import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
+import com.oracle.svm.hosted.jdk.HostedClassLoaderPackageManagement;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -94,7 +96,13 @@ public class DynamicHubInitializer {
         Class<?> javaClass = type.getJavaClass();
         DynamicHub hub = hostVM.dynamicHub(type);
 
-        registerPackage(heapScanner, javaClass, hub);
+        /*
+         * Since the javaClass is java.lang.Object for BaseLayerTypes, the java.lang package would
+         * be registered in the wrong class loader.
+         */
+        if (!(type.getWrapped() instanceof BaseLayerType)) {
+            registerPackage(heapScanner, javaClass, hub);
+        }
 
         boolean rescan = true;
         /*
@@ -164,8 +172,7 @@ public class DynamicHubInitializer {
             ClassLoader runtimeClassLoader = ClassLoaderFeature.getRuntimeClassLoader(classloader);
             VMError.guarantee(runtimeClassLoader != null, "Class loader missing for class %s", hub.getName());
             String packageName = hub.getPackageName();
-            var loaderPackages = ClassLoaderSupport.registerPackage(runtimeClassLoader, packageName, packageValue);
-            heapScanner.rescanObject(loaderPackages);
+            HostedClassLoaderPackageManagement.singleton().registerPackage(runtimeClassLoader, packageName, packageValue, heapScanner::rescanObject);
         }
     }
 
@@ -212,12 +219,16 @@ public class DynamicHubInitializer {
         AnalysisError.guarantee(hub.getClassInitializationInfo() == null, "Class initialization info already computed for %s.", type.toJavaName(true));
         boolean initializedAtBuildTime = SimulateClassInitializerSupport.singleton().trySimulateClassInitializer(bb, type);
         ClassInitializationInfo info;
-        boolean typeReachedTracked = ClassInitializationSupport.singleton().requiresInitializationNodeForTypeReached(type);
-        if (initializedAtBuildTime) {
-            info = type.getClassInitializer() == null ? ClassInitializationInfo.forNoInitializerInfo(typeReachedTracked)
-                            : ClassInitializationInfo.forInitializedInfo(typeReachedTracked);
+        if (type.getWrapped() instanceof BaseLayerType) {
+            info = HostedImageLayerBuildingSupport.singleton().getLoader().getClassInitializationInfo(type);
         } else {
-            info = buildRuntimeInitializationInfo(type, typeReachedTracked);
+            boolean typeReachedTracked = ClassInitializationSupport.singleton().requiresInitializationNodeForTypeReached(type);
+            if (initializedAtBuildTime) {
+                info = type.getClassInitializer() == null ? ClassInitializationInfo.forNoInitializerInfo(typeReachedTracked)
+                                : ClassInitializationInfo.forInitializedInfo(typeReachedTracked);
+            } else {
+                info = buildRuntimeInitializationInfo(type, typeReachedTracked);
+            }
         }
         hub.setClassInitializationInfo(info);
         if (rescan) {

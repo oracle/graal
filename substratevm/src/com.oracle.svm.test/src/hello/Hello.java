@@ -193,7 +193,7 @@ public class Hello {
     private static void inlineReceiveConstants(byte b, int i, long l, String s, float f, double d) {
         long n = i * l;
         double q = f * d;
-        String t = s + "!";
+        String t = String.format("%s!", s);
         System.out.println(String.format("b = %d\n", b));
         System.out.println(String.format("i = %d\n", i));
         System.out.println(String.format("l = %d\n", l));

@@ -54,6 +54,7 @@ import jdk.graal.compiler.core.common.type.ArithmeticOpTable.IntegerConvertOp.Ze
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.ShiftOp.Shl;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.ShiftOp.Shr;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.ShiftOp.UShr;
+import jdk.graal.compiler.core.common.type.ArithmeticOpTable.TernaryOp.FMA;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.UnaryOp.Abs;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.UnaryOp.Neg;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.UnaryOp.Not;
@@ -101,6 +102,8 @@ public final class ArithmeticOpTable {
     private final BinaryOp<UMax> umax;
     private final BinaryOp<UMin> umin;
 
+    private final TernaryOp<FMA> fma;
+
     private final ReinterpretOp reinterpret;
 
     private final BinaryOp<Compress> compress;
@@ -134,13 +137,15 @@ public final class ArithmeticOpTable {
     }
 
     public static final ArithmeticOpTable EMPTY = new ArithmeticOpTable(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
-                    null, null, null, null, null, null);
+                    null, null, null, null, null, null, null);
 
     public interface ArithmeticOpWrapper {
 
         <OP> UnaryOp<OP> wrapUnaryOp(UnaryOp<OP> op);
 
         <OP> BinaryOp<OP> wrapBinaryOp(BinaryOp<OP> op);
+
+        <OP> TernaryOp<OP> wrapTernaryOp(TernaryOp<OP> op);
 
         <OP> ShiftOp<OP> wrapShiftOp(ShiftOp<OP> op);
 
@@ -191,20 +196,22 @@ public final class ArithmeticOpTable {
         BinaryOp<UMax> umax = wrapIfNonNull(wrapper::wrapBinaryOp, inner.getUMax());
         BinaryOp<UMin> umin = wrapIfNonNull(wrapper::wrapBinaryOp, inner.getUMin());
 
+        TernaryOp<FMA> fma = wrapIfNonNull(wrapper::wrapTernaryOp, inner.getFMA());
+
         ReinterpretOp reinterpret = wrapIfNonNull(wrapper::wrapReinterpretOp, inner.getReinterpret());
 
         BinaryOp<Compress> compress = wrapIfNonNull(wrapper::wrapBinaryOp, inner.getCompress());
         BinaryOp<Expand> expand = wrapIfNonNull(wrapper::wrapBinaryOp, inner.getExpand());
 
         FloatConvertOp[] floatConvert = CollectionsUtil.filterAndMapToArray(inner.floatConvert, Objects::nonNull, wrapper::wrapFloatConvertOp, FloatConvertOp[]::new);
-        return new ArithmeticOpTable(neg, add, sub, mul, mulHigh, umulHigh, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt, zeroExtend, signExtend, narrow, max, min, umax, umin, reinterpret,
-                        compress, expand, floatConvert);
+        return new ArithmeticOpTable(neg, add, sub, mul, mulHigh, umulHigh, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt, zeroExtend, signExtend, narrow, max, min, umax, umin, fma,
+                        reinterpret, compress, expand, floatConvert);
     }
 
     public ArithmeticOpTable(UnaryOp<Neg> neg, BinaryOp<Add> add, BinaryOp<Sub> sub, BinaryOp<Mul> mul, BinaryOp<MulHigh> mulHigh, BinaryOp<UMulHigh> umulHigh, BinaryOp<Div> div, BinaryOp<Rem> rem,
                     UnaryOp<Not> not, BinaryOp<And> and, BinaryOp<Or> or, BinaryOp<Xor> xor, ShiftOp<Shl> shl, ShiftOp<Shr> shr, ShiftOp<UShr> ushr, UnaryOp<Abs> abs, UnaryOp<Sqrt> sqrt,
                     IntegerConvertOp<ZeroExtend> zeroExtend, IntegerConvertOp<SignExtend> signExtend, IntegerConvertOp<Narrow> narrow, BinaryOp<Max> max, BinaryOp<Min> min, BinaryOp<UMax> umax,
-                    BinaryOp<UMin> umin, ReinterpretOp reinterpret, BinaryOp<Compress> compress, BinaryOp<Expand> expand, FloatConvertOp... floatConvert) {
+                    BinaryOp<UMin> umin, TernaryOp<FMA> fma, ReinterpretOp reinterpret, BinaryOp<Compress> compress, BinaryOp<Expand> expand, FloatConvertOp... floatConvert) {
         this.neg = neg;
         this.add = add;
         this.sub = sub;
@@ -229,6 +236,7 @@ public final class ArithmeticOpTable {
         this.min = min;
         this.umax = umax;
         this.umin = umin;
+        this.fma = fma;
         this.reinterpret = reinterpret;
         this.compress = compress;
         this.expand = expand;
@@ -237,8 +245,8 @@ public final class ArithmeticOpTable {
             this.floatConvert[op.getFloatConvert().ordinal()] = op;
         }
 
-        this.hash = Objects.hash(neg, add, sub, mul, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt, zeroExtend, signExtend, narrow, max, min, umax, umin, reinterpret, compress, expand,
-                        floatConvert);
+        this.hash = Objects.hash(neg, add, sub, mul, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt, zeroExtend, signExtend, narrow, max, min, umax, umin, fma, reinterpret, compress, expand,
+                        Arrays.hashCode(floatConvert));
     }
 
     @Override
@@ -415,6 +423,13 @@ public final class ArithmeticOpTable {
     }
 
     /**
+     * Describes the fma operation (a * b + c).
+     */
+    public TernaryOp<FMA> getFMA() {
+        return fma;
+    }
+
+    /**
      * Describes a reinterpret operation.
      */
     public ReinterpretOp getReinterpret() {
@@ -472,6 +487,7 @@ public final class ArithmeticOpTable {
                Objects.equals(min, that.min) &&
                Objects.equals(umax, that.umax) &&
                Objects.equals(umin, that.umin) &&
+               Objects.equals(fma, that.fma) &&
                Objects.equals(reinterpret, that.reinterpret) &&
                Objects.equals(compress, that.compress) &&
                Objects.equals(expand, that.expand);
@@ -502,7 +518,7 @@ public final class ArithmeticOpTable {
     public String toString() {
         return getClass().getSimpleName() + "[" +
                         toString(neg, add, sub, mul, mulHigh, umulHigh, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt,
-                                        zeroExtend, signExtend, narrow, max, min, umax, umin, reinterpret, compress, expand) +
+                                        zeroExtend, signExtend, narrow, max, min, umax, umin, fma, reinterpret, compress, expand) +
                         ",floatConvert[" + toString(floatConvert) + "]]";
     }
 
@@ -843,11 +859,32 @@ public final class ArithmeticOpTable {
         }
     }
 
+    public abstract static class TernaryOp<OP> extends Op {
+
+        /**
+         * This represents the operation a * b + c.
+         */
+        public abstract static class FMA extends TernaryOp<FMA> {
+
+            protected FMA() {
+                super("FMA");
+            }
+        }
+
+        protected TernaryOp(String operation) {
+            super(operation);
+        }
+
+        public abstract Constant foldConstant(Constant a, Constant b, Constant c);
+
+        public abstract Stamp foldStamp(Stamp a, Stamp b, Stamp c);
+    }
+
     /**
      * Describes a shift operation. The right argument of a shift operation always has kind
      * {@link JavaKind#Int}.
      */
-    public abstract static class ShiftOp<OP> extends Op {
+    public abstract static class ShiftOp<OP> extends BinaryOp<OP> {
 
         public abstract static class Shl extends ShiftOp<Shl> {
 
@@ -871,18 +908,8 @@ public final class ArithmeticOpTable {
         }
 
         protected ShiftOp(String operation) {
-            super(operation);
+            super(operation, false, false);
         }
-
-        /**
-         * Apply the shift to a constant.
-         */
-        public abstract Constant foldConstant(Constant c, int amount);
-
-        /**
-         * Apply the shift to a stamp.
-         */
-        public abstract Stamp foldStamp(Stamp s, IntegerStamp amount);
 
         /**
          * Get the shift amount mask for a given result stamp.

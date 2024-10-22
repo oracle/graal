@@ -24,12 +24,15 @@
  */
 package com.oracle.svm.core.os;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.heap.Heap;
 
@@ -71,11 +74,16 @@ public interface ImageHeapProvider {
      *            written. May be null if this value is not required.
      * @return a result code from {@link CEntryPointErrors}.
      */
+    @Uninterruptible(reason = "Still being initialized.")
     int initialize(Pointer reservedAddressSpace, UnsignedWord reservedSize, WordPointer basePointer, WordPointer endPointer);
 
     /**
      * Disposes an instance of the image heap that was created with this provider. This method must
      * only be called if the image heap memory was allocated by the {@link ImageHeapProvider}.
      */
+    @Uninterruptible(reason = "Called during isolate tear-down.")
     int freeImageHeap(PointerBase heapBase);
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    UnsignedWord getImageHeapAddressSpaceSize();
 }

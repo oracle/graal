@@ -42,12 +42,18 @@ import org.graalvm.nativeimage.Platforms;
  * <li>{@link MultiLayeredImageSingleton}: {@link ImageSingletons#lookup} calls continue to refer to
  * the appropriate per layer image singleton, but there is also an additional method
  * {@link MultiLayeredImageSingleton#getAllLayers} which returns an array with the image singletons
- * corresponding to this key in all layers they were created.</li>
+ * corresponding to this key in all layers they were created. The length of this array will vary
+ * from [0, total #layers], based on the number of layers singletons were installed in (i.e., it is
+ * not required for the singleton to be installed in all layers). Within the array, the singletons
+ * will be arranged so that index [0] corresponds to the singleton originating from the oldest layer
+ * in which the singleton was installed and index [length - 1] holds the singleton from the newest
+ * layer.</li>
  * </ul>
  *
- * Note the unique behavior of {@link ApplicationLayerOnlyImageSingleton} and
- * {@link MultiLayeredImageSingleton} apply only when building a layered image. During a traditional
- * build these flags do not have an impact.
+ * Note the unique behavior of {@link ApplicationLayerOnlyImageSingleton} applies only when building
+ * a layered image. Calling {@link MultiLayeredImageSingleton#getAllLayers} during a traditional
+ * build requires the singleton to be installed in the build and will return an array of length 1
+ * containing that singleton.
  *
  * Currently, when using these special singleton types there are additional restrictions:
  *

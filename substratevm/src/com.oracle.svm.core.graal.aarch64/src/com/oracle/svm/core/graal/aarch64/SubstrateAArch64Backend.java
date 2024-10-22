@@ -65,6 +65,7 @@ import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
 import com.oracle.svm.core.graal.nodes.ComputedIndirectCallTargetNode;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.SubstrateReferenceMapBuilder;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.meta.CompressedNullConstant;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
@@ -1092,14 +1093,25 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             }
         }
 
+        public AArch64LIRInstruction createLoadMethodPointerConstant(AllocatableValue dst, SubstrateMethodPointerConstant constant) {
+            if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
+                if (constant.pointer().getMethod() instanceof SharedMethod sharedMethod && sharedMethod.forceIndirectCall()) {
+                    // GR-53498 AArch64 layered image support
+                    throw VMError.unimplemented("AArch64 does not currently support layered images.");
+                }
+            }
+
+            return new AArch64LoadMethodPointerConstantOp(dst, constant);
+        }
+
         @Override
         public AArch64LIRInstruction createLoad(AllocatableValue dst, Constant src) {
             if (CompressedNullConstant.COMPRESSED_NULL.equals(src)) {
                 return super.createLoad(dst, getZeroConstant(dst));
-            } else if (src instanceof CompressibleConstant) {
-                return loadObjectConstant(dst, (CompressibleConstant) src);
-            } else if (src instanceof SubstrateMethodPointerConstant) {
-                return new AArch64LoadMethodPointerConstantOp(dst, (SubstrateMethodPointerConstant) src);
+            } else if (src instanceof CompressibleConstant constant) {
+                return loadObjectConstant(dst, constant);
+            } else if (src instanceof SubstrateMethodPointerConstant constant) {
+                return createLoadMethodPointerConstant(dst, constant);
             }
             return super.createLoad(dst, src);
         }
@@ -1108,10 +1120,10 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         public LIRInstruction createStackLoad(AllocatableValue dst, Constant src) {
             if (CompressedNullConstant.COMPRESSED_NULL.equals(src)) {
                 return super.createStackLoad(dst, getZeroConstant(dst));
-            } else if (src instanceof CompressibleConstant) {
-                return loadObjectConstant(dst, (CompressibleConstant) src);
-            } else if (src instanceof SubstrateMethodPointerConstant) {
-                return new AArch64LoadMethodPointerConstantOp(dst, (SubstrateMethodPointerConstant) src);
+            } else if (src instanceof CompressibleConstant constant) {
+                return loadObjectConstant(dst, constant);
+            } else if (src instanceof SubstrateMethodPointerConstant constant) {
+                return createLoadMethodPointerConstant(dst, constant);
             }
             return super.createStackLoad(dst, src);
         }
@@ -1193,7 +1205,8 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
     }
 
     @Override
-    public CompilationResultBuilder newCompilationResultBuilder(LIRGenerationResult lirGenResult, FrameMap frameMap, CompilationResult compilationResult, CompilationResultBuilderFactory factory) {
+    public CompilationResultBuilder newCompilationResultBuilder(LIRGenerationResult lirGenResult, FrameMap frameMap, CompilationResult compilationResult, CompilationResultBuilderFactory factory,
+                    EntryPointDecorator entryPointDecorator) {
         AArch64MacroAssembler masm = new AArch64MacroAssembler(getTarget());
         PatchConsumerFactory patchConsumerFactory;
         if (SubstrateUtil.HOSTED) {
@@ -1287,19 +1300,15 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         AArch64MacroAssembler asm = new AArch64MacroAssembler(getTarget());
         try (ScratchRegister scratch = asm.getScratchRegister()) {
             Register scratchRegister = scratch.getRegister();
-            if (SubstrateOptions.SpawnIsolates.getValue()) { // method id is offset from heap base
-                asm.ldr(64, scratchRegister, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, threadArg.getRegister(), threadIsolateOffset));
-                /*
-                 * Load the isolate pointer from the JNIEnv argument (same as the isolate thread).
-                 * The isolate pointer is equivalent to the heap base address (which would normally
-                 * be provided via Isolate.getHeapBase which is a no-op), which we then use to
-                 * access the method object and read the entry point.
-                 */
-                asm.add(64, scratchRegister, scratchRegister, methodIdArg.getRegister());
-                asm.ldr(64, scratchRegister, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, scratchRegister, methodObjEntryPointOffset));
-            } else { // method id is address of method object
-                asm.ldr(64, scratchRegister, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, methodIdArg.getRegister(), methodObjEntryPointOffset));
-            }
+            asm.ldr(64, scratchRegister, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, threadArg.getRegister(), threadIsolateOffset));
+            /*
+             * Load the isolate pointer from the JNIEnv argument (same as the isolate thread). The
+             * isolate pointer is equivalent to the heap base address (which would normally be
+             * provided via Isolate.getHeapBase which is a no-op), which we then use to access the
+             * method object and read the entry point.
+             */
+            asm.add(64, scratchRegister, scratchRegister, methodIdArg.getRegister());
+            asm.ldr(64, scratchRegister, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, scratchRegister, methodObjEntryPointOffset));
             asm.jmp(scratchRegister);
         }
         result.recordMark(asm.position(), PROLOGUE_DECD_RSP);

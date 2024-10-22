@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.phases;
 import static com.oracle.svm.core.SubstrateUtil.toUnboxedClass;
 import static jdk.graal.compiler.bytecode.Bytecodes.LDC2_W;
 
+import java.lang.constant.ConstantDescs;
 import java.lang.invoke.LambdaConversionException;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -42,7 +43,6 @@ import com.oracle.graal.pointsto.constraints.TypeInstantiationException;
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
-import com.oracle.graal.pointsto.heap.ImageHeapInstance;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -61,7 +61,6 @@ import com.oracle.svm.core.graal.nodes.DeoptEntrySupport;
 import com.oracle.svm.core.graal.nodes.DeoptProxyAnchorNode;
 import com.oracle.svm.core.graal.nodes.FieldOffsetNode;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
-import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.util.UserError;
@@ -132,6 +131,7 @@ import jdk.graal.compiler.nodes.java.UnsafeCompareAndSwapNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.replacements.SnippetTemplate;
+import jdk.internal.access.SharedSecrets;
 import jdk.internal.org.objectweb.asm.Opcodes;
 import jdk.vm.ci.meta.ConstantPool.BootstrapMethodInvocation;
 import jdk.vm.ci.meta.JavaConstant;
@@ -1063,6 +1063,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         public class BootstrapMethodHandler {
+            private static final Method CLASS_DATA_METHOD = ReflectionUtil.lookupMethod(MethodHandles.class, "classData", MethodHandles.Lookup.class, String.class, Class.class);
 
             private Object loadConstantDynamic(int cpi, int opcode) {
                 BootstrapMethodInvocation bootstrap;
@@ -1072,45 +1073,75 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                     handleBootstrapException(ex, "constant");
                     return ex;
                 }
-                if (bootstrap != null && !BootstrapMethodConfiguration.singleton().isCondyAllowedAtBuildTime(OriginalMethodProvider.getJavaMethod(bootstrap.getMethod()))) {
-                    int parameterLength = bootstrap.getMethod().getParameters().length;
-                    List<JavaConstant> staticArguments = bootstrap.getStaticArguments();
-                    boolean isVarargs = bootstrap.getMethod().isVarArgs();
-                    DynamicHub typeClass = getSnippetReflection().asObject(DynamicHub.class, bootstrap.getType());
-                    boolean isPrimitive = typeClass.isPrimitive();
 
-                    for (JavaConstant argument : staticArguments) {
-                        if (argument instanceof ImageHeapInstance imageHeapInstance) {
-                            Object arg = getSnippetReflection().asObject(Object.class, imageHeapInstance);
-                            if (arg instanceof UnresolvedJavaType) {
-                                return arg;
-                            }
+                if (bootstrap != null) {
+                    Executable bootstrapMethod = OriginalMethodProvider.getJavaMethod(bootstrap.getMethod());
+
+                    /*
+                     * MethodHandles.classData is used as a bootstrap method by, e.g, certain lambda
+                     * classes. It is pretty simple: it just reads the classData field from its
+                     * invoking class. Unfortunately, it also force-initializes the invoking class.
+                     * Therefore, we cannot just treat it as "safe at build time". The class
+                     * initialization is also completely useless because the invoking class must be
+                     * already initialized by the time the boostrap method is executed.
+                     * 
+                     * We replicate the implementation of the bootstrap method here without doing
+                     * the class initialization.
+                     */
+                    if (CLASS_DATA_METHOD.equals(bootstrapMethod) && ConstantDescs.DEFAULT_NAME.equals(bootstrap.getName()) && bootstrap.getStaticArguments().isEmpty()) {
+                        Class<?> invokingClass = OriginalClassProvider.getJavaClass(method.getDeclaringClass());
+                        Object classData = SharedSecrets.getJavaLangAccess().classData(invokingClass);
+                        if (classData == null) {
+                            return JavaConstant.NULL_POINTER;
+                        }
+                        JavaConstant classDataConstant = getSnippetReflection().forObject(classData);
+                        ResolvedJavaType bootstrapType = getConstantReflection().asJavaType(bootstrap.getType());
+                        /* Safety check that the classData has the requested type. */
+                        if (bootstrapType.isAssignableFrom(getMetaAccess().lookupJavaType(classDataConstant))) {
+                            return classDataConstant;
                         }
                     }
 
-                    if (isBootstrapInvocationInvalid(bootstrap, parameterLength, staticArguments, isVarargs, typeClass.getHostedJavaClass())) {
-                        /*
-                         * The number of provided arguments does not match the signature of the
-                         * bootstrap method or the provided type does not match the return type of
-                         * the bootstrap method. Calling lookupConstant with
-                         * allowBootstrapMethodInvocation set to true correctly throws the intended
-                         * BootstrapMethodError.
-                         */
-                        return SharedBytecodeParser.super.lookupConstant(cpi, opcode, true);
-                    }
+                    if (!BootstrapMethodConfiguration.singleton().isCondyAllowedAtBuildTime(bootstrapMethod)) {
+                        int parameterLength = bootstrap.getMethod().getParameters().length;
+                        List<JavaConstant> staticArguments = bootstrap.getStaticArguments();
+                        boolean isVarargs = bootstrap.getMethod().isVarArgs();
+                        Class<?> typeClass = getSnippetReflection().asObject(Class.class, bootstrap.getType());
+                        boolean isPrimitive = typeClass.isPrimitive();
 
-                    Object resolvedObject = resolveLinkedObject(bci(), cpi, opcode, bootstrap, parameterLength, staticArguments, isVarargs, isPrimitive);
-                    if (resolvedObject instanceof Throwable) {
-                        return resolvedObject;
-                    }
-                    ValueNode resolvedObjectNode = (ValueNode) resolvedObject;
+                        for (JavaConstant argument : staticArguments) {
+                            if (argument.getJavaKind().isObject()) {
+                                Object arg = getSnippetReflection().asObject(Object.class, argument);
+                                if (arg instanceof UnresolvedJavaType) {
+                                    return arg;
+                                }
+                            }
+                        }
 
-                    if (typeClass.isPrimitive()) {
-                        JavaKind constantKind = getMetaAccessExtensionProvider().getStorageKind(getMetaAccess().lookupJavaType(typeClass.getHostedJavaClass()));
-                        resolvedObjectNode = append(UnboxNode.create(getMetaAccess(), getConstantReflection(), resolvedObjectNode, constantKind));
-                    }
+                        if (isBootstrapInvocationInvalid(bootstrap, parameterLength, staticArguments, isVarargs, typeClass)) {
+                            /*
+                             * The number of provided arguments does not match the signature of the
+                             * bootstrap method or the provided type does not match the return type
+                             * of the bootstrap method. Calling lookupConstant with
+                             * allowBootstrapMethodInvocation set to true correctly throws the
+                             * intended BootstrapMethodError.
+                             */
+                            return SharedBytecodeParser.super.lookupConstant(cpi, opcode, true);
+                        }
 
-                    return resolvedObjectNode;
+                        Object resolvedObject = resolveLinkedObject(bci(), cpi, opcode, bootstrap, parameterLength, staticArguments, isVarargs, isPrimitive);
+                        if (resolvedObject instanceof Throwable) {
+                            return resolvedObject;
+                        }
+                        ValueNode resolvedObjectNode = (ValueNode) resolvedObject;
+
+                        if (typeClass.isPrimitive()) {
+                            JavaKind constantKind = getMetaAccessExtensionProvider().getStorageKind(getMetaAccess().lookupJavaType(typeClass));
+                            resolvedObjectNode = append(UnboxNode.create(getMetaAccess(), getConstantReflection(), resolvedObjectNode, constantKind));
+                        }
+
+                        return resolvedObjectNode;
+                    }
                 }
                 return SharedBytecodeParser.super.lookupConstant(cpi, opcode, true);
             }
@@ -1380,6 +1411,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             private boolean isBootstrapInvocationInvalid(BootstrapMethodInvocation bootstrap, int parameterLength, List<JavaConstant> staticArgumentsList, boolean isVarargs, Class<?> typeClass) {
                 ResolvedJavaMethod bootstrapMethod = bootstrap.getMethod();
                 return (isVarargs && parameterLength > (3 + staticArgumentsList.size())) || (!isVarargs && parameterLength != (3 + staticArgumentsList.size())) ||
+                                (bootstrapMethod.getSignature().getReturnType(null) instanceof UnresolvedJavaType) ||
                                 !(OriginalClassProvider.getJavaClass(bootstrapMethod.getSignature().getReturnType(null)).isAssignableFrom(typeClass) || bootstrapMethod.isConstructor()) ||
                                 !checkBootstrapParameters(bootstrapMethod, bootstrap.getStaticArguments(), true);
             }

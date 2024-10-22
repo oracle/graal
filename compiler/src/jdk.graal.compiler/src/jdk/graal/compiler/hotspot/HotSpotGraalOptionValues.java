@@ -27,6 +27,7 @@ package jdk.graal.compiler.hotspot;
 import static jdk.vm.ci.common.InitTimer.timer;
 
 import java.io.PrintStream;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
@@ -111,7 +112,8 @@ public class HotSpotGraalOptionValues {
             Map<String, String> savedProps = GraalServices.getSavedProperties();
 
             EconomicMap<String, String> compilerOptionSettings = EconomicMap.create();
-            EconomicMap<String, String> vmOptionSettings = EconomicMap.create();
+            // Need to use Map as it's a shared type between guest and host in LibGraal.
+            Map<String, String> vmOptionSettings = new HashMap<>();
 
             for (Map.Entry<String, String> e : savedProps.entrySet()) {
                 String name = e.getKey();
@@ -149,8 +151,10 @@ public class HotSpotGraalOptionValues {
                 }
             }
 
+            if (!vmOptionSettings.isEmpty()) {
+                notifyLibgraalOptions(vmOptionSettings);
+            }
             OptionsParser.parseOptions(compilerOptionSettings, compilerOptionValues, descriptors);
-            notifyLibgraalOptions(compilerOptionValues, vmOptionSettings);
             return compilerOptionValues;
         }
     }
@@ -164,16 +168,12 @@ public class HotSpotGraalOptionValues {
     }
 
     /**
-     * Substituted by
-     * {@code com.oracle.svm.graal.hotspot.libgraal.Target_jdk_graal_compiler_hotspot_HotSpotGraalOptionValues}.
+     * Substituted by {@code Target_jdk_graal_compiler_hotspot_HotSpotGraalOptionValues}.
      *
-     * @param compilerOptionValues parsed compiler option values
-     * @param vmOptionSettings unparsed libgraal option values
+     * @param settings unparsed libgraal option values
      */
-    private static void notifyLibgraalOptions(EconomicMap<OptionKey<?>, Object> compilerOptionValues, EconomicMap<String, String> vmOptionSettings) {
-        if (!vmOptionSettings.isEmpty()) {
-            System.err.printf("WARNING: Ignoring the following libgraal VM option(s) while executing jargraal: %s%n", String.join(", ", vmOptionSettings.getKeys()));
-        }
+    private static void notifyLibgraalOptions(Map<String, String> settings) {
+        System.err.printf("WARNING: Ignoring the following libgraal VM option(s) while executing jargraal: %s%n", String.join(", ", settings.keySet()));
     }
 
     private static OptionValues initializeOptions() {
@@ -194,8 +194,7 @@ public class HotSpotGraalOptionValues {
     }
 
     /**
-     * Substituted by
-     * {@code com.oracle.svm.graal.hotspot.libgraal.Target_jdk_graal_compiler_hotspot_HotSpotGraalOptionValues}.
+     * Substituted by {@code Target_jdk_graal_compiler_hotspot_HotSpotGraalOptionValues}.
      *
      * @param out where help is to be printed
      * @param prefix system property prefix for libgraal VM options

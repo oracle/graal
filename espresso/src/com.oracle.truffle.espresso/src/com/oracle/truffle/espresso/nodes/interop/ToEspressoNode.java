@@ -35,6 +35,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -46,6 +47,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.nodes.bytecodes.InstanceOf;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 /**
@@ -149,14 +151,15 @@ public abstract class ToEspressoNode extends EspressoNode {
         }
 
         @Specialization
-        public Object doStaticObject(StaticObject value, Klass targetType,
+        public static Object doStaticObject(StaticObject value, Klass targetType,
+                        @Bind("$node") Node node,
                         @Cached InstanceOf.Dynamic instanceOf,
                         @Cached InlinedBranchProfile error) throws UnsupportedTypeException {
             assert !value.isForeignObject();
             if (StaticObject.isNull(value) || instanceOf.execute(value.getKlass(), targetType)) {
                 return value; // pass through, NULL coercion not needed.
             }
-            error.enter(this);
+            error.enter(node);
             throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.cat("Cannot cast ", value, " to ", targetType.getTypeAsString()));
         }
 
@@ -164,14 +167,15 @@ public abstract class ToEspressoNode extends EspressoNode {
                         "interop.isNull(value)",
                         "!isStaticObject(value)"
         })
-        public Object doForeignNull(Object value, @SuppressWarnings("unused") Klass targetType,
+        public static Object doForeignNull(Object value, @SuppressWarnings("unused") Klass targetType,
+                        @Bind("$node") Node node,
                         @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached InlinedBranchProfile error) throws UnsupportedTypeException {
             if (targetType.isPrimitive()) {
-                error.enter(this);
+                error.enter(node);
                 throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.cat("Cannot cast ", value, " to ", targetType.getTypeAsString()));
             }
-            return StaticObject.createForeignNull(EspressoLanguage.get(this), value);
+            return StaticObject.createForeignNull(EspressoLanguage.get(node), value);
         }
 
         @Specialization(guards = {
@@ -179,41 +183,43 @@ public abstract class ToEspressoNode extends EspressoNode {
                         "isTypeMappingEnabled(targetType)",
                         "!isStaticObject(value)"
         })
-        public Object doMappedInterface(Object value, Klass targetType,
+        public static Object doMappedInterface(Object value, Klass targetType,
+                        @Bind("$node") Node node,
                         @Cached LookupProxyKlassNode lookupProxyKlassNode,
                         @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached InlinedBranchProfile error) throws UnsupportedTypeException {
             try {
-                Object metaObject = getMetaObjectOrThrow(value, interop);
+                Object metaObject = interop.getMetaObject(value);
                 WrappedProxyKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, getMetaName(metaObject, interop), targetType);
                 if (proxyKlass != null) {
                     targetType.safeInitialize();
-                    return proxyKlass.createProxyInstance(value, getLanguage(), interop);
+                    return proxyKlass.createProxyInstance(value, EspressoLanguage.get(node), interop);
                 }
-                error.enter(this);
-                throw new ClassCastException();
-            } catch (ClassCastException e) {
-                error.enter(this);
-                throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.format("Could not cast foreign object to %s: ", targetType.getTypeAsString()));
+            } catch (UnsupportedMessageException e) {
+                // no meta object, fall through to throw unsupported type
             }
+            error.enter(node);
+            throw unsupportedType(value, targetType);
         }
 
         @Specialization(guards = {
                         "!interop.isNull(value)",
                         "!isStaticObject(value)"
         })
-        public Object doArray(Object value, ArrayKlass targetType,
+        public static Object doArray(Object value, ArrayKlass targetType,
+                        @Bind("$node") Node node,
                         @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached InlinedBranchProfile error) throws UnsupportedTypeException {
-            if (targetType == getMeta()._byte_array) {
+            Meta meta = EspressoContext.get(node).getMeta();
+            if (targetType == meta._byte_array) {
                 if (interop.hasBufferElements(value) && !isHostString(value)) {
-                    return StaticObject.createForeign(EspressoLanguage.get(this), getMeta()._byte_array, value, interop);
+                    return StaticObject.createForeign(EspressoLanguage.get(node), meta._byte_array, value, interop);
                 }
             }
             if (interop.hasArrayElements(value) && !isHostString(value)) {
-                return StaticObject.createForeign(EspressoLanguage.get(this), targetType, value, interop);
+                return StaticObject.createForeign(EspressoLanguage.get(node), targetType, value, interop);
             }
-            error.enter(this);
+            error.enter(node);
             throw UnsupportedTypeException.create(new Object[]{value}, targetType.getTypeAsString());
         }
 
@@ -222,25 +228,25 @@ public abstract class ToEspressoNode extends EspressoNode {
                         "isTypeConverterEnabled(targetType)",
                         "!isStaticObject(value)"
         })
-        public Object doTypeConverter(Object value, Klass targetType,
+        public static Object doTypeConverter(Object value, Klass targetType,
+                        @Bind("$node") Node node,
                         @Cached LookupTypeConverterNode lookupTypeConverter,
                         @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached InlinedBranchProfile error) throws UnsupportedTypeException {
             try {
-                Object metaObject = getMetaObjectOrThrow(value, interop);
+                Object metaObject = interop.getMetaObject(value);
                 String metaName = getMetaName(metaObject, interop);
 
                 // check if there's a specific type mapping available
                 PolyglotTypeMappings.TypeConverter converter = lookupTypeConverter.execute(metaName);
                 if (converter != null) {
-                    return converter.convert(StaticObject.createForeign(getLanguage(), targetType, value, interop));
+                    return converter.convert(StaticObject.createForeign(EspressoLanguage.get(node), targetType, value, interop));
                 }
-                error.enter(this);
-                throw new ClassCastException();
-            } catch (ClassCastException e) {
-                error.enter(this);
-                throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.format("Could not cast foreign object to %s: ", targetType.getNameAsString(), e.getMessage()));
+            } catch (UnsupportedMessageException e) {
+                // no meta object, fall through to throw unsupported type
             }
+            error.enter(node);
+            throw unsupportedType(value, targetType);
         }
 
         @Specialization(guards = {
@@ -248,26 +254,26 @@ public abstract class ToEspressoNode extends EspressoNode {
                         "isInternalTypeConverterEnabled(targetType)",
                         "!isStaticObject(value)"
         })
-        public Object doInternalTypeConverter(Object value, Klass targetType,
+        public static Object doInternalTypeConverter(Object value, Klass targetType,
+                        @Bind("$node") Node node,
                         @Cached ToReference.DynamicToReference converterToEspresso,
                         @Cached LookupInternalTypeConverterNode lookupInternalTypeConverter,
                         @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @Cached InlinedBranchProfile error) throws UnsupportedTypeException {
+                        @Cached InlinedBranchProfile errorProfile) throws UnsupportedTypeException {
             try {
-                Object metaObject = getMetaObjectOrThrow(value, interop);
+                Object metaObject = interop.getMetaObject(value);
                 String metaName = getMetaName(metaObject, interop);
 
                 // check if there's a specific type mapping available
                 PolyglotTypeMappings.InternalTypeConverter converter = lookupInternalTypeConverter.execute(metaName);
                 if (converter != null) {
-                    return converter.convertInternal(interop, value, getMeta(), converterToEspresso);
+                    return converter.convertInternal(interop, value, EspressoContext.get(node).getMeta(), converterToEspresso);
                 }
-                error.enter(this);
-                throw new ClassCastException();
-            } catch (ClassCastException e) {
-                error.enter(this);
-                throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.format("Could not cast foreign object to %s: ", targetType.getNameAsString(), e.getMessage()));
+            } catch (UnsupportedMessageException e) {
+                // no meta object, fall through to throw unsupported type
             }
+            errorProfile.enter(node);
+            throw unsupportedType(value, targetType);
         }
 
         @Specialization(guards = {
@@ -277,8 +283,9 @@ public abstract class ToEspressoNode extends EspressoNode {
                         "!isTypeConverterEnabled(targetType)",
                         "!isTypeMappingEnabled(targetType)"
         })
-        public Object doGeneric(Object value, Klass targetType,
+        public static Object doGeneric(Object value, Klass targetType,
                         @Bind("getMeta()") Meta meta,
+                        @Bind("$node") Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached LookupTypeConverterNode lookupTypeConverterNode,
                         @Cached LookupInternalTypeConverterNode lookupInternalTypeConverterNode,
@@ -288,19 +295,15 @@ public abstract class ToEspressoNode extends EspressoNode {
             if (uncachedToEspresso != null) {
                 return uncachedToEspresso.execute(value);
             }
-            unknownProfile.enter(this);
+            unknownProfile.enter(node);
             // hit the unknown type case, so inline generic handling for that here
             if (targetType instanceof ObjectKlass) {
                 StaticObject result = ToReference.tryConverterForUnknownTarget(value, interop, lookupTypeConverterNode, lookupInternalTypeConverterNode, converterToEspresso, meta);
                 if (result != null) {
                     return result;
                 }
-                try {
-                    checkHasAllFieldsOrThrow(value, (ObjectKlass) targetType, interop, getMeta());
-                    return StaticObject.createForeign(getLanguage(), targetType, value, interop);
-                } catch (ClassCastException e) {
-                    throw UnsupportedTypeException.create(new Object[]{value}, targetType.getTypeAsString());
-                }
+                checkHasAllFieldsOrThrow(value, (ObjectKlass) targetType, interop, meta);
+                return StaticObject.createForeign(EspressoLanguage.get(node), targetType, value, interop);
             }
             throw UnsupportedTypeException.create(new Object[]{value}, targetType.getTypeAsString());
         }
@@ -336,16 +339,8 @@ public abstract class ToEspressoNode extends EspressoNode {
         }
     }
 
-    public static Object getMetaObjectOrThrow(Object value, InteropLibrary interop) throws ClassCastException {
-        try {
-            return interop.getMetaObject(value);
-        } catch (UnsupportedMessageException e) {
-            throw new ClassCastException("Could not lookup meta object");
-        }
-    }
-
     @TruffleBoundary
-    public static void checkHasAllFieldsOrThrow(Object value, ObjectKlass klass, InteropLibrary interopLibrary, Meta meta) {
+    public static void checkHasAllFieldsOrThrow(Object value, ObjectKlass klass, InteropLibrary interopLibrary, Meta meta) throws UnsupportedTypeException {
         CompilerAsserts.partialEvaluationConstant(klass);
         /*
          * For boxed types a .value member is not required if there's a direct conversion via
@@ -371,11 +366,16 @@ public abstract class ToEspressoNode extends EspressoNode {
 
         for (Field f : klass.getDeclaredFields()) {
             if (!f.isStatic() && !interopLibrary.isMemberExisting(value, f.getNameAsString())) {
-                throw new ClassCastException("Missing field: " + f.getNameAsString());
+                throw UnsupportedTypeException.create(new Object[]{value}, klass.getTypeAsString() + " due to missing field: " + f.getNameAsString());
             }
         }
         if (klass.getSuperClass() != null) {
             checkHasAllFieldsOrThrow(value, klass.getSuperKlass(), interopLibrary, meta);
         }
+    }
+
+    @TruffleBoundary
+    static UnsupportedTypeException unsupportedType(Object value, Klass targetType) {
+        return UnsupportedTypeException.create(new Object[]{value}, EspressoError.format("Could not cast foreign object to %s: ", targetType.getNameAsString()));
     }
 }

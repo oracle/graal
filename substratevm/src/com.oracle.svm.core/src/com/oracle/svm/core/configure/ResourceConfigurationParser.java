@@ -28,10 +28,10 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
-import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
 import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
@@ -64,38 +64,13 @@ public abstract class ResourceConfigurationParser<C> extends ConfigurationParser
         }
     }
 
-    @SuppressWarnings("unchecked")
-    protected void parseResourcesObject(Object resourcesObject) {
-        if (resourcesObject instanceof EconomicMap) { // New format
-            EconomicMap<String, Object> resourcesObjectMap = (EconomicMap<String, Object>) resourcesObject;
-            checkAttributes(resourcesObjectMap, "resource descriptor object", Collections.singleton("includes"), Collections.singleton("excludes"));
-            Object includesObject = resourcesObjectMap.get("includes");
-            Object excludesObject = resourcesObjectMap.get("excludes");
-
-            List<Object> includes = asList(includesObject, "Attribute 'includes' must be a list of resources");
-            for (Object object : includes) {
-                parsePatternEntry(object, registry::addResources, "'includes' list");
-            }
-
-            if (excludesObject != null) {
-                List<Object> excludes = asList(excludesObject, "Attribute 'excludes' must be a list of resources");
-                for (Object object : excludes) {
-                    parsePatternEntry(object, registry::ignoreResources, "'excludes' list");
-                }
-            }
-        } else { // Old format: may be deprecated in future versions
-            List<Object> resources = asList(resourcesObject, "Attribute 'resources' must be a list of resources");
-            for (Object object : resources) {
-                parsePatternEntry(object, registry::addResources, "'resources' list");
-            }
-        }
-    }
+    protected abstract UnresolvedConfigurationCondition parseCondition(EconomicMap<String, Object> condition);
 
     private void parseBundle(Object bundle) {
         EconomicMap<String, Object> resource = asMap(bundle, "Elements of 'bundles' list must be a bundle descriptor object");
         checkAttributes(resource, "bundle descriptor object", Collections.singletonList("name"), Arrays.asList("locales", "classNames", "condition"));
         String basename = asString(resource.get("name"));
-        TypeResult<C> resolvedConfigurationCondition = conditionResolver.resolveCondition(parseCondition(resource, false));
+        TypeResult<C> resolvedConfigurationCondition = conditionResolver.resolveCondition(parseCondition(resource));
         if (!resolvedConfigurationCondition.isPresent()) {
             return;
         }
@@ -133,40 +108,27 @@ public abstract class ResourceConfigurationParser<C> extends ConfigurationParser
         return locale;
     }
 
-    private void parsePatternEntry(Object data, BiConsumer<C, String> resourceRegistry, String parentType) {
-        EconomicMap<String, Object> resource = asMap(data, "Elements of " + parentType + " must be a resource descriptor object");
-        checkAttributes(resource, "regex resource descriptor object", Collections.singletonList("pattern"), Collections.singletonList(CONDITIONAL_KEY));
-        TypeResult<C> resolvedConfigurationCondition = conditionResolver.resolveCondition(parseCondition(resource, false));
-        if (!resolvedConfigurationCondition.isPresent()) {
-            return;
-        }
-
-        Object valueObject = resource.get("pattern");
-        String value = asString(valueObject, "pattern");
-        resourceRegistry.accept(resolvedConfigurationCondition.get(), value);
-    }
-
-    protected void parseGlobsObject(Object globsObject) {
+    protected void parseGlobsObject(Object globsObject, Object origin) {
         List<Object> globs = asList(globsObject, "Attribute 'globs' must be a list of glob patterns");
         for (Object object : globs) {
-            parseGlobEntry(object, registry::addGlob);
+            parseGlobEntry(object, (condition, module, glob) -> registry.addGlob(condition, module, glob, origin));
         }
     }
 
-    private interface GlobPatternConsumer<T> {
+    protected interface GlobPatternConsumer<T> {
         void accept(T a, String b, String c);
     }
 
     private void parseGlobEntry(Object data, GlobPatternConsumer<C> resourceRegistry) {
         EconomicMap<String, Object> globObject = asMap(data, "Elements of 'globs' list must be a glob descriptor objects");
         checkAttributes(globObject, "glob resource descriptor object", Collections.singletonList(GLOB_KEY), List.of(CONDITIONAL_KEY, MODULE_KEY));
-        TypeResult<C> resolvedConfigurationCondition = conditionResolver.resolveCondition(parseCondition(globObject, false));
+        TypeResult<C> resolvedConfigurationCondition = conditionResolver.resolveCondition(parseCondition(globObject));
         if (!resolvedConfigurationCondition.isPresent()) {
             return;
         }
 
         Object moduleObject = globObject.get(MODULE_KEY);
-        String module = moduleObject == null ? "" : asString(moduleObject);
+        String module = asNullableString(moduleObject, MODULE_KEY);
 
         Object valueObject = globObject.get(GLOB_KEY);
         String value = asString(valueObject, GLOB_KEY);

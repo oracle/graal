@@ -31,10 +31,11 @@ import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.id
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.loadWordFromObject;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.lockMaskInPlace;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.markOffset;
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.monitorMask;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.monitorValue;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.uninitializedIdentityHashCodeValue;
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.unlockedMask;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.unlockedValue;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.useLightweightLocking;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.useObjectMonitorTable;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 
@@ -45,8 +46,8 @@ import jdk.graal.compiler.replacements.IdentityHashCodeSnippets;
 import jdk.graal.compiler.word.Word;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/aaaa86b57172d45d1126c50efc270c6e49aba7a5/src/hotspot/share/opto/library_call.cpp#L4543-L4675",
-          sha1 = "9776f1621d6e2daecd17acf0cd89039339b28a1d")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/dcac4b0a532f2ca6cb374da7ece331e8266ab351/src/hotspot/share/opto/library_call.cpp#L4671-L4805",
+          sha1 = "c212d1dbff26d02d4d749e085263d4104895f1ba")
 // @formatter:on
 public class HotSpotHashCodeSnippets extends IdentityHashCodeSnippets {
 
@@ -72,8 +73,9 @@ public class HotSpotHashCodeSnippets extends IdentityHashCodeSnippets {
         //
         // See src/hotspot/share/oops/markWord.hpp for more details.
         final Word lockBits = mark.and(lockMaskInPlace(INJECTED_VMCONFIG));
-        if (probability(FAST_PATH_PROBABILITY, useLightweightLocking(INJECTED_VMCONFIG) ? lockBits.notEqual(WordFactory.unsigned(monitorMask(INJECTED_VMCONFIG)))
-                        : lockBits.equal(WordFactory.unsigned(unlockedMask(INJECTED_VMCONFIG))))) {
+        if (probability(FAST_PATH_PROBABILITY, useObjectMonitorTable(INJECTED_VMCONFIG) ||
+                        useLightweightLocking(INJECTED_VMCONFIG) ? lockBits.notEqual(WordFactory.unsigned(monitorValue(INJECTED_VMCONFIG)))
+                                        : lockBits.equal(WordFactory.unsigned(unlockedValue(INJECTED_VMCONFIG))))) {
             int hash = (int) mark.unsignedShiftRight(identityHashCodeShift(INJECTED_VMCONFIG)).rawValue();
             if (probability(FAST_PATH_PROBABILITY, hash != uninitializedIdentityHashCodeValue(INJECTED_VMCONFIG))) {
                 return hash;

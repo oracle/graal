@@ -30,10 +30,22 @@
 #include "utilities/globalDefinitions.hpp"
 #include "cgroupSubsystem_linux.hpp"
 
+
+namespace svm_container {
+
 class CgroupUtil: AllStatic {
 
   public:
     static int processor_count(CgroupCpuController* cpu, int host_cpus);
+    // Given a memory controller, adjust its path to a point in the hierarchy
+    // that represents the closest memory limit.
+    static void adjust_controller(CgroupMemoryController* m);
+    // Given a cpu controller, adjust its path to a point in the hierarchy
+    // that represents the closest cpu limit.
+    static void adjust_controller(CgroupCpuController* c);
 };
+
+
+} // namespace svm_container
 
 #endif // CGROUP_UTIL_LINUX_HPP

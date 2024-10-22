@@ -60,7 +60,8 @@ public final class JavaVersion implements Comparable<JavaVersion> {
         }
     }
 
-    public static final JavaVersion HOST_VERSION = forVersion(System.getProperty("java.version"));
+    public static final JavaVersion HOST_VERSION = forVersion(Runtime.version());
+
     public static final int LATEST_SUPPORTED = 21;
 
     private final int version;
@@ -95,6 +96,10 @@ public final class JavaVersion implements Comparable<JavaVersion> {
         }
     }
 
+    private static JavaVersion forVersion(Runtime.Version version) {
+        return forVersion(version.feature());
+    }
+
     public static JavaVersion latestSupported() {
         return forVersion(LATEST_SUPPORTED);
     }
@@ -125,6 +130,10 @@ public final class JavaVersion implements Comparable<JavaVersion> {
 
     public boolean java13OrLater() {
         return version >= 13;
+    }
+
+    public boolean java14OrLater() {
+        return version >= 14;
     }
 
     public boolean java15OrLater() {

@@ -54,7 +54,7 @@ public class AMD64HotSpotXAtomicReadAndWriteOp extends AMD64HotSpotXBarrieredOp 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         AMD64Move.move(QWORD, crb, masm, result, newValue);
-        masm.xchgq(asRegister(result), loadAddress.toAddress());
+        masm.xchgq(asRegister(result), loadAddress.toAddress(masm));
         emitBarrier(crb, masm);
     }
 }

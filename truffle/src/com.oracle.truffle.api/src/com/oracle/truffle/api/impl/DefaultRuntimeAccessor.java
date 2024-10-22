@@ -89,6 +89,15 @@ final class DefaultRuntimeAccessor extends Accessor {
         }
 
         @Override
+        public long getCallTargetId(CallTarget target) {
+            if (target instanceof DefaultCallTarget) {
+                return ((DefaultCallTarget) target).id;
+            } else {
+                return 0;
+            }
+        }
+
+        @Override
         public boolean isLegacyCompilerOption(String key) {
             return false;
         }
@@ -131,7 +140,7 @@ final class DefaultRuntimeAccessor extends Accessor {
         }
 
         @Override
-        public Object tryBytecodeOSR(BytecodeOSRNode osrNode, int target, Object interpreterState, Runnable beforeTransfer, VirtualFrame parentFrame) {
+        public Object tryBytecodeOSR(BytecodeOSRNode osrNode, long target, Object interpreterState, Runnable beforeTransfer, VirtualFrame parentFrame) {
             return null;
         }
 
@@ -142,12 +151,12 @@ final class DefaultRuntimeAccessor extends Accessor {
 
         @Override
         // Support for deprecated frame transfer: GR-38296
-        public void transferOSRFrame(BytecodeOSRNode osrNode, Frame source, Frame target, int bytecodeTarget) {
+        public void transferOSRFrame(BytecodeOSRNode osrNode, Frame source, Frame target, long bytecodeTarget) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        public void transferOSRFrame(BytecodeOSRNode osrNode, Frame source, Frame target, int bytecodeTarget, Object targetMetadata) {
+        public void transferOSRFrame(BytecodeOSRNode osrNode, Frame source, Frame target, long bytecodeTarget, Object targetMetadata) {
             throw new UnsupportedOperationException();
         }
 

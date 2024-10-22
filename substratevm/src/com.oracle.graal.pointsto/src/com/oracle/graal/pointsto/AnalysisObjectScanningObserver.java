@@ -44,14 +44,15 @@ public class AnalysisObjectScanningObserver implements ObjectScanningObserver {
 
     @Override
     public boolean forRelocatedPointerFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue, ScanReason reason) {
-        if (!field.isWritten()) {
-            return field.registerAsWritten(reason);
-        }
+        var changed = false;
         if (fieldValue.isNonNull()) {
             FieldTypeFlow fieldTypeFlow = getFieldTypeFlow(field, receiver);
-            return fieldTypeFlow.addState(getAnalysis(), TypeState.anyPrimitiveState());
+            changed = fieldTypeFlow.addState(getAnalysis(), TypeState.anyPrimitiveState());
         }
-        return false;
+        if (!field.isWritten()) {
+            changed |= field.registerAsWritten(reason);
+        }
+        return changed;
     }
 
     @Override

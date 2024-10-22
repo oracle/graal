@@ -28,9 +28,13 @@ import static jdk.graal.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
 
 import java.util.EnumMap;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
+import jdk.graal.compiler.nodes.extended.MembarNode;
+import jdk.graal.compiler.nodes.extended.PublishWritesNode;
 import jdk.graal.compiler.nodes.java.DynamicNewArrayNode;
 import jdk.graal.compiler.nodes.java.NewArrayNode;
 import jdk.graal.compiler.options.OptionValues;
@@ -38,7 +42,6 @@ import jdk.graal.compiler.replacements.SnippetTemplate.AbstractTemplates;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.Snippets;
 import jdk.graal.compiler.replacements.arraycopy.ArrayCopyCallNode;
-
 import jdk.vm.ci.meta.JavaKind;
 
 public class ObjectCloneSnippets implements Snippets {
@@ -65,57 +68,65 @@ public class ObjectCloneSnippets implements Snippets {
     @Snippet
     public static boolean[] booleanArrayClone(boolean[] src) {
         boolean[] result = (boolean[]) NewArrayNode.newUninitializedArray(Boolean.TYPE, src.length);
-        ArrayCopyCallNode.disjointArraycopy(src, 0, result, 0, src.length, JavaKind.Boolean, HotSpotReplacementsUtil.getHeapWordSize(INJECTED_VMCONFIG));
-        return result;
+        ArrayCopyCallNode.disjointArraycopy(src, 0, result, 0, src.length, JavaKind.Boolean, LocationIdentity.init(), HotSpotReplacementsUtil.getHeapWordSize(INJECTED_VMCONFIG));
+        MembarNode.memoryBarrier(MembarNode.FenceKind.ALLOCATION_INIT, LocationIdentity.INIT_LOCATION);
+        return (boolean[]) PublishWritesNode.publishWrites(result);
     }
 
     @Snippet
     public static byte[] byteArrayClone(byte[] src) {
         byte[] result = (byte[]) NewArrayNode.newUninitializedArray(Byte.TYPE, src.length);
-        ArrayCopyCallNode.disjointArraycopy(src, 0, result, 0, src.length, JavaKind.Byte, HotSpotReplacementsUtil.getHeapWordSize(INJECTED_VMCONFIG));
-        return result;
+        ArrayCopyCallNode.disjointArraycopy(src, 0, result, 0, src.length, JavaKind.Byte, LocationIdentity.init(), HotSpotReplacementsUtil.getHeapWordSize(INJECTED_VMCONFIG));
+        MembarNode.memoryBarrier(MembarNode.FenceKind.ALLOCATION_INIT, LocationIdentity.INIT_LOCATION);
+        return (byte[]) PublishWritesNode.publishWrites(result);
     }
 
     @Snippet
     public static short[] shortArrayClone(short[] src) {
         short[] result = (short[]) NewArrayNode.newUninitializedArray(Short.TYPE, src.length);
-        ArrayCopyCallNode.disjointArraycopy(src, 0, result, 0, src.length, JavaKind.Short, HotSpotReplacementsUtil.getHeapWordSize(INJECTED_VMCONFIG));
-        return result;
+        ArrayCopyCallNode.disjointArraycopy(src, 0, result, 0, src.length, JavaKind.Short, LocationIdentity.init(), HotSpotReplacementsUtil.getHeapWordSize(INJECTED_VMCONFIG));
+        MembarNode.memoryBarrier(MembarNode.FenceKind.ALLOCATION_INIT, LocationIdentity.INIT_LOCATION);
+        return (short[]) PublishWritesNode.publishWrites(result);
     }
 
     @Snippet
     public static char[] charArrayClone(char[] src) {
         char[] result = (char[]) NewArrayNode.newUninitializedArray(Character.TYPE, src.length);
-        ArrayCopyCallNode.disjointArraycopy(src, 0, result, 0, src.length, JavaKind.Char, HotSpotReplacementsUtil.getHeapWordSize(INJECTED_VMCONFIG));
-        return result;
+        ArrayCopyCallNode.disjointArraycopy(src, 0, result, 0, src.length, JavaKind.Char, LocationIdentity.init(), HotSpotReplacementsUtil.getHeapWordSize(INJECTED_VMCONFIG));
+        MembarNode.memoryBarrier(MembarNode.FenceKind.ALLOCATION_INIT, LocationIdentity.INIT_LOCATION);
+        return (char[]) PublishWritesNode.publishWrites(result);
     }
 
     @Snippet
     public static int[] intArrayClone(int[] src) {
         int[] result = (int[]) NewArrayNode.newUninitializedArray(Integer.TYPE, src.length);
-        ArrayCopyCallNode.disjointArraycopy(src, 0, result, 0, src.length, JavaKind.Int, HotSpotReplacementsUtil.getHeapWordSize(INJECTED_VMCONFIG));
-        return result;
+        ArrayCopyCallNode.disjointArraycopy(src, 0, result, 0, src.length, JavaKind.Int, LocationIdentity.init(), HotSpotReplacementsUtil.getHeapWordSize(INJECTED_VMCONFIG));
+        MembarNode.memoryBarrier(MembarNode.FenceKind.ALLOCATION_INIT, LocationIdentity.INIT_LOCATION);
+        return (int[]) PublishWritesNode.publishWrites(result);
     }
 
     @Snippet
     public static float[] floatArrayClone(float[] src) {
         float[] result = (float[]) NewArrayNode.newUninitializedArray(Float.TYPE, src.length);
-        ArrayCopyCallNode.disjointArraycopy(src, 0, result, 0, src.length, JavaKind.Float, HotSpotReplacementsUtil.getHeapWordSize(INJECTED_VMCONFIG));
-        return result;
+        ArrayCopyCallNode.disjointArraycopy(src, 0, result, 0, src.length, JavaKind.Float, LocationIdentity.init(), HotSpotReplacementsUtil.getHeapWordSize(INJECTED_VMCONFIG));
+        MembarNode.memoryBarrier(MembarNode.FenceKind.ALLOCATION_INIT, LocationIdentity.INIT_LOCATION);
+        return (float[]) PublishWritesNode.publishWrites(result);
     }
 
     @Snippet
     public static long[] longArrayClone(long[] src) {
         long[] result = (long[]) NewArrayNode.newUninitializedArray(Long.TYPE, src.length);
-        ArrayCopyCallNode.disjointArraycopy(src, 0, result, 0, src.length, JavaKind.Long, HotSpotReplacementsUtil.getHeapWordSize(INJECTED_VMCONFIG));
-        return result;
+        ArrayCopyCallNode.disjointArraycopy(src, 0, result, 0, src.length, JavaKind.Long, LocationIdentity.init(), HotSpotReplacementsUtil.getHeapWordSize(INJECTED_VMCONFIG));
+        MembarNode.memoryBarrier(MembarNode.FenceKind.ALLOCATION_INIT, LocationIdentity.INIT_LOCATION);
+        return (long[]) PublishWritesNode.publishWrites(result);
     }
 
     @Snippet
     public static double[] doubleArrayClone(double[] src) {
         double[] result = (double[]) NewArrayNode.newUninitializedArray(Double.TYPE, src.length);
-        ArrayCopyCallNode.disjointArraycopy(src, 0, result, 0, src.length, JavaKind.Double, HotSpotReplacementsUtil.getHeapWordSize(INJECTED_VMCONFIG));
-        return result;
+        ArrayCopyCallNode.disjointArraycopy(src, 0, result, 0, src.length, JavaKind.Double, LocationIdentity.init(), HotSpotReplacementsUtil.getHeapWordSize(INJECTED_VMCONFIG));
+        MembarNode.memoryBarrier(MembarNode.FenceKind.ALLOCATION_INIT, LocationIdentity.INIT_LOCATION);
+        return (double[]) PublishWritesNode.publishWrites(result);
     }
 
     @Snippet

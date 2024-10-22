@@ -399,7 +399,7 @@ public class Field extends Member<Type> implements FieldRef {
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
 
         if (getDeclaringKlass().getContext().anyHierarchyChanged()) {
-            checkSetValueValifity(value);
+            checkSetValueValidity(value);
         }
         if (isVolatile() || forceVolatile) {
             linkedField.setObjectVolatile(obj, value);
@@ -408,7 +408,7 @@ public class Field extends Member<Type> implements FieldRef {
         }
     }
 
-    protected void checkSetValueValifity(Object value) {
+    protected void checkSetValueValidity(Object value) {
         if (value != StaticObject.NULL && value instanceof StaticObject) {
             Klass klass = null;
             try {
@@ -956,7 +956,7 @@ public class Field extends Member<Type> implements FieldRef {
                         ? StaticObject.wrap(rawRuntimeVisibleTypeAnnotations.getData(), meta)
                         : StaticObject.NULL;
         if (meta.getJavaVersion().java15OrLater()) {
-            meta.java_lang_reflect_Field_init.invokeDirect(
+            meta.java_lang_reflect_Field_init.invokeDirectSpecial(
                             /* this */ instance,
                             /* declaringKlass */ getDeclaringKlass().mirror(),
                             /* name */ meta.getStrings().intern(getName()),
@@ -967,7 +967,7 @@ public class Field extends Member<Type> implements FieldRef {
                             /* signature */ meta.toGuestString(getGenericSignature()),
                             /* annotations */ runtimeVisibleAnnotations);
         } else {
-            meta.java_lang_reflect_Field_init.invokeDirect(
+            meta.java_lang_reflect_Field_init.invokeDirectSpecial(
                             /* this */ instance,
                             /* declaringKlass */ getDeclaringKlass().mirror(),
                             /* name */ meta.getStrings().intern(getName()),

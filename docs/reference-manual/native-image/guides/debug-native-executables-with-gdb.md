@@ -9,7 +9,7 @@ permalink: /reference-manual/native-image/guides/debug-native-image-process/
 
 ### Which GDB to Use?
 
-* Please use GDB 10.2 or later. The debug info is tested via `mx debuginfotest` against 10.2.
+* Please use GDB 14.2 or later. The debug info is tested via `mx debuginfotest` against 14.2.
 * Note that later versions might have slightly different formatting of debugger output (which, for example, may cause CI/CD gate checks to fail)
 * GDB bundled in recent Linux releases works just fine for debugging sessions 
 
@@ -41,7 +41,7 @@ The _*.debug_ file contains additional information about the build, which can be
 readelf -p .debug.svm.imagebuild.classpath hello_image.debug
 ```
 
-It gives a list of all classpath entries that were used to build the native executable:
+It gives a list of all class path entries that were used to build the native executable:
 ```
 String dump of section '.debug.svm.imagebuild.classpath':
   [     0]  /home/user/.mx/cache/HAMCREST_e237ae735aac4fa5a7253ec693191f42ef7ddce384c11d29fbf605981c0be077d086757409acad53cb5b9e53d86a07cc428d459ff0f5b00d32a8cbbca390be49/hamcrest.jar

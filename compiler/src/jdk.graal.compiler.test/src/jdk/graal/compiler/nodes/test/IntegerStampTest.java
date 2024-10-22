@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -381,14 +381,14 @@ public class IntegerStampTest extends GraphTest {
         assertEquals(IntegerStamp.create(32, 0x1e0, 0x1fe0, 0, 0x1fe0), shl.foldStamp(IntegerStamp.create(32, 0xf, 0xff, 0, 0xff), IntegerStamp.create(32, 5, 5, 5, 5)));
         assertEquals(IntegerStamp.create(32, -4096, -4096, -4096, -4096), shl.foldStamp(IntegerStamp.create(32, -16, -16, -16, -16), IntegerStamp.create(32, 8, 8, 8, 8)));
         assertEquals(StampFactory.empty(JavaKind.Int), shl.foldStamp(StampFactory.empty(JavaKind.Int), IntegerStamp.create(32, 5, 5, 5, 5)));
-        assertEquals(StampFactory.empty(JavaKind.Int), shl.foldStamp(IntegerStamp.create(32, 0xf, 0xff, 0, 0xff), (IntegerStamp) StampFactory.empty(JavaKind.Int)));
+        assertEquals(StampFactory.empty(JavaKind.Int), shl.foldStamp(IntegerStamp.create(32, 0xf, 0xff, 0, 0xff), StampFactory.empty(JavaKind.Int)));
 
         assertEquals(IntegerStamp.create(64, 0, 0x1ff, 0, 0x1ff), shl.foldStamp(IntegerStamp.create(64, 0, 0xff, 0, 0xff), IntegerStamp.create(32, 0, 1, 0, 1)));
         assertEquals(IntegerStamp.create(64, 0, 0x1fe0, 0, 0x1fe0), shl.foldStamp(IntegerStamp.create(64, 0, 0xff, 0, 0xff), IntegerStamp.create(32, 5, 5, 5, 5)));
         assertEquals(IntegerStamp.create(64, 0x1e0, 0x1fe0, 0, 0x1fe0), shl.foldStamp(IntegerStamp.create(64, 0xf, 0xff, 0, 0xff), IntegerStamp.create(32, 5, 5, 5, 5)));
         assertEquals(IntegerStamp.create(64, -4096, -4096, -4096, -4096), shl.foldStamp(IntegerStamp.create(64, -16, -16, -16, -16), IntegerStamp.create(32, 8, 8, 8, 8)));
         assertEquals(StampFactory.empty(JavaKind.Long), shl.foldStamp(StampFactory.empty(JavaKind.Long), IntegerStamp.create(32, 5, 5, 5, 5)));
-        assertEquals(StampFactory.empty(JavaKind.Long), shl.foldStamp(IntegerStamp.create(64, 0xf, 0xff, 0, 0xff), (IntegerStamp) StampFactory.empty(JavaKind.Int)));
+        assertEquals(StampFactory.empty(JavaKind.Long), shl.foldStamp(IntegerStamp.create(64, 0xf, 0xff, 0, 0xff), StampFactory.empty(JavaKind.Int)));
     }
 
     @Test
@@ -399,7 +399,7 @@ public class IntegerStampTest extends GraphTest {
         assertEquals(IntegerStamp.create(32, 0x0, 0x07, 0, 0x07), ushr.foldStamp(IntegerStamp.create(32, 0xf, 0xff, 0, 0xff), IntegerStamp.create(32, 5, 5, 5, 5)));
         assertEquals(IntegerStamp.create(32, 0xffffff, 0xffffff, 0xffffff, 0xffffff), ushr.foldStamp(IntegerStamp.create(32, -16, -16, -16, -16), IntegerStamp.create(32, 8, 8, 8, 8)));
         assertEquals(StampFactory.empty(JavaKind.Int), ushr.foldStamp(StampFactory.empty(JavaKind.Int), IntegerStamp.create(32, 5, 5, 5, 5)));
-        assertEquals(StampFactory.empty(JavaKind.Int), ushr.foldStamp(IntegerStamp.create(32, 0xf, 0xff, 0, 0xff), (IntegerStamp) StampFactory.empty(JavaKind.Int)));
+        assertEquals(StampFactory.empty(JavaKind.Int), ushr.foldStamp(IntegerStamp.create(32, 0xf, 0xff, 0, 0xff), StampFactory.empty(JavaKind.Int)));
 
         assertEquals(IntegerStamp.create(64, 0, 0xff, 0, 0xff), ushr.foldStamp(IntegerStamp.create(64, 0, 0xff, 0, 0xff), IntegerStamp.create(32, 0, 1, 0, 1)));
         assertEquals(IntegerStamp.create(64, 0, 0x07, 0, 0x07), ushr.foldStamp(IntegerStamp.create(64, 0, 0xff, 0, 0xff), IntegerStamp.create(32, 5, 5, 5, 5)));
@@ -407,7 +407,7 @@ public class IntegerStampTest extends GraphTest {
         assertEquals(IntegerStamp.create(64, 0xffffffffffffffL, 0xffffffffffffffL, 0xffffffffffffffL, 0xffffffffffffffL),
                         ushr.foldStamp(IntegerStamp.create(64, -16, -16, -16, -16), IntegerStamp.create(32, 8, 8, 8, 8)));
         assertEquals(StampFactory.empty(JavaKind.Long), ushr.foldStamp(StampFactory.empty(JavaKind.Long), IntegerStamp.create(32, 5, 5, 5, 5)));
-        assertEquals(StampFactory.empty(JavaKind.Long), ushr.foldStamp(IntegerStamp.create(64, 0xf, 0xff, 0, 0xff), (IntegerStamp) StampFactory.empty(JavaKind.Int)));
+        assertEquals(StampFactory.empty(JavaKind.Long), ushr.foldStamp(IntegerStamp.create(64, 0xf, 0xff, 0, 0xff), StampFactory.empty(JavaKind.Int)));
     }
 
     @Test
@@ -418,14 +418,14 @@ public class IntegerStampTest extends GraphTest {
         assertEquals(IntegerStamp.create(32, 0x0, 0x07, 0, 0x07), shr.foldStamp(IntegerStamp.create(32, 0xf, 0xff, 0, 0xff), IntegerStamp.create(32, 5, 5, 5, 5)));
         assertEquals(IntegerStamp.create(32, -1, -1, -1, -1), shr.foldStamp(IntegerStamp.create(32, -16, -16, -16, -16), IntegerStamp.create(32, 8, 8, 8, 8)));
         assertEquals(StampFactory.empty(JavaKind.Int), shr.foldStamp(StampFactory.empty(JavaKind.Int), IntegerStamp.create(32, 5, 5, 5, 5)));
-        assertEquals(StampFactory.empty(JavaKind.Int), shr.foldStamp(IntegerStamp.create(32, 0xf, 0xff, 0, 0xff), (IntegerStamp) StampFactory.empty(JavaKind.Int)));
+        assertEquals(StampFactory.empty(JavaKind.Int), shr.foldStamp(IntegerStamp.create(32, 0xf, 0xff, 0, 0xff), StampFactory.empty(JavaKind.Int)));
 
         assertEquals(IntegerStamp.create(64, 0, 0xff, 0, 0xff), shr.foldStamp(IntegerStamp.create(64, 0, 0xff, 0, 0xff), IntegerStamp.create(32, 0, 1, 0, 1)));
         assertEquals(IntegerStamp.create(64, 0, 0x07, 0, 0x07), shr.foldStamp(IntegerStamp.create(64, 0, 0xff, 0, 0xff), IntegerStamp.create(32, 5, 5, 5, 5)));
         assertEquals(IntegerStamp.create(64, 0x0, 0x07, 0, 0x07), shr.foldStamp(IntegerStamp.create(64, 0xf, 0xff, 0, 0xff), IntegerStamp.create(32, 5, 5, 5, 5)));
         assertEquals(IntegerStamp.create(64, -1, -1, -1, -1), shr.foldStamp(IntegerStamp.create(64, -16, -16, -16, -16), IntegerStamp.create(32, 8, 8, 8, 8)));
         assertEquals(StampFactory.empty(JavaKind.Long), shr.foldStamp(StampFactory.empty(JavaKind.Long), IntegerStamp.create(32, 5, 5, 5, 5)));
-        assertEquals(StampFactory.empty(JavaKind.Long), shr.foldStamp(IntegerStamp.create(64, 0xf, 0xff, 0, 0xff), (IntegerStamp) StampFactory.empty(JavaKind.Int)));
+        assertEquals(StampFactory.empty(JavaKind.Long), shr.foldStamp(IntegerStamp.create(64, 0xf, 0xff, 0, 0xff), StampFactory.empty(JavaKind.Int)));
     }
 
     @Test

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package jdk.graal.compiler.loop.phases;
 
 import java.util.Optional;
 
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.nodes.FixedNode;
@@ -45,7 +46,6 @@ import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.tiers.MidTierContext;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
@@ -57,7 +57,7 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
         //@formatter:on
     }
 
-    private static final long IntegerRangeDistance = Math.abs((long) Integer.MAX_VALUE - (long) Integer.MIN_VALUE);
+    private static final long IntegerRangeDistance = NumUtil.unsafeAbs((long) Integer.MAX_VALUE - (long) Integer.MIN_VALUE);
 
     /**
      * To be implemented by subclasses to perform additional checks. Returns <code>true</code> if
@@ -100,17 +100,21 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
                 if (IntegerStamp.subtractionOverflows(upperBoundLimit, lowerBoundStart, 64)) {
                     return false;
                 }
-                final long startToLimitDistance = Math.abs(upperBoundLimit - lowerBoundStart);
+                try {
+                    final long startToLimitDistance = NumUtil.safeAbs(upperBoundLimit - lowerBoundStart);
 
-                /*
-                 * Divide the distance by the absolute value of the stride. For non-constant strides
-                 * assume a worst case stride of 1 since a stride of 0 isn't recognized as an
-                 * induction variable.
-                 */
-                final InductionVariable counter = loop.counted().getLimitCheckedIV();
-                final long stride = counter.isConstantStride() ? Math.abs(counter.constantStride()) : 1;
-                final long strideRelativeStartToLimitDistance = startToLimitDistance / stride;
-                return strideRelativeStartToLimitDistance <= IntegerRangeDistance;
+                    /*
+                     * Divide the distance by the absolute value of the stride. For non-constant
+                     * strides assume a worst case stride of 1 since a stride of 0 isn't recognized
+                     * as an induction variable.
+                     */
+                    final InductionVariable counter = loop.counted().getLimitCheckedIV();
+                    final long stride = counter.isConstantStride() ? NumUtil.safeAbs(counter.constantStride()) : 1;
+                    final long strideRelativeStartToLimitDistance = startToLimitDistance / stride;
+                    return strideRelativeStartToLimitDistance <= IntegerRangeDistance;
+                } catch (ArithmeticException e) {
+                    return false;
+                }
             }
         }
         return false;
@@ -118,7 +122,7 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
 
     @Override
     public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
-        return ALWAYS_APPLICABLE;
+        return NotApplicable.unlessRunAfter(this, GraphState.StageFlag.LOOP_OVERFLOWS_CHECKED, graphState);
     }
 
     @Override
@@ -127,7 +131,7 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
         if (Options.RemoveLoopSafepoints.getValue(graph.getOptions())) {
             loops.detectCountedLoops();
             for (Loop loop : loops.countedLoops()) {
-                if (loop.loop().getChildren().isEmpty() && (loop.loopBegin().isPreLoop() || loop.loopBegin().isPostLoop() || loopIsIn32BitRange(loop) || loop.loopBegin().isStripMinedInner())) {
+                if (loop.getCFGLoop().getChildren().isEmpty() && (loop.loopBegin().isPreLoop() || loop.loopBegin().isPostLoop() || loopIsIn32BitRange(loop) || loop.loopBegin().isStripMinedInner())) {
                     boolean hasSafepoint = false;
                     for (LoopEndNode loopEnd : loop.loopBegin().loopEnds()) {
                         hasSafepoint |= loopEnd.canSafepoint();
@@ -165,7 +169,7 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
             }
             for (LoopEndNode loopEnd : loop.loopBegin().loopEnds()) {
                 HIRBlock b = loops.getCFG().blockFor(loopEnd);
-                blocks: while (b != loop.loop().getHeader()) {
+                blocks: while (b != loop.getCFGLoop().getHeader()) {
                     assert b != null;
                     for (FixedNode node : b.getNodes()) {
                         boolean canDisableSafepoint = canDisableSafepoint(node, context);

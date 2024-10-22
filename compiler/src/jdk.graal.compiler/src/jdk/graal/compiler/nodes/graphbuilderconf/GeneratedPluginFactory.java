@@ -24,6 +24,9 @@
  */
 package jdk.graal.compiler.nodes.graphbuilderconf;
 
+import jdk.graal.compiler.serviceprovider.LibGraalService;
+
+@LibGraalService
 public interface GeneratedPluginFactory {
 
     void registerPlugins(InvocationPlugins plugins, GeneratedPluginInjectionProvider injection);

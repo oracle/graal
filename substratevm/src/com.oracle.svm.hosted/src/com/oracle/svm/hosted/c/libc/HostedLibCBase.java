@@ -122,7 +122,4 @@ public interface HostedLibCBase extends LibCBase {
      */
     boolean requiresLibCSpecificStaticJDKLibraries();
 
-    default void checkIfLibCSupported() {
-    }
-
 }

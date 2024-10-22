@@ -519,7 +519,7 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
      * @param string the string to write
      * @param offset memory index where to write the string
      * @param length the maximum number of bytes to write, including the trailing null character
-     * @return the number of bytes written, including the trailing null character
+     * @return the number of bytes written
      */
     @CompilerDirectives.TruffleBoundary
     public final int writeString(Node node, String string, int offset, int length) {
@@ -836,6 +836,13 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
 
     protected boolean outOfBounds(long offset, long length) {
         return length < 0 || offset < 0 || offset > getBufferSize() - length;
+    }
+
+    public final WasmMemory checkSize(long initialSize) {
+        if (byteSize() < initialSize * Sizes.MEMORY_PAGE_SIZE) {
+            throw CompilerDirectives.shouldNotReachHere("Memory size must not be less than initial size");
+        }
+        return this;
     }
 
     /**

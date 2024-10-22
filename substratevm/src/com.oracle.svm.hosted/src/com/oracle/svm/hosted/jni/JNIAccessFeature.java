@@ -579,7 +579,7 @@ public class JNIAccessFeature implements Feature {
         HostedMethod hTarget = hUniverse.lookup(aUniverse.lookup(method.targetMethod));
         int vtableOffset;
         int interfaceTypeID;
-        if (SubstrateOptions.closedTypeWorld()) {
+        if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
             interfaceTypeID = JNIAccessibleMethod.INTERFACE_TYPEID_UNNEEDED;
             if (hTarget.canBeStaticallyBound()) {
                 vtableOffset = JNIAccessibleMethod.STATICALLY_BOUND_METHOD;

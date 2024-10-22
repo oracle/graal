@@ -286,10 +286,12 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleSafepoint;
+import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper.YieldException;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
@@ -338,6 +340,7 @@ import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.helper.EspressoReferenceArrayStoreNode;
+import com.oracle.truffle.espresso.nodes.methodhandle.MHInvokeGenericNode.MethodHandleInvoker;
 import com.oracle.truffle.espresso.nodes.quick.BaseQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.CheckCastQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.InstanceOfQuickNode;
@@ -372,6 +375,10 @@ import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeStaticQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeVirtualQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.inline.InlinedMethodNode;
 import com.oracle.truffle.espresso.perf.DebugCounter;
+import com.oracle.truffle.espresso.resolver.CallKind;
+import com.oracle.truffle.espresso.resolver.CallSiteType;
+import com.oracle.truffle.espresso.resolver.LinkResolver;
+import com.oracle.truffle.espresso.resolver.ResolvedCall;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
@@ -412,8 +419,8 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     // Nodes for bytecodes that were replaced with QUICK, indexed by the constant pool index
     // referenced by the bytecode.
     // Must not be of type QuickNode as it might be wrapped by instrumentation
-    @Children private BaseQuickNode[] nodes = QuickNode.EMPTY_ARRAY;
-    @Children private BaseQuickNode[] sparseNodes = QuickNode.EMPTY_ARRAY;
+    @Children private BaseQuickNode[] nodes = BaseQuickNode.EMPTY_ARRAY;
+    @Children private BaseQuickNode[] sparseNodes = BaseQuickNode.EMPTY_ARRAY;
 
     /**
      * Ideally, we would want one such node per AASTORE bytecode. Unfortunately, the AASTORE
@@ -494,18 +501,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     }
 
     public SourceSection getSourceSectionAtBCI(int bci) {
-        Source s = getSource();
-        if (s == null) {
-            return null;
-        }
-
-        LineNumberTableAttribute table = getMethodVersion().getLineNumberTableAttribute();
-
-        if (table == LineNumberTableAttribute.EMPTY) {
-            return null;
-        }
-        int line = table.getLineNumber(bci);
-        return s.createSection(line);
+        return getMethodVersion().getSourceSectionAtBCI(bci);
     }
 
     @ExplodeLoop
@@ -590,6 +586,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
      * frame restoration and re-winding of further frames. Further executions of this node delegates
      * to a regular invoke node.
      */
+    @Override
     public Object resumeContinuation(VirtualFrame frame, int bci, int top) {
         CompilerAsserts.partialEvaluationConstant(bci);
         CompilerAsserts.partialEvaluationConstant(top);
@@ -641,7 +638,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     }
 
     @SuppressWarnings("serial")
-    public static final class EspressoOSRReturnException extends ControlFlowException {
+    public static final class EspressoOSRReturnException extends ControlFlowException implements YieldException {
         private final Object result;
         private final Throwable throwable;
 
@@ -665,6 +662,11 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         @SuppressWarnings("unchecked")
         private static <T extends Throwable> RuntimeException sneakyThrow(Throwable ex) throws T {
             throw (T) ex;
+        }
+
+        @Override
+        public Object getYieldValue() {
+            return null;
         }
     }
 
@@ -747,8 +749,12 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         int curBCI = startBCI;
         int top = startTop;
 
-        if (instrument != null && !skipEntryInstrumentation) {
-            instrument.notifyEntry(frame, this);
+        if (instrument != null) {
+            if (resumeContinuation) {
+                instrument.notifyResume(frame, this, startStatementIndex);
+            } else if (!skipEntryInstrumentation) {
+                instrument.notifyEntry(frame, this);
+            }
         }
 
         // During OSR or continuation resume, the method is not executed from the beginning hence
@@ -1528,12 +1534,9 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                  */
                 // Get the frame from the stack into the VM heap.
                 copyFrameToUnwindRequest(frame, unwindContinuationExceptionRequest, curBCI, top);
-                // Truffle requires paired probes, so we need to notify the probe for the current
-                // statement if applicable.
                 if (instrument != null) {
-                    instrument.notifyExceptionAt(frame, unwindContinuationExceptionRequest, statementIndex);
+                    instrument.notifyYieldAt(frame, unwindContinuationExceptionRequest.getContinuation(), statementIndex);
                 }
-
                 // This branch must not be a loop exit. Let the next loop iteration throw this
                 top = startingStackOffset(getMethodVersion().getMaxLocals());
                 frame.setObjectStatic(top, unwindContinuationExceptionRequest);
@@ -1625,6 +1628,10 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                         }
                     }
                     if (handler != null) {
+                        // If there is a lazy stack trace being collected
+                        // we need to materialize here since the handler is likely
+                        // on a different line than the exception point
+                        TruffleStackTrace.fillIn(wrappedException);
                         clearOperandStack(frame, top);
                         top = startingStackOffset(getMethodVersion().getMaxLocals());
                         checkNoForeignObjectAssumption(wrappedException.getGuestException());
@@ -2390,124 +2397,38 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     // endregion quickenForeign
 
     private InvokeQuickNode dispatchQuickened(int top, int curBCI, char cpi, int opcode, int statementIndex, Method resolutionSeed, boolean allowBytecodeInlining) {
-        Method resolved = resolutionSeed;
-        int resolvedOpCode = opcode;
-        switch (opcode) {
-            case INVOKESTATIC:
-                // Otherwise, if the resolved method is an instance method, the invokestatic
-                // instruction throws an IncompatibleClassChangeError.
-                if (!resolved.isStatic()) {
-                    enterLinkageExceptionProfile();
-                    throw throwBoundary(getMethod().getMeta().java_lang_IncompatibleClassChangeError);
-                }
-                break;
-            case INVOKEINTERFACE:
-                // Otherwise, if the resolved method is static or (jdk8 or earlier) private, the
-                // invokeinterface instruction throws an IncompatibleClassChangeError.
-                if (resolved.isStatic() ||
-                                (getMethod().getContext().getJavaVersion().java8OrEarlier() && resolved.isPrivate())) {
-                    enterLinkageExceptionProfile();
-                    throw throwBoundary(getMethod().getMeta().java_lang_IncompatibleClassChangeError);
-                }
-                if (resolved.getITableIndex() < 0) {
-                    if (resolved.isPrivate()) {
-                        assert getJavaVersion().java9OrLater();
-                        // Interface private methods do not appear in itables.
-                        resolvedOpCode = INVOKESPECIAL;
-                    } else {
-                        // Can happen in old classfiles that calls j.l.Object on interfaces.
-                        resolvedOpCode = INVOKEVIRTUAL;
-                    }
-                }
-                break;
-            case INVOKEVIRTUAL:
-                // Otherwise, if the resolved method is a class (static) method, the invokevirtual
-                // instruction throws an IncompatibleClassChangeError.
-                if (resolved.isStatic()) {
-                    enterLinkageExceptionProfile();
-                    throw throwBoundary(getMethod().getMeta().java_lang_IncompatibleClassChangeError);
-                }
-                if (resolved.isFinalFlagSet() || resolved.getDeclaringKlass().isFinalFlagSet() || resolved.isPrivate()) {
-                    resolvedOpCode = INVOKESPECIAL;
-                }
-                break;
-            case INVOKESPECIAL:
-                // Otherwise, if the resolved method is an instance initialization method, and the
-                // class in which it is declared is not the class symbolically referenced by the
-                // instruction, a NoSuchMethodError is thrown.
-                if (resolved.isConstructor()) {
-                    if (resolved.getDeclaringKlass().getName() != getConstantPool().methodAt(cpi).getHolderKlassName(getConstantPool())) {
-                        enterLinkageExceptionProfile();
-                        throw throwBoundary(getMethod().getMeta().java_lang_NoSuchMethodError,
-                                        "%s.%s%s",
-                                        resolved.getDeclaringKlass().getNameAsString(),
-                                        resolved.getNameAsString(),
-                                        resolved.getSignatureAsString());
-                    }
-                }
-                // Otherwise, if the resolved method is a class (static) method, the invokespecial
-                // instruction throws an IncompatibleClassChangeError.
-                if (resolved.isStatic()) {
-                    enterLinkageExceptionProfile();
-                    throw throwBoundary(getMethod().getMeta().java_lang_IncompatibleClassChangeError);
-                }
-                // If all of the following are true, let C be the direct superclass of the current
-                // class:
-                //
-                // * The resolved method is not an instance initialization method (&sect;2.9).
-                //
-                // * If the symbolic reference names a class (not an interface), then that class is
-                // a superclass of the current class.
-                //
-                // * The ACC_SUPER flag is set for the class file (&sect;4.1). In Java SE 8 and
-                // above, the Java Virtual Machine considers the ACC_SUPER flag to be set in every
-                // class file, regardless of the actual value of the flag in the class file and the
-                // version of the class file.
-                if (!resolved.isConstructor()) {
-                    ObjectKlass declaringKlass = getMethod().getDeclaringKlass();
-                    Klass symbolicRef = ((MethodRefConstant.Indexes) getConstantPool().methodAt(cpi)).getResolvedHolderKlass(declaringKlass, getConstantPool());
-                    if (!symbolicRef.isInterface() &&
-                                    symbolicRef != declaringKlass &&
-                                    declaringKlass.getSuperKlass() != null &&
-                                    symbolicRef != declaringKlass.getSuperKlass() &&
-                                    symbolicRef.isAssignableFrom(declaringKlass)) {
-                        resolved = declaringKlass.getSuperKlass().lookupMethod(resolved.getName(), resolved.getRawSignature(), Klass.LookupMode.INSTANCE_ONLY);
-                    }
-                }
-                break;
-            default:
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw EspressoError.unimplemented("Quickening for " + Bytecodes.nameOf(opcode));
-        }
+
+        Klass symbolicRef = ((MethodRefConstant.Indexes) getConstantPool().methodAt(cpi)).getResolvedHolderKlass(getDeclaringKlass(), getConstantPool());
+        ResolvedCall resolvedCall = LinkResolver.resolveCallSite(getMeta(), getDeclaringKlass(), resolutionSeed, CallSiteType.fromOpCode(opcode), symbolicRef);
+
+        Method resolved = resolvedCall.getResolvedMethod();
+        CallKind callKind = resolvedCall.getCallKind();
 
         // Skip inlined nodes if instrumentation is live.
         // Lock must be owned for correctness.
         assert lockIsHeld();
         boolean tryBytecodeLevelInlining = this.instrumentation == null && allowBytecodeInlining;
         if (tryBytecodeLevelInlining) {
-            var node = InlinedMethodNode.createFor(resolved, top, resolvedOpCode, curBCI, statementIndex);
+            InlinedMethodNode node = InlinedMethodNode.createFor(resolvedCall, top, opcode, curBCI, statementIndex);
             if (node != null) {
                 return node;
             }
         }
 
-        InvokeQuickNode invoke;
         if (resolved.isPolySignatureIntrinsic()) {
-            invoke = new InvokeHandleNode(resolved, getDeclaringKlass(), top, curBCI);
+            MethodHandleInvoker invoker = getConstantPool().resolvedMethodRefAt(getDeclaringKlass(), cpi).invoker();
+            assert invoker == null || ((opcode == INVOKEVIRTUAL || opcode == INVOKESPECIAL) && resolved.isInvokeIntrinsic());
+            return new InvokeHandleNode(resolved, invoker, top, curBCI);
         } else {
             // @formatter:off
-            switch (resolvedOpCode) {
-                case INVOKESTATIC    : invoke = new InvokeStaticQuickNode(resolved, top, curBCI);         break;
-                case INVOKEINTERFACE : invoke = new InvokeInterfaceQuickNode(resolved, top, curBCI); break;
-                case INVOKEVIRTUAL   : invoke = new InvokeVirtualQuickNode(resolved, top, curBCI);   break;
-                case INVOKESPECIAL   : invoke = new InvokeSpecialQuickNode(resolved, top, curBCI);        break;
-                default              :
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    throw EspressoError.unimplemented("Quickening for " + Bytecodes.nameOf(resolvedOpCode));
-            }
+            return switch (callKind) {
+                case STATIC          -> new InvokeStaticQuickNode(resolved, top, curBCI);
+                case ITABLE_LOOKUP   -> new InvokeInterfaceQuickNode(resolved, top, curBCI);
+                case VTABLE_LOOKUP   -> new InvokeVirtualQuickNode(resolved, top, curBCI);
+                case DIRECT          -> new InvokeSpecialQuickNode(resolved, top, curBCI);
+            };
             // @formatter:on
         }
-        return invoke;
     }
 
     @TruffleBoundary
@@ -2521,8 +2442,8 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     }
 
     @TruffleBoundary
-    private RuntimeException throwBoundary(ObjectKlass exceptionKlass, String messageFormat, String... args) {
-        throw getMeta().throwExceptionWithMessage(exceptionKlass, String.format(Locale.ENGLISH, messageFormat, (Object[]) args));
+    private RuntimeException throwBoundary(ObjectKlass exceptionKlass, String messageFormat, Object... args) {
+        throw getMeta().throwExceptionWithMessage(exceptionKlass, String.format(Locale.ENGLISH, messageFormat, args));
     }
 
     private int quickenInvokeDynamic(final VirtualFrame frame, int top, int curBCI, int opcode) {
@@ -2779,8 +2700,8 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             throw throwBoundary(getMethod().getMeta().java_lang_IncompatibleClassChangeError,
                             "Expected %s field %s.%s",
                             (opcode == PUTSTATIC) ? "static" : "non-static",
-                            field.getDeclaringKlass().getNameAsString(),
-                            field.getNameAsString());
+                            field.getDeclaringKlass().getName(),
+                            field.getName());
         }
 
         /*
@@ -2798,9 +2719,9 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 throw throwBoundary(getMethod().getMeta().java_lang_IllegalAccessError,
                                 "Update to %s final field %s.%s attempted from a different class (%s) than the field's declaring class",
                                 (opcode == PUTSTATIC) ? "static" : "non-static",
-                                field.getDeclaringKlass().getNameAsString(),
-                                field.getNameAsString(),
-                                getDeclaringKlass().getNameAsString());
+                                field.getDeclaringKlass().getName(),
+                                field.getName(),
+                                getDeclaringKlass().getName());
             }
 
             boolean enforceInitializerCheck = (getLanguage().getSpecComplianceMode() == STRICT) ||
@@ -2814,9 +2735,9 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 throw throwBoundary(getMethod().getMeta().java_lang_IllegalAccessError,
                                 "Update to %s final field %s.%s attempted from a different method (%s) than the initializer method %s ",
                                 (opcode == PUTSTATIC) ? "static" : "non-static",
-                                field.getDeclaringKlass().getNameAsString(),
-                                field.getNameAsString(),
-                                getMethod().getNameAsString(),
+                                field.getDeclaringKlass().getName(),
+                                field.getName(),
+                                getMethod().getName(),
                                 (opcode == PUTSTATIC) ? "<clinit>" : "<init>");
             }
         }
@@ -3113,6 +3034,14 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             }
         }
 
+        public void notifyResume(@SuppressWarnings("unused") VirtualFrame frame, AbstractInstrumentableBytecodeNode instrumentableNode, int statementIndex) {
+            if (context.shouldReportVMEvents() && method.hasActiveHook()) {
+                if (context.reportOnMethodEntry(method, instrumentableNode.getScope(frame, true))) {
+                    resumeAt(frame, statementIndex);
+                }
+            }
+        }
+
         public void notifyReturn(VirtualFrame frame, int statementIndex, Object returnValue) {
             if (context.shouldReportVMEvents() && method.hasActiveHook()) {
                 if (context.reportOnMethodReturn(method, returnValue)) {
@@ -3128,6 +3057,15 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             }
             ProbeNode probeNode = wrapperNode.getProbeNode();
             probeNode.onReturnExceptionalOrUnwind(frame, t, false);
+        }
+
+        void notifyYieldAt(VirtualFrame frame, Object o, int statementIndex) {
+            WrapperNode wrapperNode = getWrapperAt(statementIndex);
+            if (wrapperNode == null) {
+                return;
+            }
+            ProbeNode probeNode = wrapperNode.getProbeNode();
+            probeNode.onYield(frame, o);
         }
 
         public void notifyFieldModification(VirtualFrame frame, int index, Field field, StaticObject receiver, Object value) {
@@ -3154,6 +3092,29 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             ProbeNode probeNode = wrapperNode.getProbeNode();
             try {
                 probeNode.onEnter(frame);
+            } catch (Throwable t) {
+                Object result = probeNode.onReturnExceptionalOrUnwind(frame, t, false);
+                if (result == ProbeNode.UNWIND_ACTION_REENTER) {
+                    // TODO maybe support this by returning a new bci?
+                    CompilerDirectives.transferToInterpreter();
+                    throw new UnsupportedOperationException();
+                } else if (result != null) {
+                    // ignore result values;
+                    // we are instrumentation statements only.
+                    return;
+                }
+                throw t;
+            }
+        }
+
+        private void resumeAt(VirtualFrame frame, int index) {
+            WrapperNode wrapperNode = getWrapperAt(index);
+            if (wrapperNode == null) {
+                return;
+            }
+            ProbeNode probeNode = wrapperNode.getProbeNode();
+            try {
+                probeNode.onResume(frame);
             } catch (Throwable t) {
                 Object result = probeNode.onReturnExceptionalOrUnwind(frame, t, false);
                 if (result == ProbeNode.UNWIND_ACTION_REENTER) {
@@ -3277,6 +3238,9 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
          * Graal nodes.
          */
         if (!noForeignObjects.isValid() || implicitExceptionProfile) {
+            return false;
+        }
+        if (instrumentation != null) {
             return false;
         }
         if (trivialBytecodesCache == TRIVIAL_UNINITIALIZED) {

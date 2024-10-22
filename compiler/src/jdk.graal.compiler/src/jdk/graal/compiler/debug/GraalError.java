@@ -287,6 +287,13 @@ public class GraalError extends Error {
         context.addAll(e.context);
     }
 
+    public static GraalError asGraalError(Throwable t) {
+        if (t instanceof GraalError g) {
+            return g;
+        }
+        return new GraalError(t);
+    }
+
     @Override
     public String toString() {
         StringBuilder str = new StringBuilder();

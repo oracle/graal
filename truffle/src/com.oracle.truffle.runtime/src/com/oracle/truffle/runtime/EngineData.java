@@ -85,7 +85,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.logging.Level;
 
@@ -108,8 +107,6 @@ import com.oracle.truffle.runtime.debug.StatisticsListener;
  * engine. One-to-one relationship with a polyglot Engine instance.
  */
 public final class EngineData {
-
-    private static final AtomicLong engineCounter = new AtomicLong();
 
     int splitLimit;
     int splitCount;
@@ -182,7 +179,7 @@ public final class EngineData {
         Objects.requireNonNull(polyglotEngine);
         Objects.requireNonNull(runtimeOptions);
         this.polyglotEngine = polyglotEngine;
-        this.id = engineCounter.incrementAndGet();
+        this.id = OptimizedRuntimeAccessor.ENGINE.getEngineId(polyglotEngine);
         this.loggerFactory = loggerFactory;
         this.loadOptions(runtimeOptions, sandboxPolicy);
 
@@ -256,12 +253,14 @@ public final class EngineData {
 
     void onEngineCreated(Object engine) {
         assert this.polyglotEngine == engine;
+        getRuntime().onEngineCreated(this);
         getRuntime().getEngineCacheSupport().onEngineCreated(this);
     }
 
     void onEnginePatch(OptionValues newRuntimeOptions, Function<String, TruffleLogger> newLoggerFactory, SandboxPolicy sandboxPolicy) {
         this.loggerFactory = newLoggerFactory;
         loadOptions(newRuntimeOptions, sandboxPolicy);
+        getRuntime().onEngineCreated(this);
         getRuntime().getEngineCacheSupport().onEnginePatch(this);
     }
 

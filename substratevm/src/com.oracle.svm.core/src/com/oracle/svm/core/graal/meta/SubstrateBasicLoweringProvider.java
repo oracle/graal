@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -87,6 +87,7 @@ import jdk.graal.compiler.nodes.type.NarrowOopStamp;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.DefaultJavaLoweringProvider;
+import jdk.graal.compiler.replacements.IdentityHashCodeSnippets;
 import jdk.graal.compiler.replacements.IsArraySnippets;
 import jdk.graal.compiler.replacements.SnippetCounter.Group;
 import jdk.graal.compiler.replacements.nodes.AssertionNode;
@@ -121,9 +122,13 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
     @Override
     public void setConfiguration(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers) {
         this.runtimeConfig = runtimeConfig;
-        this.identityHashCodeSnippets = IdentityHashCodeSupport.createSnippetTemplates(options, providers);
         this.isArraySnippets = new IsArraySnippets.Templates(new SubstrateIsArraySnippets(), options, providers);
         initialize(options, Group.NullFactory, providers);
+    }
+
+    @Override
+    protected IdentityHashCodeSnippets.Templates createIdentityHashCodeSnippets(OptionValues options, Providers providers) {
+        return IdentityHashCodeSupport.createSnippetTemplates(options, providers);
     }
 
     protected Providers getProviders() {
@@ -157,7 +162,7 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
         SharedMethod method = (SharedMethod) loadMethodNode.getMethod();
         ValueNode hub = loadMethodNode.getHub();
 
-        if (SubstrateOptions.closedTypeWorld()) {
+        if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
 
             int vtableEntryOffset = knownOffsets.getVTableOffset(method.getVTableIndex(), true);
             assert vtableEntryOffset > 0;

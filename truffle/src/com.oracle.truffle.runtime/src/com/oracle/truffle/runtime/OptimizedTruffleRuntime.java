@@ -904,6 +904,10 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
 
     public abstract BackgroundCompileQueue getCompileQueue();
 
+    @SuppressWarnings("unused")
+    protected void onEngineCreated(EngineData engine) {
+    }
+
     @SuppressWarnings("try")
     public CompilationTask submitForCompilation(OptimizedCallTarget optimizedCallTarget, boolean lastTierCompilation) {
         Priority priority = new Priority(optimizedCallTarget.getCallAndLoopCount(), lastTierCompilation ? Priority.Tier.LAST : Priority.Tier.FIRST);
@@ -1271,7 +1275,7 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
                 if (target instanceof OptimizedCallTarget) {
                     OptimizedCallTarget callTarget = ((OptimizedCallTarget) target);
                     if (callTarget.isSplit()) {
-                        builder.append(" <split-").append(Integer.toHexString(callTarget.hashCode())).append(">");
+                        builder.append(" <split-").append(callTarget.id).append(">");
                     }
                 }
 

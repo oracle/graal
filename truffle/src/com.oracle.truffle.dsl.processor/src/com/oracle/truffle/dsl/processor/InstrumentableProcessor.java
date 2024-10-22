@@ -80,8 +80,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.java.transform.FixWarningsVisitor;
 import com.oracle.truffle.dsl.processor.java.transform.GenerateOverrideVisitor;
 
-@SupportedAnnotationTypes({
-                TruffleTypes.GenerateWrapper_Name})
+@SupportedAnnotationTypes({TruffleTypes.GenerateWrapper_Name})
 public final class InstrumentableProcessor extends AbstractProcessor {
 
     // configuration
@@ -112,7 +111,7 @@ public final class InstrumentableProcessor extends AbstractProcessor {
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         if (roundEnv.processingOver()) {
-            return false;
+            return true;
         }
         try (ProcessorContext context = ProcessorContext.enter(processingEnv)) {
             TruffleTypes types = context.getTypes();
@@ -123,8 +122,7 @@ public final class InstrumentableProcessor extends AbstractProcessor {
                 if (!element.getKind().isClass() && !element.getKind().isInterface()) {
                     continue;
                 }
-                String packageName = ElementUtils.getPackageName(element);
-                if (packageName != null && packageName.equals(ElementUtils.getPackageName(types.GenerateWrapper))) {
+                if (ElementUtils.packageEquals(element.asType(), types.GenerateWrapper)) {
                     /*
                      * Do not generate wrappers in the instrumentation package itself. For example
                      * for snippet code the annotation processor should not generate code.
@@ -380,15 +378,7 @@ public final class InstrumentableProcessor extends AbstractProcessor {
             if (!isOverridable(method)) {
                 continue;
             }
-            if (hasMethodPrefix(method, types, EXECUTE_METHOD_PREFIX)) {
-                if (topLevelClass && !testFirstParamIsVirtualFrame(e, types, method)) {
-                    return null;
-                }
-                if (ElementUtils.isObject(method.getReturnType()) && method.getParameters().size() == 1 && genericExecuteDelegate == null) {
-                    genericExecuteDelegate = method;
-                }
-                wrappedExecuteMethods.add(method);
-            } else if (isResume && hasMethodPrefix(method, types, resumeMethodPrefix)) {
+            if (isResume && hasMethodPrefix(method, types, resumeMethodPrefix)) {
                 if (topLevelClass && !testFirstParamIsVirtualFrame(e, types, method)) {
                     return null;
                 }
@@ -396,6 +386,14 @@ public final class InstrumentableProcessor extends AbstractProcessor {
                     genericResumeDelegate = method;
                 }
                 wrappedResumeMethods.add(method);
+            } else if (hasMethodPrefix(method, types, EXECUTE_METHOD_PREFIX)) {
+                if (topLevelClass && !testFirstParamIsVirtualFrame(e, types, method)) {
+                    return null;
+                }
+                if (ElementUtils.isObject(method.getReturnType()) && method.getParameters().size() == 1 && genericExecuteDelegate == null) {
+                    genericExecuteDelegate = method;
+                }
+                wrappedExecuteMethods.add(method);
             } else {
                 String methodName = method.getSimpleName().toString();
                 if (method.getModifiers().contains(Modifier.ABSTRACT) && !methodName.equals(METHOD_GET_NODE_COST) && !hasUnexpectedResult(context, method)) {

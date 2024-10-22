@@ -166,7 +166,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
         return instruction == masm.getInt(0);
     }
 
-    public static void rawLeave(CompilationResultBuilder crb, GraalHotSpotVMConfig config) {
+    public void rawLeave(CompilationResultBuilder crb) {
         AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
         FrameMap frameMap = crb.frameMap;
         final int totalFrameSize = frameMap.totalFrameSize();
@@ -221,11 +221,13 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
         }
     }
 
-    class HotSpotFrameContext implements FrameContext {
+    public class HotSpotFrameContext implements FrameContext {
         final boolean isStub;
+        private final EntryPointDecorator entryPointDecorator;
 
-        HotSpotFrameContext(boolean isStub) {
+        HotSpotFrameContext(boolean isStub, EntryPointDecorator entryPointDecorator) {
             this.isStub = isStub;
+            this.entryPointDecorator = entryPointDecorator;
         }
 
         @Override
@@ -241,6 +243,9 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
             crb.recordMark(HotSpotMarkId.FRAME_COMPLETE);
             if (!isStub && config.nmethodEntryBarrier != 0) {
                 emitNmethodEntryBarrier(crb, masm);
+            }
+            if (entryPointDecorator != null) {
+                entryPointDecorator.emitEntryPoint(crb, false);
             }
             if (ZapStackOnMethodEntry.getValue(crb.getOptions())) {
                 try (ScratchRegister sc = masm.getScratchRegister()) {
@@ -340,7 +345,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
         @Override
         public void leave(CompilationResultBuilder crb) {
             crb.blockComment("[method epilogue]");
-            rawLeave(crb, config);
+            rawLeave(crb);
         }
 
         @Override
@@ -351,14 +356,15 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
     }
 
     @Override
-    public CompilationResultBuilder newCompilationResultBuilder(LIRGenerationResult lirGenRen, FrameMap frameMap, CompilationResult compilationResult, CompilationResultBuilderFactory factory) {
+    public CompilationResultBuilder newCompilationResultBuilder(LIRGenerationResult lirGenRen, FrameMap frameMap, CompilationResult compilationResult, CompilationResultBuilderFactory factory,
+                    EntryPointDecorator entryPointDecorator) {
         HotSpotLIRGenerationResult gen = (HotSpotLIRGenerationResult) lirGenRen;
         LIR lir = gen.getLIR();
         assert gen.getDeoptimizationRescueSlot() == null || frameMap.frameNeedsAllocating() : "method that can deoptimize must have a frame";
 
         Stub stub = gen.getStub();
         AArch64MacroAssembler masm = new AArch64HotSpotMacroAssembler(getTarget(), config, heapBaseRegister);
-        HotSpotFrameContext frameContext = new HotSpotFrameContext(stub != null);
+        HotSpotFrameContext frameContext = new HotSpotFrameContext(stub != null, entryPointDecorator);
 
         DataBuilder dataBuilder = new HotSpotDataBuilder(getCodeCache().getTarget());
         CompilationResultBuilder crb = factory.createBuilder(getProviders(), frameMap, masm, dataBuilder, frameContext, lir.getOptions(), lir.getDebug(), compilationResult,
@@ -399,7 +405,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
         emitCodePrefix(crb, installedCodeOwner, masm, regConfig);
 
         if (entryPointDecorator != null) {
-            entryPointDecorator.emitEntryPoint(crb);
+            entryPointDecorator.emitEntryPoint(crb, true);
         }
         emitCodeBody(crb, masm);
         emitCodeSuffix(crb, masm);

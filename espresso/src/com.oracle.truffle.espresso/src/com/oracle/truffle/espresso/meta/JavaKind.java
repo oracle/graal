@@ -550,27 +550,17 @@ public enum JavaKind {
     }
 
     public byte toTagConstant() {
-        switch (this) {
-            case Boolean:
-                return TagConstants.BOOLEAN;
-            case Byte:
-                return TagConstants.BYTE;
-            case Short:
-                return TagConstants.SHORT;
-            case Char:
-                return TagConstants.CHAR;
-            case Int:
-                return TagConstants.INT;
-            case Float:
-                return TagConstants.FLOAT;
-            case Long:
-                return TagConstants.LONG;
-            case Double:
-                return TagConstants.DOUBLE;
-            case Object:
-                return TagConstants.OBJECT;
-            default:
-                return -1;
-        }
+        return switch (this) {
+            case Boolean -> TagConstants.BOOLEAN;
+            case Byte -> TagConstants.BYTE;
+            case Short -> TagConstants.SHORT;
+            case Char -> TagConstants.CHAR;
+            case Int -> TagConstants.INT;
+            case Float -> TagConstants.FLOAT;
+            case Long -> TagConstants.LONG;
+            case Double -> TagConstants.DOUBLE;
+            case Object -> TagConstants.OBJECT;
+            default -> -1;
+        };
     }
 }

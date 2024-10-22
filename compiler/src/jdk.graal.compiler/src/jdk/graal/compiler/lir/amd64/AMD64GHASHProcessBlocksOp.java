@@ -65,6 +65,7 @@ import jdk.vm.ci.meta.Value;
 
 // @formatter:off
 @SyncPort(from = "https://github.com/openjdk/jdk/blob/12358e6c94bc96e618efc3ec5299a2cfe1b4669d/src/hotspot/cpu/x86/stubGenerator_x86_64_ghash.cpp#L35-L535",
+          ignore = "GR-58686",
           sha1 = "a0f563cb82a007e3c12d1554e825348b967f868a")
 // @formatter:on
 public final class AMD64GHASHProcessBlocksOp extends AMD64LIRInstruction {

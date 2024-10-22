@@ -41,10 +41,10 @@ import jdk.vm.ci.meta.AllocatableValue;
  * Returns -1, 0, or 1 if either x &lt; y, x == y, or x &gt; y.
  */
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/7bb59dc8da0c61c5da5c3aab5d56a6e4880001ce/src/hotspot/cpu/x86/x86_64.ad#L11742-L11766",
-          sha1 = "90dcf08952d34fa4381e43cbe988ce01a0fd2f26")
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/7bb59dc8da0c61c5da5c3aab5d56a6e4880001ce/src/hotspot/cpu/x86/x86_64.ad#L11794-L11818",
-          sha1 = "541cc1716b2aa630e52634a3f1595159f274aa8f")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/dcac4b0a532f2ca6cb374da7ece331e8266ab351/src/hotspot/cpu/x86/x86_64.ad#L11821-L11843",
+          sha1 = "17a5937cf7c0857802554981366ca445c0d9cc07")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/dcac4b0a532f2ca6cb374da7ece331e8266ab351/src/hotspot/cpu/x86/x86_64.ad#L11869-L11891",
+          sha1 = "28a6ada679e72fb4ae14a6bcb1d094e88a11e8d1")
 // @formatter:on
 public class AMD64NormalizedUnsignedCompareOp extends AMD64LIRInstruction {
     public static final LIRInstructionClass<AMD64NormalizedUnsignedCompareOp> TYPE = LIRInstructionClass.create(AMD64NormalizedUnsignedCompareOp.class);

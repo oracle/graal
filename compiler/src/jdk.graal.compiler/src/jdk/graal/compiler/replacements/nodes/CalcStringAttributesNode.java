@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,6 +47,7 @@ import java.util.EnumSet;
 
 import org.graalvm.word.LocationIdentity;
 
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.type.StampFactory;
@@ -179,11 +180,10 @@ public final class CalcStringAttributesNode extends PureFunctionStubIntrinsicNod
             // arrayOffset is given in bytes, scale it to the stride.
             long arrayBaseOffsetBytesConstant = offset.asJavaConstant().asLong();
             arrayBaseOffsetBytesConstant -= tool.getMetaAccess().getArrayBaseOffset(constantArrayKind);
-            final int offsetConstant = (int) (arrayBaseOffsetBytesConstant / stride.value);
+            final long offsetConstantScaled = arrayBaseOffsetBytesConstant >> stride.log2;
 
             final int lengthConstant = length.asJavaConstant().asInt();
-
-            if (!ConstantReflectionUtil.boundsCheckTypePunned(lengthConstant, stride, actualArrayLength, constantArrayKind)) {
+            if (!ConstantReflectionUtil.boundsCheckTypePunned(offsetConstantScaled, lengthConstant, stride, actualArrayLength, constantArrayKind)) {
                 /*
                  * This may happen when this node is in a branch that won't be taken for the given
                  * array, but is still visible in the current compilation unit, e.g. for compact
@@ -208,6 +208,7 @@ public final class CalcStringAttributesNode extends PureFunctionStubIntrinsicNod
                  */
                 return this;
             }
+            final int offsetConstant = NumUtil.safeToInt(offsetConstantScaled);
 
             if (ConstantReflectionUtil.shouldConstantFoldArrayOperation(tool, lengthConstant)) {
                 switch (encoding) {

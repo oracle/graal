@@ -74,7 +74,6 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
-import com.oracle.truffle.api.impl.JDKAccessor;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionKey;
@@ -107,6 +106,7 @@ import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.impl.Accessor;
+import com.oracle.truffle.api.impl.JDKAccessor;
 import com.oracle.truffle.api.impl.TruffleLocator;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
@@ -268,8 +268,8 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public LanguageInfo getLanguageInfo(Object polyglotInstrument, Class<? extends TruffleLanguage<?>> languageClass) {
-            return ((PolyglotInstrument) polyglotInstrument).engine.getLanguage(languageClass, true).info;
+        public LanguageInfo getLanguageInfo(Object vmObject, Class<? extends TruffleLanguage<?>> languageClass) {
+            return ((VMObject) vmObject).getEngine().getLanguage(languageClass, true).info;
         }
 
         @Override
@@ -475,6 +475,11 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
+        public LanguageInfo getHostLanguage(Object polyglotLanguageContext) {
+            return ((PolyglotLanguageContext) polyglotLanguageContext).context.engine.hostLanguage.info;
+        }
+
+        @Override
         public Map<String, LanguageInfo> getPublicLanguages(Object polyglotObject) {
             return ((PolyglotLanguageContext) polyglotObject).getAccessibleLanguages(false);
         }
@@ -501,13 +506,14 @@ final class EngineAccessor extends Accessor {
         @Override
         public Object getScope(Object polyglotLanguageContext, LanguageInfo requiredLanguage, boolean internal) {
             PolyglotLanguageContext languageContext = (PolyglotLanguageContext) polyglotLanguageContext;
-            Map<String, LanguageInfo> allowedLanguages;
+            Set<String> allowedLanguages;
             if (internal) {
-                allowedLanguages = getInternalLanguages(languageContext);
+                allowedLanguages = getInternalLanguages(languageContext).keySet();
             } else {
-                allowedLanguages = getPublicLanguages(languageContext);
+                allowedLanguages = getPublicLanguages(languageContext).keySet();
             }
-            if (!allowedLanguages.containsKey(requiredLanguage.getId())) {
+            String requiredId = requiredLanguage.getId();
+            if (!allowedLanguages.contains(requiredId) && !(internal && PolyglotEngineImpl.HOST_LANGUAGE_ID.equals(requiredId) && languageContext.context.config.hostLookupAllowed)) {
                 throw new PolyglotEngineException(new SecurityException(String.format("Access to language '%s' is not permitted.", requiredLanguage.getId())));
             }
             PolyglotContextImpl context = languageContext.context;
@@ -981,6 +987,7 @@ final class EngineAccessor extends Accessor {
                         String[] onlyLanguagesArray, Map<String, Object> config, Map<String, String> options, Map<String, String[]> arguments,
                         Boolean sharingEnabled, boolean initializeCreatorContext, Runnable onCancelledRunnable,
                         Consumer<Integer> onExitedRunnable, Runnable onClosedRunnable, boolean inheritAccess, Boolean allowCreateThreads,
+                        Consumer<String> threadAccessDeniedHandler,
                         Boolean allowNativeAccess, Boolean allowIO, Boolean allowHostLookup, Boolean allowHostClassLoading,
                         Boolean allowCreateProcess, Boolean allowPolyglotAccess, Boolean allowEnvironmentAccess,
                         Map<String, String> customEnvironment, Boolean allowInnerContextOptions) {
@@ -1104,6 +1111,8 @@ final class EngineAccessor extends Accessor {
 
             ZoneId useTimeZone = timeZone == null ? creatorConfig.timeZone : timeZone;
 
+            Consumer<String> useDeniedThreadAccess = threadAccessDeniedHandler != null ? threadAccessDeniedHandler : creatorConfig.threadAccessDeniedHandler;
+
             Map<String, String[]> useArguments;
             if (arguments == null) {
                 // change: application arguments are not inherited by default
@@ -1113,7 +1122,7 @@ final class EngineAccessor extends Accessor {
             }
 
             PolyglotContextConfig innerConfig = new PolyglotContextConfig(engine, creatorConfig.sandboxPolicy, sharingEnabled, useOut, useErr, useIn,
-                            useAllowHostLookup, usePolyglotAccess, useAllowNativeAccess, useAllowCreateThread, useAllowHostClassLoading,
+                            useAllowHostLookup, usePolyglotAccess, useAllowNativeAccess, useAllowCreateThread, useDeniedThreadAccess, useAllowHostClassLoading,
                             useAllowInnerContextOptions, creatorConfig.allowExperimentalOptions,
                             useClassFilter, useArguments, allowedLanguages, useOptions, fileSystemConfig, creatorConfig.logHandler,
                             useAllowCreateProcess, useProcessHandler, useEnvironmentAccess, useCustomEnvironment,
@@ -1178,9 +1187,14 @@ final class EngineAccessor extends Accessor {
                 newThread = new Thread(group, task, name, stackSize);
             }
             newThread.setUncaughtExceptionHandler(threadContext.getPolyglotExceptionHandler());
-
-            threadContext.context.checkMultiThreadedAccess(newThread);
-            return newThread;
+            for (;;) {
+                try {
+                    threadContext.context.checkMultiThreadedAccess(newThread);
+                    return newThread;
+                } catch (PolyglotThreadAccessException ex) {
+                    ex.rethrow(threadContext.context);
+                }
+            }
         }
 
         @Override
@@ -2183,6 +2197,11 @@ final class EngineAccessor extends Accessor {
         @Override
         public Object getEngineData(Object polyglotEngine) {
             return ((PolyglotEngineImpl) polyglotEngine).runtimeData;
+        }
+
+        @Override
+        public long getEngineId(Object polyglotEngine) {
+            return ((PolyglotEngineImpl) polyglotEngine).engineId;
         }
     }
 

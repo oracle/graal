@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -221,14 +221,14 @@ public class AMD64ControlFlow {
             } else {
                 AMD64AddressValue yAddress = (AMD64AddressValue) y;
                 if (crb.isSuccessorEdge(trueDestination)) {
-                    masm.testAndJcc(size, asRegister(x), yAddress.toAddress(), condition.negate(), falseDestination.label(), false, applyBeforeFusedPair);
+                    masm.testAndJcc(size, asRegister(x), yAddress.toAddress(masm), condition.negate(), falseDestination.label(), false, applyBeforeFusedPair);
                 } else if (crb.isSuccessorEdge(falseDestination)) {
-                    masm.testAndJcc(size, asRegister(x), yAddress.toAddress(), condition, trueDestination.label(), false, applyBeforeFusedPair);
+                    masm.testAndJcc(size, asRegister(x), yAddress.toAddress(masm), condition, trueDestination.label(), false, applyBeforeFusedPair);
                 } else if (trueDestinationProbability < 0.5) {
-                    masm.testAndJcc(size, asRegister(x), yAddress.toAddress(), condition.negate(), falseDestination.label(), false, applyBeforeFusedPair);
+                    masm.testAndJcc(size, asRegister(x), yAddress.toAddress(masm), condition.negate(), falseDestination.label(), false, applyBeforeFusedPair);
                     masm.jmp(trueDestination.label());
                 } else {
-                    masm.testAndJcc(size, asRegister(x), yAddress.toAddress(), condition, trueDestination.label(), false, applyBeforeFusedPair);
+                    masm.testAndJcc(size, asRegister(x), yAddress.toAddress(masm), condition, trueDestination.label(), false, applyBeforeFusedPair);
                     masm.jmp(falseDestination.label());
                 }
             }
@@ -301,14 +301,14 @@ public class AMD64ControlFlow {
             } else {
                 AMD64AddressValue xAddress = (AMD64AddressValue) x;
                 if (crb.isSuccessorEdge(trueDestination)) {
-                    masm.testAndJcc(size, xAddress.toAddress(), y, condition.negate(), falseDestination.label(), false, applyBeforeFusedPair);
+                    masm.testAndJcc(size, xAddress.toAddress(masm), y, condition.negate(), falseDestination.label(), false, applyBeforeFusedPair);
                 } else if (crb.isSuccessorEdge(falseDestination)) {
-                    masm.testAndJcc(size, xAddress.toAddress(), y, condition, trueDestination.label(), false, applyBeforeFusedPair);
+                    masm.testAndJcc(size, xAddress.toAddress(masm), y, condition, trueDestination.label(), false, applyBeforeFusedPair);
                 } else if (trueDestinationProbability < 0.5) {
-                    masm.testAndJcc(size, xAddress.toAddress(), y, condition.negate(), falseDestination.label(), false, applyBeforeFusedPair);
+                    masm.testAndJcc(size, xAddress.toAddress(masm), y, condition.negate(), falseDestination.label(), false, applyBeforeFusedPair);
                     masm.jmp(trueDestination.label());
                 } else {
-                    masm.testAndJcc(size, xAddress.toAddress(), y, condition, trueDestination.label(), false, applyBeforeFusedPair);
+                    masm.testAndJcc(size, xAddress.toAddress(masm), y, condition, trueDestination.label(), false, applyBeforeFusedPair);
                     masm.jmp(falseDestination.label());
                 }
             }
@@ -397,14 +397,14 @@ public class AMD64ControlFlow {
             } else {
                 AMD64AddressValue yAddress = (AMD64AddressValue) y;
                 if (crb.isSuccessorEdge(trueDestination)) {
-                    masm.cmpAndJcc(size, asRegister(x), yAddress.toAddress(), condition.negate(), falseDestination.label(), false, applyBeforeFusedPair);
+                    masm.cmpAndJcc(size, asRegister(x), yAddress.toAddress(masm), condition.negate(), falseDestination.label(), false, applyBeforeFusedPair);
                 } else if (crb.isSuccessorEdge(falseDestination)) {
-                    masm.cmpAndJcc(size, asRegister(x), yAddress.toAddress(), condition, trueDestination.label(), false, applyBeforeFusedPair);
+                    masm.cmpAndJcc(size, asRegister(x), yAddress.toAddress(masm), condition, trueDestination.label(), false, applyBeforeFusedPair);
                 } else if (trueDestinationProbability < 0.5) {
-                    masm.cmpAndJcc(size, asRegister(x), yAddress.toAddress(), condition.negate(), falseDestination.label(), false, applyBeforeFusedPair);
+                    masm.cmpAndJcc(size, asRegister(x), yAddress.toAddress(masm), condition.negate(), falseDestination.label(), false, applyBeforeFusedPair);
                     masm.jmp(trueDestination.label());
                 } else {
-                    masm.cmpAndJcc(size, asRegister(x), yAddress.toAddress(), condition, trueDestination.label(), false, applyBeforeFusedPair);
+                    masm.cmpAndJcc(size, asRegister(x), yAddress.toAddress(masm), condition, trueDestination.label(), false, applyBeforeFusedPair);
                     masm.jmp(falseDestination.label());
                 }
             }
@@ -495,14 +495,14 @@ public class AMD64ControlFlow {
             } else {
                 AMD64AddressValue xAddress = (AMD64AddressValue) x;
                 if (crb.isSuccessorEdge(trueDestination)) {
-                    masm.cmpAndJcc(size, xAddress.toAddress(), y, condition.negate(), falseDestination.label(), false, inlineDataInCode, applyBeforeFusedPair);
+                    masm.cmpAndJcc(size, xAddress.toAddress(masm), y, condition.negate(), falseDestination.label(), false, inlineDataInCode, applyBeforeFusedPair);
                 } else if (crb.isSuccessorEdge(falseDestination)) {
-                    masm.cmpAndJcc(size, xAddress.toAddress(), y, condition, trueDestination.label(), false, inlineDataInCode, applyBeforeFusedPair);
+                    masm.cmpAndJcc(size, xAddress.toAddress(masm), y, condition, trueDestination.label(), false, inlineDataInCode, applyBeforeFusedPair);
                 } else if (trueDestinationProbability < 0.5) {
-                    masm.cmpAndJcc(size, xAddress.toAddress(), y, condition.negate(), falseDestination.label(), false, inlineDataInCode, applyBeforeFusedPair);
+                    masm.cmpAndJcc(size, xAddress.toAddress(masm), y, condition.negate(), falseDestination.label(), false, inlineDataInCode, applyBeforeFusedPair);
                     masm.jmp(trueDestination.label());
                 } else {
-                    masm.cmpAndJcc(size, xAddress.toAddress(), y, condition, trueDestination.label(), false, inlineDataInCode, applyBeforeFusedPair);
+                    masm.cmpAndJcc(size, xAddress.toAddress(masm), y, condition, trueDestination.label(), false, inlineDataInCode, applyBeforeFusedPair);
                     masm.jmp(falseDestination.label());
                 }
             }
@@ -554,6 +554,7 @@ public class AMD64ControlFlow {
 
         public FloatBranchOp(Condition condition, boolean unorderedIsTrue, LabelRef trueDestination, LabelRef falseDestination, double trueDestinationProbability, boolean isSelfEqualsCheck) {
             super(TYPE, floatCond(condition), trueDestination, falseDestination, trueDestinationProbability);
+            GraalError.guarantee(unorderedIsTrue == AMD64ControlFlow.trueOnUnordered(condition) || condition == Condition.EQ || condition == Condition.NE, "Should only query parity flag on eq/ne");
             this.unorderedIsTrue = unorderedIsTrue;
             this.isSelfEqualsCheck = isSelfEqualsCheck;
         }
@@ -891,13 +892,15 @@ public class AMD64ControlFlow {
         public static final LIRInstructionClass<FloatCondMoveOp> TYPE = LIRInstructionClass.create(FloatCondMoveOp.class);
         @LIRInstruction.Def({LIRInstruction.OperandFlag.REG}) protected Value result;
         @LIRInstruction.Alive({LIRInstruction.OperandFlag.REG}) protected Value trueValue;
-        @LIRInstruction.Alive({LIRInstruction.OperandFlag.REG}) protected Value falseValue;
+        @LIRInstruction.Use({LIRInstruction.OperandFlag.REG}) protected Value falseValue;
         private final ConditionFlag condition;
         private final boolean unorderedIsTrue;
         private final boolean isSelfEqualsCheck;
 
         public FloatCondMoveOp(Variable result, Condition condition, boolean unorderedIsTrue, AllocatableValue trueValue, AllocatableValue falseValue, boolean isSelfEqualsCheck) {
             super(TYPE);
+            // EQ_O would kill falseValue, don't do it here
+            GraalError.guarantee(isSelfEqualsCheck || condition == Condition.NE || unorderedIsTrue == AMD64ControlFlow.trueOnUnordered(condition), "Should only query parity flag on ne");
             this.result = result;
             this.condition = floatCond(condition);
             this.unorderedIsTrue = unorderedIsTrue;
@@ -918,16 +921,13 @@ public class AMD64ControlFlow {
         assert !result.equals(trueValue);
 
         // The isSelfEqualsCheck condition is x == x, i.e., !isNaN(x).
-        ConditionFlag moveCondition = (isSelfEqualsCheck ? ConditionFlag.NoParity : condition);
+        ConditionFlag selfEqualFlag = condition == ConditionFlag.Equal ? ConditionFlag.NoParity : ConditionFlag.Parity;
+        ConditionFlag moveCondition = (isSelfEqualsCheck ? selfEqualFlag : condition);
         AMD64Move.move(crb, masm, result, falseValue);
         cmove(crb, masm, result, moveCondition, trueValue);
 
-        if (isFloat && !isSelfEqualsCheck) {
-            if (unorderedIsTrue && !trueOnUnordered(condition)) {
-                cmove(crb, masm, result, ConditionFlag.Parity, trueValue);
-            } else if (!unorderedIsTrue && trueOnUnordered(condition)) {
-                cmove(crb, masm, result, ConditionFlag.Parity, falseValue);
-            }
+        if (isFloat && !isSelfEqualsCheck && unorderedIsTrue && condition == ConditionFlag.NotEqual) {
+            cmove(crb, masm, result, ConditionFlag.Parity, trueValue);
         }
     }
 

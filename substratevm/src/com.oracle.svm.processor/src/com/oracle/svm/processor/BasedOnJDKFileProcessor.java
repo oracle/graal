@@ -47,6 +47,7 @@ import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.tools.Diagnostic.Kind;
@@ -72,9 +73,12 @@ public class BasedOnJDKFileProcessor extends AbstractProcessor {
 
     static final String ANNOTATION_CLASS_NAME = "com.oracle.svm.core.util.BasedOnJDKFile";
     static final String ANNOTATION_LIST_CLASS_NAME = "com.oracle.svm.core.util.BasedOnJDKFile.List";
-    static final Pattern FILE_PATTERN = Pattern
-                    .compile("^https://github.com/openjdk/jdk/blob/(?<committish>[^/]+)/(?<path>[-_.A-Za-z0-9][-_./A-Za-z0-9]*)(#L(?<lineStart>[0-9]+)(-L(?<lineEnd>[0-9]+))?)?$");
-    static final String FILE_PATTERN_STR = "https://github.com/openjdk/jdk/blob/<tag|revision>/path/to/file.ext(#L[0-9]+(-L[0-9]+)?)?";
+    static final Pattern BLOB_PATTERN = Pattern
+                    .compile("^https://github.com/openjdk/jdk([0-9]+u)?/blob/(?<committish>[^/]+)/(?<path>[-_.A-Za-z0-9][-_./A-Za-z0-9]*)(#L(?<lineStart>[0-9]+)(-L(?<lineEnd>[0-9]+))?)?$");
+    static final String BLOB_PATTERN_STR = "https://github.com/openjdk/jdk([0-9]+u)?/blob/<tag|revision>/path/to/file.ext[#L<from>[-L<to>]]";
+    static final Pattern TREE_PATTERN = Pattern
+                    .compile("^https://github.com/openjdk/jdk([0-9]+u)?/tree/(?<committish>[^/]+)/(?<path>[-_.A-Za-z0-9][-_./A-Za-z0-9]*[-_.A-Za-z0-9](?<trailingSlash>/)?)$");
+    static final String TREE_PATTERN_STR = "https://github.com/openjdk/jdk([0-9]+u)?/tree/<tag|revision>/path/to/dir/";
     public static final int FULL_FILE_LINE_MARKER = 0;
 
     private final Set<Element> processed = new HashSet<>();
@@ -172,30 +176,42 @@ public class BasedOnJDKFileProcessor extends AbstractProcessor {
             TypeElement enclosingElement = (TypeElement) variableElement.getEnclosingElement();
             return enclosingElement.getQualifiedName().toString() + "#" + variableElement.getSimpleName();
         }
+        if (annotatedElement instanceof PackageElement packageElement) {
+            return packageElement.getQualifiedName().toString();
+        }
         throw new RuntimeException("Unexpected element class: " + annotatedElement.getClass().getSimpleName());
     }
 
     private SourceInfo parseBasedOnJDKFileAnnotation(String annotationValue) {
-        Matcher matcher = FILE_PATTERN.matcher(annotationValue);
-        if (!matcher.matches()) {
-            env().getMessager().printMessage(ERROR, String.format("Invalid path: %s%nShould be %s", annotationValue, FILE_PATTERN_STR));
-            return null;
-        }
-        String lineStartStr = matcher.group("lineStart");
-        String lineEndStr = matcher.group("lineEnd");
-        long lineStart = lineStartStr == null ? FULL_FILE_LINE_MARKER : Long.parseLong(lineStartStr);
-        final long lineEnd;
-        if (lineEndStr == null) {
-            if (lineStartStr != null) {
-                // no lineEnd but lineStart -> single line url
-                lineEnd = lineStart;
+        Matcher blobMatcher = BLOB_PATTERN.matcher(annotationValue);
+        if (blobMatcher.matches()) {
+            String lineStartStr = blobMatcher.group("lineStart");
+            String lineEndStr = blobMatcher.group("lineEnd");
+            long lineStart = lineStartStr == null ? FULL_FILE_LINE_MARKER : Long.parseLong(lineStartStr);
+            final long lineEnd;
+            if (lineEndStr == null) {
+                if (lineStartStr != null) {
+                    // no lineEnd but lineStart -> single line url
+                    lineEnd = lineStart;
+                } else {
+                    lineEnd = FULL_FILE_LINE_MARKER;
+                }
             } else {
-                lineEnd = FULL_FILE_LINE_MARKER;
+                lineEnd = Long.parseLong(lineEndStr);
             }
-        } else {
-            lineEnd = Long.parseLong(lineEndStr);
+            return new SourceInfo(blobMatcher.group("committish"), blobMatcher.group("path"), lineStart, lineEnd);
         }
-        return new SourceInfo(matcher.group("committish"), matcher.group("path"), lineStart, lineEnd);
+        Matcher treeMatcher = TREE_PATTERN.matcher(annotationValue);
+        if (treeMatcher.matches()) {
+            if (treeMatcher.group("trailingSlash") == null) {
+                env().getMessager().printMessage(ERROR, String.format("Invalid path: %s%nTree references should end with a slash (/). Please replace with:%n%s/", annotationValue, annotationValue));
+                return null;
+            }
+            String path = treeMatcher.group("path");
+            return new SourceInfo(treeMatcher.group("committish"), path, FULL_FILE_LINE_MARKER, FULL_FILE_LINE_MARKER);
+        }
+        env().getMessager().printMessage(ERROR, String.format("Invalid path: %s%nShould be either %s%nor%n%s", annotationValue, BLOB_PATTERN_STR, TREE_PATTERN_STR));
+        return null;
     }
 
     private SourceInfo getAnnotatedSourceInfo(Element annotatedElement) {
@@ -213,7 +229,8 @@ public class BasedOnJDKFileProcessor extends AbstractProcessor {
     }
 
     private static String getUniqueName(String qualifiedName, String committish, String path, long lineStart, long lineEnd) {
-        return String.format("%s/%s/%s-%s/%s", committish, path, lineStart, lineEnd, qualifiedName);
+        String strippedPath = path.charAt(path.length() - 1) == '/' ? path.substring(0, path.length() - 1) : path;
+        return String.format("%s/%s/%s-%s/%s", committish, strippedPath, lineStart, lineEnd, qualifiedName);
     }
 
     private static void printSourceInfo(PrintWriter writer, SourceInfo annotatedSourceInfo, String indent) {

@@ -32,15 +32,9 @@ import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Function;
-
-import org.graalvm.collections.Pair;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
@@ -53,8 +47,6 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.deopt.Deoptimizer;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.CustomCallingConventionMethod;
 import com.oracle.svm.core.graal.code.ExplicitCallingConvention;
 import com.oracle.svm.core.graal.code.StubCallingConvention;
@@ -113,10 +105,15 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     private int codeAddressOffset;
     private boolean codeAddressOffsetValid;
     private boolean compiled;
+    private boolean compiledInPriorLayer;
 
     /**
      * All concrete methods that can actually be called when calling this method. This includes all
      * overridden methods in subclasses, as well as this method if it is non-abstract.
+     * <p>
+     * With an open type world analysis the list of implementations is incomplete, i.e., no
+     * aggressive optimizations should be performed based on the contents of this list as one must
+     * assume that additional implementations can be discovered later.
      */
     HostedMethod[] implementations;
 
@@ -153,7 +150,7 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
 
     private static HostedMethod create0(AnalysisMethod wrapped, HostedType holder, ResolvedSignature<HostedType> signature,
                     ConstantPool constantPool, ExceptionHandler[] handlers, MultiMethodKey key, Map<MultiMethodKey, MultiMethod> multiMethodMap, LocalVariableTable localVariableTable) {
-        Function<Integer, Pair<String, String>> nameGenerator = (collisionCount) -> {
+        Function<Integer, HostedMethodNameFactory.MethodNameInfo> nameGenerator = (collisionCount) -> {
             String name = wrapped.wrapped.getName(); // want name w/o any multimethodkey suffix
             if (key != ORIGINAL_METHOD) {
                 name += StableMethodNameFormatter.MULTI_METHOD_KEY_SEPARATOR + key;
@@ -163,12 +160,12 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
             }
             String uniqueShortName = SubstrateUtil.uniqueShortName(holder.getJavaClass().getClassLoader(), holder, name, signature, wrapped.isConstructor());
 
-            return Pair.create(name, uniqueShortName);
+            return new HostedMethodNameFactory.MethodNameInfo(name, uniqueShortName);
         };
 
-        Pair<String, String> names = ImageSingletons.lookup(HostedMethodNameFactory.class).createNames(nameGenerator);
+        HostedMethodNameFactory.MethodNameInfo names = HostedMethodNameFactory.singleton().createNames(nameGenerator, wrapped);
 
-        return new HostedMethod(wrapped, holder, signature, constantPool, handlers, names.getLeft(), names.getRight(), localVariableTable, key, multiMethodMap);
+        return new HostedMethod(wrapped, holder, signature, constantPool, handlers, names.name(), names.uniqueShortName(), localVariableTable, key, multiMethodMap);
     }
 
     private static LocalVariableTable createLocalVariableTable(HostedUniverse universe, AnalysisMethod wrapped) {
@@ -250,6 +247,14 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
         return compiled;
     }
 
+    public void setCompiledInPriorLayer() {
+        this.compiledInPriorLayer = true;
+    }
+
+    public boolean isCompiledInPriorLayer() {
+        return compiledInPriorLayer;
+    }
+
     public String getUniqueShortName() {
         return uniqueShortName;
     }
@@ -268,7 +273,7 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
 
     @Override
     public boolean forceIndirectCall() {
-        return wrapped.isInBaseLayer();
+        return isCompiledInPriorLayer();
     }
 
     @Override
@@ -338,7 +343,7 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
 
     @Override
     public int getVTableIndex() {
-        assert vtableIndex != -1;
+        assert vtableIndex != -1 : "Missing vtable index for method " + this.format("%H.%n(%p)");
         return vtableIndex;
     }
 
@@ -449,7 +454,14 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
 
     @Override
     public boolean canBeStaticallyBound() {
-        return implementations.length == 1 && implementations[0].equals(this);
+        if (holder.universe.hostVM().isClosedTypeWorld()) {
+            return implementations.length == 1 && implementations[0].equals(this);
+        }
+        /*
+         * In open type world analysis we cannot make assumptions based on discovered
+         * implementations.
+         */
+        return wrapped.canBeStaticallyBound();
     }
 
     @Override
@@ -607,33 +619,5 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
         } else {
             return multiMethodMap.values();
         }
-    }
-}
-
-@Platforms(Platform.HOSTED_ONLY.class)
-@AutomaticallyRegisteredFeature
-class HostedMethodNameFactory implements InternalFeature {
-    Map<String, Integer> methodNameCount = new ConcurrentHashMap<>();
-    Set<String> uniqueShortNames = ConcurrentHashMap.newKeySet();
-
-    Pair<String, String> createNames(Function<Integer, Pair<String, String>> nameGenerator) {
-        Pair<String, String> result = nameGenerator.apply(0);
-
-        int collisionCount = methodNameCount.merge(result.getRight(), 0, (oldValue, value) -> oldValue + 1);
-
-        if (collisionCount != 0) {
-            result = nameGenerator.apply(collisionCount);
-        }
-
-        boolean added = uniqueShortNames.add(result.getRight());
-        VMError.guarantee(added, "failed to generate uniqueShortName for HostedMethod: %s", result.getRight());
-
-        return result;
-    }
-
-    @Override
-    public void afterCompilation(AfterCompilationAccess access) {
-        methodNameCount = null;
-        uniqueShortNames = null;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -164,12 +164,12 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
                 break;
             case FLOAT_NON_NAN:
                 // non NAN float stamp
-                piStamp = new FloatStamp(32, Float.NEGATIVE_INFINITY, Float.POSITIVE_INFINITY, true);
+                piStamp = FloatStamp.create(Float.SIZE, Float.NEGATIVE_INFINITY, Float.POSITIVE_INFINITY, true);
                 pushKind = JavaKind.Float;
                 break;
             case DOUBLE_NON_NAN:
                 // non NAN double stamp
-                piStamp = new FloatStamp(64, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, true);
+                piStamp = FloatStamp.create(Double.SIZE, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, true);
                 pushKind = JavaKind.Double;
                 break;
             default:
@@ -244,8 +244,16 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         }
     }
 
-    @SuppressFBWarnings(value = {"NP"}, justification = "We null check it before")
     public static ValueNode canonical(ValueNode object, Stamp piStamp, GuardingNode guard, ValueNode self) {
+        /*
+         * If canonicalization is not explicitly triggered, we need to be conservative and assume
+         * that the graph is still building up and some usages/inputs of/to nodes are still missing.
+         */
+        return canonical(object, piStamp, guard, self, false);
+    }
+
+    @SuppressFBWarnings(value = {"NP"}, justification = "We null check it before")
+    public static ValueNode canonical(ValueNode object, Stamp piStamp, GuardingNode guard, ValueNode self, boolean allUsagesAvailable) {
         GraalError.guarantee(piStamp != null && object != null, "Invariant piStamp=%s object=%s guard=%s self=%s", piStamp, object, guard, self);
 
         // Use most up to date stamp.
@@ -254,6 +262,56 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         // The pi node does not give any additional information => skip it.
         if (computedStamp.equals(object.stamp(NodeView.DEFAULT))) {
             return object;
+        }
+
+        /*
+         * Extracts a constant node if (1) this pi node's stamp is a non-null pointer stamp, (2)
+         * 'object' is phi node that has only the same constant node and else just null constants as
+         * inputs, and (3) if the constant's stamp equals this pi node's stamp.
+         *
+         * @formatter:off
+         *  ...
+         *   |
+         * Merge
+         *   |
+         *   | C(object) null  null C(object) (...)
+         *   |     |       |     |     |       |
+         *   |     |       |     |     |       |
+         *   |     |-------|-----+-----|-------|
+         *   |                   |
+         *   |----------------- phi
+         *                       |
+         *              piWithNonNullStamp
+         *                       |
+         *                      ...
+         * @formatter:on
+         *
+         * Another important condition is that the phi node already has all inputs. During graph
+         * decoding, it may happen that inputs are added later for loop phis. Therefore, either
+         * 'allUsagesAvailable' is given or the phi node is not a loop phi.
+         *
+         * This canonicalization case has some overlap with other optimizations. In particular,
+         * aggressive path duplication may get to a very similar result. Also, 'IfNode.splitIfAtPhi'
+         * does a similar optimization but with different limitations. This should be considered
+         * when touching them. One advantage of this canonicalization is that it happens immediately
+         * when creating PiNodes.
+         */
+        if (StampFactory.objectNonNull().equals(piStamp) && object instanceof PhiNode phiNode && (allUsagesAvailable || !phiNode.isLoopPhi())) {
+            ValueNode constantValue = null;
+            for (ValueNode phiValue : phiNode.values()) {
+                if (constantValue == null && phiValue.isConstant() && !phiValue.isNullConstant() && checkPhiValueStamp(piStamp, computedStamp, phiValue.stamp(NodeView.DEFAULT))) {
+                    constantValue = phiValue;
+                } else if (!phiValue.isNullConstant() && (constantValue == null || !isSameConstant(constantValue, phiValue))) {
+                    // reset value to indicate that condition is violated
+                    constantValue = null;
+                    break;
+                }
+            }
+            if (constantValue != null) {
+                assert constantValue.isConstant() && !constantValue.isNullConstant() && checkPhiValueStamp(piStamp, computedStamp,
+                                constantValue.stamp(NodeView.DEFAULT)) : Assertions.errorMessageContext("pi", self, "phi", phiNode, "constant", constantValue);
+                return constantValue;
+            }
         }
 
         if (guard == null) {
@@ -295,9 +353,24 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         return null;
     }
 
+    /**
+     * Pi-phi canonicalization is only allowed if the stamp of the phi: (1) is an object stamp
+     * (because PiNodes on primitive values are flaky), (2) the computed stamp is equal to the phi
+     * value's stamp, and (3) the stamp of the PiNode does not add any information.
+     */
+    private static boolean checkPhiValueStamp(Stamp piStamp, Stamp computedStamp, Stamp phiValueStamp) {
+        return phiValueStamp.isObjectStamp() && computedStamp.equals(phiValueStamp) && piStamp.join(phiValueStamp).equals(phiValueStamp);
+    }
+
+    private static boolean isSameConstant(ValueNode referenceValue, ValueNode phiValue) {
+        assert referenceValue.isConstant() && !referenceValue.isNullConstant() : "reference value must be constant but not the null constant";
+        assert referenceValue.asConstant() != null : "constant must not be null";
+        return phiValue.isConstant() && referenceValue.asConstant().equals(phiValue.asConstant());
+    }
+
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        Node value = canonical(object(), piStamp(), getGuard(), this);
+        Node value = canonical(object(), piStamp(), getGuard(), this, tool.allUsagesAvailable());
         if (value != null) {
             return value;
         }

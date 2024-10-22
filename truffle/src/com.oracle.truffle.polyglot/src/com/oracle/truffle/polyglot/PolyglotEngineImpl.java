@@ -74,7 +74,9 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -123,6 +125,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.polyglot.PolyglotContextConfig.FileSystemConfig;
 import com.oracle.truffle.polyglot.PolyglotContextConfig.PreinitConfig;
@@ -144,6 +147,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     static final int HOST_LANGUAGE_INDEX = 0;
     static final String HOST_LANGUAGE_ID = "host";
 
+    private static final AtomicLong ENGINE_COUNTER = new AtomicLong();
     static final String ENGINE_ID = "engine";
     static final String OPTION_GROUP_ENGINE = ENGINE_ID;
     static final String OPTION_GROUP_COMPILER = "compiler";
@@ -236,6 +240,8 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
     final List<PolyglotSharingLayer> sharedLayers = new ArrayList<>();
 
+    private final ReferenceQueue<Source> deadSourcesQueue = new ReferenceQueue<>();
+
     private boolean runtimeInitialized;
 
     AbstractPolyglotHostService polyglotHostService; // effectively final after engine patching
@@ -248,6 +254,8 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
     final InternalResourceRoots internalResourceRoots;
 
+    final long engineId;
+
     @SuppressWarnings("unchecked")
     PolyglotEngineImpl(PolyglotImpl impl, SandboxPolicy sandboxPolicy, String[] permittedLanguages,
                     DispatchOutputStream out, DispatchOutputStream err, InputStream in, OptionValuesImpl engineOptions,
@@ -256,6 +264,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     boolean allowExperimentalOptions, boolean boundEngine, boolean preInitialization,
                     MessageTransport messageInterceptor, LogHandler logHandler,
                     TruffleLanguage<Object> hostImpl, boolean hostLanguageOnly, AbstractPolyglotHostService polyglotHostService) {
+        this.engineId = ENGINE_COUNTER.incrementAndGet();
         this.apiAccess = impl.getAPIAccess();
         this.sandboxPolicy = sandboxPolicy;
         this.messageInterceptor = messageInterceptor;
@@ -450,6 +459,10 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         }
     }
 
+    ReferenceQueue<Source> getDeadSourcesQueue() {
+        return deadSourcesQueue;
+    }
+
     void ensureRuntimeInitialized(PolyglotContextImpl context) {
         assert Thread.holdsLock(lock);
 
@@ -496,6 +509,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
     @SuppressWarnings("unchecked")
     PolyglotEngineImpl(PolyglotEngineImpl prototype) {
+        this.engineId = ENGINE_COUNTER.incrementAndGet();
         this.apiAccess = prototype.apiAccess;
         this.sandboxPolicy = prototype.sandboxPolicy;
         this.messageInterceptor = prototype.messageInterceptor;
@@ -1537,6 +1551,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                 return waitForThreads(context, startMillis, timeout);
             }
         } finally {
+            boolean interrupted = false;
             for (Future<Void> future : futures) {
                 boolean timedOut = false;
                 try {
@@ -1555,10 +1570,15 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     } else {
                         future.get();
                     }
-                } catch (ExecutionException | InterruptedException e) {
+                } catch (ExecutionException e) {
                     throw CompilerDirectives.shouldNotReachHere(e);
+                } catch (InterruptedException e) {
+                    interrupted = true;
                 } catch (CancellationException e) {
                     // Expected
+                }
+                if (interrupted) {
+                    Thread.currentThread().interrupt();
                 }
                 if (timedOut) {
                     return false;
@@ -1720,7 +1740,8 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     @SuppressWarnings({"all"})
     public PolyglotContextImpl createContext(SandboxPolicy contextSandboxPolicy, OutputStream configOut, OutputStream configErr, InputStream configIn, boolean allowHostLookup,
                     Object hostAccess, Object polyglotAccess,
-                    boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostClassLoading, boolean allowContextOptions, boolean allowExperimentalOptions,
+                    boolean allowNativeAccess, boolean allowCreateThread, Consumer<String> threadAccessDeniedHandler, boolean allowHostClassLoading, boolean allowContextOptions,
+                    boolean allowExperimentalOptions,
                     Predicate<String> classFilter, Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguagesArray, Object ioAccess, Object handler,
                     boolean allowCreateProcess, ProcessHandler processHandler, Object environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl,
                     String currentWorkingDirectory, String tmpDir, ClassLoader hostClassLoader, boolean allowValueSharing, boolean useSystemExit) {
@@ -1835,7 +1856,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             }
             PolyglotLimits polyglotLimits = (PolyglotLimits) limitsImpl;
             PolyglotContextConfig config = new PolyglotContextConfig(this, contextSandboxPolicy, null, useOut, useErr, useIn,
-                            allowHostLookup, polyglotAccess, allowNativeAccess, allowCreateThread, allowHostClassLoading, allowContextOptions,
+                            allowHostLookup, polyglotAccess, allowNativeAccess, allowCreateThread, threadAccessDeniedHandler, allowHostClassLoading, allowContextOptions,
                             allowExperimentalOptions, classFilter, arguments, allowedLanguages, options, fileSystemConfig, useHandler, allowCreateProcess, useProcessHandler,
                             environmentAccess, environment, zone, polyglotLimits, hostClassLoader, hostAccess, allowValueSharing, useSystemExit, null, null, null, null);
             context = loadPreinitializedContext(config);

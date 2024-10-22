@@ -150,7 +150,7 @@ public final class GetJNIConfig implements AutoCloseable {
         try {
             return Class.forName(internalName, false, loader);
         } catch (ClassNotFoundException e) {
-            throw VMError.shouldNotReachHere("Cannot find class GuestGraal JNIConfiguration registration", e);
+            throw VMError.shouldNotReachHere("Cannot find class during LibGraal JNIConfiguration registration", e);
         }
     }
 

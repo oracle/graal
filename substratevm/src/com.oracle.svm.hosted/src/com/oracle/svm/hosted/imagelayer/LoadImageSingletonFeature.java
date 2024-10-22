@@ -144,6 +144,11 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
     }
 
     @Override
+    public void duringSetup(DuringSetupAccess access) {
+        LayeredImageHeapObjectAdder.singleton().registerObjectAdder(this::addInitialObjects);
+    }
+
+    @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         var config = (FeatureImpl.BeforeAnalysisAccessImpl) access;
         loader = (SVMImageLayerLoader) config.getUniverse().getImageLayerLoader();
@@ -211,6 +216,13 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
                              */
                             config.registerAsInHeap(slotInfo.keyClass());
                         }
+                        /*
+                         * GR-55294: The constants have to be created before the end of the analysis
+                         * as new types cannot be created later.
+                         */
+                        for (int priorId : getCrossLayerSingletonMappingInfo().getPriorLayerObjectIDs(slotInfo.keyClass())) {
+                            HostedImageLayerBuildingSupport.singleton().getLoader().getOrCreateConstant(priorId);
+                        }
                     }
                 }
             }
@@ -261,7 +273,7 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
      * Ensure all objects needed for {@link MultiLayeredImageSingleton}s and
      * {@link ApplicationLayerOnlyImageSingleton}s are installed in the heap.
      */
-    public void addInitialObjects(NativeImageHeap heap, HostedUniverse hUniverse) {
+    private void addInitialObjects(NativeImageHeap heap, HostedUniverse hUniverse) {
         String addReason = "Read via the layered image singleton support";
 
         /*
@@ -563,6 +575,7 @@ class CrossLayerSingletonMappingInfo extends LoadImageSingletonFactory implement
 
     @SuppressWarnings("unused")
     public static Object createFromLoader(ImageSingletonLoader loader) {
+        SVMImageLayerLoader imageLayerLoader = HostedImageLayerBuildingSupport.singleton().getLoader();
         Iterator<String> keyClasses = loader.readStringList("keyClasses").iterator();
         Iterator<Integer> slotAssignments = loader.readIntList("slotAssignments").iterator();
         Iterator<String> slotKinds = loader.readStringList("slotKinds").iterator();
@@ -571,7 +584,7 @@ class CrossLayerSingletonMappingInfo extends LoadImageSingletonFactory implement
 
         while (keyClasses.hasNext()) {
             String keyName = keyClasses.next();
-            Class<?> keyClass = ReflectionUtil.lookupClass(false, keyName);
+            Class<?> keyClass = imageLayerLoader.lookupClass(false, keyName);
             int slotAssignment = slotAssignments.next();
             SlotRecordKind slotKind = SlotRecordKind.valueOf(slotKinds.next());
 
@@ -584,7 +597,7 @@ class CrossLayerSingletonMappingInfo extends LoadImageSingletonFactory implement
         Iterator<String> idKeyNames = loader.readStringList("multiLayerKeyNames").iterator();
         while (keyClasses.hasNext()) {
             String keyClassName = keyClasses.next();
-            Class<?> keyClass = ReflectionUtil.lookupClass(false, keyClassName);
+            Class<?> keyClass = imageLayerLoader.lookupClass(false, keyClassName);
             String idKeyName = idKeyNames.next();
             var list = loader.readIntList(idKeyName);
             assert list != null;

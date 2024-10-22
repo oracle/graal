@@ -62,6 +62,7 @@ public class PointsToAnalysisField extends AnalysisField {
          */
         StoreInstanceFieldTypeFlow store = new StoreInstanceFieldTypeFlow(originalLocation, this, objectFlow);
         store.markAsContextInsensitive();
+        store.enableFlow(bb);
         return store;
     }
 

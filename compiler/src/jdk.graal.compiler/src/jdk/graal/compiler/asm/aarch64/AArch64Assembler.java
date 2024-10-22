@@ -2298,7 +2298,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      * @return true if valid arithmetic immediate, false otherwise.
      */
     public static boolean isAddSubtractImmediate(long imm, boolean useAbs) {
-        long checkedImm = useAbs ? Math.abs(imm) : imm;
+        long checkedImm = useAbs ? NumUtil.safeAbs(imm) : imm;
         return NumUtil.isUnsignedNbit(12, checkedImm) || (NumUtil.isUnsignedNbit(12, checkedImm >>> 12) && ((checkedImm & 0xfff) == 0));
     }
 

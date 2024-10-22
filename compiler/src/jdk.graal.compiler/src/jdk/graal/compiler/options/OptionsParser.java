@@ -30,11 +30,15 @@ import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Formatter;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.ServiceLoader;
+import java.util.Set;
 import java.util.regex.Pattern;
 
+import jdk.graal.compiler.debug.GraalError;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
@@ -45,33 +49,60 @@ import org.graalvm.collections.MapCursor;
  */
 public class OptionsParser {
 
-    private static volatile List<OptionDescriptors> cachedOptionDescriptors;
+    /**
+     * Info about libgraal options.
+     *
+     * @param descriptors set of compiler options available in libgraal. These correspond to the
+     *            reachable {@link OptionKey}s discovered during Native Image static analysis. This
+     *            field is only non-null when {@link OptionsParser} is loaded by the
+     *            LibGraalClassLoader.
+     * @param enterpriseOptions {@linkplain OptionKey#getName() names} of enterprise options
+     */
+    public record LibGraalOptionsInfo(EconomicMap<String, OptionDescriptor> descriptors, Set<String> enterpriseOptions) {
+        public static LibGraalOptionsInfo create() {
+            return new LibGraalOptionsInfo(EconomicMap.create(), new HashSet<>());
+        }
+    }
+
+    /**
+     * Compiler options info available in libgraal. This field is only non-null when
+     * {@link OptionsParser} is loaded by the LibGraalClassLoader.
+     */
+    private static LibGraalOptionsInfo libgraalOptions;
 
     /**
      * Gets an iterable of available {@link OptionDescriptors}.
      */
+    @ExcludeFromJacocoGeneratedReport("contains libgraal-only path")
     public static Iterable<OptionDescriptors> getOptionsLoader() {
-        return getOptionsLoader(ClassLoader.getSystemClassLoader());
-    }
-
-    @ExcludeFromJacocoGeneratedReport("contains libgraal only path")
-    public static Iterable<OptionDescriptors> getOptionsLoader(ClassLoader loader) {
-        if (IS_IN_NATIVE_IMAGE || cachedOptionDescriptors != null) {
-            return cachedOptionDescriptors;
+        if (IS_IN_NATIVE_IMAGE) {
+            return List.of(new OptionDescriptorsMap(Objects.requireNonNull(libgraalOptions.descriptors, "missing options")));
         }
-        /*
-         * The Graal module (i.e., jdk.graal.compiler) is loaded by the platform class loader.
-         * Modules that depend on and extend Graal are loaded by the app class loader. As such, we
-         * need to start the provider search at the app class loader instead of the platform class
-         * loader.
-         */
-        return ServiceLoader.load(OptionDescriptors.class, loader);
+        boolean inLibGraal = libgraalOptions != null;
+        if (inLibGraal && IS_BUILDING_NATIVE_IMAGE) {
+            /*
+             * Graal code is being run in the context of the LibGraalClassLoader while building
+             * libgraal so use the LibGraalClassLoader to load the OptionDescriptors.
+             */
+            ClassLoader myCL = OptionsParser.class.getClassLoader();
+            return ServiceLoader.load(OptionDescriptors.class, myCL);
+        } else {
+            /*
+             * The Graal module (i.e., jdk.graal.compiler) is loaded by the platform class loader.
+             * Modules that depend on and extend Graal are loaded by the app class loader so use it
+             * (instead of the platform class loader) to load the OptionDescriptors.
+             */
+            ClassLoader loader = ClassLoader.getSystemClassLoader();
+            return ServiceLoader.load(OptionDescriptors.class, loader);
+        }
     }
 
     @ExcludeFromJacocoGeneratedReport("only called when building libgraal")
-    public static void setCachedOptionDescriptors(List<OptionDescriptors> list) {
-        assert IS_BUILDING_NATIVE_IMAGE : "Used to pre-initialize the option descriptors during native image generation";
-        OptionsParser.cachedOptionDescriptors = list;
+    public static LibGraalOptionsInfo setLibgraalOptions(LibGraalOptionsInfo info) {
+        GraalError.guarantee(IS_BUILDING_NATIVE_IMAGE, "Can only set libgraal compiler options when building libgraal");
+        GraalError.guarantee(libgraalOptions == null, "Libgraal compiler options must be set exactly once");
+        OptionsParser.libgraalOptions = info;
+        return info;
     }
 
     /**
@@ -179,13 +210,17 @@ public class OptionsParser {
 
         OptionDescriptor desc = lookup(loader, name);
         if (desc == null) {
-            List<OptionDescriptor> matches = fuzzyMatch(loader, name);
             Formatter msg = new Formatter();
-            msg.format("Could not find option %s", name);
-            if (!matches.isEmpty()) {
-                msg.format("%nDid you mean one of the following?");
-                for (OptionDescriptor match : matches) {
-                    msg.format("%n    %s=<value>", match.getName());
+            if (name.equals("PrintGraphFile")) {
+                msg.format("Option PrintGraphFile has been removed - use PrintGraph=File instead");
+            } else {
+                List<OptionDescriptor> matches = fuzzyMatch(loader, name);
+                msg.format("Could not find option %s", name);
+                if (!matches.isEmpty()) {
+                    msg.format("%nDid you mean one of the following?");
+                    for (OptionDescriptor match : matches) {
+                        msg.format("%n    %s=<value>", match.getName());
+                    }
                 }
             }
             throw new IllegalArgumentException(msg.toString());
@@ -319,5 +354,14 @@ public class OptionsParser {
             }
         }
         return found;
+    }
+
+    static boolean isEnterpriseOption(OptionDescriptor desc) {
+        if (IS_IN_NATIVE_IMAGE) {
+            return Objects.requireNonNull(libgraalOptions.enterpriseOptions, "missing options").contains(desc.getName());
+        }
+        Class<?> declaringClass = desc.getDeclaringClass();
+        String module = declaringClass.getModule().getName();
+        return module != null && module.contains("enterprise");
     }
 }

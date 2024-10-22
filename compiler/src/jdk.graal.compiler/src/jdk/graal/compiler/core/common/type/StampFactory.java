@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -71,7 +71,7 @@ public class StampFactory {
     }
 
     private static void setFloatCache(JavaKind kind) {
-        setCache(kind, new FloatStamp(kind.getBitCount()));
+        setCache(kind, FloatStamp.createUnrestricted(kind.getBitCount()));
     }
 
     static {
@@ -205,7 +205,7 @@ public class StampFactory {
 
     public static FloatStamp forFloat(JavaKind kind, double lowerBound, double upperBound, boolean nonNaN) {
         assert kind.isNumericFloat();
-        return new FloatStamp(kind.getBitCount(), lowerBound, upperBound, nonNaN);
+        return FloatStamp.create(kind.getBitCount(), lowerBound, upperBound, nonNaN);
     }
 
     public static Stamp forConstant(JavaConstant value) {
@@ -323,7 +323,7 @@ public class StampFactory {
                 assert reference == null || !reference.getType().equals(resolvedJavaType);
                 TypeReference uncheckedType;
                 ResolvedJavaType elementalImplementor = elementalType.getSingleImplementor();
-                if (elementalImplementor != null && !elementalType.equals(elementalImplementor)) {
+                if (!resolvedJavaType.isArray() && elementalImplementor != null && !elementalType.equals(elementalImplementor)) {
                     ResolvedJavaType implementor = elementalImplementor;
                     ResolvedJavaType t = resolvedJavaType;
                     while (t.isArray()) {

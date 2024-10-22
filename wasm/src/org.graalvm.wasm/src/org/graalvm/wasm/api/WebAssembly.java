@@ -297,8 +297,15 @@ public class WebAssembly extends Dictionary {
 
     private static byte[] toBytes(Object source) {
         InteropLibrary interop = InteropLibrary.getUncached(source);
-        if (interop.hasArrayElements(source)) {
-            try {
+        try {
+            if (interop.hasBufferElements(source)) {
+                long size = interop.getBufferSize(source);
+                if (size == (int) size) {
+                    byte[] bytes = new byte[(int) size];
+                    interop.readBuffer(source, 0, bytes, 0, (int) size);
+                    return bytes;
+                }
+            } else if (interop.hasArrayElements(source)) {
                 long size = interop.getArraySize(source);
                 if (size == (int) size) {
                     byte[] bytes = new byte[(int) size];
@@ -312,9 +319,9 @@ public class WebAssembly extends Dictionary {
                     }
                     return bytes;
                 }
-            } catch (InteropException iex) {
-                throw cannotConvertToBytesError(iex);
             }
+        } catch (InteropException iex) {
+            throw cannotConvertToBytesError(iex);
         }
         throw cannotConvertToBytesError(null);
     }

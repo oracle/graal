@@ -26,10 +26,12 @@ Here you will learn how to:
 - [Create a Heap Dump from a Native Executable](create-heap-dump-from-native-executable.md)
 - [Debug Native Executables with GDB](debug-native-executables-with-gdb.md)
 - [Debug Native Executables with a Python Helper Script](debug-native-executables-with-python-helper.md)
+- [Embed an SBOM in a Native Executable to Identify Its Dependencies](use-sbom-support.md)
 - [Include Reachability Metadata Using the Native Image Gradle Plugin](include-reachability-metadata-gradle.md)
 - [Include Reachability Metadata Using the Native Image Maven Plugin](include-reachability-metadata-maven.md)
 - [Include Resources in a Native Executable](include-resources.md)
 - [Optimize a Native Executable with Profile-Guided Optimizations](optimize-native-executable-with-pgo.md)
+- [Optimize a Native Executable for File Size](optimize-file-size.md)
 - [Specify Class Initialization Explicitly](specify-class-initialization.md)
 - [Use Gradle to Build a Native Executable from a Java Application](https://graalvm.github.io/native-build-tools/latest/gradle-plugin-quickstart.html)
 - [Use Maven to Build a Native Executable from a Java Application](https://graalvm.github.io/native-build-tools/latest/maven-plugin-quickstart.html)
@@ -37,7 +39,7 @@ Here you will learn how to:
 
 ## Microservices Frameworks
 
-- <a href="https://docs.spring.io/spring-boot/docs/3.0.0/reference/htmlsingle/#native-image.developing-your-first-application" target="_blank">Build a Native Executable from a Spring Boot 3 Application</a>
+- [Build a Native Executable from a Spring Boot 3 Application](build-spring-boot-application-aot.md)
 - <a href="https://guides.micronaut.io/latest/micronaut-creating-first-graal-app.html" target="_blank">Build a Native Executable from a Micronaut Application</a>
 - <a href="https://quarkus.io/guides/building-native-image" target="_blank">Build a Native Executable from a Quarkus Application</a>
 - <a href="https://helidon.io/docs/v3/#/mp/guides/graalnative" target="_blank">Build a Native Executable from a Helidon MP Application</a>

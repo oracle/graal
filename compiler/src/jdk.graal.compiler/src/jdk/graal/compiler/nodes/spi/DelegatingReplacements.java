@@ -63,8 +63,8 @@ public class DelegatingReplacements implements Replacements {
     }
 
     @Override
-    public Stamp getInjectedStamp(Class<?> type, boolean nonNull) {
-        return delegate.getInjectedStamp(type, nonNull);
+    public Stamp getInjectedStamp(Class<?> type) {
+        return delegate.getInjectedStamp(type);
     }
 
     @Override

@@ -695,6 +695,9 @@ public class TruffleContextTest extends AbstractPolyglotTest {
         // arguments of the parent context are entered in the outer context
         result = InteropLibrary.getUncached().execute(result, outerObject);
 
+        // try a void method
+        InteropLibrary.getUncached().toNative(result);
+
         // and return values are entered again in the inner context
         result = InteropLibrary.getUncached().execute(result, outerObject);
 
