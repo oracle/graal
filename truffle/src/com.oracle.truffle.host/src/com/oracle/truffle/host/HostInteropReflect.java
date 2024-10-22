@@ -269,7 +269,7 @@ final class HostInteropReflect {
                     if (!isStaticTypeOrInterface(t)) {
                         continue;
                     }
-                    members.add(new HostMemberClass(t));
+                    members.add(HostObject.forClass(t, context));
                 }
             }
         } else if (isClass) {
@@ -287,7 +287,7 @@ final class HostInteropReflect {
     @CompilerDirectives.TruffleBoundary
     static Object[] findDeclaredMembers(HostContext context, Class<?> clazz) throws UnsupportedMessageException {
         HostClassDesc classDesc = HostClassDesc.forClass(context, clazz);
-        Object[] members = classDesc.getDeclaredMembers();
+        Object[] members = classDesc.getDeclaredMembers(context);
         if (members != null) {
             return members;
         } else {

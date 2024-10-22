@@ -41,6 +41,8 @@
 package com.oracle.truffle.api.test.host;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -58,6 +60,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
+import org.graalvm.polyglot.Value;
 
 public class OverloadedTest extends ProxyLanguageEnvTest {
 
@@ -132,19 +135,64 @@ public class OverloadedTest extends ProxyLanguageEnvTest {
     @Test
     public void threeProperties() throws UnsupportedMessageException, Exception {
         Object ret = INTEROP.getMemberObjects(obj);
-        long n = INTEROP.getArraySize(ret);
-        List<String> list = new ArrayList<>();
-        int numX = 0;
-        for (int i = 0; i < n; i++) {
-            Object member = INTEROP.readArrayElement(ret, i);
-            String name = INTEROP.asString(INTEROP.getMemberSimpleName(member));
-            if (name.equals("x")) {
-                numX++;
+        List<?> list = context.asValue(ret).as(List.class);
+        assertEquals("Three (overloaded) members: " + list, 3, list.size());
+        int numFields = 0;
+        int numMethods = 0;
+        // Sizes of signatures of x(int) and x()
+        List<Integer> methodSignatureSizes = new ArrayList<>(List.of(2, 1));
+        for (Object m : list) {
+            Value member = (Value) m;
+            assertTrue(member.isMember());
+            if (member.isMemberKindField()) {
+                numFields++;
+                Value signature = member.getMemberSignature();
+                assertEquals(1, signature.getArraySize());
+                checkSignature(signature, null, "int");
             }
-            list.add(name);
+            if (member.isMemberKindMethod()) {
+                numMethods++;
+                Value signature = member.getMemberSignature();
+                long signatureSizeL = signature.getArraySize();
+                int signatureSize = (int) signatureSizeL;
+                assertTrue(methodSignatureSizes.remove((Integer) signatureSize));
+                assertEquals(signatureSizeL, signatureSize);
+                switch (signatureSize) {
+                    case 1:
+                        checkSignature(signature, null, "double");
+                        break;
+                    case 2:
+                        checkSignature(signature, null, "void", null, "int");
+                        break;
+                    default:
+                        fail("Unexpected signature size: " + signatureSize);
+                }
+            }
         }
-        assertEquals("3 (overloaded) properties: " + list, 3, numX);
-        assertEquals("x", list.get(0));
+        assertEquals("Num fields: ", 1, numFields);
+        assertEquals("Num methods: ", 2, numMethods);
+        assertTrue(methodSignatureSizes.toString(), methodSignatureSizes.isEmpty());
+    }
+
+    private static void checkSignature(Value array, String... namesAndMetas) {
+        assertTrue(namesAndMetas.length % 2 == 0);
+        int size = namesAndMetas.length / 2;
+        assertEquals(size, array.getArraySize());
+        for (int i = 0; i < size; i++) {
+            Value element = array.getArrayElement(i);
+            assertTrue("Is signature element " + element, element.isSignatureElement());
+            String name = namesAndMetas[i * 2];
+            assertEquals("Signature element has name: ", name != null, element.hasSignatureElementName());
+            if (name != null) {
+                assertEquals("Signature element name: ", name, element.getSignatureElementName());
+            }
+            String metaName = namesAndMetas[i * 2 + 1];
+            assertEquals("Signature element has metaobject: ", metaName != null, element.hasSignatureElementMetaObject());
+            if (metaName != null) {
+                Value meta = element.getSignatureElementMetaObject();
+                assertEquals("Signature element metaobject: ", metaName, meta.getMetaSimpleName());
+            }
+        }
     }
 
     @Test

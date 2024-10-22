@@ -649,7 +649,7 @@ final class HostClassDesc {
         return getLookup(type, localCache) != null;
     }
 
-    public Object[] getDeclaredMembers() {
+    public Object[] getDeclaredMembers(HostContext context) {
         HostClassCache localCache = getCache();
         MethodHandles.Lookup lookup;
         if ((lookup = getLookup(type, localCache)) != null) {
@@ -665,7 +665,7 @@ final class HostClassDesc {
                 declaredMembers[i++] = HostMethodDesc.SingleMethod.unreflect(lookup, m, false, false);
             }
             for (Class<?> c : declaredClasses) {
-                declaredMembers[i++] = new HostMemberClass(c);
+                declaredMembers[i++] = HostObject.forClass(c, context);
             }
             return declaredMembers;
         } else {

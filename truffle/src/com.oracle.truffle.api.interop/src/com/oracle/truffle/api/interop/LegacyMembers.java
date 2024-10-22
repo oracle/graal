@@ -293,6 +293,26 @@ final class LegacyMembers {
         TruffleString asTruffleString() {
             return TruffleString.fromJavaStringUncached(name, TruffleString.Encoding.UTF_16);
         }
+
+        @ExportMessage
+        boolean isMetaObject() {
+            return false;
+        }
+
+        @ExportMessage
+        Object getMetaQualifiedName() throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
+        }
+
+        @ExportMessage
+        Object getMetaSimpleName() throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
+        }
+
+        @ExportMessage
+        boolean isMetaInstance(@SuppressWarnings("unused") Object instance) {
+            return false;
+        }
     }
 
 }

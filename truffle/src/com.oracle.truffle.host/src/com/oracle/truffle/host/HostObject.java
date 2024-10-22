@@ -222,6 +222,16 @@ final class HostObject extends HostBaseObject {
         return asClass().getDeclaringClass();
     }
 
+    @Override
+    @TruffleBoundary
+    boolean existsIn(HostObject receiver) {
+        if (!isClass()) {
+            return false;
+        }
+        Class<?> declaringClass = getDeclaringClass();
+        return declaringClass != null && declaringClass.isAssignableFrom(receiver.getLookupClass());
+    }
+
     private static RuntimeException unboxEngineException(HostObject receiver, RuntimeException e) {
         AbstractHostAccess access = receiver.context.language.access;
         if (access.isEngineException(e)) {
@@ -356,13 +366,13 @@ final class HostObject extends HostBaseObject {
             }
         }
 
-        @Specialization(guards = "!receiver.isNull()")
+        @Specialization(guards = {"!receiver.isNull()", "memberClass.isADeclaredMember()"})
         static Object doReadMember(HostObject receiver,
-                        HostMemberClass memberClass,
+                        HostObject memberClass,
                         @Bind("$node") Node node,
                         @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException, UnknownMemberException {
             if (memberClass.existsIn(receiver)) {
-                return HostObject.forStaticClass(memberClass.getType(), receiver.context);
+                return memberClass;
             } else {
                 error.enter(node);
                 throw UnknownMemberException.create(memberClass);
@@ -3650,6 +3660,78 @@ final class HostObject extends HostBaseObject {
             metaObjects[i++] = HostObject.forClass(interfaces[j], context);
         }
         return new TypesArray(metaObjects);
+    }
+
+    // This class is a member if it's declared in an outer class.
+    // The outer class is it's declaring meta object then.
+
+    @ExportMessage(name = "isMember")
+    @ExportMessage(name = "hasDeclaringMetaObject")
+    @ExportMessage(name = "isMemberKindMetaObject")
+    @ExportMessage(name = "hasMemberSignature")
+    boolean isADeclaredMember() {
+        return isClass() && getDeclaringClass() != null;
+    }
+
+    @ExportMessage
+    Object getDeclaringMetaObject(@Bind("$node") Node node) throws UnsupportedMessageException {
+        if (isClass()) {
+            Class<?> declaringClass = getDeclaringClass();
+            if (declaringClass != null) {
+                return HostObject.forClass(getDeclaringClass(), HostContext.get(node));
+            }
+        }
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    Object getMemberSimpleName() throws UnsupportedMessageException {
+        if (isADeclaredMember()) {
+            return simpleNameOf(asClass());
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    Object getMemberQualifiedName() throws UnsupportedMessageException {
+        if (isADeclaredMember()) {
+            return qualifiedNameOf(asClass());
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean isMemberKindField() {
+        return false;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean isMemberKindMethod() {
+        return false;
+    }
+
+    @ExportMessage
+    Object getMemberSignature() {
+        Class<?> type = asClass();
+        return new HostObject.MembersArray(new Object[]{new HostSignatureElement(simpleNameOf(type), type)});
+    }
+
+    @TruffleBoundary
+    private static String simpleNameOf(Class<?> type) {
+        return type.getSimpleName();
+    }
+
+    @TruffleBoundary
+    private static String qualifiedNameOf(Class<?> type) {
+        String name = type.getCanonicalName();
+        if (name == null) {
+            name = type.getName();
+        }
+        return name;
     }
 
     @ExportLibrary(InteropLibrary.class)

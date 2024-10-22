@@ -90,10 +90,6 @@ final class HostUtil {
                 } else if (requestedType == String.class || requestedType == CharSequence.class) {
                     return interop.asString(value);
                 }
-            } else if (interop.isMember(value)) {
-                if (requestedType == String.class || requestedType == CharSequence.class) {
-                    return asString(interop.getMemberSimpleName(value));
-                }
             }
         } catch (UnsupportedMessageException e) {
         }

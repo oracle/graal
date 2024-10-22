@@ -318,11 +318,13 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
-     * Returns declaring meta object. The declaring meta object is the meta object of an executable
-     * or meta object that declares the receiver value. Throws {@code UnsupportedMessageException}
-     * when the receiver does not {@link #hasDeclaringMetaObject(Object) have a declaring meta
-     * object}. The return value is an interop value that is guaranteed to return <code>true</code>
-     * for {@link #isMetaObject(Object)}.
+     * Returns declaring meta object. The declaring meta object is the meta object that declares the
+     * receiver value, for receivers like a {@link #isMember(Object) member},
+     * {@link #isExecutable(Object) executable}, another {@link #isMetaObject(Object) meta object},
+     * etc. Throws {@code UnsupportedMessageException} when the receiver does not
+     * {@link #hasDeclaringMetaObject(Object) have a declaring meta object}. The return value is an
+     * interop value that is guaranteed to return <code>true</code> for
+     * {@link #isMetaObject(Object)}.
      *
      * @see #hasDeclaringMetaObject(Object)
      * @since 20.3
@@ -761,13 +763,14 @@ public abstract class InteropLibrary extends Library {
      * Signature} and {@link #getDeclaringMetaObject(Object) declaring meta-object} can be used to
      * distinguish members with identical names.
      * <p>
-     * The order of members needs to be:
+     * The order of members is recommended to be:
      * <ul>
      * <li>deterministic, assuming the program execution is deterministic,</li>
      * <li>in the declaration order, when applicable,</li>
      * <li>multiple invocations of this method must return the same members in the same order as
      * long as no side-effecting operations were performed.</li>
      * </ul>
+     * This is for good tooling user experience and compatibility.
      * <p>
      * Static members are not returned unless called on a {@link #getStaticReceiver(Object) static
      * receiver}.
