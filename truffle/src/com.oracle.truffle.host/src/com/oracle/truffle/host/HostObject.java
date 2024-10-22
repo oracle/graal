@@ -218,6 +218,7 @@ final class HostObject extends HostBaseObject {
     }
 
     @Override
+    @TruffleBoundary
     Class<?> getDeclaringClass() {
         return asClass().getDeclaringClass();
     }
