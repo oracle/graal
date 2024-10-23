@@ -67,7 +67,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * Example for simple version of an expression coverage instrument.
  *
  * The instrument {@link #coverageMap keeps track} of all loaded {@link SourceSection}s and all
- * coverd (i.e. executed) {@link SourceSection}s for each {@link Source}. At the end of the
+ * covered (i.e. executed) {@link SourceSection}s for each {@link Source}. At the end of the
  * execution this information can be used to calculate coverage.
  *
  * The instrument is registered with the Truffle framework using the {@link Registration}
@@ -77,7 +77,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * In this case the instrument itself is exported as a service and used in the
  * SimpleCoverageInstrumentTest.
  * 
- * NOTE: Fot the registration annotation to work the truffle dsl processor must be used (i.e. Must
+ * NOTE: For the registration annotation to work the truffle dsl processor must be used (i.e. Must
  * be a dependency. This is so in this maven project, as can be seen in the pom file.
  */
 @Registration(id = SimpleCoverageInstrument.ID, name = "Simple Code Coverage", version = "0.1", services = SimpleCoverageInstrument.class)
@@ -147,7 +147,7 @@ public final class SimpleCoverageInstrument extends TruffleInstrument {
      * with {@link ExpressionTag}. We also tell it we don't care about AST nodes
      * {@link SourceSectionFilter.Builder#includeInternal(boolean) internal} to languages.
      *
-     * After than, we use the {@link Env enviroment} to obtain the {@link Instrumenter}, which
+     * After than, we use the {@link Env environment} to obtain the {@link Instrumenter}, which
      * allows us to specify in which way we wish to instrument the AST.
      *
      * Firstly, we
@@ -189,7 +189,7 @@ public final class SimpleCoverageInstrument extends TruffleInstrument {
      * Print the coverage results for each source.
      *
      * The printing is one the the {@link Env#out output stream} specified by the {@link Env
-     * enviroment}.
+     * environment}.
      *
      * @param env
      */

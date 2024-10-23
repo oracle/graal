@@ -131,7 +131,7 @@ public final class CDTLib {
             WebElement toolbar = ExpectedConditions.presenceOfElementLocated(By.cssSelector("div.scripts-debug-toolbar")).apply(driver);
             toolbarButtons = toolbar.getShadowRoot().findElements(By.cssSelector("button.toolbar-button"));
             if (toolbarButtons.size() < Action.values().length) {
-                throw new NoSuchElementException("Insufficient numebr of toolbar buttons: " + toolbarButtons.size() + " expecting " + Action.values().length);
+                throw new NoSuchElementException("Insufficient number of toolbar buttons: " + toolbarButtons.size() + " expecting " + Action.values().length);
             }
         }
 

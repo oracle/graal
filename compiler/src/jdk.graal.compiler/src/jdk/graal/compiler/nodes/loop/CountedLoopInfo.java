@@ -324,7 +324,7 @@ public class CountedLoopInfo {
      *
      * THIS VALUE SHOULD BE TREATED AS UNSIGNED.
      *
-     * Warning: In order to calculate the max trip count it can be necessary to perform a devision
+     * Warning: In order to calculate the max trip count it can be necessary to perform a division
      * operation in the generated code before the loop header. If {@code stride is not a power of 2}
      * we have to perform an integer division of the range of the induction variable and the stride.
      *
@@ -356,7 +356,7 @@ public class CountedLoopInfo {
         if (isLimitIncluded) {
             range = BinaryArithmeticNode.add(range, one);
         }
-        // round-away-from-zero divison: (range + stride -/+ 1) / stride
+        // round-away-from-zero division: (range + stride -/+ 1) / stride
         ValueNode denominator = BinaryArithmeticNode.add(graph, range, BinaryArithmeticNode.sub(absStride, one), NodeView.DEFAULT);
         /*
          * While the divisor can never be zero because that would mean the direction of the loop is

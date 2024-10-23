@@ -121,7 +121,7 @@ public abstract class SLEqualNode extends SLBinaryNode {
      * minimal possible value, for a set of given benchmarks.
      *
      * This specialization is generic and handles all the cases, but in this case we decided to not
-     * replace the previous specializations, as they are still more efficient in the interpeter.
+     * replace the previous specializations, as they are still more efficient in the interpreter.
      */
     @Specialization(limit = "4")
     public boolean doGeneric(Object left, Object right,

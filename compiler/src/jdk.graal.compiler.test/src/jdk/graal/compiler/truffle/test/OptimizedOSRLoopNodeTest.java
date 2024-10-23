@@ -277,7 +277,7 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
     }
 
     /*
-     * Test that if a call target is called a min invocation theshold times it is unlikely that it
+     * Test that if a call target is called a min invocation threshold times it is unlikely that it
      * needs OSR at all.
      */
     @Theory
@@ -425,8 +425,8 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
 
         private final Function<ChildLoopRepeatingNode, Void> onBackedge;
 
-        protected ChildLoopRepeatingNode(int treshold, OSRLoopFactory factory, TestRepeatingNode child, Function<ChildLoopRepeatingNode, Void> onBackedge) {
-            this.loopNode2 = factory.createOSRLoop(treshold, child);
+        protected ChildLoopRepeatingNode(int threshold, OSRLoopFactory factory, TestRepeatingNode child, Function<ChildLoopRepeatingNode, Void> onBackedge) {
+            this.loopNode2 = factory.createOSRLoop(threshold, child);
             this.onBackedge = onBackedge;
 
         }
@@ -493,7 +493,7 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
         public boolean executeRepeating(VirtualFrame frame) {
             boolean next = super.executeRepeating(frame);
             if (next) {
-                // its like beeing in body
+                // its like being in body
                 try {
                     int count = frame.getInt(param2);
 
