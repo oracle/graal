@@ -278,7 +278,7 @@ public final class NativeImageHeap implements ImageHeap {
      * Bypass shadow heap reading for inlined fields. These fields are not actually present in the
      * image (their value is inlined) and are not present in the shadow heap either.
      */
-    Object readInlinedField(HostedField field, JavaConstant receiver) {
+    public Object readInlinedField(HostedField field, JavaConstant receiver) {
         VMError.guarantee(HostedConfiguration.isInlinedField(field), "Expected an inlined field, found %s", field);
         JavaConstant hostedReceiver = ((ImageHeapInstance) receiver).getHostedObject();
         /* Use the HostedValuesProvider to get direct access to hosted values. */
