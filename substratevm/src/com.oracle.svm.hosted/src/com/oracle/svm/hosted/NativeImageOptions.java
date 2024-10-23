@@ -38,9 +38,9 @@ import org.graalvm.collections.EconomicMap;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.APIOption;
+import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
@@ -214,28 +214,26 @@ public class NativeImageOptions {
     }
 
     public static void setCommonPoolParallelism(OptionValues optionValues) {
-        if (NativeImageOptions.NumberOfThreads.hasBeenSet(optionValues)) {
-            /*
-             * The main thread always helps to process tasks submitted to the common pool (e.g., see
-             * ForkJoinPool#awaitTermination()), so subtract one from the number of threads. The
-             * common pool can be disabled "by setting the parallelism property to zero" (see
-             * ForkJoinPool's javadoc).
-             */
-            int numberOfCommonPoolThreads = NativeImageOptions.NumberOfThreads.getValue(optionValues) - 1;
-            String commonPoolParallelismProperty = "java.util.concurrent.ForkJoinPool.common.parallelism";
-            assert System.getProperty(commonPoolParallelismProperty) == null : commonPoolParallelismProperty + " already set";
-            System.setProperty(commonPoolParallelismProperty, "" + numberOfCommonPoolThreads);
-            int actualCommonPoolParallelism = ForkJoinPool.commonPool().getParallelism();
-            /*
-             * getParallelism() returns at least 1, even in single-threaded mode where common pool
-             * is disabled.
-             */
-            boolean isSingleThreadedMode = numberOfCommonPoolThreads == 0 && actualCommonPoolParallelism == 1;
-            if (!isSingleThreadedMode && actualCommonPoolParallelism != numberOfCommonPoolThreads) {
-                String warning = "Failed to set parallelism of common pool (actual parallelism is %s).".formatted(actualCommonPoolParallelism);
-                assert false : warning;
-                LogUtils.warning(warning);
-            }
+        /*
+         * The main thread always helps to process tasks submitted to the common pool (e.g., see
+         * ForkJoinPool#awaitTermination()), so subtract one from the number of threads. The common
+         * pool can be disabled "by setting the parallelism property to zero" (see ForkJoinPool's
+         * javadoc).
+         */
+        int numberOfCommonPoolThreads = NativeImageOptions.NumberOfThreads.getValueOrDefault(optionValues.getMap()) - 1;
+        String commonPoolParallelismProperty = "java.util.concurrent.ForkJoinPool.common.parallelism";
+        assert System.getProperty(commonPoolParallelismProperty) == null : commonPoolParallelismProperty + " already set";
+        System.setProperty(commonPoolParallelismProperty, "" + numberOfCommonPoolThreads);
+        int actualCommonPoolParallelism = ForkJoinPool.commonPool().getParallelism();
+        /*
+         * getParallelism() returns at least 1, even in single-threaded mode where common pool is
+         * disabled.
+         */
+        boolean isSingleThreadedMode = numberOfCommonPoolThreads == 0 && actualCommonPoolParallelism == 1;
+        if (!isSingleThreadedMode && actualCommonPoolParallelism != numberOfCommonPoolThreads) {
+            String warning = "Failed to set parallelism of common pool (actual parallelism is %s).".formatted(actualCommonPoolParallelism);
+            assert false : warning;
+            LogUtils.warning(warning);
         }
     }
 
