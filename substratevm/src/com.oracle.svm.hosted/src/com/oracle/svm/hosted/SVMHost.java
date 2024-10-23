@@ -200,6 +200,7 @@ public class SVMHost extends HostVM {
 
     private final Boolean optionAllowUnsafeAllocationOfAllInstantiatedTypes = SubstrateOptions.AllowUnsafeAllocationOfAllInstantiatedTypes.getValue();
     private final boolean isClosedTypeWorld = SubstrateOptions.useClosedTypeWorld();
+    private final boolean enableTrackAcrossLayers;
 
     @SuppressWarnings("this-escape")
     public SVMHost(OptionValues options, ImageClassLoader loader, ClassInitializationSupport classInitializationSupport, AnnotationSubstitutionProcessor annotationSubstitutions,
@@ -232,6 +233,8 @@ public class SVMHost extends HostVM {
         if (SubstrateOptions.includeAll()) {
             initializeExcludedFields();
         }
+
+        enableTrackAcrossLayers = ImageLayerBuildingSupport.buildingSharedLayer();
     }
 
     @Override
@@ -936,6 +939,11 @@ public class SVMHost extends HostVM {
     @Override
     public boolean isClosedTypeWorld() {
         return isClosedTypeWorld;
+    }
+
+    @Override
+    public boolean enableTrackAcrossLayers() {
+        return enableTrackAcrossLayers;
     }
 
     private final List<BiPredicate<AnalysisMethod, AnalysisMethod>> neverInlineTrivialHandlers = new CopyOnWriteArrayList<>();

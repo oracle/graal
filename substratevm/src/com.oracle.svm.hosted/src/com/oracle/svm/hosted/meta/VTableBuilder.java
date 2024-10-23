@@ -66,6 +66,10 @@ public final class VTableBuilder {
         }
     }
 
+    private static boolean shouldIncludeType(HostedType type) {
+        return type.getWrapped().isReachable() || type.getWrapped().isTrackedAcrossLayers();
+    }
+
     private boolean verifyOpenTypeWorldDispatchTables() {
         HostedMethod invalidVTableEntryHandler = hMetaAccess.lookupJavaMethod(InvalidMethodPointerHandler.INVALID_VTABLE_ENTRY_HANDLER_METHOD);
         for (HostedType type : hUniverse.getTypes()) {
@@ -211,7 +215,7 @@ public final class VTableBuilder {
         }
 
         for (HostedType subType : type.subTypes) {
-            if (subType instanceof HostedInstanceClass instanceClass && subType.getWrapped().isReachable()) {
+            if (subType instanceof HostedInstanceClass instanceClass && shouldIncludeType(subType)) {
                 generateOpenTypeWorldDispatchTable(instanceClass, dispatchTablesMap, invalidDispatchTableEntryHandler);
             }
         }
@@ -225,7 +229,7 @@ public final class VTableBuilder {
              * Each interface has its own dispatch table. These can be directly determined via
              * looking at their declared methods.
              */
-            if (type.isInterface() && type.getWrapped().isReachable()) {
+            if (type.isInterface() && shouldIncludeType(type)) {
                 dispatchTablesMap.put(type, generateITable(type));
             }
         }
@@ -236,7 +240,7 @@ public final class VTableBuilder {
         int[] emptyITableOffsets = new int[0];
         var objectType = hUniverse.getObjectClass();
         for (HostedType type : hUniverse.getTypes()) {
-            if (type.isArray() && type.getWrapped().isReachable()) {
+            if (type.isArray() && shouldIncludeType(type)) {
                 type.openTypeWorldDispatchTables = objectType.openTypeWorldDispatchTables;
                 type.openTypeWorldDispatchTableSlotTargets = objectType.openTypeWorldDispatchTableSlotTargets;
                 type.itableStartingOffsets = objectType.itableStartingOffsets;
@@ -254,7 +258,7 @@ public final class VTableBuilder {
     }
 
     public static boolean needsDispatchTable(HostedType type) {
-        return type.getWrapped().isReachable() && !(type.isInterface() || type.isPrimitive() || type.isAbstract());
+        return shouldIncludeType(type) && !(type.isInterface() || type.isPrimitive() || type.isAbstract());
     }
 
     private void buildClosedTypeWorldVTables() {

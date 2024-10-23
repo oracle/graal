@@ -272,10 +272,6 @@ public class ImageLayerWriter {
         jsonMap.put(IMAGE_HEAP_SIZE_TAG, String.valueOf(imageHeapSize));
     }
 
-    protected boolean shouldPersistMethod(AnalysisMethod method) {
-        return method.isReachable();
-    }
-
     public void persistAnalysisInfo() {
         persistHook();
 
@@ -289,18 +285,18 @@ public class ImageLayerWriter {
          * removed after a mechanism for determining which types have to be persisted is added, or
          * if a stable name is implemented for them.
          */
-        for (AnalysisType type : aUniverse.getTypes().stream().filter(AnalysisType::isReachable).toList()) {
+        for (AnalysisType type : aUniverse.getTypes().stream().filter(AnalysisType::isTrackedAcrossLayers).toList()) {
             checkTypeStability(type);
             persistType(type);
         }
         jsonMap.put(TYPES_TAG, typesMap);
 
-        for (AnalysisMethod method : aUniverse.getMethods().stream().filter(this::shouldPersistMethod).toList()) {
+        for (AnalysisMethod method : aUniverse.getMethods().stream().filter(AnalysisMethod::isTrackedAcrossLayers).toList()) {
             persistMethod(method);
         }
         jsonMap.put(METHODS_TAG, methodsMap);
 
-        for (AnalysisField field : aUniverse.getFields().stream().filter(AnalysisField::isReachable).toList()) {
+        for (AnalysisField field : aUniverse.getFields().stream().filter(AnalysisField::isTrackedAcrossLayers).toList()) {
             persistField(field);
         }
         jsonMap.put(FIELDS_TAG, fieldsMap);
@@ -448,7 +444,7 @@ public class ImageLayerWriter {
 
     public void persistMethodGraphs() {
         for (AnalysisMethod method : aUniverse.getMethods()) {
-            if (method.isReachable()) {
+            if (method.isTrackedAcrossLayers()) {
                 persistAnalysisParsedGraph(method);
             }
         }
