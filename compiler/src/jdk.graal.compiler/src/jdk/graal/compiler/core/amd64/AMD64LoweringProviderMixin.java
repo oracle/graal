@@ -41,7 +41,6 @@ import jdk.graal.compiler.replacements.nodes.BitScanForwardNode;
 import jdk.graal.compiler.replacements.nodes.BitScanReverseNode;
 import jdk.graal.compiler.replacements.nodes.CountLeadingZerosNode;
 import jdk.graal.compiler.replacements.nodes.CountTrailingZerosNode;
-
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.meta.JavaKind;
 
@@ -59,7 +58,7 @@ public interface AMD64LoweringProviderMixin extends LoweringProvider {
     }
 
     @Override
-    default boolean supportsBulkZeroing() {
+    default boolean supportsBulkZeroingOfEden() {
         return true;
     }
 

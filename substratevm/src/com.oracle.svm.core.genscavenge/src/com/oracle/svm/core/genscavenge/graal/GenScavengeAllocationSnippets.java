@@ -26,6 +26,22 @@ package com.oracle.svm.core.genscavenge.graal;
 
 import java.util.Map;
 
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.word.UnsignedWord;
+
+import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
+import com.oracle.svm.core.genscavenge.graal.nodes.FormatArrayNode;
+import com.oracle.svm.core.genscavenge.graal.nodes.FormatObjectNode;
+import com.oracle.svm.core.genscavenge.graal.nodes.FormatPodNode;
+import com.oracle.svm.core.genscavenge.graal.nodes.FormatStoredContinuationNode;
+import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
+import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
+import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
+import com.oracle.svm.core.heap.Pod;
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.thread.ContinuationSupport;
+
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
@@ -44,22 +60,6 @@ import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.Snippets;
 import jdk.graal.compiler.word.Word;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.word.UnsignedWord;
-
-import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
-import com.oracle.svm.core.genscavenge.graal.nodes.FormatArrayNode;
-import com.oracle.svm.core.genscavenge.graal.nodes.FormatObjectNode;
-import com.oracle.svm.core.genscavenge.graal.nodes.FormatPodNode;
-import com.oracle.svm.core.genscavenge.graal.nodes.FormatStoredContinuationNode;
-import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
-import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
-import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
-import com.oracle.svm.core.heap.Pod;
-import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.thread.ContinuationSupport;
-
 import jdk.vm.ci.meta.JavaKind;
 
 public final class GenScavengeAllocationSnippets implements Snippets {
@@ -181,7 +181,7 @@ public final class GenScavengeAllocationSnippets implements Snippets {
                 args.add("unaligned", node.getUnaligned());
                 args.add("fillContents", node.getFillContents());
                 args.add("emitMemoryBarrier", node.getEmitMemoryBarrier());
-                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
+                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
                 args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
                 args.addConst("snippetCounters", baseTemplates.getSnippetCounters());
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
@@ -224,7 +224,7 @@ public final class GenScavengeAllocationSnippets implements Snippets {
                 args.add("unaligned", node.getUnaligned());
                 args.add("fillContents", node.getFillContents());
                 args.addConst("emitMemoryBarrier", node.getEmitMemoryBarrier());
-                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
+                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
                 args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
                 args.addConst("snippetCounters", baseTemplates.getSnippetCounters());
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);

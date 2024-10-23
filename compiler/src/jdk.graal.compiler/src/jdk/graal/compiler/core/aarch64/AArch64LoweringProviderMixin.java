@@ -43,7 +43,7 @@ public interface AArch64LoweringProviderMixin extends LoweringProvider {
     }
 
     @Override
-    default boolean supportsBulkZeroing() {
+    default boolean supportsBulkZeroingOfEden() {
         return true;
     }
 

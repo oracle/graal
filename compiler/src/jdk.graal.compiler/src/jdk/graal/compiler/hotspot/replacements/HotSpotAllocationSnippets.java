@@ -725,7 +725,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             args.addConst("fillStartOffset", arrayBaseOffset);
             args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
             args.addConst("maybeUnroll", length.isConstant());
-            args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
+            args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
             args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(localOptions));
             args.addConst("profilingData", getProfilingData(localOptions, "array", arrayType));
             args.addConst("withException", false);
@@ -755,7 +755,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             args.addConst("fillStartOffset", arrayBaseOffset);
             args.addConst("emitMemoryBarrier", true); // node.emitMemoryBarrier());
             args.addConst("maybeUnroll", length.isConstant());
-            args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
+            args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
             args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(localOptions));
             args.addConst("profilingData", getProfilingData(localOptions, "array", arrayType));
             args.addConst("withException", true);
@@ -861,7 +861,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             } else {
                 args.addConst("knownLayoutHelper", 0);
             }
-            args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
+            args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
             args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(localOptions));
             args.addConst("withException", false);
             args.addConst("profilingData", getProfilingData(localOptions, "dynamic type", null));
@@ -889,7 +889,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             args.addConst("knownElementKind", JavaKind.Illegal);
             args.addConst("knownLayoutHelper", 0);
 
-            args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
+            args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
             args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(localOptions));
             args.addConst("withException", true);
             args.addConst("profilingData", getProfilingData(localOptions, "dynamic type", null));
