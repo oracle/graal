@@ -50,7 +50,17 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
      * {@link GraalHotSpotVMConfig} parameter to a {@linkplain Fold foldable} method.
      */
     public static final GraalHotSpotVMConfig INJECTED_VMCONFIG = null;
+
+    /**
+     * Sentinel value to use for an {@linkplain InjectedParameter injected}
+     * {@link MetaAccessProvider} parameter to a {@linkplain Fold foldable} method.
+     */
     public static final MetaAccessProvider INJECTED_METAACCESS = null;
+
+    /**
+     * Sentinel value to use for an {@linkplain InjectedParameter injected} {@link OptionValues}
+     * parameter to a {@linkplain Fold foldable} method.
+     */
     public static final OptionValues INJECTED_OPTIONVALUES = null;
 
     GraalHotSpotVMConfig(HotSpotVMConfigStore store) {

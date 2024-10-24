@@ -24,7 +24,7 @@
  */
 package jdk.graal.compiler.hotspot;
 
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
+import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
@@ -51,7 +51,7 @@ public class HotSpotSnippetMetaAccessProvider implements MetaAccessProvider {
 
     @Override
     public ResolvedJavaType lookupJavaType(Class<?> clazz) {
-        if (IS_IN_NATIVE_IMAGE) {
+        if (inImageRuntimeCode()) {
             ResolvedJavaType type = HotSpotReplacementsImpl.getEncodedSnippets().lookupSnippetType(clazz);
             if (type != null) {
                 return type;
@@ -74,7 +74,7 @@ public class HotSpotSnippetMetaAccessProvider implements MetaAccessProvider {
     public ResolvedJavaType lookupJavaType(JavaConstant constant) {
         if (constant instanceof SnippetObjectConstant objectConstant) {
             Class<?> clazz = objectConstant.asObject(Object.class).getClass();
-            if (IS_IN_NATIVE_IMAGE && HotSpotReplacementsImpl.isGraalClass(clazz)) {
+            if (inImageRuntimeCode() && HotSpotReplacementsImpl.isGraalClass(clazz)) {
                 ResolvedJavaType type = HotSpotReplacementsImpl.getEncodedSnippets().lookupSnippetType(clazz);
                 GraalError.guarantee(type != null, "Type of compiler object %s missing from encoded snippet types: %s", constant, clazz.getName());
                 return type;

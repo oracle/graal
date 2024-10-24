@@ -26,8 +26,8 @@ package jdk.graal.compiler.nodes.graphbuilderconf;
 
 import static java.lang.String.format;
 import static jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.LateClassPlugins.CLOSED_LATE_CLASS_PLUGIN;
-import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
+import static org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode;
+import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
@@ -164,7 +164,7 @@ public class InvocationPlugins {
         @SuppressWarnings("this-escape")
         public OptionalLazySymbol(String name) {
             this.name = name;
-            if (IS_BUILDING_NATIVE_IMAGE) {
+            if (inImageBuildtimeCode()) {
                 resolve();
             }
         }
@@ -179,7 +179,7 @@ public class InvocationPlugins {
          * resolution fails.
          */
         public Class<?> resolve() {
-            if (!IS_IN_NATIVE_IMAGE && resolved == null) {
+            if (!inImageRuntimeCode() && resolved == null) {
                 Class<?> resolvedOrNull = resolveClass(name, true);
                 resolved = resolvedOrNull == null ? MASK_NULL : resolvedOrNull;
             }
@@ -325,8 +325,8 @@ public class InvocationPlugins {
             }
 
             invocationPlugins.add(plugin);
-            assert IS_IN_NATIVE_IMAGE || Checks.check(this.plugins, declaringType, plugin);
-            assert IS_IN_NATIVE_IMAGE || Checks.checkResolvable(declaringType, plugin);
+            assert inImageRuntimeCode() || Checks.check(this.plugins, declaringType, plugin);
+            assert inImageRuntimeCode() || Checks.checkResolvable(declaringType, plugin);
         }
 
         @Override
@@ -808,8 +808,8 @@ public class InvocationPlugins {
             plugin.rewriteReceiverType(declaringClass);
         }
         put(declaringClass, plugin, allowOverwrite);
-        assert IS_IN_NATIVE_IMAGE || Checks.check(this, declaringClass, plugin);
-        assert IS_IN_NATIVE_IMAGE || Checks.checkResolvable(declaringClass, plugin);
+        assert inImageRuntimeCode() || Checks.check(this, declaringClass, plugin);
+        assert inImageRuntimeCode() || Checks.checkResolvable(declaringClass, plugin);
     }
 
     /**
@@ -1019,7 +1019,7 @@ public class InvocationPlugins {
             long isolateID = IsolateUtil.getIsolateID();
             if (PRINTING_ISOLATE.get() == isolateID || PRINTING_ISOLATE.compareAndSet(0, isolateID)) {
                 synchronized (PRINTING_ISOLATE) {
-                    if (IS_IN_NATIVE_IMAGE && PrintedIntrinsics == null) {
+                    if (inImageRuntimeCode() && PrintedIntrinsics == null) {
                         PrintedIntrinsics = new HashSet<>();
                     }
                     UnmodifiableMapCursor<String, List<InvocationPlugin>> entries = getInvocationPlugins(false, true).getEntries();
@@ -1065,11 +1065,11 @@ public class InvocationPlugins {
         static final Class<?>[][] SIGS;
 
         static {
-            if (!Assertions.assertionsEnabled() && !IS_BUILDING_NATIVE_IMAGE) {
+            if (!Assertions.assertionsEnabled() && !inImageBuildtimeCode()) {
                 throw new GraalError("%s must only be used in assertions", Checks.class.getName());
             }
             ArrayList<Class<?>[]> sigs = new ArrayList<>(MAX_ARITY);
-            if (!IS_IN_NATIVE_IMAGE) {
+            if (!inImageRuntimeCode()) {
                 for (Method method : InvocationPlugin.class.getDeclaredMethods()) {
                     if (!Modifier.isStatic(method.getModifiers()) && method.getName().equals("apply")) {
                         Class<?>[] sig = method.getParameterTypes();
@@ -1204,7 +1204,7 @@ public class InvocationPlugins {
         if (type instanceof OptionalLazySymbol) {
             return ((OptionalLazySymbol) type).resolve();
         }
-        if (IS_IN_NATIVE_IMAGE) {
+        if (inImageRuntimeCode()) {
             throw new GraalError("Unresolved type in native image image:" + type.getTypeName());
         }
         return resolveClass(type.getTypeName(), optional);

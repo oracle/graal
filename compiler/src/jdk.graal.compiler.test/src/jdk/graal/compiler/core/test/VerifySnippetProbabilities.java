@@ -52,6 +52,10 @@ import jdk.graal.compiler.phases.VerifyPhase;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+/**
+ * Checks that every {@link IfNode} in a {@linkplain StructuredGraph#isSubstitution() snippet or
+ * substitution} has a known probability.
+ */
 public class VerifySnippetProbabilities extends VerifyPhase<CoreProviders> {
 
     private static final Object[] KNOWN_PROFILE_INTRINSICS = {
@@ -123,9 +127,9 @@ public class VerifySnippetProbabilities extends VerifyPhase<CoreProviders> {
                                     found = true;
                                     break;
                                 } else {
-                                    // some snippets have complex semantics separated in different
-                                    // method in the same class, allow such patterns they will be
-                                    // fully inlined
+                                    // Some snippets have complex semantics factored out into other
+                                    // methods in the same class. Allow such patterns as they will
+                                    // be inlined.
                                     if (targetMethod.getDeclaringClass().equals(method.getDeclaringClass())) {
                                         found = true;
                                         break;
@@ -141,7 +145,7 @@ public class VerifySnippetProbabilities extends VerifyPhase<CoreProviders> {
                                 }
                             } else {
                                 // abstract / interface methods called in a snippet, most likely due
-                                // to overriden snippet logic that folds later, ignore
+                                // to overridden snippet logic that folds later, ignore
                                 found = true;
                                 break;
                             }
@@ -155,8 +159,8 @@ public class VerifySnippetProbabilities extends VerifyPhase<CoreProviders> {
                         }
                     }
                     if (!found) {
-                        throw new VerificationError("Node %s in snippet %s has unknown probability %s (nsp %s) and does not call" +
-                                        "BranchProbabilityNode.probabiliy/GraalDirectives.inject<> on any of it's condition inputs.",
+                        throw new VerificationError("Node %s in snippet/substitution %s has unknown probability %s (nsp %s) and does not call" +
+                                        "BranchProbabilityNode.probability/GraalDirectives.inject<> on any of its condition inputs.",
                                         ifNode, graph, profile,
                                         ifNode.getNodeSourcePosition());
 

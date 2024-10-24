@@ -176,7 +176,7 @@ public class GeneratedFoldPlugin extends GeneratedPlugin {
     protected void createHelpers(AbstractProcessor processor, PrintWriter out, InjectedDependencies deps) {
         out.printf("\n");
         out.printf("    @Override\n");
-        out.printf("    public boolean replace(GraphBuilderContext b, GeneratedPluginInjectionProvider injection, Stamp stamp, NodeInputList<ValueNode> args) {\n");
+        out.printf("    public boolean replace(GraphBuilderContext b, Replacements injection, Stamp stamp, NodeInputList<ValueNode> args) {\n");
 
         List<? extends VariableElement> params = intrinsicMethod.getParameters();
 

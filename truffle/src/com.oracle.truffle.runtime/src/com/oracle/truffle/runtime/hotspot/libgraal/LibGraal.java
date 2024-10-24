@@ -58,6 +58,7 @@ import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaType;
 import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
 import jdk.vm.ci.services.Services;
+import org.graalvm.nativeimage.ImageInfo;
 
 /**
  * Access to libgraal, a shared library containing an AOT compiled version of Graal produced by
@@ -206,7 +207,7 @@ public class LibGraal {
         }
     }
 
-    static final long initialIsolate = Services.IS_BUILDING_NATIVE_IMAGE ? 0L : initializeLibgraal();
+    static final long initialIsolate = ImageInfo.inImageBuildtimeCode() ? 0L : initializeLibgraal();
     static final boolean available = initialIsolate != 0L;
 
     /**
