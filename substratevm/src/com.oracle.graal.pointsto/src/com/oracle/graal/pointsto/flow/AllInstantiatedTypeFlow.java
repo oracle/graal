@@ -48,7 +48,7 @@ public final class AllInstantiatedTypeFlow extends TypeFlow<AnalysisType> implem
     }
 
     @Override
-    public boolean canSaturate() {
+    public boolean canSaturate(PointsToAnalysis bb) {
         return false;
     }
 

@@ -215,7 +215,8 @@ public abstract class StrengthenGraphs {
         int canBeNull = 0;
         for (var field : bb.getUniverse().getFields()) {
             if (!field.isStatic() && field.isReachable() && field.getType().getStorageKind() == JavaKind.Object) {
-                if (field.getSinkFlow().getState().canBeNull()) {
+                /* If the field flow is saturated we must assume it can be null. */
+                if (field.getSinkFlow().isSaturated() || field.getSinkFlow().getState().canBeNull()) {
                     canBeNull++;
                 } else {
                     neverNull++;
@@ -416,8 +417,7 @@ public abstract class StrengthenGraphs {
 
             if (simplifyDelegate(n, tool)) {
                 // handled elsewhere
-            } else if (n instanceof ParameterNode && parameterFlows != null) {
-                ParameterNode node = (ParameterNode) n;
+            } else if (n instanceof ParameterNode node && parameterFlows != null) {
                 StartNode anchorPoint = graph.start();
                 Object newStampOrConstant = strengthenStampFromTypeFlow(node, parameterFlows[node.index()], anchorPoint, tool);
                 updateStampUsingPiNode(node, newStampOrConstant, anchorPoint, tool);
@@ -919,7 +919,7 @@ public abstract class StrengthenGraphs {
                 return null;
             }
             if (unreachableValues.contains(node)) {
-                // This node has already been made unreachable - no further action is needed
+                /* This node has already been made unreachable - no further action is needed. */
                 return null;
             }
             /*
@@ -950,9 +950,8 @@ public abstract class StrengthenGraphs {
 
             /*
              * Find all types of the TypeState that are compatible with the current stamp. Since
-             * stamps are propagated around immediately by the Canonicalizer, and the static
-             * analysis does not track primitive types at all, it is possible and allowed that the
-             * stamp is already more precise than the static analysis results.
+             * stamps are propagated around immediately by the Canonicalizer it is possible and
+             * allowed that the stamp is already more precise than the static analysis results.
              */
             List<AnalysisType> typeStateTypes = new ArrayList<>(nodeTypeState.typesCount());
             for (AnalysisType typeStateType : nodeTypeState.types(bb)) {

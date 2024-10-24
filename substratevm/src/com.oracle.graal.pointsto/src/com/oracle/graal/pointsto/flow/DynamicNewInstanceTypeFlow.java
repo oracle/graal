@@ -106,14 +106,19 @@ public final class DynamicNewInstanceTypeFlow extends TypeFlow<BytecodePosition>
 
     @Override
     public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
-        /* When the new-type flow saturates start observing the flow of the declared type. */
-        replaceObservedWith(bb, declaredType);
+        if (bb.isClosed(declaredType)) {
+            /* When the new-type flow saturates start observing the flow of the declared type. */
+            replaceObservedWith(bb, declaredType);
+        } else {
+            /* Propagate the saturation stamp through the dynamic new instance flow. */
+            onSaturated(bb);
+        }
     }
 
     @Override
-    public boolean canSaturate() {
-        /* The dynamic new instance tracks all of its input types. */
-        return false;
+    public boolean canSaturate(PointsToAnalysis bb) {
+        /* Dynamic new instance of closed types doesn't saturate, it tracks all input types. */
+        return !bb.isClosed(declaredType);
     }
 
     @Override

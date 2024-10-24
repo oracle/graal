@@ -100,12 +100,17 @@ public class CloneTypeFlow extends TypeFlow<BytecodePosition> {
 
     @Override
     public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
-        if (!isSaturated()) {
-            /*
-             * When the input flow saturates start observing the flow of the declared type, unless
-             * the clone is already saturated.
-             */
-            replaceObservedWith(bb, declaredType);
+        if (bb.isClosed(declaredType)) {
+            if (!isSaturated()) {
+                /*
+                 * When the input flow saturates start observing the flow of the declared type,
+                 * unless the clone is already saturated.
+                 */
+                replaceObservedWith(bb, declaredType);
+            }
+        } else {
+            /* Propagate the saturation stamp through the clone flow. */
+            onSaturated(bb);
         }
     }
 

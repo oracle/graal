@@ -152,6 +152,27 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         executor.init(timing);
     }
 
+    /**
+     * Returns true if the type's hierarchy is complete in the observable universe.
+     * <ul>
+     * <li>In <b>open type world</b> this means that all the subtypes of this type are known and
+     * this type cannot be extended outside the observable universe.</li>
+     * <li>In <b>closed type world</b> all types are considered closed.</li>
+     * </ul>
+     * 
+     * This method is conservative, it returns false in cases where we are not sure, and further
+     * refining when a type is closed will improve analysis. For example GR-59311 will also define
+     * when a sealed type can be treated as a closed type.
+     */
+    public boolean isClosed(AnalysisType type) {
+        if (hostVM.isClosedTypeWorld()) {
+            /* In a closed type world all subtypes known. */
+            return true;
+        }
+        /* Array and leaf types are by definition closed. */
+        return type.isArray() || type.isLeaf();
+    }
+
     @Override
     protected CompletionExecutor.Timing getTiming() {
         return timing;
