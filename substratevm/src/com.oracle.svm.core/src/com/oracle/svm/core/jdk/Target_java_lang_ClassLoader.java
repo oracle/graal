@@ -45,6 +45,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
+import com.oracle.svm.core.hub.RuntimeClassLoadingSupport;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.java.LambdaUtils;
@@ -254,39 +255,40 @@ public final class Target_java_lang_ClassLoader {
     @Substitute
     @SuppressWarnings({"unused", "static-method"})
     Class<?> defineClass(byte[] b, int off, int len) throws ClassFormatError {
-        return PredefinedClassesSupport.loadClass(SubstrateUtil.cast(this, ClassLoader.class), null, b, off, len, null);
+        return defineClass(null, b, off, len);
     }
 
     @Substitute
     @SuppressWarnings({"unused", "static-method"})
     Class<?> defineClass(String name, byte[] b, int off, int len) throws ClassFormatError {
-        return PredefinedClassesSupport.loadClass(SubstrateUtil.cast(this, ClassLoader.class), name, b, off, len, null);
+        return defineClass(name, b, off, len, null);
     }
 
     @Substitute
     @SuppressWarnings({"unused", "static-method"})
     private Class<?> defineClass(String name, byte[] b, int off, int len, ProtectionDomain protectionDomain) {
-        return PredefinedClassesSupport.loadClass(SubstrateUtil.cast(this, ClassLoader.class), name, b, off, len, protectionDomain);
+        return ClassLoaderHelper.defineClass(SubstrateUtil.cast(this, ClassLoader.class), name, b, off, len, protectionDomain);
     }
 
     @Substitute
     @SuppressWarnings({"unused", "static-method"})
     private Class<?> defineClass(String name, java.nio.ByteBuffer b, ProtectionDomain protectionDomain) {
-        if (!PredefinedClassesSupport.hasBytecodeClasses()) {
-            throw PredefinedClassesSupport.throwNoBytecodeClasses(name);
+        // only bother extracting the bytes if it has a chance to work
+        if (PredefinedClassesSupport.hasBytecodeClasses() || RuntimeClassLoadingSupport.supportsRuntimeClassLoading()) {
+            byte[] array;
+            int off;
+            int len = b.remaining();
+            if (b.hasArray()) {
+                array = b.array();
+                off = b.position() + b.arrayOffset();
+            } else {
+                array = new byte[len];
+                b.get(array);
+                off = 0;
+            }
+            return ClassLoaderHelper.defineClass(SubstrateUtil.cast(this, ClassLoader.class), name, array, off, len, null);
         }
-        byte[] array;
-        int off;
-        int len = b.remaining();
-        if (b.hasArray()) {
-            array = b.array();
-            off = b.position() + b.arrayOffset();
-        } else {
-            array = new byte[len];
-            b.get(array);
-            off = 0;
-        }
-        return PredefinedClassesSupport.loadClass(SubstrateUtil.cast(this, ClassLoader.class), name, array, off, len, null);
+        throw PredefinedClassesSupport.throwNoBytecodeClasses(name);
     }
 
     @Substitute
@@ -317,6 +319,15 @@ public final class Target_java_lang_ClassLoader {
 
     @Delete
     private static native Target_java_lang_AssertionStatusDirectives retrieveDirectives();
+}
+
+final class ClassLoaderHelper {
+    public static Class<?> defineClass(ClassLoader loader, String name, byte[] b, int off, int len, ProtectionDomain protectionDomain) {
+        if (PredefinedClassesSupport.hasBytecodeClasses()) {
+            return PredefinedClassesSupport.loadClass(loader, name, b, off, len, protectionDomain);
+        }
+        throw VMError.unimplemented("Crema");
+    }
 }
 
 @TargetClass(className = "java.lang.AssertionStatusDirectives") //
