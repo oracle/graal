@@ -43,16 +43,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
-import com.oracle.graal.pointsto.ObjectScanner;
-import com.oracle.graal.pointsto.meta.ObjectReachableCallback;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.graal.hotspot.GetCompilerConfig;
-import com.oracle.svm.graal.hotspot.GetJNIConfig;
-import jdk.graal.compiler.hotspot.CompilerConfigurationFactory;
-import jdk.graal.compiler.hotspot.libgraal.BuildTime;
-import jdk.graal.compiler.options.OptionDescriptor;
-import jdk.graal.compiler.options.OptionKey;
-import jdk.graal.compiler.serviceprovider.LibGraalService;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.jniutils.NativeBridgeSupport;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -63,10 +53,15 @@ import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.ObjectReachableCallback;
 import com.oracle.graal.pointsto.reports.CallTreePrinter;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.graal.hotspot.GetCompilerConfig;
+import com.oracle.svm.graal.hotspot.GetJNIConfig;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
@@ -75,8 +70,13 @@ import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.hotspot.CompilerConfigurationFactory;
+import jdk.graal.compiler.hotspot.libgraal.BuildTime;
 import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
 import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionDescriptor;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.serviceprovider.LibGraalService;
 import jdk.vm.ci.code.TargetDescription;
 
 /**
@@ -390,7 +390,7 @@ public final class LibGraalFeature implements Feature {
                                             Consumer.class, // registerAsInHeap
                                             Consumer.class, // hostedGraalSetFoldNodePluginClasses
                                             String.class, // nativeImageLocationQualifier
-                                            String.class // encodedGuestObjects
+                                            byte[].class // encodedGuestObjects
                             ));
             GetCompilerConfig.Result configResult = GetCompilerConfig.from(Options.LibGraalJavaHome.getValue(), bb.getOptions());
             for (var e : configResult.opens().entrySet()) {

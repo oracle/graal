@@ -35,7 +35,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import jdk.graal.compiler.util.ObjectCopier;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.collections.UnmodifiableMapCursor;
 
@@ -45,9 +44,10 @@ import com.oracle.svm.core.option.RuntimeOptionKey;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.HotSpotGraalOptionValues;
+import jdk.graal.compiler.hotspot.libgraal.CompilerConfig;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.hotspot.libgraal.CompilerConfig;
+import jdk.graal.compiler.util.ObjectCopier;
 
 /**
  * Gets the map created in a JVM subprocess by running {@link CompilerConfig}.
@@ -64,7 +64,7 @@ public class GetCompilerConfig {
      *            {@link ObjectCopier}. These packages need to be opened when decoding the returned
      *            string back to an object.
      */
-    public record Result(String encodedConfig, Map<String, Set<String>> opens) {
+    public record Result(byte[] encodedConfig, Map<String, Set<String>> opens) {
     }
 
     /**
@@ -171,7 +171,7 @@ public class GetCompilerConfig {
             throw new GraalError("Interrupted waiting for command: %s", quotedCommand);
         }
         try {
-            String encodedConfig = Files.readString(encodedConfigPath);
+            byte[] encodedConfig = Files.readAllBytes(encodedConfigPath);
             if (DEBUG) {
                 System.out.printf("[%d] Executed: %s%n", p.pid(), quotedCommand);
                 System.out.printf("[%d] Output saved in %s%n", p.pid(), encodedConfigPath);
