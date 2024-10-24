@@ -80,7 +80,6 @@ JNIEXPORT void mokapotCaptureState(int32_t* addr, jint mask) {
 
 
 JNIEXPORT MokapotEnv* JNICALL initializeMokapotContext(JNIEnv* env, void* (*fetch_by_name)(const char *, void*)) {
-
   MokapotEnv *moka_env = (MokapotEnv *) malloc(sizeof(*moka_env));
 
   struct MokapotNativeInterface_ *functions = (struct MokapotNativeInterface_*) malloc(sizeof(*functions));
@@ -97,6 +96,7 @@ JNIEXPORT MokapotEnv* JNICALL initializeMokapotContext(JNIEnv* env, void* (*fetc
   java_vm_functions->reserved2 = NULL;
 
   // Store the MokapotEnv* in the JNIEnv*.
+  // This is read in nespresso's GetJavaVM
   struct JNINativeInterface_* tmp = (struct JNINativeInterface_*) *env;
   tmp->reserved1 = (void*) moka_env;
 

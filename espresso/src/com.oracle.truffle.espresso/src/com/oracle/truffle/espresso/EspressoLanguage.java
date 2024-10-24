@@ -77,6 +77,7 @@ import com.oracle.truffle.espresso.nodes.commands.ReferenceProcessRootNode;
 import com.oracle.truffle.espresso.preinit.ContextPatchingException;
 import com.oracle.truffle.espresso.preinit.EspressoLanguageCache;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
 import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.JavaVersion;
@@ -347,7 +348,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
         if (exitMode == ExitMode.NATURAL) {
             // Make sure current thread is no longer considered alive by guest code.
-            if (context.getVM().DetachCurrentThread(context) == JNI_OK) {
+            if (context.getVM().DetachCurrentThread(context, this) == JNI_OK) {
                 // Create a new guest thread to wait for other non-daemon threads
                 context.createThread(Thread.currentThread(), context.getMainThreadGroup(), "DestroyJavaVM", false);
             }
@@ -694,5 +695,21 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     public GuestFieldOffsetStrategy getGuestFieldOffsetStrategy() {
         return guestFieldOffsetStrategy;
+    }
+
+    public StaticObject getPendingException() {
+        return getThreadLocalState().getPendingExceptionObject();
+    }
+
+    public EspressoException getPendingEspressoException() {
+        return getThreadLocalState().getPendingException();
+    }
+
+    public void clearPendingException() {
+        getThreadLocalState().clearPendingException();
+    }
+
+    public void setPendingException(EspressoException ex) {
+        getThreadLocalState().setPendingException(ex);
     }
 }

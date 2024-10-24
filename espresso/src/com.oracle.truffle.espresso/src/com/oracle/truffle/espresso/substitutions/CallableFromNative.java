@@ -27,6 +27,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.ffi.NativeSignature;
 import com.oracle.truffle.espresso.ffi.NativeType;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.jni.NativeEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
 public abstract class CallableFromNative extends SubstitutionProfiler {
@@ -90,7 +91,7 @@ public abstract class CallableFromNative extends SubstitutionProfiler {
      *            formed as follows: {@code env} is passed first, then java objects arguments are
      *            passed as JNI handles.
      */
-    public abstract Object invoke(Object env, Object[] args);
+    public abstract Object invoke(NativeEnv env, Object[] args);
 
     /**
      * The method to invoke when coming from java code.

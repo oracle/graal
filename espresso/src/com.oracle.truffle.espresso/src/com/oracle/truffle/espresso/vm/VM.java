@@ -257,7 +257,8 @@ public final class VM extends NativeEnv {
              * we have to check for JNI_OnLoad as well.
              */
             EspressoError.guarantee(getVM() != null, "The VM must be initialized before libjava's JNI_OnLoad");
-            TruffleObject jniOnLoad = getNativeAccess().lookupAndBindSymbol(this.javaLibrary, "JNI_OnLoad", NativeSignature.create(NativeType.INT, NativeType.POINTER, NativeType.POINTER));
+            NativeSignature jniOnLoadSignature = NativeSignature.create(NativeType.INT, NativeType.POINTER, NativeType.POINTER);
+            TruffleObject jniOnLoad = getNativeAccess().lookupAndBindSymbol(this.javaLibrary, "JNI_OnLoad", jniOnLoadSignature, false, true);
             if (jniOnLoad != null) {
                 try {
                     getUncached().execute(jniOnLoad, mokapotEnvPtr, RawPointer.nullInstance());
@@ -293,7 +294,7 @@ public final class VM extends NativeEnv {
             disposeMokapotContext = getNativeAccess().lookupAndBindSymbol(mokapotLibrary, "disposeMokapotContext",
                             NativeSignature.create(NativeType.VOID, NativeType.POINTER, NativeType.POINTER));
 
-            if (jniEnv.getContext().getEspressoEnv().EnableManagement) {
+            if (getContext().getEspressoEnv().EnableManagement) {
                 management = new Management(getContext(), mokapotLibrary);
             } else {
                 management = null;
@@ -374,7 +375,7 @@ public final class VM extends NativeEnv {
     /**
      * Maps native function pointers to node factories for VM methods.
      */
-    private EconomicMap<Long, CallableFromNative.Factory> knownVmMethods = EconomicMap.create();
+    private final EconomicMap<Long, CallableFromNative.Factory> knownVmMethods = EconomicMap.create();
 
     @Override
     protected List<CallableFromNative.Factory> getCollector() {
@@ -405,7 +406,7 @@ public final class VM extends NativeEnv {
     @Override
     @TruffleBoundary
     protected void processCallBackResult(String name, CallableFromNative.Factory factory, Object... args) {
-        assert args.length == lookupCallBackArgsCount();
+        super.processCallBackResult(name, factory, args);
         try {
             InteropLibrary uncached = InteropLibrary.getUncached();
             Object ptr = args[1];
@@ -1387,7 +1388,7 @@ public final class VM extends NativeEnv {
         if (InteropLibrary.getUncached().isNull(argsPtr)) {
             getLogger().fine("AttachCurrentThread with null args");
         } else {
-            JavaVMAttachArgs.JavaVMAttachArgsWrapper attachArgs = getStructs().javaVMAttachArgs.wrap(jni(), argsPtr);
+            JavaVMAttachArgs.JavaVMAttachArgsWrapper attachArgs = getStructs().javaVMAttachArgs.wrap(getHandles(), argsPtr);
             if (JVM_IsSupportedJNIVersion(attachArgs.version())) {
                 group = attachArgs.group();
                 name = NativeUtils.fromUTF8Ptr(attachArgs.name());
@@ -1405,7 +1406,7 @@ public final class VM extends NativeEnv {
 
     @VmImpl
     @TruffleBoundary
-    public int DetachCurrentThread(@Inject EspressoContext context) {
+    public int DetachCurrentThread(@Inject EspressoContext context, @Inject EspressoLanguage language) {
         StaticObject currentThread = context.getCurrentPlatformThread();
         if (currentThread == null) {
             return JNI_OK;
@@ -1436,8 +1437,8 @@ public final class VM extends NativeEnv {
             });
             return JNI_ERR;
         }
-        StaticObject pendingException = jniEnv.getPendingException();
-        jniEnv.clearPendingException();
+        StaticObject pendingException = language.getPendingException();
+        language.clearPendingException();
 
         Meta meta = context.getMeta();
         try {
