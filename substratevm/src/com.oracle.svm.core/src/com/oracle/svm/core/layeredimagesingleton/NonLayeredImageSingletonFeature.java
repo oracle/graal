@@ -79,7 +79,7 @@ public class NonLayeredImageSingletonFeature implements InternalFeature, Feature
                     return result;
                 });
 
-                b.addPush(JavaKind.Object, ConstantNode.forConstant(b.getSnippetReflection().forObject(multiLayeredArray), b.getMetaAccess()));
+                b.addPush(JavaKind.Object, ConstantNode.forConstant(b.getSnippetReflection().forObject(multiLayeredArray), 1, true, b.getMetaAccess()));
                 return true;
             }
         });
