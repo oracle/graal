@@ -212,10 +212,12 @@ class SVMUtil:
             assert compression_shift >= 0
             compressed_oop = compressed_oop >> compression_shift
         if is_hub:
+            assert compression_shift >= 0
+            compressed_oop = compressed_oop << compression_shift
             assert num_alignment_bits >= 0
-            compressed_oop = compressed_oop << num_alignment_bits
+            compressed_oop = compressed_oop >> num_alignment_bits
             assert num_reserved_bits >= 0
-            compressed_oop = compressed_oop >> num_reserved_bits
+            compressed_oop = compressed_oop << num_reserved_bits
 
         return compressed_oop
 
