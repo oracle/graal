@@ -280,15 +280,6 @@ This feature is currently only available for code compiled by Graal for Linux AM
 
 The build output may contain one or more of the following recommendations that help you get the best out of Native Image.
 
-#### <a name="recommendation-init"></a>`INIT`: Use the Strict Image Heap Configuration
-
-Start using `--strict-image-heap` to reduce the amount of configuration and prepare for future GraalVM releases where this will be the default.
-This mode requires only the classes that are stored in the image heap to be marked with `--initialize-at-build-time`. 
-This effectively reduces the number of configuration entries necessary to achieve build-time initialization. 
-When adopting the new mode it is best to start introducing build-time initialization from scratch.
-During this process, it is best to select individual classes (as opposed to whole packages) for build time initialization.
-Also, before migrating to the new flag make sure to update all framework dependencies to the latest versions as they might need to migrate too. 
-
 #### <a name="recommendation-awt"></a>`AWT`: Missing Reachability Metadata for Abstract Window Toolkit
 
 The Native Image analysis has included classes from the [`java.awt` package](https://docs.oracle.com/en/java/javase/22/docs/api/java.desktop/java/awt/package-summary.html) but could not find any reachability metadata for it.
@@ -334,6 +325,17 @@ Consider using the quick build mode (`-Ob`) to speed up your builds during devel
 More precisely, this mode reduces the number of optimizations performed by the Graal compiler and thus reduces the overall time of the [compilation stage](#stage-compiling).
 The quick build mode is not only useful for development, it can also cause the generated executable file to be smaller in size.
 Note, however, that the overall peak throughput of the executable may be lower due to the reduced number of optimizations.
+
+#### <a name="recommendation-init"></a>`INIT`: Use the Strict Image Heap Configuration
+
+Start using `--strict-image-heap` to reduce the amount of configuration and prepare for future GraalVM releases where this will be the default.
+This mode requires only the classes that are stored in the image heap to be marked with `--initialize-at-build-time`. 
+This effectively reduces the number of configuration entries necessary to achieve build-time initialization. 
+When adopting the new mode it is best to start introducing build-time initialization from scratch.
+During this process, it is best to select individual classes (as opposed to whole packages) for build time initialization.
+Also, before migrating to the new flag make sure to update all framework dependencies to the latest versions as they might need to migrate too.
+
+> Note that `--strict-image-heap` is enabled by default in Native Image starting from GraalVM for JDK 22.
 
 ## Resource Usage Statistics
 

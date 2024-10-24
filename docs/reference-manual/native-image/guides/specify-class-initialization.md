@@ -22,7 +22,7 @@ If you want only class `C1` in package `p` to be initialized at runtime, use:
 
 You can also programmatically specify class initialization using the [`RuntimeClassInitialization`] class (https://github.com/oracle/graal/blob/master/sdk/src/org.graalvm.nativeimage/src/org/graalvm/nativeimage/hosted/RuntimeClassInitialization.java) from the [Native Image Feature interface](https://github.com/oracle/graal/blob/master/sdk/src/org.graalvm.nativeimage/src/org/graalvm/nativeimage/hosted/Feature.java).
 
-This guide demonstrates how to build a native executable by running the class initializer at runtime (default behavior), and then at build time, and compares the two approaches. 
+This guide demonstrates how to build a native executable by running the class initializer at runtime (default behavior), and then at build time, and compares the two approaches.
 
 ### Prerequisite 
 Make sure you have installed a GraalVM JDK.
@@ -103,7 +103,7 @@ The parser creates records and adds them to a `List<Talk>` collection.
     native-image --initialize-at-build-time=TalkParser,Talk -o buildtime-parser TalkParser
     ```
 
-    If your application adds additional types to the executable heap, each type (or the corresponding package) needs to be marked for build-time initialization explicitly to fulfill the requirements of `--strict-image-heap`. 
+    If your application adds additional types to the image heap, each type (or the corresponding package) needs to be marked for build-time initialization explicitly.
     An appropriate actionable error message will guide you through the process.
 
 6. Run and `time` the second executable for comparison:
