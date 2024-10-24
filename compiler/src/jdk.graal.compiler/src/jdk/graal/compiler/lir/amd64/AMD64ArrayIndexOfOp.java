@@ -804,10 +804,12 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
         if (asm.supports(CPUFeature.AVX)) {
             switch (targetVectorSize) {
                 case DWORD:
-                    VexMoveOp.VMOVD.emit(asm, AVXSize.DWORD, vecDst, src);
+                    // Move a dword into an XMM register
+                    VexMoveOp.VMOVD.emit(asm, AVXSize.XMM, vecDst, src);
                     break;
                 case QWORD:
-                    VexMoveOp.VMOVQ.emit(asm, AVXSize.QWORD, vecDst, src);
+                    // Move a qword into an XMM register
+                    VexMoveOp.VMOVQ.emit(asm, AVXSize.XMM, vecDst, src);
                     break;
                 case XMM:
                 case YMM:
