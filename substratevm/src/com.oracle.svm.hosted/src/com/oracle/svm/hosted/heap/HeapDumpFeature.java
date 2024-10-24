@@ -43,6 +43,7 @@ import com.oracle.svm.core.heap.dump.HProfType;
 import com.oracle.svm.core.heap.dump.HeapDumpMetadata;
 import com.oracle.svm.core.heap.dump.HeapDumpShutdownHook;
 import com.oracle.svm.core.heap.dump.HeapDumpStartupHook;
+import com.oracle.svm.core.heap.dump.HeapDumpSupportImpl;
 import com.oracle.svm.core.heap.dump.HeapDumpWriter;
 import com.oracle.svm.core.heap.dump.HeapDumping;
 import com.oracle.svm.core.jdk.RuntimeSupport;
@@ -60,8 +61,8 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * Heap dumping on Native Image needs some extra metadata about all the classes and fields that are
  * present in the image. The necessary information is encoded as binary data at image build time
  * (see {@link #encodeMetadata}}). When the heap dumping is triggered at run-time, the metadata is
- * decoded on the fly (see {@link com.oracle.svm.core.heap.dump.HeapDumpMetadata}) and used for
- * writing the heap dump (see {@link HeapDumpWriter}).
+ * decoded on the fly (see {@link HeapDumpMetadata}) and used for writing the heap dump (see
+ * {@link HeapDumpWriter}).
  */
 @AutomaticallyRegisteredFeature
 public class HeapDumpFeature implements InternalFeature {
@@ -79,7 +80,7 @@ public class HeapDumpFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         HeapDumpMetadata metadata = new HeapDumpMetadata();
-        HeapDumping heapDumpSupport = new com.oracle.svm.core.heap.dump.HeapDumpSupportImpl(metadata);
+        HeapDumping heapDumpSupport = new HeapDumpSupportImpl(metadata);
 
         ImageSingletons.add(HeapDumpSupport.class, heapDumpSupport);
         ImageSingletons.add(HeapDumping.class, heapDumpSupport);
@@ -105,7 +106,7 @@ public class HeapDumpFeature implements InternalFeature {
 
     /**
      * This method writes the metadata that is needed for heap dumping into one large byte[] (see
-     * {@link com.oracle.svm.core.heap.dump.HeapDumpMetadata} for more details).
+     * {@link HeapDumpMetadata} for more details).
      */
     private static byte[] encodeMetadata(Collection<? extends SharedType> types) {
         int maxTypeId = types.stream().mapToInt(t -> t.getHub().getTypeID()).max().orElse(0);

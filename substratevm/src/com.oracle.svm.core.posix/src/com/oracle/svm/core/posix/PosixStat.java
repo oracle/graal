@@ -42,6 +42,8 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
+import com.oracle.svm.core.headers.LibC;
+import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.PosixDirectives;
 import com.oracle.svm.core.posix.headers.darwin.DarwinStat;
 import com.oracle.svm.core.posix.headers.linux.LinuxStat;
@@ -165,6 +167,26 @@ public final class PosixStat {
         @CField
         @AllowWideningCast
         UnsignedWord st_nlink();
+    }
+
+    @Uninterruptible(reason = "LibC.errno() must not be overwritten accidentally.")
+    public static int restartableFstat(int fd, PosixStat.stat buf) {
+        int result;
+        do {
+            result = PosixStat.NoTransitions.fstat(fd, buf);
+        } while (result == -1 && LibC.errno() == Errno.EINTR());
+
+        return result;
+    }
+
+    @Uninterruptible(reason = "LibC.errno() must not be overwritten accidentally.")
+    public static int restartableLstat(CCharPointer path, PosixStat.stat buf) {
+        int result;
+        do {
+            result = PosixStat.NoTransitions.lstat(path, buf);
+        } while (result == -1 && LibC.errno() == Errno.EINTR());
+
+        return result;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
