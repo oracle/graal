@@ -197,11 +197,11 @@ public class AMD64VectorShuffle {
             EVPXOR.emit(masm, AVXKind.getRegisterSize(kind), asRegister(result), asRegister(result), asRegister(result));
             if (isRegister(source)) {
                 EVPERMT2B.emit(masm, AVXKind.getRegisterSize(kind), asRegister(result), asRegister(selector), asRegister(source), mask != null ? asRegister(mask) : Register.None,
-                                AMD64BaseAssembler.EVEXPrefixConfig.Z1,
+                                mask != null ? AMD64BaseAssembler.EVEXPrefixConfig.Z1 : AMD64BaseAssembler.EVEXPrefixConfig.Z0,
                                 AMD64BaseAssembler.EVEXPrefixConfig.B0);
             } else {
                 EVPERMT2B.emit(masm, AVXKind.getRegisterSize(kind), asRegister(result), asRegister(selector), (AMD64Address) crb.asAddress(source), mask != null ? asRegister(mask) : Register.None,
-                                AMD64BaseAssembler.EVEXPrefixConfig.Z1,
+                                mask != null ? AMD64BaseAssembler.EVEXPrefixConfig.Z1 : AMD64BaseAssembler.EVEXPrefixConfig.Z0,
                                 AMD64BaseAssembler.EVEXPrefixConfig.B0);
             }
         }

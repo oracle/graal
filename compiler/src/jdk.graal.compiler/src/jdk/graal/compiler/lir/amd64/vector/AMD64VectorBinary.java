@@ -191,8 +191,8 @@ public class AMD64VectorBinary {
         @Use({OperandFlag.REG}) protected AllocatableValue x;
         @Use({OperandFlag.REG}) protected AllocatableValue y;
 
-        public AVXOpMaskBinaryOp(AMD64Assembler.VexRVROp opcode, AVXKind.AVXSize size, AllocatableValue result, AllocatableValue x, AllocatableValue y) {
-            super(TYPE, size);
+        public AVXOpMaskBinaryOp(AMD64Assembler.VexRVROp opcode, AllocatableValue result, AllocatableValue x, AllocatableValue y) {
+            super(TYPE, AVXKind.AVXSize.XMM);
             this.opcode = opcode;
             this.result = result;
             this.x = x;
@@ -201,7 +201,7 @@ public class AMD64VectorBinary {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            opcode.emit(masm, size, asRegister(result), asRegister(x), asRegister(y));
+            opcode.emit(masm, asRegister(result), asRegister(x), asRegister(y));
         }
     }
 }
