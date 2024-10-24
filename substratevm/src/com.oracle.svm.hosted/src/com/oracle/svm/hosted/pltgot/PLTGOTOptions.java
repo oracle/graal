@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,20 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.code;
+package com.oracle.svm.hosted.pltgot;
 
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.Value;
+import com.oracle.svm.core.option.HostedOptionKey;
 
-public interface SubstrateLIRGenerator {
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionType;
 
-    void emitFarReturn(AllocatableValue result, Value sp, Value ip, boolean fromMethodWithCalleeSavedRegisters);
+public class PLTGOTOptions {
+    @Option(help = "Enables support for dynamic method address resolution. Should never be enabled directly.", type = OptionType.Expert)//
+    public static final HostedOptionKey<Boolean> EnablePLTGOT = new HostedOptionKey<>(false);
 
-    void emitDeadEnd();
+    @Option(help = "Prints the contents of the GOT.", type = OptionType.Debug)//
+    public static final HostedOptionKey<Boolean> PrintGOT = new HostedOptionKey<>(false);
 
-    void emitVerificationMarker(Object marker);
-
-    void emitInstructionSynchronizationBarrier();
-
-    void emitExitMethodAddressResolution(Value ip);
+    @Option(help = "Prints Infopoint call sites inside methods called through PLT/GOT.", type = OptionType.Debug)//
+    public static final HostedOptionKey<Boolean> PrintPLTGOTCallsInfo = new HostedOptionKey<>(false);
 }

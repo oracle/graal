@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,20 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.code;
+package com.oracle.svm.hosted.pltgot;
 
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.Value;
+import com.oracle.objectfile.ObjectFile;
+import com.oracle.svm.core.graal.code.SubstrateBackend;
+import com.oracle.svm.core.meta.SharedMethod;
 
-public interface SubstrateLIRGenerator {
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-    void emitFarReturn(AllocatableValue result, Value sp, Value ip, boolean fromMethodWithCalleeSavedRegisters);
+public interface PLTStubGenerator {
 
-    void emitDeadEnd();
+    byte[] generatePLT(SharedMethod[] got, SubstrateBackend substrateBackend);
 
-    void emitVerificationMarker(Object marker);
+    void markResolverMethodPatch(ObjectFile.ProgbitsSectionImpl pltBuffer, ResolvedJavaMethod resolverMethod);
 
-    void emitInstructionSynchronizationBarrier();
-
-    void emitExitMethodAddressResolution(Value ip);
 }

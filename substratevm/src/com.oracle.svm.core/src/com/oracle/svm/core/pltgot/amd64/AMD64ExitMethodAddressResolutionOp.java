@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,20 +22,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.code;
+package com.oracle.svm.core.pltgot.amd64;
 
-import jdk.vm.ci.meta.AllocatableValue;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+
+import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
+import jdk.graal.compiler.lir.LIRInstructionClass;
+import jdk.graal.compiler.lir.Opcode;
+import jdk.graal.compiler.lir.amd64.AMD64BlockEndOp;
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.vm.ci.meta.Value;
 
-public interface SubstrateLIRGenerator {
+@Opcode("EXIT_METHOD_ADDRESS_RESOLUTION")
+public class AMD64ExitMethodAddressResolutionOp extends AMD64BlockEndOp {
+    public static final LIRInstructionClass<AMD64ExitMethodAddressResolutionOp> TYPE = LIRInstructionClass.create(AMD64ExitMethodAddressResolutionOp.class);
+    private @Use Value ip;
 
-    void emitFarReturn(AllocatableValue result, Value sp, Value ip, boolean fromMethodWithCalleeSavedRegisters);
+    public AMD64ExitMethodAddressResolutionOp(Value ip) {
+        super(TYPE);
+        this.ip = ip;
+    }
 
-    void emitDeadEnd();
-
-    void emitVerificationMarker(Object marker);
-
-    void emitInstructionSynchronizationBarrier();
-
-    void emitExitMethodAddressResolution(Value ip);
+    @Override
+    public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+        crb.frameContext.leave(crb);
+        masm.jmp(asRegister(ip));
+        crb.frameContext.returned(crb);
+    }
 }

@@ -69,6 +69,7 @@ import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.meta.SharedField;
@@ -766,14 +767,21 @@ public class FeatureImpl {
 
     public static class AfterAbstractImageCreationAccessImpl extends FeatureAccessImpl implements InternalFeature.AfterAbstractImageCreationAccess {
         protected final AbstractImage abstractImage;
+        protected final SubstrateBackend substrateBackend;
 
-        AfterAbstractImageCreationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, DebugContext debugContext, AbstractImage abstractImage) {
+        AfterAbstractImageCreationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, DebugContext debugContext, AbstractImage abstractImage,
+                        SubstrateBackend substrateBackend) {
             super(featureHandler, imageClassLoader, debugContext);
             this.abstractImage = abstractImage;
+            this.substrateBackend = substrateBackend;
         }
 
         public AbstractImage getImage() {
             return abstractImage;
+        }
+
+        public SubstrateBackend getSubstrateBackend() {
+            return substrateBackend;
         }
     }
 
