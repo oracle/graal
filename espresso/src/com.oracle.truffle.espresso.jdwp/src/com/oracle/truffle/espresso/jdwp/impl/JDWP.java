@@ -53,6 +53,8 @@ public final class JDWP {
 
     private static final int ACC_SYNTHETIC = 0x00001000;
     private static final int JDWP_SYNTHETIC = 0xF0000000;
+    public static final int INVOKE_SINGLE_THREADED = 0x01;
+    public static final int INVOKE_NON_VIRTUAL = 0x02;
 
     private JDWP() {
     }
@@ -1799,15 +1801,19 @@ public final class JDWP {
                 controller.fine(() -> "trying to invoke method: " + method.getNameAsString());
 
                 int invocationOptions = input.readInt();
-                byte suspensionStrategy = invocationOptions == 1 ? SuspendStrategy.EVENT_THREAD : SuspendStrategy.ALL;
+                boolean invokeSingleThreaded = (invocationOptions & INVOKE_SINGLE_THREADED) != 0;
+                boolean invokeNonvirtual = (invocationOptions & INVOKE_NON_VIRTUAL) != 0;
+                byte suspensionStrategy = invokeSingleThreaded ? SuspendStrategy.EVENT_THREAD : SuspendStrategy.ALL;
                 try {
                     // we have to call the method in the correct thread, so post a
                     // Callable to the controller and wait for the result to appear
                     ThreadJob<Object> job = new ThreadJob<>(thread, () -> {
-                        if (Modifier.isPrivate(method.getModifiers())) {
+                        if (invokeNonvirtual) {
+                            return method.invokeMethodNonVirtual(args);
+                        } else if (Modifier.isPrivate(method.getModifiers())) {
                             return method.invokeMethodSpecial(args);
                         } else if (method.getDeclaringKlassRef().isInterface()) {
-                            return method.invokeInterfaceMethod(args);
+                            return method.invokeMethodInterface(args);
                         } else {
                             return method.invokeMethodVirtual(args);
                         }
