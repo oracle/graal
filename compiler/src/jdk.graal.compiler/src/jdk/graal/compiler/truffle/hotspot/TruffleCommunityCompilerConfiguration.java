@@ -37,6 +37,8 @@ import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 
 import jdk.vm.ci.code.Architecture;
 
+import java.util.function.Supplier;
+
 /**
  * Central place to register Truffle related compiler phases and plugins for host Java compilation
  * on HotSpot.
@@ -44,7 +46,7 @@ import jdk.vm.ci.code.Architecture;
  * Note that this configuration is also used as basis for Truffle guest compilation on HotSpot.
  * Therefore make sure that phases which are only relevant for host compilations are explicitly
  * disabled for Truffle guest compilation in
- * {@link HotSpotTruffleCompilerImpl#create(TruffleCompilerRuntime)}.
+ * {@link HotSpotTruffleCompilerImpl#create(TruffleCompilerRuntime, Supplier)}.
  * <p>
  * Note that on SubstrateVM TruffleBaseFeature and TruffleFeature must be used for this purpose,
  * this configuration is NOT loaded. So make sure SVM configuration is in sync if you make changes

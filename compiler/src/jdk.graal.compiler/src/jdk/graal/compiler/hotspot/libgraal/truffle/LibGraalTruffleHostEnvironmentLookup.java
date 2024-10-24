@@ -26,6 +26,7 @@ package jdk.graal.compiler.hotspot.libgraal.truffle;
 
 import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
 import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
+import jdk.graal.compiler.truffle.host.TruffleHostEnvironment.TruffleRuntimeScope;
 import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -51,6 +52,7 @@ public final class LibGraalTruffleHostEnvironmentLookup implements TruffleHostEn
     @NativeImageReinitialize private TruffleHostEnvironment previousRuntime;
 
     @Override
+    @SuppressWarnings("try")
     public TruffleHostEnvironment lookup(ResolvedJavaType forType) {
         long globalReference = WEAK_TRUFFLE_RUNTIME_INSTANCE.get();
         if (globalReference == NO_TRUFFLE_REGISTERED) {
@@ -74,9 +76,11 @@ public final class LibGraalTruffleHostEnvironmentLookup implements TruffleHostEn
          * We do not currently validate the forType. But in the future we want to lookup the runtime
          * per type. So in theory multiple truffle runtimes can be loaded.
          */
-        HSTruffleCompilerRuntime runtime = new HSTruffleCompilerRuntime(NativeImageHostCalls.createGlobalHandle(runtimeLocalHandle, true), NativeImageHostCalls.getObjectClass(runtimeLocalHandle));
-        this.previousRuntime = environment = new LibGraalTruffleHostEnvironment(runtime, HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getMetaAccess());
-        return environment;
+        try (TruffleRuntimeScope scope = LibGraalTruffleHostEnvironment.openTruffleRuntimeScopeImpl()) {
+            HSTruffleCompilerRuntime runtime = new HSTruffleCompilerRuntime(NativeImageHostCalls.createGlobalHandle(runtimeLocalHandle, true), NativeImageHostCalls.getObjectClass(runtimeLocalHandle));
+            this.previousRuntime = environment = new LibGraalTruffleHostEnvironment(runtime, HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getMetaAccess());
+            return environment;
+        }
     }
 
     private static HSTruffleCompilerRuntime hsRuntime(TruffleHostEnvironment environment) {

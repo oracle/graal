@@ -100,6 +100,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.oracle.truffle.compiler.ConstantFieldInfo;
@@ -452,7 +453,11 @@ final class TruffleFromLibGraalEntryPoints {
         return out.getArray();
     }
 
-    @TruffleFromLibGraal(Id.GetHostMethodInfo)
+    /**
+     * This method is no longer used by the JDK 24 `libgraal` compiler but must be retained for
+     * backward compatibility with LTS JDK 21.
+     */
+    @Deprecated
     static Object getHostMethodInfo(Object truffleRuntime, long methodHandle) {
         ResolvedJavaMethod method = LibGraal.unhand(ResolvedJavaMethod.class, methodHandle);
         HostMethodInfo info = ((TruffleCompilerRuntime) truffleRuntime).getHostMethodInfo(method);
@@ -469,15 +474,37 @@ final class TruffleFromLibGraalEntryPoints {
     /**
      * Checks that all {@link TruffleFromLibGraal}s are implemented and that their signatures match
      * the {@linkplain Id#getSignature() ID signatures}.
+     *
+     * <p>
+     * Ensures compatibility with Long-Term Support (LTS) releases by supporting two types of
+     * compatible changes:
+     * <ol>
+     * <li>**Modification of method parameters**: When method parameters are changed, the original
+     * method must be retained to ensure backward compatibility with the LTS release. Both the old
+     * and new methods should be annotated with the {@link TruffleFromLibGraal} annotation.
+     * Additionally, the old method must be marked with the {@link Deprecated} annotation.</li>
+     *
+     * <li>**Method removal**: If a method is removed, it must still be retained for compatibility
+     * with the LTS release. The {@link Id} for the removed method should be eliminated, and the old
+     * method should not be annotated with the {@link TruffleFromLibGraal} annotation. The method
+     * must be marked with the {@link Deprecated} annotation.</li>
+     * </ol>
+     * </p>
      */
     private static boolean checkHotSpotCalls() {
         Set<Id> unimplemented = EnumSet.allOf(Id.class);
+        Map<String, Id> entryPointMethodNames = unimplemented.stream().collect(Collectors.toMap(Id::getMethodName, (id) -> id));
         Map<Id, List<Method>> idToMethod = new LinkedHashMap<>();
         for (Method method : TruffleFromLibGraalEntryPoints.class.getDeclaredMethods()) {
             if (Modifier.isStatic(method.getModifiers())) {
                 TruffleFromLibGraal a = method.getAnnotation(TruffleFromLibGraal.class);
+                Id id;
                 if (a != null) {
-                    Id id = a.value();
+                    id = a.value();
+                    List<Method> methods = idToMethod.computeIfAbsent(id, (k) -> new ArrayList<>());
+                    methods.add(method);
+                } else if (method.getAnnotation(Deprecated.class) != null && (id = entryPointMethodNames.get(method.getName())) != null) {
+                    // LTS compatibility method for a removed Id
                     List<Method> methods = idToMethod.computeIfAbsent(id, (k) -> new ArrayList<>());
                     methods.add(method);
                 }
@@ -489,7 +516,7 @@ final class TruffleFromLibGraalEntryPoints {
             int legacyMethodCount = 0;
             for (Method method : methods) {
                 check(id, id.getMethodName().equals(method.getName()), "Expected name \"%s\", got \"%s\"", id.getMethodName(), method.getName());
-                if (method.getAnnotation(Deprecated.class) != null) {
+                if (method.getAnnotation(Deprecated.class) != null && method.getAnnotation(TruffleFromLibGraal.class) != null) {
                     legacyMethodCount++;
                 }
                 if (Arrays.equals(id.getParameterTypes(), method.getParameterTypes())) {

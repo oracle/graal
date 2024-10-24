@@ -69,7 +69,7 @@ public final class GraalEntryPoints {
          * `TruffleCompilerImpl`. The `doCompile` method enters a local compilation context through
          * its own call to `HotSpotGraalServices.openLocalCompilationContext`.
          */
-        return HotSpotTruffleCompilerImpl.create((HSTruffleCompilerRuntime) truffleCompilerRuntime);
+        return HotSpotTruffleCompilerImpl.create((HSTruffleCompilerRuntime) truffleCompilerRuntime, null);
     }
 
     public static void initializeCompiler(Object compiler, Object compilableHsHandle, boolean firstInitialization) {

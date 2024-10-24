@@ -100,14 +100,7 @@ final class HSTruffleCompilerRuntime extends HSIndirectHandle implements Truffle
 
     @Override
     public HostMethodInfo getHostMethodInfo(ResolvedJavaMethod method) {
-        long methodHandle = HotSpotJVMCIRuntime.runtime().translate(method);
-        boolean[] res;
-        try {
-            res = (boolean[]) HANDLES.getHostMethodInfo.invoke(hsHandle, methodHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
-        return new HostMethodInfo(res[0], res[1], res[2], res[3]);
+        throw new UnsupportedOperationException("Use TruffleHostEnvironment#getHostMethodInfo()");
     }
 
     @Override
@@ -250,7 +243,6 @@ final class HSTruffleCompilerRuntime extends HSIndirectHandle implements Truffle
 
     private static final class Handles {
         final MethodHandle getPartialEvaluationMethodInfo = getHostMethodHandleOrFail(Id.GetPartialEvaluationMethodInfo);
-        final MethodHandle getHostMethodInfo = getHostMethodHandleOrFail(Id.GetHostMethodInfo);
         final MethodHandle onCodeInstallation = getHostMethodHandleOrFail(Id.OnCodeInstallation);
         final MethodHandle registerOptimizedAssumptionDependency = getHostMethodHandleOrFail(Id.RegisterOptimizedAssumptionDependency);
         final MethodHandle isValueType = getHostMethodHandleOrFail(Id.IsValueType);
