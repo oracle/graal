@@ -79,7 +79,6 @@ import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
 import jdk.graal.compiler.graph.Node.NodeIntrinsic;
 import jdk.graal.compiler.nodes.ConstantNode;
-import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.SnippetAnchorNode;
@@ -720,7 +719,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             @Override
             public void lower(NewInstanceNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
-                if (graph.getGuardsStage() != GraphState.GuardsStage.AFTER_FSA) {
+                if (graph.getGuardsStage().areFrameStatesAtSideEffects()) {
                     return;
                 }
 
@@ -746,7 +745,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             @Override
             public void lower(NewInstanceWithExceptionNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
-                if (graph.getGuardsStage() != GraphState.GuardsStage.AFTER_FSA) {
+                if (graph.getGuardsStage().areFrameStatesAtSideEffects()) {
                     return;
                 }
                 SharedType type = (SharedType) node.instanceClass();
@@ -771,7 +770,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             @Override
             public void lower(SubstrateNewHybridInstanceNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
-                if (graph.getGuardsStage() != GraphState.GuardsStage.AFTER_FSA) {
+                if (graph.getGuardsStage().areFrameStatesAtSideEffects()) {
                     return;
                 }
 
@@ -807,7 +806,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             @Override
             public void lower(NewStoredContinuationNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
-                if (graph.getGuardsStage() != GraphState.GuardsStage.AFTER_FSA) {
+                if (graph.getGuardsStage().areFrameStatesAtSideEffects()) {
                     return;
                 }
 
@@ -837,7 +836,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             @Override
             public void lower(NewArrayNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
-                if (graph.getGuardsStage() != GraphState.GuardsStage.AFTER_FSA) {
+                if (graph.getGuardsStage().areFrameStatesAtSideEffects()) {
                     return;
                 }
 
@@ -870,7 +869,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             @Override
             public void lower(NewArrayWithExceptionNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
-                if (graph.getGuardsStage() != GraphState.GuardsStage.AFTER_FSA) {
+                if (graph.getGuardsStage().areFrameStatesAtSideEffects()) {
                     return;
                 }
                 // lowered with exception path early on
@@ -904,7 +903,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             @Override
             public void lower(NewMultiArrayNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
-                if (graph.getGuardsStage() != GraphState.GuardsStage.AFTER_FSA) {
+                if (graph.getGuardsStage().areFrameStatesAtSideEffects()) {
                     return;
                 }
 
@@ -931,7 +930,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             @Override
             public void lower(NewMultiArrayWithExceptionNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
-                if (graph.getGuardsStage() != GraphState.GuardsStage.AFTER_FSA) {
+                if (graph.getGuardsStage().areFrameStatesAtSideEffects()) {
                     return;
                 }
 
@@ -958,7 +957,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             @Override
             public void lower(DynamicNewInstanceNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
-                if (graph.getGuardsStage() != GraphState.GuardsStage.AFTER_FSA) {
+                if (graph.getGuardsStage().areFrameStatesAtSideEffects()) {
                     return;
                 }
 
@@ -979,7 +978,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             @Override
             public void lower(DynamicNewInstanceWithExceptionNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
-                if (graph.getGuardsStage() != GraphState.GuardsStage.AFTER_FSA) {
+                if (graph.getGuardsStage().areFrameStatesAtSideEffects()) {
                     return;
                 }
 
@@ -1000,7 +999,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             @Override
             public void lower(DynamicNewArrayNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
-                if (graph.getGuardsStage() != GraphState.GuardsStage.AFTER_FSA) {
+                if (graph.getGuardsStage().areFrameStatesAtSideEffects()) {
                     return;
                 }
 
@@ -1022,7 +1021,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             @Override
             public void lower(DynamicNewArrayWithExceptionNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
-                if (graph.getGuardsStage() != GraphState.GuardsStage.AFTER_FSA) {
+                if (graph.getGuardsStage().areFrameStatesAtSideEffects()) {
                     return;
                 }
 
@@ -1056,7 +1055,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             @Override
             public void lower(NewPodInstanceNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
-                if (graph.getGuardsStage() != GraphState.GuardsStage.AFTER_FSA) {
+                if (graph.getGuardsStage().areFrameStatesAtSideEffects()) {
                     return;
                 }
 

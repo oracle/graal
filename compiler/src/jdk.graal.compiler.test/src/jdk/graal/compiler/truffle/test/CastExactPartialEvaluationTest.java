@@ -28,12 +28,7 @@ import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 
-import jdk.graal.compiler.truffle.test.nodes.AbstractTestNode;
-import jdk.graal.compiler.truffle.test.nodes.RootTestNode;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -44,6 +39,11 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
+
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
+import jdk.graal.compiler.truffle.test.nodes.AbstractTestNode;
+import jdk.graal.compiler.truffle.test.nodes.RootTestNode;
 
 public class CastExactPartialEvaluationTest extends PartialEvaluationTest {
 
@@ -104,14 +104,12 @@ public class CastExactPartialEvaluationTest extends PartialEvaluationTest {
      */
     @Test
     public void byteBufferAccess() {
-        Assume.assumeTrue(isByteBufferPartialEvaluationSupported());
         AbstractTestNode result = new BufferGetPutTestNode(bufferClass());
         testCommon(result, "byteBufferAccess");
     }
 
     @Test
     public void byteBufferAccessIndex() {
-        Assume.assumeTrue(isByteBufferPartialEvaluationSupported());
         AbstractTestNode result = new BufferGetPutIndexTestNode(bufferClass());
         testCommon(result, "byteBufferAccessIndex");
     }
@@ -140,7 +138,6 @@ public class CastExactPartialEvaluationTest extends PartialEvaluationTest {
     }
 
     private void testExceptionSpeculationCommon(AbstractTestNode testNode, String testName, boolean expectException) {
-        Assume.assumeTrue(isByteBufferPartialEvaluationSupported());
         RootNode rootNode = new RootTestNode(testName, testNode);
         OptimizedCallTarget callTarget = (OptimizedCallTarget) rootNode.getCallTarget();
         Object[] arguments = {newBuffer()};
