@@ -51,7 +51,7 @@ for /f "delims=" %%i in ("%relcp:;=!newline!%") do (
     )
 )
 
-set "jvm_args=--enable-native-access=org.graalvm.truffle -Dorg.graalvm.launcher.shell=true "-Dorg.graalvm.launcher.executablename=%executablename%""
+set "jvm_args=-Dorg.graalvm.launcher.shell=true "-Dorg.graalvm.launcher.executablename=%executablename%""
 set "launcher_args=<launcher_args>"
 
 :: Check option-holding variables.
