@@ -831,7 +831,7 @@ public final class SuspendedEvent {
                             // we stop at eval root stack frames
                             return frameInstance;
                         }
-                        Node callNode = frameInstance.getCallNode();
+                        Node callNode = frameInstance.getInstrumentableCallNode();
                         if (callNode != null && !hasRootTag(callNode)) {
                             if (raw) {
                                 frameInstances.add(null);

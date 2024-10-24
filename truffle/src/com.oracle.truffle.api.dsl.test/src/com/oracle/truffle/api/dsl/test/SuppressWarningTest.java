@@ -55,7 +55,7 @@ public class SuppressWarningTest {
          * Suppress deprecated warning with deprecated.
          */
         @SuppressWarnings("deprecated")
-        @Specialization(guards = "deprecatedGuard(v)")
+        @Specialization(guards = {"deprecatedGuard(v)", "v == 0"})
         int s0(int v) {
             return v;
         }
@@ -64,7 +64,7 @@ public class SuppressWarningTest {
          * Suppress deprecated warning with all.
          */
         @SuppressWarnings("all")
-        @Specialization(guards = "deprecatedGuard(v)")
+        @Specialization(guards = {"deprecatedGuard(v)", "v == 1"})
         int s1(int v) {
             return v;
         }

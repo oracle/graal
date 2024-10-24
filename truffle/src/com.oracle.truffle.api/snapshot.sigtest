@@ -821,6 +821,7 @@ CLSS public final com.oracle.truffle.api.TruffleStackTraceElement
 meth public boolean hasBytecodeIndex()
 meth public com.oracle.truffle.api.RootCallTarget getTarget()
 meth public com.oracle.truffle.api.frame.Frame getFrame()
+meth public com.oracle.truffle.api.nodes.Node getInstrumentableLocation()
 meth public com.oracle.truffle.api.nodes.Node getLocation()
 meth public int getBytecodeIndex()
 meth public java.lang.Object getGuestObject()
@@ -845,6 +846,7 @@ CLSS public abstract interface com.oracle.truffle.api.frame.Frame
 meth public abstract com.oracle.truffle.api.frame.FrameDescriptor getFrameDescriptor()
 meth public abstract com.oracle.truffle.api.frame.MaterializedFrame materialize()
 meth public abstract java.lang.Object[] getArguments()
+meth public boolean expectBoolean(int) throws com.oracle.truffle.api.nodes.UnexpectedResultException
 meth public boolean getBoolean(int)
 meth public boolean getBooleanStatic(int)
 meth public boolean isBoolean(int)
@@ -855,19 +857,25 @@ meth public boolean isInt(int)
 meth public boolean isLong(int)
 meth public boolean isObject(int)
 meth public boolean isStatic(int)
+meth public byte expectByte(int) throws com.oracle.truffle.api.nodes.UnexpectedResultException
 meth public byte getByte(int)
 meth public byte getByteStatic(int)
 meth public byte getTag(int)
+meth public double expectDouble(int) throws com.oracle.truffle.api.nodes.UnexpectedResultException
 meth public double getDouble(int)
 meth public double getDoubleStatic(int)
+meth public float expectFloat(int) throws com.oracle.truffle.api.nodes.UnexpectedResultException
 meth public float getFloat(int)
 meth public float getFloatStatic(int)
+meth public int expectInt(int) throws com.oracle.truffle.api.nodes.UnexpectedResultException
 meth public int getInt(int)
 meth public int getIntStatic(int)
+meth public java.lang.Object expectObject(int) throws com.oracle.truffle.api.nodes.UnexpectedResultException
 meth public java.lang.Object getAuxiliarySlot(int)
 meth public java.lang.Object getObject(int)
 meth public java.lang.Object getObjectStatic(int)
 meth public java.lang.Object getValue(int)
+meth public long expectLong(int) throws com.oracle.truffle.api.nodes.UnexpectedResultException
 meth public long getLong(int)
 meth public long getLongStatic(int)
 meth public void clear(int)
@@ -878,6 +886,7 @@ meth public void copy(int,int)
 meth public void copyObjectStatic(int,int)
 meth public void copyPrimitiveStatic(int,int)
 meth public void copyStatic(int,int)
+meth public void copyTo(int,com.oracle.truffle.api.frame.Frame,int,int)
 meth public void setAuxiliarySlot(int,java.lang.Object)
 meth public void setBoolean(int,boolean)
 meth public void setBooleanStatic(int,boolean)
@@ -931,6 +940,38 @@ meth public int addSlots(int,com.oracle.truffle.api.frame.FrameSlotKind)
 supr java.lang.Object
 hfds DEFAULT_CAPACITY,defaultValue,descriptorInfo,infos,names,size,tags
 
+CLSS public abstract com.oracle.truffle.api.frame.FrameExtensions
+cons protected init()
+meth public abstract boolean expectBoolean(com.oracle.truffle.api.frame.Frame,int) throws com.oracle.truffle.api.nodes.UnexpectedResultException
+meth public abstract boolean getBoolean(com.oracle.truffle.api.frame.Frame,int)
+meth public abstract byte expectByte(com.oracle.truffle.api.frame.Frame,int) throws com.oracle.truffle.api.nodes.UnexpectedResultException
+meth public abstract byte getByte(com.oracle.truffle.api.frame.Frame,int)
+meth public abstract byte getTag(com.oracle.truffle.api.frame.Frame,int)
+meth public abstract double expectDouble(com.oracle.truffle.api.frame.Frame,int) throws com.oracle.truffle.api.nodes.UnexpectedResultException
+meth public abstract double getDouble(com.oracle.truffle.api.frame.Frame,int)
+meth public abstract float expectFloat(com.oracle.truffle.api.frame.Frame,int) throws com.oracle.truffle.api.nodes.UnexpectedResultException
+meth public abstract float getFloat(com.oracle.truffle.api.frame.Frame,int)
+meth public abstract int expectInt(com.oracle.truffle.api.frame.Frame,int) throws com.oracle.truffle.api.nodes.UnexpectedResultException
+meth public abstract int getInt(com.oracle.truffle.api.frame.Frame,int)
+meth public abstract java.lang.Object expectObject(com.oracle.truffle.api.frame.Frame,int) throws com.oracle.truffle.api.nodes.UnexpectedResultException
+meth public abstract java.lang.Object getObject(com.oracle.truffle.api.frame.Frame,int)
+meth public abstract java.lang.Object uncheckedGetObject(com.oracle.truffle.api.frame.Frame,int)
+meth public abstract long expectLong(com.oracle.truffle.api.frame.Frame,int) throws com.oracle.truffle.api.nodes.UnexpectedResultException
+meth public abstract long getLong(com.oracle.truffle.api.frame.Frame,int)
+meth public abstract void clear(com.oracle.truffle.api.frame.Frame,int)
+meth public abstract void copy(com.oracle.truffle.api.frame.Frame,int,int)
+meth public abstract void copyTo(com.oracle.truffle.api.frame.Frame,int,com.oracle.truffle.api.frame.Frame,int,int)
+meth public abstract void setBoolean(com.oracle.truffle.api.frame.Frame,int,boolean)
+meth public abstract void setByte(com.oracle.truffle.api.frame.Frame,int,byte)
+meth public abstract void setDouble(com.oracle.truffle.api.frame.Frame,int,double)
+meth public abstract void setFloat(com.oracle.truffle.api.frame.Frame,int,float)
+meth public abstract void setInt(com.oracle.truffle.api.frame.Frame,int,int)
+meth public abstract void setLong(com.oracle.truffle.api.frame.Frame,int,long)
+meth public abstract void setObject(com.oracle.truffle.api.frame.Frame,int,java.lang.Object)
+meth public final java.lang.Object getValue(com.oracle.truffle.api.frame.Frame,int)
+meth public final java.lang.Object requireObject(com.oracle.truffle.api.frame.Frame,int)
+supr java.lang.Object
+
 CLSS public abstract interface com.oracle.truffle.api.frame.FrameInstance
 innr public final static !enum FrameAccess
 meth public abstract boolean isVirtualFrame()
@@ -938,6 +979,7 @@ meth public abstract com.oracle.truffle.api.CallTarget getCallTarget()
 meth public abstract com.oracle.truffle.api.frame.Frame getFrame(com.oracle.truffle.api.frame.FrameInstance$FrameAccess)
 meth public abstract com.oracle.truffle.api.nodes.Node getCallNode()
 meth public boolean isCompilationRoot()
+meth public com.oracle.truffle.api.nodes.Node getInstrumentableCallNode()
 meth public int getBytecodeIndex()
 meth public int getCompilationTier()
 
@@ -1228,6 +1270,7 @@ intf com.oracle.truffle.api.nodes.NodeInterface
 intf java.lang.Cloneable
 meth protected final java.util.concurrent.locks.Lock getLock()
 meth protected final void notifyInserted(com.oracle.truffle.api.nodes.Node)
+meth protected final void reportReplace(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.nodes.Node,java.lang.CharSequence)
 meth protected void onReplace(com.oracle.truffle.api.nodes.Node,java.lang.CharSequence)
 meth public boolean isAdoptable()
 meth public com.oracle.truffle.api.nodes.Node copy()
@@ -1385,11 +1428,13 @@ meth protected boolean isSameFrame(com.oracle.truffle.api.frame.Frame,com.oracle
 meth protected boolean isTrivial()
 meth protected com.oracle.truffle.api.frame.FrameDescriptor getParentFrameDescriptor()
 meth protected com.oracle.truffle.api.nodes.ExecutionSignature prepareForAOT()
+meth protected com.oracle.truffle.api.nodes.Node findInstrumentableCallNode(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.Frame,int)
 meth protected com.oracle.truffle.api.nodes.RootNode cloneUninitialized()
 meth protected int computeSize()
 meth protected int findBytecodeIndex(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.Frame)
 meth protected java.lang.Object translateStackTraceElement(com.oracle.truffle.api.TruffleStackTraceElement)
 meth protected java.util.List<com.oracle.truffle.api.TruffleStackTraceElement> findAsynchronousFrames(com.oracle.truffle.api.frame.Frame)
+meth protected void prepareForInstrumentation(java.util.Set<java.lang.Class<?>>)
 meth public abstract java.lang.Object execute(com.oracle.truffle.api.frame.VirtualFrame)
 meth public boolean isCaptureFramesForTrace()
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")

@@ -1904,7 +1904,7 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
             c.initialize(ProxyLanguage.ID);
             ProxyLanguage proxyLanguage = ProxyLanguage.get(null);
             Env env = LanguageContext.get(null).getEnv();
-            TruffleInstrument.Env instrument = c.getEngine().getInstruments().get(ProxyInstrument.ID).lookup(ProxyInstrument.Initialize.class).getEnv();
+            TruffleInstrument.Env instrument = ProxyInstrument.findEnv(c);
             c.leave();
             CountDownLatch latch = new CountDownLatch(threads);
             Object targetEnter = env.getContext().enter(null);

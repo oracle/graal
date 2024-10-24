@@ -912,7 +912,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = {"slot == cachedSlot", "holder.isStaticStorage() == cachedIsStaticStorage", "holder.getKlass() == cachedKlass"}, limit = "LIMIT")
         static Field doCached(@SuppressWarnings("unused") StaticObject holder, @SuppressWarnings("unused") long slot,
-                        @SuppressWarnings("unused") @Bind("$node") Node node,
+                        @SuppressWarnings("unused") @Bind Node node,
                         @SuppressWarnings("unused") @Cached("slot") long cachedSlot,
                         @SuppressWarnings("unused") @Cached("holder.getKlass()") Klass cachedKlass,
                         @SuppressWarnings("unused") @Cached("holder.isStaticStorage()") boolean cachedIsStaticStorage,
@@ -922,7 +922,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(replaces = "doCached")
         static Field doGeneric(StaticObject holder, long slot,
-                        @Bind("$node") Node node) {
+                        @Bind Node node) {
             Meta meta = EspressoContext.get(node).getMeta();
             return resolveUnsafeAccessField(holder, slot, meta, EspressoLanguage.get(node));
         }
@@ -1058,7 +1058,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         static void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, byte value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -1099,7 +1099,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         static void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, StaticObject value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -1138,7 +1138,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         static void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, boolean value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -1177,7 +1177,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         static void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, char value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -1216,7 +1216,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         static void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, short value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -1255,7 +1255,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         static void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -1294,7 +1294,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         static void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, float value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -1333,7 +1333,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         static void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, double value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -1372,7 +1372,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         static void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -1417,7 +1417,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         static void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -1456,7 +1456,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         static void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -1498,7 +1498,7 @@ public final class Target_sun_misc_Unsafe {
         @Specialization(guards = "!isNullOrArray(holder)")
         static void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -1547,7 +1547,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         static byte doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -1591,7 +1591,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         static @JavaType(Object.class) StaticObject doField(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -1633,7 +1633,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         static boolean doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -1675,7 +1675,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         static char doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -1717,7 +1717,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         static short doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -1759,7 +1759,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         static int doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -1801,7 +1801,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         static float doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -1843,7 +1843,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         static double doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -1885,7 +1885,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         static long doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -1931,7 +1931,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         static byte doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -1976,7 +1976,7 @@ public final class Target_sun_misc_Unsafe {
         @Specialization(guards = "!isNullOrArray(holder)")
         @JavaType(Object.class)
         static StaticObject doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -2018,7 +2018,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         static boolean doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -2060,7 +2060,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         static char doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -2102,7 +2102,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         static short doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -2144,7 +2144,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         static int doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -2186,7 +2186,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         static float doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -2228,7 +2228,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         static double doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -2270,7 +2270,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         static long doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -2405,7 +2405,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         static void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, byte value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -2447,7 +2447,7 @@ public final class Target_sun_misc_Unsafe {
         @Specialization(guards = "!isNullOrArray(holder)")
         static void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -2486,7 +2486,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         static void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, boolean value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -2525,7 +2525,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         static void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, char value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -2564,7 +2564,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         static void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, short value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -2603,7 +2603,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         static void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -2642,7 +2642,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         static void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, float value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -2681,7 +2681,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         static void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, double value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -2720,7 +2720,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         static void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -2766,7 +2766,7 @@ public final class Target_sun_misc_Unsafe {
         @Specialization(guards = "!isNullOrArray(holder)")
         static boolean doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject before, @JavaType(Object.class) StaticObject after,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -2808,7 +2808,7 @@ public final class Target_sun_misc_Unsafe {
         @Specialization(guards = "!isNullOrArray(holder)")
         static boolean doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         int before, int after,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -2858,7 +2858,7 @@ public final class Target_sun_misc_Unsafe {
         @Specialization(guards = "!isNullOrArray(holder)")
         static boolean doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         long before, long after,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -2927,7 +2927,7 @@ public final class Target_sun_misc_Unsafe {
         @JavaType(Object.class)
         static StaticObject doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject before, @JavaType(Object.class) StaticObject after,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -2974,7 +2974,7 @@ public final class Target_sun_misc_Unsafe {
         @Specialization(guards = "!isNullOrArray(holder)")
         static int doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         int before, int after,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -3024,7 +3024,7 @@ public final class Target_sun_misc_Unsafe {
         @Specialization(guards = "!isNullOrArray(holder)")
         static byte doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         byte before, byte after,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -3074,7 +3074,7 @@ public final class Target_sun_misc_Unsafe {
         @Specialization(guards = "!isNullOrArray(holder)")
         static short doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         short before, short after,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -3124,7 +3124,7 @@ public final class Target_sun_misc_Unsafe {
         @Specialization(guards = "!isNullOrArray(holder)")
         static long doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         long before, long after,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);
@@ -3181,7 +3181,7 @@ public final class Target_sun_misc_Unsafe {
         @JavaType(Unsafe.class)
         static StaticObject doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetFieldFromIndexNode getField,
                         @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(node, holder, offset);

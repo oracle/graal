@@ -336,7 +336,7 @@ public class NodeInliningBenchmark extends TruffleBenchmark {
         @CompilerControl(Mode.DONT_INLINE)
         @SuppressWarnings("unused")
         static long do0(@SuppressWarnings("unused") long v0, long v1, long v2, long v3,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached("v0") long cachedV0,
                         @Shared @Cached InlinedAddAbsNode add0,
                         @Cached InlinedAddAbsNode add1,
@@ -352,7 +352,7 @@ public class NodeInliningBenchmark extends TruffleBenchmark {
         @CompilerControl(Mode.DONT_INLINE)
         @SuppressWarnings("unused")
         static long do1(long v0, long v1, long v2, long v3,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached("v0") long cachedV0,
                         @Shared @Cached InlinedAddAbsNode add0,
                         @Cached InlinedAddAbsNode add1,

@@ -11,6 +11,18 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * PR-8266  Allow control of `throwDeniedThreadAccess` via `TruffleContext.threadAccessDeniedHandler`
 * GR-57817 Java Native access for [JEP-472](https://openjdk.org/jeps/472) is now automatically provided for all languages and tools by Truffle. For more information, refer to the [GraalVM SDK Changelog](https://github.com/oracle/graal/blob/master/sdk/CHANGELOG.md).
 
+* GR-54760 `RootNode.translateStackTraceElement()` is now always consulted for polyglot and debugger stack traces. Stack traces now use the source section, the executable name, the name of the declared meta-object to build `StackTraceElement` instances.
+* GR-32682 Added [Bytecode DSL](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/bytecode/package-summary.html), a new framework for implementing bytecode interpreters. Bytecode DSL automatically generates a complete bytecode interpreter from a set of user-specified operations. The generated interpreter defines all the necessary components of a bytecode interpreter, including an instruction set, a bytecode generator, and an optimizing interpreter. Bytecode DSL interpreters are designed to improve footprint and interpreter speed over AST interpreters without compromising peak performance. Bytecode DSL interpreters support a variety of features, including tiered interpretation, bytecode quickening and boxing elimination, continuations, and serialization. They also integrate with existing Truffle tooling  for instrumentation and debugging. Please see the [Introduction to Bytecode DSL](docs/bytecode_dsl/BytecodeDSL.md) to get started, or consult the [User guide](docs/bytecode_dsl/UserGuide.md) for more information.
+* GR-32682 Added `@Bind.DefaultExpression` annotation. Default expressions allow you to omit an explicit expression when declaring a `@Bind` parameter (the default expression for the parameter's type is used).
+* GR-32682 Added `RootNode.findInstrumentableCallNode(...)` that allows to resolve the instrumentation location given a call node, frame and bytecode index. This allows to store instrumentable nodes in a side data structure for bytecode interpreters. Also added `TruffleStackTraceElement.getInstrumentableLocation()` and `FrameInstance.getInstrumentableCallNode()` to access the resolved locations. Tools using the Truffle instrumentation framework are encouraged to use these APIs instead for accessing node locations.
+* GR-32682 The method `Node.reportReplace(...)` is now accessible to subclasses which allows to report replaces without performing a replace. Reporting a replace can be used to invalidate the optimized code of nodes compiled as part of other root nodes.
+* GR-32682 Added `RootNode.prepareForInstrumentation(...)` which allows language to get notified when new tags are materialized in the instrumentation framework. This allows to materialize instrumentable nodes contained in a root node lazily as this method is called prior to any instrumentation.
+* GR-32682 Added `Frame.expect{Type}` methods to Truffle frames. These methods allows to speculatively read a tagged value from a frame and receive an `UnexpectedResultException` if the tag does not match.
+* GR-32682 Added `Frame.copyTo(...)` method to the frame for efficient copying from one frame to the other.
+* GR-32682 Added `AbstractTruffleException.getEncapsulatingSourceSection()` method to the base guest exception method to access the top-most source section of the exception. 
+* GR-32682 Added `InstrumentableNode.findProbe()` to specify how an instrumentable node finds its associated probe. This is useful for bytecode interpreters to store the probe nodes in a separate data structure without associated wrapper nodes.
+* GR-32682 Added `InstrumentableNode.createProbe(SourceSection)` method, which allows to create eager probe nodes for an instrumentable node. Eager probes do not wait for a probe to be inserted and for example all probes for statements can be inserted in a batch. Eager probes are typically used in combination with overriding the `InstrumentableNode.findProbe()` method.
+* GR-32682 Added detection of boxing overloads to support state sharing and better boxing elimination. See `Specialization#rewriteOn` for details. 
 
 ## Version 24.1.0
 * GR-43839 Added optional parameter to TruffleString.ByteIndexOfCodePointSetNode to choose whether the node may calculate the input string's precise code range.
@@ -39,6 +51,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-53454 Added warning in the annotation processor when `@ReportPolymorphism` is used incorrectly.
 * GR-54516 The `Future` returned by submitting `ThreadLocalAction` now throws `CancellationException` on `Future#get()` when the future is cancelled, as it should per `Future` interface semantics.
 * GR-54516 Synchronous `ThreadLocalAction`s which wait longer than `--engine.SynchronousThreadLocalActionMaxWait` (default 60) seconds for all threads to start executing that action now show a warning and are automatically cancelled to prevent applications to hang.
+* GR-49484 Deprecated `RootNode.isCaptureFramesForTrace()`. Implementers should use `RootNode.isCaptureFramesForTrace(Node)` instead.
+* GR-52145 Added `InstrumentableNode#findProbe` and `InstrumentableNode.createProbe` to allow customization of probe storage, e.g. eager insertion of probes without wrappers.
 
 ## Version 24.0.0
 

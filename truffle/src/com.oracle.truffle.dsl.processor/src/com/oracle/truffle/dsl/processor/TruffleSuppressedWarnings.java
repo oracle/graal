@@ -60,6 +60,7 @@ public final class TruffleSuppressedWarnings {
     public static final String ALL = "all";
     public static final String TRUFFLE = "truffle";
     public static final String STATIC_METHOD = "truffle-static-method";
+    public static final String UNEXPECTED_RESULT_REWRITE = "truffle-unexpected-result-rewrite";
     public static final String LIMIT = "truffle-limit";
     public static final String UNUSED = "truffle-unused";
     public static final String NEVERDEFAULT = "truffle-neverdefault";

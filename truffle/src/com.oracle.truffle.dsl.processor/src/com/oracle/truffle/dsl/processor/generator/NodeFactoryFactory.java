@@ -199,7 +199,7 @@ public class NodeFactoryFactory {
     }
 
     private CodeExecutableElement createCreateNodeMethod() {
-        CodeExecutableElement method = GeneratorUtils.override(types.NodeFactory, "createNode", "arguments");
+        CodeExecutableElement method = GeneratorUtils.override(types.NodeFactory, "createNode", new String[]{"arguments"});
         method.setReturnType(node.getNodeType());
         method.getModifiers().remove(Modifier.ABSTRACT);
 

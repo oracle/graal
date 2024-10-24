@@ -365,7 +365,7 @@ meth public void prepareUnwindFrame(com.oracle.truffle.api.debug.DebugStackFrame
 meth public void prepareUnwindFrame(com.oracle.truffle.api.debug.DebugStackFrame,com.oracle.truffle.api.debug.DebugValue)
 meth public void setReturnValue(com.oracle.truffle.api.debug.DebugValue)
 supr java.lang.Object
-hfds HOST_INTEROP_NODE_NAME,breakpoints,cachedAsyncFrames,cachedFrames,conditionFailures,context,disposed,exception,inputValuesProvider,insertableNode,materializedFrame,nextStrategy,returnValue,session,sourceSection,suspendAnchor,thread
+hfds HOST_INTEROP_NODE_NAME,breakpoints,cachedAsyncFrames,cachedFrames,conditionFailures,context,disposed,exception,inputValuesProvider,insertableNode,isUnwind,materializedFrame,nextStrategy,returnValue,session,singleStepCompleted,sourceSection,suspendAnchor,thread
 hcls DebugAsyncStackFrameLists,DebugStackFrameIterable
 
 CLSS public final com.oracle.truffle.api.debug.SuspensionFilter

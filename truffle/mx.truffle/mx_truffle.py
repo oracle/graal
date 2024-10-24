@@ -106,6 +106,7 @@ def javadoc(args, vm=None):
         'org.graalvm.polyglot',
         'com.oracle.svm.core.annotate',
         'com.oracle.truffle.api',
+        'com.oracle.truffle.api.bytecode',
         'com.oracle.truffle.api.dsl',
         'com.oracle.truffle.api.profiles',
         'com.oracle.truffle.api.utilities',
@@ -1187,13 +1188,14 @@ def create_dsl_parser(args=None, out=None):
 
 def create_sl_parser(args=None, out=None):
     """create the SimpleLanguage parser using antlr"""
-    create_parser("com.oracle.truffle.sl", "com.oracle.truffle.sl.parser", "SimpleLanguage", None, args, out)
+    create_parser("com.oracle.truffle.sl", "com.oracle.truffle.sl.parser", "SimpleLanguage", args=args, out=out, generate_visitor=True)
 
-def create_parser(grammar_project, grammar_package, grammar_name, copyright_template=None, args=None, out=None, postprocess=None, shaded=False):
+def create_parser(grammar_project, grammar_package, grammar_name, copyright_template=None, args=None, out=None, postprocess=None, generate_visitor=False, shaded=False):
     """create the DSL expression parser using antlr"""
     grammar_dir = os.path.join(mx.project(grammar_project).source_dirs()[0], *grammar_package.split(".")) + os.path.sep
     g4_filename = grammar_dir + grammar_name + ".g4"
-    mx.run_java(mx.get_runtime_jvm_args(['ANTLR4_COMPLETE']) + ["org.antlr.v4.Tool", "-package", grammar_package, "-no-listener"] + args + [g4_filename], out=out)
+    visitor_arg = "-visitor" if generate_visitor else "-no-visitor"
+    mx.run_java(mx.get_runtime_jvm_args(['ANTLR4_COMPLETE']) + ["org.antlr.v4.Tool", "-package", grammar_package, visitor_arg, "-no-listener"] + args + [g4_filename], out=out)
 
     if copyright_template is None:
         # extract copyright header from .g4 file
@@ -1208,7 +1210,12 @@ def create_parser(grammar_project, grammar_package, grammar_name, copyright_temp
         copyright_header += '//@formatter:off\n'
         copyright_template = copyright_header + '{0}\n'
 
-    for filename in [grammar_dir + grammar_name + "Lexer.java", grammar_dir + grammar_name + "Parser.java"]:
+    generated_files = [grammar_dir + grammar_name + "Lexer.java", grammar_dir + grammar_name + "Parser.java"]
+    if generate_visitor:
+        generated_files.append(grammar_dir + grammar_name + "BaseVisitor.java")
+        generated_files.append(grammar_dir + grammar_name + "Visitor.java")
+
+    for filename in generated_files:
         with open(filename, 'r') as content_file:
             content = content_file.read()
         # remove first line
