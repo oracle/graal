@@ -85,7 +85,6 @@
 
   test:: s.base(no_warning_as_error=true),
   test_zgc:: s.base(no_warning_as_error=true, extra_vm_args="-XX:+UseZGC"),
-  test_singlegen_zgc:: s.base(no_warning_as_error=true, extra_vm_args="-XX:+UseZGC -XX:-ZGenerational"),
   test_serialgc:: s.base(no_warning_as_error=true, extra_vm_args="-XX:+UseSerialGC"),
 
 
@@ -136,18 +135,6 @@
       components+: ["truffle"],
     },
 
-  truffle_xcomp_singlegen_zgc:: s.base("build,unittest",
-    extra_vm_args="-Dpolyglot.engine.AllowExperimentalOptions=true " +
-                  "-Dpolyglot.engine.CompileImmediately=true " +
-                  "-Dpolyglot.engine.BackgroundCompilation=false " +
-                  "-Dtck.inlineVerifierInstrument=false " +
-                  "-XX:+UseZGC -XX:-ZGenerational",
-    extra_unittest_args="--verbose truffle") + {
-      environment+: {"TRACE_COMPILATION": "true"},
-      logs+: ["*/*_compilation.log"],
-      components+: ["truffle"],
-    },
-
   truffle_xcomp_serialgc:: s.base("build,unittest",
     extra_vm_args="-Dpolyglot.engine.AllowExperimentalOptions=true " +
                   "-Dpolyglot.engine.CompileImmediately=true " +
@@ -162,7 +149,6 @@
 
   ctw:: s.base("build,ctw", no_warning_as_error=true),
   ctw_zgc:: s.base("build,ctw", no_warning_as_error=true, extra_vm_args="-XX:+UseZGC"),
-  ctw_singlegen_zgc:: s.base("build,ctw", no_warning_as_error=true, extra_vm_args="-XX:+UseZGC -XX:-ZGenerational"),
 
   ctw_economy:: s.base("build,ctweconomy", extra_vm_args="-Djdk.graal.CompilerConfiguration=economy"),
   ctw_phaseplan_fuzzing:: s.base("build,ctwphaseplanfuzzing"),
@@ -170,13 +156,11 @@
   # Runs some benchmarks as tests
   benchmarktest:: s.base("build,benchmarktest") + jmh_benchmark_test,
   benchmarktest_zgc:: s.base("build,benchmarktest", extra_vm_args="-XX:+UseZGC") + jmh_benchmark_test,
-  benchmarktest_singlegen_zgc:: s.base("build,benchmarktest", extra_vm_args="-XX:+UseZGC -XX:-ZGenerational") + jmh_benchmark_test,
 
   bootstrap:: s.base("build,bootstrap", no_warning_as_error=true),
   bootstrap_lite:: s.base("build,bootstraplite", no_warning_as_error=true),
   bootstrap_full:: s.base("build,bootstrapfullverify", no_warning_as_error=true),
   bootstrap_full_zgc:: s.base("build,bootstrapfullverify", no_warning_as_error=true, extra_vm_args="-XX:+UseZGC"),
-  bootstrap_full_singlegen_zgc:: s.base("build,bootstrapfullverify", no_warning_as_error=true, extra_vm_args="-XX:+UseZGC -XX:-ZGenerational"),
   bootstrap_economy:: s.base("build,bootstrapeconomy", no_warning_as_error=true, extra_vm_args="-Djdk.graal.CompilerConfiguration=economy"),
 
   style:: c.deps.eclipse + c.deps.jdt + s.base("style,fullbuild,javadoc") + galahad.exclude,
@@ -471,11 +455,6 @@
         "ctw_zgc",
         "benchmarktest_zgc",
         "bootstrap_full_zgc",
-        "test_singlegen_zgc",
-        "truffle_xcomp_singlegen_zgc",
-        "ctw_singlegen_zgc",
-        "benchmarktest_singlegen_zgc",
-        "bootstrap_full_singlegen_zgc",
       ]
     ],
 

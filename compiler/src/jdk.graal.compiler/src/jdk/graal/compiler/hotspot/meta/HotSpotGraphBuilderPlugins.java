@@ -265,7 +265,7 @@ public class HotSpotGraphBuilderPlugins {
                 registerArrayPlugins(invocationPlugins, replacements, config);
                 registerStringPlugins(invocationPlugins, replacements, wordTypes, foreignCalls, config);
                 registerArraysSupportPlugins(invocationPlugins, replacements, target.arch);
-                registerReferencePlugins(invocationPlugins, config, replacements);
+                registerReferencePlugins(invocationPlugins, replacements);
                 registerTrufflePlugins(invocationPlugins, wordTypes, config);
                 registerInstrumentationImplPlugins(invocationPlugins, config, replacements);
                 for (HotSpotInvocationPluginProvider p : GraalServices.load(HotSpotInvocationPluginProvider.class)) {
@@ -1365,7 +1365,7 @@ public class HotSpotGraphBuilderPlugins {
         });
     }
 
-    private static void registerReferencePlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
+    private static void registerReferencePlugins(InvocationPlugins plugins, Replacements replacements) {
         Registration r = new Registration(plugins, Reference.class, replacements);
         r.register(new ReachabilityFencePlugin() {
             @Override
@@ -1385,7 +1385,7 @@ public class HotSpotGraphBuilderPlugins {
                 return true;
             }
         });
-        if (JavaVersionUtil.JAVA_SPEC >= 24 && !config.useXGC()) {
+        if (JavaVersionUtil.JAVA_SPEC >= 24) {
             r.register(new InlineOnlyInvocationPlugin("clear0", Receiver.class) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
@@ -1415,7 +1415,7 @@ public class HotSpotGraphBuilderPlugins {
                 return true;
             }
         });
-        if (JavaVersionUtil.JAVA_SPEC >= 24 && !config.useXGC()) {
+        if (JavaVersionUtil.JAVA_SPEC >= 24) {
             r.register(new InlineOnlyInvocationPlugin("clear0", Receiver.class) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
