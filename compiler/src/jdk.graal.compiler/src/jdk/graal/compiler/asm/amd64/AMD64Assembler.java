@@ -782,6 +782,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final SSEOp MUL       = new SSEOp("MUL",             P_0F, 0x59, PreferredNDS.DST);
         public static final SSEOp CVTSS2SD  = new SSEOp("CVTSS2SD",        P_0F, 0x5A, PreferredNDS.SRC,  OpAssertion.SingleAssertion);
         public static final SSEOp CVTSD2SS  = new SSEOp("CVTSD2SS",        P_0F, 0x5A, PreferredNDS.SRC,  OpAssertion.DoubleAssertion);
+        public static final SSEOp CVTSD2SI  = new SSEOp("CVTSD2SI",  0XF2, P_0F, 0x2D, PreferredNDS.NONE,  OpAssertion.FloatToIntAssertion);
         public static final SSEOp SUB       = new SSEOp("SUB",             P_0F, 0x5C, PreferredNDS.DST);
         public static final SSEOp MIN       = new SSEOp("MIN",             P_0F, 0x5D, PreferredNDS.DST);
         public static final SSEOp DIV       = new SSEOp("DIV",             P_0F, 0x5E, PreferredNDS.DST);
@@ -3135,6 +3136,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         SSEOp.AND.emit(this, OperandSize.PD, dst, src);
     }
 
+    public final void andnpd(Register dst, Register src) {
+        SSEOp.ANDN.emit(this, OperandSize.PD, dst, src);
+    }
+
     public final void bsfq(Register dst, Register src) {
         prefixq(dst, src);
         emitByte(0x0F);
@@ -3259,6 +3264,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     public final void cvttsd2sil(Register dst, Register src) {
         SSEOp.CVTTSD2SI.emit(this, OperandSize.DWORD, dst, src);
+    }
+
+    public final void cvtsd2siq(Register dst, Register src) {
+        SSEOp.CVTSD2SI.emit(this, OperandSize.QWORD, dst, src);
     }
 
     public final void decl(AMD64Address dst) {
@@ -3774,10 +3783,18 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void movq(Register dst, Register src) {
-        assert inRC(CPU, dst) && inRC(CPU, src) : src + " " + dst;
-        prefixq(dst, src);
-        emitByte(0x8B);
-        emitModRM(dst, src);
+        if (inRC(XMM, dst) && inRC(XMM, src)) {
+            // Insn: MOVQ xmm1, xmm2
+            // Code: F3 0F 7E /r
+            simdPrefix(dst, Register.None, src, OperandSize.SS, P_0F, false);
+            emitByte(0x7E);
+            emitModRM(dst, src);
+        } else {
+            assert inRC(CPU, dst) && inRC(CPU, src) : src + " " + dst;
+            prefixq(dst, src);
+            emitByte(0x8B);
+            emitModRM(dst, src);
+        }
     }
 
     public final void movq(AMD64Address dst, Register src) {

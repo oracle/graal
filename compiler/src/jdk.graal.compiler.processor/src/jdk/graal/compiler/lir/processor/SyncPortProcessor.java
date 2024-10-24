@@ -200,12 +200,14 @@ public class SyncPortProcessor extends AbstractProcessor {
                                  New SyncPort? Then:
                                 @SyncPort(from = "https://github.com/openjdk/jdk/blob/%s/%s#L%d-L%d",
                                           sha1 = "%s")
+                                %s
                                 """,
                                 getLatestCommit(proxy),
                                 path,
                                 lineStart,
                                 lineEnd,
-                                sha1Latest);
+                                sha1Latest,
+                                sha1Old);
             }
             env().getMessager().printMessage(kind,
                             String.format("Sha1 digest of %s (ported by %s) does not match %s%s#L%d-L%d : expected %s but was %s.%s",

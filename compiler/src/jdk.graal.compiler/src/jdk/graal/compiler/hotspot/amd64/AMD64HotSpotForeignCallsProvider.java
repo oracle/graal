@@ -39,6 +39,7 @@ import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.Unary
 import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.LOG10;
 import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.SIN;
 import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.TAN;
+import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.TANH;
 import static jdk.vm.ci.amd64.AMD64.rax;
 import static jdk.vm.ci.amd64.AMD64.rdx;
 import static jdk.vm.ci.meta.Value.ILLEGAL;
@@ -102,6 +103,7 @@ public class AMD64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
             link(new AMD64MathStub(SIN, options, providers, registerStubCall(SIN.foreignCallSignature, LEAF, NO_SIDE_EFFECT, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
             link(new AMD64MathStub(COS, options, providers, registerStubCall(COS.foreignCallSignature, LEAF, NO_SIDE_EFFECT, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
             link(new AMD64MathStub(TAN, options, providers, registerStubCall(TAN.foreignCallSignature, LEAF, NO_SIDE_EFFECT, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
+            link(new AMD64MathStub(TANH, options, providers, registerStubCall(TANH.foreignCallSignature, LEAF, NO_SIDE_EFFECT, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
             link(new AMD64MathStub(EXP, options, providers, registerStubCall(EXP.foreignCallSignature, LEAF, NO_SIDE_EFFECT, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
             link(new AMD64MathStub(LOG, options, providers, registerStubCall(LOG.foreignCallSignature, LEAF, NO_SIDE_EFFECT, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
             link(new AMD64MathStub(LOG10, options, providers, registerStubCall(LOG10.foreignCallSignature, LEAF, NO_SIDE_EFFECT, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
