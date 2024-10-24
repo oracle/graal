@@ -47,17 +47,33 @@ public final class ThreadJob<T> {
         return thread;
     }
 
-    public byte getSuspensionStrategy() {
-        return suspensionStrategy;
-    }
-
-    public void runJob() {
+    public void runJob(DebuggerController controller) {
+        Object[] visibleGuestThreads = controller.getVisibleGuestThreads();
         result = new JobResult<>();
         try {
+            if (suspensionStrategy == SuspendStrategy.ALL) {
+                controller.getIds().unpinAll();
+                // resume all other threads during invocation of method to avoid potential deadlocks
+                for (Object activeThread : visibleGuestThreads) {
+                    if (activeThread != thread) {
+                        controller.resume(activeThread);
+                    }
+                }
+            }
+            // perform the job on this thread
             result.setResult(callable.call());
         } catch (Throwable e) {
             result.setException(e);
         } finally {
+            if (suspensionStrategy == SuspendStrategy.ALL) {
+                controller.getIds().pinAll();
+                // suspend all other threads after the invocation
+                for (Object activeThread : visibleGuestThreads) {
+                    if (activeThread != thread) {
+                        controller.suspend(activeThread);
+                    }
+                }
+            }
             resultAvailable = true;
             synchronized (jobLock) {
                 jobLock.notifyAll();

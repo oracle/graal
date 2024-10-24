@@ -3247,6 +3247,10 @@ public final class JDWP {
 
     private static Object verifyString(long objectId, PacketStream reply, JDWPContext context) {
         Object string = context.getIds().fromId((int) objectId);
+        if (string == null) {
+            reply.errorCode(ErrorCodes.INVALID_OBJECT);
+            return null;
+        }
 
         if (!context.isString(string)) {
             reply.errorCode(ErrorCodes.INVALID_STRING);
