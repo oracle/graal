@@ -2317,6 +2317,23 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
                 return '-J--add-exports=jdk.internal.vm.ci/jdk.vm.ci.code=jdk.graal.compiler'
             return ''
 
+        def _has_truffle_runtime_svm_component():
+            """
+            Returns whether the Truffle Runtime SVM component is part of the final GraalVM distribution.
+            """
+            if mx.suite('substratevm', fatalIfMissing=False) is not None:
+                try:
+                    import mx_substratevm
+                except ModuleNotFoundError:
+                    return False
+                return has_component(mx_substratevm.truffle_runtime_svm.short_name)
+            return False
+
+        def _get_jvm_args():
+            if _has_truffle_runtime_svm_component():
+                return '--enable-native-access=org.graalvm.truffle'
+            return ''
+
         def _get_add_exports():
             return ' '.join(self.subject.native_image_config.get_add_exports(_known_missing_jars))
 
@@ -2332,6 +2349,7 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
         _template_subst.register_no_arg('macro_name', GraalVmNativeProperties.macro_name(self.subject.native_image_config))
         _template_subst.register_no_arg('option_vars', _get_option_vars)
         _template_subst.register_no_arg('launcher_args', _get_launcher_args)
+        _template_subst.register_no_arg('jvm_args', _get_jvm_args)
 
         if mx.is_windows():
             add_exports_argfile = output_file[:-len('cmd')] + 'export-list'
