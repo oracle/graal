@@ -23,7 +23,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.genscavenge;
+package com.oracle.svm.core.gc;
 
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryPoolMXBean;
@@ -66,18 +66,28 @@ public abstract class AbstractMemoryPoolMXBean extends AbstractMXBean implements
         return initialValue;
     }
 
-    abstract UnsignedWord computeInitialValue();
+    public abstract UnsignedWord getUsedBytes();
 
-    abstract void beforeCollection();
-
-    abstract void afterCollection();
-
-    MemoryUsage memoryUsage(UnsignedWord usedAndCommitted) {
-        return new MemoryUsage(getInitialValue().rawValue(), usedAndCommitted.rawValue(), usedAndCommitted.rawValue(), getMaximumValue().rawValue());
+    public UnsignedWord getCommittedBytes() {
+        return getUsedBytes();
     }
 
-    MemoryUsage memoryUsage(UnsignedWord used, UnsignedWord committed) {
-        return new MemoryUsage(getInitialValue().rawValue(), used.rawValue(), committed.rawValue(), getMaximumValue().rawValue());
+    protected abstract UnsignedWord computeInitialValue();
+
+    public abstract void beforeCollection();
+
+    public abstract void afterCollection();
+
+    protected MemoryUsage memoryUsage(UnsignedWord usedAndCommitted) {
+        return memoryUsage(usedAndCommitted, usedAndCommitted);
+    }
+
+    protected MemoryUsage memoryUsage(UnsignedWord used, UnsignedWord committed) {
+        return memoryUsage(used.rawValue(), committed.rawValue());
+    }
+
+    public MemoryUsage memoryUsage(long used, long committed) {
+        return new MemoryUsage(getInitialValue().rawValue(), used, committed, getMaximumValue().rawValue());
     }
 
     @Override
@@ -160,7 +170,7 @@ public abstract class AbstractMemoryPoolMXBean extends AbstractMXBean implements
         peakUsage.set(WordFactory.zero());
     }
 
-    void updatePeakUsage(UnsignedWord value) {
+    protected void updatePeakUsage(UnsignedWord value) {
         UnsignedWord current;
         do {
             current = peakUsage.get();
