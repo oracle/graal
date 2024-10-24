@@ -725,7 +725,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             return allocationSite.createCounter(counterName);
         }
 
-        private static boolean shouldOutlineAllocation(StructuredGraph graph) {
+        private static boolean shouldForceSlowPath(StructuredGraph graph) {
             return GraalOptions.ReduceCodeSize.getValue(graph.getOptions());
         }
 
@@ -746,7 +746,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 Arguments args = new Arguments(allocateInstance, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", hubConstant);
                 args.addConst("size", size);
-                args.addConst("forceSlowPath", shouldOutlineAllocation(graph));
+                args.addConst("forceSlowPath", shouldForceSlowPath(graph));
                 args.addConst("fillContents", FillContent.fromBoolean(node.fillContents()));
                 args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
                 args.addConst("profilingData", getProfilingData(node, type));
@@ -772,7 +772,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 Arguments args = new Arguments(allocateInstance, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", hubConstant);
                 args.addConst("size", size);
-                args.addConst("forceSlowPath", shouldOutlineAllocation(graph));
+                args.addConst("forceSlowPath", shouldForceSlowPath(graph));
                 args.addConst("fillContents", FillContent.fromBoolean(true));
                 args.addConst("emitMemoryBarrier", true);
                 args.addConst("profilingData", getProfilingData(node, type));
@@ -804,7 +804,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 Arguments args = new Arguments(allocateArray, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", hubConstant);
                 args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
-                args.addConst("forceSlowPath", shouldOutlineAllocation(graph));
+                args.addConst("forceSlowPath", shouldForceSlowPath(graph));
                 args.addConst("arrayBaseOffset", arrayBaseOffset);
                 args.addConst("log2ElementSize", log2ElementSize);
                 args.addConst("fillContents", FillContent.fromBoolean(fillContents));
@@ -839,7 +839,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 Arguments args = new Arguments(allocateStoredContinuation, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", hubConstant);
                 args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
-                args.addConst("forceSlowPath", shouldOutlineAllocation(graph));
+                args.addConst("forceSlowPath", shouldForceSlowPath(graph));
                 args.addConst("arrayBaseOffset", arrayBaseOffset);
                 args.addConst("log2ElementSize", log2ElementSize);
                 args.addConst("ipOffset", ContinuationSupport.singleton().getIPOffset());
@@ -869,7 +869,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 Arguments args = new Arguments(allocateArray, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", hubConstant);
                 args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
-                args.addConst("forceSlowPath", shouldOutlineAllocation(graph));
+                args.addConst("forceSlowPath", shouldForceSlowPath(graph));
                 args.addConst("arrayBaseOffset", arrayBaseOffset);
                 args.addConst("log2ElementSize", log2ElementSize);
                 args.addConst("fillContents", FillContent.fromBoolean(node.fillContents()));
@@ -904,7 +904,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 Arguments args = new Arguments(allocateArray, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", hubConstant);
                 args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
-                args.addConst("forceSlowPath", shouldOutlineAllocation(graph));
+                args.addConst("forceSlowPath", shouldForceSlowPath(graph));
                 args.addConst("arrayBaseOffset", arrayBaseOffset);
                 args.addConst("log2ElementSize", log2ElementSize);
                 args.addConst("fillContents", FillContent.fromBoolean(node.fillContents()));
@@ -983,7 +983,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
                 Arguments args = new Arguments(allocateInstanceDynamic, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", node.getInstanceType());
-                args.addConst("forceSlowPath", shouldOutlineAllocation(graph));
+                args.addConst("forceSlowPath", shouldForceSlowPath(graph));
                 args.addConst("fillContents", FillContent.fromBoolean(node.fillContents()));
                 args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
                 args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
@@ -1005,7 +1005,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
                 Arguments args = new Arguments(allocateInstanceDynamic, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", node.getInstanceType());
-                args.addConst("forceSlowPath", shouldOutlineAllocation(graph));
+                args.addConst("forceSlowPath", shouldForceSlowPath(graph));
                 args.addConst("fillContents", FillContent.fromBoolean(true));
                 args.addConst("emitMemoryBarrier", true/* barriers */);
                 args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
@@ -1028,7 +1028,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 Arguments args = new Arguments(allocateArrayDynamic, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("elementType", node.getElementType());
                 args.add("length", node.length());
-                args.addConst("forceSlowPath", shouldOutlineAllocation(graph));
+                args.addConst("forceSlowPath", shouldForceSlowPath(graph));
                 args.addConst("fillContents", FillContent.fromBoolean(node.fillContents()));
                 args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
                 args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
@@ -1051,7 +1051,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 Arguments args = new Arguments(allocateArrayDynamic, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("elementType", node.getElementType());
                 args.add("length", node.length());
-                args.addConst("forceSlowPath", shouldOutlineAllocation(graph));
+                args.addConst("forceSlowPath", shouldForceSlowPath(graph));
                 args.addConst("fillContents", FillContent.fromBoolean(true));
                 args.addConst("emitMemoryBarrier", true/* barriers */);
                 args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
@@ -1090,7 +1090,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 Arguments args = new Arguments(allocatePod, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", node.getHub());
                 args.add("arrayLength", node.getArrayLength());
-                args.addConst("forceSlowPath", shouldOutlineAllocation(graph));
+                args.addConst("forceSlowPath", shouldForceSlowPath(graph));
                 args.add("referenceMap", node.getReferenceMap());
                 args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
                 args.addConst("maybeUnroll", node.getArrayLength().isConstant());
