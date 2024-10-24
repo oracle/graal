@@ -108,6 +108,9 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     static final AtomicReferenceFieldUpdater<AnalysisType, Object> overrideableMethodsUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisType.class, Object.class, "overrideableMethods");
 
+    private static final AtomicReferenceFieldUpdater<AnalysisType, Object> trackAcrossLayersUpdater = AtomicReferenceFieldUpdater
+                    .newUpdater(AnalysisType.class, Object.class, "trackAcrossLayers");
+
     protected final AnalysisUniverse universe;
     private final ResolvedJavaType wrapped;
     private final String qualifiedName;
@@ -217,6 +220,12 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      * class file and therefore not in the list of declared methods.
      */
     @SuppressWarnings("unused") private volatile Object overrideableMethods;
+
+    /**
+     * See {@link AnalysisElement#isTrackedAcrossLayers} for explanation.
+     */
+    @SuppressWarnings("unused") private volatile Object trackAcrossLayers;
+    private final boolean enableTrackAcrossLayers;
 
     @SuppressWarnings("this-escape")
     public AnalysisType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType, AnalysisType cloneableType) {
@@ -343,6 +352,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
             AnalysisError.guarantee(universe.getHeapScanner() != null, "Heap scanner is not available.");
             return universe.getHeapScanner().computeTypeData(this);
         });
+
+        this.enableTrackAcrossLayers = universe.hostVM.enableTrackAcrossLayers();
     }
 
     private AnalysisType[] convertTypes(ResolvedJavaType[] originalTypes) {
@@ -592,14 +603,18 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
              * that the onReachable hook for all supertypes is already finished, because they can
              * still be running in another thread.
              */
-            AtomicUtils.atomicSetAndRun(this, reason, isReachableUpdater, this::onReachable);
+            AtomicUtils.atomicSetAndRun(this, reason, isReachableUpdater, () -> onReachable(reason));
             return true;
         }
         return false;
     }
 
     @Override
-    protected void onReachable() {
+    protected void onReachable(Object reason) {
+        if (enableTrackAcrossLayers) {
+            AtomicUtils.atomicSet(this, reason, trackAcrossLayersUpdater);
+        }
+
         List<AnalysisFuture<Void>> futures = new ArrayList<>();
         notifyReachabilityCallbacks(universe, futures);
         forAllSuperTypes(type -> ConcurrentLightHashSet.forEach(type, subtypeReachableNotificationsUpdater,
@@ -858,6 +873,11 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     public Object getReachableReason() {
         return isReachable;
+    }
+
+    @Override
+    public boolean isTrackedAcrossLayers() {
+        return AtomicUtils.isSet(this, trackAcrossLayersUpdater);
     }
 
     /**

@@ -112,6 +112,9 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     static final AtomicReferenceFieldUpdater<AnalysisMethod, Object> allImplementationsUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisMethod.class, Object.class, "allImplementations");
 
+    private static final AtomicReferenceFieldUpdater<AnalysisMethod, Object> trackAcrossLayersUpdater = AtomicReferenceFieldUpdater
+                    .newUpdater(AnalysisMethod.class, Object.class, "trackAcrossLayers");
+
     public record Signature(String name, AnalysisType[] parameterTypes) {
     }
 
@@ -180,6 +183,12 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      * {@link AnalysisMethod#collectMethodImplementations} for more details.
      */
     @SuppressWarnings("unused") private volatile Object allImplementations;
+
+    /**
+     * See {@link AnalysisElement#isTrackedAcrossLayers} for explanation.
+     */
+    @SuppressWarnings("unused") private volatile Object trackAcrossLayers;
+    private final boolean enableTrackAcrossLayers;
 
     /**
      * Indicates that this method has opaque return. This is necessary when there are control flows
@@ -265,6 +274,8 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
             startTrackInvocations();
         }
         parsingContextMaxDepth = PointstoOptions.ParsingContextMaxDepth.getValue(declaringClass.universe.hostVM.options());
+
+        this.enableTrackAcrossLayers = universe.hostVM.enableTrackAcrossLayers();
     }
 
     @SuppressWarnings("this-escape")
@@ -292,6 +303,8 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         if (PointstoOptions.TrackAccessChain.getValue(declaringClass.universe.hostVM().options())) {
             startTrackInvocations();
         }
+
+        this.enableTrackAcrossLayers = original.enableTrackAcrossLayers;
     }
 
     private static String createName(ResolvedJavaMethod wrapped, MultiMethodKey multiMethodKey) {
@@ -464,7 +477,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      */
     public void registerAsIntrinsicMethod(Object reason) {
         assert isValidReason(reason) : "Registering a method as intrinsic needs to provide a valid reason, found: " + reason;
-        AtomicUtils.atomicSetAndRun(this, reason, isIntrinsicMethodUpdater, this::onImplementationInvoked);
+        AtomicUtils.atomicSetAndRun(this, reason, isIntrinsicMethodUpdater, () -> onImplementationInvoked(reason));
     }
 
     public void registerAsEntryPoint(Object newEntryPointData) {
@@ -495,12 +508,12 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
          * return before the class gets marked as reachable.
          */
         getDeclaringClass().registerAsReachable("declared method " + qualifiedName + " is registered as implementation invoked");
-        return AtomicUtils.atomicSetAndRun(this, reason, isImplementationInvokedUpdater, this::onImplementationInvoked);
+        return AtomicUtils.atomicSetAndRun(this, reason, isImplementationInvokedUpdater, () -> onImplementationInvoked(reason));
     }
 
     public void registerAsInlined(Object reason) {
         assert reason instanceof NodeSourcePosition || reason instanceof ResolvedJavaMethod : "Registering a method as inlined needs to provide the inline location as reason, found: " + reason;
-        AtomicUtils.atomicSetAndRun(this, reason, isInlinedUpdater, this::onReachable);
+        AtomicUtils.atomicSetAndRun(this, reason, isInlinedUpdater, () -> onReachable(reason));
     }
 
     public void registerImplementationInvokedCallback(Consumer<DuringAnalysisAccess> callback) {
@@ -637,6 +650,11 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     }
 
     @Override
+    public boolean isTrackedAcrossLayers() {
+        return AtomicUtils.isSet(this, trackAcrossLayersUpdater);
+    }
+
+    @Override
     public boolean isTriggered() {
         if (isReachable()) {
             return true;
@@ -644,13 +662,16 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         return isClassInitializer() && getDeclaringClass().isInitialized();
     }
 
-    public void onImplementationInvoked() {
-        onReachable();
+    public void onImplementationInvoked(Object reason) {
+        onReachable(reason);
         notifyImplementationInvokedCallbacks();
     }
 
     @Override
-    public void onReachable() {
+    public void onReachable(Object reason) {
+        if (enableTrackAcrossLayers) {
+            AtomicUtils.atomicSet(this, reason, trackAcrossLayersUpdater);
+        }
         notifyReachabilityCallbacks(declaringClass.getUniverse(), new ArrayList<>());
     }
 

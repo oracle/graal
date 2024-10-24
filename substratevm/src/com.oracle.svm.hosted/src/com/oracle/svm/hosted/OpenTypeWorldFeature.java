@@ -176,15 +176,15 @@ public class OpenTypeWorldFeature implements InternalFeature {
             return maxTypeID;
         }
 
-        private static boolean isTypeReachable(HostedType type) {
-            var result = type.getWrapped().isReachable();
-            assert type.getTypeID() != -1 : type;
-            return result;
-        }
-
         public void persistTypeInfo(Collection<HostedType> types) {
             for (HostedType type : types) {
-                if (isTypeReachable(type)) {
+                /*
+                 * Currently we are calculating type id information for all types. However, for
+                 * types not tracked across layers, the type ID may not be the same in different
+                 * layers.
+                 */
+                assert type.getTypeID() != -1 : type;
+                if (type.getWrapped().isTrackedAcrossLayers()) {
                     int identifierID = type.getWrapped().getId();
                     int typeID = type.getTypeID();
                     int numClassTypes = type.getNumClassTypes();
