@@ -146,6 +146,10 @@ public abstract class LoadFieldTypeFlow extends AccessFieldTypeFlow {
 
         @Override
         public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
+            /*
+             * Nothing needs to change for open world analysis: we want to link all field flows when
+             * the receiver saturates.
+             */
             if (!isSaturated()) {
                 /*
                  * When the receiver flow saturates start observing the flow of the field declaring
