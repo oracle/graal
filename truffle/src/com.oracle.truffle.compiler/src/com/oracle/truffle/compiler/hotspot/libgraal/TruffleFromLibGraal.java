@@ -172,8 +172,6 @@ public @interface TruffleFromLibGraal {
         OnTruffleTierFinished,
         @Signature({Object.class, Object.class, long.class})
         GetPartialEvaluationMethodInfo,
-        @Signature({Object.class, Object.class, long.class})
-        GetHostMethodInfo,
         @Signature({Consumer.class, Object.class, long.class})
         RegisterOptimizedAssumptionDependency,
         @Signature({void.class, Object.class, int.class, int.class})
