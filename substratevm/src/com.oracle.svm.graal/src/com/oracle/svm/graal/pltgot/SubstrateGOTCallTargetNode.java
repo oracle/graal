@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,20 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.code;
+package com.oracle.svm.graal.pltgot;
 
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.Value;
+import com.oracle.svm.core.nodes.SubstrateIndirectCallTargetNode;
 
-public interface SubstrateLIRGenerator {
+import jdk.graal.compiler.core.common.type.StampPair;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-    void emitFarReturn(AllocatableValue result, Value sp, Value ip, boolean fromMethodWithCalleeSavedRegisters);
+@NodeInfo
+public final class SubstrateGOTCallTargetNode extends SubstrateIndirectCallTargetNode {
+    public static final NodeClass<SubstrateGOTCallTargetNode> TYPE = NodeClass.create(SubstrateGOTCallTargetNode.class);
 
-    void emitDeadEnd();
-
-    void emitVerificationMarker(Object marker);
-
-    void emitInstructionSynchronizationBarrier();
-
-    void emitExitMethodAddressResolution(Value ip);
+    public SubstrateGOTCallTargetNode(ValueNode computedAddress, ValueNode[] arguments, StampPair returnStamp, JavaType[] signature, ResolvedJavaMethod target, CallingConvention.Type callType,
+                    InvokeKind invokeKind) {
+        super(TYPE, computedAddress, arguments, returnStamp, signature, target, callType, invokeKind, null);
+    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,20 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.code;
+package com.oracle.svm.core.pltgot;
 
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.Value;
+import com.oracle.svm.core.Uninterruptible;
 
-public interface SubstrateLIRGenerator {
+public interface MethodAddressResolver {
 
-    void emitFarReturn(AllocatableValue result, Value sp, Value ip, boolean fromMethodWithCalleeSavedRegisters);
+    /**
+     * Resolves the absolute address of a method represented by the given GOT entry.
+     *
+     * Note that it is the responsibility of this method to write the resolved address to the GOT
+     * entry as otherwise it will be called for subsequent calls of the same method.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    long resolveMethodWithGotEntry(long gotEntry);
 
-    void emitDeadEnd();
-
-    void emitVerificationMarker(Object marker);
-
-    void emitInstructionSynchronizationBarrier();
-
-    void emitExitMethodAddressResolution(Value ip);
 }

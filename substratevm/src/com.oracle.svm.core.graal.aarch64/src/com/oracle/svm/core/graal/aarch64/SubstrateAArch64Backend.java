@@ -72,6 +72,7 @@ import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
+import com.oracle.svm.core.pltgot.PLTGOTConfiguration;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.util.VMError;
 
@@ -666,6 +667,14 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         @Override
         protected int getVMPageSize() {
             return SubstrateOptions.getPageSize();
+        }
+
+        @Override
+        public void emitExitMethodAddressResolution(Value ip) {
+            PLTGOTConfiguration configuration = PLTGOTConfiguration.singleton();
+            RegisterValue exitThroughRegisterValue = configuration.getExitMethodAddressResolutionRegister(getRegisterConfig()).asValue(ip.getValueKind());
+            emitMove(exitThroughRegisterValue, ip);
+            append(configuration.createExitMethodAddressResolutionOp(exitThroughRegisterValue));
         }
     }
 

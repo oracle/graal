@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,20 +22,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.code;
+package com.oracle.svm.core.pltgot;
 
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.Value;
+import org.graalvm.nativeimage.ImageSingletons;
 
-public interface SubstrateLIRGenerator {
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.lir.LIRInstruction;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.code.RegisterValue;
 
-    void emitFarReturn(AllocatableValue result, Value sp, Value ip, boolean fromMethodWithCalleeSavedRegisters);
+public abstract class PLTGOTConfiguration {
+    protected MethodAddressResolver methodAddressResolver;
 
-    void emitDeadEnd();
+    @Fold
+    public static PLTGOTConfiguration singleton() {
+        return ImageSingletons.lookup(PLTGOTConfiguration.class);
+    }
 
-    void emitVerificationMarker(Object marker);
+    @Fold
+    public MethodAddressResolver getMethodAddressResolver() {
+        return methodAddressResolver;
+    }
 
-    void emitInstructionSynchronizationBarrier();
+    public abstract Register getExitMethodAddressResolutionRegister(RegisterConfig registerConfig);
 
-    void emitExitMethodAddressResolution(Value ip);
+    public abstract LIRInstruction createExitMethodAddressResolutionOp(RegisterValue exitThroughRegisterValue);
+
 }
