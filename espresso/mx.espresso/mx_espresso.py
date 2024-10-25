@@ -223,7 +223,7 @@ class EspressoLegacyNativeImagePropertiesBuildTask(mx.BuildTask):
         return f'Create {self.subject}'
 
     def newestOutput(self):
-        return mx.TimeStampFile.newest(self.subject.output_file())
+        return mx.TimeStampFile(self.subject.output_file())
 
     def needsBuild(self, newestInput):
         r = super().needsBuild(newestInput)
