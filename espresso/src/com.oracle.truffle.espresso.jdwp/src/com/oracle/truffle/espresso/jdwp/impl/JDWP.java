@@ -1587,7 +1587,7 @@ public final class JDWP {
 
                 Object object = context.getIds().fromId((int) objectId);
 
-                if (object == context.getNullObject()) {
+                if (object == null || object == context.getNullObject()) {
                     reply.errorCode(ErrorCodes.INVALID_OBJECT);
                     return new CommandResult(reply);
                 }
@@ -3049,17 +3049,11 @@ public final class JDWP {
             reply.writeByte(TagConstants.OBJECT);
             Object guestException = context.getGuestException(result.getException());
             reply.writeLong(context.getIds().getIdAsLong(guestException));
-            if (controller.getThreadSuspension().getSuspensionCount(thread) > 0) {
-                controller.getGCPrevention().setActiveWhileSuspended(thread, guestException);
-            }
         } else {
             Object value = result.getResult();
             if (value != null) {
                 byte tag = context.getTag(value);
                 writeValue(tag, value, reply, true, context);
-                if (controller.getThreadSuspension().getSuspensionCount(thread) > 0) {
-                    controller.getGCPrevention().setActiveWhileSuspended(thread, value);
-                }
             } else { // return value is null
                 reply.writeByte(TagConstants.OBJECT);
                 reply.writeLong(0);

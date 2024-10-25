@@ -711,7 +711,6 @@ public final class DebuggerController implements ContextsListener {
             }
             checkThreadJobsAndRun(thread);
         }
-        getGCPrevention().releaseActiveWhileSuspended(thread);
         fine(() -> "lock wakeup for thread: " + getThreadName(thread));
     }
 
