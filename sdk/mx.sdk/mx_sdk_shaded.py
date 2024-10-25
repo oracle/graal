@@ -244,6 +244,11 @@ class ShadedLibraryBuildTask(mx.JavaBuildTask):
         excludedPaths = dist.excluded_paths()
         includedPaths = dist.included_paths()
         patch = dist.shade.get('patch', {})
+        # pre-compile regex patterns
+        patchSubs = {
+            filepattern: [(re.compile(srch, flags=re.MULTILINE), repl) for (srch, repl) in subs.items()]
+            for filepattern, subs in patch.items()
+        }
 
         binDir = dist.output_dir()
         srcDir = dist.source_gen_dir()
@@ -293,11 +298,10 @@ class ShadedLibraryBuildTask(mx.JavaBuildTask):
                         if filepath.suffix == '.class':
                             continue
 
-                        mx.logv(f'extracting file {old_filename} to {new_filename}')
-                        extraPatches = [sub for filepattern, subs in patch.items() if glob_match(filepath, filepattern) for sub in subs.items()]
-                        extraSubs = list((re.compile(s, flags=re.MULTILINE), r) for (s, r) in extraPatches)
+                        mx.logv(f'extracting file {zi.filename} to {new_filename}')
+                        extraSubs = [sub for filepattern, subs in patchSubs.items() if glob_match(filepath, filepattern) for sub in subs]
                         applicableSubs += extraSubs
-                        if old_filename == new_filename and len(applicableSubs) == 0:
+                        if zi.filename == new_filename and len(applicableSubs) == 0:
                             # same file name, no substitutions: just extract
                             zf.extract(zi, outDir)
                         else:
