@@ -156,7 +156,7 @@ suite = {
             "requires": [
                 "java.compiler"
             ],
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "checkstyle": "com.oracle.truffle.espresso",
         },
 

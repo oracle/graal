@@ -23,6 +23,12 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
+import java.lang.invoke.CallSite;
+import java.lang.invoke.LambdaMetafactory;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -30,11 +36,6 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-
-import java.lang.invoke.CallSite;
-import java.lang.invoke.LambdaMetafactory;
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodType;
 
 /**
  * This class exists for serializable continuations. It forcibly overrides the lambda generation
@@ -48,7 +49,7 @@ public final class Target_java_lang_invoke_LambdaMetafactory {
     @Substitution
     abstract static class Metafactory extends SubstitutionNode {
         abstract @JavaType(CallSite.class) StaticObject execute(
-                        @JavaType(internalName = "Ljava/lang/invoke/MethodHandles$Lookup;") StaticObject caller,
+                        @JavaType(MethodHandles.Lookup.class) StaticObject caller,
                         @JavaType(String.class) StaticObject interfaceMethodName,
                         @JavaType(MethodType.class) StaticObject factoryType,
                         @JavaType(MethodType.class) StaticObject interfaceMethodType,
@@ -58,7 +59,7 @@ public final class Target_java_lang_invoke_LambdaMetafactory {
         @Specialization
         @JavaType(CallSite.class)
         StaticObject doCached(
-                        @JavaType(internalName = "Ljava/lang/invoke/MethodHandles$Lookup;") StaticObject caller,
+                        @JavaType(MethodHandles.Lookup.class) StaticObject caller,
                         @JavaType(String.class) StaticObject interfaceMethodName,
                         @JavaType(MethodType.class) StaticObject factoryType,
                         @JavaType(MethodType.class) StaticObject interfaceMethodType,
@@ -87,7 +88,7 @@ public final class Target_java_lang_invoke_LambdaMetafactory {
     @Substitution
     abstract static class AltMetafactory extends SubstitutionNode {
         abstract @JavaType(CallSite.class) StaticObject execute(
-                        @JavaType(internalName = "Ljava/lang/invoke/MethodHandles$Lookup;") StaticObject caller,
+                        @JavaType(MethodHandles.Lookup.class) StaticObject caller,
                         @JavaType(String.class) StaticObject interfaceMethodName,
                         @JavaType(MethodType.class) StaticObject factoryType,
                         @JavaType(Object[].class) StaticObject args);
@@ -95,7 +96,7 @@ public final class Target_java_lang_invoke_LambdaMetafactory {
         @Specialization
         @JavaType(CallSite.class)
         StaticObject doCached(
-                        @JavaType(internalName = "Ljava/lang/invoke/MethodHandles$Lookup;") StaticObject caller,
+                        @JavaType(MethodHandles.Lookup.class) StaticObject caller,
                         @JavaType(String.class) StaticObject interfaceMethodName,
                         @JavaType(MethodType.class) StaticObject factoryType,
                         @JavaType(Object[].class) StaticObject args,
