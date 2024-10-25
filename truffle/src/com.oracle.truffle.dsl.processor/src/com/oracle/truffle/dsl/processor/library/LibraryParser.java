@@ -284,7 +284,7 @@ public class LibraryParser extends AbstractParser<LibraryData> {
                 message.getAbstractIfExported().addAll(parseAbstractIfExported(message, abstractMirror, "ifExported", messageByName));
                 message.getAbstractIfExportedAsWarning().addAll(parseAbstractIfExported(message, abstractMirror, "ifExportedAsWarning", messageByName));
                 LibraryMessage replaced = parseAbstractReplacementFor(message, abstractMirror, "replacementFor", messageByName);
-                String replaceWith = parseAbstractReplaceWith(message, abstractMirror, "replaceWith", allMethods);
+                String replaceWith = parseAbstractReplaceWith(message, replaced, abstractMirror, "replaceWith", allMethods);
                 if (replaceWith != null && replaced == null) {
                     message.addError("Message " + message.getName() + " declares `replaceWith`, but `replacementFor` is missing.");
                 }
@@ -425,22 +425,57 @@ public class LibraryParser extends AbstractParser<LibraryData> {
         }
     }
 
-    private static String parseAbstractReplaceWith(LibraryMessage message, AnnotationMirror abstractMirror, String replaceWithAttribute, List<ExecutableElement> allMethods) {
+    private static String parseAbstractReplaceWith(LibraryMessage message, LibraryMessage replaced, AnnotationMirror abstractMirror, String replaceWithAttribute, List<ExecutableElement> allMethods) {
         AnnotationValue value = ElementUtils.getAnnotationValue(abstractMirror, replaceWithAttribute);
         if (value != null) {
             Object replaceWithValue = value.getValue();
             String replacement = ((String) replaceWithValue).replaceAll("\\s", "");
             if (!replacement.isEmpty()) {
+                boolean hasWrongSignature = false;
                 for (ExecutableElement executable : allMethods) {
                     String methodName = executable.getSimpleName().toString();
                     if (replacement.equals(methodName)) {
-                        return methodName;
+                        if (replaced == null || hasEqualSignature(replaced.getExecutable(), executable)) {
+                            return methodName;
+                        } else {
+                            hasWrongSignature = true;
+                        }
                     }
                 }
-                message.addError(abstractMirror, value, "The replace method %s does not exist.", replacement);
+                if (hasWrongSignature) {
+                    message.addError(abstractMirror, value, "The replacement method %s does not have signature and thrown types equal to the message %s it replaces.", replacement,
+                                    ElementUtils.getReadableSignature(replaced.getExecutable()));
+                } else {
+                    message.addError(abstractMirror, value, "The replacement method %s does not exist.", replacement);
+                }
             }
         }
         return null;
+    }
+
+    private static boolean hasEqualSignature(ExecutableElement executable1, ExecutableElement executable2) {
+        List<? extends VariableElement> parameters1 = executable1.getParameters();
+        List<? extends VariableElement> parameters2 = executable2.getParameters();
+        int numParams1 = parameters1.size();
+        if (numParams1 != parameters2.size()) {
+            return false;
+        }
+        for (int i = 0; i < numParams1; i++) {
+            if (!parameters1.get(i).asType().equals(parameters2.get(i).asType())) {
+                return false;
+            }
+        }
+        List<? extends TypeMirror> thrownTypes1 = executable1.getThrownTypes();
+        List<? extends TypeMirror> thrownTypes2 = executable2.getThrownTypes();
+        if (thrownTypes1.size() != thrownTypes2.size()) {
+            return false;
+        }
+        if (!thrownTypes1.isEmpty()) {
+            if (!new HashSet<>(thrownTypes1).equals(new HashSet<>(thrownTypes2))) {
+                return false;
+            }
+        }
+        return executable1.getReturnType().equals(executable2.getReturnType());
     }
 
     private static void parseAssertions(Element element, AnnotationMirror mirror, TypeElement type, LibraryData model) {

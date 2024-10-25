@@ -413,6 +413,93 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
         assertEquals(20, lib.readUnsigned(newObj, -10L));
     }
 
+    @GenerateLibrary
+    public abstract static class ReplacementsLibraryErrors1 extends Library {
+
+        @Deprecated
+        public int readMember(Object receiver, String name) {
+            throw new UnsupportedOperationException();
+        }
+
+        @ExpectError("The replaced message readMember(Object, int) was not found. Specify an existing message with optional type arguments.")
+        @Abstract(replacementFor = "readMember(Object, int)")
+        public int readMember(Object receiver, Object name) {
+            if (name instanceof String stringName) {
+                return readMember(receiver, stringName);
+            }
+            throw new UnsupportedOperationException();
+        }
+    }
+
+    @GenerateLibrary
+    @SuppressWarnings({"deprecation", "static-method"})
+    public abstract static class ReplacementsLibraryErrors2 extends Library {
+
+        @Deprecated
+        public int readUnsigned(Object receiver, int index) {
+            throw new UnsupportedOperationException();
+        }
+
+        @ExpectError("The replacement method readUnsignedLegacy does not have signature and thrown types equal to the message readUnsigned(Object, int) it replaces.")
+        @Abstract(replacementFor = "readUnsigned(Object, int)", replaceWith = "readUnsignedLegacy")
+        public int readUnsigned(Object receiver, long index) {
+            if (0 <= index && index <= 0xFFFFFFFFL) {
+                return readUnsigned(receiver, (int) (0xFFFFFFFFL & index));
+            }
+            throw new UnsupportedOperationException();
+        }
+
+        protected final int readUnsignedLegacy(Object receiver, String index) {
+            return index.length();
+        }
+    }
+
+    @GenerateLibrary
+    @SuppressWarnings({"deprecation", "static-method"})
+    public abstract static class ReplacementsLibraryErrors3 extends Library {
+
+        @Deprecated
+        public int readUnsigned(Object receiver, int index) throws Exception {
+            throw new UnsupportedOperationException();
+        }
+
+        @ExpectError("The replacement method readUnsignedLegacy does not have signature and thrown types equal to the message readUnsigned(Object, int) it replaces.")
+        @Abstract(replacementFor = "readUnsigned(Object, int)", replaceWith = "readUnsignedLegacy")
+        public int readUnsigned(Object receiver, long index) throws Exception {
+            if (0 <= index && index <= 0xFFFFFFFFL) {
+                return readUnsigned(receiver, (int) (0xFFFFFFFFL & index));
+            }
+            throw new UnsupportedOperationException();
+        }
+
+        protected final int readUnsignedLegacy(Object receiver, int index) throws ArrayIndexOutOfBoundsException {
+            return index;
+        }
+    }
+
+    @GenerateLibrary
+    @SuppressWarnings({"deprecation", "static-method"})
+    public abstract static class ReplacementsLibraryErrors4 extends Library {
+
+        @Deprecated
+        public int readUnsigned(Object receiver, int index) {
+            throw new UnsupportedOperationException();
+        }
+
+        @ExpectError("The replacement method readUnsignedLegacy does not have signature and thrown types equal to the message readUnsigned(Object, int) it replaces.")
+        @Abstract(replacementFor = "readUnsigned(Object, int)", replaceWith = "readUnsignedLegacy")
+        public int readUnsigned(Object receiver, long index) {
+            if (0 <= index && index <= 0xFFFFFFFFL) {
+                return readUnsigned(receiver, (int) (0xFFFFFFFFL & index));
+            }
+            throw new UnsupportedOperationException();
+        }
+
+        protected final long readUnsignedLegacy(Object receiver, int index) {
+            return index;
+        }
+    }
+
     interface ExportsType {
     }
 
@@ -599,7 +686,7 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
             return receiver;
         }
 
-        @ExpectError("The replace method doReplaceNone does not exist.")
+        @ExpectError("The replacement method doReplaceNone does not exist.")
         @Abstract(replacementFor = "isType", replaceWith = "doReplaceNone")
         public boolean replaceWithNonexisting(Object receiver) {
             return receiver != null;
