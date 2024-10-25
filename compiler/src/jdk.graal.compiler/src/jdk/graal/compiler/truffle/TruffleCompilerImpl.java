@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
+import jdk.graal.compiler.truffle.host.TruffleHostEnvironment.TruffleRuntimeScope;
 import jdk.vm.ci.meta.ProfilingInfo;
 import org.graalvm.collections.EconomicMap;
 
@@ -810,48 +811,54 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
         private final List<Consumer<OptimizedAssumptionDependency>> optimizedAssumptions = new ArrayList<>();
 
         @Override
+        @SuppressWarnings("try")
         public void preProcess(CompilationResult result) {
             if (result == null || result.getAssumptions() == null) {
                 return;
             }
-            TruffleCompilerRuntime runtime = config.runtime();
-            ArrayList<Assumption> newAssumptions = new ArrayList<>();
-            for (Assumption assumption : result.getAssumptions()) {
-                if (assumption != null && assumption instanceof TruffleAssumption) {
-                    TruffleAssumption truffleAssumption = (TruffleAssumption) assumption;
-                    Consumer<OptimizedAssumptionDependency> dep = runtime.registerOptimizedAssumptionDependency(truffleAssumption.getAssumption());
-                    if (dep == null) {
-                        // Before bailing out, notify other assumptions waiting
-                        // for the code that it will never be installed
-                        notifyAssumptions(null);
+            try (TruffleRuntimeScope scope = config.openCanCallTruffleRuntimeScope()) {
+                TruffleCompilerRuntime runtime = config.runtime();
+                ArrayList<Assumption> newAssumptions = new ArrayList<>();
+                for (Assumption assumption : result.getAssumptions()) {
+                    if (assumption != null && assumption instanceof TruffleAssumption) {
+                        TruffleAssumption truffleAssumption = (TruffleAssumption) assumption;
+                        Consumer<OptimizedAssumptionDependency> dep = runtime.registerOptimizedAssumptionDependency(truffleAssumption.getAssumption());
+                        if (dep == null) {
+                            // Before bailing out, notify other assumptions waiting
+                            // for the code that it will never be installed
+                            notifyAssumptions(null);
 
-                        throw new RetryableBailoutException("Assumption invalidated while compiling code: %s", truffleAssumption);
+                            throw new RetryableBailoutException("Assumption invalidated while compiling code: %s", truffleAssumption);
+                        }
+                        optimizedAssumptions.add(dep);
+                    } else {
+                        newAssumptions.add(assumption);
                     }
-                    optimizedAssumptions.add(dep);
-                } else {
-                    newAssumptions.add(assumption);
                 }
+                result.setAssumptions(newAssumptions.toArray(new Assumption[newAssumptions.size()]));
             }
-            result.setAssumptions(newAssumptions.toArray(new Assumption[newAssumptions.size()]));
         }
 
         @Override
+        @SuppressWarnings("try")
         public void postProcess(CompilationResult compilationResult, InstalledCode installedCode) {
-            afterCodeInstallation(compilationResult, installedCode);
+            try (TruffleRuntimeScope scope = config.openCanCallTruffleRuntimeScope()) {
+                afterCodeInstallation(compilationResult, installedCode);
 
-            if (!optimizedAssumptions.isEmpty()) {
-                OptimizedAssumptionDependency dependency;
-                if (installedCode instanceof OptimizedAssumptionDependency) {
-                    /*
-                     * On SVM the installed code can be an assumption dependency. On HotSpot we
-                     * cannot subclass HotSpotNmethod therefore that is not an option.
-                     */
-                    dependency = (OptimizedAssumptionDependency) installedCode;
-                } else {
-                    TruffleCompilable compilable = getCompilable(compilationResult);
-                    dependency = new TruffleCompilerAssumptionDependency(compilable, installedCode);
+                if (!optimizedAssumptions.isEmpty()) {
+                    OptimizedAssumptionDependency dependency;
+                    if (installedCode instanceof OptimizedAssumptionDependency) {
+                        /*
+                         * On SVM the installed code can be an assumption dependency. On HotSpot we
+                         * cannot subclass HotSpotNmethod therefore that is not an option.
+                         */
+                        dependency = (OptimizedAssumptionDependency) installedCode;
+                    } else {
+                        TruffleCompilable compilable = getCompilable(compilationResult);
+                        dependency = new TruffleCompilerAssumptionDependency(compilable, installedCode);
+                    }
+                    notifyAssumptions(dependency);
                 }
-                notifyAssumptions(dependency);
             }
         }
 

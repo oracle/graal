@@ -33,9 +33,16 @@ import jdk.graal.compiler.hotspot.HotSpotGraalServices;
 import jdk.graal.compiler.truffle.TruffleCompilerImpl;
 import jdk.graal.compiler.truffle.TruffleElementCache;
 import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
+import jdk.graal.compiler.truffle.host.TruffleKnownHostTypes;
 import jdk.graal.compiler.truffle.hotspot.HotSpotTruffleCompilerImpl;
+import jdk.vm.ci.meta.AnnotationData;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+import java.util.List;
 
 final class LibGraalTruffleHostEnvironment extends TruffleHostEnvironment {
 
@@ -54,10 +61,24 @@ final class LibGraalTruffleHostEnvironment extends TruffleHostEnvironment {
     @SuppressWarnings("try")
     protected TruffleCompilerImpl createCompiler(TruffleCompilable ast) {
         try (CompilationContext compilationContext = HotSpotGraalServices.enterGlobalCompilationContext()) {
-            HotSpotTruffleCompilerImpl compiler = HotSpotTruffleCompilerImpl.create(runtime());
+            HotSpotTruffleCompilerImpl compiler = HotSpotTruffleCompilerImpl.create(runtime(), LibGraalTruffleHostEnvironment::openTruffleRuntimeScopeImpl);
             compiler.initialize(ast, true);
             return compiler;
         }
+    }
+
+    /**
+     * Opens a new {@code CanCallTruffleRuntimeScope} instance, enabling VM-to-Java calls for the
+     * current compiler thread. This method should be used in conjunction with a try-with-resources
+     * statement to ensure the scope is closed appropriately.
+     */
+    @Override
+    public TruffleRuntimeScope openTruffleRuntimeScope() {
+        return openTruffleRuntimeScopeImpl();
+    }
+
+    static TruffleRuntimeScope openTruffleRuntimeScopeImpl() {
+        return TruffleRuntimeScopeImpl.CAN_CALL_JAVA_SCOPE != null ? new TruffleRuntimeScopeImpl() : null;
     }
 
     final class HostMethodInfoCache extends TruffleElementCache<ResolvedJavaMethod, HostMethodInfo> {
@@ -77,9 +98,68 @@ final class LibGraalTruffleHostEnvironment extends TruffleHostEnvironment {
 
         @Override
         protected HostMethodInfo computeValue(ResolvedJavaMethod method) {
-            return runtime().getHostMethodInfo(method);
+            TruffleKnownHostTypes hostTypes = types();
+            List<AnnotationData> annotationDataList = method.getAnnotationData(hostTypes.TruffleBoundary, hostTypes.BytecodeInterpreterSwitch,
+                            hostTypes.BytecodeInterpreterSwitchBoundary, hostTypes.InliningCutoff);
+            boolean isTruffleBoundary = false;
+            boolean isBytecodeInterpreterSwitch = false;
+            boolean isBytecodeInterpreterSwitchBoundary = false;
+            boolean isInliningCutoff = false;
+            for (AnnotationData annotationData : annotationDataList) {
+                String annotationTypeFqn = annotationData.getAnnotationType().getName();
+                if (hostTypes.TruffleBoundary.getName().equals(annotationTypeFqn)) {
+                    isTruffleBoundary = true;
+                } else if (hostTypes.BytecodeInterpreterSwitch.getName().equals(annotationTypeFqn)) {
+                    isBytecodeInterpreterSwitch = true;
+                } else if (hostTypes.BytecodeInterpreterSwitchBoundary.getName().equals(annotationTypeFqn)) {
+                    isBytecodeInterpreterSwitchBoundary = true;
+                } else if (hostTypes.InliningCutoff.getName().equals(annotationTypeFqn)) {
+                    isInliningCutoff = true;
+                }
+            }
+            return new HostMethodInfo(isTruffleBoundary, isBytecodeInterpreterSwitch, isBytecodeInterpreterSwitchBoundary, isInliningCutoff);
         }
 
     }
 
+    private static final class TruffleRuntimeScopeImpl implements TruffleRuntimeScope {
+
+        private static final MethodHandle CAN_CALL_JAVA_SCOPE = findCompilerThreadCanCallJavaScopeConstructor();
+
+        @SuppressWarnings("unchecked")
+        private static MethodHandle findCompilerThreadCanCallJavaScopeConstructor() {
+            try {
+                return MethodHandles.lookup().findConstructor(Class.forName("jdk.vm.ci.hotspot.CompilerThreadCanCallJavaScope"), MethodType.methodType(void.class, boolean.class));
+            } catch (ReflectiveOperationException e) {
+// GR-58987: Uncomment when OpenJDK pull request is merged
+// if (Runtime.version().feature() >= 24) {
+// throw new InternalError(e);
+// }
+            }
+            return null;
+        }
+
+        private final AutoCloseable impl;
+
+        TruffleRuntimeScopeImpl() {
+            try {
+                impl = (AutoCloseable) CAN_CALL_JAVA_SCOPE.invoke(true);
+            } catch (Error | RuntimeException e) {
+                throw e;
+            } catch (Throwable throwable) {
+                throw new InternalError(throwable);
+            }
+        }
+
+        @Override
+        public void close() {
+            try {
+                impl.close();
+            } catch (RuntimeException e) {
+                throw e;
+            } catch (Exception e) {
+                throw new AssertionError(e);
+            }
+        }
+    }
 }

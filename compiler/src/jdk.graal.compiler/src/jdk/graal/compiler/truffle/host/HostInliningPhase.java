@@ -179,6 +179,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
     }
 
     @Override
+    @SuppressWarnings("try")
     protected final void runInlining(StructuredGraph graph, HighTierContext highTierContext) {
         ResolvedJavaMethod method = graph.method();
         TruffleHostEnvironment env = TruffleHostEnvironment.get(method);

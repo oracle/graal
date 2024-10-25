@@ -178,7 +178,7 @@ public final class LibGraalFeature implements Feature {
         buildTimeClass = loader.loadClassOrFail("jdk.graal.compiler.hotspot.libgraal.BuildTime");
 
         // Guest JVMCI and Graal need access to some JDK internal packages
-        String[] basePackages = {"jdk.internal.misc", "jdk.internal.util"};
+        String[] basePackages = {"jdk.internal.misc", "jdk.internal.util", "jdk.internal.vm"};
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, null, false, "java.base", basePackages);
 
         try {
