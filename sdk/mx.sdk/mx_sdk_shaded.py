@@ -205,14 +205,15 @@ class ShadedLibraryBuildTask(mx.JavaBuildTask):
 
         proj = self.subject
         binDir = proj.output_dir()
+        excludedPaths = proj.excluded_paths()
+        includedPaths = proj.included_paths()
+
         for dep in proj.shaded_deps():
             srcFilePath = dep.get_source_path(False)
             if srcFilePath is None:
                 continue
 
             for zipFilePath, outDir in [(srcFilePath, proj.source_gen_dir())]:
-                excludedPaths = proj.excluded_paths()
-                includedPaths = proj.included_paths()
                 try:
                     with zipfile.ZipFile(zipFilePath, 'r') as zf:
                         for zi in zf.infolist():
@@ -227,6 +228,14 @@ class ShadedLibraryBuildTask(mx.JavaBuildTask):
                             path_mappings = None
                             if filepath.suffix not in ['.java', '.class'] and not any((i, path_mappings := m) for (i, m) in includedPaths.items() if glob_match(filepath, i)):
                                 continue
+
+                            # strip any META-INF/versions/*/ prefix, will be flattened during build()
+                            if len(filepath.parts) > 3 and filepath.parts[0:2] == ('META-INF', 'versions') and filepath.parts[2].isdigit():
+                                java_version = int(filepath.parts[2])
+                                if java_version > proj.javaCompliance.value:
+                                    # ignore versioned files whose version is higher than the project's javaCompliance
+                                    continue
+                                old_filename = '/'.join(filepath.parts[3:])
 
                             new_filename = proj.substitute_path(old_filename, mappings=path_mappings)
                             src_gen_path = os.path.join(outDir, new_filename)
@@ -274,6 +283,10 @@ class ShadedLibraryBuildTask(mx.JavaBuildTask):
                 mx.abort(f'Cannot shade {dep} without a source jar (missing sourceDigest?)')
 
             for zipFilePath, outDir in [(jarFilePath, binDir), (srcFilePath, srcDir)]:
+                versioned_resources = {}  # {old_filename: version}
+                java_version_none = 0
+                java_version_base = 8  # (0 < v < 9)
+
                 with zipfile.ZipFile(zipFilePath, 'r') as zf:
                     for zi in zf.infolist():
                         if zi.is_dir():
@@ -290,17 +303,36 @@ class ShadedLibraryBuildTask(mx.JavaBuildTask):
                             mx.warn(f'file {old_filename} is not included (if this is intended, please add the file to the exclude list)')
                             continue
 
-                        new_filename = dist.substitute_path(old_filename, mappings=path_mappings)
                         applicableSubs = []
-
                         if filepath.suffix == '.java':
                             applicableSubs += javaSubstitutions
                         if filepath.suffix == '.class':
                             continue
 
-                        mx.logv(f'extracting file {zi.filename} to {new_filename}')
+                        # strip any META-INF/versions/*/ prefix and extract the file with the highest compatible version
+                        if len(filepath.parts) > 3 and filepath.parts[0:2] == ('META-INF', 'versions') and filepath.parts[2].isdigit():
+                            java_version = int(filepath.parts[2])
+                            # ignore versioned files whose version is higher than the project's javaCompliance
+                            if versioned_resources.get(old_filename, java_version_base) < java_version <= dist.javaCompliance.value:
+                                mx.logv(f"using versioned {old_filename} ({java_version} > {versioned_resources.get(old_filename, java_version_none)})")
+                                old_filename = '/'.join(filepath.parts[3:])
+                                versioned_resources[old_filename] = java_version
+                            else:
+                                if java_version > dist.javaCompliance.value:
+                                    mx.logv(f"ignoring file {old_filename} due to the project's javaCompliance ({java_version} > {dist.javaCompliance.value})")
+                                continue
+                        else:
+                            if versioned_resources.get(old_filename, java_version_none) < java_version_base:
+                                versioned_resources[old_filename] = java_version_base
+                            else:
+                                mx.logv(f"skipping file {old_filename} replaced by META-INF/versions/{versioned_resources.get(old_filename)}")
+                                continue
+
+                        new_filename = dist.substitute_path(old_filename, mappings=path_mappings)
                         extraSubs = [sub for filepattern, subs in patchSubs.items() if glob_match(filepath, filepattern) for sub in subs]
                         applicableSubs += extraSubs
+
+                        mx.logv(f'extracting file {zi.filename} to {new_filename}')
                         if zi.filename == new_filename and len(applicableSubs) == 0:
                             # same file name, no substitutions: just extract
                             zf.extract(zi, outDir)
