@@ -371,21 +371,14 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         if (indirectCallTarget != null) {
             return indirectCallTarget;
         }
-        if (isStatic()) {
+        if (isStatic() || isConstructor()) {
             /*
-             * Static methods must always be explicitly declared.
+             * Static methods and constructors must always be explicitly declared.
              */
             return setIndirectCallTarget(this, true);
         }
 
         var dispatchTableMethods = declaringClass.getOrCalculateOpenTypeWorldDispatchTableMethods();
-
-        if (isConstructor()) {
-            /*
-             * Constructors can only be found in their declaring class.
-             */
-            return setIndirectCallTarget(this, dispatchTableMethods.contains(this));
-        }
 
         if (dispatchTableMethods.contains(this)) {
             return setIndirectCallTarget(this, true);
