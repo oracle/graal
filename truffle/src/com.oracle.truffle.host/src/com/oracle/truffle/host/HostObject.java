@@ -225,7 +225,7 @@ final class HostObject extends HostBaseObject {
 
     @Override
     @TruffleBoundary
-    boolean existsIn(HostObject receiver) {
+    boolean isMemberOf(HostObject receiver) {
         if (!isClass()) {
             return false;
         }
@@ -309,7 +309,7 @@ final class HostObject extends HostBaseObject {
 
         @Specialization(replaces = "doCached", guards = "!receiver.isNull()")
         static boolean doMember(HostObject receiver, HostBaseObject member) {
-            return member.existsIn(receiver);
+            return member.isMemberOf(receiver);
         }
 
         @Specialization(replaces = "doCached", guards = {"!receiver.isNull()", "memberLibrary.isString(member)"})
@@ -359,7 +359,7 @@ final class HostObject extends HostBaseObject {
                         HostMethodDesc method,
                         @Bind("$node") Node node,
                         @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException, UnknownMemberException {
-            if (method.existsIn(receiver)) {
+            if (method.isMemberOf(receiver)) {
                 return new HostFunction(method, receiver.obj, receiver.context);
             } else {
                 error.enter(node);
@@ -367,12 +367,12 @@ final class HostObject extends HostBaseObject {
             }
         }
 
-        @Specialization(guards = {"!receiver.isNull()", "memberClass.isADeclaredMember()"})
+        @Specialization(guards = {"!receiver.isNull()", "memberClass.isInnerClass()"})
         static Object doReadMember(HostObject receiver,
                         HostObject memberClass,
                         @Bind("$node") Node node,
                         @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException, UnknownMemberException {
-            if (memberClass.existsIn(receiver)) {
+            if (memberClass.isMemberOf(receiver)) {
                 return memberClass;
             } else {
                 error.enter(node);
@@ -461,7 +461,7 @@ final class HostObject extends HostBaseObject {
 
         @Specialization(replaces = "doCached", guards = "!receiver.isNull()")
         static boolean doField(HostObject receiver, HostFieldDesc field) {
-            return !field.isFinal() && field.existsIn(receiver);
+            return !field.isFinal() && field.isMemberOf(receiver);
         }
 
         @Specialization(replaces = "doCached", guards = {"!receiver.isNull()", "memberLibrary.isString(member)"})
@@ -580,7 +580,7 @@ final class HostObject extends HostBaseObject {
 
         @Specialization(replaces = "doCached", guards = "!receiver.isNull()")
         static boolean doMethod(HostObject receiver, HostMethodDesc.SingleMethod method) {
-            return method.existsIn(receiver);
+            return method.isMemberOf(receiver);
         }
 
         @Specialization(replaces = "doCached", guards = {"!receiver.isNull()", "memberLibrary.isString(member)"})
@@ -624,7 +624,7 @@ final class HostObject extends HostBaseObject {
                         @Bind("$node") Node node,
                         @Shared("hostExecute") @Cached HostExecuteNode executeMethod,
                         @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedTypeException, ArityException, UnsupportedMessageException, UnknownMemberException {
-            if (method.existsIn(receiver)) {
+            if (method.isMemberOf(receiver)) {
                 return executeMethod.execute(node, method, receiver.obj, args, receiver.context);
             } else {
                 error.enter(node);
@@ -3670,7 +3670,7 @@ final class HostObject extends HostBaseObject {
     @ExportMessage(name = "hasDeclaringMetaObject")
     @ExportMessage(name = "isMemberKindMetaObject")
     @ExportMessage(name = "hasMemberSignature")
-    boolean isADeclaredMember() {
+    boolean isInnerClass() {
         return isClass() && getDeclaringClass() != null;
     }
 
@@ -3687,7 +3687,7 @@ final class HostObject extends HostBaseObject {
 
     @ExportMessage
     Object getMemberSimpleName() throws UnsupportedMessageException {
-        if (isADeclaredMember()) {
+        if (isInnerClass()) {
             return simpleNameOf(asClass());
         } else {
             throw UnsupportedMessageException.create();
@@ -3696,7 +3696,7 @@ final class HostObject extends HostBaseObject {
 
     @ExportMessage
     Object getMemberQualifiedName() throws UnsupportedMessageException {
-        if (isADeclaredMember()) {
+        if (isInnerClass()) {
             return qualifiedNameOf(asClass());
         } else {
             throw UnsupportedMessageException.create();

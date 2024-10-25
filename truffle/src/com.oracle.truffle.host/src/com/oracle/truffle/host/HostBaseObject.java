@@ -51,7 +51,7 @@ abstract class HostBaseObject implements TruffleObject {
     abstract Class<?> getDeclaringClass();
 
     @TruffleBoundary
-    boolean existsIn(HostObject receiver) {
+    boolean isMemberOf(HostObject receiver) {
         return getDeclaringClass().isAssignableFrom(receiver.getLookupClass());
     }
 }
