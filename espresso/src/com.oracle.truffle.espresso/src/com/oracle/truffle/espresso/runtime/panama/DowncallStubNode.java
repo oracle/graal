@@ -48,7 +48,7 @@ public class DowncallStubNode extends Node {
     }
 
     public static DowncallStubNode create(DowncallStub stub, NativeAccess access) {
-        return new DowncallStubNode(stub, access.createSignatureCall(stub.signature, false));
+        return new DowncallStubNode(stub, access.createSignatureCall(stub.signature));
     }
 
     public Object call(Object[] args) {
