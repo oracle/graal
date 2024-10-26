@@ -47,8 +47,8 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
-import com.oracle.truffle.espresso.bytecode.BytecodeStream;
-import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method.MethodVersion;
@@ -446,7 +446,7 @@ public final class JDWPContextImpl implements JDWPContext {
         if (arrayKlass.getDimension() > 1) {
             return TagConstants.ARRAY;
         }
-        return arrayKlass.getComponentType().getJavaKind().toTagConstant();
+        return TagConstants.toTagConstant(arrayKlass.getComponentType().getJavaKind());
     }
 
     // introspection
