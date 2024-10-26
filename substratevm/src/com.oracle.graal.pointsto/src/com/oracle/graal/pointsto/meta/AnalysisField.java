@@ -65,6 +65,9 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     private static final AtomicReferenceFieldUpdater<AnalysisField, Object> isUnsafeAccessedUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisField.class, Object.class, "isUnsafeAccessed");
 
+    private static final AtomicReferenceFieldUpdater<AnalysisField, Object> trackAcrossLayersUpdater = AtomicReferenceFieldUpdater
+                    .newUpdater(AnalysisField.class, Object.class, "trackAcrossLayers");
+
     private final int id;
     /** Marks a field loaded from a base layer. */
     private final boolean isInBaseLayer;
@@ -89,6 +92,12 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     @SuppressWarnings("unused") private volatile Object isWritten;
     @SuppressWarnings("unused") private volatile Object isFolded;
     @SuppressWarnings("unused") private volatile Object isUnsafeAccessed;
+
+    /**
+     * See {@link AnalysisElement#isTrackedAcrossLayers} for explanation.
+     */
+    @SuppressWarnings("unused") private volatile Object trackAcrossLayers;
+    private final boolean enableTrackAcrossLayers;
 
     private ConcurrentMap<Object, Boolean> readBy;
     private ConcurrentMap<Object, Boolean> writtenBy;
@@ -150,6 +159,8 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
             id = universe.computeNextFieldId();
             isInBaseLayer = false;
         }
+
+        this.enableTrackAcrossLayers = universe.hostVM.enableTrackAcrossLayers();
     }
 
     @Override
@@ -220,13 +231,11 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         getDeclaringClass().registerAsReachable(this);
 
         assert isValidReason(reason) : "Registering a field as accessed needs to provide a valid reason.";
-        boolean firstAttempt = AtomicUtils.atomicSet(this, reason, isAccessedUpdater);
-        if (firstAttempt) {
-            onReachable();
+        return AtomicUtils.atomicSetAndRun(this, reason, isAccessedUpdater, () -> {
+            onReachable(reason);
             getUniverse().onFieldAccessed(this);
             getUniverse().getHeapScanner().onFieldRead(this);
-        }
-        return firstAttempt;
+        });
     }
 
     /**
@@ -236,16 +245,14 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         getDeclaringClass().registerAsReachable(this);
 
         assert isValidReason(reason) : "Registering a field as read needs to provide a valid reason.";
-        boolean firstAttempt = AtomicUtils.atomicSet(this, reason, isReadUpdater);
         if (readBy != null) {
             readBy.put(reason, Boolean.TRUE);
         }
-        if (firstAttempt) {
-            onReachable();
+        return AtomicUtils.atomicSetAndRun(this, reason, isReadUpdater, () -> {
+            onReachable(reason);
             getUniverse().onFieldAccessed(this);
             getUniverse().getHeapScanner().onFieldRead(this);
-        }
-        return firstAttempt;
+        });
     }
 
     /**
@@ -257,27 +264,25 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         getDeclaringClass().registerAsReachable(this);
 
         assert isValidReason(reason) : "Registering a field as written needs to provide a valid reason.";
-        boolean firstAttempt = AtomicUtils.atomicSet(this, reason, isWrittenUpdater);
-        if (writtenBy != null && reason != null) {
+        if (writtenBy != null) {
             writtenBy.put(reason, Boolean.TRUE);
         }
-        if (firstAttempt) {
-            onReachable();
+        return AtomicUtils.atomicSetAndRun(this, reason, isWrittenUpdater, () -> {
+            onReachable(reason);
             if (Modifier.isVolatile(getModifiers()) || getStorageKind() == JavaKind.Object) {
                 getUniverse().onFieldAccessed(this);
             }
-        }
-        return firstAttempt;
+        });
     }
 
     public void registerAsFolded(Object reason) {
         getDeclaringClass().registerAsReachable(this);
 
         assert isValidReason(reason) : "Registering a field as folded needs to provide a valid reason.";
-        if (AtomicUtils.atomicSet(this, reason, isFoldedUpdater)) {
+        AtomicUtils.atomicSetAndRun(this, reason, isFoldedUpdater, () -> {
             assert getDeclaringClass().isReachable() : this;
-            onReachable();
-        }
+            onReachable(reason);
+        });
     }
 
     public boolean registerAsUnsafeAccessed(Object reason) {
@@ -292,7 +297,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
          * only register fields as unsafe accessed with their declaring type once.
          */
 
-        if (AtomicUtils.atomicSet(this, reason, isUnsafeAccessedUpdater)) {
+        return AtomicUtils.atomicSetAndRun(this, reason, isUnsafeAccessedUpdater, () -> {
             /*
              * The atomic updater ensures that the field is registered as unsafe accessed with its
              * declaring class only once. However, at the end of this call the registration might
@@ -311,9 +316,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
                 AnalysisType declaringType = getDeclaringClass();
                 declaringType.registerUnsafeAccessedField(this);
             }
-            return true;
-        }
-        return false;
+        });
     }
 
     public boolean isUnsafeAccessed() {
@@ -379,8 +382,16 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     }
 
     @Override
-    public void onReachable() {
+    public void onReachable(Object reason) {
+        if (enableTrackAcrossLayers) {
+            AtomicUtils.atomicSet(this, reason, trackAcrossLayersUpdater);
+        }
         notifyReachabilityCallbacks(declaringClass.getUniverse(), new ArrayList<>());
+    }
+
+    @Override
+    public boolean isTrackedAcrossLayers() {
+        return AtomicUtils.isSet(this, trackAcrossLayersUpdater);
     }
 
     public Object getFieldValueInterceptor() {

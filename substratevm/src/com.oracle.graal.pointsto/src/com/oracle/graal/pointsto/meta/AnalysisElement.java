@@ -38,7 +38,6 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
-import jdk.graal.compiler.debug.GraalError;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -49,6 +48,7 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 
+import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ModifiersProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -112,7 +112,12 @@ public abstract class AnalysisElement implements AnnotatedElement {
 
     public abstract boolean isReachable();
 
-    protected abstract void onReachable();
+    protected abstract void onReachable(Object reason);
+
+    /**
+     * Indicates we need this information to be saved in the layer archive file.
+     */
+    public abstract boolean isTrackedAcrossLayers();
 
     /** Return true if reachability handlers should be executed for this element. */
     public boolean isTriggered() {
