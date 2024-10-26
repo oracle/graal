@@ -35,6 +35,7 @@ import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -86,6 +87,14 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public boolean useG1GC() {
         return gc == HotSpotGraalRuntime.HotSpotGC.G1;
     }
+
+    /*
+     * There's no direct way to test for the presence of the boolean flag ZGenerational since there
+     * aren't any notPresent values which are distinct from the possible values. Instead use true
+     * and false as the notPresent value and check if it returns different answers.
+     */
+    public final boolean isZGenerationalDefault = JavaVersionUtil.JAVA_SPEC > 21 &&
+                    (!access.getFlag("ZGenerational", Boolean.class, false).equals(access.getFlag("ZGenerational", Boolean.class, true)));
 
     public boolean useXGC() {
         return gc == HotSpotGraalRuntime.HotSpotGC.X;
@@ -602,6 +611,13 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int zPointerLoadShift = getConstant("ZPointerLoadShift", Integer.class, -1, osArch.equals("aarch64") && zgcSupport);
 
     private long getXGCAddressField(String name) {
+        if (JavaVersionUtil.JAVA_SPEC == 21 || isZGenerationalDefault) {
+            /*
+             * Graal does not support single gen ZGC in JDK 21 and it's no longer supported in 24
+             * once the ZGenerational global flag has been removed.
+             */
+            return 0;
+        }
         String realName = name;
         long address = 0;
         if (zgcSupport) {
