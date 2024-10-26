@@ -194,6 +194,11 @@ public class HotSpotReplacementsUtil {
         return config.useG1GC();
     }
 
+    @Fold
+    public static boolean useSerialGC(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.useSerialGC();
+    }
+
     /**
      * @see GraalHotSpotVMConfig#doingUnsafeAccessOffset
      */

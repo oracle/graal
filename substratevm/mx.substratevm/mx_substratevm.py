@@ -1545,6 +1545,9 @@ libgraal_build_args = [
     '--enable-monitoring=heapdump',
     '-H:HeapDumpDefaultFilenamePrefix=libgraal_pid',
 
+    # Generate a .bgv dump upon compilation failure
+    '-H:+DumpOnError',
+
     # No VM-internal threads may be spawned for libgraal and the reference handling is executed manually.
     '-H:-AllowVMInternalThreads',
     '-R:-AutomaticReferenceHandling',
