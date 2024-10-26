@@ -90,11 +90,11 @@ public class PublishWritesNode extends FixedWithNextNode implements LIRLowerable
 
     @Override
     public boolean verifyNode() {
-        // Check that the published allocation node is not used by reads directly.
+        // Check that the published allocation node is not used by init reads directly.
         for (AddressNode address : allocation.usages().filter(AddressNode.class)) {
             var readUsages = address.usages().filter(n -> {
-                // n is a non-writing access (a.k.a. a read)
-                return n instanceof MemoryAccess && !MemoryKill.isMemoryKill(n);
+                // n is a non-writing access (a.k.a. a read) to INIT_LOCATION
+                return n instanceof MemoryAccess access && access.getLocationIdentity().isInit() && !MemoryKill.isMemoryKill(n);
             });
             assertTrue(readUsages.isEmpty(), "%s has unpublished reads", allocation);
         }

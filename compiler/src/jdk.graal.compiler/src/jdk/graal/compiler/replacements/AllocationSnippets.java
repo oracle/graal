@@ -74,6 +74,7 @@ public abstract class AllocationSnippets implements Snippets {
 
     public Object allocateArrayImpl(Word hub,
                     int length,
+                    boolean forceSlowPath,
                     int arrayBaseOffset,
                     int log2ElementSize,
                     FillContent fillContents,
@@ -95,7 +96,7 @@ public abstract class AllocationSnippets implements Snippets {
         Word newTop = top.add(allocationSize);
 
         Object result;
-        if (useTLAB() && probability(FAST_PATH_PROBABILITY, shouldAllocateInTLAB(allocationSize, true)) && probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
+        if (!forceSlowPath && useTLAB() && probability(FAST_PATH_PROBABILITY, shouldAllocateInTLAB(allocationSize, true)) && probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
             writeTlabTop(thread, newTop);
             emitPrefetchAllocate(newTop, true);
             boolean useOptimizedFilling = !withException && supportsOptimizedFilling;

@@ -79,6 +79,10 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
         return klassEncoding;
     }
 
+    public boolean useSerialGC() {
+        return gc == HotSpotGraalRuntime.HotSpotGC.Serial;
+    }
+
     public boolean useG1GC() {
         return gc == HotSpotGraalRuntime.HotSpotGC.G1;
     }
@@ -244,7 +248,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     /**
      * The offset of the array length word in an array object's header.
-     *
+     * <p>
      * See {@code arrayOopDesc::length_offset_in_bytes()}.
      */
     public final int arrayOopDescLengthOffset() {

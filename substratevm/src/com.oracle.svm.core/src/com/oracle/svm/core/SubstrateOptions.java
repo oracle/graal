@@ -726,8 +726,18 @@ public class SubstrateOptions {
     @Option(help = "Number of cache lines to load after the object address using prefetch instructions.")//
     public static final HostedOptionKey<Integer> AllocateInstancePrefetchLines = new HostedOptionKey<>(1);
 
-    @Option(help = "Generated code style for prefetch instructions: for 0 or less no prefetch instructions are generated and for 1 or more prefetch instructions are introduced after each allocation.")//
-    public static final HostedOptionKey<Integer> AllocatePrefetchStyle = new HostedOptionKey<>(1);
+    @Fold
+    public static int getAllocatePrefetchStyle() {
+        Integer style = ConcealedOptions.AllocatePrefetchStyle.getValue();
+        if (style != null) {
+            return style;
+        }
+        /*
+         * Prefetches do not lead to measurable performance improvements on SerialGC, so disable
+         * them by default if SerialGC is selected.
+         */
+        return SubstrateOptions.useSerialGC() ? 0 : 1;
+    }
 
     @Option(help = "Sets the prefetch instruction to prefetch ahead of the allocation pointer. Possible values are from 0 to 3. The actual instructions behind the values depend on the platform.")//
     public static final HostedOptionKey<Integer> AllocatePrefetchInstr = new HostedOptionKey<>(0);
@@ -1077,6 +1087,12 @@ public class SubstrateOptions {
 
         @Option(help = "Physical memory size (in bytes). By default, the value is queried from the OS/container during VM startup.", type = OptionType.Expert)//
         public static final RuntimeOptionKey<Long> MaxRAM = new RuntimeOptionKey<>(0L, IsolateCreationOnly);
+
+        /**
+         * Use {@link SubstrateOptions#getAllocatePrefetchStyle()} instead.
+         */
+        @Option(help = "Generated code style for prefetch instructions: for 0 or less no prefetch instructions are generated and for 1 or more prefetch instructions are introduced after each allocation.")//
+        public static final HostedOptionKey<Integer> AllocatePrefetchStyle = new HostedOptionKey<>(null);
     }
 
     @Fold
