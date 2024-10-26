@@ -258,10 +258,12 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     }
 
     private static int getMethodId(AnalysisMethod analysisMethod) {
-        if (!analysisMethod.isReachable()) {
+        if (!analysisMethod.isTrackedAcrossLayers()) {
             /*
-             * At the moment, only reachable methods are persisted, so the method will not be loaded
-             * in the extension image.
+             * Only tracked methods are persisted, so the method will not be loaded in the extension
+             * image.
+             *
+             * GR-59009 will ensure all methods referred to are tracked.
              */
             return -1;
         } else {
