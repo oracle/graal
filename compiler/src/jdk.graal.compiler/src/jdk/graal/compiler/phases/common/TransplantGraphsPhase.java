@@ -51,7 +51,6 @@ import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.GraphState;
-import jdk.graal.compiler.nodes.GraphState.GuardsStage;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.PhiNode;
@@ -507,7 +506,7 @@ public class TransplantGraphsPhase extends BasePhase<LowTierContext> {
                 assert patchedFinalSchedule.getNodeToBlockMap().get(n) == b : Assertions.errorMessage("Node to block gives different block for node ", patchedFinalSchedule.getNodeToBlockMap().get(n),
                                 n, b);
                 StructuredGraph g = (StructuredGraph) n.graph();
-                if (g.hasLoops() && g.getGuardsStage() == GuardsStage.AFTER_FSA && n instanceof DeoptimizeNode) {
+                if (g.hasLoops() && g.getGuardsStage().areFrameStatesAtDeopts() && n instanceof DeoptimizeNode) {
                     assert b.getLoopDepth() == 0 : n;
                 }
             }

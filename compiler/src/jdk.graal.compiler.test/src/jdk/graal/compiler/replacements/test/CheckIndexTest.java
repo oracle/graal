@@ -31,6 +31,9 @@ import java.nio.ByteOrder;
 import java.util.List;
 import java.util.Objects;
 
+import org.junit.Assume;
+import org.junit.Test;
+
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
@@ -40,9 +43,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
-import org.junit.Assume;
-import org.junit.Test;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -169,14 +169,6 @@ public class CheckIndexTest extends MethodSubstitutionTest {
             withSkippedExceptionTypes = List.of(getMetaAccess().lookupJavaType(Class.forName("jdk.internal.misc.ScopedMemoryAccess$ScopedAccessError")));
         } catch (ClassNotFoundException e) {
             Assume.assumeNoException(e);
-        }
-        Assume.assumeFalse(Runtime.version().feature() == 19);
-        if (Runtime.version().feature() == 20) {
-            try {
-                Class.forName("jdk.internal.foreign.Scoped");
-                Assume.assumeFalse("Requires Foreign Function and Memory API (Second Preview)", true);
-            } catch (ClassNotFoundException e) {
-            }
         }
 
         test("byteBufferViewVarHandleGetInt");
