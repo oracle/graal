@@ -310,11 +310,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return NativeSignature.create(returnType, parameterTypes);
     }
 
-    public TruffleObject lookupAndBind(@Pointer TruffleObject library, String mangledName) {
-        NativeSignature signature = buildJniNativeSignature(getParsedSignature());
-        return getNativeAccess().lookupAndBindSymbol(library, mangledName, signature);
-    }
-
     private TruffleObject bind(@Pointer TruffleObject symbol) {
         NativeSignature signature = buildJniNativeSignature(getParsedSignature());
         return getNativeAccess().bindSymbol(symbol, signature);
@@ -358,9 +353,10 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             for (boolean withSignature : new boolean[]{false, true}) {
                 String mangledName = Mangle.mangleMethod(this, withSignature);
                 // Look in libjava
-                TruffleObject nativeMethod = lookupAndBind(getVM().getJavaLibrary(), mangledName);
+                NativeSignature signature = buildJniNativeSignature(getParsedSignature());
+                TruffleObject nativeMethod = getNativeAccess().lookupAndBindSymbol(getVM().getJavaLibrary(), mangledName, signature, false, true);
                 if (nativeMethod != null) {
-                    return EspressoRootNode.createNative(getMethodVersion(), nativeMethod).getCallTarget();
+                    return EspressoRootNode.createNative(getContext().getJNI(), getMethodVersion(), nativeMethod).getCallTarget();
                 }
             }
         }
@@ -368,38 +364,40 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     private CallTarget lookupAgents() {
+        if (!getContext().getEspressoEnv().EnableAgents) {
+            return null;
+        }
         // Look in agents
         for (boolean withSignature : new boolean[]{false, true}) {
             String mangledName = Mangle.mangleMethod(this, withSignature);
-            TruffleObject nativeMethod = getContext().bindToAgent(this, mangledName);
-            if (nativeMethod != null) {
-                return EspressoRootNode.createNative(getMethodVersion(), nativeMethod).getCallTarget();
+            TruffleObject symbol = getContext().lookupAgentSymbol(mangledName);
+            if (symbol != null) {
+                TruffleObject nativeMethod = bind(symbol);
+                return EspressoRootNode.createNative(getContext().getJNI(symbol), getMethodVersion(), nativeMethod).getCallTarget();
             }
         }
         return null;
     }
 
     private CallTarget lookupJniCallTarget() {
-        CallTarget target;
-        Method findNative = getMeta().java_lang_ClassLoader_findNative;
-        // Lookup the short name first, otherwise lookup the long name (with
-        // signature).
-        target = lookupJniCallTarget(findNative, false);
+        Meta meta = getMeta();
+        // Lookup the short name first, otherwise lookup the long name (with signature).
+        CallTarget target = lookupJniCallTarget(meta, false);
         if (target == null) {
-            target = lookupJniCallTarget(findNative, true);
+            target = lookupJniCallTarget(meta, true);
         }
         return target;
     }
 
-    private CallTarget lookupJniCallTarget(Method findNative, boolean fullSignature) {
+    private CallTarget lookupJniCallTarget(Meta meta, boolean fullSignature) {
         String mangledName = Mangle.mangleMethod(this, fullSignature);
-        long handle = (long) findNative.invokeWithConversions(null, getDeclaringKlass().getDefiningClassLoader(), mangledName);
+        long handle = (long) meta.java_lang_ClassLoader_findNative.invokeDirectStatic(getDeclaringKlass().getDefiningClassLoader(), meta.toGuestString(mangledName));
         if (handle == 0) { // not found
             return null;
         }
         TruffleObject symbol = getVM().getFunction(handle);
         TruffleObject nativeMethod = bind(symbol);
-        return EspressoRootNode.createNative(this.getMethodVersion(), nativeMethod).getCallTarget();
+        return EspressoRootNode.createNative(getContext().getJNI(symbol), getMethodVersion(), nativeMethod).getCallTarget();
     }
 
     public boolean isConstructor() {
@@ -469,7 +467,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         // Impossible to call from guest code, so what is above is illegal for continuations.
         tls.blockContinuationSuspension();
         try {
-            getContext().getJNI().clearPendingException();
+            getLanguage().clearPendingException();
             assert args.length == Signatures.parameterCount(getParsedSignature());
             // assert !isStatic() || ((StaticObject) self).isStatic();
 
@@ -505,7 +503,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         // Impossible to call from guest code, so what is above is illegal for continuations.
         tls.blockContinuationSuspension();
         try {
-            getContext().getJNI().clearPendingException();
+            getLanguage().clearPendingException();
             assert !isStatic();
             assert args.length == Signatures.parameterCount(getParsedSignature()) + 1;
             assert getDeclaringKlass().isAssignableFrom(((StaticObject) args[0]).getKlass());
@@ -521,7 +519,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         // Impossible to call from guest code, so what is above is illegal for continuations.
         tls.blockContinuationSuspension();
         try {
-            getContext().getJNI().clearPendingException();
+            getLanguage().clearPendingException();
             assert isStatic();
             assert args.length == Signatures.parameterCount(getParsedSignature());
             getDeclaringKlass().safeInitialize();

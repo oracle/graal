@@ -29,6 +29,8 @@ import java.util.Arrays;
 import java.util.function.Supplier;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.espresso.impl.Field;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 /**
@@ -49,6 +51,8 @@ public final class JNIHandles {
      */
     static final int NATIVE_CALL_MIN_LOCAL_HANDLE_CAPACITY = 16;
 
+    private final WeakHandles<Field> fieldIds = new WeakHandles<>();
+    private final WeakHandles<Method> methodIds = new WeakHandles<>();
     private final ThreadLocal<LocalHandles> locals;
     private final GlobalHandles globals;
 
@@ -186,6 +190,14 @@ public final class JNIHandles {
 
     public int pushFrame() {
         return pushFrame(NATIVE_CALL_MIN_LOCAL_HANDLE_CAPACITY);
+    }
+
+    public WeakHandles<Field> fieldIds() {
+        return fieldIds;
+    }
+
+    public WeakHandles<Method> methodIds() {
+        return methodIds;
     }
 }
 
@@ -329,7 +341,7 @@ final class LocalHandles {
             targetCapacity = Math.multiplyExact(targetCapacity, 2);
         }
         if (targetCapacity > objects.length) {
-            Object[] oldArray = objects;
+            StaticObject[] oldArray = objects;
             assert targetCapacity >= top + capacity;
             objects = new StaticObject[targetCapacity];
             System.arraycopy(oldArray, 0, objects, 0, oldArray.length);
