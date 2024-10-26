@@ -807,7 +807,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 args.addConst("fillContents", FillContent.fromBoolean(fillContents));
                 args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
                 args.addConst("maybeUnroll", length.isConstant());
-                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
+                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
                 args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
                 args.addConst("profilingData", getProfilingData(node, instanceClass));
                 args.addConst("withException", false);
@@ -872,7 +872,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 args.addConst("fillContents", FillContent.fromBoolean(node.fillContents()));
                 args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
                 args.addConst("maybeUnroll", length.isConstant());
-                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
+                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
                 args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
                 args.addConst("profilingData", getProfilingData(node, type));
                 args.addConst("withException", false);
@@ -907,7 +907,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 args.addConst("fillContents", FillContent.fromBoolean(node.fillContents()));
                 args.addConst("emitMemoryBarrier", true);
                 args.addConst("maybeUnroll", length.isConstant());
-                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
+                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
                 args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
                 args.addConst("profilingData", getProfilingData(node, type));
                 args.addConst("withException", true);
@@ -983,7 +983,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 args.addConst("forceSlowPath", shouldForceSlowPath(graph));
                 args.addConst("fillContents", FillContent.fromBoolean(node.fillContents()));
                 args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
-                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
+                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
                 args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
                 args.addConst("profilingData", getProfilingData(node, null));
                 args.addConst("withException", false);
@@ -1005,7 +1005,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 args.addConst("forceSlowPath", shouldForceSlowPath(graph));
                 args.addConst("fillContents", FillContent.fromBoolean(true));
                 args.addConst("emitMemoryBarrier", true/* barriers */);
-                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
+                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
                 args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
                 args.addConst("profilingData", getProfilingData(node, null));
                 args.addConst("withException", true);
@@ -1028,7 +1028,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 args.addConst("forceSlowPath", shouldForceSlowPath(graph));
                 args.addConst("fillContents", FillContent.fromBoolean(node.fillContents()));
                 args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
-                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
+                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
                 args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
                 args.addConst("withException", false);
                 args.addConst("profilingData", getProfilingData(node, null));
@@ -1051,7 +1051,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 args.addConst("forceSlowPath", shouldForceSlowPath(graph));
                 args.addConst("fillContents", FillContent.fromBoolean(true));
                 args.addConst("emitMemoryBarrier", true/* barriers */);
-                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
+                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
                 args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
                 args.addConst("withException", true);
                 args.addConst("profilingData", getProfilingData(node, null));
@@ -1091,7 +1091,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 args.add("referenceMap", node.getReferenceMap());
                 args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
                 args.addConst("maybeUnroll", node.getArrayLength().isConstant());
-                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
+                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
                 args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
                 args.addConst("profilingData", getProfilingData(node, node.getKnownInstanceType()));
 
