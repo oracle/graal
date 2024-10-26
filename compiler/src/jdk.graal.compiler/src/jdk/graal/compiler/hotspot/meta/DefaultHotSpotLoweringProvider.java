@@ -114,7 +114,6 @@ import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.GetObjectAddressNode;
-import jdk.graal.compiler.nodes.GraphState.GuardsStage;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.LogicConstantNode;
 import jdk.graal.compiler.nodes.LogicNode;
@@ -556,27 +555,27 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         } else if (n instanceof HubGetClassNode) {
             lowerHubGetClassNode((HubGetClassNode) n, tool);
         } else if (n instanceof KlassLayoutHelperNode) {
-            if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
+            if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
                 lowerKlassLayoutHelperNode((KlassLayoutHelperNode) n, tool);
             }
         } else if (n instanceof KlassBeingInitializedCheckNode) {
-            if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
+            if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
                 getAllocationSnippets().lower((KlassBeingInitializedCheckNode) n, tool);
             }
         } else if (n instanceof KlassFullyInitializedCheckNode) {
-            if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
+            if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
                 getAllocationSnippets().lower((KlassFullyInitializedCheckNode) n, tool);
             }
         } else if (n instanceof FastNotifyNode) {
-            if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
+            if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
                 objectSnippets.lower(n, tool);
             }
         } else if (n instanceof UnsafeCopyMemoryNode) {
-            if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
+            if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
                 unsafeSnippets.lower((UnsafeCopyMemoryNode) n, tool);
             }
         } else if (n instanceof UnsafeSetMemoryNode) {
-            if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
+            if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
                 unsafeSnippets.lower((UnsafeSetMemoryNode) n, tool);
             }
         } else if (n instanceof RegisterFinalizerNode) {
@@ -588,7 +587,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
                 lowerIntegerDivRem((IntegerDivRemNode) n, tool);
             }
         } else if (n instanceof VirtualThreadUpdateJFRNode) {
-            if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
+            if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
                 virtualThreadUpdateJFRSnippets.lower((VirtualThreadUpdateJFRNode) n, registers, tool);
             }
         } else {
@@ -920,7 +919,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
 
     private void lowerOSRStartNode(OSRStartNode osrStart) {
         StructuredGraph graph = osrStart.graph();
-        if (graph.getGuardsStage() == GuardsStage.FIXED_DEOPTS) {
+        if (graph.getGuardsStage().areDeoptsFixed()) {
             StartNode newStart = graph.add(new StartNode());
             ParameterNode buffer = graph.addWithoutUnique(new ParameterNode(0, StampPair.createSingle(StampFactory.forKind(runtime.getTarget().wordJavaKind))));
             ForeignCallNode migrationEnd = graph.add(new ForeignCallNode(OSR_MIGRATION_END, buffer));

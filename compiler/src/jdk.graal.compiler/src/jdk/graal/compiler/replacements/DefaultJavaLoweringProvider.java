@@ -917,7 +917,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     @SuppressWarnings("try")
     protected void lowerCommitAllocationNode(CommitAllocationNode commit, LoweringTool tool) {
         StructuredGraph graph = commit.graph();
-        if (graph.getGuardsStage() != GraphState.GuardsStage.FIXED_DEOPTS) {
+        if (graph.getGuardsStage().allowsFloatingGuards()) {
             return;
         }
 

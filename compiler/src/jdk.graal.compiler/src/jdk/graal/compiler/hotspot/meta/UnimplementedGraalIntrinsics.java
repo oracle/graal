@@ -32,6 +32,7 @@ import java.util.TreeSet;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
@@ -85,7 +86,7 @@ public final class UnimplementedGraalIntrinsics {
     }
 
     public UnimplementedGraalIntrinsics(Architecture arch) {
-        int jdk = Runtime.version().feature();
+        int jdk = JavaVersionUtil.JAVA_SPEC;
 
         add(toBeInvestigated, // @formatter:off
                         // JDK-8309130: x86_64 AVX512 intrinsics for Arrays.sort methods (GR-48679)

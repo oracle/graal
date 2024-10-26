@@ -65,7 +65,6 @@ import jdk.graal.compiler.nodes.DeoptimizeNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.GraphState;
-import jdk.graal.compiler.nodes.GraphState.GuardsStage;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.GuardNode;
 import jdk.graal.compiler.nodes.IfNode;
@@ -399,7 +398,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
                     assert n.isAlive();
                     assert nodeMap.get(n) == b : Assertions.errorMessage(n, b);
                     StructuredGraph g = (StructuredGraph) n.graph();
-                    if (g.hasLoops() && g.getGuardsStage() == GuardsStage.AFTER_FSA && n instanceof DeoptimizeNode) {
+                    if (g.hasLoops() && g.getGuardsStage().areFrameStatesAtDeopts() && n instanceof DeoptimizeNode) {
                         assert b.getLoopDepth() == 0 : n;
                     }
                 }
