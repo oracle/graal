@@ -42,7 +42,7 @@ for e in "${relative_cp[@]}"; do
     absolute_cp+=("${location}/${e}")
 done
 
-jvm_args=("--enable-native-access=org.graalvm.truffle" "-Dorg.graalvm.launcher.shell=true" "-Dorg.graalvm.launcher.executablename=$0")
+jvm_args=("-Dorg.graalvm.launcher.shell=true" "-Dorg.graalvm.launcher.executablename=$0")
 launcher_args=(<launcher_args>)
 
 # Unfortunately, parsing of `--vm.*` arguments has to be done blind:

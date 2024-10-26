@@ -2304,6 +2304,8 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
         def _get_extra_jvm_args():
             image_config = self.subject.native_image_config
             extra_jvm_args = mx.list_to_cmd_line(image_config.extra_jvm_args)
+            if isinstance(self.subject.component, mx_sdk.GraalVmTruffleComponent) or image_config.is_polyglot:
+                extra_jvm_args = ' '.join([extra_jvm_args, '--enable-native-access=org.graalvm.truffle'])
             if not _jlink_libraries():
                 if mx.is_windows():
                     extra_jvm_args = ' '.join([extra_jvm_args, r'--upgrade-module-path "%location%\..\..\jvmci\graal.jar"'])
