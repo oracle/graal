@@ -42,7 +42,7 @@ public interface RISCV64LoweringProviderMixin extends LoweringProvider {
     }
 
     @Override
-    default boolean supportsBulkZeroing() {
+    default boolean supportsBulkZeroingOfEden() {
         return false;
     }
 
