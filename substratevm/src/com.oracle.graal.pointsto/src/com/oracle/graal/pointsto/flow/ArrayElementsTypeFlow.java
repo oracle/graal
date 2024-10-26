@@ -50,17 +50,23 @@ public class ArrayElementsTypeFlow extends TypeFlow<AnalysisType> implements Glo
     }
 
     @Override
-    public boolean canSaturate() {
-        return false;
+    public boolean canSaturate(PointsToAnalysis bb) {
+        /* Arrays flows with a closed component type don't saturate, they track all input types. */
+        return !bb.isClosed(declaredType);
     }
 
     @Override
     protected void onInputSaturated(PointsToAnalysis bb, TypeFlow<?> input) {
-        /*
-         * When an array store is saturated conservatively assume that the array can contain any
-         * subtype of its declared type.
-         */
-        getDeclaredType().getTypeFlow(bb, true).addUse(bb, this);
+        if (bb.isClosed(declaredType)) {
+            /*
+             * When an array store is saturated conservatively assume that the array can contain any
+             * subtype of its declared type, i.e., of its component type.
+             */
+            declaredType.getTypeFlow(bb, true).addUse(bb, this);
+        } else {
+            /* Propagate the saturation stamp through the array flow. */
+            super.onInputSaturated(bb, input);
+        }
     }
 
     @Override
@@ -71,7 +77,7 @@ public class ArrayElementsTypeFlow extends TypeFlow<AnalysisType> implements Glo
         } else {
             /*
              * Filter out the objects not compatible with the declared type, i.e., those objects
-             * whose type cannot be converted to the component type of the this array by assignment
+             * whose type cannot be converted to the component type of this array by assignment
              * conversion. At runtime that will throw an ArrayStoreException but during the analysis
              * we can detect such cases and filter out the incompatible types.
              */

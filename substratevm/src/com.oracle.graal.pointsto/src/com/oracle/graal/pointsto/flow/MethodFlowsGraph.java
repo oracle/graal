@@ -449,7 +449,7 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
     public void saturateAllParameters(PointsToAnalysis bb) {
         AnalysisError.guarantee(bb.isBaseLayerAnalysisEnabled());
         for (TypeFlow<?> parameter : getParameters()) {
-            if (parameter != null && parameter.canSaturate()) {
+            if (parameter != null && parameter.canSaturate(bb)) {
                 parameter.enableFlow(bb);
                 parameter.onSaturated(bb);
             }
@@ -466,7 +466,7 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
          */
         if (miscEntryFlows != null) {
             for (TypeFlow<?> miscEntryFlow : miscEntryFlows) {
-                if (miscEntryFlow != null && miscEntryFlow.canSaturate()) {
+                if (miscEntryFlow != null && miscEntryFlow.canSaturate(bb)) {
                     miscEntryFlow.enableFlow(bb);
                     miscEntryFlow.onSaturated(bb);
                 }
