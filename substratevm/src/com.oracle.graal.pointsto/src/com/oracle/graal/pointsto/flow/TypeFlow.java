@@ -488,7 +488,7 @@ public abstract class TypeFlow<T> {
      * Can this type flow saturate? By default all type flows can saturate, with the exception of a
      * few ones that need to track all their types, e.g., AllInstantiated, AllSynchronized, etc.
      */
-    public boolean canSaturate() {
+    public boolean canSaturate(@SuppressWarnings("unused") PointsToAnalysis bb) {
         return true;
     }
 
@@ -869,7 +869,7 @@ public abstract class TypeFlow<T> {
             /* If the type flow saturation optimization is disabled just return false. */
             return false;
         }
-        if (!canSaturate()) {
+        if (!canSaturate(bb)) {
             /* This type flow needs to track all its individual types. */
             return false;
         }
@@ -882,7 +882,7 @@ public abstract class TypeFlow<T> {
     /** Called when this type flow becomes saturated. */
     protected void onSaturated(PointsToAnalysis bb) {
         assert bb.analysisPolicy().removeSaturatedTypeFlows() : "The type flow saturation optimization is disabled.";
-        assert canSaturate() : "This type flow cannot saturate.";
+        assert canSaturate(bb) : "This type flow cannot saturate.";
         assert isFlowEnabled() : "A flow cannot saturate before it is enabled.";
         /*
          * Array type flow aliasing needs to be enabled for the type flow saturation optimization to
@@ -975,14 +975,14 @@ public abstract class TypeFlow<T> {
      */
     protected void onInputSaturated(PointsToAnalysis bb, @SuppressWarnings("unused") TypeFlow<?> input) {
         assert bb.analysisPolicy().removeSaturatedTypeFlows() : "The type flow saturation optimization is disabled.";
-        if (!canSaturate()) {
+        if (!canSaturate(bb)) {
             /* This type flow needs to track all its individual types. */
             return;
         }
 
         /*
-         * By default when a type flow is notified that one of its inputs is saturated it will just
-         * pass this information to its uses and observers and unlink them. Subclases should
+         * By default, when a type flow is notified that one of its inputs is saturated it will just
+         * pass this information to its uses and observers and unlink them. Subclasses should
          * override this method and provide custom behavior.
          */
         onSaturated(bb);

@@ -111,23 +111,42 @@ public class FilterTypeFlow extends TypeFlow<BytecodePosition> {
 
     @Override
     protected void onInputSaturated(PointsToAnalysis bb, TypeFlow<?> input) {
-        if (isAssignable) {
-            if (!setSaturated()) {
-                return;
+        if (bb.isClosed(filterType)) {
+            if (isAssignable) {
+                /*
+                 * If the filter type is closed stop saturation propagation to dependent flows and
+                 * instead use the upper limit type, i.e., the filter type, as a safe approximation.
+                 */
+                if (!setSaturated()) {
+                    return;
+                }
+                /* Swap this flow out at uses/observers/predicated flows with its filter type. */
+                swapOut(bb, filterType.getTypeFlow(bb, includeNull));
+            } else {
+                /*
+                 * For the non-assignable branch simply propagate the saturation stamp through the
+                 * filter flow.
+                 */
+                super.onInputSaturated(bb, input);
             }
-            /*
-             * Swap this flow out at its uses/observers/predicated flows with its filter type flow.
-             */
-            swapOut(bb, filterType.getTypeFlow(bb, includeNull));
         } else {
+            /*
+             * /* For open types simply propagate the saturation stamp through the filter flow, just
+             * like for the non-assignable branch. GR-59312 will preserve and propagate the upper
+             * limit type also for open types.
+             */
             super.onInputSaturated(bb, input);
         }
     }
 
     @Override
     protected void notifyUseOfSaturation(PointsToAnalysis bb, TypeFlow<?> use) {
-        if (isAssignable) {
-            swapAtUse(bb, filterType.getTypeFlow(bb, includeNull), use);
+        if (bb.isClosed(filterType)) {
+            if (isAssignable) {
+                swapAtUse(bb, filterType.getTypeFlow(bb, includeNull), use);
+            } else {
+                super.notifyUseOfSaturation(bb, use);
+            }
         } else {
             super.notifyUseOfSaturation(bb, use);
         }
@@ -135,8 +154,12 @@ public class FilterTypeFlow extends TypeFlow<BytecodePosition> {
 
     @Override
     protected void notifyObserverOfSaturation(PointsToAnalysis bb, TypeFlow<?> observer) {
-        if (isAssignable) {
-            swapAtObserver(bb, filterType.getTypeFlow(bb, includeNull), observer);
+        if (bb.isClosed(filterType)) {
+            if (isAssignable) {
+                swapAtObserver(bb, filterType.getTypeFlow(bb, includeNull), observer);
+            } else {
+                super.notifyObserverOfSaturation(bb, observer);
+            }
         } else {
             super.notifyObserverOfSaturation(bb, observer);
         }
