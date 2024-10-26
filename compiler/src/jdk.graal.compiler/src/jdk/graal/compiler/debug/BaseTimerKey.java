@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,9 +30,9 @@ import java.util.concurrent.TimeUnit;
 
 import org.graalvm.collections.Pair;
 
-final class TimerKeyImpl extends AccumulatedKey implements TimerKey {
-    static class FlatTimer extends AbstractKey implements TimerKey {
-        private TimerKeyImpl accm;
+abstract class BaseTimerKey extends AccumulatedKey implements TimerKey {
+    static final class FlatTimer extends AbstractKey implements TimerKey {
+        private BaseTimerKey accm;
 
         FlatTimer(String nameFormat, Object nameArg1, Object nameArg2) {
             super(nameFormat, nameArg1, nameArg2);
@@ -41,11 +41,6 @@ final class TimerKeyImpl extends AccumulatedKey implements TimerKey {
         @Override
         protected String createName(String format, Object arg1, Object arg2) {
             return super.createName(format, arg1, arg2) + FLAT_KEY_SUFFIX;
-        }
-
-        @Override
-        public String toHumanReadableFormat(long value) {
-            return valueToString(value);
         }
 
         @Override
@@ -59,13 +54,18 @@ final class TimerKeyImpl extends AccumulatedKey implements TimerKey {
         }
 
         @Override
-        public Pair<String, String> toCSVFormat(long value) {
-            return TimerKeyImpl.toCSVFormatHelper(value);
+        public TimerKey doc(String doc) {
+            throw new IllegalArgumentException("Cannot set documentation for derived key " + getName());
         }
 
         @Override
-        public TimerKey doc(String doc) {
-            throw new IllegalArgumentException("Cannot set documentation for derived key " + getName());
+        public String toHumanReadableFormat(long value) {
+            return accm.toHumanReadableFormat(value);
+        }
+
+        @Override
+        public Pair<String, String> toCSVFormat(long value) {
+            return accm.toCSVFormat(value);
         }
 
         @Override
@@ -74,7 +74,7 @@ final class TimerKeyImpl extends AccumulatedKey implements TimerKey {
         }
     }
 
-    TimerKeyImpl(String nameFormat, Object nameArg1, Object nameArg2) {
+    BaseTimerKey(String nameFormat, Object nameArg1, Object nameArg2) {
         super(new FlatTimer(nameFormat, nameArg1, nameArg2), nameFormat, nameArg1, nameArg2);
         ((FlatTimer) flat).accm = this;
     }
@@ -82,7 +82,7 @@ final class TimerKeyImpl extends AccumulatedKey implements TimerKey {
     @Override
     public DebugCloseable start(DebugContext debug) {
         if (debug.isTimerEnabled(this)) {
-            Timer result = new Timer(this, debug);
+            Timer result = createTimerInstance(debug);
             debug.currentTimer = result;
             return result;
         } else {
@@ -90,26 +90,12 @@ final class TimerKeyImpl extends AccumulatedKey implements TimerKey {
         }
     }
 
-    public static String valueToString(long value) {
-        return String.format("%d.%d ms", value / 1000000, (value / 100000) % 10);
-    }
-
     @Override
     public TimerKey getFlat() {
         return (FlatTimer) flat;
     }
 
-    @Override
-    public String toHumanReadableFormat(long value) {
-        return valueToString(value);
-    }
-
-    @Override
-    public TimeUnit getTimeUnit() {
-        return TimeUnit.NANOSECONDS;
-    }
-
-    static final class Timer extends CloseableCounter implements DebugCloseable {
+    abstract static class Timer extends CloseableCounter implements DebugCloseable {
         final DebugContext debug;
 
         Timer(AccumulatedKey counter, DebugContext debug) {
@@ -122,22 +108,9 @@ final class TimerKeyImpl extends AccumulatedKey implements TimerKey {
             super.close();
             debug.currentTimer = parent;
         }
-
-        @Override
-        protected long getCounterValue() {
-            return TimeSource.getTimeNS();
-        }
-
     }
 
-    @Override
-    public Pair<String, String> toCSVFormat(long value) {
-        return toCSVFormatHelper(value);
-    }
-
-    static Pair<String, String> toCSVFormatHelper(long value) {
-        return Pair.create(Long.toString(value / 1000), "us");
-    }
+    protected abstract Timer createTimerInstance(DebugContext debug);
 
     @Override
     public TimerKey doc(String doc) {
