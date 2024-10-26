@@ -100,8 +100,7 @@ public final class Target_jdk_internal_misc_ScopedMemoryAccess {
                                 assert method.getLocalVariableTable() != LocalVariableTable.EMPTY_LVT;
                                 Local[] locals = method.getLocalVariableTable().getLocalsAt(bci);
                                 for (Local local : locals) {
-                                    // primitive types have length 1, object types have length > 1
-                                    if (local.getType().value().length() > 1) {
+                                    if (local.getJavaKind().isObject()) {
                                         if (EspressoFrame.getLocalObject(frame, local.getSlot()) == value) {
                                             found = true;
                                             return this;

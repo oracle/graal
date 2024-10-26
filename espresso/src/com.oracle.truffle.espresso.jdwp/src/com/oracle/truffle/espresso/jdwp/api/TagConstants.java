@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.jdwp.api;
 
+import com.oracle.truffle.espresso.classfile.JavaKind;
+
 public final class TagConstants {
 
     public static final byte ARRAY = '[';
@@ -80,5 +82,30 @@ public final class TagConstants {
             return BOOLEAN;
         }
         throw new RuntimeException("boxed object: " + boxed.getClass() + " is not a primitive");
+    }
+
+    public static byte toTagConstant(JavaKind kind) {
+        switch (kind) {
+            case Boolean:
+                return TagConstants.BOOLEAN;
+            case Byte:
+                return TagConstants.BYTE;
+            case Short:
+                return TagConstants.SHORT;
+            case Char:
+                return TagConstants.CHAR;
+            case Int:
+                return TagConstants.INT;
+            case Float:
+                return TagConstants.FLOAT;
+            case Long:
+                return TagConstants.LONG;
+            case Double:
+                return TagConstants.DOUBLE;
+            case Object:
+                return TagConstants.OBJECT;
+            default:
+                return -1;
+        }
     }
 }

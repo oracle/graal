@@ -22,9 +22,6 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -38,13 +35,17 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.EspressoScope;
-import com.oracle.truffle.espresso.classfile.attributes.Local;
-import com.oracle.truffle.espresso.descriptors.ByteSequence;
-import com.oracle.truffle.espresso.descriptors.Signatures;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Utf8ConstantTable;
+import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.classfile.attributes.Local;
 import com.oracle.truffle.espresso.vm.continuation.UnwindContinuationException;
+
+import java.util.ArrayList;
+import java.util.HashMap;
 
 @GenerateWrapper(yieldExceptions = UnwindContinuationException.class, resumeMethodPrefix = "resumeContinuation")
 @ExportLibrary(NodeLibrary.class)
@@ -103,25 +104,24 @@ abstract class AbstractInstrumentableBytecodeNode extends EspressoInstrumentable
             int localCount = hasReceiver ? 1 : 0;
             localCount += method.getParameterCount();
 
-            Utf8ConstantTable utf8Constants = method.getLanguage().getUtf8ConstantTable();
             int startslot = 0;
-
             if (hasReceiver) {
                 // include 'this' and method arguments if not already included
                 if (!slotToLocal.containsKey(startslot)) {
-                    constructedLiveLocals.add(new Local(utf8Constants.getOrCreate(Symbol.Name.thiz), utf8Constants.getOrCreate(method.getDeclaringKlass().getType()), 0, 0xffff, 0));
+                    constructedLiveLocals.add(new Local(Name.thiz, method.getDeclaringKlass().getType(), null, 0, 0xffff, 0));
                 } else {
                     constructedLiveLocals.add(slotToLocal.get(startslot));
                 }
                 slotToLocal.remove(startslot);
                 startslot++;
             }
-            Symbol<Symbol.Type>[] parsedSignature = method.getParsedSignature();
+            Symbol<Type>[] parsedSignature = method.getParsedSignature();
             // include method parameters if not already included
             for (int i = startslot; i < localCount; i++) {
-                Symbol<Symbol.Type> paramType = hasReceiver ? Signatures.parameterType(parsedSignature, i - 1) : Signatures.parameterType(parsedSignature, i);
+                Symbol<Type> paramType = hasReceiver ? Signatures.parameterType(parsedSignature, i - 1) : Signatures.parameterType(parsedSignature, i);
                 if (!slotToLocal.containsKey(i)) {
-                    constructedLiveLocals.add(new Local(utf8Constants.getOrCreate(ByteSequence.create("arg_" + i)), utf8Constants.getOrCreate(paramType), 0, 0xffff, i));
+                    Symbol<Name> localName = getLanguage().getNames().getOrCreate(ByteSequence.create("arg_" + i));
+                    constructedLiveLocals.add(new Local(localName, paramType, null, 0, 0xffff, i));
                     slotToLocal.remove(i);
                 }
             }

@@ -23,6 +23,8 @@
 package com.oracle.truffle.espresso.jdwp.api;
 
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableRef;
+import com.oracle.truffle.espresso.classfile.attributes.LocalVariableTableRef;
 
 /**
  * A representation of a method.
