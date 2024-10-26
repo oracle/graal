@@ -349,11 +349,6 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
              * optimized away by the analysis.
              */
             typeFlow.ensureFlowsGraphCreated(this, null);
-            /*
-             * Saturating all the parameters of the method allows to enforce that no optimization is
-             * performed using the types of the parameters of the methods.
-             */
-            typeFlow.getMethodFlowsGraph().saturateAllParameters(this);
         });
         return addRootMethod(analysisMethod, invokeSpecial, reason, otherRoots);
     }
