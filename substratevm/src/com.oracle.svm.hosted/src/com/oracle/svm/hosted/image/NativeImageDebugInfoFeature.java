@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.image;
 
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -32,9 +33,13 @@ import java.util.function.Supplier;
 
 import com.oracle.svm.core.ReservedRegisters;
 import jdk.graal.compiler.word.Word;
+import com.oracle.svm.core.debug.GDBJITInterfaceSystemJava;
 import com.oracle.svm.core.debug.SubstrateBFDNameProvider;
+import com.oracle.svm.core.ReservedRegisters;
+import jdk.vm.ci.code.Architecture;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.graal.pointsto.util.GraalAccess;
@@ -131,6 +136,17 @@ class NativeImageDebugInfoFeature implements InternalFeature {
         CGlobalDataFeature.singleton().registerWithGlobalHiddenSymbol(reservedBitsMask);
         CGlobalDataFeature.singleton().registerWithGlobalHiddenSymbol(objectAlignment);
         CGlobalDataFeature.singleton().registerWithGlobalHiddenSymbol(heapBaseRegnum);
+
+        if (SubstrateOptions.RuntimeDebugInfo.getValue()) {
+            Architecture arch = ConfigurationValues.getTarget().arch;
+            ByteBuffer buffer = ByteBuffer.allocate(SizeOf.get(GDBJITInterfaceSystemJava.JITDescriptor.class)).order(arch.getByteOrder());
+            buffer.putInt(1);  // version 1
+            buffer.putInt(0);  // action flag 0
+            buffer.putLong(0);  // relevant entry nullptr
+            buffer.putLong(0);  // first entry nullptr
+
+            CGlobalDataFeature.singleton().registerWithGlobalSymbol(CGlobalDataFactory.createBytes(buffer::array, "__jit_debug_descriptor"));
+        }
     }
 
     @Override
