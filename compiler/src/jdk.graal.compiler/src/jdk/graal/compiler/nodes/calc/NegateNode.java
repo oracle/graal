@@ -73,7 +73,7 @@ public class NegateNode extends UnaryArithmeticNode<Neg> implements NarrowableAr
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
-        ValueNode synonym = findSynonym(forValue, getOp(forValue));
+        ValueNode synonym = findSynonym(forValue, NodeView.DEFAULT);
         if (synonym != null) {
             return synonym;
         }
