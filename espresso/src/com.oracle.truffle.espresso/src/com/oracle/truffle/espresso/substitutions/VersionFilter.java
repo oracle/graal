@@ -89,6 +89,18 @@ public interface VersionFilter {
         }
     }
 
+    final class Java17OrEarlier implements VersionFilter {
+        public static final Java17OrEarlier INSTANCE = new Java17OrEarlier();
+
+        private Java17OrEarlier() {
+        }
+
+        @Override
+        public boolean isValidFor(JavaVersion version) {
+            return version.java17OrEarlier();
+        }
+    }
+
     final class Java18OrEarlier implements VersionFilter {
         public static final Java18OrEarlier INSTANCE = new Java18OrEarlier();
 
@@ -122,6 +134,18 @@ public interface VersionFilter {
         @Override
         public boolean isValidFor(JavaVersion version) {
             return version.java20OrLater();
+        }
+    }
+
+    final class Java21OrLater implements VersionFilter {
+        public static final Java21OrLater INSTANCE = new Java21OrLater();
+
+        private Java21OrLater() {
+        }
+
+        @Override
+        public boolean isValidFor(JavaVersion version) {
+            return version.java21OrLater();
         }
     }
 }
