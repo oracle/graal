@@ -64,8 +64,9 @@ public class ThreadInitializationAndDisposalTest {
 
         @Override
         @CompilerDirectives.TruffleBoundary
+        @SuppressWarnings("deprecation")
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
-            return Thread.currentThread().threadId();
+            return Thread.currentThread().getId();
         }
 
         @Override
@@ -78,7 +79,7 @@ public class ThreadInitializationAndDisposalTest {
             markThreadOperationDone(context, "initialized", thread);
         }
 
-        @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
+        @SuppressWarnings({"SynchronizationOnLocalVariableOrMethodParameter", "deprecation"})
         private void markThreadOperationDone(ExecutableContext context, String operationId, Thread thread) {
             synchronized (context) {
                 try {
@@ -88,7 +89,7 @@ public class ThreadInitializationAndDisposalTest {
                     if (uncached.isMemberReadable(scope, operationId)) {
                         alreadyExecuted = uncached.readMember(scope, operationId) + ",";
                     }
-                    uncached.writeMember(scope, operationId, alreadyExecuted + thread.threadId());
+                    uncached.writeMember(scope, operationId, alreadyExecuted + thread.getId());
                 } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
                     throw new AssertionError(e);
                 }

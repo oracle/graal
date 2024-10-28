@@ -963,7 +963,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                     // never cache last thread on close or when closingThread
                     setCachedThreadInfo(threadInfo);
 
-                    if (needsInitialization && !threadInfo.isPolyglotThread()) {
+                    if (needsInitialization && !threadInfo.isPolyglotThread(this)) {
                         deadThreads = collectDeadThreads();
                     }
                 }
@@ -1004,7 +1004,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         assert !Thread.holdsLock(this);
         Throwable ex = null;
         for (Map.Entry<Thread, PolyglotThreadInfo> removedThreadInfoEntryToRemove : deadThreads) {
-            ex = notifyThreadFinalizing(removedThreadInfoEntryToRemove.getValue(), ex, false);
+            ex = notifyThreadFinalizing(removedThreadInfoEntryToRemove.getValue(), ex);
         }
 
         synchronized (this) {
