@@ -75,7 +75,7 @@ public final class DebuggerController implements ContextsListener {
     private final Map<Object, SimpleLock> suspendLocks = Collections.synchronizedMap(new HashMap<>());
     private final Map<Object, SuspendedInfo> suspendedInfos = Collections.synchronizedMap(new HashMap<>());
     private final Map<Object, SteppingInfo> commandRequestIds = new HashMap<>();
-    private final Map<Object, ThreadJob<?>> threadJobs = new HashMap<>();
+    private final Map<Object, InvokeJob<?>> invokeJobs = new HashMap<>();
     private final Map<Object, FieldBreakpointEvent> fieldBreakpointExpected = new HashMap<>();
     private final Map<Object, MethodBreakpointEvent> methodBreakpointExpected = new HashMap<>();
     private final Map<Breakpoint, BreakpointInfo> breakpointInfos = new HashMap<>();
@@ -698,9 +698,9 @@ public final class DebuggerController implements ContextsListener {
                     // we have the actual suspension status and suspended information
                     threadSuspension.removeHardSuspendedThread(thread);
                     fine(() -> "lock.wait() for thread: " + getThreadName(thread));
-                    // Having the thread lock, we can check if a thread job was posted outside of
+                    // Having the thread lock, we can check if an invoke job was posted outside of
                     // locking, and if so, we postpone blocking the thread until next time around.
-                    if (!threadJobs.containsKey(thread)) {
+                    if (!invokeJobs.containsKey(thread)) {
                         lock.wait();
                     }
                 }
@@ -709,22 +709,22 @@ public final class DebuggerController implements ContextsListener {
                 // make sure the interrupted flag is set though
                 Thread.currentThread().interrupt();
             }
-            checkThreadJobsAndRun(thread);
+            checkInvokeJobsAndRun(thread);
         }
         fine(() -> "lock wakeup for thread: " + getThreadName(thread));
     }
 
-    private void checkThreadJobsAndRun(Object thread) {
-        if (threadJobs.containsKey(thread)) {
-            ThreadJob<?> job = threadJobs.remove(thread);
+    private void checkInvokeJobsAndRun(Object thread) {
+        if (invokeJobs.containsKey(thread)) {
+            InvokeJob<?> job = invokeJobs.remove(thread);
             job.runJob(this);
         }
     }
 
-    public void postJobForThread(ThreadJob<?> job) {
+    public void postInvokeJobForThread(InvokeJob<?> job) {
         SimpleLock lock = getSuspendLock(job.getThread());
         synchronized (lock) {
-            threadJobs.put(job.getThread(), job);
+            invokeJobs.put(job.getThread(), job);
             lock.notifyAll();
         }
     }

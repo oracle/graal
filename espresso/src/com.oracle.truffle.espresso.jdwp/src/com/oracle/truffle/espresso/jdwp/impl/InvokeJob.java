@@ -24,7 +24,7 @@ package com.oracle.truffle.espresso.jdwp.impl;
 
 import java.util.concurrent.Callable;
 
-public final class ThreadJob<T> {
+public final class InvokeJob<T> {
 
     private final Object jobLock = new Object();
     private final Object thread;
@@ -33,11 +33,11 @@ public final class ThreadJob<T> {
     private boolean resultAvailable;
     private JobResult<T> result;
 
-    public ThreadJob(Object guestThread, Callable<T> task) {
+    public InvokeJob(Object guestThread, Callable<T> task) {
         this(guestThread, task, SuspendStrategy.EVENT_THREAD);
     }
 
-    public ThreadJob(Object guestThread, Callable<T> task, byte suspensionStrategy) {
+    public InvokeJob(Object guestThread, Callable<T> task, byte suspensionStrategy) {
         this.thread = guestThread;
         this.callable = task;
         this.suspensionStrategy = suspensionStrategy;
