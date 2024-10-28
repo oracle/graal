@@ -109,12 +109,27 @@ public class SubstrateOptions {
     @Option(help = "Build shared library")//
     public static final HostedOptionKey<Boolean> SharedLibrary = new HostedOptionKey<>(false);
 
-    @Option(help = "Persist and reload graphs across layers. If false, graphs defined in the base layer can be reparsed by the current layer and inlined before analysis, " +
+    @Option(help = "Persist and reload all graphs across layers. If false, graphs defined in the base layer can be reparsed by the current layer and inlined before analysis, " +
                     "but will not be inlined after analysis has completed via our other inlining infrastructure")//
     public static final HostedOptionKey<Boolean> UseSharedLayerGraphs = new HostedOptionKey<>(true) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
-            NeverInline.update(values, "SubstrateStringConcatHelper.simpleConcat");
+            if (!newValue) {
+                UseSharedLayerStrengthenedGraphs.update(values, false);
+            }
+        }
+    };
+
+    @Option(help = "Persist and reload strengthened graphs across layers. If false, inlining after analysis will be disabled")//
+    public static final HostedOptionKey<Boolean> UseSharedLayerStrengthenedGraphs = new HostedOptionKey<>(false) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+            if (newValue) {
+                UserError.guarantee(UseSharedLayerStrengthenedGraphs.getValueOrDefault(values),
+                                "UseSharedLayerStrengthenedGraph is a subset of UseSharedLayerGraphs, so the former cannot be enabled alone.");
+            } else {
+                NeverInline.update(values, "SubstrateStringConcatHelper.simpleConcat");
+            }
         }
     };
 
