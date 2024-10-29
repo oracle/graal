@@ -438,7 +438,8 @@ public abstract class TypeFlow<T> {
     public TypeState getOutputState(BigBang bb) {
         if (!isFlowEnabled()) {
             return TypeState.forEmpty();
-        } else if (isSaturated() && declaredType != null) {
+        } else if (isSaturated()) {
+            assert declaredType != null : this;
             return declaredType.getTypeFlow(bb, true).state;
         }
         return state;
