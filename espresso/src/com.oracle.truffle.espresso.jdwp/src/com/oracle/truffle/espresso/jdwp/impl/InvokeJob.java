@@ -24,7 +24,7 @@ package com.oracle.truffle.espresso.jdwp.impl;
 
 import java.util.concurrent.Callable;
 
-public final class ThreadJob<T> {
+public final class InvokeJob<T> {
 
     private final Object jobLock = new Object();
     private final Object thread;
@@ -33,11 +33,11 @@ public final class ThreadJob<T> {
     private boolean resultAvailable;
     private JobResult<T> result;
 
-    public ThreadJob(Object guestThread, Callable<T> task) {
+    public InvokeJob(Object guestThread, Callable<T> task) {
         this(guestThread, task, SuspendStrategy.EVENT_THREAD);
     }
 
-    public ThreadJob(Object guestThread, Callable<T> task, byte suspensionStrategy) {
+    public InvokeJob(Object guestThread, Callable<T> task, byte suspensionStrategy) {
         this.thread = guestThread;
         this.callable = task;
         this.suspensionStrategy = suspensionStrategy;
@@ -47,17 +47,33 @@ public final class ThreadJob<T> {
         return thread;
     }
 
-    public byte getSuspensionStrategy() {
-        return suspensionStrategy;
-    }
-
-    public void runJob() {
+    public void runJob(DebuggerController controller) {
+        Object[] visibleGuestThreads = controller.getVisibleGuestThreads();
         result = new JobResult<>();
         try {
+            if (suspensionStrategy == SuspendStrategy.ALL) {
+                controller.getIds().unpinAll();
+                // resume all other threads during invocation of method to avoid potential deadlocks
+                for (Object activeThread : visibleGuestThreads) {
+                    if (activeThread != thread) {
+                        controller.resume(activeThread);
+                    }
+                }
+            }
+            // perform the job on this thread
             result.setResult(callable.call());
         } catch (Throwable e) {
             result.setException(e);
         } finally {
+            if (suspensionStrategy == SuspendStrategy.ALL) {
+                controller.getIds().pinAll();
+                // suspend all other threads after the invocation
+                for (Object activeThread : visibleGuestThreads) {
+                    if (activeThread != thread) {
+                        controller.suspend(activeThread);
+                    }
+                }
+            }
             resultAvailable = true;
             synchronized (jobLock) {
                 jobLock.notifyAll();

@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 
 public final class GCPrevention {
@@ -31,7 +29,6 @@ public final class GCPrevention {
     // simply hold a strong reference to all objects for which
     // GC should be disabled
     private final HashSet<Object> prevent = new HashSet<>();
-    private final HashMap<Object, ArrayList<Object>> activeWhileSuspended = new HashMap<>();
 
     public void disableGC(Object object) {
         prevent.add(object);
@@ -43,15 +40,6 @@ public final class GCPrevention {
 
     public void clearAll() {
         prevent.clear();
-    }
-
-    public synchronized void setActiveWhileSuspended(Object guestThread, Object obj) {
-        activeWhileSuspended.putIfAbsent(guestThread, new ArrayList<>());
-        activeWhileSuspended.get(guestThread).add(obj);
-    }
-
-    public synchronized void releaseActiveWhileSuspended(Object guestThread) {
-        activeWhileSuspended.remove(guestThread);
     }
 
 }
