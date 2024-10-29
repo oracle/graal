@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -92,6 +92,9 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     public ScratchRegister getScratchRegister() {
+        if (nextFreeScratchRegister == scratchRegister.length) {
+            throw new GraalError("Out of scratch registers");
+        }
         return scratchRegister[nextFreeScratchRegister++];
     }
 
@@ -1084,7 +1087,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     public void add(int size, Register dst, Register src, int immediate, Register scratch) {
         assert (!dst.equals(zr) && !src.equals(zr));
-        if (immediate < 0) {
+        if (-immediate > 0) {
             sub(size, dst, src, -immediate, scratch);
         } else if (NumUtil.isUnsignedNbit(24, immediate) || !dst.equals(src)) {
             add(size, dst, src, immediate);
@@ -1109,7 +1112,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     @Override
     public void add(int size, Register dst, Register src, int immediate) {
         assert (!dst.equals(zr) && !src.equals(zr));
-        if (immediate < 0) {
+        if (-immediate > 0) {
             sub(size, dst, src, -immediate);
         } else if (isAddSubtractImmediate(immediate, false)) {
             if (!(dst.equals(src) && immediate == 0)) {
@@ -1156,7 +1159,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     @Override
     public void adds(int size, Register dst, Register src, int immediate) {
         assert (!dst.equals(sp) && !src.equals(zr));
-        if (immediate < 0) {
+        if (-immediate > 0) {
             subs(size, dst, src, -immediate);
         } else {
             super.adds(size, dst, src, immediate);
@@ -1176,7 +1179,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     public void sub(int size, Register dst, Register src, int immediate, Register scratch) {
         assert (!dst.equals(zr) && !src.equals(zr));
-        if (immediate < 0) {
+        if (-immediate > 0) {
             add(size, dst, src, -immediate, scratch);
         }
         if (NumUtil.isUnsignedNbit(24, immediate) || !dst.equals(src)) {
@@ -1202,7 +1205,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     @Override
     public void sub(int size, Register dst, Register src, int immediate) {
         assert (!dst.equals(zr) && !src.equals(zr));
-        if (immediate < 0) {
+        if (-immediate > 0) {
             add(size, dst, src, -immediate);
         } else if (isAddSubtractImmediate(immediate, false)) {
             if (!(dst.equals(src) && immediate == 0)) {
@@ -1229,7 +1232,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     @Override
     public void subs(int size, Register dst, Register src, int immediate) {
         assert (!dst.equals(sp) && !src.equals(zr));
-        if (immediate < 0) {
+        if (-immediate > 0) {
             adds(size, dst, src, -immediate);
         } else {
             super.subs(size, dst, src, immediate);
