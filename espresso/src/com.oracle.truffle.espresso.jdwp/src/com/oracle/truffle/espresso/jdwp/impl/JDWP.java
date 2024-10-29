@@ -1163,8 +1163,8 @@ public final class JDWP {
                 try {
                     // we have to call the method in the correct thread, so post a
                     // Callable to the controller and wait for the result to appear
-                    ThreadJob<Object> job = new ThreadJob<>(thread, () -> method.invokeMethodStatic(args), suspensionStrategy);
-                    controller.postJobForThread(job);
+                    InvokeJob<Object> job = new InvokeJob<>(thread, () -> method.invokeMethodStatic(args), suspensionStrategy);
+                    controller.postInvokeJobForThread(job);
 
                     // invocation of a method can cause events with possible thread suspension
                     // to happen, e.g. class prepare events for newly loaded classes
@@ -1175,8 +1175,8 @@ public final class JDWP {
                         public void run() {
                             CommandResult commandResult = new CommandResult(reply);
                             try {
-                                ThreadJob<?>.JobResult<?> result = job.getResult();
-                                writeMethodResult(reply, context, result, thread, controller);
+                                InvokeJob<?>.JobResult<?> result = job.getResult();
+                                writeMethodResult(reply, context, result);
                             } catch (Throwable t) {
                                 reply.errorCode(ErrorCodes.INTERNAL);
                                 controller.severe(INVOKE_METHOD.class.getName() + ".createReply", t);
@@ -1246,15 +1246,15 @@ public final class JDWP {
                 try {
                     // we have to call the constructor in the correct thread, so post a
                     // Callable to the controller and wait for the result to appear
-                    ThreadJob<?> job = new ThreadJob<>(thread, () -> {
+                    InvokeJob<?> job = new InvokeJob<>(thread, () -> {
                         args[0] = context.allocateInstance(klass);
                         method.invokeMethodSpecial(args);
                         return args[0];
                     }, suspensionStrategy);
-                    controller.postJobForThread(job);
-                    ThreadJob<?>.JobResult<?> result = job.getResult();
+                    controller.postInvokeJobForThread(job);
+                    InvokeJob<?>.JobResult<?> result = job.getResult();
 
-                    writeMethodResult(reply, context, result, thread, controller);
+                    writeMethodResult(reply, context, result);
                 } catch (Throwable t) {
                     throw new RuntimeException("not able to invoke static method through jdwp", t);
                 }
@@ -1350,8 +1350,8 @@ public final class JDWP {
                 try {
                     // we have to call the method in the correct thread, so post a
                     // Callable to the controller and wait for the result to appear
-                    ThreadJob<Object> job = new ThreadJob<>(thread, () -> method.invokeMethodStatic(args), suspensionStrategy);
-                    controller.postJobForThread(job);
+                    InvokeJob<Object> job = new InvokeJob<>(thread, () -> method.invokeMethodStatic(args), suspensionStrategy);
+                    controller.postInvokeJobForThread(job);
                     // invocation of a method can cause events with possible thread suspension
                     // to happen, e.g. class prepare events for newly loaded classes
                     // to avoid blocking here, we fire up a new thread that will post
@@ -1361,8 +1361,8 @@ public final class JDWP {
                         public void run() {
                             CommandResult commandResult = new CommandResult(reply);
                             try {
-                                ThreadJob<?>.JobResult<?> result = job.getResult();
-                                writeMethodResult(reply, context, result, thread, controller);
+                                InvokeJob<?>.JobResult<?> result = job.getResult();
+                                writeMethodResult(reply, context, result);
                             } catch (Throwable t) {
                                 reply.errorCode(ErrorCodes.INTERNAL);
                                 controller.severe(INVOKE_METHOD.class.getName() + "." + "createReply", t);
@@ -1587,7 +1587,7 @@ public final class JDWP {
 
                 Object object = context.getIds().fromId((int) objectId);
 
-                if (object == context.getNullObject()) {
+                if (object == null || object == context.getNullObject()) {
                     reply.errorCode(ErrorCodes.INVALID_OBJECT);
                     return new CommandResult(reply);
                 }
@@ -1807,7 +1807,7 @@ public final class JDWP {
                 try {
                     // we have to call the method in the correct thread, so post a
                     // Callable to the controller and wait for the result to appear
-                    ThreadJob<Object> job = new ThreadJob<>(thread, () -> {
+                    InvokeJob<Object> job = new InvokeJob<>(thread, () -> {
                         if (invokeNonvirtual) {
                             return method.invokeMethodNonVirtual(args);
                         } else if (Modifier.isPrivate(method.getModifiers())) {
@@ -1818,7 +1818,7 @@ public final class JDWP {
                             return method.invokeMethodVirtual(args);
                         }
                     }, suspensionStrategy);
-                    controller.postJobForThread(job);
+                    controller.postInvokeJobForThread(job);
                     // invocation of a method can cause events with possible thread suspension
                     // to happen, e.g. class prepare events for newly loaded classes
                     // to avoid blocking here, we fire up a new thread that will post
@@ -1828,8 +1828,8 @@ public final class JDWP {
                         public void run() {
                             CommandResult commandResult = new CommandResult(reply);
                             try {
-                                ThreadJob<?>.JobResult<?> result = job.getResult();
-                                writeMethodResult(reply, context, result, thread, controller);
+                                InvokeJob<?>.JobResult<?> result = job.getResult();
+                                writeMethodResult(reply, context, result);
                             } catch (Throwable t) {
                                 reply.errorCode(ErrorCodes.INTERNAL);
                                 controller.severe(INVOKE_METHOD.class.getName() + "." + "createReply", t);
@@ -2393,11 +2393,11 @@ public final class JDWP {
                 }
 
                 // make sure owned monitors taken in frame are exited
-                ThreadJob<Void> job = new ThreadJob<>(thread, () -> {
+                InvokeJob<Void> job = new InvokeJob<>(thread, () -> {
                     controller.getContext().clearFrameMonitors(topFrame);
                     return null;
                 });
-                controller.postJobForThread(job);
+                controller.postInvokeJobForThread(job);
                 // don't return here before job completed
                 job.getResult();
 
@@ -3042,24 +3042,18 @@ public final class JDWP {
         }
     }
 
-    private static void writeMethodResult(PacketStream reply, JDWPContext context, ThreadJob<?>.JobResult<?> result, Object thread, DebuggerController controller) {
+    private static void writeMethodResult(PacketStream reply, JDWPContext context, InvokeJob<?>.JobResult<?> result) {
         if (result.getException() != null) {
             reply.writeByte(TagConstants.OBJECT);
             reply.writeLong(0);
             reply.writeByte(TagConstants.OBJECT);
             Object guestException = context.getGuestException(result.getException());
             reply.writeLong(context.getIds().getIdAsLong(guestException));
-            if (controller.getThreadSuspension().getSuspensionCount(thread) > 0) {
-                controller.getGCPrevention().setActiveWhileSuspended(thread, guestException);
-            }
         } else {
             Object value = result.getResult();
             if (value != null) {
                 byte tag = context.getTag(value);
                 writeValue(tag, value, reply, true, context);
-                if (controller.getThreadSuspension().getSuspensionCount(thread) > 0) {
-                    controller.getGCPrevention().setActiveWhileSuspended(thread, value);
-                }
             } else { // return value is null
                 reply.writeByte(TagConstants.OBJECT);
                 reply.writeLong(0);
@@ -3247,6 +3241,10 @@ public final class JDWP {
 
     private static Object verifyString(long objectId, PacketStream reply, JDWPContext context) {
         Object string = context.getIds().fromId((int) objectId);
+        if (string == null) {
+            reply.errorCode(ErrorCodes.INVALID_OBJECT);
+            return null;
+        }
 
         if (!context.isString(string)) {
             reply.errorCode(ErrorCodes.INVALID_STRING);
