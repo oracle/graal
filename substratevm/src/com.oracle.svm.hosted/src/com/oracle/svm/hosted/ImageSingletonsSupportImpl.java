@@ -210,17 +210,17 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
                     throw UserError.abort("Unsupported image singleton is being installed %s %s", key.getTypeName(), singleton);
                 }
 
-                if (singleton instanceof MultiLayeredImageSingleton || singleton instanceof ApplicationLayerOnlyImageSingleton) {
+                if (singleton instanceof MultiLayeredImageSingleton || ApplicationLayerOnlyImageSingleton.isSingletonInstanceOf(singleton)) {
 
                     if (!key.equals(singleton.getClass())) {
                         throw UserError.abort("The implementation class must be the same as the key class. key: %s, singleton: %s", key, singleton);
                     }
 
-                    if (singleton instanceof MultiLayeredImageSingleton && singleton instanceof ApplicationLayerOnlyImageSingleton) {
+                    if (singleton instanceof MultiLayeredImageSingleton && ApplicationLayerOnlyImageSingleton.isSingletonInstanceOf(singleton)) {
                         throw UserError.abort("Singleton cannot implement both %s and %s. singleton: %s", MultiLayeredImageSingleton.class, ApplicationLayerOnlyImageSingleton.class, singleton);
                     }
 
-                    if (singleton instanceof ApplicationLayerOnlyImageSingleton && !ImageLayerBuildingSupport.lastImageBuild()) {
+                    if (ApplicationLayerOnlyImageSingleton.isSingletonInstanceOf(singleton) && !ImageLayerBuildingSupport.lastImageBuild()) {
                         throw UserError.abort("Application layer only image singleton can only be installed in the final layer: %s", singleton);
                     }
 

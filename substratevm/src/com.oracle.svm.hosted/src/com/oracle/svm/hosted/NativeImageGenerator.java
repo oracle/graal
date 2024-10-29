@@ -241,6 +241,7 @@ import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageCodeCacheFactory;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
+import com.oracle.svm.hosted.imagelayer.LoadImageSingletonFeature;
 import com.oracle.svm.hosted.jdk.localization.LocalizationFeature;
 import com.oracle.svm.hosted.meta.HostedConstantReflectionProvider;
 import com.oracle.svm.hosted.meta.HostedField;
@@ -826,6 +827,9 @@ public class NativeImageGenerator {
                 featureHandler.forEachFeature(feature -> feature.beforeAnalysis(config));
                 ServiceCatalogSupport.singleton().seal();
                 bb.getHostVM().getClassInitializationSupport().setConfigurationSealed(true);
+                if (ImageLayerBuildingSupport.buildingImageLayer()) {
+                    ImageSingletons.lookup(LoadImageSingletonFeature.class).processRegisteredSingletons(aUniverse);
+                }
             }
 
             try (ReporterClosable c = ProgressReporter.singleton().printAnalysis(bb.getUniverse(), nativeLibraries.getLibraries())) {

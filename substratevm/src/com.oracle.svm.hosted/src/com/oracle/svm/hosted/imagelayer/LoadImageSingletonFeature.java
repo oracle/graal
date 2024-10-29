@@ -43,7 +43,9 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapObjectArray;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
@@ -148,18 +150,26 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
         LayeredImageHeapObjectAdder.singleton().registerObjectAdder(this::addInitialObjects);
     }
 
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        var config = (FeatureImpl.BeforeAnalysisAccessImpl) access;
-        loader = (SVMImageLayerLoader) config.getUniverse().getImageLayerLoader();
+    /**
+     * This method needs to be called after all image singletons are registered. Currently, some
+     * singletons are registered in
+     * {@link org.graalvm.nativeimage.hosted.Feature#beforeAnalysis(BeforeAnalysisAccess)}, but the
+     * singleton registration might get restricted to only
+     * {@link org.graalvm.nativeimage.hosted.Feature#duringSetup(DuringSetupAccess)} or before. In
+     * this case, this method should override
+     * {@link org.graalvm.nativeimage.hosted.Feature#beforeAnalysis(BeforeAnalysisAccess)}.
+     */
+    public void processRegisteredSingletons(AnalysisUniverse universe) {
+        AnalysisMetaAccess metaAccess = universe.getBigbang().getMetaAccess();
+        loader = (SVMImageLayerLoader) universe.getImageLayerLoader();
 
         LayeredImageSingletonSupport layeredImageSingletonSupport = LayeredImageSingletonSupport.singleton();
         layeredImageSingletonSupport.freezeMultiLayeredImageSingletons();
 
         Consumer<Object[]> multiLayerEmbeddedRootsRegistration = (objArray) -> {
-            var method = config.getMetaAccess().lookupJavaMethod(ReflectionUtil.lookupMethod(MultiLayeredImageSingleton.class, "getAllLayers", Class.class));
-            var javaConstant = config.getUniverse().getSnippetReflection().forObject(objArray);
-            config.getUniverse().registerEmbeddedRoot(javaConstant, new BytecodePosition(null, method, BytecodeFrame.UNKNOWN_BCI));
+            var method = metaAccess.lookupJavaMethod(ReflectionUtil.lookupMethod(MultiLayeredImageSingleton.class, "getAllLayers", Class.class));
+            var javaConstant = universe.getSnippetReflection().forObject(objArray);
+            universe.registerEmbeddedRoot(javaConstant, new BytecodePosition(null, method, BytecodeFrame.UNKNOWN_BCI));
         };
 
         if (ImageLayerBuildingSupport.buildingSharedLayer()) {
@@ -208,13 +218,13 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
                          * Within the application layer there will be an array created to hold all
                          * multi-layered image singletons. We must record this type is in the heap.
                          */
-                        config.registerAsInHeap(slotInfo.keyClass().arrayType());
+                        metaAccess.lookupJavaType(slotInfo.keyClass().arrayType()).registerAsInstantiated("Array holding multi-layered image singletons");
                         if (!getCrossLayerSingletonMappingInfo().getPriorLayerObjectIDs(slotInfo.keyClass()).isEmpty()) {
                             /*
                              * We also must ensure the type is registered as instantiated in this
                              * heap if we know the array will refer to a prior object.
                              */
-                            config.registerAsInHeap(slotInfo.keyClass());
+                            metaAccess.lookupJavaType(slotInfo.keyClass()).registerAsInstantiated("Refers to a prior singleton");
                         }
                         /*
                          * GR-55294: The constants have to be created before the end of the analysis
@@ -228,9 +238,9 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
             }
 
             if (!applicationLayerEmbeddedRoots.isEmpty()) {
-                var method = config.getMetaAccess().lookupJavaMethod(ReflectionUtil.lookupMethod(ImageSingletons.class, "lookup", Class.class));
-                var javaConstant = config.getUniverse().getSnippetReflection().forObject(applicationLayerEmbeddedRoots.toArray());
-                config.getUniverse().registerEmbeddedRoot(javaConstant, new BytecodePosition(null, method, BytecodeFrame.UNKNOWN_BCI));
+                var method = metaAccess.lookupJavaMethod(ReflectionUtil.lookupMethod(ImageSingletons.class, "lookup", Class.class));
+                var javaConstant = universe.getSnippetReflection().forObject(applicationLayerEmbeddedRoots.toArray());
+                universe.registerEmbeddedRoot(javaConstant, new BytecodePosition(null, method, BytecodeFrame.UNKNOWN_BCI));
             }
 
             if (!multiLayerEmbeddedRoots.isEmpty()) {

@@ -139,6 +139,9 @@ public class SubstrateOptions {
     @BundleMember(role = Role.Input) //
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Paths> LayerUse = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Paths.build());
 
+    @Option(help = "Mark singleton as application layer only")//
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> ApplicationLayerOnlySingletons = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
+
     @APIOption(name = "libc")//
     @Option(help = "Selects the libc implementation to use. Available implementations: glibc, musl, bionic")//
     public static final HostedOptionKey<String> UseLibC = new HostedOptionKey<>(null) {
