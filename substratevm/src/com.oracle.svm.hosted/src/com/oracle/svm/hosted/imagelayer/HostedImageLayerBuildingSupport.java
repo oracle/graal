@@ -131,7 +131,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
                     }
                 });
 
-                SubstrateOptions.LayeredBaseImageAnalysis.update(values, true);
+                SubstrateOptions.UseBaseLayerInclusionPolicy.update(values, true);
                 SubstrateOptions.ClosedTypeWorld.update(values, false);
                 if (imageLayerEnabledHandler != null) {
                     imageLayerEnabledHandler.onOptionEnabled(values);
