@@ -166,8 +166,8 @@ GraalWasm is licensed under the [Universal Permissive License](https://oss.oracl
 
 ## Related Documentation
 
-- [GraalWasm Options](../docs/reference-manual/wasm/Options.md)
-- [Interoperability with WebAssembly Modules](../docs/reference-manual/wasm/Interoperability.md)
+- [GraalWasm Options](../docs/reference-manual/wasm/README.md#Options)
+- [Interoperability with WebAssembly Modules](../docs/reference-manual/wasm/README.md#webassembly-module-system)
 - [Embedding Languages documentation](../docs/reference-manual/embedding/embed-languages.md)
 
 ### Documentation for Contributors
