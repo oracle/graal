@@ -91,6 +91,7 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
+import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.jdk.localization.LocalizationFeature;
 import com.oracle.svm.hosted.reflect.NativeImageConditionResolver;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
@@ -393,9 +394,10 @@ public class ResourcesFeature implements InternalFeature {
     }
 
     @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
+    public void beforeAnalysis(BeforeAnalysisAccess a) {
+        FeatureImpl.BeforeAnalysisAccessImpl access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
         /* load and parse resource configuration files */
-        ConfigurationConditionResolver<ConfigurationCondition> conditionResolver = new NativeImageConditionResolver(((FeatureImpl.BeforeAnalysisAccessImpl) access).getImageClassLoader(),
+        ConfigurationConditionResolver<ConfigurationCondition> conditionResolver = new NativeImageConditionResolver(access.getImageClassLoader(),
                         ClassInitializationSupport.singleton());
 
         ResourceConfigurationParser<ConfigurationCondition> parser = ResourceConfigurationParser.create(true, conditionResolver, ResourcesRegistry.singleton(),
@@ -414,6 +416,21 @@ public class ResourcesFeature implements InternalFeature {
                         .map(entry -> new CompressedGlobTrie.GlobWithInfo<>(entry.pattern(), new ConditionWithOrigin(entry.condition(), entry.origin()))).toList();
         GlobTrieNode<ConditionWithOrigin> trie = CompressedGlobTrie.CompressedGlobTrieBuilder.build(patternsWithInfo);
         Resources.singleton().setResourcesTrieRoot(trie);
+
+        /*
+         * GR-58701: The SVM core is currently not included in the base layer of a Layered Image.
+         * Those specific types can be reachable from Resources#resourcesTrieRoot, but they can be
+         * missed by the analysis because the GlobTrieNode#children field is only available after
+         * analysis and the only reference to those types is with ThrowMissingRegistrationErrors
+         * enabled. Until a clear SVM core separation is created and included in the base layer,
+         * those types should be manually registered as instantiated before the analysis.
+         */
+        if (HostedImageLayerBuildingSupport.buildingSharedLayer()) {
+            String reason = "Included in the base image";
+            access.getMetaAccess().lookupJavaType(ReflectionUtil.lookupClass(false, "com.oracle.svm.core.jdk.resources.CompressedGlobTrie.LiteralNode")).registerAsInstantiated(reason);
+            access.getMetaAccess().lookupJavaType(ReflectionUtil.lookupClass(false, "com.oracle.svm.core.jdk.resources.CompressedGlobTrie.DoubleStarNode")).registerAsInstantiated(reason);
+            access.getMetaAccess().lookupJavaType(ReflectionUtil.lookupClass(false, "com.oracle.svm.core.jdk.resources.CompressedGlobTrie.StarTrieNode")).registerAsInstantiated(reason);
+        }
 
         /* prepare regex patterns for resource registration */
         resourcePatternWorkSet.addAll(Options.IncludeResources.getValue()

@@ -53,6 +53,7 @@ public class ImageLayerSnapshotUtil {
     public static final String FILE_EXTENSION = ".json";
 
     public static final String CONSTRUCTOR_NAME = "<init>";
+    public static final String CLASS_INIT_NAME = "<clinit>";
 
     public static final String PERSISTED = "persisted";
 

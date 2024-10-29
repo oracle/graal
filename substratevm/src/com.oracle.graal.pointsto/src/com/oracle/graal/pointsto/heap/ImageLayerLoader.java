@@ -29,6 +29,7 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.ARGUMENTS_TA
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.ARGUMENT_IDS_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.ARRAY_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CAN_BE_STATICALLY_BOUND_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CLASS_INIT_NAME;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CLASS_JAVA_NAME_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CLASS_NAME_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CODE_SIZE_TAG;
@@ -700,6 +701,8 @@ public class ImageLayerLoader {
 
         if (name.equals(CONSTRUCTOR_NAME)) {
             type.findConstructor(signature);
+        } else if (name.equals(CLASS_INIT_NAME)) {
+            type.getClassInitializer();
         } else {
             type.findMethod(name, signature);
         }
@@ -905,7 +908,13 @@ public class ImageLayerLoader {
             clazz = declaringClass.getJavaClass();
         }
 
-        Field field = ReflectionUtil.lookupField(true, clazz, fieldIdentifier.name);
+        Field field;
+        try {
+            field = ReflectionUtil.lookupField(true, clazz, fieldIdentifier.name);
+        } catch (Throwable e) {
+            field = null;
+        }
+
         if (field == null) {
             AnalysisType type = getAnalysisType(get(fieldData, FIELD_TYPE_TAG));
             BaseLayerField baseLayerField = new BaseLayerField(get(fieldData, ID_TAG), fieldIdentifier.name, declaringClass, type, get(fieldData, IS_INTERNAL_TAG), get(fieldData, MODIFIERS_TAG),
