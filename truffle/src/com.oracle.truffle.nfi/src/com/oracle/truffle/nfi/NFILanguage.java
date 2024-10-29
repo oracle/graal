@@ -61,7 +61,7 @@ public class NFILanguage extends TruffleLanguage<NFIContext> {
 
     private final Assumption singleContextAssumption = Truffle.getRuntime().createAssumption("NFI single context");
 
-    final ContextThreadLocal<NFIState> nfiState = locals.createContextThreadLocal((ctx, thread) -> new NFIState());
+    final ContextThreadLocal<NFIState> nfiState = locals.createContextThreadLocal((ctx, thread) -> new NFIState(thread));
 
     protected void setPendingException(Throwable pendingException) {
         TruffleStackTrace.fillIn(pendingException);
