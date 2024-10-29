@@ -67,17 +67,6 @@ def trace(msg: str) -> None:
         svm_debug_tracing.tracefile.flush()
 
 
-def adr(obj: gdb.Value) -> int:
-    # use null as fallback if we cannot find the address value
-    adr_val = 0
-    if obj.type.code == gdb.TYPE_CODE_PTR:
-        if int(obj) != 0:
-            adr_val = int(obj.dereference().address)
-    elif obj.address is not None:
-        adr_val = int(obj.address)
-    return adr_val
-
-
 def try_or_else(success, failure, *exceptions):
     try:
         return success()
@@ -104,7 +93,9 @@ class SVMUtil:
     reserved_bits_mask = try_or_else(lambda: int(gdb.parse_and_eval('(int)__svm_reserved_bits_mask')), 0, gdb.error)
     object_alignment = try_or_else(lambda: int(gdb.parse_and_eval('(int)__svm_object_alignment')), 0, gdb.error)
     heap_base_regnum = try_or_else(lambda: int(gdb.parse_and_eval('(int)__svm_heap_base_regnum')), 0, gdb.error)
+    frame_size_status_mask = try_or_else(lambda: int(gdb.parse_and_eval('(int)__svm_frame_size_status_mask')), 0, gdb.error)
 
+    stack_type = gdb.lookup_type("long")
     string_type = gdb.lookup_type("java.lang.String")
     enum_type = gdb.lookup_type("java.lang.Enum")
     object_type = gdb.lookup_type("java.lang.Object")
@@ -124,6 +115,14 @@ class SVMUtil:
     hlreps = dict()
     deopt_stub_adr = 0
 
+    # AMD64 registers
+    AMD64_RSP = 7
+    AMD64_RIP = 16
+
+    # aarch64 registers
+    AARCH64_RSP = 30
+    AARCH64_RIP = 31
+
     @classmethod
     def get_heap_base(cls) -> gdb.Value:
         try:
@@ -133,8 +132,40 @@ class SVMUtil:
             return cls.null
 
     @classmethod
+    def get_rsp(cls) -> int:
+        arch = gdb.selected_frame().architecture().name()
+        if "x86-64" in arch:
+            return cls.AMD64_RSP
+        elif "aarch64" in arch:
+            return cls.AARCH64_RSP
+        return 0
+
+    @classmethod
+    def get_rip(cls) -> int:
+        arch = gdb.selected_frame().architecture().name()
+        if "x86-64" in arch:
+            return cls.AMD64_RIP
+        elif "aarch64" in arch:
+            return cls.AARCH64_RIP
+        return 0
+
+    @classmethod
+    def get_adr(cls, obj: gdb.Value) -> int:
+        # use null as fallback if we cannot find the address value or obj is null
+        adr_val = 0
+        if obj.type.code == gdb.TYPE_CODE_PTR:
+            if int(obj) == 0 or (cls.use_heap_base and int(obj) == int(cls.get_heap_base())):
+                # obj is null
+                pass
+            else:
+                adr_val = int(obj.dereference().address)
+        elif obj.address is not None:
+            adr_val = int(obj.address)
+        return adr_val
+
+    @classmethod
     def is_null(cls, obj: gdb.Value) -> bool:
-        return adr(obj) == 0 or (cls.use_heap_base and adr(obj) == int(cls.get_heap_base()))
+        return cls.get_adr(obj) == 0
 
     @classmethod
     def get_uncompressed_type(cls, t: gdb.Type) -> gdb.Type:
@@ -145,6 +176,7 @@ class SVMUtil:
         trace(f'<SVMUtil> - get_uncompressed_type({t}) = {result}')
         return result
 
+    # returns the compressed variant of t if available, otherwise returns the basic type of t (without pointers)
     @classmethod
     def get_compressed_type(cls, t: gdb.Type) -> gdb.Type:
         t = cls.get_basic_type(t)
@@ -161,8 +193,15 @@ class SVMUtil:
         else:
             type_name = cls.compressed_ref_prefix + type_name
 
-        trace(f'<SVMUtil> - get_compressed_type({t}) = {type_name}')
-        return gdb.lookup_type(type_name)
+        try:
+            result_type = gdb.lookup_type(type_name)
+            trace(f'<SVMUtil> - could not find compressed type "{type_name}" using uncompressed type')
+        except gdb.error as ex:
+            trace(ex)
+            result_type = t
+
+        trace(f'<SVMUtil> - get_compressed_type({t}) = {t.name}')
+        return result_type
 
     @classmethod
     def get_compressed_oop(cls, obj: gdb.Value) -> int:
@@ -170,7 +209,7 @@ class SVMUtil:
         if obj.type.code == gdb.TYPE_CODE_PTR and cls.is_compressed(obj.type):
             return int(obj)
 
-        obj_adr = adr(obj)
+        obj_adr = cls.get_adr(obj)
         if obj_adr == 0:
             return obj_adr
 
@@ -183,7 +222,7 @@ class SVMUtil:
         num_alignment_bits = int.bit_count(cls.object_alignment - 1)
         compressed_oop = obj_adr
         if cls.use_heap_base:
-            compressed_oop -= int(SVMUtil.get_heap_base())
+            compressed_oop -= int(cls.get_heap_base())
             assert compression_shift >= 0
             compressed_oop = compressed_oop >> compression_shift
         if is_hub and num_reserved_bits != 0:
@@ -219,8 +258,8 @@ class SVMUtil:
         if not svm_print_address.absolute_adr and cls.is_compressed(obj.type):
             result = f' @z({hex(cls.get_compressed_oop(obj))})'
         else:
-            result = f' @({hex(adr(obj))})'
-        trace(f'<SVMUtil> - adr_str({hex(adr(obj))}) = {result}')
+            result = f' @({hex(cls.get_adr(obj))})'
+        trace(f'<SVMUtil> - adr_str({hex(cls.get_adr(obj))}) = {result}')
         return result
 
     @classmethod
@@ -234,8 +273,8 @@ class SVMUtil:
     def is_selfref(cls, obj: gdb.Value) -> bool:
         result = (svm_check_selfref.value and
                   not cls.is_primitive(obj.type) and
-                  adr(obj) in cls.selfref_cycles)
-        trace(f'<SVMUtil> - is_selfref({hex(adr(obj))}) = {result}')
+                  cls.get_adr(obj) in cls.selfref_cycles)
+        trace(f'<SVMUtil> - is_selfref({hex(cls.get_adr(obj))}) = {result}')
         return result
 
     @classmethod
@@ -244,8 +283,8 @@ class SVMUtil:
         if (child.type.code == gdb.TYPE_CODE_PTR and cls.is_null(child)) or cls.is_primitive(child.type):
             return child
 
-        child_adr = adr(child)
-        parent_adr = adr(parent)
+        child_adr = cls.get_adr(child)
+        parent_adr = cls.get_adr(parent)
         trace(f'<SVMUtil> - add_selfref(parent={hex(parent_adr)}, child={hex(child_adr)})')
         if svm_check_selfref.value and cls.is_reachable(child_adr, parent_adr):
             trace(f' <add selfref {child_adr}>')
@@ -276,7 +315,7 @@ class SVMUtil:
         if cls.is_null(obj):
             return ""
 
-        trace(f'<SVMUtil> - get_java_string({hex(adr(obj))})')
+        trace(f'<SVMUtil> - get_java_string({hex(cls.get_adr(obj))})')
         coder = cls.get_int_field(obj, 'coder', None)
         if coder is None:
             codec = 'utf-16'  # Java 8 has a char[] with utf-16
@@ -310,7 +349,7 @@ class SVMUtil:
         if gdb_output_string and 0 < svm_print_string_limit.value < value_length:
             result += "..."
 
-        trace(f'<SVMUtil> - get_java_string({hex(adr(obj))}) = {result}')
+        trace(f'<SVMUtil> - get_java_string({hex(cls.get_adr(obj))}) = {result}')
         return result
 
     @classmethod
@@ -410,7 +449,7 @@ class SVMUtil:
         if cls.is_compressed(obj.type) and not cls.is_compressed(rtt):
             rtt = cls.get_compressed_type(rtt)
 
-        trace(f'<SVMUtil> - get_rtt({hex(adr(obj))}) = {rtt_name}')
+        trace(f'<SVMUtil> - get_rtt({hex(cls.get_adr(obj))}) = {rtt_name}')
         return rtt
 
     @classmethod
@@ -422,13 +461,13 @@ class SVMUtil:
         if cls.is_compressed(t):
             obj_oop = cls.get_compressed_oop(obj)
         else:
-            obj_oop = adr(obj)
+            obj_oop = cls.get_adr(obj)
 
-        trace(f'<SVMUtil> - cast_to({hex(adr(obj))}, {t})')
+        trace(f'<SVMUtil> - cast_to({hex(cls.get_adr(obj))}, {t})')
         if t.code != gdb.TYPE_CODE_PTR:
             t = t.pointer()
 
-        trace(f'<SVMUtil> - cast_to({hex(adr(obj))}, {t}) returned')
+        trace(f'<SVMUtil> - cast_to({hex(cls.get_adr(obj))}, {t}) returned')
         # just use the raw pointer value and cast it instead the obj
         # casting the obj directly results in issues with compressed oops
         return obj if t == obj.type else gdb.Value(obj_oop).cast(t)
@@ -510,7 +549,7 @@ class SVMUtil:
         try:
             basic_type = cls.get_basic_type(t)
             type_name = basic_type.name
-            members = SVMUtil.execout(f"ptype '{type_name}'")
+            members = cls.execout(f"ptype '{type_name}'")
             for member in members.split('\n'):
                 parts = member.strip().split(' ')
                 is_static = parts[0] == 'static'
@@ -539,7 +578,7 @@ class SVMUtil:
         # a java class is represented by a struct, interfaces are represented by a union
         # only structs contain a "hub" field, thus just checking for a hub field does not work for interfaces
         result = ((t.code == gdb.TYPE_CODE_UNION and gdb.lookup_global_symbol(t.name + '.class', gdb.SYMBOL_VAR_DOMAIN) is not None) or
-                  (t.code == gdb.TYPE_CODE_STRUCT and gdb.types.has_field(t, SVMUtil.hub_field_name)))
+                  (t.code == gdb.TYPE_CODE_STRUCT and gdb.types.has_field(t, cls.hub_field_name)))
 
         trace(f'<SVMUtil> - is_java_obj({t}) = {result}')
         return result
@@ -547,7 +586,7 @@ class SVMUtil:
 
 class SVMPPString:
     def __init__(self, obj: gdb.Value, java: bool = True):
-        trace(f'<SVMPPString> - __init__({hex(adr(obj))})')
+        trace(f'<SVMPPString> - __init__({hex(SVMUtil.get_adr(obj))})')
         self.__obj = obj
         self.__java = java
 
@@ -569,7 +608,7 @@ class SVMPPString:
 
 class SVMPPArray:
     def __init__(self, obj: gdb.Value, java_array: bool = True):
-        trace(f'<SVMPPArray> - __init__(obj={obj.type} @ {hex(adr(obj))}, java_array={java_array})')
+        trace(f'<SVMPPArray> - __init__(obj={obj.type} @ {hex(SVMUtil.get_adr(obj))}, java_array={java_array})')
         if java_array:
             self.__length = SVMUtil.get_int_field(obj, 'len')
             self.__array = SVMUtil.get_obj_field(obj, 'data', None)
@@ -625,7 +664,7 @@ class SVMPPArray:
 
 class SVMPPClass:
     def __init__(self, obj: gdb.Value, java_class: bool = True):
-        trace(f'<SVMPPClass> - __init__({obj.type} @ {hex(adr(obj))})')
+        trace(f'<SVMPPClass> - __init__({obj.type} @ {hex(SVMUtil.get_adr(obj))})')
         self.__obj = obj
         self.__java_class = java_class
         self.__skip_children = SVMUtil.is_selfref(obj) or 0 <= svm_print_depth_limit.value <= SVMUtil.current_print_depth
@@ -675,7 +714,7 @@ class SVMPPClass:
 
 class SVMPPEnum:
     def __init__(self, obj: gdb.Value):
-        trace(f'<SVMPPEnum> - __init__({hex(adr(obj))})')
+        trace(f'<SVMPPEnum> - __init__({hex(SVMUtil.get_adr(obj))})')
         self.__obj = obj
         self.__name = SVMUtil.get_obj_field(self.__obj, 'name', "")
         self.__ordinal = SVMUtil.get_int_field(self.__obj, 'ordinal', None)
@@ -690,7 +729,7 @@ class SVMPPEnum:
 
 class SVMPPBoxedPrimitive:
     def __init__(self, obj: gdb.Value):
-        trace(f'<SVMPPBoxedPrimitive> - __init__({obj.type} @ {hex(adr(obj))})')
+        trace(f'<SVMPPBoxedPrimitive> - __init__({obj.type} @ {hex(SVMUtil.get_adr(obj))})')
         self.__obj = obj
         self.__value = SVMUtil.get_obj_field(self.__obj, 'value', obj.type.name)
 
@@ -718,7 +757,7 @@ class SVMPrettyPrinter(gdb.printing.PrettyPrinter):
         super().__init__(SVMUtil.pretty_printer_name)
 
     def __call__(self, obj: gdb.Value):
-        trace(f'<SVMPrettyPrinter> - __call__({obj.type} @ {hex(adr(obj))})')
+        trace(f'<SVMPrettyPrinter> - __call__({obj.type} @ {hex(SVMUtil.get_adr(obj))})')
 
         if not SVMUtil.is_primitive(obj.type) and SVMUtil.is_java_type(obj.type):
             # Filter out references to the null literal
@@ -793,7 +832,7 @@ class ArrayList:
     target_type = 'java.util.ArrayList'
 
     def __init__(self, obj: gdb.Value):
-        trace(f'<ArrayList> - __init__({obj.type} @ {hex(adr(obj))})')
+        trace(f'<ArrayList> - __init__({obj.type} @ {hex(SVMUtil.get_adr(obj))})')
         self.__size = SVMUtil.get_int_field(obj, 'size')
         element_data = SVMUtil.get_obj_field(obj, 'elementData')
         if SVMUtil.is_null(element_data):
@@ -844,14 +883,14 @@ class ArrayList:
                 yield self.__data[i]
 
     def children(self) -> Iterable[object]:
-        trace(f'<ArrayList> - children({self.__obj.type} @ {hex(adr(self.__obj))})')
+        trace(f'<ArrayList> - children({self.__obj.type} @ {hex(SVMUtil.get_adr(self.__obj))})')
         if self.__skip_children:
             return
         for index, elem in enumerate(self):
             if 0 <= svm_print_element_limit.value <= index:
                 yield str(index), '...'
                 return
-            trace(f'<ArrayList> - children({self.__obj.type} @ {hex(adr(self.__obj))})[{index}]')
+            trace(f'<ArrayList> - children({self.__obj.type} @ {hex(SVMUtil.get_adr(self.__obj))})[{index}]')
             yield str(index), SVMUtil.add_selfref(self.__obj, elem)
         SVMUtil.current_print_depth -= 1
 
@@ -861,7 +900,7 @@ class HashMap:
     target_type = 'java.util.HashMap'
 
     def __init__(self, obj: gdb.Value):
-        trace(f'<HashMap> - __init__({obj.type} @ {hex(adr(obj))})')
+        trace(f'<HashMap> - __init__({obj.type} @ {hex(SVMUtil.get_adr(obj))})')
 
         self.__size = SVMUtil.get_int_field(obj, 'size')
         table = SVMUtil.get_obj_field(obj, 'table')
@@ -928,14 +967,101 @@ class HashMap:
                 obj = SVMUtil.get_obj_field(obj, 'next')
 
     def children(self) -> Iterable[object]:
-        trace(f'<HashMap> - children({self.__obj.type} @ {hex(adr(self.__obj))})')
+        trace(f'<HashMap> - children({self.__obj.type} @ {hex(SVMUtil.get_adr(self.__obj))})')
         if self.__skip_children:
             return
         for index, (key, value) in enumerate(self):
             if 0 <= svm_print_element_limit.value <= index:
                 yield str(index), '...'
                 return
-            trace(f'<HashMap> - children({self.__obj.type} @ {hex(adr(self.__obj))})[{index}]')
+            trace(f'<HashMap> - children({self.__obj.type} @ {hex(SVMUtil.get_adr(self.__obj))})[{index}]')
+            yield f"key{index}", SVMUtil.add_selfref(self.__obj, key)
+            yield f"value{index}", SVMUtil.add_selfref(self.__obj, value)
+        SVMUtil.current_print_depth -= 1
+
+
+@HLRep
+class EconomicMapImpl:
+    target_type = 'org.graalvm.collections.EconomicMapImpl'
+
+    def __init__(self, obj: gdb.Value):
+        trace(f'<EconomicMapImpl> - __init__({obj.type} @ {hex(SVMUtil.get_adr(obj))})')
+
+        self.__size = SVMUtil.get_int_field(obj, 'totalEntries') - SVMUtil.get_int_field(obj, 'deletedEntries')
+        entries = SVMUtil.get_obj_field(obj, 'entries')
+        if SVMUtil.is_null(entries):
+            self.__data = None
+            self.__array_len = 0
+        else:
+            self.__data = SVMUtil.get_obj_field(entries, 'data', None)
+            if self.__data is not None and SVMUtil.is_null(self.__data):
+                self.__data = None
+            self.__array_len = SVMUtil.get_int_field(entries, 'len')
+
+        self.__obj = obj
+        self.__skip_children = SVMUtil.is_selfref(obj) or 0 <= svm_print_depth_limit.value <= SVMUtil.current_print_depth
+        if not self.__skip_children:
+            SVMUtil.current_print_depth += 1
+
+    def to_string(self) -> str:
+        trace('<EconomicMapImpl> - to_string')
+        res = self.target_type
+        if svm_infer_generics.value != 0:
+            key_type, value_type = self.infer_generic_types()
+            res += f"<{key_type}, {value_type}>"
+        res += f'({self.__size})'
+        if self.__skip_children:
+            res += ' = {...}'
+        if svm_print_address.with_adr:
+            res += SVMUtil.adr_str(self.__obj)
+        trace(f'<EconomicMapImpl> - to_string = {res}')
+        return res
+
+    def infer_generic_types(self) -> tuple:  # (str, str):
+        key_type: list = []  # list[gdb.Type]
+        value_type: list = []  # list[gdb.Type]
+
+        for i, kv in enumerate(self, 1):
+            key, value = kv
+            # if len(*_type) = 1 we could just infer the type java.lang.Object, ignore null values
+            if not SVMUtil.is_null(key) and (len(key_type) == 0 or key_type[0] != SVMUtil.object_type):
+                key_type = SVMUtil.find_shared_types(key_type, SVMUtil.get_rtt(key))
+            if not SVMUtil.is_null(value) and (len(value_type) == 0 or value_type[0] != SVMUtil.object_type):
+                value_type = SVMUtil.find_shared_types(value_type, SVMUtil.get_rtt(value))
+            if (0 <= svm_infer_generics.value <= i) or (len(key_type) > 0 and key_type[0] == SVMUtil.object_type and
+                                                        len(value_type) > 0 and value_type[0] == SVMUtil.object_type):
+                break
+
+        key_type_name = '?' if len(key_type) == 0 else SVMUtil.get_unqualified_type_name(key_type[0].name)
+        value_type_name = '?' if len(value_type) == 0 else SVMUtil.get_unqualified_type_name(value_type[0].name)
+
+        return key_type_name, value_type_name
+
+    def display_hint(self) -> str:
+        trace('<EconomicMapImpl> - display_hint = map')
+        return "map"
+
+    def __iter__(self) -> tuple:  # (gdb.Value, gdb.Value):
+        trace('<EconomicMapImpl> - __iter__')
+        key = SVMUtil.null
+        for i in range(self.__array_len):
+            if i % 2 == 0:
+                if SVMUtil.is_null(self.__data[i]):
+                    break
+                key = self.__data[i]
+            else:
+                value = self.__data[i]
+                yield key, value
+
+    def children(self) -> Iterable[object]:
+        trace(f'<EconomicMapImpl> - children({self.__obj.type} @ {hex(SVMUtil.get_adr(self.__obj))})')
+        if self.__skip_children:
+            return
+        for index, (key, value) in enumerate(self):
+            if 0 <= svm_print_element_limit.value <= index:
+                yield str(index), '...'
+                return
+            trace(f'<EconomicMapImpl> - children({self.__obj.type} @ {hex(SVMUtil.get_adr(self.__obj))})[{index}]')
             yield f"key{index}", SVMUtil.add_selfref(self.__obj, key)
             yield f"value{index}", SVMUtil.add_selfref(self.__obj, value)
         SVMUtil.current_print_depth -= 1
@@ -1216,7 +1342,7 @@ class SVMCommandPrint(gdb.Command):
         if static_type.name == rtt.name:
             return obj, obj_str
         else:
-            obj_oop = SVMUtil.get_compressed_oop(obj) if SVMUtil.is_compressed(rtt) else adr(obj)
+            obj_oop = SVMUtil.get_compressed_oop(obj) if SVMUtil.is_compressed(rtt) else SVMUtil.get_adr(obj)
             return obj, f"(('{rtt.name}' *)({obj_oop}))"
 
     # Define the token specifications
@@ -1414,7 +1540,7 @@ class SVMCommandPrint(gdb.Command):
             obj = gdb.parse_and_eval(obj_str)  # check if gdb can handle the current param
             if SVMUtil.is_java_type(obj.type) and SVMUtil.is_compressed(obj.type):
                 # uncompress compressed java params
-                obj_str = f"(('{SVMUtil.get_uncompressed_type(SVMUtil.get_basic_type(obj.type)).name}' *)({adr(obj)}))"
+                obj_str = f"(('{SVMUtil.get_uncompressed_type(SVMUtil.get_basic_type(obj.type)).name}' *)({SVMUtil.get_adr(obj)}))"
             param_str += obj_str
             if self.sym == "COMMA":
                 self.scan()
@@ -1488,37 +1614,37 @@ SVMCommandBreak()
 
 
 class SVMFrameUnwinder(gdb.unwinder.Unwinder):
-    AMD64_RBP = 6
-    AMD64_RSP = 7
-    AMD64_RIP = 16
 
     def __init__(self):
         super().__init__('SubstrateVM FrameUnwinder')
-        self.stack_type = gdb.lookup_type('long')
-        self.deopt_frame_type = gdb.lookup_type('com.oracle.svm.core.deopt.DeoptimizedFrame')
 
-    def __call__(self, pending_frame):
+    def __call__(self, pending_frame: gdb.Frame):
         if SVMUtil.deopt_stub_adr == 0:
             # find deopt stub after its properly loaded
             SVMUtil.deopt_stub_adr = gdb.lookup_global_symbol('com.oracle.svm.core.deopt.Deoptimizer::deoptStub',
                                                               gdb.SYMBOL_VAR_DOMAIN).value().address
 
+        rsp = 0
         try:
             rsp = pending_frame.read_register('sp')
             rip = pending_frame.read_register('pc')
             if int(rip) == SVMUtil.deopt_stub_adr:
-                deopt_frame_stack_slot = rsp.cast(self.stack_type.pointer()).dereference()
-                deopt_frame = deopt_frame_stack_slot.cast(self.deopt_frame_type.pointer())
-                source_frame_size = deopt_frame['sourceTotalFrameSize']
+                deopt_frame_stack_slot = rsp.cast(SVMUtil.stack_type.pointer()).dereference()
+                deopt_frame = deopt_frame_stack_slot.cast(SVMUtil.get_compressed_type(SVMUtil.object_type).pointer())
+                rtt = SVMUtil.get_rtt(deopt_frame)
+                deopt_frame = SVMUtil.cast_to(deopt_frame, rtt)
+                encoded_frame_size = SVMUtil.get_int_field(deopt_frame, 'sourceEncodedFrameSize')
+                source_frame_size = encoded_frame_size & ~SVMUtil.frame_size_status_mask
                 # Now find the register-values for the caller frame
                 unwind_info = pending_frame.create_unwind_info(gdb.unwinder.FrameId(rsp, rip))
                 caller_rsp = rsp + int(source_frame_size)
-                unwind_info.add_saved_register(self.AMD64_RSP, gdb.Value(caller_rsp))
-                caller_rip = gdb.Value(caller_rsp - 8).cast(self.stack_type.pointer()).dereference()
-                unwind_info.add_saved_register(self.AMD64_RIP, gdb.Value(caller_rip))
+                unwind_info.add_saved_register(SVMUtil.get_rsp(), gdb.Value(caller_rsp))
+                caller_rip = gdb.Value(caller_rsp - 8).cast(SVMUtil.stack_type.pointer()).dereference()
+                unwind_info.add_saved_register(SVMUtil.get_rip(), gdb.Value(caller_rip))
                 return unwind_info
-        except Exception as e:
-            print(e)
+        except Exception as ex:
+            trace(f'<SVMFrameUnwinder> - Failed to unwind frame at {hex(rsp)}')
+            trace(ex)
             # Fallback to default frame unwinding via debug_frame (dwarf)
 
         return None
@@ -1530,7 +1656,7 @@ class SVMFrameFilter():
         self.priority = 100
         self.enabled = True
 
-    def filter(self, frame_iter):
+    def filter(self, frame_iter: Iterable) -> FrameDecorator:
         for frame in frame_iter:
             frame = frame.inferior_frame()
             if SVMUtil.deopt_stub_adr and frame.pc() == SVMUtil.deopt_stub_adr:
@@ -1540,7 +1666,7 @@ class SVMFrameFilter():
 
 
 class SVMFrame(FrameDecorator):
-    def function(self):
+    def function(self) -> str:
         frame = self.inferior_frame()
         if not frame.name():
             return 'Unknown Frame at ' + hex(int(frame.read_register('sp')))
@@ -1560,12 +1686,98 @@ class SVMFrame(FrameDecorator):
         return func_name + eclipse_filename
 
 
+class SymValueWrapper():
+
+    def __init__(self, symbol, value):
+        self.sym = symbol
+        self.val = value
+
+    def value(self):
+        return self.val
+
+    def symbol(self):
+        return self.sym
+
+
 class SVMFrameDeopt(SVMFrame):
-    def function(self):
-        return '[DEOPT FRAMES ...]'
+
+    def __init__(self, frame: gdb.Frame):
+        super().__init__(frame)
+
+        # fetch deoptimized frame from stack
+        rsp = frame.read_register('sp')
+        assert SVMUtil.deopt_stub_adr and frame.pc() == SVMUtil.deopt_stub_adr
+        deopt_frame_stack_slot = rsp.cast(SVMUtil.stack_type.pointer()).dereference()
+        deopt_frame = deopt_frame_stack_slot.cast(SVMUtil.get_compressed_type(SVMUtil.object_type).pointer())
+        rtt = SVMUtil.get_rtt(deopt_frame)
+        deopt_frame = SVMUtil.cast_to(deopt_frame, rtt)
+        self.__virtual_frame = SVMUtil.get_obj_field(deopt_frame, 'topFrame')
+        self.__frame_info = SVMUtil.get_obj_field(self.__virtual_frame, 'frameInfo')
+
+    def function(self) -> str:
+        if self.__frame_info is None or SVMUtil.is_null(self.__frame_info):
+            # we have no more information about the frame
+            return '[DEOPT FRAME ...]'
+
+        # read from deoptimized frame
+        source_class = SVMUtil.get_obj_field(self.__frame_info, 'sourceClass')
+        if SVMUtil.is_null(source_class):
+            source_class_name = ''
+        else:
+            source_class_name = str(SVMUtil.get_obj_field(source_class, 'name'))[1:-1]
+            if len(source_class_name) > 0:
+                source_class_name = source_class_name + '::'
+
+        source_file_name = self.filename()
+        if source_file_name is None or len(source_file_name) == 0:
+            source_file_name = ''
+        else:
+            line = self.line()
+            if line is not None and line != 0:
+                source_file_name = source_file_name + ':' + str(line)
+            source_file_name = '(' + source_file_name + ')'
+
+        func_name = str(SVMUtil.get_obj_field(self.__frame_info, 'sourceMethodName'))[1:-1]
+
+        return '[DEOPT FRAME] ' + source_class_name + func_name + source_file_name
+
+    def filename(self):
+        if self.__frame_info is None or SVMUtil.is_null(self.__frame_info):
+            return None
+
+        source_class = SVMUtil.get_obj_field(self.__frame_info, 'sourceClass')
+
+        if SVMUtil.is_null(source_class):
+            source_file_name = ''
+        else:
+            source_file_name = str(SVMUtil.get_obj_field(source_class, 'sourceFileName'))[1:-1]
+
+        return source_file_name
+
+    def line(self):
+        if self.__frame_info is None or SVMUtil.is_null(self.__frame_info):
+            return None
+        return SVMUtil.get_int_field(self.__frame_info, 'sourceLineNumber')
 
     def frame_args(self):
-        return None
+        if self.__frame_info is None or SVMUtil.is_null(self.__frame_info):
+            return None
+
+        values = SVMUtil.get_obj_field(self.__virtual_frame, 'values')
+        data = SVMUtil.get_obj_field(values, 'data')
+        length = SVMUtil.get_int_field(values, 'len')
+        args = [SymValueWrapper('deoptFrameValues', length)]
+        if SVMUtil.is_null(data) or length == 0:
+            return args
+
+        for i in range(length):
+            elem = data[i]
+            rtt = SVMUtil.get_rtt(elem)
+            elem = SVMUtil.cast_to(elem, rtt)
+            value = SVMUtil.get_obj_field(elem, 'value')
+            args.append(SymValueWrapper(f'__{i}', value))
+
+        return args
 
     def frame_locals(self):
         return None
