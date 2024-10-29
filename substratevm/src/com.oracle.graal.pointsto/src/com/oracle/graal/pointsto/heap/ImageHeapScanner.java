@@ -51,6 +51,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisField;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
@@ -139,8 +140,10 @@ public abstract class ImageHeapScanner {
                  * 
                  * GR-52421: the field state needs to be serialized from the base layer analysis
                  */
-                if (field.getJavaKind().isObject()) {
+                if (field.getStorageKind().isObject()) {
                     bb.injectFieldTypes(field, List.of(field.getType()), true);
+                } else if (bb.trackPrimitiveValues() && field.getStorageKind().isPrimitive()) {
+                    ((PointsToAnalysisField) field).saturatePrimitiveField();
                 }
                 return;
             }
