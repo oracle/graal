@@ -1040,6 +1040,36 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     /**
      * dst = src + immediate.
      *
+<<<<<<< HEAD:compiler/src/org.graalvm.compiler.asm.aarch64/src/org/graalvm/compiler/asm/aarch64/AArch64MacroAssembler.java
+=======
+     * If immediate >= 2^24, then this method uses the scratch register to hold the immediate value.
+     *
+     * @param size register size. Has to be 32 or 64.
+     * @param dst general purpose register. May not be null or zero-register.
+     * @param src general purpose register. May not be null or zero-register.
+     * @param immediate 32-bit signed int.
+     * @param scratch general purpose register to hold immediate value (if necessary).
+     */
+    public void add(int size, Register dst, Register src, int immediate, Register scratch) {
+        assert (!dst.equals(zr) && !src.equals(zr)) : dst + " " + src;
+        if (-immediate > 0) {
+            sub(size, dst, src, -immediate, scratch);
+        } else if (NumUtil.isUnsignedNbit(24, immediate) || !dst.equals(src)) {
+            add(size, dst, src, immediate);
+        } else {
+            assert scratch != null;
+            assert !scratch.equals(zr);
+            mov(scratch, immediate);
+            add(size, dst, src, scratch);
+        }
+    }
+
+    /**
+     * dst = src + immediate.
+     *
+     * If immediate >= 2^24, then this method assumes dst and src are not the same register.
+     *
+>>>>>>> d48052359e9 (Infinite recursion in AArch64MacroAssembler.add/sub with immediate = Integer.MIN_VALUE):compiler/src/jdk.graal.compiler/src/jdk/graal/compiler/asm/aarch64/AArch64MacroAssembler.java
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or zero-register.
      * @param src general purpose register. May not be null or zero-register.
@@ -1047,8 +1077,13 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     @Override
     public void add(int size, Register dst, Register src, int immediate) {
+<<<<<<< HEAD:compiler/src/org.graalvm.compiler.asm.aarch64/src/org/graalvm/compiler/asm/aarch64/AArch64MacroAssembler.java
         assert (!dst.equals(zr) && !src.equals(zr));
         if (immediate < 0) {
+=======
+        assert (!dst.equals(zr) && !src.equals(zr)) : dst + " " + src;
+        if (-immediate > 0) {
+>>>>>>> d48052359e9 (Infinite recursion in AArch64MacroAssembler.add/sub with immediate = Integer.MIN_VALUE):compiler/src/jdk.graal.compiler/src/jdk/graal/compiler/asm/aarch64/AArch64MacroAssembler.java
             sub(size, dst, src, -immediate);
         } else if (isAimm(immediate)) {
             if (!(dst.equals(src) && immediate == 0)) {
@@ -1094,8 +1129,13 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     @Override
     public void adds(int size, Register dst, Register src, int immediate) {
+<<<<<<< HEAD:compiler/src/org.graalvm.compiler.asm.aarch64/src/org/graalvm/compiler/asm/aarch64/AArch64MacroAssembler.java
         assert (!dst.equals(sp) && !src.equals(zr));
         if (immediate < 0) {
+=======
+        assert (!dst.equals(sp) && !src.equals(zr)) : dst + " " + src;
+        if (-immediate > 0) {
+>>>>>>> d48052359e9 (Infinite recursion in AArch64MacroAssembler.add/sub with immediate = Integer.MIN_VALUE):compiler/src/jdk.graal.compiler/src/jdk/graal/compiler/asm/aarch64/AArch64MacroAssembler.java
             subs(size, dst, src, -immediate);
         } else if (!(dst.equals(src) && immediate == 0)) {
             super.adds(size, dst, src, immediate);
@@ -1105,6 +1145,37 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     /**
      * dst = src - immediate.
      *
+<<<<<<< HEAD:compiler/src/org.graalvm.compiler.asm.aarch64/src/org/graalvm/compiler/asm/aarch64/AArch64MacroAssembler.java
+=======
+     * If immediate >= 2^24, then this method uses the scratch register to hold the immediate value.
+     *
+     * @param size register size. Has to be 32 or 64.
+     * @param dst general purpose register. May not be null or zero-register.
+     * @param src general purpose register. May not be null or zero-register.
+     * @param immediate 32-bit signed int.
+     * @param scratch general purpose register to hold immediate value (if necessary).
+     */
+    public void sub(int size, Register dst, Register src, int immediate, Register scratch) {
+        assert (!dst.equals(zr) && !src.equals(zr)) : dst + " " + src;
+        if (-immediate > 0) {
+            add(size, dst, src, -immediate, scratch);
+        }
+        if (NumUtil.isUnsignedNbit(24, immediate) || !dst.equals(src)) {
+            sub(size, dst, src, immediate);
+        } else {
+            assert scratch != null;
+            assert !scratch.equals(zr);
+            mov(scratch, immediate);
+            sub(size, dst, src, scratch);
+        }
+    }
+
+    /**
+     * dst = src - immediate.
+     *
+     * If immediate >= 2^24, then this method assumes dst and src are not the same register.
+     *
+>>>>>>> d48052359e9 (Infinite recursion in AArch64MacroAssembler.add/sub with immediate = Integer.MIN_VALUE):compiler/src/jdk.graal.compiler/src/jdk/graal/compiler/asm/aarch64/AArch64MacroAssembler.java
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or zero-register.
      * @param src general purpose register. May not be null or zero-register.
@@ -1112,8 +1183,13 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     @Override
     public void sub(int size, Register dst, Register src, int immediate) {
+<<<<<<< HEAD:compiler/src/org.graalvm.compiler.asm.aarch64/src/org/graalvm/compiler/asm/aarch64/AArch64MacroAssembler.java
         assert (!dst.equals(zr) && !src.equals(zr));
         if (immediate < 0) {
+=======
+        assert (!dst.equals(zr) && !src.equals(zr)) : dst + " " + src;
+        if (-immediate > 0) {
+>>>>>>> d48052359e9 (Infinite recursion in AArch64MacroAssembler.add/sub with immediate = Integer.MIN_VALUE):compiler/src/jdk.graal.compiler/src/jdk/graal/compiler/asm/aarch64/AArch64MacroAssembler.java
             add(size, dst, src, -immediate);
         } else if (isAimm(immediate)) {
             if (!(dst.equals(src) && immediate == 0)) {
@@ -1139,8 +1215,13 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     @Override
     public void subs(int size, Register dst, Register src, int immediate) {
+<<<<<<< HEAD:compiler/src/org.graalvm.compiler.asm.aarch64/src/org/graalvm/compiler/asm/aarch64/AArch64MacroAssembler.java
         assert (!dst.equals(sp) && !src.equals(zr));
         if (immediate < 0) {
+=======
+        assert (!dst.equals(sp) && !src.equals(zr)) : dst + " " + src;
+        if (-immediate > 0) {
+>>>>>>> d48052359e9 (Infinite recursion in AArch64MacroAssembler.add/sub with immediate = Integer.MIN_VALUE):compiler/src/jdk.graal.compiler/src/jdk/graal/compiler/asm/aarch64/AArch64MacroAssembler.java
             adds(size, dst, src, -immediate);
         } else if (!dst.equals(src) || immediate != 0) {
             super.subs(size, dst, src, immediate);
