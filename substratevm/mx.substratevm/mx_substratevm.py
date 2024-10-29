@@ -1265,6 +1265,9 @@ def _native_image_launcher_extra_jvm_args():
     res = [f'-XX:{max_heap_size_flag}']
     if not mx_sdk_vm.jdk_enables_jvmci_by_default(get_jdk()):
         res.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'])
+    # Graal should not be used as the JIT compiler since SVM specific compiler extensions
+    # are put on the module path which can cause problems when running Graal as a HotSpot JIT.
+    res.append('-XX:-UseJVMCICompiler')
     return res
 
 driver_build_args = [
