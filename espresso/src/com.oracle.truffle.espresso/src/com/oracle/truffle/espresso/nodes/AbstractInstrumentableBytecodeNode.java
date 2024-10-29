@@ -22,6 +22,9 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -35,17 +38,14 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.EspressoScope;
+import com.oracle.truffle.espresso.classfile.attributes.Local;
 import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.classfile.attributes.Local;
 import com.oracle.truffle.espresso.vm.continuation.UnwindContinuationException;
-
-import java.util.ArrayList;
-import java.util.HashMap;
 
 @GenerateWrapper(yieldExceptions = UnwindContinuationException.class, resumeMethodPrefix = "resumeContinuation")
 @ExportLibrary(NodeLibrary.class)
@@ -83,14 +83,15 @@ abstract class AbstractInstrumentableBytecodeNode extends EspressoInstrumentable
 
     @ExportMessage
     public final Object getScope(Frame frame, @SuppressWarnings("unused") boolean nodeEnter) {
-        return getScopeSlowPath(frame != null ? frame.materialize() : null);
+        return getScopeSlowPath(frame != null ? frame.materialize() : null, getMethod(), getBci(frame));
     }
 
     @TruffleBoundary
-    private Object getScopeSlowPath(MaterializedFrame frame) {
-        // construct the current scope with valid local variables information
-        Method method = getMethodVersion().getMethod();
-        Local[] liveLocals = method.getLocalVariableTable().getLocalsAt(getBci(frame));
+    private static Object getScopeSlowPath(MaterializedFrame frame, Method method, int bci) {
+        // NOTE: this might be called while the thread is not entered into the context so
+        // don't use things like a LanguageReference
+        // Construct the current scope with valid local variables information
+        Local[] liveLocals = method.getLocalVariableTable().getLocalsAt(bci);
         boolean allParamsIncluded = checkLocals(liveLocals, method);
         if (!allParamsIncluded) {
             ArrayList<Local> constructedLiveLocals = new ArrayList<>();
@@ -120,7 +121,7 @@ abstract class AbstractInstrumentableBytecodeNode extends EspressoInstrumentable
             for (int i = startslot; i < localCount; i++) {
                 Symbol<Type> paramType = hasReceiver ? Signatures.parameterType(parsedSignature, i - 1) : Signatures.parameterType(parsedSignature, i);
                 if (!slotToLocal.containsKey(i)) {
-                    Symbol<Name> localName = getLanguage().getNames().getOrCreate(ByteSequence.create("arg_" + i));
+                    Symbol<Name> localName = method.getLanguage().getNames().getOrCreate(ByteSequence.create("arg_" + i));
                     constructedLiveLocals.add(new Local(localName, paramType, null, 0, 0xffff, i));
                     slotToLocal.remove(i);
                 }
