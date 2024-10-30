@@ -189,8 +189,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * appropriately to comply with the layouts above.
  */
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/180affc5718c9bf2f009d6a7aa129cc36335384a/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L175-L532",
-          sha1 = "6269b3e841e4a6be49042270f3489eae292fc05f")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/d8430efb5e159b8e08d2cac66b46cb4ff1112927/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L175-L532",
+          sha1 = "042c4a5c1730525a53c24ee194a182dfd34bf754")
 // @formatter:on
 public class MonitorSnippets implements Snippets {
 
@@ -515,8 +515,8 @@ public class MonitorSnippets implements Snippets {
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/dcac4b0a532f2ca6cb374da7ece331e8266ab351/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L694-L855",
-              sha1 = "410864d3b17fd0e3f1026b9c06e4d383446896ba")
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/d8430efb5e159b8e08d2cac66b46cb4ff1112927/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L694-L858",
+              sha1 = "57536f7432c20e2e785059b464948f9aeee3804b")
     // @formatter:on
     private static boolean tryLightweightUnlocking(Object object, Word thread, Word lock, boolean trace, Counters counters) {
         // Load top
@@ -597,12 +597,10 @@ public class MonitorSnippets implements Snippets {
         if (probability(FAST_PATH_PROBABILITY, recursions.equal(0))) {
             if (JavaVersionUtil.JAVA_SPEC == 21) {
                 // recursions == 0
-                int cxqOffset = objectMonitorCxqOffset(INJECTED_VMCONFIG);
-                Word cxq = monitor.readWord(cxqOffset, OBJECT_MONITOR_CXQ_LOCATION);
-                int entryListOffset = objectMonitorEntryListOffset(INJECTED_VMCONFIG);
-                Word entryList = monitor.readWord(entryListOffset, OBJECT_MONITOR_ENTRY_LIST_LOCATION);
-                if (probability(FREQUENT_PROBABILITY, cxq.or(entryList).equal(0))) {
-                    // cxq == 0 && entryList == 0
+                Word entryList = monitor.readWord(objectMonitorEntryListOffset(INJECTED_VMCONFIG), OBJECT_MONITOR_ENTRY_LIST_LOCATION);
+                Word cxq = monitor.readWord(objectMonitorCxqOffset(INJECTED_VMCONFIG), OBJECT_MONITOR_CXQ_LOCATION);
+                if (probability(FREQUENT_PROBABILITY, entryList.or(cxq).equal(0))) {
+                    // entryList == 0 && cxq == 0
                     // Nobody is waiting, success
                     // release_store
                     memoryBarrier(MembarNode.FenceKind.STORE_RELEASE);
@@ -641,10 +639,17 @@ public class MonitorSnippets implements Snippets {
                 memoryBarrier(MembarNode.FenceKind.STORE_RELEASE);
                 monitor.writeWord(ownerOffset, zero());
                 memoryBarrier(MembarNode.FenceKind.STORE_LOAD);
-                Word cxq = monitor.readWord(objectMonitorCxqOffset(INJECTED_VMCONFIG), OBJECT_MONITOR_CXQ_LOCATION);
+                // Note that we read the EntryList and then the cxq after dropping the
+                // lock, so the values need not form a stable snapshot. In particular,
+                // after reading the (empty) EntryList, another thread could acquire
+                // and release the lock, moving any entries in the cxq to the
+                // EntryList, causing the current thread to see an empty cxq and
+                // conclude there are no waiters. But this is okay as the thread that
+                // moved the cxq is responsible for waking the successor.
                 Word entryList = monitor.readWord(objectMonitorEntryListOffset(INJECTED_VMCONFIG), OBJECT_MONITOR_ENTRY_LIST_LOCATION);
+                Word cxq = monitor.readWord(objectMonitorCxqOffset(INJECTED_VMCONFIG), OBJECT_MONITOR_CXQ_LOCATION);
                 // Check if the entry lists are empty.
-                if (probability(FREQUENT_PROBABILITY, cxq.or(entryList).equal(0))) {
+                if (probability(FREQUENT_PROBABILITY, entryList.or(cxq).equal(0))) {
                     traceObject(trace, "-lock{heavyweight:simple}", object, false);
                     counters.unlockHeavySimple.inc();
                     return true;
