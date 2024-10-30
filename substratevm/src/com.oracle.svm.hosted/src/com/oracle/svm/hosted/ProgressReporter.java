@@ -585,7 +585,8 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
         recordJsonMetric(ImageDetailKey.IMAGE_HEAP_OBJECT_COUNT, heapObjectCount);
         Timer imageTimer = getTimer(TimerCollection.Registry.IMAGE);
         Timer writeTimer = getTimer(TimerCollection.Registry.WRITE);
-        stagePrinter.end(imageTimer.getTotalTime() + writeTimer.getTotalTime());
+        Timer archiveTimer = getTimer(TimerCollection.Registry.ARCHIVE_LAYER);
+        stagePrinter.end(imageTimer.getTotalTime() + writeTimer.getTotalTime() + archiveTimer.getTotalTime());
         creationStageEndCompleted = true;
         String format = "%9s (%5.2f%%) for ";
         l().a(format, ByteFormattingUtil.bytesToHuman(codeAreaSize), Utils.toPercentage(codeAreaSize, imageFileSize))
