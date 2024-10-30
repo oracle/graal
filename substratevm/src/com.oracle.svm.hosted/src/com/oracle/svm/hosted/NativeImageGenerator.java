@@ -44,7 +44,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.ListIterator;
@@ -53,7 +52,6 @@ import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 
@@ -183,6 +181,7 @@ import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.ObservableImageHeapMapProvider;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.BuildArtifactsExporter.BuildArtifactsImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterCompilationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterHeapLayoutAccessImpl;
@@ -1934,30 +1933,5 @@ public class NativeImageGenerator {
             }
         }
         return result;
-    }
-
-    private static class BuildArtifactsImpl implements BuildArtifacts {
-        private final Map<ArtifactType, List<Path>> buildArtifacts = new EnumMap<>(ArtifactType.class);
-
-        @Override
-        public void add(ArtifactType type, Path artifact) {
-            buildArtifacts.computeIfAbsent(type, t -> new ArrayList<>()).add(artifact);
-        }
-
-        @Override
-        public List<Path> get(ArtifactType type) {
-            VMError.guarantee(buildArtifacts.containsKey(type), "Artifact type is missing: %s", type);
-            return buildArtifacts.get(type);
-        }
-
-        @Override
-        public void forEach(BiConsumer<ArtifactType, List<Path>> action) {
-            buildArtifacts.forEach(action);
-        }
-
-        @Override
-        public boolean isEmpty() {
-            return buildArtifacts.isEmpty();
-        }
     }
 }
