@@ -51,6 +51,10 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.reports.causality.Causality;
+import com.oracle.graal.pointsto.reports.causality.facts.Fact;
+import com.oracle.graal.pointsto.reports.causality.facts.Facts;
+import com.oracle.graal.pointsto.reports.causality.facts.UnknownHeapObject;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
@@ -117,41 +121,48 @@ public abstract class ImageHeapScanner {
         this.sealed = true;
     }
 
+    @SuppressWarnings("try")
     public void scanEmbeddedRoot(JavaConstant root, BytecodePosition position) {
         if (isNonNullObjectConstant(root)) {
             EmbeddedRootScan reason = new EmbeddedRootScan(position, root);
-            ImageHeapConstant value = getOrCreateImageHeapConstant(root, reason);
+            ImageHeapConstant value;
+            try (var ignored = Causality.resetCause()) {
+                value = getOrCreateImageHeapConstant(root, reason);
+            }
             markReachable(value, reason);
         }
     }
 
+    @SuppressWarnings("try")
     public void onFieldRead(AnalysisField field) {
         assert field.isRead() : field;
-        /* Check if the value is available before accessing it. */
-        AnalysisType declaringClass = field.getDeclaringClass();
-        if (field.isStatic()) {
-            FieldScan reason = new FieldScan(field);
-            if (field.isInBaseLayer()) {
-                /*
-                 * For base layer static fields we don't want to scan the constant value, but
-                 * instead inject its type state in the field flow. This will be propagated to any
-                 * corresponding field loads.
-                 * 
-                 * GR-52421: the field state needs to be serialized from the base layer analysis
-                 */
-                if (field.getJavaKind().isObject()) {
-                    bb.injectFieldTypes(field, List.of(field.getType()), true);
+        try (var ignored = Causality.resetCause()) {
+            /* Check if the value is available before accessing it. */
+            AnalysisType declaringClass = field.getDeclaringClass();
+            if (field.isStatic()) {
+                FieldScan reason = new FieldScan(field);
+                if (field.isInBaseLayer()) {
+                    /*
+                     * For base layer static fields we don't want to scan the constant value, but
+                     * instead inject its type state in the field flow. This will be propagated to
+                     * any corresponding field loads.
+                     *
+                     * GR-52421: the field state needs to be serialized from the base layer analysis
+                     */
+                    if (field.getJavaKind().isObject()) {
+                        bb.injectFieldTypes(field, List.of(field.getType()), true);
+                    }
+                    return;
                 }
-                return;
+                if (isValueAvailable(field)) {
+                    JavaConstant fieldValue = readStaticFieldValue(field);
+                    markReachable(fieldValue, reason);
+                    notifyAnalysis(field, null, fieldValue, reason);
+                }
+            } else {
+                /* Trigger field scanning for the already processed objects. */
+                postTask(() -> onInstanceFieldRead(field, declaringClass));
             }
-            if (isValueAvailable(field)) {
-                JavaConstant fieldValue = readStaticFieldValue(field);
-                markReachable(fieldValue, reason);
-                notifyAnalysis(field, null, fieldValue, reason);
-            }
-        } else {
-            /* Trigger field scanning for the already processed objects. */
-            postTask(() -> onInstanceFieldRead(field, declaringClass));
         }
     }
 
@@ -319,19 +330,23 @@ public abstract class ImageHeapScanner {
         }
     }
 
+    @SuppressWarnings("try")
     private ImageHeapArray createImageHeapObjectArray(JavaConstant constant, AnalysisType type, int length, ScanReason reason) {
         ImageHeapObjectArray array = new ImageHeapObjectArray(type, constant, length);
         /* Read hosted array element values only when the array is initialized. */
         array.constantData.hostedValuesReader = new AnalysisFuture<>(() -> {
             checkSealed(reason, "Trying to materialize an ImageHeapObjectArray for %s after the ImageHeapScanner is sealed.", constant);
-            type.registerAsReachable(reason);
-            ScanReason arrayReason = new ArrayScan(type, array, reason);
+            var inHeap = Facts.TypeInHeap.create(type);
+            Causality.registerEdgeFromHeapObject(bb, constant, reason, inHeap);
+            try (var ignored = Causality.setCause(inHeap)) {
+                type.registerAsReachable(reason);
+            }
             Object[] elementValues = new Object[length];
             for (int idx = 0; idx < length; idx++) {
                 final JavaConstant rawElementValue = hostedValuesProvider.readArrayElement(constant, idx);
                 int finalIdx = idx;
                 elementValues[idx] = new AnalysisFuture<>(() -> {
-                    JavaConstant arrayElement = createImageHeapConstant(rawElementValue, arrayReason);
+                    JavaConstant arrayElement = createImageHeapConstant(rawElementValue, new ArrayScan(type, array, reason, finalIdx));
                     array.setElement(finalIdx, arrayElement);
                     return arrayElement;
                 });
@@ -352,6 +367,7 @@ public abstract class ImageHeapScanner {
         }
     }
 
+    @SuppressWarnings("try")
     private ImageHeapInstance createImageHeapInstance(JavaConstant constant, AnalysisType type, ScanReason reason) {
         ImageHeapInstance instance = new ImageHeapInstance(type, constant);
         /* Read hosted field values only when the receiver is initialized. */
@@ -360,10 +376,28 @@ public abstract class ImageHeapScanner {
             /* If this is a Class constant register the corresponding type as reachable. */
             AnalysisType typeFromClassConstant = (AnalysisType) constantReflection.asJavaType(instance);
             if (typeFromClassConstant != null) {
-                typeFromClassConstant.registerAsReachable(reason);
+                Fact cause = null;
+                if (reason instanceof FieldScan fs) {
+                    cause = Causality.getHeapFieldAssigner(bb, fs.getConstant(), fs.getField(), constant);
+                } else if (reason instanceof ArrayScan as) {
+                    cause = Causality.getHeapArrayAssigner(bb, as.getConstant(), as.getIndex(), constant);
+                }
+                if (cause == null || cause instanceof UnknownHeapObject) {
+                    // Objects created by the analysis itself would add too many types as roots...
+                    cause = Facts.Ignored;
+                }
+                Fact typeObjectInHeap = Facts.HeapObjectDynamicHub.create(typeFromClassConstant.getJavaClass());
+                Causality.registerEdge(cause, typeObjectInHeap);
+                try (var ignored = Causality.setCause(typeObjectInHeap)) {
+                    typeFromClassConstant.registerAsReachable(reason);
+                }
             }
             /* We are about to query the type's fields, the type must be marked as reachable. */
-            type.registerAsReachable(reason);
+            var inHeap = Facts.TypeInHeap.create(type);
+            Causality.registerEdgeFromHeapObject(bb, constant, reason, inHeap);
+            try (var ignored = Causality.setCause(inHeap)) {
+                type.registerAsReachable(reason);
+            }
             ResolvedJavaField[] instanceFields = type.getInstanceFields(true);
             Object[] hostedFieldValues = new Object[instanceFields.length];
             for (ResolvedJavaField javaField : instanceFields) {
@@ -569,6 +603,7 @@ public abstract class ImageHeapScanner {
         return imageHeapConstant;
     }
 
+    @SuppressWarnings("try")
     protected void onObjectReachable(ImageHeapConstant imageHeapConstant, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
         AnalysisType objectType = metaAccess.lookupJavaType(imageHeapConstant);
         imageHeap.addReachableObject(objectType, imageHeapConstant);
@@ -578,7 +613,11 @@ public abstract class ImageHeapScanner {
         /* Simulated constants don't have a backing object and don't need to be processed. */
         if (object != null) {
             try {
-                type.notifyObjectReachable(universe.getConcurrentAnalysisAccess(), object, reason);
+                var inHeap = Facts.TypeInHeap.create(objectType);
+                Causality.registerEdgeFromHeapObject(bb, imageHeapConstant, reason, inHeap);
+                try (var ignored = Causality.setCause(inHeap)) {
+                    type.notifyObjectReachable(universe.getConcurrentAnalysisAccess(), object, reason);
+                }
             } catch (UnsupportedFeatureException e) {
                 /* Enhance the unsupported feature message with the object trace and rethrow. */
                 StringBuilder backtrace = new StringBuilder();
@@ -587,7 +626,11 @@ public abstract class ImageHeapScanner {
             }
         }
 
-        markTypeInstantiated(objectType, reason);
+        var inHeap = Facts.TypeInHeap.create(objectType);
+        Causality.registerEdgeFromHeapObject(bb, imageHeapConstant, reason, inHeap);
+        try (var ignored = Causality.setCause(inHeap)) {
+            markTypeInstantiated(objectType, reason);
+        }
         if (imageHeapConstant instanceof ImageHeapObjectArray imageHeapArray) {
             AnalysisType arrayType = imageHeapArray.getType();
             for (int idx = 0; idx < imageHeapArray.getLength(); idx++) {
@@ -761,8 +804,11 @@ public abstract class ImageHeapScanner {
     /**
      * Add the object to the image heap and, if the object is a collection, rescan its elements.
      */
+    @SuppressWarnings("try")
     public void rescanObject(Object object) {
-        rescanObject(object, OtherReason.RESCAN);
+        try (var ignored = Causality.resetCause()) {
+            rescanObject(object, OtherReason.RESCAN);
+        }
     }
 
     /**
@@ -855,11 +901,14 @@ public abstract class ImageHeapScanner {
      * schedule new tasks, because that would be treated as "the analysis has not finished yet". So
      * in that case we execute the task directly.
      */
+    @SuppressWarnings("try")
     private void maybeRunInExecutor(CompletionExecutor.DebugContextRunnable task) {
-        if (bb.executorIsStarted()) {
-            bb.postTask(task);
-        } else {
-            task.run(null);
+        try (var ignored = Causality.resetCause()) {
+            if (bb.executorIsStarted()) {
+                bb.postTask(task);
+            } else {
+                task.run(null);
+            }
         }
     }
 

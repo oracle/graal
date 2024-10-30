@@ -28,7 +28,7 @@ package com.oracle.svm.hosted.classinitialization;
  * The initialization kind for a class. The order of the enum values matters, {@link #max} depends
  * on it.
  */
-enum InitKind {
+public enum InitKind {
     /** Class is initialized during image building, so it is already initialized at runtime. */
     BUILD_TIME,
     /** Class should be initialized at runtime and not during image building. */

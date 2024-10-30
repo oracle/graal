@@ -31,6 +31,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Stream;
 
+import com.oracle.graal.pointsto.reports.causality.Causality;
+import com.oracle.graal.pointsto.reports.causality.facts.Facts;
 import com.oracle.graal.pointsto.ClassInclusionPolicy;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
@@ -161,8 +163,11 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
     }
 
     @Override
+    @SuppressWarnings("try")
     public void initializeMetaData(AnalysisType type) {
-        dynamicHubInitializer.initializeMetaData(universe.getHeapScanner(), type);
+        try (var ignored = Causality.setCause(Facts.TypeReachable.create(type))) {
+            dynamicHubInitializer.initializeMetaData(universe.getHeapScanner(), type);
+        }
     }
 
     public static ResolvedJavaType toWrappedType(ResolvedJavaType type) {

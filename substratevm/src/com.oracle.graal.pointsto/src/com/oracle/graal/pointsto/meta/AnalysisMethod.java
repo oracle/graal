@@ -58,6 +58,8 @@ import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.reports.ReportUtils;
+import com.oracle.graal.pointsto.reports.causality.Causality;
+import com.oracle.graal.pointsto.reports.causality.facts.Facts;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AtomicUtils;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
@@ -477,6 +479,9 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      */
     public void registerAsIntrinsicMethod(Object reason) {
         assert isValidReason(reason) : "Registering a method as intrinsic needs to provide a valid reason, found: " + reason;
+        var invoked = Facts.MethodImplementationInvoked.create(this);
+        Causality.registerConsequence(invoked);
+        Causality.registerEdge(invoked, Facts.MethodReachable.create(this));
         AtomicUtils.atomicSetAndRun(this, reason, isIntrinsicMethodUpdater, () -> onImplementationInvoked(reason));
     }
 
@@ -495,6 +500,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         return AtomicUtils.atomicSet(this, reason, isInvokedUpdater);
     }
 
+    @SuppressWarnings("try")
     public boolean registerAsImplementationInvoked(Object reason) {
         assert isValidReason(reason) : "Registering a method as implementation invoked needs to provide a valid reason, found: " + reason;
         assert !Modifier.isAbstract(getModifiers()) : this;
@@ -507,12 +513,19 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
          * the method as invoked, it would have an unwanted side effect, where this method could
          * return before the class gets marked as reachable.
          */
-        getDeclaringClass().registerAsReachable("declared method " + qualifiedName + " is registered as implementation invoked");
+        Causality.registerEdge(Facts.MethodImplementationInvoked.create(this), Facts.MethodReachable.create(this));
+        Causality.registerEdge(Facts.MethodImplementationInvoked.create(this), Facts.InlinedMethodCode.create(this));
+        try (var ignored = Causality.setCause(Facts.MethodReachable.create(this))) {
+            getDeclaringClass().registerAsReachable("declared method " + qualifiedName + " is registered as implementation invoked");
+        }
         return AtomicUtils.atomicSetAndRun(this, reason, isImplementationInvokedUpdater, () -> onImplementationInvoked(reason));
     }
 
     public void registerAsInlined(Object reason) {
         assert reason instanceof NodeSourcePosition || reason instanceof ResolvedJavaMethod : "Registering a method as inlined needs to provide the inline location as reason, found: " + reason;
+        var inlined = Facts.MethodInlined.create(this);
+        Causality.registerConsequence(inlined);
+        Causality.registerEdge(inlined, Facts.MethodReachable.create(this));
         AtomicUtils.atomicSetAndRun(this, reason, isInlinedUpdater, () -> onReachable(reason));
     }
 
@@ -573,16 +586,22 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      * Class is always marked as reachable regardless of the success of the atomic mark, same reason
      * as in {@link AnalysisMethod#registerAsImplementationInvoked(Object)}.
      */
+    @SuppressWarnings("try")
     public boolean registerAsVirtualRootMethod(Object reason) {
-        getDeclaringClass().registerAsReachable("declared method " + qualifiedName + " is registered as virtual root");
+        try (var ignored = Causality.setCause(Facts.MethodReachable.create(this))) {
+            getDeclaringClass().registerAsReachable("declared method " + qualifiedName + " is registered as virtual root");
+        }
         return AtomicUtils.atomicSet(this, reason, isVirtualRootMethodUpdater);
     }
 
     /**
      * Registers this method as a direct (special or static) root for the analysis.
      */
+    @SuppressWarnings("try")
     public boolean registerAsDirectRootMethod(Object reason) {
-        getDeclaringClass().registerAsReachable("declared method " + qualifiedName + " is registered as direct root");
+        try (var ignored = Causality.setCause(Facts.MethodReachable.create(this))) {
+            getDeclaringClass().registerAsReachable("declared method " + qualifiedName + " is registered as direct root");
+        }
         return AtomicUtils.atomicSet(this, reason, isDirectRootMethodUpdater);
     }
 
@@ -1007,6 +1026,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         return setGraph(expectedValue, () -> AnalysisParsedGraph.parseBytecode(bb, this));
     }
 
+    @SuppressWarnings("try")
     private AnalysisParsedGraph setGraph(Object expectedValue, Supplier<AnalysisParsedGraph> graphSupplier) {
         ReentrantLock lock = new ReentrantLock();
         lock.lock();
@@ -1020,7 +1040,10 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
                 return null;
             }
 
-            AnalysisParsedGraph graph = graphSupplier.get();
+            AnalysisParsedGraph graph;
+            try (var ignored = Causality.overwriteCause(Facts.MethodGraphParsed.create(this))) {
+                graph = graphSupplier.get();
+            }
 
             /*
              * Since we still hold the parsing lock, the transition form "parsing" to "parsed"

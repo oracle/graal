@@ -38,6 +38,8 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.stream.Stream;
 
+import com.oracle.graal.pointsto.reports.causality.Causality;
+import com.oracle.graal.pointsto.reports.causality.facts.Facts;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -864,6 +866,7 @@ public class SubstrateGraphBuilderPlugins {
         return true;
     }
 
+    @SuppressWarnings("try")
     private static void registerArrayPlugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, Array.class).setAllowOverwrite(true);
         r.register(new RequiredInvocationPlugin("newInstance", Class.class, int[].class) {
@@ -881,7 +884,9 @@ public class SubstrateGraphBuilderPlugins {
                     AnalysisType type = (AnalysisType) b.getMetaAccess().lookupJavaType(clazz);
                     for (int i = 0; i < dimensionCount && type.getArrayDimension() < 255; i++) {
                         type = type.getArrayClass();
-                        type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(clazzNode));
+                        try (var ignored = Causality.setCause(Facts.InlinedMethodCode.create(AbstractAnalysisEngine.sourcePosition(clazzNode)))) {
+                            type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(clazzNode));
+                        }
                     }
                 }
                 return false;

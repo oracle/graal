@@ -42,6 +42,8 @@ import java.util.function.Consumer;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import com.oracle.graal.pointsto.reports.causality.Causality;
+import com.oracle.graal.pointsto.reports.causality.facts.Facts;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.ReflectionRegistry;
 
@@ -135,6 +137,7 @@ public final class ConfigurationParserUtils {
         return parsedCount;
     }
 
+    @SuppressWarnings("try")
     private static void doParseAndRegister(ConfigurationParser parser, String featureName, Object location) {
         try {
             URI uri;
@@ -143,7 +146,9 @@ public final class ConfigurationParserUtils {
             } else {
                 uri = ((URL) location).toURI();
             }
-            parser.parseAndRegister(uri);
+            try (var ignored = Causality.setCause(Facts.ConfigurationFile.create(uri))) {
+                parser.parseAndRegister(uri);
+            }
         } catch (IOException | URISyntaxException | JsonParserException e) {
             String errorMessage = e.getMessage();
             if (errorMessage == null || errorMessage.isEmpty()) {

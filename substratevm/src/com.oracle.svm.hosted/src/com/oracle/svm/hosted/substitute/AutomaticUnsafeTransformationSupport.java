@@ -45,7 +45,10 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
+import com.oracle.graal.pointsto.reports.causality.Causality;
+import com.oracle.graal.pointsto.reports.causality.facts.Facts;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -859,6 +862,7 @@ public class AutomaticUnsafeTransformationSupport {
      * Try to register the automatic transformation for a field. Bail if the field was deleted or a
      * conflicting substitution is detected.
      */
+    @SuppressWarnings("try")
     private boolean tryAutomaticTransformation(BigBang bb, ResolvedJavaField field, RecomputeFieldValue.Kind kind, Class<?> targetClass, Field targetField) {
         if (annotationSubstitutions.isDeleted(field)) {
             String conflictingSubstitution = "The field " + field.format("%H.%n") + " is marked as deleted. ";
@@ -911,7 +915,13 @@ public class AutomaticUnsafeTransformationSupport {
             }
 
             if (kind == FieldOffset) {
-                bb.postTask(debugContext -> bb.getMetaAccess().lookupJavaField(targetField).registerAsUnsafeAccessed(field));
+                bb.postTask(debugContext -> {
+                    AnalysisField targetAnalysisField = bb.getMetaAccess().lookupJavaField(targetField);
+                    Causality.registerEdge(Facts.StructualProperty, Facts.FieldIsRecomputed.create(targetAnalysisField));
+                    try (var ignored = Causality.setCause(Facts.FieldIsRecomputed.create(targetAnalysisField))) {
+                        targetAnalysisField.registerAsUnsafeAccessed(field);
+                    }
+                });
             }
             FieldValueInterceptionSupport.singleton().registerFieldValueTransformer(field, newTransformer);
             return true;

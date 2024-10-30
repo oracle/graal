@@ -57,6 +57,9 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysis;
+import com.oracle.graal.pointsto.reports.causality.Causality;
+import com.oracle.graal.pointsto.reports.causality.facts.Fact;
+import com.oracle.graal.pointsto.reports.causality.facts.Facts;
 import com.oracle.graal.pointsto.results.StrengthenGraphs;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
@@ -230,13 +233,17 @@ public class MethodTypeFlowBuilder {
         AnalysisParsedGraph analysisParsedGraph = forceReparse ? method.reparseGraph(bb) : method.ensureGraphParsed(bb);
 
         if (analysisParsedGraph.isIntrinsic()) {
-            method.registerAsIntrinsicMethod(reason);
+            try (var ignored = Causality.setCause(Facts.Ignored)) {
+                method.registerAsIntrinsicMethod(reason);
+            }
         }
 
         if (analysisParsedGraph.getEncodedGraph() == null) {
             return false;
         }
-        graph = InlineBeforeAnalysis.decodeGraph(bb, method, analysisParsedGraph);
+        try (var ignored = Causality.setCause(Facts.InlinedMethodCode.create(method))) {
+            graph = InlineBeforeAnalysis.decodeGraph(bb, method, analysisParsedGraph);
+        }
 
         try (DebugContext.Scope s = graph.getDebug().scope("MethodTypeFlowBuilder", graph)) {
             CanonicalizerPhase canonicalizerPhase = CanonicalizerPhase.create();
@@ -276,118 +283,122 @@ public class MethodTypeFlowBuilder {
         }
     }
 
+    @SuppressWarnings("try")
     public static void registerUsedElements(PointsToAnalysis bb, StructuredGraph graph, boolean usePredicates) {
         PointsToAnalysisMethod method = (PointsToAnalysisMethod) graph.method();
         HostedProviders providers = bb.getProviders(method);
         for (Node n : graph.getNodes()) {
-            if (n instanceof InstanceOfNode) {
-                InstanceOfNode node = (InstanceOfNode) n;
-                AnalysisType type = (AnalysisType) node.type().getType();
-                if (!ignoreInstanceOfType(bb, type)) {
-                    type.registerAsReachable(AbstractAnalysisEngine.sourcePosition(node));
-                }
-
-            } else if (n instanceof NewInstanceNode) {
-                NewInstanceNode node = (NewInstanceNode) n;
-                AnalysisType type = (AnalysisType) node.instanceClass();
-                if (!usePredicates) {
-                    type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
-                    for (var f : type.getInstanceFields(true)) {
-                        var field = (AnalysisField) f;
-                        field.getInitialFlow().addState(bb, TypeState.defaultValueForKind(field.getStorageKind()));
+            BytecodePosition reason = n instanceof ValueNode vn ? AbstractAnalysisEngine.sourcePosition(vn) : AbstractAnalysisEngine.syntheticSourcePosition(n, method);
+            try (var ignored = Causality.setCause(Facts.InlinedMethodCode.create(reason))) {
+                if (n instanceof InstanceOfNode) {
+                    InstanceOfNode node = (InstanceOfNode) n;
+                    AnalysisType type = (AnalysisType) node.type().getType();
+                    if (!ignoreInstanceOfType(bb, type)) {
+                        type.registerAsReachable(AbstractAnalysisEngine.sourcePosition(node));
                     }
-                }
 
-            } else if (n instanceof NewInstanceWithExceptionNode) {
-                NewInstanceWithExceptionNode node = (NewInstanceWithExceptionNode) n;
-                AnalysisType type = (AnalysisType) node.instanceClass();
-                type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
-
-            } else if (n instanceof VirtualObjectNode) {
-                VirtualObjectNode node = (VirtualObjectNode) n;
-                AnalysisType type = (AnalysisType) node.type();
-                type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
-
-            } else if (n instanceof NewArrayNode) {
-                NewArrayNode node = (NewArrayNode) n;
-                AnalysisType type = ((AnalysisType) node.elementType()).getArrayClass();
-                type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
-
-            } else if (n instanceof NewArrayWithExceptionNode) {
-                NewArrayWithExceptionNode node = (NewArrayWithExceptionNode) n;
-                AnalysisType type = ((AnalysisType) node.elementType()).getArrayClass();
-                type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
-
-            } else if (n instanceof NewMultiArrayNode) {
-                NewMultiArrayNode node = (NewMultiArrayNode) n;
-                AnalysisType type = ((AnalysisType) node.type());
-                for (int i = 0; i < node.dimensionCount(); i++) {
-                    type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
-                    type = type.getComponentType();
-                }
-
-            } else if (n instanceof NewMultiArrayWithExceptionNode) {
-                NewMultiArrayWithExceptionNode node = (NewMultiArrayWithExceptionNode) n;
-                AnalysisType type = ((AnalysisType) node.type());
-                for (int i = 0; i < node.dimensionCount(); i++) {
-                    type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
-                    type = type.getComponentType();
-                }
-
-            } else if (n instanceof BoxNode) {
-                BoxNode node = (BoxNode) n;
-                AnalysisType type = (AnalysisType) StampTool.typeOrNull(node, bb.getMetaAccess());
-                type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
-
-            } else if (n instanceof LoadFieldNode) {
-                LoadFieldNode node = (LoadFieldNode) n;
-                AnalysisField field = (AnalysisField) node.field();
-                field.registerAsRead(AbstractAnalysisEngine.sourcePosition(node));
-
-            } else if (n instanceof StoreFieldNode) {
-                StoreFieldNode node = (StoreFieldNode) n;
-                AnalysisField field = (AnalysisField) node.field();
-                field.registerAsWritten(AbstractAnalysisEngine.sourcePosition(node));
-
-            } else if (n instanceof ConstantNode cn) {
-                /* GR-58472: We should try to delay marking constants as instantiated */
-                JavaConstant root = cn.asJavaConstant();
-                if (cn.hasUsages() && cn.isJavaConstant() && root.getJavaKind() == JavaKind.Object && root.isNonNull()) {
-                    assert StampTool.isExactType(cn) : cn;
-                    if (!ignoreConstant(cn)) {
-                        AnalysisType type = (AnalysisType) StampTool.typeOrNull(cn, bb.getMetaAccess());
-                        type.registerAsInstantiated(new EmbeddedRootScan(AbstractAnalysisEngine.sourcePosition(cn), root));
-                        registerEmbeddedRoot(bb, cn);
+                } else if (n instanceof NewInstanceNode) {
+                    NewInstanceNode node = (NewInstanceNode) n;
+                    AnalysisType type = (AnalysisType) node.instanceClass();
+                    if (!usePredicates) {
+                        type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
+                        for (var f : type.getInstanceFields(true)) {
+                            var field = (AnalysisField) f;
+                            field.getInitialFlow().addState(bb, TypeState.defaultValueForKind(field.getStorageKind()));
+                        }
                     }
-                }
 
-            } else if (n instanceof FieldOffsetProvider node) {
-                if (needsUnsafeRegistration(node)) {
-                    ((AnalysisField) node.getField()).registerAsUnsafeAccessed(AbstractAnalysisEngine.sourcePosition(node.asNode()));
-                }
+                } else if (n instanceof NewInstanceWithExceptionNode) {
+                    NewInstanceWithExceptionNode node = (NewInstanceWithExceptionNode) n;
+                    AnalysisType type = (AnalysisType) node.instanceClass();
+                    type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
 
-            } else if (n instanceof FrameState) {
-                FrameState node = (FrameState) n;
-                AnalysisMethod frameStateMethod = (AnalysisMethod) node.getMethod();
-                if (frameStateMethod != null) {
-                    /*
-                     * All types referenced in (possibly inlined) frame states must be reachable,
-                     * because these classes will be reachable from stack walking metadata. This
-                     * metadata is only constructed after AOT compilation, so the image heap
-                     * scanning during static analysis does not see these classes.
-                     */
-                    frameStateMethod.getDeclaringClass().registerAsReachable(AbstractAnalysisEngine.syntheticSourcePosition(node, method));
-                }
+                } else if (n instanceof VirtualObjectNode) {
+                    VirtualObjectNode node = (VirtualObjectNode) n;
+                    AnalysisType type = (AnalysisType) node.type();
+                    type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
 
-            } else if (n instanceof ForeignCall) {
-                ForeignCall node = (ForeignCall) n;
-                registerForeignCall(bb, providers.getForeignCalls(), node.getDescriptor(), graph.method());
-            } else if (n instanceof UnaryMathIntrinsicNode) {
-                UnaryMathIntrinsicNode node = (UnaryMathIntrinsicNode) n;
-                registerForeignCall(bb, providers.getForeignCalls(), providers.getForeignCalls().getDescriptor(node.getOperation().foreignCallSignature), graph.method());
-            } else if (n instanceof BinaryMathIntrinsicNode) {
-                BinaryMathIntrinsicNode node = (BinaryMathIntrinsicNode) n;
-                registerForeignCall(bb, providers.getForeignCalls(), providers.getForeignCalls().getDescriptor(node.getOperation().foreignCallSignature), graph.method());
+                } else if (n instanceof NewArrayNode) {
+                    NewArrayNode node = (NewArrayNode) n;
+                    AnalysisType type = ((AnalysisType) node.elementType()).getArrayClass();
+                    type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
+
+                } else if (n instanceof NewArrayWithExceptionNode) {
+                    NewArrayWithExceptionNode node = (NewArrayWithExceptionNode) n;
+                    AnalysisType type = ((AnalysisType) node.elementType()).getArrayClass();
+                    type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
+
+                } else if (n instanceof NewMultiArrayNode) {
+                    NewMultiArrayNode node = (NewMultiArrayNode) n;
+                    AnalysisType type = ((AnalysisType) node.type());
+                    for (int i = 0; i < node.dimensionCount(); i++) {
+                        type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
+                        type = type.getComponentType();
+                    }
+
+                } else if (n instanceof NewMultiArrayWithExceptionNode) {
+                    NewMultiArrayWithExceptionNode node = (NewMultiArrayWithExceptionNode) n;
+                    AnalysisType type = ((AnalysisType) node.type());
+                    for (int i = 0; i < node.dimensionCount(); i++) {
+                        type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
+                        type = type.getComponentType();
+                    }
+
+                } else if (n instanceof BoxNode) {
+                    BoxNode node = (BoxNode) n;
+                    AnalysisType type = (AnalysisType) StampTool.typeOrNull(node, bb.getMetaAccess());
+                    type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
+
+                } else if (n instanceof LoadFieldNode) {
+                    LoadFieldNode node = (LoadFieldNode) n;
+                    AnalysisField field = (AnalysisField) node.field();
+                    field.registerAsRead(AbstractAnalysisEngine.sourcePosition(node));
+
+                } else if (n instanceof StoreFieldNode) {
+                    StoreFieldNode node = (StoreFieldNode) n;
+                    AnalysisField field = (AnalysisField) node.field();
+                    field.registerAsWritten(AbstractAnalysisEngine.sourcePosition(node));
+
+                } else if (n instanceof ConstantNode cn) {
+                    /* GR-58472: We should try to delay marking constants as instantiated */
+                    JavaConstant root = cn.asJavaConstant();
+                    if (cn.hasUsages() && cn.isJavaConstant() && root.getJavaKind() == JavaKind.Object && root.isNonNull()) {
+                        assert StampTool.isExactType(cn) : cn;
+                        if (!ignoreConstant(cn)) {
+                            AnalysisType type = (AnalysisType) StampTool.typeOrNull(cn, bb.getMetaAccess());
+                            type.registerAsInstantiated(new EmbeddedRootScan(AbstractAnalysisEngine.sourcePosition(cn), root));
+                            registerEmbeddedRoot(bb, cn);
+                        }
+                    }
+
+                } else if (n instanceof FieldOffsetProvider node) {
+                    if (needsUnsafeRegistration(node)) {
+                        ((AnalysisField) node.getField()).registerAsUnsafeAccessed(AbstractAnalysisEngine.sourcePosition(node.asNode()));
+                    }
+
+                } else if (n instanceof FrameState) {
+                    FrameState node = (FrameState) n;
+                    AnalysisMethod frameStateMethod = (AnalysisMethod) node.getMethod();
+                    if (frameStateMethod != null) {
+                        /*
+                         * All types referenced in (possibly inlined) frame states must be
+                         * reachable, because these classes will be reachable from stack walking
+                         * metadata. This metadata is only constructed after AOT compilation, so the
+                         * image heap scanning during static analysis does not see these classes.
+                         */
+                        frameStateMethod.getDeclaringClass().registerAsReachable(AbstractAnalysisEngine.syntheticSourcePosition(node, method));
+                    }
+
+                } else if (n instanceof ForeignCall) {
+                    ForeignCall node = (ForeignCall) n;
+                    registerForeignCall(bb, providers.getForeignCalls(), node.getDescriptor(), graph.method());
+                } else if (n instanceof UnaryMathIntrinsicNode) {
+                    UnaryMathIntrinsicNode node = (UnaryMathIntrinsicNode) n;
+                    registerForeignCall(bb, providers.getForeignCalls(), providers.getForeignCalls().getDescriptor(node.getOperation().foreignCallSignature), graph.method());
+                } else if (n instanceof BinaryMathIntrinsicNode) {
+                    BinaryMathIntrinsicNode node = (BinaryMathIntrinsicNode) n;
+                    registerForeignCall(bb, providers.getForeignCalls(), providers.getForeignCalls().getDescriptor(node.getOperation().foreignCallSignature), graph.method());
+                }
             }
         }
     }
@@ -571,6 +582,7 @@ public class MethodTypeFlowBuilder {
 
     }
 
+    @SuppressWarnings("try")
     private void createTypeFlow() {
         processedNodes = new NodeBitMap(graph);
 
@@ -657,8 +669,10 @@ public class MethodTypeFlowBuilder {
             }
         }
 
-        // Propagate the type flows through the method's graph
-        new NodeIterator(graph.start(), typeFlows).apply();
+        try (var ignored = Causality.setCause(Facts.InlinedMethodCode.create((AnalysisMethod) graph.method()))) {
+            // Propagate the type flows through the method's graph
+            new NodeIterator(graph.start(), typeFlows).apply();
+        }
 
         /* Prune the method graph. Eliminate nodes with no uses. Collect flows that need init. */
         postInitFlows = typeFlowGraphBuilder.build();
@@ -1822,11 +1836,14 @@ public class MethodTypeFlowBuilder {
             if (createDeoptInvokeTypeFlow) {
                 invokeFlow = bb.analysisPolicy().createDeoptInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, multiMethodKey);
             } else {
+                Fact logicalCallerFact = Facts.InlinedMethodCode.create(invoke.getNodeSourcePosition());
                 switch (invokeKind) {
                     case Static:
+                        Causality.registerEdge(logicalCallerFact, Facts.MethodImplementationInvoked.create(targetMethod));
                         invokeFlow = bb.analysisPolicy().createStaticInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, multiMethodKey);
                         break;
                     case Special:
+                        Causality.registerEdge(logicalCallerFact, Facts.MethodImplementationInvoked.create(targetMethod));
                         invokeFlow = bb.analysisPolicy().createSpecialInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, multiMethodKey);
                         break;
                     case Virtual:

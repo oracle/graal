@@ -34,6 +34,8 @@ import java.util.function.Consumer;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
+import com.oracle.graal.pointsto.reports.causality.Causality;
+import com.oracle.graal.pointsto.reports.causality.facts.Facts;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 
@@ -64,6 +66,7 @@ public abstract class ConditionalConfigurationRegistry {
             }
             if (beforeAnalysisAccess == null) {
                 Collection<Runnable> handlers = pendingReachabilityHandlers.computeIfAbsent(condition.getType(), key -> new ConcurrentLinkedQueue<>());
+                Causality.registerConsequence(Facts.ConfigurationCondition.create(condition.getType()));
                 handlers.add(() -> consumer.accept(runtimeCondition));
             } else {
                 beforeAnalysisAccess.registerReachabilityHandler(access -> consumer.accept(runtimeCondition), condition.getType());
@@ -73,11 +76,14 @@ public abstract class ConditionalConfigurationRegistry {
 
     }
 
+    @SuppressWarnings("try")
     public void setAnalysisAccess(Feature.BeforeAnalysisAccess beforeAnalysisAccess) {
         VMError.guarantee(this.beforeAnalysisAccess == null, "Analysis access can be set only once.");
         this.beforeAnalysisAccess = Objects.requireNonNull(beforeAnalysisAccess);
         for (Map.Entry<Class<?>, Collection<Runnable>> reachabilityEntry : pendingReachabilityHandlers.entrySet()) {
-            this.beforeAnalysisAccess.registerReachabilityHandler(access -> reachabilityEntry.getValue().forEach(Runnable::run), reachabilityEntry.getKey());
+            try (var ignored = Causality.setCause(Facts.ConfigurationCondition.create(reachabilityEntry.getKey()))) {
+                this.beforeAnalysisAccess.registerReachabilityHandler(access -> reachabilityEntry.getValue().forEach(Runnable::run), reachabilityEntry.getKey());
+            }
         }
         pendingReachabilityHandlers.clear();
     }
