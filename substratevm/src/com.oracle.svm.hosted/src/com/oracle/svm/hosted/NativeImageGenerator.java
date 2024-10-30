@@ -32,10 +32,8 @@ import static jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.regist
 
 import java.io.IOException;
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.lang.reflect.Type;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -43,7 +41,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.ListIterator;
@@ -55,11 +52,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 
-import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.Pair;
-import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -258,6 +252,7 @@ import com.oracle.svm.hosted.reflect.proxy.ProxyRenamingSubstitutionProcessor;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.DeletedFieldsPlugin;
+import com.oracle.svm.hosted.substitute.SubstitutionInvocationPlugins;
 import com.oracle.svm.hosted.util.CPUTypeAArch64;
 import com.oracle.svm.hosted.util.CPUTypeAMD64;
 import com.oracle.svm.hosted.util.CPUTypeRISCV64;
@@ -293,8 +288,6 @@ import jdk.graal.compiler.nodes.gc.BarrierSet;
 import jdk.graal.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedPluginFactory;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.LoweringProvider;
 import jdk.graal.compiler.nodes.spi.StampProvider;
@@ -1360,86 +1353,6 @@ public class NativeImageGenerator {
 
     protected boolean isStubBasedPluginsSupported() {
         return !SubstrateOptions.useLLVMBackend();
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    static class SubstitutionInvocationPlugins extends InvocationPlugins {
-
-        private final AnnotationSubstitutionProcessor annotationSubstitutionProcessor;
-        private EconomicMap<String, Integer> missingIntrinsicMetrics;
-
-        SubstitutionInvocationPlugins(AnnotationSubstitutionProcessor annotationSubstitutionProcessor) {
-            this.annotationSubstitutionProcessor = annotationSubstitutionProcessor;
-            this.missingIntrinsicMetrics = null;
-        }
-
-        @Override
-        protected void register(Type declaringClass, InvocationPlugin plugin, boolean allowOverwrite) {
-            Type targetClass;
-            if (declaringClass instanceof Class<?> annotatedClass) {
-                targetClass = annotationSubstitutionProcessor.getTargetClass(annotatedClass);
-                if (targetClass != declaringClass) {
-                    /* Found a target class. Check if it is included. */
-                    Executable annotatedMethod = plugin.name.equals("<init>") ? resolveConstructor(annotatedClass, plugin) : resolveMethod(annotatedClass, plugin);
-                    String originalName = annotationSubstitutionProcessor.findOriginalElementName(annotatedMethod, (Class<?>) targetClass);
-                    if (originalName == null) {
-                        /*
-                         * If the name is null, the element should not be substituted. Thus, we
-                         * should also not register the invocation plugin.
-                         */
-                        return;
-                    }
-                    if (!originalName.equals(plugin.name)) {
-                        throw VMError.unimplemented(String.format("""
-                                        InvocationPlugins cannot yet deal with substitution methods that set the target name via the @TargetElement(name = ...) property.
-                                        Annotated method "%s" vs target method "%s".""", plugin.name, originalName));
-                    }
-                }
-            } else {
-                targetClass = declaringClass;
-            }
-            super.register(targetClass, plugin, allowOverwrite);
-        }
-
-        @Override
-        public void notifyNoPlugin(ResolvedJavaMethod targetMethod, OptionValues options) {
-            if (Options.WarnMissingIntrinsic.getValue(options)) {
-                for (Class<?> annotationType : AnnotationAccess.getAnnotationTypes(targetMethod)) {
-                    if (ClassUtil.getUnqualifiedName(annotationType).contains("IntrinsicCandidate")) {
-                        String method = String.format("%s.%s%s", targetMethod.getDeclaringClass().toJavaName().replace('.', '/'), targetMethod.getName(),
-                                        targetMethod.getSignature().toMethodDescriptor());
-                        synchronized (this) {
-                            if (missingIntrinsicMetrics == null) {
-                                missingIntrinsicMetrics = EconomicMap.create();
-                                try {
-                                    Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                                        if (missingIntrinsicMetrics.size() > 0) {
-                                            System.out.format("[Warning] Missing intrinsics found: %d%n", missingIntrinsicMetrics.size());
-                                            List<Pair<String, Integer>> data = new ArrayList<>();
-                                            final MapCursor<String, Integer> cursor = missingIntrinsicMetrics.getEntries();
-                                            while (cursor.advance()) {
-                                                data.add(Pair.create(cursor.getKey(), cursor.getValue()));
-                                            }
-                                            data.stream().sorted(Comparator.comparing(Pair::getRight, Comparator.reverseOrder())).forEach(
-                                                            pair -> System.out.format("        - %d occurrences during parsing: %s%n", pair.getRight(), pair.getLeft()));
-                                        }
-                                    }));
-                                } catch (IllegalStateException e) {
-                                    // shutdown in progress, no need to register the hook
-                                }
-                            }
-                            if (missingIntrinsicMetrics.containsKey(method)) {
-                                missingIntrinsicMetrics.put(method, missingIntrinsicMetrics.get(method) + 1);
-                            } else {
-                                System.out.format("[Warning] Missing intrinsic %s found during parsing.%n", method);
-                                missingIntrinsicMetrics.put(method, 1);
-                            }
-                        }
-                        break;
-                    }
-                }
-            }
-        }
     }
 
     public static void registerGraphBuilderPlugins(FeatureHandler featureHandler, RuntimeConfiguration runtimeConfig, HostedProviders providers, AnalysisMetaAccess aMetaAccess,
