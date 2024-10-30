@@ -99,6 +99,12 @@ final class PolyglotThreadInfo {
 
     private final List<ProbeNode> probesEnterList;
 
+    /*
+     * Set only for dead embedder threads (Thread#isAlive() == false) to claim the finalization of
+     * the dead embedder threads by another embedder thread that is just entering the context.
+     */
+    boolean finalizingDeadThread;
+
     private static final boolean ASSERT_ENTER_RETURN_PARITY;
 
     static {
@@ -155,6 +161,16 @@ final class PolyglotThreadInfo {
 
     Thread getThread() {
         return thread.get();
+    }
+
+    boolean isFinalizingDeadThread() {
+        assert Thread.holdsLock(context);
+        return finalizingDeadThread;
+    }
+
+    void setFinalizingDeadThread() {
+        assert Thread.holdsLock(context);
+        this.finalizingDeadThread = true;
     }
 
     boolean isLanguageContextInitialized(PolyglotLanguage language) {
