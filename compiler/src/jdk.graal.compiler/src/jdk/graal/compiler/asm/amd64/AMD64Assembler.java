@@ -1289,8 +1289,8 @@ public class AMD64Assembler extends AMD64BaseAssembler {
          * to its own type.
          */
         protected final VexOp encodingLogic(AMD64SIMDInstructionEncoding encoding) {
-            GraalError.guarantee(variant != null, "%s has no %s variant!", this, encoding);
-            GraalError.guarantee(this.isEvex ^ variant.isEvex, "Only pairs of VEX and EVEX instructions are allowed. (%s, %s)", this, variant);
+            GraalError.guarantee(variant != null || isEvex == (encoding == AMD64SIMDInstructionEncoding.EVEX), "%s has no %s variant!", this, encoding);
+            GraalError.guarantee(variant == null || this.isEvex != variant.isEvex, "Only pairs of VEX and EVEX instructions are allowed. (%s, %s)", this, variant);
             return switch (encoding) {
                 case VEX -> isEvex ? variant : this;
                 case EVEX -> isEvex ? this : variant;
