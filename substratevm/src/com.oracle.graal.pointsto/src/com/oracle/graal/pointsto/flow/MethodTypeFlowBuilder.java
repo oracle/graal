@@ -986,7 +986,10 @@ public class MethodTypeFlowBuilder {
             }
             if (result == null) {
                 /*
-                 * There is no type flow set, yet. Therefore, we have no info for the node.
+                 * There is no type flow set, yet. Therefore, we have no info for the node. Note
+                 * that we use the stamp of the path-dependent proxy, which should be more precise.
+                 * If the same node ends up having multiple representations in different branches, a
+                 * MergeFlow is introduced when these branches are merged.
                  */
                 Stamp s = n.stamp(NodeView.DEFAULT);
                 if (node instanceof ConditionalNode conditionalNode) {

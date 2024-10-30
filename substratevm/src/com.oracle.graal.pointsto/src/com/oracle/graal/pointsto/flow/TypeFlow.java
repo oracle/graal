@@ -96,6 +96,8 @@ public abstract class TypeFlow<T> {
     private static final AtomicIntegerFieldUpdater<TypeFlow> IS_ENABLED_UPDATER = AtomicIntegerFieldUpdater.newUpdater(TypeFlow.class, "isEnabled");
     private static final AtomicReferenceFieldUpdater<TypeFlow, TypeFlow> PREDICATE_UPDATER = AtomicReferenceFieldUpdater.newUpdater(TypeFlow.class, TypeFlow.class, "predicate");
     private static final AtomicIntegerFieldUpdater<TypeFlow> SATURATED_UPDATER = AtomicIntegerFieldUpdater.newUpdater(TypeFlow.class, "isSaturated");
+    private static final AtomicIntegerFieldUpdater<TypeFlow> INPUT_SATURATED_UPDATER = AtomicIntegerFieldUpdater.newUpdater(TypeFlow.class, "inputSaturated");
+    private static final AtomicIntegerFieldUpdater<TypeFlow> OBSERVED_SATURATED_UPDATER = AtomicIntegerFieldUpdater.newUpdater(TypeFlow.class, "observedSaturated");
 
     protected static final AtomicInteger nextId = new AtomicInteger();
 
@@ -168,16 +170,29 @@ public abstract class TypeFlow<T> {
     @SuppressWarnings("unused") private volatile int isSaturated;
 
     /**
-     * True iff the input of this flow saturated. Used to delay the execution of the
-     * {@link TypeFlow#onInputSaturated} until this flow is enabled.
+     * The value for {@link TypeFlow#inputSaturated} and {@link TypeFlow#observedSaturated}
+     * indicating that the corresponding signal was already received.
      */
-    protected volatile boolean inputSaturated;
+    private static final int SIGNAL_RECEIVED = 1;
+    /**
+     * The value for {@link TypeFlow#inputSaturated} and {@link TypeFlow#observedSaturated}
+     * indicating that the corresponding callback was already executed.
+     */
+    private static final int CALLBACK_EXECUTED = 2;
 
     /**
-     * True iff the observed value saturated. Used to delay the execution of the
-     * {@link TypeFlow#onObservedSaturated} until this flow is enabled.
+     * Used to delay the execution of the {@link TypeFlow#onInputSaturated} until this flow is
+     * enabled. Can be default(0) - signal not received), {@link TypeFlow#SIGNAL_RECEIVED} or
+     * {@link TypeFlow#CALLBACK_EXECUTED}.
      */
-    protected volatile boolean observedSaturated;
+    @SuppressWarnings("unused") private volatile int inputSaturated;
+
+    /**
+     * Used to delay the execution of the {@link TypeFlow#onObservedSaturated} until this flow is
+     * enabled. Can be default(0) - signal not received), {@link TypeFlow#SIGNAL_RECEIVED} or
+     * {@link TypeFlow#CALLBACK_EXECUTED}.
+     */
+    @SuppressWarnings("unused") private volatile int observedSaturated;
 
     /**
      * A TypeFlow is invalidated when the flowsgraph it belongs to is updated due to
@@ -246,10 +261,10 @@ public abstract class TypeFlow<T> {
         if (AtomicUtils.atomicMark(this, IS_ENABLED_UPDATER)) {
             if (bb != null) {
                 onFlowEnabled(bb);
-                if (inputSaturated) {
+                if (INPUT_SATURATED_UPDATER.compareAndSet(this, SIGNAL_RECEIVED, CALLBACK_EXECUTED)) {
                     onInputSaturated(bb, null);
                 }
-                if (observedSaturated) {
+                if (OBSERVED_SATURATED_UPDATER.compareAndSet(this, SIGNAL_RECEIVED, CALLBACK_EXECUTED)) {
                     onObservedSaturated(bb, null);
                 }
             }
@@ -423,7 +438,8 @@ public abstract class TypeFlow<T> {
     public TypeState getOutputState(BigBang bb) {
         if (!isFlowEnabled()) {
             return TypeState.forEmpty();
-        } else if (isSaturated() && declaredType != null) {
+        } else if (isSaturated()) {
+            assert declaredType != null : this;
             return declaredType.getTypeFlow(bb, true).state;
         }
         return state;
@@ -960,14 +976,13 @@ public abstract class TypeFlow<T> {
      * callback is delayed to {@link TypeFlow#enableFlow}.
      */
     private void markInputSaturated(PointsToAnalysis bb, TypeFlow<?> input) {
+        inputSaturated = SIGNAL_RECEIVED;
         if (!isFlowEnabled()) {
-            inputSaturated = true;
-            /* Another thread could enable the flow in the meantime, so check again. */
-            if (!isFlowEnabled()) {
-                return;
-            }
+            return;
         }
-        onInputSaturated(bb, input);
+        if (INPUT_SATURATED_UPDATER.compareAndSet(this, SIGNAL_RECEIVED, CALLBACK_EXECUTED)) {
+            onInputSaturated(bb, input);
+        }
     }
 
     /**
@@ -994,14 +1009,13 @@ public abstract class TypeFlow<T> {
      * callback is delayed to {@link TypeFlow#enableFlow}.
      */
     private void markObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
+        observedSaturated = SIGNAL_RECEIVED;
         if (!isFlowEnabled()) {
-            observedSaturated = true;
-            /* Another thread could enable the flow in the meantime, so check again. */
-            if (!isFlowEnabled()) {
-                return;
-            }
+            return;
         }
-        onObservedSaturated(bb, observed);
+        if (OBSERVED_SATURATED_UPDATER.compareAndSet(this, SIGNAL_RECEIVED, CALLBACK_EXECUTED)) {
+            onObservedSaturated(bb, observed);
+        }
     }
 
     /**
