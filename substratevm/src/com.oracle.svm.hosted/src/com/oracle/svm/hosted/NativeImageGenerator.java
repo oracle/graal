@@ -31,7 +31,6 @@ import static jdk.graal.compiler.hotspot.JVMCIVersionCheck.OPEN_LABSJDK_RELEASE_
 import static jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.registerInvocationPlugins;
 
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
@@ -111,7 +110,6 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisFactory;
 import com.oracle.graal.pointsto.reports.AnalysisReporter;
-import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.typestate.DefaultAnalysisPolicy;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.GraalAccess;
@@ -171,7 +169,6 @@ import com.oracle.svm.core.heap.BarrierSetProvider;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.ServiceCatalogSupport;
@@ -244,12 +241,9 @@ import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.imagelayer.LoadImageSingletonFeature;
 import com.oracle.svm.hosted.jdk.localization.LocalizationFeature;
 import com.oracle.svm.hosted.meta.HostedConstantReflectionProvider;
-import com.oracle.svm.hosted.meta.HostedField;
-import com.oracle.svm.hosted.meta.HostedInterface;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedSnippetReflectionProvider;
-import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.UniverseBuilder;
 import com.oracle.svm.hosted.option.HostedOptionProvider;
@@ -632,7 +626,7 @@ public class NativeImageGenerator {
                                 ConfigurationValues.getTarget(), this.isStubBasedPluginsSupported());
 
                 if (NativeImageOptions.PrintUniverse.getValue()) {
-                    printTypes();
+                    hUniverse.printTypes();
                 }
 
                 /* Find the entry point methods in the hosted world. */
@@ -1908,134 +1902,6 @@ public class NativeImageGenerator {
 
     public BigBang getBigbang() {
         return bb;
-    }
-
-    private void printTypes() {
-        String reportsPath = SubstrateOptions.reportsPath();
-        ReportUtils.report("hosted universe", reportsPath, "universe_analysis", "txt",
-                        writer -> printTypes(writer));
-    }
-
-    private void printTypes(PrintWriter writer) {
-
-        for (HostedType type : hUniverse.getTypes()) {
-            writer.format("%8d %s  ", type.getTypeID(), type.toJavaName(true));
-            if (type.getSuperclass() != null) {
-                writer.format("extends %d %s  ", type.getSuperclass().getTypeID(), type.getSuperclass().toJavaName(false));
-            }
-            if (type.getInterfaces().length > 0) {
-                writer.print("implements ");
-                String sep = "";
-                for (HostedInterface interf : type.getInterfaces()) {
-                    writer.format("%s%d %s", sep, interf.getTypeID(), interf.toJavaName(false));
-                    sep = ", ";
-                }
-                writer.print("  ");
-            }
-
-            if (type.getWrapped().isInstantiated()) {
-                writer.print("instantiated  ");
-            }
-            if (type.getWrapped().isReachable()) {
-                writer.print("reachable  ");
-            }
-
-            if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
-                writer.format("type check start %d range %d slot # %d ", type.getTypeCheckStart(), type.getTypeCheckRange(), type.getTypeCheckSlot());
-                writer.format("type check slots %s  ", slotsToString(type.getClosedTypeWorldTypeCheckSlots()));
-            } else {
-                writer.format("type id %s depth %s num class types %s num interface types %s ", type.getTypeID(), type.getTypeIDDepth(), type.getNumClassTypes(), type.getNumInterfaceTypes());
-                writer.format("type check slots %s  ", String.join(" ", Arrays.stream(type.getOpenTypeWorldTypeCheckSlots()).mapToObj(Integer::toString).toArray(String[]::new)));
-            }
-            // if (type.findLeafConcreteSubtype() != null) {
-            // writer.format("unique %d %s ", type.findLeafConcreteSubtype().getTypeID(),
-            // type.findLeafConcreteSubtype().toJavaName(false));
-            // }
-
-            int le = type.getHub().getLayoutEncoding();
-            if (LayoutEncoding.isPrimitive(le)) {
-                writer.print("primitive  ");
-            } else if (LayoutEncoding.isInterface(le)) {
-                writer.print("interface  ");
-            } else if (LayoutEncoding.isAbstract(le)) {
-                writer.print("abstract  ");
-            } else if (LayoutEncoding.isPureInstance(le)) {
-                writer.format("instance size %d  ", LayoutEncoding.getPureInstanceAllocationSize(le).rawValue());
-            } else if (LayoutEncoding.isArrayLike(le)) {
-                String arrayType = LayoutEncoding.isHybrid(le) ? "hybrid" : "array";
-                String elements = LayoutEncoding.isArrayLikeWithPrimitiveElements(le) ? "primitives" : "objects";
-                writer.format("%s containing %s, base %d shift %d scale %d  ", arrayType, elements, LayoutEncoding.getArrayBaseOffset(le).rawValue(), LayoutEncoding.getArrayIndexShift(le),
-                                LayoutEncoding.getArrayIndexScale(le));
-
-            } else {
-                throw VMError.shouldNotReachHereUnexpectedInput(le); // ExcludeFromJacocoGeneratedReport
-            }
-
-            writer.println();
-
-            for (HostedType sub : type.getSubTypes()) {
-                writer.format("               s %d %s%n", sub.getTypeID(), sub.toJavaName(false));
-            }
-            if (type.isInterface()) {
-                for (HostedMethod method : hUniverse.getMethods()) {
-                    if (method.getDeclaringClass().equals(type)) {
-                        printMethod(writer, method, -1);
-                    }
-                }
-
-            } else if (type.isInstanceClass()) {
-
-                HostedField[] fields = type.getInstanceFields(false);
-                fields = Arrays.copyOf(fields, fields.length);
-                Arrays.sort(fields, Comparator.comparing(HostedField::toString));
-                for (HostedField field : fields) {
-                    writer.println("               f " + field.getLocation() + ": " + field.format("%T %n"));
-                }
-                HostedMethod[] vtable = type.getVTable();
-                for (int i = 0; i < vtable.length; i++) {
-                    if (vtable[i] != null) {
-                        printMethod(writer, vtable[i], i);
-                    }
-                }
-                for (HostedMethod method : hUniverse.getMethods()) {
-                    if (method.getDeclaringClass().equals(type) && !method.hasVTableIndex()) {
-                        printMethod(writer, method, -1);
-                    }
-                }
-            }
-        }
-
-    }
-
-    private static void printMethod(PrintWriter writer, HostedMethod method, int vtableIndex) {
-        if (vtableIndex != -1) {
-            writer.print("               v " + vtableIndex + " ");
-        } else {
-            writer.print("               m ");
-        }
-        if (method.hasVTableIndex()) {
-            writer.print(method.getVTableIndex() + " ");
-        }
-        writer.print(method.format("%r %n(%p)") + ": " + method.getImplementations().length + " [");
-        if (method.getImplementations().length <= 10) {
-            String sep = "";
-            for (HostedMethod impl : method.getImplementations()) {
-                writer.print(sep + impl.getDeclaringClass().toJavaName(false));
-                sep = ", ";
-            }
-        }
-        writer.println("]");
-    }
-
-    private static String slotsToString(short[] slots) {
-        if (slots == null) {
-            return "null";
-        }
-        StringBuilder result = new StringBuilder();
-        for (short slot : slots) {
-            result.append(Short.toUnsignedInt(slot)).append(" ");
-        }
-        return result.toString();
     }
 
     public static Path getOutputDirectory() {
