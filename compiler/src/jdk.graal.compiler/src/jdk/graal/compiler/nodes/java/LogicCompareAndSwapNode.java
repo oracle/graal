@@ -27,7 +27,6 @@ package jdk.graal.compiler.nodes.java;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_8;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_8;
 
-import jdk.graal.compiler.nodes.FrameState;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.LIRKind;
@@ -55,12 +54,12 @@ public final class LogicCompareAndSwapNode extends AbstractCompareAndSwapNode {
     public static final NodeClass<LogicCompareAndSwapNode> TYPE = NodeClass.create(LogicCompareAndSwapNode.class);
 
     public LogicCompareAndSwapNode(AddressNode address, ValueNode expectedValue, ValueNode newValue, LocationIdentity location, BarrierType barrierType, MemoryOrderMode memoryOrder) {
-        this(address, expectedValue, newValue, location, barrierType, memoryOrder, true);
+        this(TYPE, address, expectedValue, newValue, location, barrierType, memoryOrder, true);
     }
 
-    private LogicCompareAndSwapNode(AddressNode address, ValueNode expectedValue, ValueNode newValue, LocationIdentity location, BarrierType barrierType, MemoryOrderMode memoryOrder,
-                    boolean hasSideEffect) {
-        super(TYPE, address, location, expectedValue, newValue, barrierType, StampFactory.forInteger(JavaKind.Int, 0, 1), memoryOrder, hasSideEffect);
+    private LogicCompareAndSwapNode(NodeClass<? extends LogicCompareAndSwapNode> type, AddressNode address, ValueNode expectedValue, ValueNode newValue, LocationIdentity location,
+                    BarrierType barrierType, MemoryOrderMode memoryOrder, boolean hasSideEffect) {
+        super(type, address, location, expectedValue, newValue, barrierType, StampFactory.forInteger(JavaKind.Int, 0, 1), memoryOrder, hasSideEffect);
     }
 
     @Override
@@ -80,11 +79,11 @@ public final class LogicCompareAndSwapNode extends AbstractCompareAndSwapNode {
     /**
      * This is a special form of {@link LogicCompareAndSwapNode} that does not have a side effect to
      * the interpreter, i.e., it does not modify memory that is visible to other threads or modifies
-     * state beyond what is captured in {@link FrameState} nodes. Thus, it should only be used with
+     * state beyond what is captured in {@code FrameState} nodes. Thus, it should only be used with
      * caution in suitable scenarios.
      */
     public static LogicCompareAndSwapNode createWithoutSideEffect(AddressNode address, ValueNode expectedValue, ValueNode newValue, LocationIdentity location) {
-        return new LogicCompareAndSwapNode(address, expectedValue, newValue, location, BarrierType.NONE, MemoryOrderMode.VOLATILE, false);
+        return new LogicCompareAndSwapNode(TYPE, address, expectedValue, newValue, location, BarrierType.NONE, MemoryOrderMode.PLAIN, false);
     }
 
 }

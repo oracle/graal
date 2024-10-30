@@ -88,6 +88,7 @@ import jdk.graal.compiler.lir.aarch64.AArch64MD5Op;
 import jdk.graal.compiler.lir.aarch64.AArch64Move;
 import jdk.graal.compiler.lir.aarch64.AArch64Move.MembarOp;
 import jdk.graal.compiler.lir.aarch64.AArch64PauseOp;
+import jdk.graal.compiler.lir.aarch64.AArch64ReadTimestampCounter;
 import jdk.graal.compiler.lir.aarch64.AArch64SHA1Op;
 import jdk.graal.compiler.lir.aarch64.AArch64SHA256Op;
 import jdk.graal.compiler.lir.aarch64.AArch64SHA3Op;
@@ -381,6 +382,13 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         // Note mirroring does *not* affect unorderedIsTrue
         ConditionFlag cmpCondition = toConditionFlag(((AArch64Kind) cmpKind).isInteger(), finalCondition, unorderedIsTrue);
         append(new BranchOp(cmpCondition, trueDestination, falseDestination, trueDestinationProbability));
+    }
+
+    @Override
+    public Value emitTimeStamp() {
+        Variable result = newVariable(LIRKind.value(AArch64Kind.QWORD));
+        append(new AArch64ReadTimestampCounter(result));
+        return result;
     }
 
     private static ConditionFlag toConditionFlag(boolean isInt, Condition cond, boolean unorderedIsTrue) {
