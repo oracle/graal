@@ -1091,7 +1091,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     public void add(int size, Register dst, Register src, int immediate, Register scratch) {
         assert (!dst.equals(zr) && !src.equals(zr)) : dst + " " + src;
-        if (immediate < 0) {
+        if (-immediate > 0) {
             sub(size, dst, src, -immediate, scratch);
         } else if (NumUtil.isUnsignedNbit(24, immediate) || !dst.equals(src)) {
             add(size, dst, src, immediate);
@@ -1116,7 +1116,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     @Override
     public void add(int size, Register dst, Register src, int immediate) {
         assert (!dst.equals(zr) && !src.equals(zr)) : dst + " " + src;
-        if (immediate < 0) {
+        if (-immediate > 0) {
             sub(size, dst, src, -immediate);
         } else if (isAddSubtractImmediate(immediate, false)) {
             if (!(dst.equals(src) && immediate == 0)) {
@@ -1163,7 +1163,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     @Override
     public void adds(int size, Register dst, Register src, int immediate) {
         assert (!dst.equals(sp) && !src.equals(zr)) : dst + " " + src;
-        if (immediate < 0) {
+        if (-immediate > 0) {
             subs(size, dst, src, -immediate);
         } else {
             super.adds(size, dst, src, immediate);
@@ -1183,7 +1183,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     public void sub(int size, Register dst, Register src, int immediate, Register scratch) {
         assert (!dst.equals(zr) && !src.equals(zr)) : dst + " " + src;
-        if (immediate < 0) {
+        if (-immediate > 0) {
             add(size, dst, src, -immediate, scratch);
         }
         if (NumUtil.isUnsignedNbit(24, immediate) || !dst.equals(src)) {
@@ -1209,7 +1209,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     @Override
     public void sub(int size, Register dst, Register src, int immediate) {
         assert (!dst.equals(zr) && !src.equals(zr)) : dst + " " + src;
-        if (immediate < 0) {
+        if (-immediate > 0) {
             add(size, dst, src, -immediate);
         } else if (isAddSubtractImmediate(immediate, false)) {
             if (!(dst.equals(src) && immediate == 0)) {
@@ -1236,7 +1236,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     @Override
     public void subs(int size, Register dst, Register src, int immediate) {
         assert (!dst.equals(sp) && !src.equals(zr)) : dst + " " + src;
-        if (immediate < 0) {
+        if (-immediate > 0) {
             adds(size, dst, src, -immediate);
         } else {
             super.subs(size, dst, src, immediate);
