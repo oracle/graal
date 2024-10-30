@@ -51,6 +51,8 @@ import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.reports.causality.Causality;
+import com.oracle.graal.pointsto.reports.causality.facts.Facts;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
@@ -142,6 +144,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
     FeatureImpl.BeforeAnalysisAccessImpl analysisAccess;
 
     @Override
+    @SuppressWarnings("try")
     public SubstrateAccessor getOrCreateAccessor(Executable member) {
         SubstrateAccessor existing = accessors.get(member);
         if (existing != null) {
@@ -151,7 +154,11 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
         if (analysisAccess == null) {
             throw VMError.shouldNotReachHere("New Method or Constructor found as reachable after static analysis: " + member);
         }
-        return accessors.computeIfAbsent(member, this::createAccessor);
+        return accessors.computeIfAbsent(member, m -> {
+            try (var ignored = Causality.overwriteCause(Facts.ReflectionRegistration.create(m))) {
+                return createAccessor(m);
+            }
+        });
     }
 
     /**
@@ -300,24 +307,27 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
         access.registerObjectReachableCallback(SubstrateAccessor.class, ReflectionFeature::onAccessorReachable);
     }
 
+    @SuppressWarnings("try")
     private static void onAccessorReachable(DuringAnalysisAccess a, SubstrateAccessor accessor, ObjectScanner.ScanReason reason) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
 
         ResolvedJavaMethod expandSignatureMethod = ((MethodPointer) accessor.getExpandSignature()).getMethod();
-        access.registerAsRoot((AnalysisMethod) expandSignatureMethod, true, reason);
-
         ResolvedJavaMethod targetMethod = accessor.getTargetMethod();
-        if (targetMethod != null) {
-            if (!targetMethod.isAbstract()) {
-                access.registerAsRoot((AnalysisMethod) targetMethod, true, reason);
-            }
-            /* If the accessor can be used for a virtual call, register virtual root method. */
-            if (accessor instanceof SubstrateMethodAccessor mAccessor && mAccessor.getVTableOffset() != SubstrateMethodAccessor.STATICALLY_BOUND) {
-                access.registerAsRoot((AnalysisMethod) targetMethod, false, reason);
-            }
-            /* Register constructor factory method */
-            if (accessor instanceof SubstrateConstructorAccessor cAccessor) {
-                access.registerAsRoot((AnalysisMethod) cAccessor.getFactoryMethod(), false, reason);
+
+        try (var ignored = Causality.overwriteCause(Facts.ReflectionRegistration.create(accessor.getMember()))) {
+            access.registerAsRoot((AnalysisMethod) expandSignatureMethod, true, reason);
+            if (targetMethod != null) {
+                if (!targetMethod.isAbstract()) {
+                    access.registerAsRoot((AnalysisMethod) targetMethod, true, reason);
+                }
+                /* If the accessor can be used for a virtual call, register virtual root method. */
+                if (accessor instanceof SubstrateMethodAccessor mAccessor && mAccessor.getVTableOffset() != SubstrateMethodAccessor.STATICALLY_BOUND) {
+                    access.registerAsRoot((AnalysisMethod) targetMethod, false, reason);
+                }
+                /* Register constructor factory method */
+                if (accessor instanceof SubstrateConstructorAccessor cAccessor) {
+                    access.registerAsRoot((AnalysisMethod) cAccessor.getFactoryMethod(), false, reason);
+                }
             }
         }
     }

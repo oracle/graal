@@ -80,6 +80,9 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.reports.causality.Causality;
+import com.oracle.graal.pointsto.reports.causality.facts.Fact;
+import com.oracle.graal.pointsto.reports.causality.facts.Facts;
 import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.configure.RuntimeConditionSet;
@@ -162,11 +165,16 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         classForNameSupport = ClassForNameSupport.singleton();
     }
 
+    @SuppressWarnings("try")
     public void duringSetup(AnalysisMetaAccess analysisMetaAccess, AnalysisUniverse analysisUniverse) {
         this.metaAccess = analysisMetaAccess;
         this.universe = analysisUniverse;
         for (var conditionalTask : pendingConditionalTasks) {
-            registerConditionalConfiguration(conditionalTask.condition, (cnd) -> universe.getBigbang().postTask(debug -> conditionalTask.task.accept(cnd)));
+            registerConditionalConfiguration(conditionalTask.condition, (cnd) -> universe.getBigbang().postTask(debug -> {
+                try (var ignored = Causality.setCause(Facts.DeferredTask.create(conditionalTask))) {
+                    conditionalTask.task.accept(cnd);
+                }
+            }));
         }
         pendingConditionalTasks.clear();
     }
@@ -175,15 +183,25 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         this.analysisAccess = beforeAnalysisAccess;
     }
 
+    @SuppressWarnings("try")
     private void runConditionalInAnalysisTask(ConfigurationCondition condition, Consumer<ConfigurationCondition> task) {
         if (sealed) {
             throw new UnsupportedFeatureException("Too late to add classes, methods, and fields for reflective access. Registration must happen in a Feature before the analysis has finished.");
         }
 
         if (universe != null) {
-            registerConditionalConfiguration(condition, (cnd) -> universe.getBigbang().postTask(debug -> task.accept(cnd)));
+            registerConditionalConfiguration(condition, (cnd) -> {
+                Fact inheritedCause = Causality.getCause();
+                universe.getBigbang().postTask(debug -> {
+                    try (var ignored = Causality.setCause(inheritedCause)) {
+                        task.accept(cnd);
+                    }
+                });
+            });
         } else {
-            pendingConditionalTasks.add(new ConditionalTask(condition, task));
+            var conditionalTask = new ConditionalTask(condition, task);
+            Causality.registerConsequence(Facts.DeferredTask.create(conditionalTask));
+            pendingConditionalTasks.add(conditionalTask);
             VMError.guarantee(universe == null, "There shouldn't be a race condition on Feature.duringSetup.");
         }
     }
@@ -197,9 +215,14 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
+    @SuppressWarnings("try")
     public void register(ConfigurationCondition condition, boolean unsafeInstantiated, Class<?> clazz) {
         Objects.requireNonNull(clazz, () -> nullErrorMessage("class"));
-        runConditionalInAnalysisTask(condition, (cnd) -> registerClass(cnd, clazz, unsafeInstantiated, true));
+        runConditionalInAnalysisTask(condition, (cnd) -> {
+            try (var ignored = Causality.pushCause(Facts.ReflectionRegistration.create(clazz))) {
+                registerClass(cnd, clazz, unsafeInstantiated, true);
+            }
+        });
     }
 
     @Override
@@ -247,15 +270,20 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         });
     }
 
+    @SuppressWarnings("try")
     private void registerClass(ConfigurationCondition condition, Class<?> clazz, boolean unsafeInstantiated, boolean allowForName) {
         if (shouldExcludeClass(clazz)) {
             return;
         }
 
         AnalysisType type = metaAccess.lookupJavaType(clazz);
-        type.registerAsReachable("Is registered for reflection.");
+        try (var ignored = Causality.setCause(Facts.ReflectionRegistration.create(clazz))) {
+            type.registerAsReachable("Is registered for reflection.");
+        }
         if (unsafeInstantiated) {
-            type.registerAsUnsafeAllocated("Is registered via reflection metadata.");
+            try (var ignored = Causality.setCause(Facts.ReflectionRegistration.create(clazz))) {
+                type.registerAsUnsafeAllocated("Is registered via reflection metadata.");
+            }
             classForNameSupport.registerUnsafeAllocated(condition, clazz);
         }
 
@@ -411,9 +439,12 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         });
     }
 
+    @SuppressWarnings("try")
     private void registerMethods(ConfigurationCondition cnd, boolean queriedOnly, Executable[] reflectExecutables) {
         for (Executable reflectExecutable : reflectExecutables) {
-            registerMethod(cnd, queriedOnly, reflectExecutable);
+            try (var ignored = Causality.pushCause(Facts.ReflectionRegistration.create(reflectExecutable))) {
+                registerMethod(cnd, queriedOnly, reflectExecutable);
+            }
         }
     }
 
@@ -559,9 +590,12 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         });
     }
 
+    @SuppressWarnings("try")
     private void registerFields(ConfigurationCondition cnd, boolean queriedOnly, Field[] reflectFields) {
         for (Field reflectField : reflectFields) {
-            registerField(cnd, queriedOnly, reflectField);
+            try (var ignored = Causality.pushCause(Facts.ReflectionRegistration.create(reflectField))) {
+                registerField(cnd, queriedOnly, reflectField);
+            }
         }
     }
 
@@ -1181,6 +1215,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
+    @SuppressWarnings("try")
     public void registerHeapDynamicHub(Object object, ScanReason reason) {
         DynamicHub hub = (DynamicHub) object;
         Class<?> javaClass = hub.getHostedJavaClass();
@@ -1189,7 +1224,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 throw new UnsupportedFeatureException("Registering new class for reflection when the image heap is already sealed: " + javaClass);
             }
             if (!SubstitutionReflectivityFilter.shouldExclude(javaClass, metaAccess, universe)) {
-                registerTypesForClass(metaAccess.lookupJavaType(javaClass), javaClass);
+                try (var ignored = Causality.setCause(Facts.TypeReachable.create(metaAccess.lookupJavaType(javaClass)))) {
+                    registerTypesForClass(metaAccess.lookupJavaType(javaClass), javaClass);
+                }
             }
         }
     }
@@ -1201,32 +1238,46 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
+    @SuppressWarnings("try")
     public void registerHeapReflectionField(Field reflectField, ScanReason reason) {
-        AnalysisField analysisField = metaAccess.lookupJavaField(reflectField);
-        if (heapFields.put(analysisField, reflectField) == null) {
-            if (sealed) {
-                throw new UnsupportedFeatureException("Registering new field for reflection when the image heap is already sealed: " + reflectField);
-            }
-            if (!SubstitutionReflectivityFilter.shouldExclude(reflectField, metaAccess, universe)) {
-                registerTypesForField(analysisField, reflectField, false);
-                if (analysisField.getDeclaringClass().isAnnotation()) {
-                    processAnnotationField(ConfigurationCondition.alwaysTrue(), reflectField);
+        var inHeap = Facts.ReflectionObjectInHeap.create(reflectField);
+        var reflRegistration = Facts.ReflectionRegistration.create(reflectField);
+        Causality.registerEdgeFromHeapObject(reflectField, reason, inHeap);
+        Causality.registerEdge(inHeap, reflRegistration);
+        try (var ignored = Causality.setCause(reflRegistration)) {
+            AnalysisField analysisField = metaAccess.lookupJavaField(reflectField);
+            if (heapFields.put(analysisField, reflectField) == null) {
+                if (sealed) {
+                    throw new UnsupportedFeatureException("Registering new field for reflection when the image heap is already sealed: " + reflectField);
+                }
+                if (!SubstitutionReflectivityFilter.shouldExclude(reflectField, metaAccess, universe)) {
+                    registerTypesForField(analysisField, reflectField, false);
+                    if (analysisField.getDeclaringClass().isAnnotation()) {
+                        processAnnotationField(ConfigurationCondition.alwaysTrue(), reflectField);
+                    }
                 }
             }
         }
     }
 
     @Override
+    @SuppressWarnings("try")
     public void registerHeapReflectionExecutable(Executable reflectExecutable, ScanReason reason) {
-        AnalysisMethod analysisMethod = metaAccess.lookupJavaMethod(reflectExecutable);
-        if (heapMethods.put(analysisMethod, reflectExecutable) == null) {
-            if (sealed) {
-                throw new UnsupportedFeatureException("Registering new method for reflection when the image heap is already sealed: " + reflectExecutable);
-            }
-            if (!SubstitutionReflectivityFilter.shouldExclude(reflectExecutable, metaAccess, universe)) {
-                registerTypesForMethod(analysisMethod, reflectExecutable);
-                if (reflectExecutable instanceof Method && reflectExecutable.getDeclaringClass().isAnnotation()) {
-                    processAnnotationMethod(false, (Method) reflectExecutable);
+        var inHeap = Facts.ReflectionObjectInHeap.create(reflectExecutable);
+        var reflRegistration = Facts.ReflectionRegistration.create(reflectExecutable);
+        Causality.registerEdgeFromHeapObject(reflectExecutable, reason, inHeap);
+        Causality.registerEdge(inHeap, reflRegistration);
+        try (var ignored = Causality.setCause(reflRegistration)) {
+            AnalysisMethod analysisMethod = metaAccess.lookupJavaMethod(reflectExecutable);
+            if (heapMethods.put(analysisMethod, reflectExecutable) == null) {
+                if (sealed) {
+                    throw new UnsupportedFeatureException("Registering new method for reflection when the image heap is already sealed: " + reflectExecutable);
+                }
+                if (!SubstitutionReflectivityFilter.shouldExclude(reflectExecutable, metaAccess, universe)) {
+                    registerTypesForMethod(analysisMethod, reflectExecutable);
+                    if (reflectExecutable instanceof Method && reflectExecutable.getDeclaringClass().isAnnotation()) {
+                        processAnnotationMethod(false, (Method) reflectExecutable);
+                    }
                 }
             }
         }

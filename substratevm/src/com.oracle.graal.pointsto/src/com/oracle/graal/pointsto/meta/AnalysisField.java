@@ -37,6 +37,8 @@ import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaField;
+import com.oracle.graal.pointsto.reports.causality.Causality;
+import com.oracle.graal.pointsto.reports.causality.facts.Facts;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.AtomicUtils;
@@ -227,8 +229,11 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         writtenBy = null;
     }
 
+    @SuppressWarnings("try")
     public boolean registerAsAccessed(Object reason) {
-        getDeclaringClass().registerAsReachable(this);
+        try (var ignored = Causality.pushCause(Facts.FieldRead.create(this))) {
+            getDeclaringClass().registerAsReachable(this);
+        }
 
         assert isValidReason(reason) : "Registering a field as accessed needs to provide a valid reason.";
         return AtomicUtils.atomicSetAndRun(this, reason, isAccessedUpdater, () -> {
@@ -241,8 +246,11 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     /**
      * @param reason the reason why this field is read, non-null
      */
+    @SuppressWarnings("try")
     public boolean registerAsRead(Object reason) {
-        getDeclaringClass().registerAsReachable(this);
+        try (var ignored = Causality.pushCause(Facts.FieldRead.create(this))) {
+            getDeclaringClass().registerAsReachable(this);
+        }
 
         assert isValidReason(reason) : "Registering a field as read needs to provide a valid reason.";
         if (readBy != null) {
@@ -260,8 +268,11 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
      *
      * @param reason the reason why this field is written, non-null
      */
+    @SuppressWarnings("try")
     public boolean registerAsWritten(Object reason) {
-        getDeclaringClass().registerAsReachable(this);
+        try (var ignored = Causality.pushCause(Facts.FieldWritten.create(this))) {
+            getDeclaringClass().registerAsReachable(this);
+        }
 
         assert isValidReason(reason) : "Registering a field as written needs to provide a valid reason.";
         if (writtenBy != null) {
@@ -275,8 +286,11 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         });
     }
 
+    @SuppressWarnings("try")
     public void registerAsFolded(Object reason) {
-        getDeclaringClass().registerAsReachable(this);
+        try (var ignored = Causality.pushCause(Facts.FieldRead.create(this))) {
+            getDeclaringClass().registerAsReachable(this);
+        }
 
         assert isValidReason(reason) : "Registering a field as folded needs to provide a valid reason.";
         AtomicUtils.atomicSetAndRun(this, reason, isFoldedUpdater, () -> {
@@ -477,8 +491,11 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
      * marked as reachable are executed before accessing field values. This allows field value
      * transformer to be installed reliably in reachability handler.
      */
+    @SuppressWarnings("try")
     public void beforeFieldValueAccess() {
-        declaringClass.registerAsReachable(this);
+        try (var ignored = Causality.setCause(Facts.Ignored)) {
+            declaringClass.registerAsReachable(this);
+        }
 
         declaringClass.forAllSuperTypes(type -> {
             type.ensureOnTypeReachableTaskDone();

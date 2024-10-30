@@ -31,6 +31,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
+import com.oracle.graal.pointsto.reports.causality.Causality;
+import com.oracle.graal.pointsto.reports.causality.facts.Facts;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.meta.AnalysisElement;
@@ -66,6 +68,7 @@ public class ConcurrentReachabilityHandler extends ReachabilityHandler implement
         AnalysisMethod baseAnalysisMethod = metaAccess.lookupJavaMethod(baseMethod);
 
         MethodOverrideReachableNotification notification = new MethodOverrideReachableNotification(callback);
+        Causality.registerConsequence(Facts.OverrideReachableNotificationCallback.create(callback));
         baseAnalysisMethod.registerOverrideReachabilityNotification(notification);
 
         /*
@@ -83,6 +86,7 @@ public class ConcurrentReachabilityHandler extends ReachabilityHandler implement
         AnalysisType baseType = metaAccess.lookupJavaType(baseClass);
 
         SubtypeReachableNotification notification = new SubtypeReachableNotification(callback);
+        Causality.registerConsequence(Facts.SubtypeReachableNotificationCallback.create(callback));
         baseType.registerSubtypeReachabilityNotification(notification);
 
         /*

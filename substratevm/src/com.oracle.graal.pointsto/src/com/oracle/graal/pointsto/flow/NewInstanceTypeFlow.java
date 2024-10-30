@@ -33,6 +33,8 @@ import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.reports.causality.Causality;
+import com.oracle.graal.pointsto.reports.causality.facts.Facts;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
 import jdk.vm.ci.code.BytecodePosition;
@@ -71,9 +73,12 @@ public class NewInstanceTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
+    @SuppressWarnings("try")
     protected void onFlowEnabled(PointsToAnalysis bb) {
         super.onFlowEnabled(bb);
-        declaredType.registerAsInstantiated(source);
+        try (var ignored = Causality.setCause(Facts.Ignored)) {
+            declaredType.registerAsInstantiated(source);
+        }
         if (insertDefaultFieldValues) {
             for (var f : declaredType.getInstanceFields(true)) {
                 var field = (AnalysisField) f;
@@ -91,6 +96,7 @@ public class NewInstanceTypeFlow extends TypeFlow<BytecodePosition> {
              * for clones. For clones the state is provided by createCloneState(), on creation.
              */
             addState(bb, TypeState.forExactType(bb, declaredType, false));
+            Causality.registerTypeFlowEdge(null, this);
         }
     }
 

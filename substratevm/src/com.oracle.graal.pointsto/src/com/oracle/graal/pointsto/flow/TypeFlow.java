@@ -35,6 +35,7 @@ import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
+import com.oracle.graal.pointsto.reports.causality.Causality;
 import com.oracle.graal.pointsto.results.StrengthenGraphs;
 import com.oracle.graal.pointsto.typestate.PointsToStats;
 import com.oracle.graal.pointsto.typestate.PrimitiveTypeState;
@@ -254,7 +255,7 @@ public abstract class TypeFlow<T> {
      * Some global flows are created and enabled early on in a place where a reference to bb is not
      * easily available, so they pass in null, enabling the flow, but not triggering value
      * propagation yet.
-     * 
+     *
      * @return true iff the flow was enabled by this operation
      */
     public boolean enableFlow(PointsToAnalysis bb) {
@@ -522,6 +523,7 @@ public abstract class TypeFlow<T> {
     }
 
     /* Add state and notify inputs of the result. */
+    @SuppressWarnings("try")
     public boolean addState(PointsToAnalysis bb, TypeState add, boolean postFlow) {
         PointsToStats.registerTypeFlowUpdate(bb, this, add);
         TypeState before;
@@ -548,12 +550,15 @@ public abstract class TypeFlow<T> {
         return true;
     }
 
+    @SuppressWarnings("try")
     protected void propagateState(PointsToAnalysis bb, boolean postFlow, TypeState newState) {
         assert isFlowEnabled() : "A flow cannot propagate state before it is enabled: " + this;
         assert newState.isNotEmpty() : "Empty state should not trigger propagation: " + this;
         enablePredicated(bb);
         if (checkSaturated(bb, newState)) {
-            onSaturated(bb);
+            try (var ignored = Causality.setSaturationHappening()) {
+                onSaturated(bb);
+            }
         } else if (postFlow) {
             bb.postFlow(this);
         }
@@ -610,13 +615,17 @@ public abstract class TypeFlow<T> {
 
     }
 
+    @SuppressWarnings("try")
     public boolean addUse(PointsToAnalysis bb, TypeFlow<?> use, boolean propagateTypeState) {
         assert !bb.trackPrimitiveValues() || checkDefUseCompatibility(use) : "Incompatible flows: " + this + " connected with " + use;
+        Causality.registerTypeFlowEdge(this, use);
         if (isSaturated() && propagateTypeState) {
             /* Register input. */
             registerInput(bb, use);
             /* Let the use know that this flow is already saturated. */
-            notifyUseOfSaturation(bb, use);
+            try (var ignored = Causality.setSaturationHappening()) {
+                notifyUseOfSaturation(bb, use);
+            }
             return false;
         }
         if (doAddUse(bb, use)) {
@@ -628,7 +637,9 @@ public abstract class TypeFlow<T> {
                      * use would have missed the saturated signal. Let the use know that this flow
                      * became saturated.
                      */
-                    notifyUseOfSaturation(bb, use);
+                    try (var ignored = Causality.setSaturationHappening()) {
+                        notifyUseOfSaturation(bb, use);
+                    }
                     /* And unlink the use. */
                     removeUse(use);
                     return false;
@@ -686,19 +697,24 @@ public abstract class TypeFlow<T> {
         addObserver(bb, observer, true);
     }
 
+    @SuppressWarnings("try")
     public boolean addObserver(PointsToAnalysis bb, TypeFlow<?> observer, boolean triggerUpdate) {
         if (isSaturated() && triggerUpdate) {
             /* Register observee. */
             registerObservee(bb, observer);
             /* Let the observer know that this flow is already saturated. */
-            notifyObserverOfSaturation(bb, observer);
+            try (var ignored = Causality.setSaturationHappening()) {
+                notifyObserverOfSaturation(bb, observer);
+            }
             return false;
         }
         if (doAddObserver(bb, observer)) {
             if (triggerUpdate) {
                 if (isSaturated()) {
                     /* This flow is already saturated, notify the observer. */
-                    notifyObserverOfSaturation(bb, observer);
+                    try (var ignored = Causality.setSaturationHappening()) {
+                        notifyObserverOfSaturation(bb, observer);
+                    }
                     removeObserver(observer);
                     return false;
                 } else if (isFlowEnabled() && !this.state.isEmpty()) {

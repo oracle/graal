@@ -25,6 +25,8 @@
 package com.oracle.graal.pointsto;
 
 import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
+import com.oracle.graal.pointsto.reports.causality.Causality;
+import com.oracle.graal.pointsto.reports.causality.facts.Facts;
 import com.oracle.graal.pointsto.flow.ArrayElementsTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
@@ -73,6 +75,7 @@ public class AnalysisObjectScanningObserver implements ObjectScanningObserver {
         /* Add the constant value object to the field's type flow. */
         FieldTypeFlow fieldTypeFlow = getFieldTypeFlow(field, receiver);
         /* Add the new constant to the field's flow state. */
+        Causality.registerTypeEntering(analysis, Causality.getHeapFieldAssigner(analysis, receiver, field, fieldValue), fieldTypeFlow, fieldType);
         return fieldTypeFlow.addState(analysis, bb.analysisPolicy().constantTypeState(analysis, fieldValue, fieldType));
     }
 
@@ -121,6 +124,7 @@ public class AnalysisObjectScanningObserver implements ObjectScanningObserver {
         ArrayElementsTypeFlow arrayObjElementsFlow = getArrayElementsFlow(array, arrayType);
         PointsToAnalysis analysis = getAnalysis();
         /* Add the constant element to the constant's array type flow. */
+        Causality.registerTypeEntering(analysis, Causality.getHeapArrayAssigner(analysis, array, elementIndex, elementConstant), arrayObjElementsFlow, elementType);
         return arrayObjElementsFlow.addState(analysis, bb.analysisPolicy().constantTypeState(analysis, elementConstant, elementType));
     }
 
@@ -134,12 +138,17 @@ public class AnalysisObjectScanningObserver implements ObjectScanningObserver {
     }
 
     @Override
+    @SuppressWarnings("try")
     public void forScannedConstant(JavaConstant value, ScanReason reason) {
         PointsToAnalysis analysis = getAnalysis();
         Object valueObj = analysis.getSnippetReflectionProvider().asObject(Object.class, value);
         AnalysisType type = bb.getMetaAccess().lookupJavaType(valueObj.getClass());
 
-        type.registerAsInstantiated(reason);
+        var inHeap = Facts.TypeInHeap.create(type);
+        Causality.registerEdgeFromHeapObject(analysis, value, reason, inHeap);
+        try (var ignored = Causality.setCause(inHeap)) {
+            type.registerAsInstantiated(reason);
+        }
     }
 
     private PointsToAnalysis getAnalysis() {

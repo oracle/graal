@@ -30,6 +30,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
+import com.oracle.graal.pointsto.reports.causality.SimulatedHeapTracing;
+import com.oracle.graal.pointsto.reports.causality.facts.Facts;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -521,6 +523,7 @@ public class SimulateClassInitializerSupport {
             if (field.isStatic() && field.getDeclaringClass().equals(clusterMember.type)) {
                 var constantValue = storeFieldNode.value().asJavaConstant();
                 if (constantValue != null) {
+                    SimulatedHeapTracing.instance.traceWrite(Facts.BuildTimeClassInitialization.create(clusterMember.type.getJavaClass()), field);
                     // We use the java kind here and not the storage kind since that's what the
                     // users of (Analysis)ConstantReflectionProvider expect.
                     clusterMember.staticFieldValues.put(field, adaptForImageHeap(constantValue, field.getJavaKind()));

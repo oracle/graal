@@ -111,7 +111,10 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisFactory;
 import com.oracle.graal.pointsto.reports.AnalysisReporter;
+import com.oracle.graal.pointsto.reports.AnalysisReportsOptions;
 import com.oracle.graal.pointsto.reports.ReportUtils;
+import com.oracle.graal.pointsto.reports.causality.Causality;
+import com.oracle.graal.pointsto.reports.causality.facts.Facts;
 import com.oracle.graal.pointsto.typestate.DefaultAnalysisPolicy;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.GraalAccess;
@@ -824,7 +827,11 @@ public class NativeImageGenerator {
             try (Indent ignored1 = debug.logAndIndent("process analysis initializers")) {
                 BeforeAnalysisAccessImpl config = new BeforeAnalysisAccessImpl(featureHandler, loader, bb, nativeLibraries, debug);
                 ServiceCatalogSupport.singleton().enableServiceCatalogMapTransformer(config);
-                featureHandler.forEachFeature(feature -> feature.beforeAnalysis(config));
+                featureHandler.forEachFeature(feature -> {
+                    try (var ignored2 = Causality.setCause(Facts.Feature.create(feature))) {
+                        feature.beforeAnalysis(config);
+                    }
+                });
                 ServiceCatalogSupport.singleton().seal();
                 bb.getHostVM().getClassInitializationSupport().setConfigurationSealed(true);
                 if (ImageLayerBuildingSupport.buildingImageLayer()) {
@@ -840,7 +847,11 @@ public class NativeImageGenerator {
                     bb.runAnalysis(debug, (universe) -> {
                         try (StopTimer t2 = TimerCollection.createTimerAndStart(TimerCollection.Registry.FEATURES)) {
                             bb.getHostVM().notifyClassReachabilityListener(universe, config);
-                            featureHandler.forEachFeature(feature -> feature.duringAnalysis(config));
+                            featureHandler.forEachFeature(feature -> {
+                                try (var ignored2 = Causality.setCause(Facts.Feature.create(feature))) {
+                                    feature.duringAnalysis(config);
+                                }
+                            });
                         }
                         return !config.getAndResetRequireAnalysisIteration();
                     });
@@ -934,6 +945,16 @@ public class NativeImageGenerator {
                 Providers originalProviders = GraalAccess.getOriginalProviders();
                 MetaAccessProvider originalMetaAccess = originalProviders.getMetaAccess();
 
+                if (AnalysisReportsOptions.PrintCausalityGraph.getValue(options)) {
+                    /**
+                     * This cannot be done in the "CausalityExporter"-Feature since
+                     * Feature-registration should already be logged by CausalityExport...
+                     */
+                    Causality.activate(AnalysisReportsOptions.CausalityGraphWithTypeflow.getValue(options)
+                                    ? Causality.ActivationLevel.ENABLED
+                                    : Causality.ActivationLevel.ENABLED_WITHOUT_TYPEFLOW);
+                }
+
                 ClassLoaderSupportImpl classLoaderSupport = new ClassLoaderSupportImpl(loader.classLoaderSupport);
                 ImageSingletons.add(ClassLoaderSupport.class, classLoaderSupport);
                 ImageSingletons.add(LinkAtBuildTimeSupport.class, new LinkAtBuildTimeSupport(loader, classLoaderSupport));
@@ -961,7 +982,11 @@ public class NativeImageGenerator {
 
                 featureHandler.registerFeatures(loader, debug);
                 AfterRegistrationAccessImpl access = new AfterRegistrationAccessImpl(featureHandler, loader, originalMetaAccess, mainEntryPoint, debug);
-                featureHandler.forEachFeature(feature -> feature.afterRegistration(access));
+                featureHandler.forEachFeature(feature -> {
+                    try (var ignored2 = Causality.setCause(Facts.Feature.create(feature))) {
+                        feature.afterRegistration(access);
+                    }
+                });
                 setDefaultLibCIfMissing();
                 if (!Pair.<Method, CEntryPointData> empty().equals(access.getMainEntryPoint())) {
                     setAndVerifyMainEntryPoint(access, entryPoints);
@@ -1066,12 +1091,18 @@ public class NativeImageGenerator {
                     compilerInvoker.verifyCompiler();
                 }
 
-                nativeLibraries = setupNativeLibraries(aProviders, cEnumProcessor, classInitializationSupport, debug);
+                try (var ignored2 = Causality.setCause(Facts.InitialRegistration)) {
+                    nativeLibraries = setupNativeLibraries(aProviders, cEnumProcessor, classInitializationSupport, debug);
+                }
                 ImageSingletons.add(NativeLibraries.class, nativeLibraries);
 
                 try (Indent ignored2 = debug.logAndIndent("process startup initializers")) {
                     FeatureImpl.DuringSetupAccessImpl config = new FeatureImpl.DuringSetupAccessImpl(featureHandler, loader, bb, debug);
-                    featureHandler.forEachFeature(feature -> feature.duringSetup(config));
+                    featureHandler.forEachFeature(feature -> {
+                        try (var ignored3 = Causality.setCause(Facts.Feature.create(feature))) {
+                            feature.duringSetup(config);
+                        }
+                    });
                 }
 
                 if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
@@ -1083,7 +1114,9 @@ public class NativeImageGenerator {
 
                 loader.classLoaderSupport.getClassesToIncludeUnconditionally().forEach(cls -> bb.registerTypeForBaseImage(cls));
 
-                registerEntryPointStubs(entryPoints);
+                try (var ignored2 = Causality.setCause(Facts.InitialRegistration)) {
+                    registerEntryPointStubs(entryPoints);
+                }
             }
 
             ProgressReporter.singleton().printInitializeEnd(featureHandler.getUserSpecificFeatures(), loader);
@@ -1186,7 +1219,7 @@ public class NativeImageGenerator {
          * allocations of these classes seen during the static analysis. The heap chunks are one
          * good example.
          */
-        try (Indent ignored = debug.logAndIndent("add initial classes/fields/methods")) {
+        try (Indent ignored = debug.logAndIndent("add initial classes/fields/methods"); var ignored2 = Causality.setCause(Facts.InitialRegistration)) {
             bb.addRootClass(Object.class, false, false).registerAsInstantiated("root class");
             bb.addRootField(DynamicHub.class, "vtable");
             bb.addRootClass(String.class, false, false).registerAsInstantiated("root class");
@@ -1252,6 +1285,9 @@ public class NativeImageGenerator {
         Collection<StructuredGraph> snippetGraphs = replacements.getSnippetGraphs(GraalOptions.TrackNodeSourcePosition.getValue(options), options, objectTransformer);
         if (bb instanceof NativeImagePointsToAnalysis pointsToAnalysis) {
             for (StructuredGraph graph : snippetGraphs) {
+                var snippetRegistration = Facts.MethodSnippet.create((AnalysisMethod) graph.method());
+                Causality.registerConsequence(snippetRegistration);
+                Causality.registerEdge(snippetRegistration, Facts.InlinedMethodCode.create((AnalysisMethod) graph.method()));
                 MethodTypeFlowBuilder.registerUsedElements(pointsToAnalysis, graph, false);
             }
         } else if (bb instanceof NativeImageReachabilityAnalysisEngine reachabilityAnalysis) {

@@ -34,6 +34,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.oracle.graal.pointsto.reports.causality.Causality;
+import com.oracle.graal.pointsto.reports.causality.facts.Facts;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
@@ -441,10 +443,15 @@ public class ObjectScanner {
      * using the constant as a receiver. If the constant has an array class then it scans the array
      * element constants.
      */
+    @SuppressWarnings("try")
     private void doScan(WorklistEntry entry) {
         try {
             AnalysisType type = bb.getMetaAccess().lookupJavaType(entry.constant);
-            type.registerAsReachable(entry.reason);
+            var inHeap = Facts.TypeInHeap.create(type);
+            Causality.registerEdgeFromHeapObject(bb, entry.constant, entry.reason, inHeap);
+            try (var ignored = Causality.setCause(inHeap)) {
+                type.registerAsReachable(entry.reason);
+            }
 
             if (type.isInstanceClass()) {
                 /* Scan constant's instance fields. */
@@ -533,6 +540,10 @@ public class ObjectScanner {
                 }
             }
             return previous;
+        }
+
+        public JavaConstant getConstant() {
+            return constant;
         }
 
         @SuppressWarnings("unused")
@@ -701,6 +712,10 @@ public class ObjectScanner {
             this.idx = idx;
         }
 
+        public int getIndex() {
+            return idx;
+        }
+
         @Override
         public String toString(BigBang bb) {
             return "indexing into array " + asString(bb, constant) + (idx != -1 ? " at index " + idx : "");
@@ -742,6 +757,10 @@ public class ObjectScanner {
 
         public AnalysisMethod getMethod() {
             return method;
+        }
+
+        public BytecodePosition getPosition() {
+            return position;
         }
 
         @Override

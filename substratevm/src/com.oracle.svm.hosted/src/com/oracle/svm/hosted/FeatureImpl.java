@@ -64,6 +64,8 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.ObjectReachableCallback;
+import com.oracle.graal.pointsto.reports.causality.Causality;
+import com.oracle.graal.pointsto.reports.causality.facts.Facts;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.SubstrateOptions;
@@ -279,11 +281,13 @@ public class FeatureImpl {
         }
 
         public void ensureInitialized(String className) {
+            Class<?> clazz;
             try {
-                imageClassLoader.forName(className, true);
+                clazz = imageClassLoader.forName(className, true);
             } catch (ClassNotFoundException e) {
                 throw VMError.shouldNotReachHere(e);
             }
+            Causality.registerConsequence(Facts.BuildTimeClassInitialization.create(clazz));
         }
     }
 

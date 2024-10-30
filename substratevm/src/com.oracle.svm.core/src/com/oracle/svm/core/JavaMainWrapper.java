@@ -163,6 +163,9 @@ public class JavaMainWrapper {
             return Collections.emptyList();
         }
 
+        public Method getMainMethod() {
+            return MethodHandles.reflectAs(java.lang.reflect.Method.class, javaMainHandle);
+        }
     }
 
     public static void invokeMain(String[] args) throws Throwable {

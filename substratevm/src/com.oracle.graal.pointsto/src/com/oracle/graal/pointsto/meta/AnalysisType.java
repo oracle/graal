@@ -54,6 +54,9 @@ import com.oracle.graal.pointsto.heap.TypeData;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
+import com.oracle.graal.pointsto.reports.causality.Causality;
+import com.oracle.graal.pointsto.reports.causality.facts.Fact;
+import com.oracle.graal.pointsto.reports.causality.facts.Facts;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
@@ -560,9 +563,12 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      *            {@link com.oracle.graal.pointsto.ObjectScanner.ScanReason}, or a {@link String}
      *            describing why this type was manually marked as in-heap
      */
+    @SuppressWarnings("try")
     public boolean registerAsInstantiated(Object reason) {
         assert isValidReason(reason) : "Registering a type as instantiated needs to provide a valid reason.";
-        registerAsReachable(reason);
+        try (var ignored = Causality.pushCause(Facts.TypeInstantiated.create(this))) {
+            registerAsReachable(reason);
+        }
         if (AtomicUtils.atomicSet(this, reason, isInstantiatedUpdater)) {
             onInstantiated();
             return true;
@@ -591,11 +597,15 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     public void registerAsAssignable(BigBang bb) {
     }
 
+    @SuppressWarnings("try")
     public boolean registerAsReachable(Object reason) {
         assert isValidReason(reason) : "Registering a type as reachable needs to provide a valid reason.";
+        Causality.registerConsequence(Facts.TypeReachable.create(this));
         if (!AtomicUtils.isSet(this, isReachableUpdater)) {
             /* First mark all super types as reachable. */
-            forAllSuperTypes(type -> type.registerAsReachable(reason), false);
+            try (var ignored = Causality.overwriteCause(Facts.TypeReachable.create(this))) {
+                forAllSuperTypes(type -> type.registerAsReachable(reason), false);
+            }
             /*
              * Only mark this type itself as reachable after marking all supertypes. This ensures
              * that, e.g., a type is never seen as reachable by another thread before all of its
@@ -682,10 +692,15 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         ConcurrentLightHashSet.forEach(this, objectReachableCallbacksUpdater, (ObjectReachableCallback<T> c) -> c.doCallback(access, object, reason));
     }
 
+    @SuppressWarnings("try")
     public void registerInstantiatedCallback(Consumer<DuringAnalysisAccess> callback) {
+        Fact callbackFact = Facts.ReachabilityNotificationCallback.create(callback);
+        Causality.registerConjunctiveEdge(Causality.getCause(), Facts.TypeInstantiated.create(this), callbackFact);
         if (this.isInstantiated()) {
-            /* If the type is already instantiated just trigger the callback. */
-            callback.accept(universe.getConcurrentAnalysisAccess());
+            try (var ignored = Causality.overwriteCause(callbackFact)) {
+                /* If the type is already instantiated just trigger the callback. */
+                callback.accept(universe.getConcurrentAnalysisAccess());
+            }
         } else {
             ElementNotification notification = new ElementNotification(callback);
             ConcurrentLightHashSet.addElement(this, instantiatedNotificationsUpdater, notification);

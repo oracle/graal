@@ -37,6 +37,8 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import com.oracle.graal.pointsto.reports.causality.Causality;
+import com.oracle.graal.pointsto.reports.causality.facts.Facts;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -109,7 +111,7 @@ public class FeatureHandler {
         return registeredFeatures.contains(c);
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "try"})
     public void registerFeatures(ImageClassLoader loader, DebugContext debug) {
         IsInConfigurationAccessImpl access = new IsInConfigurationAccessImpl(this, loader, debug);
 
@@ -179,7 +181,9 @@ public class FeatureHandler {
         Function<Class<?>, Class<?>> specificClassProvider = specificAutomaticFeatures::get;
 
         for (Class<?> featureClass : automaticFeatures) {
-            registerFeature(featureClass, specificClassProvider, access);
+            try (var ignored = Causality.setCause(Facts.AutomaticFeatureRegistration)) {
+                registerFeature(featureClass, specificClassProvider, access);
+            }
         }
 
         for (String featureName : Options.userEnabledFeatures()) {
@@ -189,7 +193,9 @@ public class FeatureHandler {
             } catch (ClassNotFoundException e) {
                 throw UserError.abort("Feature %s class not found on the classpath. Ensure that the name is correct and that the class is on the classpath.", featureName);
             }
-            registerFeature(featureClass, specificClassProvider, access);
+            try (var ignored = Causality.setCause(Facts.UserEnabledFeatureRegistration)) {
+                registerFeature(featureClass, specificClassProvider, access);
+            }
         }
         if (NativeImageOptions.PrintFeatures.getValue()) {
             ReportUtils.report("feature information", SubstrateOptions.reportsPath(), "feature_info", "csv", out -> {
@@ -204,13 +210,16 @@ public class FeatureHandler {
      *
      * @param access
      */
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "try"})
     private void registerFeature(Class<?> baseFeatureClass, Function<Class<?>, Class<?>> specificClassProvider, IsInConfigurationAccessImpl access) {
         if (!Feature.class.isAssignableFrom(baseFeatureClass)) {
             throw UserError.abort("Class does not implement %s: %s", Feature.class.getName(), baseFeatureClass.getName());
         }
 
         if (registeredFeatures.contains(baseFeatureClass)) {
+            if (ImageSingletons.contains(baseFeatureClass)) {
+                Causality.registerConsequence(Facts.Feature.create(ImageSingletons.lookup((Class<Feature>) baseFeatureClass)));
+            }
             return;
         }
 
@@ -253,9 +262,12 @@ public class FeatureHandler {
             throw handleFeatureError(feature, t);
         }
         for (Class<? extends Feature> requiredFeatureClass : requiredFeatures) {
-            registerFeature(requiredFeatureClass, specificClassProvider, access);
+            try (var ignored = Causality.overwriteCause(Facts.Feature.create(feature))) {
+                registerFeature(requiredFeatureClass, specificClassProvider, access);
+            }
         }
 
+        Causality.registerConsequence(Facts.Feature.create(feature));
         featureInstances.add(feature);
     }
 
