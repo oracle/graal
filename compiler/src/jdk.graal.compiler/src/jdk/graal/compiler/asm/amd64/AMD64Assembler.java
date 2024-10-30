@@ -1616,6 +1616,8 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         // EVEX encoded instructions
         public static final VexMoveOp EVMOVDQA32 = new VexMoveOp("EVMOVDQA32", VMOVDQA32);
         public static final VexMoveOp EVMOVDQA64 = new VexMoveOp("EVMOVDQA64", VMOVDQA64);
+        public static final VexMoveOp EVMOVDQU8  = new VexMoveOp("EVMOVDQU8",  VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F, VEXPrefixConfig.W0, 0x6F, 0x7F, VEXOpAssertion.AVX512BW_VL, EVEXTuple.FVM, VEXPrefixConfig.W0, true);
+        public static final VexMoveOp EVMOVDQU16 = new VexMoveOp("EVMOVDQU16", VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F, VEXPrefixConfig.W1, 0x6F, 0x7F, VEXOpAssertion.AVX512BW_VL, EVEXTuple.FVM, VEXPrefixConfig.W1, true);
         public static final VexMoveOp EVMOVDQU32 = new VexMoveOp("EVMOVDQU32", VMOVDQU32);
         public static final VexMoveOp EVMOVDQU64 = new VexMoveOp("EVMOVDQU64", VMOVDQU64);
         public static final VexMoveOp EVMOVAPS   = new VexMoveOp("EVMOVAPS",   VMOVAPS);
