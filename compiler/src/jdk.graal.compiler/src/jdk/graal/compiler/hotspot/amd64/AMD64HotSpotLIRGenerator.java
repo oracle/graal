@@ -75,7 +75,6 @@ import jdk.graal.compiler.lir.amd64.AMD64ControlFlow.StrategySwitchOp;
 import jdk.graal.compiler.lir.amd64.AMD64Move;
 import jdk.graal.compiler.lir.amd64.AMD64Move.MoveFromRegOp;
 import jdk.graal.compiler.lir.amd64.AMD64PrefetchOp;
-import jdk.graal.compiler.lir.amd64.AMD64ReadTimestampCounterWithProcid;
 import jdk.graal.compiler.lir.amd64.AMD64RestoreRegistersOp;
 import jdk.graal.compiler.lir.amd64.AMD64SaveRegistersOp;
 import jdk.graal.compiler.lir.amd64.AMD64VZeroUpper;
