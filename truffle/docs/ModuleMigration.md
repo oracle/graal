@@ -2,6 +2,7 @@
 layout: docs
 toc_group: truffle
 link_title: Truffle Languages and Instruments Migration to Java Modules
+permalink: /graalvm-as-a-platform/language-implementation-framework/migration-to-java-modules/
 ---
 # Truffle Languages and Instruments Migration to Java Modules
 
