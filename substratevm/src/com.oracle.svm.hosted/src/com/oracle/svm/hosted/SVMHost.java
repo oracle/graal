@@ -105,7 +105,6 @@ import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.analysis.NativeImagePointsToAnalysis;
 import com.oracle.svm.hosted.analysis.SVMParsingSupport;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
@@ -193,7 +192,6 @@ public class SVMHost extends HostVM {
     private final SVMParsingSupport parsingSupport;
     private final InlineBeforeAnalysisPolicy inlineBeforeAnalysisPolicy;
 
-    private final FieldValueInterceptionSupport fieldValueInterceptionSupport;
     private final MissingRegistrationSupport missingRegistrationSupport;
 
     private final int layerId;
@@ -201,6 +199,11 @@ public class SVMHost extends HostVM {
     private Set<Field> excludedFields;
 
     private final Boolean optionAllowUnsafeAllocationOfAllInstantiatedTypes = SubstrateOptions.AllowUnsafeAllocationOfAllInstantiatedTypes.getValue();
+    private final boolean isClosedTypeWorld = SubstrateOptions.useClosedTypeWorld();
+    private final boolean enableTrackAcrossLayers;
+
+    /** Modules containing all {@code svm.core} and {@code svm.hosted} classes. */
+    private final Set<Module> builderModules;
 
     @SuppressWarnings("this-escape")
     public SVMHost(OptionValues options, ImageClassLoader loader, ClassInitializationSupport classInitializationSupport, AnnotationSubstitutionProcessor annotationSubstitutions,
@@ -228,13 +231,30 @@ public class SVMHost extends HostVM {
         } else {
             parsingSupport = null;
         }
-        fieldValueInterceptionSupport = new FieldValueInterceptionSupport(annotationSubstitutions, classInitializationSupport);
-        ImageSingletons.add(FieldValueInterceptionSupport.class, fieldValueInterceptionSupport);
         layerId = ImageLayerBuildingSupport.buildingImageLayer() ? DynamicImageLayerInfo.singleton().layerNumber : 0;
         useBaseLayer = ImageLayerBuildingSupport.buildingExtensionLayer();
         if (SubstrateOptions.includeAll()) {
             initializeExcludedFields();
         }
+
+        enableTrackAcrossLayers = ImageLayerBuildingSupport.buildingSharedLayer();
+        builderModules = getBuilderModules();
+    }
+
+    private static Set<Module> getBuilderModules() {
+        Module m0 = ImageSingletons.lookup(VMFeature.class).getClass().getModule();
+        Module m1 = SVMHost.class.getModule();
+        return m0.equals(m1) ? Set.of(m0) : Set.of(m0, m1);
+    }
+
+    /**
+     * Returns true if the type is part of the {@code svm.core} module. Note that builderModules
+     * also encloses the {@code svm.hosted} classes, but since those classes are not allowed at run
+     * time then they cannot be an {@link AnalysisType}.
+     */
+    @Override
+    public boolean isCoreType(AnalysisType type) {
+        return builderModules.contains(type.getJavaClass().getModule());
     }
 
     @Override
@@ -691,7 +711,7 @@ public class SVMHost extends HostVM {
     }
 
     protected void optimizeAfterParsing(BigBang bb, AnalysisMethod method, StructuredGraph graph) {
-        if (!SubstrateOptions.closedTypeWorld()) {
+        if (!SubstrateOptions.useClosedTypeWorldHubLayout()) {
             new OpenTypeWorldConvertCallTargetPhase().apply(graph, getProviders(method.getMultiMethodKey()));
         }
 
@@ -887,6 +907,9 @@ public class SVMHost extends HostVM {
         excludedFields.add(ReflectionUtil.lookupField(DynamicHub.class, "monitorOffset"));
         excludedFields.add(ReflectionUtil.lookupField(DynamicHub.class, "hubType"));
 
+        /* Needs to be immutable for correct lowering of SubstrateIdentityHashCodeNode. */
+        excludedFields.add(ReflectionUtil.lookupField(DynamicHub.class, "identityHashOffset"));
+
         /*
          * Including this field makes ThreadLocalAllocation.getTlabDescriptorSize reachable through
          * ThreadLocalAllocation.regularTLAB which is accessed with
@@ -931,6 +954,16 @@ public class SVMHost extends HostVM {
             return !annotationSubstitutionProcessor.isDeleted(field) && !annotationSubstitutionProcessor.isAnnotationPresent(field, InjectAccessors.class);
         }
         return super.isFieldIncluded(bb, field);
+    }
+
+    @Override
+    public boolean isClosedTypeWorld() {
+        return isClosedTypeWorld;
+    }
+
+    @Override
+    public boolean enableTrackAcrossLayers() {
+        return enableTrackAcrossLayers;
     }
 
     private final List<BiPredicate<AnalysisMethod, AnalysisMethod>> neverInlineTrivialHandlers = new CopyOnWriteArrayList<>();
@@ -1072,14 +1105,5 @@ public class SVMHost extends HostVM {
 
     public SimulateClassInitializerSupport createSimulateClassInitializerSupport(AnalysisMetaAccess aMetaAccess) {
         return new SimulateClassInitializerSupport(aMetaAccess, this);
-    }
-
-    @Override
-    public Set<AnalysisMethod> loadOpenTypeWorldDispatchTableMethods(AnalysisType type) {
-        /*
-         * Will be enabled as part of GR-57248
-         */
-        // return OpenTypeWorldFeature.loadDispatchTable(type);
-        return Set.of();
     }
 }

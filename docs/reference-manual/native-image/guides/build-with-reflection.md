@@ -9,7 +9,7 @@ redirect_from:
 
 # Configure Native Image with the Tracing Agent
 
-To build a native executable for a Java application that uses Java reflection, dynamic proxy objects, JNI, or class path resources, you should either provide the `native-image` tool with JSON-formatted configuration files or precompute metadata in the code.
+To build a native executable for a Java application that uses Java reflection, dynamic proxy objects, JNI, or class path resources, you should either provide the `native-image` tool with a JSON-formatted metadata file or precompute metadata in the code.
 
 You can create configuration file(s) by hand, but a more convenient approach is to generate the configuration using the Tracing Agent (from now on, the agent). 
 This guide demonstrates how to configure `native-image` with the agent. 
@@ -109,21 +109,23 @@ The following steps demonstrate how to use the agent, and its output, to create 
     ```shell
     java -agentlib:native-image-agent=config-output-dir=META-INF/native-image ReflectionExample StringReverser reverse "hello"
     ```
-    This command creates a file named _reflect-config.json_ containing the name of the class `StringReverser` and its `reverse()` method.
+    This command creates a file named _rechability-metadata.json_ containing the name of the class `StringReverser` and its `reverse()` method.
     ```json
-    [
+    {
+      "reflection": [
         {
-        "name":"StringReverser",
+        "type":"StringReverser",
         "methods":[{"name":"reverse","parameterTypes":["java.lang.String"] }]
         }
-    ]
+      ]
+    }
     ```
 
 3. Build a native executable:
     ```shell
     native-image ReflectionExample
     ```
-    The `native-image` tool automatically uses configuration files in the _META-INF/native-image/_ directory.
+    The `native-image` tool automatically uses the metadata file in the _META-INF/native-image/_ directory.
     However, we recommend that the _META-INF/native-image/_ directory is on the class path, either via a JAR file or using the `-cp` option. (This avoids confusion for IDE users where a directory structure is defined by the IDE itself.)
 
 4. Test your executable.
@@ -147,23 +149,25 @@ The following steps demonstrate how to use the agent, and its output, to create 
     In this case, the `native-image` tool has not been configured to include references to class `StringCapitalizer`.
 
 5. Update the configuration to include class `StringCapitalizer`.
-    You can manually edit the _reflect-config.json_ file or re-run the Tracing Agent to update the existing configuration file using the `config-merge-dir` option, as follows:
+    You can manually edit the _reachability-metadata.json_ file or re-run the Tracing Agent to update the existing configuration file using the `config-merge-dir` option, as follows:
     ```shell
     java -agentlib:native-image-agent=config-merge-dir=META-INF/native-image ReflectionExample StringCapitalizer capitalize "hello"
     ```
 
-    This command updates the _reflect-config.json_ file to include the name of the class `StringCapitalizer` and its `capitalize()` method.
+    This command updates the _reachability-metadata.json_ file to include the name of the class `StringCapitalizer` and its `capitalize()` method.
     ```json
-    [
+    {
+      "reflection": [
         {
-        "name":"StringCapitalizer",
+        "type":"StringCapitalizer",
         "methods":[{"name":"capitalize","parameterTypes":["java.lang.String"] }]
         },
         {
-        "name":"StringReverser",
+        "type":"StringReverser",
         "methods":[{"name":"reverse","parameterTypes":["java.lang.String"] }]
         }
-    ]
+      ]
+   }
     ```
 
 6. Rebuild the native executable and run it.

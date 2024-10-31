@@ -146,10 +146,14 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
         @Override
         public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
             /*
+             * Nothing needs to change for open world analysis: we want to link all indexed store
+             * flows when the receiver saturates.
+             */
+            /*
              * When receiver flow saturates swap in the saturated indexed store type flow. When the
              * store itself saturates it propagates the saturation state to the uses/observers and
              * unlinks them, but it still observes the receiver state to notify no-yet-reachable
-             * field flows of saturation.
+             * indexed store flows of saturation.
              */
 
             /* Deregister the store as an observer of the receiver. */
@@ -169,7 +173,7 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
 
         @Override
         public String toString() {
-            return "StoreIndexedTypeFlow<" + getState() + ">";
+            return "StoreIndexedTypeFlow<" + getStateDescription() + ">";
         }
     }
 
@@ -271,6 +275,10 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
         @Override
         public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
             /*
+             * Nothing needs to change for open world analysis: we want to link all unsafe store
+             * flows when the receiver saturates.
+             */
+            /*
              * When receiver flow saturates swap in the saturated unsafe store type flow. When the
              * store itself saturates it propagates the saturation state to the uses/observers and
              * unlinks them, but it still observes the receiver state to notify no-yet-reachable
@@ -294,7 +302,7 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
 
         @Override
         public String toString() {
-            return "UnsafeStoreTypeFlow<" + getState() + ">";
+            return "UnsafeStoreTypeFlow<" + getStateDescription() + ">";
         }
     }
 }

@@ -54,8 +54,8 @@ public class OptionsParser {
      *
      * @param descriptors set of compiler options available in libgraal. These correspond to the
      *            reachable {@link OptionKey}s discovered during Native Image static analysis. This
-     *            field is only non-null when {@link OptionsParser} is loaded by the GuestGraal
-     *            class loader.
+     *            field is only non-null when {@link OptionsParser} is loaded by the
+     *            LibGraalClassLoader.
      * @param enterpriseOptions {@linkplain OptionKey#getName() names} of enterprise options
      */
     public record LibGraalOptionsInfo(EconomicMap<String, OptionDescriptor> descriptors, Set<String> enterpriseOptions) {
@@ -66,7 +66,7 @@ public class OptionsParser {
 
     /**
      * Compiler options info available in libgraal. This field is only non-null when
-     * {@link OptionsParser} is loaded by the GuestGraal class loader.
+     * {@link OptionsParser} is loaded by the LibGraalClassLoader.
      */
     private static LibGraalOptionsInfo libgraalOptions;
 
@@ -78,11 +78,11 @@ public class OptionsParser {
         if (IS_IN_NATIVE_IMAGE) {
             return List.of(new OptionDescriptorsMap(Objects.requireNonNull(libgraalOptions.descriptors, "missing options")));
         }
-        boolean inGuestGraal = libgraalOptions != null;
-        if (inGuestGraal && IS_BUILDING_NATIVE_IMAGE) {
+        boolean inLibGraal = libgraalOptions != null;
+        if (inLibGraal && IS_BUILDING_NATIVE_IMAGE) {
             /*
-             * Graal code is being run in the context of the GuestGraal loader while building
-             * libgraal so use the GuestGraal loader to load the OptionDescriptors.
+             * Graal code is being run in the context of the LibGraalClassLoader while building
+             * libgraal so use the LibGraalClassLoader to load the OptionDescriptors.
              */
             ClassLoader myCL = OptionsParser.class.getClassLoader();
             return ServiceLoader.load(OptionDescriptors.class, myCL);

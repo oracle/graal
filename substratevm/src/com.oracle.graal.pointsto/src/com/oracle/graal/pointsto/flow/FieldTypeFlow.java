@@ -34,7 +34,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
-public class FieldTypeFlow extends TypeFlow<AnalysisField> {
+public class FieldTypeFlow extends TypeFlow<AnalysisField> implements GlobalFlow {
 
     private static final AtomicReferenceFieldUpdater<FieldTypeFlow, FieldFilterTypeFlow> FILTER_FLOW_UPDATER = AtomicReferenceFieldUpdater.newUpdater(FieldTypeFlow.class, FieldFilterTypeFlow.class,
                     "filterFlow");
@@ -65,17 +65,23 @@ public class FieldTypeFlow extends TypeFlow<AnalysisField> {
     }
 
     @Override
-    public boolean canSaturate() {
-        return false;
+    public boolean canSaturate(PointsToAnalysis bb) {
+        /* Fields declared with a closed type don't saturate, they track all input types. */
+        return !bb.isClosed(declaredType);
     }
 
     @Override
     protected void onInputSaturated(PointsToAnalysis bb, TypeFlow<?> input) {
-        /*
-         * When a field store is saturated conservatively assume that the field state can contain
-         * any subtype of its declared type or any primitive value for primitive fields.
-         */
-        getDeclaredType().getTypeFlow(bb, true).addUse(bb, this);
+        if (bb.isClosed(declaredType)) {
+            /*
+             * When a field store is saturated conservatively assume that the field state can
+             * contain any subtype of its declared type or any primitive value for primitive fields.
+             */
+            declaredType.getTypeFlow(bb, true).addUse(bb, this);
+        } else {
+            /* Propagate saturation stamp through the field flow. */
+            super.onInputSaturated(bb, input);
+        }
     }
 
     /** The filter flow is used for unsafe writes and initialized on demand. */
@@ -98,7 +104,7 @@ public class FieldTypeFlow extends TypeFlow<AnalysisField> {
 
     @Override
     public String toString() {
-        return "FieldFlow<" + source.format("%h.%n") + System.lineSeparator() + getState() + ">";
+        return "FieldFlow<" + source.format("%h.%n") + System.lineSeparator() + getStateDescription() + ">";
     }
 
 }

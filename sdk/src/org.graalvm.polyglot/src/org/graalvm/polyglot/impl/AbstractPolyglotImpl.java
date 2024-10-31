@@ -288,6 +288,10 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract byte byteSequenceByteAt(Object origin, int index);
 
+        public abstract Object byteSequenceSubSequence(Object origin, int index, int length);
+
+        public abstract byte[] byteSequenceToByteArray(Object origin);
+
         public abstract boolean isProxyArray(Object proxy);
 
         public abstract boolean isProxyDate(Object proxy);
@@ -799,7 +803,8 @@ public abstract class AbstractPolyglotImpl {
                         Object hostAccess,
                         Object polyglotAccess,
                         boolean allowNativeAccess,
-                        boolean allowCreateThread, boolean allowHostClassLoading, boolean allowInnerContextOptions, boolean allowExperimentalOptions,
+                        boolean allowCreateThread,
+                        boolean allowHostClassLoading, boolean allowInnerContextOptions, boolean allowExperimentalOptions,
                         Predicate<String> classFilter,
                         Map<String, String> options,
                         Map<String, String[]> arguments, String[] onlyLanguages, Object ioAccess, Object logHandler, boolean allowCreateProcess, ProcessHandler processHandler,

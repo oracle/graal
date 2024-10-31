@@ -24,6 +24,7 @@
  */
 package com.oracle.graal.pointsto.flow;
 
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
@@ -31,11 +32,39 @@ import jdk.vm.ci.code.BytecodePosition;
 
 /**
  * Produces AnyPrimitive state that leads to immediate saturation of all uses. Used to represent any
- * operation that is not modeled by the analysis.
+ * operation on primitives that is not explicitly modeled by the analysis.
+ * </p>
+ * This flow can be either global (source == null) or local (source != null).
  */
 public final class AnyPrimitiveSourceTypeFlow extends TypeFlow<BytecodePosition> implements PrimitiveFlow {
 
     public AnyPrimitiveSourceTypeFlow(BytecodePosition source, AnalysisType type) {
         super(source, type, TypeState.anyPrimitiveState());
+    }
+
+    private AnyPrimitiveSourceTypeFlow(MethodFlowsGraph methodFlows, AnyPrimitiveSourceTypeFlow original) {
+        super(original, methodFlows, TypeState.anyPrimitiveState());
+    }
+
+    @Override
+    public TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
+        assert isLocal() : "Global flow should never be cloned: " + this;
+        return new AnyPrimitiveSourceTypeFlow(methodFlows, this);
+    }
+
+    private boolean isLocal() {
+        return source != null;
+    }
+
+    @Override
+    public boolean canSaturate(PointsToAnalysis bb) {
+        /*
+         * AnyPrimitiveSourceTypeFlow can be used as a global flow that should always propagate
+         * values. The global version can be identified be having source == null, and it should
+         * never saturate.
+         * 
+         * The local versions of this flow have a concrete bytecode position and can saturate.
+         */
+        return isLocal();
     }
 }

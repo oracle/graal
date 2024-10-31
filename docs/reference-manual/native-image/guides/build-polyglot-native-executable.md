@@ -113,4 +113,4 @@ The native executable version runs faster than running the same application on t
 ### Related Documentation
 
 * [Embedding Languages](../../embedding/embed-languages.md)
-* [JavaScript and Java Interoperability](../../js/JavaInteroperability.md)
+* [JavaScript and Java Interoperability](https://github.com/oracle/graaljs/blob/master/docs/user/JavaInteroperability.md)

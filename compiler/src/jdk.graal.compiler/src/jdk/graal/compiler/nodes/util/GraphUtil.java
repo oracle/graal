@@ -149,6 +149,11 @@ public class GraphUtil {
                 marked.markDeleted();
             }
         }
+        for (Node m : markedNodes) {
+            if (m instanceof FixedWithNextNode fixed) {
+                GraalError.guarantee(fixed.next() == null || fixed.next().isDeleted(), "dead node %s has live next %s", m, fixed.next());
+            }
+        }
     }
 
     private static void markFixedNodes(FixedNode node, EconomicSet<Node> markedNodes, EconomicMap<AbstractMergeNode, List<AbstractEndNode>> unmarkedMerges) {

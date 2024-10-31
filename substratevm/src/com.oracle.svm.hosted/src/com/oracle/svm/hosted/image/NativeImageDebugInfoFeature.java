@@ -117,13 +117,13 @@ class NativeImageDebugInfoFeature implements InternalFeature {
         access.registerAsAccessed(ReflectionUtil.lookupField(ClassLoader.class, "nameAndId"));
 
         CompressEncoding compressEncoding = ImageSingletons.lookup(CompressEncoding.class);
-        CGlobalData<PointerBase> compressedShift = CGlobalDataFactory.createWord(WordFactory.signed(compressEncoding.getShift()), "__svm_compressed_shift");
+        CGlobalData<PointerBase> compressionShift = CGlobalDataFactory.createWord(WordFactory.signed(compressEncoding.getShift()), "__svm_compression_shift");
         CGlobalData<PointerBase> useHeapBase = CGlobalDataFactory.createWord(WordFactory.unsigned(compressEncoding.hasBase() ? 1 : 0), "__svm_use_heap_base");
-        CGlobalData<PointerBase> oopTagsMask = CGlobalDataFactory.createWord(WordFactory.unsigned(Heap.getHeap().getObjectHeader().getReservedBitsMask()), "__svm_oop_tags_mask");
+        CGlobalData<PointerBase> reservedBitsMask = CGlobalDataFactory.createWord(WordFactory.unsigned(Heap.getHeap().getObjectHeader().getReservedBitsMask()), "__svm_reserved_bits_mask");
         CGlobalData<PointerBase> objectAlignment = CGlobalDataFactory.createWord(WordFactory.unsigned(ConfigurationValues.getObjectLayout().getAlignment()), "__svm_object_alignment");
-        CGlobalDataFeature.singleton().registerWithGlobalHiddenSymbol(compressedShift);
+        CGlobalDataFeature.singleton().registerWithGlobalHiddenSymbol(compressionShift);
         CGlobalDataFeature.singleton().registerWithGlobalHiddenSymbol(useHeapBase);
-        CGlobalDataFeature.singleton().registerWithGlobalHiddenSymbol(oopTagsMask);
+        CGlobalDataFeature.singleton().registerWithGlobalHiddenSymbol(reservedBitsMask);
         CGlobalDataFeature.singleton().registerWithGlobalHiddenSymbol(objectAlignment);
     }
 

@@ -29,6 +29,7 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.ARGUMENTS_TA
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.ARGUMENT_IDS_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.ARRAY_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CAN_BE_STATICALLY_BOUND_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CLASS_INIT_NAME;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CLASS_JAVA_NAME_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CLASS_NAME_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CODE_SIZE_TAG;
@@ -84,6 +85,8 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.NOT_MATERIAL
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.NULL_POINTER_CONSTANT;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.OBJECT_OFFSET_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.OBJECT_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.PARENT_CONSTANT_ID_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.PARENT_CONSTANT_INDEX_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.PERSISTED;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.POSITION_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.PRIMITIVE_ARRAY_TAG;
@@ -105,6 +108,8 @@ import java.io.InputStreamReader;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
@@ -135,6 +140,7 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.EncodedGraph;
@@ -292,8 +298,10 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * <p>
  * Relinking a base layer {@link ImageHeapConstant} is finding the corresponding hosted object in
  * the extension image build process and storing it in the constant. This is only done for object
- * that can be created or found using a specific recipe. Some fields from those constant can then be
- * relinked using the value of the hosted object.
+ * that can be created or found using a specific recipe. Those constants are then called parent
+ * constants. Some fields of their field values can then be relinked using the value of the hosted
+ * object. The produced constants are called child constants, and they have to be consistent across
+ * image builds.
  * <p>
  * The "offset object" is the offset of the constant in the heap from the base layer.
  */
@@ -302,7 +310,7 @@ public class ImageLayerLoader {
     protected final Map<Integer, AnalysisMethod> methods = new ConcurrentHashMap<>();
     protected final Map<Integer, AnalysisField> fields = new ConcurrentHashMap<>();
     protected final Map<Integer, ImageHeapConstant> constants = new ConcurrentHashMap<>();
-    private final List<Path> loadPaths;
+    private final List<FilePaths> loadPaths;
     private final Map<Integer, BaseLayerType> baseLayerTypes = new ConcurrentHashMap<>();
     private final Map<Integer, Integer> typeToHubIdentityHashCode = new ConcurrentHashMap<>();
     private final Map<Integer, BaseLayerMethod> baseLayerMethods = new ConcurrentHashMap<>();
@@ -320,7 +328,7 @@ public class ImageLayerLoader {
     }
 
     protected final Set<AnalysisFuture<Void>> heapScannerTasks = ConcurrentHashMap.newKeySet();
-    private final ImageLayerSnapshotUtil imageLayerSnapshotUtil;
+    private ImageLayerSnapshotUtil imageLayerSnapshotUtil;
     private ImageLayerLoaderHelper imageLayerLoaderHelper;
     protected final Map<Integer, Integer> typeToConstant = new ConcurrentHashMap<>();
     protected final Map<String, Integer> stringToConstant = new ConcurrentHashMap<>();
@@ -332,20 +340,23 @@ public class ImageLayerLoader {
     protected HostedValuesProvider hostedValuesProvider;
 
     protected EconomicMap<String, Object> jsonMap;
+    protected FileChannel graphsChannel;
 
     private long imageHeapSize;
 
-    public ImageLayerLoader() {
-        this(new ImageLayerSnapshotUtil(), List.of());
+    public record FilePaths(Path snapshot, Path snapshotGraphs) {
     }
 
-    public ImageLayerLoader(ImageLayerSnapshotUtil imageLayerSnapshotUtil, List<Path> loadPaths) {
-        this.imageLayerSnapshotUtil = imageLayerSnapshotUtil;
+    public ImageLayerLoader() {
+        this(List.of());
+    }
+
+    public ImageLayerLoader(List<FilePaths> loadPaths) {
         this.loadPaths = loadPaths;
     }
 
-    public List<Path> getLoadPaths() {
-        return loadPaths;
+    public void setImageLayerSnapshotUtil(ImageLayerSnapshotUtil imageLayerSnapshotUtil) {
+        this.imageLayerSnapshotUtil = imageLayerSnapshotUtil;
     }
 
     public AnalysisUniverse getUniverse() {
@@ -360,16 +371,18 @@ public class ImageLayerLoader {
         this.imageLayerLoaderHelper = imageLayerLoaderHelper;
     }
 
-    /**
-     * Note this code is not thread safe.
-     */
-    protected void loadJsonMap() {
+    /** This code is not thread safe. */
+    protected void openFilesAndLoadJsonMap() {
         assert loadPaths.size() == 1 : "Currently only one path is supported for image layer loading " + loadPaths;
         if (jsonMap == null) {
-            for (Path layerPath : loadPaths) {
-                try (InputStreamReader inputStreamReader = new InputStreamReader(new FileInputStream(layerPath.toFile()))) {
-                    Object json = new JsonParser(inputStreamReader).parse();
-                    jsonMap = cast(json);
+            for (FilePaths paths : loadPaths) {
+                try {
+                    graphsChannel = FileChannel.open(paths.snapshotGraphs);
+
+                    try (InputStreamReader inputStreamReader = new InputStreamReader(new FileInputStream(paths.snapshot.toFile()))) {
+                        Object json = new JsonParser(inputStreamReader).parse();
+                        jsonMap = cast(json);
+                    }
                 } catch (IOException e) {
                     throw AnalysisError.shouldNotReachHere("Error during image layer snapshot loading", e);
                 }
@@ -378,8 +391,18 @@ public class ImageLayerLoader {
     }
 
     public void loadLayerAnalysis() {
-        loadJsonMap();
+        openFilesAndLoadJsonMap();
         loadLayerAnalysis0();
+    }
+
+    public void cleanupAfterAnalysis() {
+        if (graphsChannel != null) {
+            try {
+                graphsChannel.close();
+            } catch (IOException e) {
+                throw AnalysisError.shouldNotReachHere(e);
+            }
+        }
     }
 
     /**
@@ -678,6 +701,8 @@ public class ImageLayerLoader {
 
         if (name.equals(CONSTRUCTOR_NAME)) {
             type.findConstructor(signature);
+        } else if (name.equals(CLASS_INIT_NAME)) {
+            type.getClassInitializer();
         } else {
             type.findMethod(name, signature);
         }
@@ -792,21 +817,37 @@ public class ImageLayerLoader {
 
     public AnalysisParsedGraph getAnalysisParsedGraph(AnalysisMethod analysisMethod) {
         EconomicMap<String, Object> methodData = getMethodData(analysisMethod);
-        String encodedAnalyzedGraph = get(methodData, ANALYSIS_PARSED_GRAPH_TAG);
+        String encodedAnalyzedGraph = readEncodedGraph(methodData, ANALYSIS_PARSED_GRAPH_TAG);
         Boolean intrinsic = get(methodData, INTRINSIC_TAG);
-        /*
-         * Methods without a persisted graph are folded and static methods.
-         *
-         * GR-55278: graphs that contain a reference to a $$Lambda cannot be persisted as well.
-         */
-        if (encodedAnalyzedGraph != null) {
-            EncodedGraph analyzedGraph = (EncodedGraph) ObjectCopier.decode(imageLayerSnapshotUtil.getGraphDecoder(this, analysisMethod, universe.getSnippetReflection()), encodedAnalyzedGraph);
-            if (hasStrengthenedGraph(analysisMethod)) {
-                loadAllAnalysisElements(get(methodData, STRENGTHENED_GRAPH_TAG));
-            }
-            return new AnalysisParsedGraph(analyzedGraph, intrinsic);
+        EncodedGraph analyzedGraph = (EncodedGraph) ObjectCopier.decode(imageLayerSnapshotUtil.getGraphDecoder(this, analysisMethod, universe.getSnippetReflection()), encodedAnalyzedGraph);
+        if (hasStrengthenedGraph(analysisMethod)) {
+            loadAllAnalysisElements(readEncodedGraph(methodData, STRENGTHENED_GRAPH_TAG));
         }
-        throw AnalysisError.shouldNotReachHere("The method " + analysisMethod + " does not have a graph from the base layer");
+        afterGraphDecodeHook(analyzedGraph);
+        return new AnalysisParsedGraph(analyzedGraph, intrinsic);
+    }
+
+    private String readEncodedGraph(EconomicMap<String, Object> methodData, String elementIdentifier) {
+        String location = get(methodData, elementIdentifier);
+        int closingBracketAt = location.length() - 1;
+        AnalysisError.guarantee(location.charAt(0) == '@' && location.charAt(closingBracketAt) == ']', "Location must start with '@' and end with ']': %s", location);
+        int openingBracketAt = location.indexOf('[', 1, closingBracketAt);
+        AnalysisError.guarantee(openingBracketAt < closingBracketAt, "Location does not contain '[' at expected location: %s", location);
+        long offset;
+        long nbytes;
+        try {
+            offset = Long.parseUnsignedLong(location.substring(1, openingBracketAt));
+            nbytes = Long.parseUnsignedLong(location.substring(openingBracketAt + 1, closingBracketAt));
+        } catch (NumberFormatException e) {
+            throw AnalysisError.shouldNotReachHere("Location contains invalid positive integer(s): " + location);
+        }
+        ByteBuffer bb = ByteBuffer.allocate(NumUtil.safeToInt(nbytes));
+        try {
+            graphsChannel.read(bb, offset);
+        } catch (IOException e) {
+            throw AnalysisError.shouldNotReachHere("Failed reading a graph from location: " + location, e);
+        }
+        return new String(bb.array(), ImageLayerWriter.GRAPHS_CHARSET);
     }
 
     public boolean hasStrengthenedGraph(AnalysisMethod analysisMethod) {
@@ -816,28 +857,30 @@ public class ImageLayerLoader {
 
     public void setStrengthenedGraph(AnalysisMethod analysisMethod) {
         EconomicMap<String, Object> methodData = getMethodData(analysisMethod);
-        String encodedAnalyzedGraph = get(methodData, STRENGTHENED_GRAPH_TAG);
+        String encodedAnalyzedGraph = readEncodedGraph(methodData, STRENGTHENED_GRAPH_TAG);
         EncodedGraph analyzedGraph = (EncodedGraph) ObjectCopier.decode(imageLayerSnapshotUtil.getGraphDecoder(this, analysisMethod, universe.getSnippetReflection()), encodedAnalyzedGraph);
-        processGraph(analyzedGraph);
+        afterGraphDecodeHook(analyzedGraph);
         analysisMethod.setAnalyzedGraph(analyzedGraph);
     }
 
     @SuppressWarnings("unused")
-    protected void processGraph(EncodedGraph encodedGraph) {
+    protected void afterGraphDecodeHook(EncodedGraph encodedGraph) {
 
     }
 
-    protected void loadAllAnalysisElements(String encoding) {
-        for (String line : encoding.lines().toList()) {
-            if (line.contains(PointsToAnalysisType.class.getName())) {
-                getAnalysisType(getId(line));
-            } else if (line.contains(PointsToAnalysisMethod.class.getName())) {
-                getAnalysisMethod(getId(line));
-            } else if (line.contains(PointsToAnalysisField.class.getName())) {
-                getAnalysisField(getId(line));
-            } else if (line.contains(ImageHeapInstance.class.getName()) || line.contains(ImageHeapObjectArray.class.getName()) || line.contains(ImageHeapPrimitiveArray.class.getName())) {
-                getOrCreateConstant(getId(line));
-            }
+    private void loadAllAnalysisElements(String encoding) {
+        encoding.lines().forEach(this::loadEncodedGraphLineAnalysisElements);
+    }
+
+    protected void loadEncodedGraphLineAnalysisElements(String line) {
+        if (line.contains(PointsToAnalysisType.class.getName())) {
+            getAnalysisType(getId(line));
+        } else if (line.contains(PointsToAnalysisMethod.class.getName())) {
+            getAnalysisMethod(getId(line));
+        } else if (line.contains(PointsToAnalysisField.class.getName())) {
+            getAnalysisField(getId(line));
+        } else if (line.contains(ImageHeapInstance.class.getName()) || line.contains(ImageHeapObjectArray.class.getName()) || line.contains(ImageHeapPrimitiveArray.class.getName())) {
+            getOrCreateConstant(getId(line));
         }
     }
 
@@ -865,7 +908,13 @@ public class ImageLayerLoader {
             clazz = declaringClass.getJavaClass();
         }
 
-        Field field = ReflectionUtil.lookupField(true, clazz, fieldIdentifier.name);
+        Field field;
+        try {
+            field = ReflectionUtil.lookupField(true, clazz, fieldIdentifier.name);
+        } catch (Throwable e) {
+            field = null;
+        }
+
         if (field == null) {
             AnalysisType type = getAnalysisType(get(fieldData, FIELD_TYPE_TAG));
             BaseLayerField baseLayerField = new BaseLayerField(get(fieldData, ID_TAG), fieldIdentifier.name, declaringClass, type, get(fieldData, IS_INTERNAL_TAG), get(fieldData, MODIFIERS_TAG),
@@ -974,7 +1023,7 @@ public class ImageLayerLoader {
      * underlying host VM, found by querying the parent object that made this constant reachable
      * (see {@link ImageLayerLoader#getReachableHostedValue(ImageHeapConstant, int)}).
      */
-    protected ImageHeapConstant getOrCreateConstant(EconomicMap<String, Object> constantsMap, int id, JavaConstant parentReachableHostedObject) {
+    protected ImageHeapConstant getOrCreateConstant(EconomicMap<String, Object> constantsMap, int id, JavaConstant parentReachableHostedObjectCandidate) {
         if (constants.containsKey(id)) {
             return constants.get(id);
         }
@@ -988,6 +1037,21 @@ public class ImageLayerLoader {
 
         String objectOffset = get(baseLayerConstant, OBJECT_OFFSET_TAG);
         int identityHashCode = get(baseLayerConstant, IDENTITY_HASH_CODE_TAG);
+
+        JavaConstant parentReachableHostedObject;
+        if (parentReachableHostedObjectCandidate == null) {
+            Integer parentConstantId = get(baseLayerConstant, PARENT_CONSTANT_ID_TAG);
+            if (parentConstantId != null) {
+                ImageHeapConstant parentConstant = getOrCreateConstant(parentConstantId);
+                int index = get(baseLayerConstant, PARENT_CONSTANT_INDEX_TAG);
+                parentReachableHostedObject = getReachableHostedValue(parentConstant, index);
+            } else {
+                parentReachableHostedObject = null;
+            }
+        } else {
+            parentReachableHostedObject = parentReachableHostedObjectCandidate;
+        }
+
         if (parentReachableHostedObject != null && !type.getJavaClass().equals(Class.class)) {
             /*
              * The hash codes of DynamicHubs need to be injected before they are used in a map,

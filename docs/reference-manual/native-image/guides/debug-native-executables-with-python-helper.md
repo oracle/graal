@@ -9,9 +9,9 @@ permalink: /reference-manual/native-image/guides/debug-native-image-process-with
 Additionally to the [GDB debugging](debug-native-executables-with-gdb.md), you can debug a `native-image` process using a Python helper script, _gdb-debughelpers.py_.
 The [GDB Python API](https://sourceware.org/gdb/current/onlinedocs/gdb/Python.html) is used to provide a reasonably good experience for debugging native executables or shared libraries.
 It requires GDB with Python support.
-The debugging extension is tested against GDB 13.2 and supports the new debuginfo generation introduced in GraalVM for JDK 17 and later.
+The debugging extension is tested against GDB 14.2 and supports the new debuginfo generation introduced in GraalVM for JDK 17 and later.
 
-> Note: The _gdb-debughelpers.py_ file does not work with versions older than version 13.2 of `gdb` or versions older than GraalVM for JDK 17.
+> Note: The _gdb-debughelpers.py_ file does not work with versions older than version 14.2 of `gdb` or versions older than GraalVM for JDK 17.
 
 The Python script _gdb-debughelpers.py_ can be found in the _&lt;GRAALVM\_HOME&gt;/lib/svm/debug_ directory.
 If debuginfo generation is enabled (see [Build a Native Executable with Debug Information](debug-native-executables-with-gdb.md#build-a-native-executable-with-debug-information)), the script is copied to the build directory.

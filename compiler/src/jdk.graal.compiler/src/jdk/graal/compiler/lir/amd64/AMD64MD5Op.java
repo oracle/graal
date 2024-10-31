@@ -48,10 +48,10 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/715fa8f9fe7242e86b985aece3d078b226f53fb9/src/hotspot/cpu/x86/stubGenerator_x86_64.cpp#L1371-L1407",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/7fa2f229fbee68112cbdd18b811d95721adfe2ec/src/hotspot/cpu/x86/stubGenerator_x86_64.cpp#L1372-L1408",
           sha1 = "acf2eea69d799b0a1a38edaff048ff30f5257016")
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/0487aa61c67de695d008af4fe75c2a3072261a6f/src/hotspot/cpu/x86/macroAssembler_x86_md5.cpp#L52-L209",
-          sha1 = "5cb0a6acf3329957f7f5868a32d4d228f98595ab")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/1cf26a5179e619f17909426fdb26a3fb3b748483/src/hotspot/cpu/x86/macroAssembler_x86_md5.cpp#L52-L209",
+          sha1 = "8367eccc4e44cd5c71915c01d7b01f2f95179aaf")
 // @formatter:on
 public final class AMD64MD5Op extends AMD64LIRInstruction {
 
@@ -120,8 +120,8 @@ public final class AMD64MD5Op extends AMD64LIRInstruction {
         masm.notl(rsi);
         masm.andl(rdi, r2);
         masm.andl(rsi, r3);
-        masm.orl(rsi, rdi);
         masm.addl(r1, rsi);
+        masm.addl(r1, rdi);
         masm.roll(r1, s);
         masm.addl(r1, r2);
     }

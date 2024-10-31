@@ -299,7 +299,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
      */
     public final void movlong(AMD64Address dst, long src) {
         if (NumUtil.isInt(src)) {
-            AMD64MIOp.MOV.emit(this, OperandSize.QWORD, dst, (int) src);
+            emitAMD64MIOp(AMD64MIOp.MOV, OperandSize.QWORD, dst, (int) src, false);
         } else {
             AMD64Address high = new AMD64Address(dst.getBase(), dst.getIndex(), dst.getScale(), dst.getDisplacement() + 4, dst.getDisplacementAnnotation(), dst.instructionStartPosition);
             movl(dst, (int) (src & 0xFFFFFFFF));
@@ -832,7 +832,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         if (strideSrc.value < strideDst.value) {
             GraalError.guarantee(strideDst.log2 - strideSrc.log2 == 1, "unsupported stride pair %s %s", strideSrc, strideDst);
             if (isAVX()) {
-                VexMoveOp.VMOVD.emit(this, AVXKind.AVXSize.DWORD, dst, address);
+                VexMoveOp.VMOVD.emit(this, AVXKind.AVXSize.XMM, dst, address);
                 loadAndExtendAVX(AVXKind.AVXSize.QWORD, extendMode, dst, strideDst, dst, strideSrc);
             } else {
                 movdl(dst, address);
@@ -841,7 +841,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         } else {
             GraalError.guarantee(strideSrc.value == strideDst.value, "source stride must be smaller or equal to target stride");
             if (isAVX()) {
-                VexMoveOp.VMOVQ.emit(this, AVXKind.AVXSize.QWORD, dst, address);
+                VexMoveOp.VMOVQ.emit(this, AVXKind.AVXSize.XMM, dst, address);
             } else {
                 movdq(dst, address);
             }
@@ -1438,5 +1438,80 @@ public class AMD64MacroAssembler extends AMD64Assembler {
 
     public boolean isAVX() {
         return supports(CPUFeature.AVX);
+    }
+
+    public final void moveInt(Register dst, int imm) {
+        if (imm == 0) {
+            Register zeroValueRegister = getZeroValueRegister();
+            if (!Register.None.equals(zeroValueRegister)) {
+                movl(dst, zeroValueRegister);
+                return;
+            }
+        }
+        movl(dst, imm);
+    }
+
+    public final void moveInt(AMD64Address dst, int imm) {
+        if (imm == 0) {
+            Register zeroValueRegister = getZeroValueRegister();
+            if (!Register.None.equals(zeroValueRegister)) {
+                movl(dst, zeroValueRegister);
+                return;
+            }
+        }
+        movl(dst, imm);
+    }
+
+    public final void moveIntSignExtend(Register result, int imm) {
+        if (imm == 0) {
+            Register zeroValueRegister = getZeroValueRegister();
+            if (!Register.None.equals(zeroValueRegister)) {
+                movl(result, zeroValueRegister);
+                return;
+            }
+        }
+        movslq(result, imm);
+    }
+
+    private static AMD64MROp toMR(AMD64MIOp op) {
+        if (op == AMD64MIOp.MOVB) {
+            return AMD64MROp.MOVB;
+        } else if (op == AMD64MIOp.MOV) {
+            return AMD64MROp.MOV;
+        } else if (op == AMD64MIOp.TEST) {
+            return AMD64MROp.TEST;
+        }
+        return null;
+    }
+
+    public final void emitAMD64MIOp(AMD64MIOp opcode, OperandSize size, Register dst, int imm, boolean annotateImm) {
+        if (imm == 0) {
+            Register zeroValueRegister = getZeroValueRegister();
+            AMD64MROp mrOp = toMR(opcode);
+            if (!Register.None.equals(zeroValueRegister) && mrOp != null) {
+                mrOp.emit(this, size, dst, zeroValueRegister);
+                return;
+            }
+        }
+        opcode.emit(this, size, dst, imm, annotateImm);
+    }
+
+    public final void emitAMD64MIOp(AMD64MIOp opcode, OperandSize size, AMD64Address dst, int imm, boolean annotateImm) {
+        if (imm == 0) {
+            Register zeroValueRegister = getZeroValueRegister();
+            AMD64MROp mrOp = toMR(opcode);
+            if (!Register.None.equals(zeroValueRegister) && mrOp != null) {
+                mrOp.emit(this, size, dst, zeroValueRegister);
+                return;
+            }
+        }
+        opcode.emit(this, size, dst, imm, annotateImm);
+    }
+
+    /**
+     * Returns a register whose content is always zero.
+     */
+    public Register getZeroValueRegister() {
+        return Register.None;
     }
 }

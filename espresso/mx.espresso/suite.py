@@ -22,7 +22,7 @@
 #
 
 suite = {
-    "mxversion": "7.28.0",
+    "mxversion": "7.33.0",
     "name": "espresso",
     "version" : "24.2.0",
     "release" : False,
@@ -116,6 +116,19 @@ suite = {
             "license": "UPL",
         },
 
+        # Shared .class file parser
+        "com.oracle.truffle.espresso.classfile": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "truffle:TRUFFLE_API",
+            ],
+            "requires": [
+            ],
+            "javaCompliance" : "17+",
+            "checkstyle": "com.oracle.truffle.espresso",
+        },
+
         "com.oracle.truffle.espresso": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -156,7 +169,7 @@ suite = {
             "requires": [
                 "java.compiler"
             ],
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "checkstyle": "com.oracle.truffle.espresso",
         },
 
@@ -189,6 +202,7 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
+                "com.oracle.truffle.espresso.classfile",
                 "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_NFI",
             ],

@@ -23,6 +23,8 @@
 package com.oracle.truffle.espresso.jdwp.api;
 
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableRef;
+import com.oracle.truffle.espresso.classfile.attributes.LocalVariableTableRef;
 
 /**
  * A representation of a method.
@@ -123,13 +125,48 @@ public interface MethodRef {
     LineNumberTableRef getLineNumberTable();
 
     /**
-     * Invokes the method on the input callee object with input arguments.
+     * Invokes a non-private, non-constructor instance method on the input callee object with input
+     * arguments. The first argument must be the self object.
      *
-     * @param callee guest-language object on which to execute the method
      * @param args guest-language arguments used when calling the method
      * @return the guest-language return value
      */
-    Object invokeMethod(Object callee, Object[] args);
+    Object invokeMethodVirtual(Object... args);
+
+    /**
+     * Invokes a static method with input arguments.
+     *
+     * @param args guest-language arguments used when calling the method
+     * @return the guest-language return value
+     */
+    Object invokeMethodStatic(Object... args);
+
+    /**
+     * Invokes a constructor or private instance method with input arguments. The first argument
+     * must be the self object.
+     *
+     * @param args guest-language arguments used when calling the method
+     * @return the guest-language return value
+     */
+    Object invokeMethodSpecial(Object... args);
+
+    /**
+     * Invokes an interface method with input arguments. The first argument must be the self object.
+     *
+     * @param args guest-language arguments used when calling the method
+     * @return the guest-language return value
+     */
+    Object invokeMethodInterface(Object... args);
+
+    /**
+     * Invokes an instance method in a non-virtual fashion with input arguments. Overridden methods
+     * that would normally be called when invoking from Java source code using the self object is
+     * not invoked. The first argument must be the self object.
+     *
+     * @param args guest-language arguments used when calling the method
+     * @return the guest-language return value
+     */
+    Object invokeMethodNonVirtual(Object... args);
 
     /**
      * Determines if the declaring class has a source file attribute.
@@ -152,13 +189,6 @@ public interface MethodRef {
      * @return the declaring klass
      */
     KlassRef getDeclaringKlassRef();
-
-    /**
-     * Returns the first line number for the method, or -1 if unknown.
-     *
-     * @return first line
-     */
-    int getFirstLine();
 
     /**
      * Returns the last line number for the method, or -1 if unknown.
@@ -218,4 +248,18 @@ public interface MethodRef {
      * @return last bci
      */
     long getLastBCI();
+
+    /**
+     * Determines if the method is a constructor.
+     *
+     * @return true if the method is a constructor
+     */
+    boolean isConstructor();
+
+    /**
+     * Determines if the method is a static initializer.
+     *
+     * @return true if the method is a static initializer
+     */
+    boolean isClassInitializer();
 }

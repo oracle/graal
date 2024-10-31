@@ -110,6 +110,14 @@ public final class KnownOffsets {
         return vtableEntrySize > 0;
     }
 
+    public int getVTableBaseOffset() {
+        return vtableBaseOffset;
+    }
+
+    public int getVTableEntrySize() {
+        return vtableEntrySize;
+    }
+
     /**
      * Returns of the offset of the index either relative to the start of the vtable
      * ({@code fromDynamicHubStart} == false) or start of the dynamic hub
@@ -125,7 +133,7 @@ public final class KnownOffsets {
     }
 
     public int getTypeIDSlotsOffset() {
-        assert isFullyInitialized() && SubstrateOptions.closedTypeWorld();
+        assert isFullyInitialized() && SubstrateOptions.useClosedTypeWorldHubLayout();
         return typeIDSlotsOffset;
     }
 

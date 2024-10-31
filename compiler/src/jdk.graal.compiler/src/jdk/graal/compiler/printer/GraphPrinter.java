@@ -242,16 +242,14 @@ interface GraphPrinter extends Closeable, JavaConstantFormatter {
 
     @SuppressWarnings("try")
     static StructuredGraph.ScheduleResult getScheduleOrNull(Graph graph) {
-        if (graph instanceof StructuredGraph) {
-            StructuredGraph sgraph = (StructuredGraph) graph;
-            StructuredGraph.ScheduleResult scheduleResult = sgraph.getLastSchedule();
-            if (scheduleResult == null) {
-                DebugContext debug = graph.getDebug();
-                try (Scope scope = debug.disable()) {
-                    SchedulePhase.runWithoutContextOptimizations(sgraph);
-                    scheduleResult = sgraph.getLastSchedule();
-                } catch (Throwable t) {
-                }
+        if (graph instanceof StructuredGraph sgraph) {
+            DebugContext debug = graph.getDebug();
+            StructuredGraph.ScheduleResult scheduleResult;
+            try (Scope scope = debug.disable()) {
+                SchedulePhase.runWithoutContextOptimizations(sgraph);
+                scheduleResult = sgraph.getLastSchedule();
+            } catch (Throwable t) {
+                scheduleResult = null;
             }
             return scheduleResult;
         }

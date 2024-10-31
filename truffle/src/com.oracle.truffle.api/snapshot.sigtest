@@ -325,9 +325,10 @@ meth public com.oracle.truffle.api.TruffleContext$Builder onExited(java.util.fun
 meth public com.oracle.truffle.api.TruffleContext$Builder option(java.lang.String,java.lang.String)
 meth public com.oracle.truffle.api.TruffleContext$Builder options(java.util.Map<java.lang.String,java.lang.String>)
 meth public com.oracle.truffle.api.TruffleContext$Builder out(java.io.OutputStream)
+meth public com.oracle.truffle.api.TruffleContext$Builder threadAccessDeniedHandler(java.util.function.Consumer<java.lang.String>)
 meth public com.oracle.truffle.api.TruffleContext$Builder timeZone(java.time.ZoneId)
 supr java.lang.Object
-hfds allowCreateProcess,allowCreateThread,allowEnvironmentAccess,allowHostClassLoading,allowHostLookup,allowIO,allowInnerContextOptions,allowNativeAccess,allowPolyglotAccess,arguments,config,environment,err,in,inheritAccess,initializeCreatorContext,onCancelled,onClosed,onExited,options,out,permittedLanguages,sharingEnabled,sourceEnvironment,timeZone
+hfds allowCreateProcess,allowCreateThread,allowEnvironmentAccess,allowHostClassLoading,allowHostLookup,allowIO,allowInnerContextOptions,allowNativeAccess,allowPolyglotAccess,arguments,config,environment,err,in,inheritAccess,initializeCreatorContext,onCancelled,onClosed,onExited,options,out,permittedLanguages,sharingEnabled,sourceEnvironment,threadAccessDeniedHandler,timeZone
 
 CLSS public final com.oracle.truffle.api.TruffleFile
 fld public final static com.oracle.truffle.api.TruffleFile$AttributeDescriptor<java.lang.Boolean> IS_DIRECTORY
@@ -563,6 +564,8 @@ meth public com.oracle.truffle.api.TruffleFile getTruffleFileInternal(java.net.U
 meth public com.oracle.truffle.api.TruffleLogger getLogger(java.lang.Class<?>)
 meth public com.oracle.truffle.api.TruffleLogger getLogger(java.lang.String)
 meth public com.oracle.truffle.api.TruffleThreadBuilder newTruffleThreadBuilder(java.lang.Runnable)
+meth public com.oracle.truffle.api.nodes.LanguageInfo getHostLanguage()
+meth public com.oracle.truffle.api.nodes.LanguageInfo getLanguageInfo(java.lang.Class<? extends com.oracle.truffle.api.TruffleLanguage<?>>)
 meth public java.io.InputStream in()
 meth public java.io.OutputStream err()
 meth public java.io.OutputStream out()
@@ -1098,18 +1101,23 @@ meth public short executeShort(com.oracle.truffle.api.frame.VirtualFrame,{com.or
 
 CLSS public abstract interface com.oracle.truffle.api.nodes.BytecodeOSRNode
 intf com.oracle.truffle.api.nodes.NodeInterface
-meth public abstract java.lang.Object executeOSR(com.oracle.truffle.api.frame.VirtualFrame,int,java.lang.Object)
 meth public abstract java.lang.Object getOSRMetadata()
 meth public abstract void setOSRMetadata(java.lang.Object)
 meth public com.oracle.truffle.api.frame.Frame restoreParentFrameFromArguments(java.lang.Object[])
+meth public java.lang.Object executeOSR(com.oracle.truffle.api.frame.VirtualFrame,int,java.lang.Object)
+meth public java.lang.Object executeOSR(com.oracle.truffle.api.frame.VirtualFrame,long,java.lang.Object)
 meth public java.lang.Object[] storeParentFrameInArguments(com.oracle.truffle.api.frame.VirtualFrame)
 meth public static boolean pollOSRBackEdge(com.oracle.truffle.api.nodes.BytecodeOSRNode)
 meth public static java.lang.Object tryOSR(com.oracle.truffle.api.nodes.BytecodeOSRNode,int,java.lang.Object,java.lang.Runnable,com.oracle.truffle.api.frame.VirtualFrame)
+meth public static java.lang.Object tryOSR(com.oracle.truffle.api.nodes.BytecodeOSRNode,long,java.lang.Object,java.lang.Runnable,com.oracle.truffle.api.frame.VirtualFrame)
 meth public void copyIntoOSRFrame(com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.frame.VirtualFrame,int)
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
 meth public void copyIntoOSRFrame(com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.frame.VirtualFrame,int,java.lang.Object)
+meth public void copyIntoOSRFrame(com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.frame.VirtualFrame,long,java.lang.Object)
 meth public void prepareOSR(int)
+meth public void prepareOSR(long)
 meth public void restoreParentFrame(com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.frame.VirtualFrame)
+meth public void transferOSRFrame(com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.frame.VirtualFrame,long,java.lang.Object)
 
 CLSS public com.oracle.truffle.api.nodes.ControlFlowException
 cons public init()

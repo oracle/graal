@@ -123,10 +123,6 @@ public class FunctionPointerLogHandler implements LogHandlerExtension {
         }
     }
 
-    public CFunctionPointer getFatalErrorFunctionPointer() {
-        return fatalErrorFunctionPointer;
-    }
-
     interface LogFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
         void invoke(CCharPointer bytes, UnsignedWord length);

@@ -80,74 +80,18 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
   # Use economy mode for coverage testing
   libgraal_truffle_coverage: self.libgraal_truffle_base(['-Ob'], coverage=true),
 
-  # Gate for guestgraal
-  guestgraal_base(extra_vm_args=[]):: {
-    local pathsep = if self.os == "windows" then ";" else ":",
-    local guestgraal_env = std.strReplace(vm.libgraal_env, "libgraal", "guestgraal"),
-    run+: [
-      ['mx', '--env', guestgraal_env, 'build'],
-      ['set-export', 'JNIUTILS_PATH', ['mx', '--env', guestgraal_env, '--quiet', 'path', 'JNIUTILS']],
-      ['set-export', 'NATIVEBRIDGE_PATH', ['mx', '--env', guestgraal_env, '--quiet', 'path', 'NATIVEBRIDGE']],
-      ['set-export', 'GUESTGRAAL_LIBRARY_PATH', ['mx', '--env', guestgraal_env, '--quiet', 'path', 'GUESTGRAAL_LIBRARY']],
-    ] + (if vm.edition == "ee" then [
-      ['set-export', 'ENTERPRISE_GUESTGRAAL_LIBRARY_PATH', ['mx', '--env', guestgraal_env, '--quiet', 'path', 'ENTERPRISE_GUESTGRAAL_LIBRARY']]
-    ] else []) + [
-      ['mx', '--env', guestgraal_env, 'native-image', '-J-esa', '-J-ea', '-esa', '-ea',
-       '-p', '$JNIUTILS_PATH' + pathsep + '$NATIVEBRIDGE_PATH',
-       '-cp', '$GUESTGRAAL_LIBRARY_PATH' + pathsep + '$ENTERPRISE_GUESTGRAAL_LIBRARY_PATH',
-       '-H:+UnlockExperimentalVMOptions', '-H:+VerifyGraalGraphs', '-H:+VerifyPhases'],
-      ['mx', '--env', guestgraal_env, 'gate', '--task', std.join(",", self.tasks), '--extra-vm-argument=-XX:JVMCILibPath=$PWD/' + vm.vm_dir, '--extra-vm-argument=' + std.join(" ", extra_vm_args)]
-    ],
-    logs+: [
-      '*/graal-compiler.log',
-      '*/graal-compiler-ctw.log',
-    ],
-  },
-
-  guestgraal_compiler:: self.guestgraal_base(extra_vm_args=[]) + {
-    # LibGraal gate tasks currently expected to work
-    tasks: [
-      "LibGraal Compiler:Basic",
-      "LibGraal Compiler:FatalErrorHandling",
-      "LibGraal Compiler:OOMEDumping",
-      "LibGraal Compiler:SystemicFailureDetection",
-      "LibGraal Compiler:CompilationTimeout:JIT",
-      "LibGraal Compiler:CTW",
-      "LibGraal Compiler:DaCapo",
-      "LibGraal Compiler:ScalaDaCapo"
-    ] +
-    # Renaissance is missing the msvc redistributable on Windows [GR-50132]
-    if self.os == "windows" then [] else ["LibGraal Compiler:Renaissance"],
-    timelimit: '1:00:00',
-  },
-
-  guestgraal_truffle:: self.guestgraal_base(extra_vm_args=['-DGCUtils.saveHeapDumpTo=.']) + {
-    # Truffle LibGraal gate tasks
-    tasks: [
-      "LibGraal Truffle",
-      "LibGraal Compiler:CompilationTimeout:Truffle"
-    ],
-    environment+: {
-      # The Truffle TCK tests run as a part of Truffle TCK gate, tools tests run as a part of tools gate
-      TEST_LIBGRAAL_EXCLUDE: 'com.oracle.truffle.tck.tests.* com.oracle.truffle.tools.* com.oracle.truffle.regex.*'
-    },
-    logs+: [
-      '*/gcutils_heapdump_*.hprof.gz'
-    ],
-    timelimit: '1:00:00',
-  },
-
   # See definition of `gates` local variable in ../../compiler/ci_common/gate.jsonnet
   local gate_jobs = {
     "gate-vm-libgraal_compiler-labsjdk-latest-linux-amd64": {},
     "gate-vm-libgraal_truffle-labsjdk-latest-linux-amd64": {} + galahad.exclude,
     "gate-vm-libgraal_compiler_zgc-labsjdk-latest-linux-amd64": {},
     "gate-vm-libgraal_compiler_quickbuild-labsjdk-latest-linux-amd64": {},
+    "gate-vm-libgraal_compiler-labsjdk-latest-linux-aarch64": {},
+    "gate-vm-libgraal_compiler-labsjdk-latest-darwin-aarch64": {},
+    "gate-vm-libgraal_compiler_quickbuild-labsjdk-latest-windows-amd64": {},
 
     "gate-vm-libgraal_compiler-labsjdk-21-linux-amd64": {},
-    "gate-vm-libgraal_truffle-labsjdk-21-linux-amd64": {},
-    "gate-vm-guestgraal_compiler-labsjdk-latest-linux-amd64": {},
-    "gate-vm-guestgraal_truffle-labsjdk-latest-linux-amd64": {},
+    "gate-vm-libgraal_truffle-labsjdk-21-linux-amd64": {}
   },
 
   local gates = g.as_gates(gate_jobs),
@@ -206,9 +150,7 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
       "libgraal_compiler",
       "libgraal_truffle",
       "libgraal_compiler_quickbuild",
-      "libgraal_truffle_quickbuild",
-      "guestgraal_compiler",
-      "guestgraal_truffle"
+      "libgraal_truffle_quickbuild"
     ]
   ],
 

@@ -795,6 +795,21 @@ public class LoopFragmentInside extends LoopFragment {
             if (state != null) {
                 duplicateState = state.duplicateWithVirtualState();
                 newExitMerge.setStateAfter(duplicateState);
+                /*
+                 * For complex phi cycles with floating nodes in between the phi and the state we
+                 * have to replace each node that is part of the new state with the respective node
+                 * in the duplicated region.
+                 */
+                duplicateState.applyToNonVirtual(new VirtualState.NodePositionClosure<>() {
+                    @Override
+                    public void apply(Node from, Position p) {
+                        Node usage = p.get(from);
+                        if (usage != null && !loopBegin.isPhiAtMerge(usage) && original().contains(usage)) {
+                            Node duplicated = getDuplicatedNode(usage);
+                            p.set(from, duplicated);
+                        }
+                    }
+                });
             }
             for (EndNode end : endsToMerge) {
                 newExitMerge.addForwardEnd(end);

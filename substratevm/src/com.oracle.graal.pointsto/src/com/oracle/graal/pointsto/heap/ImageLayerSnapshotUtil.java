@@ -24,16 +24,12 @@
  */
 package com.oracle.graal.pointsto.heap;
 
+import java.io.IOException;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
-
-import org.graalvm.word.LocationIdentity;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -45,25 +41,24 @@ import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
-import com.oracle.svm.util.ModuleSupport;
-import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodes.EncodedGraph;
 import jdk.graal.compiler.nodes.FieldLocationIdentity;
-import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.util.ObjectCopier;
-import jdk.vm.ci.meta.JavaKind;
 
 public class ImageLayerSnapshotUtil {
     public static final String FILE_NAME_PREFIX = "layer-snapshot-";
+    public static final String GRAPHS_FILE_NAME_PREFIX = "layer-snapshot-graphs-";
     public static final String FILE_EXTENSION = ".json";
 
     public static final String CONSTRUCTOR_NAME = "<init>";
+    public static final String CLASS_INIT_NAME = "<clinit>";
 
     public static final String PERSISTED = "persisted";
 
+    public static final int UNDEFINED_CONSTANT_ID = -1;
+    public static final int UNDEFINED_FIELD_INDEX = -1;
     public static final int NULL_POINTER_CONSTANT = -1;
     public static final int NOT_MATERIALIZED_CONSTANT = -2;
     public static final String OBJECT_TAG = "A";
@@ -122,6 +117,8 @@ public class ImageLayerSnapshotUtil {
     public static final String TARGET_CONSTRUCTOR_TAG = "target constructor";
     public static final String THROW_ALLOCATED_OBJECT_TAG = "throw allocated object";
     public static final String IDENTITY_HASH_CODE_TAG = "identityHashCode";
+    public static final String PARENT_CONSTANT_ID_TAG = "parent constant id";
+    public static final String PARENT_CONSTANT_INDEX_TAG = "parent constant index";
     public static final String HUB_IDENTITY_HASH_CODE_TAG = "hub identityHashCode";
     public static final String IS_INITIALIZED_AT_BUILD_TIME_TAG = "is initialized at build time";
     public static final String IS_NO_INITIALIZER_NO_TRACKING_TAG = "in no initializer no tracking";
@@ -163,37 +160,36 @@ public class ImageLayerSnapshotUtil {
     public static final String IMAGE_SINGLETON_KEYS = "image singleton keys";
     public static final String IMAGE_SINGLETON_OBJECTS = "image singleton objects";
 
-    protected final List<Field> externalValues;
+    protected final List<Field> externalValueFields;
+    /** This needs to be initialized after analysis, as some fields are not available before. */
+    protected Map<Object, Field> externalValues;
 
-    @SuppressWarnings("this-escape")
     public ImageLayerSnapshotUtil() {
-        externalValues = new ArrayList<>();
-
-        addExternalValues(LocationIdentity.class);
-        addExternalValues(NamedLocationIdentity.class);
+        try {
+            this.externalValueFields = ObjectCopier.getExternalValueFields();
+        } catch (IOException e) {
+            throw AnalysisError.shouldNotReachHere("Unexpected exception when creating external value fields list", e);
+        }
     }
 
-    protected void addExternalValues(Class<?> clazz) {
-        Arrays.stream(clazz.getDeclaredFields()).filter(this::shouldAddExternalValue).forEach(this::addExternalValue);
-    }
-
-    private void addExternalValue(Field f) {
-        ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, ImageLayerSnapshotUtil.class, f.getDeclaringClass());
-        f.setAccessible(true);
-        externalValues.add(f);
-    }
-
-    private boolean shouldAddExternalValue(Field f) {
-        Class<?> type = f.getType();
-        return Modifier.isStatic(f.getModifiers()) && shouldAddExternalValue(type);
-    }
-
-    protected boolean shouldAddExternalValue(Class<?> type) {
-        return LocationIdentity.class.isAssignableFrom(type);
+    /**
+     * Compute and cache the final {@code externalValues} map in
+     * {@link ImageLayerSnapshotUtil#externalValues} to avoid computing it for each graph.
+     * <p>
+     * A single {@code ObjectCopier.Encoder} instance could alternatively be used for all graphs,
+     * but it would then be impossible to process multiple graphs concurrently.
+     */
+    public void initializeExternalValues() {
+        assert externalValues == null : "The external values should be computed only once.";
+        externalValues = ObjectCopier.Encoder.gatherExternalValues(externalValueFields);
     }
 
     public static String snapshotFileName(String imageName) {
         return FILE_NAME_PREFIX + imageName + FILE_EXTENSION;
+    }
+
+    public static String snapshotGraphsFileName(String imageName) {
+        return GRAPHS_FILE_NAME_PREFIX + imageName + FILE_EXTENSION;
     }
 
     public String getTypeIdentifier(AnalysisType type) {
@@ -219,6 +215,10 @@ public class ImageLayerSnapshotUtil {
         return method.getSignature().getReturnType().toJavaName(true) + " " + method.getQualifiedName();
     }
 
+    /**
+     * Get all the field indexes that should be relinked using the hosted value of a constant from
+     * the given type.
+     */
     @SuppressWarnings("unused")
     public Set<Integer> getRelinkedFields(AnalysisType type, AnalysisMetaAccess metaAccess) {
         return Set.of();
@@ -235,15 +235,13 @@ public class ImageLayerSnapshotUtil {
 
     public static class GraphEncoder extends ObjectCopier.Encoder {
         @SuppressWarnings("this-escape")
-        public GraphEncoder(List<Field> externalValues, ImageLayerWriter imageLayerWriter) {
+        public GraphEncoder(Map<Object, Field> externalValues, ImageLayerWriter imageLayerWriter) {
             super(externalValues);
-            addBuiltin(new NodeClassBuiltIn());
             addBuiltin(new ImageHeapConstantBuiltIn(imageLayerWriter, null));
             addBuiltin(new AnalysisTypeBuiltIn(imageLayerWriter, null));
             addBuiltin(new AnalysisMethodBuiltIn(imageLayerWriter, null, null));
             addBuiltin(new AnalysisFieldBuiltIn(imageLayerWriter, null));
             addBuiltin(new FieldLocationIdentityBuiltIn(imageLayerWriter, null));
-            addBuiltin(new NamedLocationIdentityArrayBuiltIn());
         }
     }
 
@@ -254,35 +252,16 @@ public class ImageLayerSnapshotUtil {
         public GraphDecoder(ClassLoader classLoader, ImageLayerLoader imageLayerLoader, AnalysisMethod analysisMethod) {
             super(classLoader);
             this.imageLayerLoader = imageLayerLoader;
-            addBuiltin(new NodeClassBuiltIn());
             addBuiltin(new ImageHeapConstantBuiltIn(null, imageLayerLoader));
             addBuiltin(new AnalysisTypeBuiltIn(null, imageLayerLoader));
             addBuiltin(new AnalysisMethodBuiltIn(null, imageLayerLoader, analysisMethod));
             addBuiltin(new AnalysisFieldBuiltIn(null, imageLayerLoader));
             addBuiltin(new FieldLocationIdentityBuiltIn(null, imageLayerLoader));
-            addBuiltin(new NamedLocationIdentityArrayBuiltIn());
         }
 
         @Override
         public Class<?> loadClass(String className) {
             return imageLayerLoader.lookupClass(false, className);
-        }
-    }
-
-    public static class NodeClassBuiltIn extends ObjectCopier.Builtin {
-        protected NodeClassBuiltIn() {
-            super(NodeClass.class);
-        }
-
-        @Override
-        public String encode(ObjectCopier.Encoder encoder, Object obj) {
-            return ((NodeClass<?>) obj).getClazz().getName();
-        }
-
-        @Override
-        protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, String encoding, String encoded) {
-            Class<?> holder = ReflectionUtil.lookupClass(false, encoded);
-            return ReflectionUtil.readField(holder, "TYPE", null);
         }
     }
 
@@ -299,7 +278,7 @@ public class ImageLayerSnapshotUtil {
         @Override
         public String encode(ObjectCopier.Encoder encoder, Object obj) {
             ImageHeapConstant imageHeapConstant = (ImageHeapConstant) obj;
-            imageLayerWriter.elementsToPersist.add(new AnalysisFuture<>(() -> imageLayerWriter.persistConstant(imageHeapConstant)));
+            imageLayerWriter.elementsToPersist.add(new AnalysisFuture<>(() -> imageLayerWriter.persistConstant(UNDEFINED_CONSTANT_ID, UNDEFINED_FIELD_INDEX, imageHeapConstant)));
             return String.valueOf(imageHeapConstant.getConstantData().id);
         }
 
@@ -322,9 +301,7 @@ public class ImageLayerSnapshotUtil {
         @Override
         public String encode(ObjectCopier.Encoder encoder, Object obj) {
             AnalysisType type = (AnalysisType) obj;
-            if (!type.isReachable() && !imageLayerWriter.typesMap.containsKey(imageLayerWriter.imageLayerSnapshotUtil.getTypeIdentifier(type))) {
-                imageLayerWriter.persistType(type);
-            }
+            imageLayerWriter.persistType(type);
             return String.valueOf(type.getId());
         }
 
@@ -351,19 +328,13 @@ public class ImageLayerSnapshotUtil {
             AnalysisMethod method = (AnalysisMethod) obj;
             AnalysisType declaringClass = method.getDeclaringClass();
             imageLayerWriter.elementsToPersist.add(new AnalysisFuture<>(() -> {
-                if (!method.isReachable() && !imageLayerWriter.methodsMap.containsKey(imageLayerWriter.imageLayerSnapshotUtil.getMethodIdentifier(method))) {
-                    imageLayerWriter.persistAnalysisParsedGraph(method);
-                    imageLayerWriter.persistMethod(method);
-                }
+                imageLayerWriter.persistAnalysisParsedGraph(method);
+                imageLayerWriter.persistMethod(method);
             }));
             for (AnalysisType parameter : method.toParameterList()) {
-                if (!parameter.isReachable() && !imageLayerWriter.typesMap.containsKey(imageLayerWriter.imageLayerSnapshotUtil.getTypeIdentifier(parameter))) {
-                    imageLayerWriter.persistType(parameter);
-                }
+                imageLayerWriter.persistType(parameter);
             }
-            if (!declaringClass.isReachable() && !imageLayerWriter.typesMap.containsKey(imageLayerWriter.imageLayerSnapshotUtil.getTypeIdentifier(declaringClass))) {
-                imageLayerWriter.persistType(declaringClass);
-            }
+            imageLayerWriter.persistType(declaringClass);
             return String.valueOf(method.getId());
         }
 
@@ -432,26 +403,5 @@ public class ImageLayerSnapshotUtil {
 
     private static AnalysisField decodeField(ImageLayerLoader imageLayerLoader, String encoded) {
         return imageLayerLoader.getAnalysisField(Integer.parseInt(encoded));
-    }
-
-    public static class NamedLocationIdentityArrayBuiltIn extends ObjectCopier.Builtin {
-        protected NamedLocationIdentityArrayBuiltIn() {
-            super(NamedLocationIdentity.class);
-        }
-
-        @Override
-        public String encode(ObjectCopier.Encoder encoder, Object obj) {
-            NamedLocationIdentity namedLocationIdentity = (NamedLocationIdentity) obj;
-            AnalysisError.guarantee(NamedLocationIdentity.isArrayLocation(namedLocationIdentity),
-                            "The named location identity %s should be encoded using an external value.", namedLocationIdentity);
-            String name = namedLocationIdentity.toString().split("Array: ")[1];
-            /* Capitalizing the first letter gets the name of the Enum value */
-            return name.substring(0, 1).toUpperCase(Locale.ROOT) + name.substring(1);
-        }
-
-        @Override
-        protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, String encoding, String encoded) {
-            return NamedLocationIdentity.getArrayLocation(JavaKind.valueOf(encoded));
-        }
     }
 }

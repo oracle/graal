@@ -79,6 +79,7 @@ import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
+import com.oracle.svm.hosted.imagelayer.HostedDynamicLayerInfo;
 import com.oracle.svm.hosted.lambda.LambdaSubstitutionType;
 import com.oracle.svm.hosted.lambda.StableLambdaProxyNameFeature;
 import com.oracle.svm.hosted.meta.HostedField;
@@ -100,7 +101,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     private HostedUniverse hUniverse;
 
     public SVMImageLayerWriter(boolean useSharedLayerGraphs) {
-        super(useSharedLayerGraphs, new SVMImageLayerSnapshotUtil());
+        super(useSharedLayerGraphs);
     }
 
     public void setNativeImageHeap(NativeImageHeap nativeImageHeap) {
@@ -194,24 +195,11 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     }
 
     @Override
-    protected boolean shouldPersistMethod(AnalysisMethod method) {
-        if (super.shouldPersistMethod(method)) {
-            return true;
-        }
+    public void persistMethod(AnalysisMethod method, EconomicMap<String, Object> methodMap) {
+        super.persistMethod(method, methodMap);
 
-        /*
-         * If the method is present in a dispatch table of a persisted type, then it also should be
-         * persisted.
-         *
-         * Will be enabled as part of GR-57248
-         */
-        /*-
-        AnalysisType type = method.getDeclaringClass();
-        if (type.isReachable()) {
-            return type.getOpenTypeWorldDispatchTableMethods().contains(method);
-        }
-         */
-        return false;
+        // register this method as persisted for name resolution
+        HostedDynamicLayerInfo.singleton().recordPersistedMethod(hUniverse.lookup(method));
     }
 
     @Override
@@ -225,12 +213,12 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     }
 
     @Override
-    protected void persistConstant(ImageHeapConstant imageHeapConstant, EconomicMap<String, Object> constantMap) {
+    protected void persistConstant(int parentId, int index, ImageHeapConstant imageHeapConstant, EconomicMap<String, Object> constantMap) {
         ObjectInfo objectInfo = nativeImageHeap.getConstantInfo(imageHeapConstant);
         if (objectInfo != null) {
             constantMap.put(OBJECT_OFFSET_TAG, String.valueOf(objectInfo.getOffset()));
         }
-        super.persistConstant(imageHeapConstant, constantMap);
+        super.persistConstant(parentId, index, imageHeapConstant, constantMap);
     }
 
     @Override
@@ -270,10 +258,12 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     }
 
     private static int getMethodId(AnalysisMethod analysisMethod) {
-        if (!analysisMethod.isReachable()) {
+        if (!analysisMethod.isTrackedAcrossLayers()) {
             /*
-             * At the moment, only reachable methods are persisted, so the method will not be loaded
-             * in the extension image.
+             * Only tracked methods are persisted, so the method will not be loaded in the extension
+             * image.
+             *
+             * GR-59009 will ensure all methods referred to are tracked.
              */
             return -1;
         } else {

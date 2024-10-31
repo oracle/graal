@@ -49,6 +49,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
@@ -460,6 +461,13 @@ final class NotAArch64 implements BooleanSupplier {
     }
 }
 
+final class IsAMD64 implements BooleanSupplier {
+    @Override
+    public boolean getAsBoolean() {
+        return Platform.includedIn(Platform.AMD64.class);
+    }
+}
+
 /**
  * When the intrinsics below are used outside of {@link java.lang.Math}, they are lowered to a
  * foreign call. This foreign call must be uninterruptible as it results from lowering a floating
@@ -486,6 +494,14 @@ final class Target_java_lang_Math {
     @SubstrateForeignCallTarget(fullyUninterruptible = true, stubCallingConvention = false)
     public static double tan(double a) {
         return UnaryMathIntrinsicNode.compute(a, UnaryOperation.TAN);
+    }
+
+    @Substitute
+    @Uninterruptible(reason = "Must not contain a safepoint.")
+    @SubstrateForeignCallTarget(fullyUninterruptible = true, stubCallingConvention = false)
+    @TargetElement(onlyWith = IsAMD64.class)
+    public static double tanh(double a) {
+        return UnaryMathIntrinsicNode.compute(a, UnaryOperation.TANH);
     }
 
     @Substitute
@@ -579,13 +595,13 @@ class ClassValueInitializer implements FieldValueTransformerWithAvailability {
         return map;
     }
 
+    /*
+     * We want to wait to constant fold this value until all possible HotSpot initialization code
+     * has run.
+     */
     @Override
-    public ValueAvailability valueAvailability() {
-        /*
-         * We want to wait to constant fold this value until all possible HotSpot initialization
-         * code has run.
-         */
-        return ValueAvailability.AfterAnalysis;
+    public boolean isAvailable() {
+        return BuildPhaseProvider.isHostedUniverseBuilt();
     }
 }
 
@@ -659,7 +675,7 @@ final class Target_jdk_internal_loader_BootLoader {
         return ClassForNameSupport.forNameOrNull(name, null);
     }
 
-    @SuppressWarnings("unused")
+    @SuppressWarnings({"unused", "restricted"})
     @Substitute
     private static void loadLibrary(String name) {
         System.loadLibrary(name);

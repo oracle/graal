@@ -33,7 +33,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.EspressoClassLoadingException;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -100,14 +100,21 @@ public abstract class LookupProxyKlassNode extends EspressoNode {
 
         Symbol<Symbol.Type> proxyName = context.getTypes().fromClassGetName(proxyBytes.name);
         Klass proxyKlass = registry.findLoadedKlass(context.getClassLoadingEnv(), proxyName);
-        if (proxyKlass == null) {
-            try {
-                proxyKlass = registry.defineKlass(context, proxyName, proxyBytes.bytes);
-            } catch (EspressoClassLoadingException e) {
-                throw EspressoError.shouldNotReachHere(e);
-            }
+        if (proxyKlass != null) {
+            return proxyKlass;
         }
-        return proxyKlass;
+        // double-checked locking on the proxy name
+        synchronized (proxyName) {
+            proxyKlass = registry.findLoadedKlass(context.getClassLoadingEnv(), proxyName);
+            if (proxyKlass == null) {
+                try {
+                    proxyKlass = registry.defineKlass(context, proxyName, proxyBytes.bytes);
+                } catch (EspressoClassLoadingException e) {
+                    throw EspressoError.shouldNotReachHere(e);
+                }
+            }
+            return proxyKlass;
+        }
     }
 
     private static ObjectKlass fillParents(Object metaObject, InteropLibrary interop, PolyglotTypeMappings mappings, Set<ObjectKlass> parents, EspressoContext context) throws ClassCastException {

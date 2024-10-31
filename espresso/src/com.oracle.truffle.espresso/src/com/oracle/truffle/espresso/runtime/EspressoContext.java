@@ -66,13 +66,13 @@ import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
 import com.oracle.truffle.espresso.blocking.BlockingSupport;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
-import com.oracle.truffle.espresso.descriptors.Names;
-import com.oracle.truffle.espresso.descriptors.Signatures;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.descriptors.Names;
+import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.Types;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.ffi.NativeAccessCollector;
 import com.oracle.truffle.espresso.ffi.nfi.NFIIsolatedNativeAccess;
@@ -86,14 +86,16 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
+import com.oracle.truffle.espresso.jni.JNIHandles;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.interop.EspressoForeignProxyGenerator;
 import com.oracle.truffle.espresso.nodes.interop.PolyglotTypeMappings;
-import com.oracle.truffle.espresso.perf.DebugCloseable;
-import com.oracle.truffle.espresso.perf.DebugTimer;
-import com.oracle.truffle.espresso.perf.TimerCollection;
+import com.oracle.truffle.espresso.classfile.JavaVersion;
+import com.oracle.truffle.espresso.classfile.perf.DebugCloseable;
+import com.oracle.truffle.espresso.classfile.perf.DebugTimer;
+import com.oracle.truffle.espresso.classfile.perf.TimerCollection;
 import com.oracle.truffle.espresso.preinit.ContextPatchingException;
 import com.oracle.truffle.espresso.preinit.EspressoLanguageCache;
 import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
@@ -114,10 +116,8 @@ import com.oracle.truffle.espresso.vm.VM;
 import sun.misc.SignalHandler;
 
 public final class EspressoContext {
-
     // MaxJavaStackTraceDepth is 1024 by default
     public static final int DEFAULT_STACK_SIZE = 32;
-    public static final StackTraceElement[] EMPTY_STACK = new StackTraceElement[0];
 
     private static final DebugTimer SPAWN_VM = DebugTimer.create("spawnVM");
     private static final DebugTimer SYSTEM_INIT = DebugTimer.create("system init", SPAWN_VM);
@@ -185,6 +185,7 @@ public final class EspressoContext {
     @CompilationFinal private EspressoProperties vmProperties;
     @CompilationFinal private AgentLibraries agents;
     @CompilationFinal private NativeAccess nativeAccess;
+    @CompilationFinal private JNIHandles handles;
     // endregion VM
 
     @CompilationFinal private EspressoException stackOverflow;
@@ -401,6 +402,7 @@ public final class EspressoContext {
 
             // Spawn JNI first, then the VM.
             try (DebugCloseable vmInit = VM_INIT.scope(espressoEnv.getTimers())) {
+                this.handles = new JNIHandles();
                 this.jniEnv = JniEnv.create(this); // libnespresso
                 this.vm = VM.create(this.jniEnv); // libjvm
                 vm.attachThread(Thread.currentThread());
@@ -772,12 +774,28 @@ public final class EspressoContext {
         return getLanguage().getSignatures();
     }
 
+    public JNIHandles getHandles() {
+        return handles;
+    }
+
     public JniEnv getJNI() {
-        if (jniEnv == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            jniEnv = JniEnv.create(this);
-        }
         return jniEnv;
+    }
+
+    private volatile JniEnv fallbackJniEnv;
+
+    public JniEnv getJNI(TruffleObject symbol) {
+        if (nativeAccess.isFallbackSymbol(symbol)) {
+            if (fallbackJniEnv == null) {
+                synchronized (this) {
+                    if (fallbackJniEnv == null) {
+                        fallbackJniEnv = JniEnv.createFallback(this);
+                    }
+                }
+            }
+            return fallbackJniEnv;
+        }
+        return getJNI();
     }
 
     public void disposeContext() {
@@ -855,9 +873,9 @@ public final class EspressoContext {
 
     // region Agents
 
-    public TruffleObject bindToAgent(Method method, String mangledName) {
+    public TruffleObject lookupAgentSymbol(String mangledName) {
         if (espressoEnv.EnableAgents) {
-            return agents.bind(method, mangledName);
+            return agents.lookupSymbol(mangledName);
         }
         return null;
     }
@@ -905,7 +923,7 @@ public final class EspressoContext {
                 getLogger().warning("unimplemented: disposeThread for non-current thread: " + hostThread + " / " + guestName + ". Called from thread: " + Thread.currentThread());
                 return;
             }
-            if (vm.DetachCurrentThread(this) != JNI_OK) {
+            if (vm.DetachCurrentThread(this, getLanguage()) != JNI_OK) {
                 throw new RuntimeException("Could not detach thread correctly");
             }
         } finally {

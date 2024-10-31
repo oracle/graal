@@ -40,29 +40,34 @@ import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.hosted.OpenTypeWorldFeature;
+import com.oracle.svm.hosted.imagelayer.LayeredDispatchTableSupport;
 
 import jdk.graal.compiler.debug.Assertions;
 
 public final class VTableBuilder {
     private final HostedUniverse hUniverse;
     private final HostedMetaAccess hMetaAccess;
+    private final boolean closedTypeWorldHubLayout;
+    private final boolean imageLayer = ImageLayerBuildingSupport.buildingImageLayer();
 
     private VTableBuilder(HostedUniverse hUniverse, HostedMetaAccess hMetaAccess) {
         this.hUniverse = hUniverse;
         this.hMetaAccess = hMetaAccess;
+        closedTypeWorldHubLayout = SubstrateOptions.useClosedTypeWorldHubLayout();
     }
 
     public static void buildTables(HostedUniverse hUniverse, HostedMetaAccess hMetaAccess) {
         VTableBuilder builder = new VTableBuilder(hUniverse, hMetaAccess);
-        if (SubstrateOptions.closedTypeWorld()) {
+        if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
             builder.buildClosedTypeWorldVTables();
         } else {
             builder.buildOpenTypeWorldDispatchTables();
             assert builder.verifyOpenTypeWorldDispatchTables();
-            OpenTypeWorldFeature.persistDispatchInfo(hUniverse.getTypes());
-            OpenTypeWorldFeature.persistMethodInfo(hUniverse.methods.values());
         }
+    }
+
+    private static boolean shouldIncludeType(HostedType type) {
+        return type.getWrapped().isReachable() || type.getWrapped().isTrackedAcrossLayers();
     }
 
     private boolean verifyOpenTypeWorldDispatchTables() {
@@ -119,12 +124,12 @@ public final class VTableBuilder {
 
     private List<HostedMethod> generateDispatchTable(HostedType type, int startingIndex) {
         Predicate<HostedMethod> includeMethod;
-        if (ImageLayerBuildingSupport.buildingImageLayer()) {
-            // include all methods
-            includeMethod = m -> true;
-        } else {
+        if (closedTypeWorldHubLayout) {
             // include only methods which will be indirect calls
             includeMethod = m -> m.implementations.length > 1 || m.wrapped.isVirtualRootMethod();
+        } else {
+            // include all methods
+            includeMethod = m -> true;
         }
         var table = type.getWrapped().getOpenTypeWorldDispatchTableMethods().stream().map(hUniverse::lookup).filter(includeMethod).sorted(HostedUniverse.METHOD_COMPARATOR).toList();
 
@@ -136,7 +141,9 @@ public final class VTableBuilder {
             index++;
         }
 
-        OpenTypeWorldFeature.persistDispatchTable(type, table);
+        if (imageLayer) {
+            LayeredDispatchTableSupport.singleton().registerDeclaredDispatchInfo(type, table);
+        }
 
         return table;
     }
@@ -174,6 +181,7 @@ public final class VTableBuilder {
             }
             type.openTypeWorldDispatchTables = new HostedMethod[aggregatedTable.size()];
             type.openTypeWorldDispatchTableSlotTargets = aggregatedTable.toArray(HostedMethod[]::new);
+            boolean[] validTarget = new boolean[aggregatedTable.size()];
             for (int i = 0; i < aggregatedTable.size(); i++) {
                 HostedMethod method = aggregatedTable.get(i);
                 /*
@@ -185,6 +193,7 @@ public final class VTableBuilder {
                     var resolvedMethod = (HostedMethod) type.resolveConcreteMethod(method, type);
                     if (resolvedMethod != null) {
                         targetMethod = resolvedMethod;
+                        validTarget[i] = true;
                     }
 
                     if (SubstrateUtil.assertionsEnabled()) {
@@ -199,10 +208,14 @@ public final class VTableBuilder {
 
                 type.openTypeWorldDispatchTables[i] = targetMethod;
             }
+
+            if (imageLayer) {
+                LayeredDispatchTableSupport.singleton().registerNonArrayDispatchTable(type, validTarget);
+            }
         }
 
         for (HostedType subType : type.subTypes) {
-            if (subType instanceof HostedInstanceClass instanceClass && subType.getWrapped().isReachable()) {
+            if (subType instanceof HostedInstanceClass instanceClass && shouldIncludeType(subType)) {
                 generateOpenTypeWorldDispatchTable(instanceClass, dispatchTablesMap, invalidDispatchTableEntryHandler);
             }
         }
@@ -216,7 +229,7 @@ public final class VTableBuilder {
              * Each interface has its own dispatch table. These can be directly determined via
              * looking at their declared methods.
              */
-            if (type.isInterface() && type.getWrapped().isReachable()) {
+            if (type.isInterface() && shouldIncludeType(type)) {
                 dispatchTablesMap.put(type, generateITable(type));
             }
         }
@@ -227,10 +240,13 @@ public final class VTableBuilder {
         int[] emptyITableOffsets = new int[0];
         var objectType = hUniverse.getObjectClass();
         for (HostedType type : hUniverse.getTypes()) {
-            if (type.isArray()) {
+            if (type.isArray() && shouldIncludeType(type)) {
                 type.openTypeWorldDispatchTables = objectType.openTypeWorldDispatchTables;
                 type.openTypeWorldDispatchTableSlotTargets = objectType.openTypeWorldDispatchTableSlotTargets;
                 type.itableStartingOffsets = objectType.itableStartingOffsets;
+                if (imageLayer) {
+                    LayeredDispatchTableSupport.singleton().registerArrayDispatchTable(type, objectType);
+                }
             }
             if (type.openTypeWorldDispatchTables == null) {
                 assert !needsDispatchTable(type) : type;
@@ -242,7 +258,7 @@ public final class VTableBuilder {
     }
 
     public static boolean needsDispatchTable(HostedType type) {
-        return type.getWrapped().isReachable() && !(type.isInterface() || type.isPrimitive() || type.isAbstract());
+        return shouldIncludeType(type) && !(type.isInterface() || type.isPrimitive() || type.isAbstract());
     }
 
     private void buildClosedTypeWorldVTables() {

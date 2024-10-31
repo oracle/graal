@@ -35,12 +35,12 @@ import java.util.Optional;
 import java.util.function.Supplier;
 
 import jdk.graal.compiler.core.common.util.PhasePlan;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
-
 import jdk.graal.compiler.serviceprovider.GraalServices;
 
 /**
@@ -100,6 +100,21 @@ public class PhaseSuite<C> extends BasePhase<C> implements PhasePlan<BasePhase<?
             last.previous();
         }
         last.add(phase);
+    }
+
+    /** The new phase is inserted before the first position the target phase is found at. */
+    public final void insertBeforePhase(Class<? extends BasePhase<? super C>> phaseClass, BasePhase<? super C> newPhase) {
+        ListIterator<BasePhase<? super C>> position = findPhase(phaseClass);
+        GraalError.guarantee(position != null, "Phase %s not found in suite %s.", phaseClass.getName(), this.getName());
+        position.previous();
+        position.add(newPhase);
+    }
+
+    /** The new phase is inserted after the first position the target phase is found at. */
+    public final void insertAfterPhase(Class<? extends BasePhase<? super C>> phaseClass, BasePhase<? super C> newPhase) {
+        ListIterator<BasePhase<? super C>> position = findPhase(phaseClass);
+        GraalError.guarantee(position != null, "Phase %s not found in suite %s.", phaseClass.getName(), this.getName());
+        position.add(newPhase);
     }
 
     /**

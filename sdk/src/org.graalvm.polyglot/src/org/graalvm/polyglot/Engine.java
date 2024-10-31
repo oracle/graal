@@ -1166,6 +1166,16 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public Object byteSequenceSubSequence(Object origin, int index, int length) {
+            return ((ByteSequence) origin).subSequence(index, index + length);
+        }
+
+        @Override
+        public byte[] byteSequenceToByteArray(Object origin) {
+            return ((ByteSequence) origin).toByteArray();
+        }
+
+        @Override
         public boolean isInstrument(Object instrument) {
             return instrument instanceof Instrument;
         }

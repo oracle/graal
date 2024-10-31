@@ -31,6 +31,7 @@ import java.util.Map;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
@@ -80,13 +81,13 @@ public class HostedJavaThreadsFeature extends JavaThreadsFeature {
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         a.registerFieldValueTransformer(ReflectionUtil.lookupField(ThreadGroup.class, "ngroups"), new FieldValueTransformerWithAvailability() {
 
+            /*
+             * We must wait until reachableThreadGroups stabilizes after analysis to replace this
+             * value.
+             */
             @Override
-            public ValueAvailability valueAvailability() {
-                /*
-                 * We must wait until reachableThreadGroups stabilizes after analysis to replace
-                 * this value.
-                 */
-                return ValueAvailability.AfterAnalysis;
+            public boolean isAvailable() {
+                return BuildPhaseProvider.isHostedUniverseBuilt();
             }
 
             @Override
@@ -98,13 +99,13 @@ public class HostedJavaThreadsFeature extends JavaThreadsFeature {
 
         a.registerFieldValueTransformer(ReflectionUtil.lookupField(ThreadGroup.class, "groups"), new FieldValueTransformerWithAvailability() {
 
+            /*
+             * We must wait until reachableThreadGroups stabilizes after analysis to replace this
+             * value.
+             */
             @Override
-            public ValueAvailability valueAvailability() {
-                /*
-                 * We must wait until reachableThreadGroups stabilizes after analysis to replace
-                 * this value.
-                 */
-                return ValueAvailability.AfterAnalysis;
+            public boolean isAvailable() {
+                return BuildPhaseProvider.isHostedUniverseBuilt();
             }
 
             @Override

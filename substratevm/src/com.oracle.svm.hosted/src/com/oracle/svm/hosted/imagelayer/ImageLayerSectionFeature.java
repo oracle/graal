@@ -100,6 +100,7 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
 
     private static final String CACHED_IMAGE_FDS_NAME = "__svm_layer_cached_image_fds";
     private static final String CACHED_IMAGE_HEAP_OFFSETS_NAME = "__svm_layer_cached_image_heap_offsets";
+    private static final String CACHED_IMAGE_HEAP_RELOCATIONS_NAME = "__svm_layer_cached_image_heap_relocations";
 
     private static final SignedWord UNASSIGNED_FD = signed(-1);
 
@@ -136,19 +137,23 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
         CGlobalData<Pointer> initialSectionStart = ImageLayerBuildingSupport.buildingInitialLayer() ? CGlobalDataFactory.forSymbol(getLayerName(DynamicImageLayerInfo.singleton().layerNumber)) : null;
         CGlobalData<WordPointer> cachedImageFDs;
         CGlobalData<WordPointer> cachedImageHeapOffsets;
+        CGlobalData<WordPointer> cachedImageHeapRelocations;
 
         if (ImageLayerBuildingSupport.buildingInitialLayer()) {
             cachedImageFDs = CGlobalDataFactory.forSymbol(CACHED_IMAGE_FDS_NAME);
             cachedImageHeapOffsets = CGlobalDataFactory.forSymbol(CACHED_IMAGE_HEAP_OFFSETS_NAME);
+            cachedImageHeapRelocations = CGlobalDataFactory.forSymbol(CACHED_IMAGE_HEAP_RELOCATIONS_NAME);
         } else if (ImageLayerBuildingSupport.buildingApplicationLayer()) {
             cachedImageFDs = CGlobalDataFactory.createBytes(() -> createWords(DynamicImageLayerInfo.singleton().numLayers, UNASSIGNED_FD), CACHED_IMAGE_FDS_NAME);
             cachedImageHeapOffsets = CGlobalDataFactory.createBytes(() -> createWords(DynamicImageLayerInfo.singleton().numLayers, WordFactory.zero()), CACHED_IMAGE_HEAP_OFFSETS_NAME);
+            cachedImageHeapRelocations = CGlobalDataFactory.createBytes(() -> createWords(DynamicImageLayerInfo.singleton().numLayers, WordFactory.zero()), CACHED_IMAGE_HEAP_RELOCATIONS_NAME);
         } else {
             cachedImageFDs = null;
             cachedImageHeapOffsets = null;
+            cachedImageHeapRelocations = null;
         }
 
-        return new ImageLayerSectionImpl(initialSectionStart, cachedImageFDs, cachedImageHeapOffsets);
+        return new ImageLayerSectionImpl(initialSectionStart, cachedImageFDs, cachedImageHeapOffsets, cachedImageHeapRelocations);
     }
 
     @Override
@@ -156,6 +161,7 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
         if (ImageLayerBuildingSupport.buildingApplicationLayer()) {
             CGlobalDataFeature.singleton().registerWithGlobalSymbol(ImageLayerSection.getCachedImageFDs());
             CGlobalDataFeature.singleton().registerWithGlobalSymbol(ImageLayerSection.getCachedImageHeapOffsets());
+            CGlobalDataFeature.singleton().registerWithGlobalSymbol(ImageLayerSection.getCachedImageHeapRelocations());
         }
     }
 
@@ -240,8 +246,9 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
 
     private static class ImageLayerSectionImpl extends ImageLayerSection implements UnsavedSingleton {
 
-        ImageLayerSectionImpl(CGlobalData<Pointer> initialSectionStart, CGlobalData<WordPointer> cachedImageFDs, CGlobalData<WordPointer> cachedImageHeapOffsets) {
-            super(initialSectionStart, cachedImageFDs, cachedImageHeapOffsets);
+        ImageLayerSectionImpl(CGlobalData<Pointer> initialSectionStart, CGlobalData<WordPointer> cachedImageFDs, CGlobalData<WordPointer> cachedImageHeapOffsets,
+                        CGlobalData<WordPointer> cachedImageHeapRelocations) {
+            super(initialSectionStart, cachedImageFDs, cachedImageHeapOffsets, cachedImageHeapRelocations);
         }
 
         @Override

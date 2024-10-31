@@ -33,7 +33,6 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
@@ -167,6 +166,10 @@ public abstract class HostVM {
      * @param type the type that is marked as instantiated
      */
     public void onTypeInstantiated(BigBang bb, AnalysisType type) {
+    }
+
+    public boolean isCoreType(@SuppressWarnings("unused") AnalysisType type) {
+        return false;
     }
 
     public boolean useBaseLayer() {
@@ -332,6 +335,14 @@ public abstract class HostVM {
         return true;
     }
 
+    public boolean isClosedTypeWorld() {
+        return true;
+    }
+
+    public boolean enableTrackAcrossLayers() {
+        return false;
+    }
+
     /**
      * Helpers to determine what analysis actions should be taken for a given Multi-Method version.
      */
@@ -436,9 +447,5 @@ public abstract class HostVM {
          * support it within deoptimization targets and runtime-compiled methods.
          */
         return method.isOriginalMethod();
-    }
-
-    public Set<AnalysisMethod> loadOpenTypeWorldDispatchTableMethods(@SuppressWarnings("unused") AnalysisType type) {
-        return Set.of();
     }
 }

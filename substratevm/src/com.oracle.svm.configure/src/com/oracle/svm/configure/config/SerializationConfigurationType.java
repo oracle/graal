@@ -35,6 +35,9 @@ import com.oracle.svm.core.configure.SerializationConfigurationParser;
 import jdk.graal.compiler.util.json.JsonPrintable;
 import jdk.graal.compiler.util.json.JsonWriter;
 
+import static com.oracle.svm.core.configure.ConfigurationParser.NAME_KEY;
+import static com.oracle.svm.core.configure.ConfigurationParser.TYPE_KEY;
+
 public class SerializationConfigurationType implements JsonPrintable, Comparable<SerializationConfigurationType> {
     private final UnresolvedConfigurationCondition condition;
     private final String qualifiedJavaName;
@@ -66,17 +69,17 @@ public class SerializationConfigurationType implements JsonPrintable, Comparable
 
     @Override
     public void printJson(JsonWriter writer) throws IOException {
-        printJson(writer, SerializationConfigurationParser.TYPE_KEY);
+        printJson(writer, true);
     }
 
     public void printLegacyJson(JsonWriter writer) throws IOException {
-        printJson(writer, SerializationConfigurationParser.NAME_KEY);
+        printJson(writer, false);
     }
 
-    private void printJson(JsonWriter writer, String key) throws IOException {
+    private void printJson(JsonWriter writer, boolean combinedFile) throws IOException {
         writer.appendObjectStart();
-        ConfigurationConditionPrintable.printConditionAttribute(condition, writer);
-        writer.quote(key).appendFieldSeparator().quote(qualifiedJavaName);
+        ConfigurationConditionPrintable.printConditionAttribute(condition, writer, combinedFile);
+        writer.quote(combinedFile ? TYPE_KEY : NAME_KEY).appendFieldSeparator().quote(qualifiedJavaName);
         if (qualifiedCustomTargetConstructorJavaName != null) {
             writer.appendSeparator();
             writer.quote(SerializationConfigurationParser.CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY).appendFieldSeparator()

@@ -128,7 +128,7 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     CodePointer getJavaCallAddress(Object instance, boolean nonVirtual) {
         if (!nonVirtual) {
-            if (SubstrateOptions.closedTypeWorld()) {
+            if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
                 assert vtableOffset != JNIAccessibleMethod.VTABLE_OFFSET_NOT_YET_COMPUTED;
                 if (vtableOffset != JNIAccessibleMethod.STATICALLY_BOUND_METHOD) {
                     return BarrieredAccess.readWord(instance.getClass(), vtableOffset, NamedLocationIdentity.FINAL_LOCATION);
@@ -155,6 +155,10 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember {
 
     boolean isPublic() {
         return Modifier.isPublic(modifiers);
+    }
+
+    public boolean isNative() {
+        return Modifier.isNative(modifiers);
     }
 
     boolean isStatic() {

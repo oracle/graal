@@ -270,6 +270,7 @@ public class ValueAPITest {
     @Test
     public void testNull() {
         assertValueInContexts(context.asValue(null), HOST_OBJECT, NULL);
+        assertValueInContexts(createDelegateInteropWrapper(context, context.asValue(null)), NULL);
     }
 
     private static class BigIntegerSubClass extends BigInteger {
@@ -381,7 +382,12 @@ public class ValueAPITest {
                 expectedTraits.add(HASH);
             }
 
-            assertValueInContexts(context.asValue(value), expectedTraits.toArray(new Trait[0]));
+            Value v = context.asValue(value);
+            assertValueInContexts(v, expectedTraits.toArray(new Trait[0]));
+
+            expectedTraits.remove(HOST_OBJECT);
+            assertValueInContexts(createDelegateInteropWrapper(context, v), expectedTraits.toArray(new Trait[0]));
+
         }
     }
 
@@ -476,8 +482,23 @@ public class ValueAPITest {
     public void testBuffers() {
         for (final ByteBuffer buffer : testBuffers) {
             final Value value = context.asValue(buffer);
+
             assertValueInContexts(value, BUFFER_ELEMENTS, HOST_OBJECT, MEMBERS);
+
+            // with the wrapper these buffers are no longer host buffers and trigger context to
+            // context migration code
+            assertValueInContexts(createDelegateInteropWrapper(context, value), BUFFER_ELEMENTS, MEMBERS);
         }
+    }
+
+    /**
+     * Creates a wrapper that delegates all interop contracts to the inner value. This means that if
+     * you pass in a host object the resulting value will no longer have this trait. This method is
+     * useful to trigger more elaborate context migration behavior for host objects as they are
+     * directly used and not wrapped if they are passed to other contexts.
+     */
+    private static Value createDelegateInteropWrapper(Context c, Value v) {
+        return c.asValue(new InteropWrapperExecutable()).execute(v);
     }
 
     @Test
@@ -2277,6 +2298,7 @@ public class ValueAPITest {
     public void testHostException() {
         Value exceptionValue = context.asValue(new RuntimeException("expected"));
         assertValueInContexts(exceptionValue, HOST_OBJECT, MEMBERS, EXCEPTION);
+        assertValueInContexts(createDelegateInteropWrapper(context, exceptionValue), MEMBERS, EXCEPTION);
         try {
             exceptionValue.throwException();
             fail("should have thrown");
@@ -2390,6 +2412,35 @@ public class ValueAPITest {
             return string;
         }
 
+    }
+
+    @ExportLibrary(value = InteropLibrary.class)
+    @SuppressWarnings("static-method")
+    static final class InteropWrapperExecutable implements TruffleObject {
+
+        InteropWrapperExecutable() {
+        }
+
+        @ExportMessage
+        public Object execute(Object... args) {
+            return new InteropWrapper(args[0]);
+        }
+
+        @ExportMessage
+        public boolean isExecutable() {
+            return true;
+        }
+
+    }
+
+    @ExportLibrary(value = InteropLibrary.class, delegateTo = "delegate")
+    static final class InteropWrapper implements TruffleObject {
+
+        final Object delegate;
+
+        InteropWrapper(Object delegate) {
+            this.delegate = delegate;
+        }
     }
 
     @ExportLibrary(value = InteropLibrary.class, delegateTo = "number")

@@ -60,7 +60,7 @@ public class LibGraalCompilerTest extends HotSpotGraalCompilerTest {
      * Computes a hash based on the static final Object fields in {@code typeHandle}.
      *
      * Implemented by
-     * {@code com.oracle.svm.graal.hotspot.libgraal.LibGraalEntryPoints.hashConstantOopFields}.
+     * {@code com.oracle.svm.graal.hotspot.libgraal.LibGraalEntryPoints#hashConstantOopFields}.
      *
      * @param isolateThread
      * @param typeHandle the type whose constant object fields are to be hashed

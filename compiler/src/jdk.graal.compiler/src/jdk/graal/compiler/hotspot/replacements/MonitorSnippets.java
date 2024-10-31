@@ -37,16 +37,24 @@ import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.JA
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_LOCK_STACK_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_LOCK_STACK_TOP_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_OM_CACHE_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_UNLOCKED_INFLATED_MONITOR_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_ACCESS_FLAGS_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_MISC_FLAGS_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.MARK_WORD_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.OBJECT_MONITOR_CXQ_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.OBJECT_MONITOR_ENTRY_LIST_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.OBJECT_MONITOR_OWNER_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.OBJECT_MONITOR_RECURSION_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.OBJECT_MONITOR_SUCC_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.diagnoseSyncOnValueBasedClasses;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.isCAssertEnabled;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.javaThreadLockStackEndOffset;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.javaThreadLockStackTopOffset;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.javaThreadOomCacheOffset;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.javaThreadUnlockedInflatedMonitorOffset;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.jvmAccIsValueBasedClass;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.klassAccessFlagsOffset;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.klassMiscFlagsOffset;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.loadWordFromObject;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.lockMaskInPlace;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.lockMetadataOffset;
@@ -61,6 +69,7 @@ import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.om
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.omCacheOopToOopDifference;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.pageSize;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.registerAsWord;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.shouldUseKlassMiscFlags;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.unlockedValue;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.useLightweightLocking;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.useObjectMonitorTable;
@@ -136,6 +145,7 @@ import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.Snippets;
 import jdk.graal.compiler.replacements.nodes.CStringConstant;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.Register;
@@ -179,8 +189,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * appropriately to comply with the layouts above.
  */
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/96911537557dd95cd11598cd9a9f4e64e05e6aac/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L175-L578",
-          sha1 = "91e78d5d7123accf17637fbfd2f0b46a2763807a")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/d8430efb5e159b8e08d2cac66b46cb4ff1112927/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L175-L532",
+          sha1 = "042c4a5c1730525a53c24ee194a182dfd34bf754")
 // @formatter:on
 public class MonitorSnippets implements Snippets {
 
@@ -209,9 +219,10 @@ public class MonitorSnippets implements Snippets {
 
         incCounter();
 
-        if (HotSpotReplacementsUtil.diagnoseSyncOnValueBasedClasses(INJECTED_VMCONFIG)) {
-            if (hub.readWord(HotSpotReplacementsUtil.klassAccessFlagsOffset(INJECTED_VMCONFIG), HotSpotReplacementsUtil.KLASS_ACCESS_FLAGS_LOCATION).and(
-                            HotSpotReplacementsUtil.jvmAccIsValueBasedClass(INJECTED_VMCONFIG)).notEqual(0)) {
+        if (diagnoseSyncOnValueBasedClasses(INJECTED_VMCONFIG)) {
+            int flags = shouldUseKlassMiscFlags() ? hub.readInt(klassMiscFlagsOffset(INJECTED_VMCONFIG), KLASS_MISC_FLAGS_LOCATION)
+                            : hub.readInt(klassAccessFlagsOffset(INJECTED_VMCONFIG), KLASS_ACCESS_FLAGS_LOCATION);
+            if (probability(SLOW_PATH_PROBABILITY, (flags & jvmAccIsValueBasedClass(INJECTED_VMCONFIG)) != 0)) {
                 monitorenterStubC(MONITORENTER, object, lock);
                 return;
             }
@@ -376,8 +387,8 @@ public class MonitorSnippets implements Snippets {
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/bd4160cea8b6b0fcf0507199ed76a12f5d0aaba9/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L580-L739",
-              sha1 = "ec1ab37868e6a441b9afc988a8bf45f630863e9f")
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/7fa2f229fbee68112cbdd18b811d95721adfe2ec/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L534-L692",
+              sha1 = "393458a9c3b055b97fd247e424fe5b7a63840489")
     // @formatter:on
     @SuppressWarnings("unused")
     private static boolean tryLightweightLocking(Object object, Word lock, Word mark, Word thread, boolean trace, Counters counters, Register stackPointerRegister) {
@@ -504,8 +515,8 @@ public class MonitorSnippets implements Snippets {
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/bd4160cea8b6b0fcf0507199ed76a12f5d0aaba9/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L741-L890",
-              sha1 = "1c68e25285d8a4de454c2d075ae6bac4e2e3e3d5")
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/d8430efb5e159b8e08d2cac66b46cb4ff1112927/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L694-L858",
+              sha1 = "57536f7432c20e2e785059b464948f9aeee3804b")
     // @formatter:on
     private static boolean tryLightweightUnlocking(Object object, Word thread, Word lock, boolean trace, Counters counters) {
         // Load top
@@ -584,44 +595,75 @@ public class MonitorSnippets implements Snippets {
         int recursionsOffset = objectMonitorRecursionsOffset(INJECTED_VMCONFIG);
         Word recursions = monitor.readWord(recursionsOffset, OBJECT_MONITOR_RECURSION_LOCATION);
         if (probability(FAST_PATH_PROBABILITY, recursions.equal(0))) {
-            // recursions == 0
-            int cxqOffset = objectMonitorCxqOffset(INJECTED_VMCONFIG);
-            Word cxq = monitor.readWord(cxqOffset, OBJECT_MONITOR_CXQ_LOCATION);
-            int entryListOffset = objectMonitorEntryListOffset(INJECTED_VMCONFIG);
-            Word entryList = monitor.readWord(entryListOffset, OBJECT_MONITOR_ENTRY_LIST_LOCATION);
-            if (probability(FREQUENT_PROBABILITY, cxq.or(entryList).equal(0))) {
-                // cxq == 0 && entryList == 0
-                // Nobody is waiting, success
-                // release_store
-                memoryBarrier(MembarNode.FenceKind.STORE_RELEASE);
-                monitor.writeWord(ownerOffset, zero());
-                traceObject(trace, "-lock{heavyweight:simple}", object, false);
-                counters.unlockHeavySimple.inc();
-                return true;
-            } else {
-                int succOffset = objectMonitorSuccOffset(INJECTED_VMCONFIG);
-                Word succ = monitor.readWord(succOffset, OBJECT_MONITOR_SUCC_LOCATION);
-                if (probability(FREQUENT_PROBABILITY, succ.isNonNull())) {
-                    // There may be a thread spinning on this monitor. Temporarily setting
-                    // the monitor owner to null, and hope that the other thread will grab it.
-                    monitor.writeWordVolatile(ownerOffset, zero());
-                    succ = monitor.readWordVolatile(succOffset, OBJECT_MONITOR_SUCC_LOCATION);
-                    if (probability(NOT_FREQUENT_PROBABILITY, succ.isNonNull())) {
-                        // We manage to release the monitor before the other running thread even
-                        // notices.
-                        traceObject(trace, "-lock{heavyweight:transfer}", object, false);
-                        counters.unlockHeavyTransfer.inc();
-                        return true;
-                    } else {
-                        // Either the monitor is grabbed by a spinning thread, or the spinning
-                        // thread parks. Now we attempt to reset the owner of the monitor.
-                        if (probability(FREQUENT_PROBABILITY, !monitor.logicCompareAndSwapWord(ownerOffset, zero(), thread, OBJECT_MONITOR_OWNER_LOCATION))) {
-                            // The monitor is stolen.
+            if (JavaVersionUtil.JAVA_SPEC == 21) {
+                // recursions == 0
+                Word entryList = monitor.readWord(objectMonitorEntryListOffset(INJECTED_VMCONFIG), OBJECT_MONITOR_ENTRY_LIST_LOCATION);
+                Word cxq = monitor.readWord(objectMonitorCxqOffset(INJECTED_VMCONFIG), OBJECT_MONITOR_CXQ_LOCATION);
+                if (probability(FREQUENT_PROBABILITY, entryList.or(cxq).equal(0))) {
+                    // entryList == 0 && cxq == 0
+                    // Nobody is waiting, success
+                    // release_store
+                    memoryBarrier(MembarNode.FenceKind.STORE_RELEASE);
+                    monitor.writeWord(ownerOffset, zero());
+                    traceObject(trace, "-lock{heavyweight:simple}", object, false);
+                    counters.unlockHeavySimple.inc();
+                    return true;
+                } else {
+                    int succOffset = objectMonitorSuccOffset(INJECTED_VMCONFIG);
+                    Word succ = monitor.readWord(succOffset, OBJECT_MONITOR_SUCC_LOCATION);
+                    if (probability(FREQUENT_PROBABILITY, succ.isNonNull())) {
+                        // There may be a thread spinning on this monitor. Temporarily setting
+                        // the monitor owner to null, and hope that the other thread will grab it.
+                        monitor.writeWordVolatile(ownerOffset, zero());
+                        succ = monitor.readWordVolatile(succOffset, OBJECT_MONITOR_SUCC_LOCATION);
+                        if (probability(NOT_FREQUENT_PROBABILITY, succ.isNonNull())) {
+                            // We manage to release the monitor before the other running thread even
+                            // notices.
                             traceObject(trace, "-lock{heavyweight:transfer}", object, false);
                             counters.unlockHeavyTransfer.inc();
                             return true;
+                        } else {
+                            // Either the monitor is grabbed by a spinning thread, or the spinning
+                            // thread parks. Now we attempt to reset the owner of the monitor.
+                            if (probability(FREQUENT_PROBABILITY, !monitor.logicCompareAndSwapWord(ownerOffset, zero(), thread, OBJECT_MONITOR_OWNER_LOCATION))) {
+                                // The monitor is stolen.
+                                traceObject(trace, "-lock{heavyweight:transfer}", object, false);
+                                counters.unlockHeavyTransfer.inc();
+                                return true;
+                            }
                         }
                     }
+                }
+            } else {
+                // Set owner to null.
+                memoryBarrier(MembarNode.FenceKind.STORE_RELEASE);
+                monitor.writeWord(ownerOffset, zero());
+                memoryBarrier(MembarNode.FenceKind.STORE_LOAD);
+                // Note that we read the EntryList and then the cxq after dropping the
+                // lock, so the values need not form a stable snapshot. In particular,
+                // after reading the (empty) EntryList, another thread could acquire
+                // and release the lock, moving any entries in the cxq to the
+                // EntryList, causing the current thread to see an empty cxq and
+                // conclude there are no waiters. But this is okay as the thread that
+                // moved the cxq is responsible for waking the successor.
+                Word entryList = monitor.readWord(objectMonitorEntryListOffset(INJECTED_VMCONFIG), OBJECT_MONITOR_ENTRY_LIST_LOCATION);
+                Word cxq = monitor.readWord(objectMonitorCxqOffset(INJECTED_VMCONFIG), OBJECT_MONITOR_CXQ_LOCATION);
+                // Check if the entry lists are empty.
+                if (probability(FREQUENT_PROBABILITY, entryList.or(cxq).equal(0))) {
+                    traceObject(trace, "-lock{heavyweight:simple}", object, false);
+                    counters.unlockHeavySimple.inc();
+                    return true;
+                }
+                // Check if there is a successor.
+                Word succ = monitor.readWord(objectMonitorSuccOffset(INJECTED_VMCONFIG), OBJECT_MONITOR_SUCC_LOCATION);
+                if (probability(FREQUENT_PROBABILITY, succ.isNonNull())) {
+                    // We manage to release the monitor before the other running thread even
+                    // notices.
+                    traceObject(trace, "-lock{heavyweight:transfer}", object, false);
+                    counters.unlockHeavyTransfer.inc();
+                    return true;
+                } else {
+                    thread.writeWord(javaThreadUnlockedInflatedMonitorOffset(INJECTED_VMCONFIG), monitor, JAVA_THREAD_UNLOCKED_INFLATED_MONITOR_LOCATION);
                 }
             }
         } else {

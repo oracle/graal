@@ -2256,19 +2256,20 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     private void connectEnds(List<EndNode> ends, ValuePhiNode phi, EconomicMap<AbstractEndNode, ValueNode> phiValues, AbstractBeginNode successor, AbstractMergeNode oldMerge, SimplifierTool tool) {
         if (!ends.isEmpty()) {
             // If there was a value proxy usage, then the proxy needs a new value.
-            ValueProxyNode valueProxy = null;
+            List<Node> valueProxies;
             if (successor instanceof LoopExitNode) {
-                for (Node usage : phi.usages()) {
-                    if (usage instanceof ValueProxyNode && ((ValueProxyNode) usage).proxyPoint() == successor) {
-                        valueProxy = (ValueProxyNode) usage;
-                    }
-                }
+                /*
+                 * In rare cases the ValueProxyNodes might not have GVN'ed so handle as many
+                 * matching ValueProxyNodes as exist.
+                 */
+                valueProxies = phi.usages().filter(u -> u instanceof ValueProxyNode && ((ValueProxyNode) u).proxyPoint() == successor).snapshot();
+            } else {
+                valueProxies = null;
             }
-            final ValueProxyNode proxy = valueProxy;
             if (ends.size() == 1) {
                 AbstractEndNode end = ends.get(0);
-                if (proxy != null) {
-                    phi.replaceAtUsages(phiValues.get(end), n -> n == proxy);
+                if (valueProxies != null) {
+                    phi.replaceAtUsages(phiValues.get(end), valueProxies::contains);
                 }
                 ((FixedWithNextNode) end.predecessor()).setNext(successor);
                 oldMerge.removeEnd(end);
@@ -2281,8 +2282,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 PhiNode oldPhi = (PhiNode) oldMerge.usages().first();
                 PhiNode newPhi = graph().addWithoutUnique(new ValuePhiNode(oldPhi.stamp(view), newMerge));
 
-                if (proxy != null) {
-                    phi.replaceAtUsages(newPhi, n -> n == proxy);
+                if (valueProxies != null) {
+                    phi.replaceAtUsages(newPhi, valueProxies::contains);
                 }
 
                 for (EndNode end : ends) {

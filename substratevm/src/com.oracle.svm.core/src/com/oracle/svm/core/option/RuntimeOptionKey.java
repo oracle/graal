@@ -32,6 +32,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.collections.EnumBitmask;
 import com.oracle.svm.core.jdk.RuntimeSupport;
@@ -111,7 +112,11 @@ public class RuntimeOptionKey<T> extends OptionKey<T> implements SubstrateOption
     }
 
     public boolean isImmutable() {
-        return EnumBitmask.hasBit(flags, RuntimeOptionKeyFlag.Immutable);
+        return EnumBitmask.hasBit(flags, RuntimeOptionKeyFlag.Immutable) || EnumBitmask.hasBit(flags, RuntimeOptionKeyFlag.IsolateCreationOnly);
+    }
+
+    public boolean isIsolateCreationOnly() {
+        return EnumBitmask.hasBit(flags, RuntimeOptionKeyFlag.IsolateCreationOnly);
     }
 
     @Fold
@@ -129,5 +134,13 @@ public class RuntimeOptionKey<T> extends OptionKey<T> implements SubstrateOption
          * flag should be used for runtime options that are accessed in startup hooks.
          */
         Immutable,
+        /**
+         * If this flag is set, then the option is parsed during isolate creation and its value can
+         * typically only be set during isolate creation. This implies {@link #Immutable}.
+         * <p>
+         * See {@link IsolateArgumentParser#verifyOptionValues()} for the validation that these
+         * options are not changed after isolate creation and potential exceptions to the rule.
+         */
+        IsolateCreationOnly
     }
 }

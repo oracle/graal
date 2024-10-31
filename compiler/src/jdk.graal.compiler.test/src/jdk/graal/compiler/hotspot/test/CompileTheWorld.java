@@ -875,13 +875,15 @@ public final class CompileTheWorld extends LibGraalCompilationDriver {
         int limit = Options.MetricsReportLimit.getValue(harnessOptions);
         if (limit > 0) {
             TTY.println("Longest compile times:");
-            compileTimes.entrySet().stream().sorted(Comparator.comparing(entry -> entry.getValue().compileTime())).limit(limit).forEach(e -> {
+            final Comparator<Map.Entry<ResolvedJavaMethod, CompilationResult>> compileTimeComparator = Comparator.comparing(entry -> entry.getValue().compileTime());
+            compileTimes.entrySet().stream().sorted(compileTimeComparator.reversed()).limit(limit).forEach(e -> {
                 long time = nanoToMillis(e.getValue().compileTime());
                 ResolvedJavaMethod method = e.getKey();
                 TTY.println("  %,10d ms   %s [bytecodes: %d]", time, method.format("%H.%n(%p)"), method.getCodeSize());
             });
             TTY.println("Largest methods skipped due to bytecode size exceeding HugeMethodLimit (%d):", getHugeMethodLimit(getGraalRuntime().getVMConfig()));
-            hugeMethods.entrySet().stream().sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue())).limit(limit).forEach(e -> {
+            final Comparator<Map.Entry<ResolvedJavaMethod, Integer>> codeSizeComparator = Map.Entry.comparingByValue();
+            hugeMethods.entrySet().stream().sorted(codeSizeComparator.reversed()).limit(limit).forEach(e -> {
                 ResolvedJavaMethod method = e.getKey();
                 TTY.println("  %,10d      %s", e.getValue(), method.format("%H.%n(%p)"), method.getCodeSize());
             });

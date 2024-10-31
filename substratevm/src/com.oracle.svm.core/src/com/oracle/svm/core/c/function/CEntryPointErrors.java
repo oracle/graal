@@ -97,6 +97,9 @@ public final class CEntryPointErrors {
     @Description("The image heap does not fit in the available address space.") //
     public static final int INSUFFICIENT_ADDRESS_SPACE = 802;
 
+    @Description("The operating system does not support mremap.") //
+    public static final int MREMAP_NOT_SUPPORTED = 803;
+
     @Description("Setting the protection of the heap memory failed.") //
     public static final int PROTECT_HEAP_FAILED = 9;
 

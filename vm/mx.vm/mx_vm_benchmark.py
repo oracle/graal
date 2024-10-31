@@ -134,7 +134,7 @@ class NativeImageBenchmarkConfig:
         self.bm_suite = bm_suite
         self.benchmark_suite_name = bm_suite.benchSuiteName(args)
         self.benchmark_name = bm_suite.benchmarkName()
-        self.executable, self.classpath_arguments, self.modulepath_arguments, self.system_properties, self.image_vm_args, image_run_args, self.split_run = NativeImageVM.extract_benchmark_arguments(args)
+        self.executable, self.classpath_arguments, self.modulepath_arguments, self.system_properties, self.image_vm_args, image_run_args, self.split_run = NativeImageVM.extract_benchmark_arguments(args, bm_suite.all_command_line_args_are_vm_args())
         self.extra_image_build_arguments: List[str] = bm_suite.extra_image_build_argument(self.benchmark_name, args)
         # use list() to create fresh copies to safeguard against accidental modification
         self.image_run_args = bm_suite.extra_run_arg(self.benchmark_name, args, list(image_run_args))
@@ -227,6 +227,8 @@ class NativeImageBenchmarkConfig:
             base_image_build_args += ['-Ob']
         if vm.use_string_inlining:
             base_image_build_args += ['-H:+UseStringInlining']
+        if vm.use_open_type_world:
+            base_image_build_args += ['-H:-ClosedTypeWorld']
         if vm.is_llvm:
             base_image_build_args += ['--features=org.graalvm.home.HomeFinderFeature'] + ['-H:CompilerBackend=llvm', '-H:DeadlockWatchdogInterval=0']
         if vm.gc:
@@ -527,6 +529,7 @@ class NativeImageVM(GraalVm):
         self.gc = None
         self.native_architecture = False
         self.use_upx = False
+        self.use_open_type_world = False
         self.graalvm_edition = None
         self.config: Optional[NativeImageBenchmarkConfig] = None
         self.stages_info: Optional[StagesInfo] = None
@@ -558,7 +561,7 @@ class NativeImageVM(GraalVm):
             return
 
         # This defines the allowed config names for NativeImageVM. The ones registered will be available via --jvm-config
-        rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-ctx-insens-|pgo-sampler-)?(?P<inliner>inline-)?' \
+        rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<otw>otw-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-ctx-insens-|pgo-sampler-)?(?P<inliner>inline-)?' \
                r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-|2obj1h-|3obj2h-|4obj3h-)?(?P<no_inlining_before_analysis>no-inline-)?(?P<jdk_profiles>jdk-profiles-collect-|adopted-jdk-pgo-)?' \
                r'(?P<profile_inference>profile-inference-feature-extraction-|profile-inference-pgo-|profile-inference-debug-)?(?P<sampler>safepoint-sampler-|async-sampler-)?(?P<optimization_level>O0-|O1-|O2-|O3-|Os-)?(?P<edition>ce-|ee-)?$'
 
@@ -583,6 +586,10 @@ class NativeImageVM(GraalVm):
         if matching.group("upx") is not None:
             mx.logv(f"'upx' is enabled for {config_name}")
             self.use_upx = True
+
+        if matching.group("otw") is not None:
+            mx.logv(f"'otw' is enabled for {config_name}")
+            self.use_open_type_world = True
 
         if matching.group("quickbuild") is not None:
             mx.logv(f"'quickbuild' is enabled for {config_name}")
@@ -739,7 +746,10 @@ class NativeImageVM(GraalVm):
                                     '--patch-module', '--boot-class-path', '--source-path', '-cp', '-classpath', '-p']
 
     @staticmethod
-    def _split_vm_arguments(args):
+    def _split_vm_arguments(args, all_args_are_vm_args):
+        if all_args_are_vm_args:
+            return args, [], []
+
         i = 0
         while i < len(args):
             arg = args[i]
@@ -755,7 +765,7 @@ class NativeImageVM(GraalVm):
         mx.abort('No executable found in args: ' + str(args))
 
     @staticmethod
-    def extract_benchmark_arguments(args):
+    def extract_benchmark_arguments(args, all_args_are_vm_args):
         i = 0
         clean_args = args[:]
         split_run = None
@@ -769,7 +779,7 @@ class NativeImageVM(GraalVm):
             else:
                 i += 1
         clean_args = [x for x in clean_args if "-Dnative-image" not in x]
-        vm_args, executable, image_run_args = NativeImageVM._split_vm_arguments(clean_args)
+        vm_args, executable, image_run_args = NativeImageVM._split_vm_arguments(clean_args, all_args_are_vm_args)
 
         classpath_arguments = []
         modulepath_arguments = []
@@ -986,6 +996,7 @@ class NativeImageVM(GraalVm):
         rules = []
         for i in range(0, len(metric_objects)):
             rules += self._get_image_build_stats_rules({
+                "bench-suite": self.config.benchmark_suite_name,
                 "benchmark": benchmarks[0],
                 "metric.name": "image-build-stats",
                 "metric.type": "numeric",
@@ -1006,6 +1017,7 @@ class NativeImageVM(GraalVm):
             phase = measured_phases[i]
             value_name = phase + "_time"
             rules += self._get_image_build_stats_rules({
+                "bench-suite": self.config.benchmark_suite_name,
                 "benchmark": benchmarks[0],
                 "metric.name": "compile-time",
                 "metric.type": "numeric",
@@ -1018,6 +1030,7 @@ class NativeImageVM(GraalVm):
             }, [value_name])
             value_name = phase + "_memory"
             rules += self._get_image_build_stats_rules({
+                "bench-suite": self.config.benchmark_suite_name,
                 "benchmark": benchmarks[0],
                 "metric.name": "compile-time",
                 "metric.type": "numeric",
@@ -1404,7 +1417,7 @@ class AgentScriptJsBenchmarkSuite(mx_benchmark.VmBenchmarkSuite, mx_benchmark.Av
         assert len(benchmarks) == 1
         return [
             mx_benchmark.StdOutRule(r'^Hundred thousand prime numbers in (?P<time>[0-9]+) ms$', {
-                "bench-suite": self.name(),
+                "bench-suite": self.benchSuiteName(),
                 "benchmark": (benchmarks[0], str),
                 "metric.name": "warmup",
                 "metric.type": "numeric",
@@ -1688,7 +1701,7 @@ class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
             mx_benchmark.StdOutRule(
                 FileSizeBenchmarkSuite.SZ_RGX_PATTERN,
                 {
-                    "bench-suite": self.name(),
+                    "bench-suite": self.benchSuiteName(),
                     "benchmark": ("<image_name>", str),
                     "benchmark-configuration": ("<path>", str),
                     "vm": "svm",

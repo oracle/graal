@@ -43,6 +43,7 @@ import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
 
+import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
@@ -350,6 +351,7 @@ public abstract class CompilationWrapper<T> {
 
                 T res;
                 try {
+                    CompilationAlarm.current().reset(retryOptions);
                     res = performCompilation(retryDebug);
                 } finally {
                     ps.println("<Metrics>");

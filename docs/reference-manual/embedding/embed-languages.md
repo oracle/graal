@@ -565,7 +565,7 @@ The language home options remain functional for compatibility reasons but may be
 ### Configuring Native Host Reflection
 
 Accessing host Java code from the guest application requires Java reflection in order to work.
-When reflection is used within a native executable, the [reflection configuration file](../native-image/Reflection.md) is required.
+When reflection is used within a native executable, the [reflection configuration file](../native-image/ReachabilityMetadata.md#reflection) is required.
 
 For this example we use JavaScript to show host access with native executables.
 Copy the following code in a new file named `AccessJavaFromJS.java`.
@@ -601,13 +601,18 @@ public class AccessJavaFromJS {
 }
 ```
 
-Copy the following code into `reflect.json`:
+Copy the following code into `reachability-metadata.json`:
+```json
+{
+  "reflection": [
+     { "type": "AccessJavaFromJS$MyClass", "allPublicFields": true },
+     { "type": "java.util.concurrent.Callable", "allPublicMethods": true }
+  ]
+}
+```
 
-{% highlight java %}
-{% include embed/access_java_from_reflection_config.json %}
-{% endhighlight %}
 
-Now, you can create a native executable that supports host access and add the additional `-H:ReflectionConfigurationFiles=reflect.json` build-time option.
+Now, you can add `reachability-metadata.json` to `META-INF/native-image/<group-id>/` of your project.
 
 ## Code Caching Across Multiple Contexts
 
@@ -681,7 +686,7 @@ To summarize, the code cache can be controlled by keeping and maintaining strong
 
 On Oracle GraalVM, a polyglot engine can be configured to run in a dedicated Native Image isolate.
 A polyglot engine in this mode executes within a VM-level fault domain with a dedicated garbage collector and JIT compiler.
-Polyglot isolates are useful for [polyglot sandboxing](../../security/polyglot-sandbox.md).
+Polyglot isolates are useful for [sandboxing](../../security/polyglot-sandbox.md).
 Running languages in an isolate works with HotSpot and Native Image host virtual machines.
 
 Languages used as polyglot isolates can be downloaded from Maven Central using the `-isolate` suffix.
@@ -971,7 +976,7 @@ Alternatively, the factory can be registered via `javax.script.ScriptEngineManag
 The best practice is to close the `ScriptEngine` when no longer used rather than relying on finalizers.
 To close it, use `((AutoCloseable) scriptEngine).close();` since `ScriptEngine` does not have a `close()` method.
 
-Note that [Graal.js](../js/) provides [a ScriptEngine implementation](../js/ScriptEngine/) for users migrating from the Nashorn JavaScript engine that was deprecated in JDK 11, so this method here is not needed.
+Note that [GraalJS](https://www.graalvm.org/reference-manual/js/) provides [a ScriptEngine implementation](https://www.graalvm.org/reference-manual/js/ScriptEngine/) for users migrating from the Nashorn JavaScript engine that was deprecated in JDK 11, so this method here is not needed.
 
 <details>
 <summary>Expand to see the <code>ScriptEngineFactory</code> implementation for Truffle languages in a single file.</summary>

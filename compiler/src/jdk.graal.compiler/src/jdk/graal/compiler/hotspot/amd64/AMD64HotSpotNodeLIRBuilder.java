@@ -102,7 +102,6 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
         if (stub != null && stub.getLinkage().getEffect() == HotSpotForeignCallLinkage.RegisterEffect.KILLS_NO_REGISTERS) {
             assert stub.getLinkage().getDescriptor().getTransition() != HotSpotForeignCallDescriptor.Transition.SAFEPOINT : stub;
             AMD64SaveRegistersOp saveOp = getGen().emitSaveAllRegisters(false);
-            append(saveOp);
             result.setSaveOnEntry(saveOp);
         }
 

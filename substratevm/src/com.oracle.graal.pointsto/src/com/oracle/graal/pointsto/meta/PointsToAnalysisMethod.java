@@ -42,6 +42,7 @@ import com.oracle.graal.pointsto.util.ConcurrentLightHashMap;
 import com.oracle.svm.common.meta.MultiMethod;
 
 import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public final class PointsToAnalysisMethod extends AnalysisMethod {
@@ -196,11 +197,13 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
         actualParameters[0] = receiverFlow;
         for (int i = 1; i < actualParameters.length; i++) {
             actualParameters[i] = new ActualParameterTypeFlow(method.getSignature().getParameterType(i - 1));
+            actualParameters[i].enableFlow(bb);
         }
         ActualReturnTypeFlow actualReturn = null;
         AnalysisType returnType = method.getSignature().getReturnType();
-        if (bb.isSupportedJavaKind(returnType.getStorageKind())) {
+        if (bb.isSupportedJavaKind(returnType.getStorageKind()) || (bb.usePredicates() && returnType.getStorageKind() == JavaKind.Void)) {
             actualReturn = new ActualReturnTypeFlow(returnType);
+            actualReturn.enableFlow(bb);
         }
 
         InvokeTypeFlow invoke;
@@ -211,6 +214,7 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
             invoke = bb.analysisPolicy().createVirtualInvokeTypeFlow(originalLocation, receiverType, method, actualParameters,
                             actualReturn, callerMultiMethodKey);
         }
+        invoke.enableFlow(bb);
         invoke.markAsContextInsensitive();
 
         return invoke;

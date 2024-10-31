@@ -33,8 +33,8 @@ import org.graalvm.word.LocationIdentity;
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
-import jdk.graal.compiler.nodes.extended.FixedValueAnchorNode;
 import jdk.graal.compiler.nodes.extended.MembarNode;
+import jdk.graal.compiler.nodes.extended.PublishWritesNode;
 import jdk.graal.compiler.nodes.java.DynamicNewArrayNode;
 import jdk.graal.compiler.nodes.java.NewArrayNode;
 import jdk.graal.compiler.options.OptionValues;
@@ -70,7 +70,7 @@ public class ObjectCloneSnippets implements Snippets {
         boolean[] result = (boolean[]) NewArrayNode.newUninitializedArray(Boolean.TYPE, src.length);
         ArrayCopyCallNode.disjointArraycopy(src, 0, result, 0, src.length, JavaKind.Boolean, LocationIdentity.init(), HotSpotReplacementsUtil.getHeapWordSize(INJECTED_VMCONFIG));
         MembarNode.memoryBarrier(MembarNode.FenceKind.ALLOCATION_INIT, LocationIdentity.INIT_LOCATION);
-        return (boolean[]) FixedValueAnchorNode.getObject(result);
+        return (boolean[]) PublishWritesNode.publishWrites(result);
     }
 
     @Snippet
@@ -78,7 +78,7 @@ public class ObjectCloneSnippets implements Snippets {
         byte[] result = (byte[]) NewArrayNode.newUninitializedArray(Byte.TYPE, src.length);
         ArrayCopyCallNode.disjointArraycopy(src, 0, result, 0, src.length, JavaKind.Byte, LocationIdentity.init(), HotSpotReplacementsUtil.getHeapWordSize(INJECTED_VMCONFIG));
         MembarNode.memoryBarrier(MembarNode.FenceKind.ALLOCATION_INIT, LocationIdentity.INIT_LOCATION);
-        return (byte[]) FixedValueAnchorNode.getObject(result);
+        return (byte[]) PublishWritesNode.publishWrites(result);
     }
 
     @Snippet
@@ -86,7 +86,7 @@ public class ObjectCloneSnippets implements Snippets {
         short[] result = (short[]) NewArrayNode.newUninitializedArray(Short.TYPE, src.length);
         ArrayCopyCallNode.disjointArraycopy(src, 0, result, 0, src.length, JavaKind.Short, LocationIdentity.init(), HotSpotReplacementsUtil.getHeapWordSize(INJECTED_VMCONFIG));
         MembarNode.memoryBarrier(MembarNode.FenceKind.ALLOCATION_INIT, LocationIdentity.INIT_LOCATION);
-        return (short[]) FixedValueAnchorNode.getObject(result);
+        return (short[]) PublishWritesNode.publishWrites(result);
     }
 
     @Snippet
@@ -94,7 +94,7 @@ public class ObjectCloneSnippets implements Snippets {
         char[] result = (char[]) NewArrayNode.newUninitializedArray(Character.TYPE, src.length);
         ArrayCopyCallNode.disjointArraycopy(src, 0, result, 0, src.length, JavaKind.Char, LocationIdentity.init(), HotSpotReplacementsUtil.getHeapWordSize(INJECTED_VMCONFIG));
         MembarNode.memoryBarrier(MembarNode.FenceKind.ALLOCATION_INIT, LocationIdentity.INIT_LOCATION);
-        return (char[]) FixedValueAnchorNode.getObject(result);
+        return (char[]) PublishWritesNode.publishWrites(result);
     }
 
     @Snippet
@@ -102,7 +102,7 @@ public class ObjectCloneSnippets implements Snippets {
         int[] result = (int[]) NewArrayNode.newUninitializedArray(Integer.TYPE, src.length);
         ArrayCopyCallNode.disjointArraycopy(src, 0, result, 0, src.length, JavaKind.Int, LocationIdentity.init(), HotSpotReplacementsUtil.getHeapWordSize(INJECTED_VMCONFIG));
         MembarNode.memoryBarrier(MembarNode.FenceKind.ALLOCATION_INIT, LocationIdentity.INIT_LOCATION);
-        return (int[]) FixedValueAnchorNode.getObject(result);
+        return (int[]) PublishWritesNode.publishWrites(result);
     }
 
     @Snippet
@@ -110,7 +110,7 @@ public class ObjectCloneSnippets implements Snippets {
         float[] result = (float[]) NewArrayNode.newUninitializedArray(Float.TYPE, src.length);
         ArrayCopyCallNode.disjointArraycopy(src, 0, result, 0, src.length, JavaKind.Float, LocationIdentity.init(), HotSpotReplacementsUtil.getHeapWordSize(INJECTED_VMCONFIG));
         MembarNode.memoryBarrier(MembarNode.FenceKind.ALLOCATION_INIT, LocationIdentity.INIT_LOCATION);
-        return (float[]) FixedValueAnchorNode.getObject(result);
+        return (float[]) PublishWritesNode.publishWrites(result);
     }
 
     @Snippet
@@ -118,7 +118,7 @@ public class ObjectCloneSnippets implements Snippets {
         long[] result = (long[]) NewArrayNode.newUninitializedArray(Long.TYPE, src.length);
         ArrayCopyCallNode.disjointArraycopy(src, 0, result, 0, src.length, JavaKind.Long, LocationIdentity.init(), HotSpotReplacementsUtil.getHeapWordSize(INJECTED_VMCONFIG));
         MembarNode.memoryBarrier(MembarNode.FenceKind.ALLOCATION_INIT, LocationIdentity.INIT_LOCATION);
-        return (long[]) FixedValueAnchorNode.getObject(result);
+        return (long[]) PublishWritesNode.publishWrites(result);
     }
 
     @Snippet
@@ -126,7 +126,7 @@ public class ObjectCloneSnippets implements Snippets {
         double[] result = (double[]) NewArrayNode.newUninitializedArray(Double.TYPE, src.length);
         ArrayCopyCallNode.disjointArraycopy(src, 0, result, 0, src.length, JavaKind.Double, LocationIdentity.init(), HotSpotReplacementsUtil.getHeapWordSize(INJECTED_VMCONFIG));
         MembarNode.memoryBarrier(MembarNode.FenceKind.ALLOCATION_INIT, LocationIdentity.INIT_LOCATION);
-        return (double[]) FixedValueAnchorNode.getObject(result);
+        return (double[]) PublishWritesNode.publishWrites(result);
     }
 
     @Snippet

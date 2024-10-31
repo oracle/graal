@@ -93,7 +93,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
     private final HotSpotJVMCIRuntime jvmciRuntime;
 
     protected final HotSpotGraalCompiler compiler;
-    private final HotSpotCompilationIdentifier compilationId;
+    protected final HotSpotCompilationIdentifier compilationId;
 
     private HotSpotInstalledCode installedCode;
 
@@ -117,8 +117,8 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
     private TypeFilter profileSaveFilter;
 
     protected class HotSpotCompilationWrapper extends CompilationWrapper<HotSpotCompilationRequestResult> {
-        CompilationResult result;
-        StructuredGraph graph;
+        protected CompilationResult result;
+        protected StructuredGraph graph;
 
         protected HotSpotCompilationWrapper() {
             super(compiler.getGraalRuntime().getOutputDirectory(), compiler.getGraalRuntime().getCompilationProblemsPerAction());
@@ -278,6 +278,10 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
 
             stats.finish(method, installedCode);
 
+            return buildCompilationRequestResult(method);
+        }
+
+        protected HotSpotCompilationRequestResult buildCompilationRequestResult(HotSpotResolvedJavaMethod method) {
             // For compilation of substitutions the method in the compilation request might be
             // different than the actual method parsed. The root of the compilation will always
             // be the first method in the methods list, so use that instead.
@@ -488,7 +492,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
     }
 
     @SuppressWarnings("try")
-    private void installMethod(DebugContext debug, StructuredGraph graph, final CompilationResult compResult) {
+    protected void installMethod(DebugContext debug, StructuredGraph graph, final CompilationResult compResult) {
         final CodeCacheProvider codeCache = jvmciRuntime.getHostJVMCIBackend().getCodeCache();
         HotSpotBackend backend = compiler.getGraalRuntime().getHostBackend();
         installedCode = null;

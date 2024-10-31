@@ -110,25 +110,30 @@ public final class ProxyConfiguration extends ConfigurationBase<ProxyConfigurati
     public static void printProxyInterfaces(JsonWriter writer, List<ConditionalElement<List<String>>> lists) throws IOException {
         lists.sort(ConditionalElement.comparator(ProxyConfiguration::compareList));
 
-        writer.append('[');
-        writer.indent();
-        String prefix = "";
+        writer.appendArrayStart();
+        boolean firstProxy = true;
         for (ConditionalElement<List<String>> list : lists) {
-            writer.append(prefix).newline();
-            writer.append('{').indent().newline();
-            ConfigurationConditionPrintable.printConditionAttribute(list.condition(), writer);
-            writer.quote("interfaces").append(":").append('[');
-            String typePrefix = "";
-            for (String type : list.element()) {
-                writer.append(typePrefix).quote(type);
-                typePrefix = ",";
+            if (firstProxy) {
+                firstProxy = false;
+            } else {
+                writer.appendSeparator();
             }
-            writer.append(']').unindent().newline();
-            writer.append('}');
-            prefix = ",";
+            writer.appendObjectStart();
+            ConfigurationConditionPrintable.printConditionAttribute(list.condition(), writer, false);
+            writer.quote("interfaces").appendFieldSeparator().appendArrayStart();
+            boolean firstType = true;
+            for (String type : list.element()) {
+                if (firstType) {
+                    firstType = false;
+                } else {
+                    writer.appendSeparator();
+                }
+                writer.quote(type);
+            }
+            writer.appendArrayEnd();
+            writer.appendObjectEnd();
         }
-        writer.unindent().newline();
-        writer.append(']');
+        writer.appendArrayEnd();
     }
 
     @Override

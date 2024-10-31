@@ -246,7 +246,7 @@ public final class ArithmeticOpTable {
         }
 
         this.hash = Objects.hash(neg, add, sub, mul, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt, zeroExtend, signExtend, narrow, max, min, umax, umin, fma, reinterpret, compress, expand,
-                        floatConvert);
+                        Arrays.hashCode(floatConvert));
     }
 
     @Override

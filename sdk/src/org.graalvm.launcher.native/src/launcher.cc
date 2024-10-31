@@ -853,7 +853,7 @@ static int jvm_main_thread(int argc, char *argv[], std::string exeDir, bool jvmM
                     std::cerr << "Error in GetObjectArrayElement:" << std::endl;
                     env->ExceptionDescribe();
                     return -1;
-                }    
+                }
                 const char *vmArg = env->GetStringUTFChars(vmArgString, NULL);
                 if (env->ExceptionCheck()) {
                     std::cerr << "Error in GetStringUTFChars:" << std::endl;

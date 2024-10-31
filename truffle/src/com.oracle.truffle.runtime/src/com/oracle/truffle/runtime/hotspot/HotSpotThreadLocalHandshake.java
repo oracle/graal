@@ -42,20 +42,23 @@ package com.oracle.truffle.runtime.hotspot;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.impl.Accessor.JavaLangSupport;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.Node;
-import jdk.internal.access.JavaLangAccess;
-import jdk.internal.access.SharedSecrets;
+import com.oracle.truffle.runtime.ModulesSupport;
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 
 final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
 
     private static final sun.misc.Unsafe UNSAFE = HotSpotTruffleRuntime.UNSAFE;
-    private static final JavaLangAccess JAVA_LANG_ACCESS = SharedSecrets.getJavaLangAccess();
+    private static final JavaLangSupport JAVA_LANG_SUPPORT = ModulesSupport.getJavaLangSupport();
 
     static final HotSpotThreadLocalHandshake SINGLETON = new HotSpotThreadLocalHandshake();
     private static final ThreadLocal<TruffleSafepointImpl> STATE = new ThreadLocal<>();
 
-    private static final int PENDING_OFFSET = HotSpotTruffleRuntime.getRuntime().getJVMCIReservedLongOffset0();
+    private static final int PENDING_OFFSET = resolveJVMCIReservedLongOffset0();
     private static final long THREAD_EETOP_OFFSET;
     private static final long THREAD_CARRIER_THREAD_OFFSET;
     static {
@@ -81,7 +84,7 @@ final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
     // This is only used in interpreter, PE uses HotSpotTruffleSafepointLoweringSnippet.pollSnippet
     @Override
     public void poll(Node enclosingNode) {
-        Thread carrierThread = JAVA_LANG_ACCESS.currentCarrierThread();
+        Thread carrierThread = JAVA_LANG_SUPPORT.currentCarrierThread();
         long eetop = UNSAFE.getLong(carrierThread, THREAD_EETOP_OFFSET);
         if (UNSAFE.getInt(null, eetop + PENDING_OFFSET) != 0) {
             processHandshake(enclosingNode);
@@ -105,7 +108,7 @@ final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
 
     @Override
     protected void clearFastPending() {
-        Thread carrierThread = JAVA_LANG_ACCESS.currentCarrierThread();
+        Thread carrierThread = JAVA_LANG_SUPPORT.currentCarrierThread();
         long eetop = UNSAFE.getLongVolatile(carrierThread, THREAD_EETOP_OFFSET);
         UNSAFE.putIntVolatile(null, eetop + PENDING_OFFSET, 0);
     }
@@ -148,7 +151,7 @@ final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
     static void setPendingFlagForVirtualThread() {
         TruffleSafepointImpl safepoint = STATE.get();
         if (safepoint != null) {
-            Thread carrierThread = JAVA_LANG_ACCESS.currentCarrierThread();
+            Thread carrierThread = JAVA_LANG_SUPPORT.currentCarrierThread();
             long eetop = UNSAFE.getLongVolatile(carrierThread, THREAD_EETOP_OFFSET);
 
             /*
@@ -187,6 +190,30 @@ final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
                 UNSAFE.putIntVolatile(null, eetop + PENDING_OFFSET, 1);
             }
         }
+    }
+
+    static void initializePendingOffset() {
+        if (PENDING_OFFSET == -1) {
+            throw CompilerDirectives.shouldNotReachHere("This JDK does not have JavaThread::_jvmci_reserved0");
+        }
+    }
+
+    private static int resolveJVMCIReservedLongOffset0() {
+        HotSpotVMConfigAccess access = new HotSpotVMConfigAccess(HotSpotJVMCIRuntime.runtime().getConfigStore());
+        int longOffset;
+        try {
+            longOffset = access.getFieldOffset("JavaThread::_jvmci_reserved0", Integer.class, "jlong", -1);
+        } catch (NoSuchMethodError error) {
+            return -1;
+        } catch (JVMCIError error) {
+            try {
+                // the type of the jvmci reserved field might still be old.
+                longOffset = access.getFieldOffset("JavaThread::_jvmci_reserved0", Integer.class, "intptr_t*", -1);
+            } catch (NoSuchMethodError e) {
+                return -1;
+            }
+        }
+        return longOffset;
     }
 
 }

@@ -27,6 +27,8 @@ import os
 import sys
 import unittest
 
+import gdb
+
 # add test directory to path to allow import of gdb_helper.py
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__))))
 
@@ -68,7 +70,13 @@ class TestLoadPrettyPrinter(unittest.TestCase):
             gdb_set_param("auto-load python-scripts", backup_auto_load_param)
 
     def test_manual_load_without_executable(self):
-        self.assertIn('AssertionError', gdb_execute("source gdb-debughelpers.py"))
+        if int(gdb.VERSION.split('.')[0]) < 15:
+            # Exceptions raised by gdb-debughelpers.py are printed to gdbs stdout as a string in GDB 14.2 and older
+            self.assertIn('AssertionError', gdb_execute("source gdb-debughelpers.py"))
+        else:
+            # This will raise a gdb.error in GDB 15 and newer, but it does not state AssertionError as its cause
+            # Needed for github debuginfotest gate
+            self.assertRaises(gdb.error, lambda: gdb_execute("source gdb-debughelpers.py"))
 
     def test_auto_reload(self):
         gdb_start()
@@ -113,4 +121,6 @@ class TestCInterface(unittest.TestCase):
 
 
 # redirect unittest output to terminal
-unittest.main(testRunner=unittest.TextTestRunner(stream=sys.__stdout__))
+result = unittest.main(testRunner=unittest.TextTestRunner(stream=sys.__stdout__), exit=False)
+# close gdb
+gdb_quit(0 if result.result.wasSuccessful() else 1)

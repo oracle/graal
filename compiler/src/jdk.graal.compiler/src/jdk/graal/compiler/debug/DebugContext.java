@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,6 +51,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 
+import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.graphio.GraphOutput;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
@@ -455,10 +456,36 @@ public final class DebugContext implements AutoCloseable {
      *         ends
      */
     public CompilerPhaseScope enterCompilerPhase(CharSequence phaseName) {
+        CompilationAlarm.current().enterPhase(phaseName.toString());
         if (compilationListener != null) {
-            return enterCompilerPhase(() -> phaseName);
+            return new DecoratingCompilerPhaseScope(() -> {
+                CompilationAlarm.current().exitPhase(phaseName.toString());
+            }, enterCompilerPhase(() -> phaseName));
         }
-        return null;
+        return new CompilerPhaseScope() {
+
+            @Override
+            public void close() {
+                CompilationAlarm.current().exitPhase(phaseName.toString());
+            }
+        };
+    }
+
+    private static class DecoratingCompilerPhaseScope implements CompilerPhaseScope {
+        final Runnable closeAction;
+        final CompilerPhaseScope wrapped;
+
+        DecoratingCompilerPhaseScope(Runnable closeAction, CompilerPhaseScope wrapped) {
+            this.closeAction = closeAction;
+            this.wrapped = wrapped;
+        }
+
+        @Override
+        public void close() {
+            closeAction.run();
+            wrapped.close();
+        }
+
     }
 
     /**
@@ -1984,12 +2011,21 @@ public final class DebugContext implements AutoCloseable {
     }
 
     /**
-     * Creates a {@linkplain TimerKey timer}.
+     * Creates a {@linkplain CPUTimerKey} timer.
      * <p>
      * A disabled timer has virtually no overhead.
      */
     public static TimerKey timer(CharSequence name) {
         return createTimer("%s", name, null);
+    }
+
+    /**
+     * Creates a {@link WallClockTimerKey} timer.
+     * <p>
+     * A disabled timer has virtually no overhead.
+     */
+    public static TimerKey wallClockTimer(CharSequence name) {
+        return createWallClockTimer("%s", name, null);
     }
 
     /**
@@ -2088,7 +2124,11 @@ public final class DebugContext implements AutoCloseable {
     }
 
     private static TimerKey createTimer(String format, Object arg1, Object arg2) {
-        return new TimerKeyImpl(format, arg1, arg2);
+        return new CPUTimerKey(format, arg1, arg2);
+    }
+
+    private static TimerKey createWallClockTimer(String format, Object arg1, Object arg2) {
+        return new WallClockTimerKey(format, arg1, arg2);
     }
 
     /**
@@ -2108,7 +2148,7 @@ public final class DebugContext implements AutoCloseable {
         void close();
     }
 
-    boolean isTimerEnabled(TimerKeyImpl key) {
+    boolean isTimerEnabled(BaseTimerKey key) {
         if (!metricsEnabled) {
             // Pulling this common case out of `isTimerEnabledSlow`
             // gives C1 a better chance to inline this method.

@@ -88,6 +88,7 @@ import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.meta.HotSpotRegistersProvider;
 import jdk.graal.compiler.hotspot.nodes.KlassBeingInitializedCheckNode;
+import jdk.graal.compiler.hotspot.nodes.KlassFullyInitializedCheckNode;
 import jdk.graal.compiler.hotspot.nodes.type.KlassPointerStamp;
 import jdk.graal.compiler.hotspot.word.KlassPointer;
 import jdk.graal.compiler.nodes.ConstantNode;
@@ -164,7 +165,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
                     @ConstantParameter boolean supportsOptimizedFilling,
                     @ConstantParameter HotSpotAllocationProfilingData profilingData,
                     @ConstantParameter boolean withException) {
-        Object result = allocateArrayImpl(hub.asWord(), length, arrayBaseOffset, log2ElementSize, fillContents, fillStartOffset, emitMemoryBarrier, maybeUnroll, supportsBulkZeroing,
+        Object result = allocateArrayImpl(hub.asWord(), length, false, arrayBaseOffset, log2ElementSize, fillContents, fillStartOffset, emitMemoryBarrier, maybeUnroll, supportsBulkZeroing,
                         supportsOptimizedFilling, profilingData, withException);
         return piArrayCastToSnippetReplaceeStamp(result, length);
     }
@@ -179,25 +180,21 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
         KlassPointer hub = ClassGetHubNode.readClass(type);
         if (probability(FAST_PATH_PROBABILITY, !hub.isNull())) {
             KlassPointer nonNullHub = ClassGetHubNode.piCastNonNull(hub, SnippetAnchorNode.anchor());
-
-            if (probability(VERY_FAST_PATH_PROBABILITY, isInstanceKlassFullyInitialized(nonNullHub))) {
-                int layoutHelper = readLayoutHelper(nonNullHub);
+            // klass initialization check was already performed by KlassFullyInitializedCheckNode
+            int layoutHelper = readLayoutHelper(nonNullHub);
+            /*
+             * src/share/vm/oops/klass.hpp: For instances, layout helper is a positive number, the
+             * instance size. This size is already passed through align_object_size and scaled to
+             * bytes. The low order bit is set if instances of this class cannot be allocated using
+             * the fastpath.
+             */
+            if (probability(FAST_PATH_PROBABILITY, (layoutHelper & 1) == 0)) {
                 /*
-                 * src/share/vm/oops/klass.hpp: For instances, layout helper is a positive number,
-                 * the instance size. This size is already passed through align_object_size and
-                 * scaled to bytes. The low order bit is set if instances of this class cannot be
-                 * allocated using the fastpath.
+                 * FIXME(je,ds): we should actually pass typeContext instead of "" but late binding
+                 * of parameters is not yet supported by the GraphBuilderPlugin system.
                  */
-                if (probability(FAST_PATH_PROBABILITY, (layoutHelper & 1) == 0)) {
-                    /*
-                     * FIXME(je,ds): we should actually pass typeContext instead of "" but late
-                     * binding of parameters is not yet supported by the GraphBuilderPlugin system.
-                     */
-                    UnsignedWord size = WordFactory.unsigned(layoutHelper);
-                    return allocateInstanceImpl(nonNullHub.asWord(), size, false, fillContents, emitMemoryBarrier, false, profilingData, withException);
-                }
-            } else {
-                DeoptimizeNode.deopt(None, RuntimeConstraint);
+                UnsignedWord size = WordFactory.unsigned(layoutHelper);
+                return allocateInstanceImpl(nonNullHub.asWord(), size, false, fillContents, emitMemoryBarrier, false, profilingData, withException);
             }
         }
         return PiNode.piCastToSnippetReplaceeStamp(dynamicNewInstanceStub(type, withException));
@@ -275,7 +272,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
         int arrayBaseOffset = (layoutHelper >> layoutHelperHeaderSizeShift(INJECTED_VMCONFIG)) & layoutHelperHeaderSizeMask(INJECTED_VMCONFIG);
         int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift(INJECTED_VMCONFIG)) & layoutHelperLog2ElementSizeMask(INJECTED_VMCONFIG);
         Object result;
-        result = allocateArrayImpl(nonNullKlass.asWord(), length, arrayBaseOffset, log2ElementSize, fillContents, arrayBaseOffset, emitMemoryBarrier, false,
+        result = allocateArrayImpl(nonNullKlass.asWord(), length, false, arrayBaseOffset, log2ElementSize, fillContents, arrayBaseOffset, emitMemoryBarrier, false,
                         supportsBulkZeroing, supportsOptimizedFilling, profilingData, withException);
         return piArrayCastToSnippetReplaceeStamp(result, length);
     }
@@ -298,6 +295,17 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
     }
 
     @Snippet
+    private static void klassFullyInitializedCheck(@NonNullParameter Class<?> klass) {
+        KlassPointer hub = ClassGetHubNode.readClass(klass);
+        if (probability(VERY_FAST_PATH_PROBABILITY, !hub.isNull())) {
+            KlassPointer nonNullHub = ClassGetHubNode.piCastNonNull(hub, SnippetAnchorNode.anchor());
+            if (probability(DEOPT_PROBABILITY, !isInstanceKlassFullyInitialized(nonNullHub))) {
+                DeoptimizeNode.deopt(None, RuntimeConstraint);
+            }
+        }
+    }
+
+    @Snippet
     private void threadBeingInitializedCheck(KlassPointer klass) {
         int state = readInstanceKlassInitState(klass);
         if (state != instanceKlassStateBeingInitialized(INJECTED_VMCONFIG)) {
@@ -312,6 +320,9 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
 
     @Override
     protected final int getPrefetchStyle() {
+        if (HotSpotReplacementsUtil.useSerialGC(INJECTED_VMCONFIG)) {
+            return 0;
+        }
         return HotSpotReplacementsUtil.allocatePrefetchStyle(INJECTED_VMCONFIG);
     }
 
@@ -548,6 +559,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
         private final SnippetInfo newmultiarray;
         private final SnippetInfo verifyHeap;
         private final SnippetInfo threadBeingInitializedCheck;
+        private final SnippetInfo klassFullyInitializedCheck;
 
         @SuppressWarnings("this-escape")
         public Templates(HotSpotAllocationSnippets receiver, OptionValues options, SnippetCounter.Group.Factory groupFactory, HotSpotProviders providers,
@@ -623,6 +635,12 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
                             receiver,
                             CLASS_INIT_STATE_LOCATION,
                             CLASS_INIT_THREAD_LOCATION);
+            klassFullyInitializedCheck = snippet(providers,
+                            HotSpotAllocationSnippets.class,
+                            "klassFullyInitializedCheck",
+                            MARK_WORD_LOCATION,
+                            HUB_WRITE_LOCATION,
+                            CLASS_INIT_STATE_LOCATION);
         }
 
         private HotSpotAllocationProfilingData getProfilingData(OptionValues localOptions, String path, ResolvedJavaType type) {
@@ -710,7 +728,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             args.addConst("fillStartOffset", arrayBaseOffset);
             args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
             args.addConst("maybeUnroll", length.isConstant());
-            args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
+            args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
             args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(localOptions));
             args.addConst("profilingData", getProfilingData(localOptions, "array", arrayType));
             args.addConst("withException", false);
@@ -740,7 +758,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             args.addConst("fillStartOffset", arrayBaseOffset);
             args.addConst("emitMemoryBarrier", true); // node.emitMemoryBarrier());
             args.addConst("maybeUnroll", length.isConstant());
-            args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
+            args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
             args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(localOptions));
             args.addConst("profilingData", getProfilingData(localOptions, "array", arrayType));
             args.addConst("withException", true);
@@ -846,7 +864,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             } else {
                 args.addConst("knownLayoutHelper", 0);
             }
-            args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
+            args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
             args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(localOptions));
             args.addConst("withException", false);
             args.addConst("profilingData", getProfilingData(localOptions, "dynamic type", null));
@@ -874,7 +892,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             args.addConst("knownElementKind", JavaKind.Illegal);
             args.addConst("knownLayoutHelper", 0);
 
-            args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
+            args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
             args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(localOptions));
             args.addConst("withException", true);
             args.addConst("profilingData", getProfilingData(localOptions, "dynamic type", null));
@@ -894,6 +912,13 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
 
         public void lower(KlassBeingInitializedCheckNode node, LoweringTool tool) {
             Arguments args = new Arguments(threadBeingInitializedCheck, node.graph().getGuardsStage(), tool.getLoweringStage());
+            args.add("klass", node.getKlass());
+
+            template(tool, node, args).instantiate(tool.getMetaAccess(), node, DEFAULT_REPLACER, args);
+        }
+
+        public void lower(KlassFullyInitializedCheckNode node, LoweringTool tool) {
+            Arguments args = new Arguments(klassFullyInitializedCheck, node.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("klass", node.getKlass());
 
             template(tool, node, args).instantiate(tool.getMetaAccess(), node, DEFAULT_REPLACER, args);

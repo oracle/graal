@@ -37,8 +37,8 @@ import com.oracle.truffle.espresso.jdwp.api.FieldRef;
 import com.oracle.truffle.espresso.jdwp.api.JDWPConstantPool;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
-import com.oracle.truffle.espresso.jdwp.api.LineNumberTableRef;
-import com.oracle.truffle.espresso.jdwp.api.LocalRef;
+import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableRef;
+import com.oracle.truffle.espresso.classfile.attributes.LocalRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jdwp.api.ModuleRef;
 import com.oracle.truffle.espresso.jdwp.api.MonitorStackInfo;
@@ -53,6 +53,8 @@ public final class JDWP {
 
     private static final int ACC_SYNTHETIC = 0x00001000;
     private static final int JDWP_SYNTHETIC = 0xF0000000;
+    public static final int INVOKE_SINGLE_THREADED = 0x01;
+    public static final int INVOKE_NON_VIRTUAL = 0x02;
 
     private JDWP() {
     }
@@ -1125,7 +1127,8 @@ public final class JDWP {
                 }
 
                 MethodRef method = verifyMethodRef(input.readLong(), reply, context);
-                if (method == null) {
+                if (method == null || !Modifier.isStatic(method.getModifiers()) || method.isClassInitializer()) {
+                    reply.errorCode(ErrorCodes.INVALID_METHODID);
                     return new CommandResult(reply);
                 }
 
@@ -1160,13 +1163,8 @@ public final class JDWP {
                 try {
                     // we have to call the method in the correct thread, so post a
                     // Callable to the controller and wait for the result to appear
-                    ThreadJob<Object> job = new ThreadJob<>(thread, new Callable<>() {
-                        @Override
-                        public Object call() {
-                            return method.invokeMethod(null, args);
-                        }
-                    }, suspensionStrategy);
-                    controller.postJobForThread(job);
+                    InvokeJob<Object> job = new InvokeJob<>(thread, () -> method.invokeMethodStatic(args), suspensionStrategy);
+                    controller.postInvokeJobForThread(job);
 
                     // invocation of a method can cause events with possible thread suspension
                     // to happen, e.g. class prepare events for newly loaded classes
@@ -1177,8 +1175,8 @@ public final class JDWP {
                         public void run() {
                             CommandResult commandResult = new CommandResult(reply);
                             try {
-                                ThreadJob<?>.JobResult<?> result = job.getResult();
-                                writeMethodResult(reply, context, result, thread, controller);
+                                InvokeJob<?>.JobResult<?> result = job.getResult();
+                                writeMethodResult(reply, context, result);
                             } catch (Throwable t) {
                                 reply.errorCode(ErrorCodes.INTERNAL);
                                 controller.severe(INVOKE_METHOD.class.getName() + ".createReply", t);
@@ -1209,6 +1207,10 @@ public final class JDWP {
                 if (klass == null) {
                     return new CommandResult(reply);
                 }
+                if (klass.isArray() || klass.isInterface() || Modifier.isAbstract(klass.getModifiers())) {
+                    reply.errorCode(ErrorCodes.INVALID_CLASS);
+                    return new CommandResult(reply);
+                }
 
                 Object thread = verifyThread(input.readLong(), reply, context, true);
                 if (thread == null) {
@@ -1223,8 +1225,8 @@ public final class JDWP {
                 }
 
                 MethodRef method = verifyMethodRef(input.readLong(), reply, context);
-                if (method == null) {
-                    controller.warning(() -> "not a valid method");
+                if (method == null || !method.isConstructor() || method.getDeclaringKlassRef() != klass) {
+                    reply.errorCode(ErrorCodes.INVALID_METHODID);
                     return new CommandResult(reply);
                 }
 
@@ -1232,8 +1234,9 @@ public final class JDWP {
 
                 int arguments = input.readInt();
 
-                Object[] args = new Object[arguments];
-                for (int i = 0; i < arguments; i++) {
+                Object[] args = new Object[arguments + 1];
+                // we leave room for the allocated object as the first arg
+                for (int i = 1; i < args.length; i++) {
                     byte valueKind = input.readByte();
                     args[i] = readValue(valueKind, input, context);
                 }
@@ -1241,19 +1244,17 @@ public final class JDWP {
                 int invocationOptions = input.readInt();
                 byte suspensionStrategy = invocationOptions == 1 ? SuspendStrategy.EVENT_THREAD : SuspendStrategy.ALL;
                 try {
-                    // we have to call the method in the correct thread, so post a
+                    // we have to call the constructor in the correct thread, so post a
                     // Callable to the controller and wait for the result to appear
-                    ThreadJob<?> job = new ThreadJob<>(thread, new Callable<>() {
-
-                        @Override
-                        public Object call() throws Exception {
-                            return method.invokeMethod(null, args);
-                        }
+                    InvokeJob<?> job = new InvokeJob<>(thread, () -> {
+                        args[0] = context.allocateInstance(klass);
+                        method.invokeMethodSpecial(args);
+                        return args[0];
                     }, suspensionStrategy);
-                    controller.postJobForThread(job);
-                    ThreadJob<?>.JobResult<?> result = job.getResult();
+                    controller.postInvokeJobForThread(job);
+                    InvokeJob<?>.JobResult<?> result = job.getResult();
 
-                    writeMethodResult(reply, context, result, thread, controller);
+                    writeMethodResult(reply, context, result);
                 } catch (Throwable t) {
                     throw new RuntimeException("not able to invoke static method through jdwp", t);
                 }
@@ -1329,7 +1330,7 @@ public final class JDWP {
                     return new CommandResult(reply);
                 }
 
-                if (method.getDeclaringKlassRef() != itf) {
+                if (method.getDeclaringKlassRef() != itf || !Modifier.isStatic(method.getModifiers()) || method.isClassInitializer()) {
                     reply.errorCode(ErrorCodes.INVALID_METHODID);
                     return new CommandResult(reply);
                 }
@@ -1349,14 +1350,8 @@ public final class JDWP {
                 try {
                     // we have to call the method in the correct thread, so post a
                     // Callable to the controller and wait for the result to appear
-                    ThreadJob<Object> job = new ThreadJob<>(thread, new Callable<>() {
-
-                        @Override
-                        public Object call() throws Exception {
-                            return method.invokeMethod(null, args);
-                        }
-                    }, suspensionStrategy);
-                    controller.postJobForThread(job);
+                    InvokeJob<Object> job = new InvokeJob<>(thread, () -> method.invokeMethodStatic(args), suspensionStrategy);
+                    controller.postInvokeJobForThread(job);
                     // invocation of a method can cause events with possible thread suspension
                     // to happen, e.g. class prepare events for newly loaded classes
                     // to avoid blocking here, we fire up a new thread that will post
@@ -1366,8 +1361,8 @@ public final class JDWP {
                         public void run() {
                             CommandResult commandResult = new CommandResult(reply);
                             try {
-                                ThreadJob<?>.JobResult<?> result = job.getResult();
-                                writeMethodResult(reply, context, result, thread, controller);
+                                InvokeJob<?>.JobResult<?> result = job.getResult();
+                                writeMethodResult(reply, context, result);
                             } catch (Throwable t) {
                                 reply.errorCode(ErrorCodes.INTERNAL);
                                 controller.severe(INVOKE_METHOD.class.getName() + "." + "createReply", t);
@@ -1592,7 +1587,7 @@ public final class JDWP {
 
                 Object object = context.getIds().fromId((int) objectId);
 
-                if (object == context.getNullObject()) {
+                if (object == null || object == context.getNullObject()) {
                     reply.errorCode(ErrorCodes.INVALID_OBJECT);
                     return new CommandResult(reply);
                 }
@@ -1755,6 +1750,14 @@ public final class JDWP {
                 JDWPContext context = controller.getContext();
 
                 long objectId = input.readLong();
+
+                Object receiver = context.getIds().fromId((int) objectId);
+                if (receiver == null) {
+                    // object was garbage collected
+                    reply.errorCode(ErrorCodes.INVALID_OBJECT);
+                    return new CommandResult(reply);
+                }
+
                 long threadId = input.readLong();
 
                 Object thread = verifyThread(threadId, reply, context, true);
@@ -1775,45 +1778,47 @@ public final class JDWP {
                 }
 
                 long methodId = input.readLong();
-                int arguments = input.readInt();
-
-                Object[] args = new Object[arguments];
-                for (int i = 0; i < arguments; i++) {
-                    byte valueKind = input.readByte();
-                    args[i] = readValue(valueKind, input, context);
-                }
-
-                Object callee = context.getIds().fromId((int) objectId);
-                if (callee == null) {
-                    // object was garbage collected
-                    reply.errorCode(ErrorCodes.INVALID_OBJECT);
-                    return new CommandResult(reply);
-                }
                 MethodRef method = verifyMethodRef(methodId, reply, context);
 
                 if (method == null) {
                     return new CommandResult(reply);
                 }
 
-                if (!context.isMemberOf(callee, method.getDeclaringKlassRef())) {
+                if (Modifier.isStatic(method.getModifiers()) || method.isConstructor() || !context.isMemberOf(receiver, method.getDeclaringKlassRef())) {
                     reply.errorCode(ErrorCodes.INVALID_METHODID);
                     return new CommandResult(reply);
+                }
+
+                int arguments = input.readInt();
+
+                Object[] args = new Object[arguments + 1];
+                args[0] = receiver;
+                for (int i = 1; i < args.length; i++) {
+                    byte valueKind = input.readByte();
+                    args[i] = readValue(valueKind, input, context);
                 }
 
                 controller.fine(() -> "trying to invoke method: " + method.getNameAsString());
 
                 int invocationOptions = input.readInt();
-                byte suspensionStrategy = invocationOptions == 1 ? SuspendStrategy.EVENT_THREAD : SuspendStrategy.ALL;
+                boolean invokeSingleThreaded = (invocationOptions & INVOKE_SINGLE_THREADED) != 0;
+                boolean invokeNonvirtual = (invocationOptions & INVOKE_NON_VIRTUAL) != 0;
+                byte suspensionStrategy = invokeSingleThreaded ? SuspendStrategy.EVENT_THREAD : SuspendStrategy.ALL;
                 try {
                     // we have to call the method in the correct thread, so post a
                     // Callable to the controller and wait for the result to appear
-                    ThreadJob<Object> job = new ThreadJob<>(thread, new Callable<>() {
-                        @Override
-                        public Object call() throws Exception {
-                            return method.invokeMethod(callee, args);
+                    InvokeJob<Object> job = new InvokeJob<>(thread, () -> {
+                        if (invokeNonvirtual) {
+                            return method.invokeMethodNonVirtual(args);
+                        } else if (Modifier.isPrivate(method.getModifiers())) {
+                            return method.invokeMethodSpecial(args);
+                        } else if (method.getDeclaringKlassRef().isInterface()) {
+                            return method.invokeMethodInterface(args);
+                        } else {
+                            return method.invokeMethodVirtual(args);
                         }
                     }, suspensionStrategy);
-                    controller.postJobForThread(job);
+                    controller.postInvokeJobForThread(job);
                     // invocation of a method can cause events with possible thread suspension
                     // to happen, e.g. class prepare events for newly loaded classes
                     // to avoid blocking here, we fire up a new thread that will post
@@ -1823,8 +1828,8 @@ public final class JDWP {
                         public void run() {
                             CommandResult commandResult = new CommandResult(reply);
                             try {
-                                ThreadJob<?>.JobResult<?> result = job.getResult();
-                                writeMethodResult(reply, context, result, thread, controller);
+                                InvokeJob<?>.JobResult<?> result = job.getResult();
+                                writeMethodResult(reply, context, result);
                             } catch (Throwable t) {
                                 reply.errorCode(ErrorCodes.INTERNAL);
                                 controller.severe(INVOKE_METHOD.class.getName() + "." + "createReply", t);
@@ -2388,11 +2393,11 @@ public final class JDWP {
                 }
 
                 // make sure owned monitors taken in frame are exited
-                ThreadJob<Void> job = new ThreadJob<>(thread, () -> {
+                InvokeJob<Void> job = new InvokeJob<>(thread, () -> {
                     controller.getContext().clearFrameMonitors(topFrame);
                     return null;
                 });
-                controller.postJobForThread(job);
+                controller.postInvokeJobForThread(job);
                 // don't return here before job completed
                 job.getResult();
 
@@ -2539,7 +2544,7 @@ public final class JDWP {
                     return new CommandResult(reply);
                 }
 
-                byte tag = context.getTypeTag(array);
+                byte tag = context.getArrayComponentTag(array);
                 boolean isPrimitive = TagConstants.isPrimitive(tag);
 
                 reply.writeByte(tag);
@@ -2570,7 +2575,7 @@ public final class JDWP {
                     return new CommandResult(reply);
                 }
 
-                byte tag = context.getTypeTag(array);
+                byte tag = context.getArrayComponentTag(array);
 
                 setArrayValues(context, input, index, values, array, tag);
                 return new CommandResult(reply);
@@ -2578,56 +2583,20 @@ public final class JDWP {
 
             private static void setArrayValues(JDWPContext context, PacketStream input, int index, int values, Object array, byte tag) {
                 for (int i = index; i < index + values; i++) {
-                    switch (tag) {
-                        case TagConstants.BOOLEAN:
-                            boolean bool = input.readBoolean();
-                            byte[] boolArray = context.getUnboxedArray(array);
-                            boolArray[i] = bool ? (byte) 1 : (byte) 0;
-                            break;
-                        case TagConstants.BYTE:
-                            byte b = input.readByte();
-                            byte[] byteArray = context.getUnboxedArray(array);
-                            byteArray[i] = b;
-                            break;
-                        case TagConstants.SHORT:
-                            short s = input.readShort();
-                            short[] shortArray = context.getUnboxedArray(array);
-                            shortArray[i] = s;
-                            break;
-                        case TagConstants.CHAR:
-                            char c = input.readChar();
-                            char[] charArray = context.getUnboxedArray(array);
-                            charArray[i] = c;
-                            break;
-                        case TagConstants.INT:
-                            int j = input.readInt();
-                            int[] intArray = context.getUnboxedArray(array);
-                            intArray[i] = j;
-                            break;
-                        case TagConstants.FLOAT:
-                            float f = input.readFloat();
-                            float[] floatArray = context.getUnboxedArray(array);
-                            floatArray[i] = f;
-                            break;
-                        case TagConstants.LONG:
-                            long l = input.readLong();
-                            long[] longArray = context.getUnboxedArray(array);
-                            longArray[i] = l;
-                            break;
-                        case TagConstants.DOUBLE:
-                            double d = input.readDouble();
-                            double[] doubleArray = context.getUnboxedArray(array);
-                            doubleArray[i] = d;
-                            break;
-                        case TagConstants.ARRAY:
-                        case TagConstants.STRING:
-                        case TagConstants.OBJECT:
-                            Object value = context.getIds().fromId((int) input.readLong());
-                            context.setArrayValue(array, i, value);
-                            break;
-                        default:
-                            throw new RuntimeException("should not reach here");
-                    }
+                    Object value = switch (tag) {
+                        case TagConstants.BOOLEAN -> input.readBoolean();
+                        case TagConstants.BYTE -> input.readByte();
+                        case TagConstants.SHORT -> input.readShort();
+                        case TagConstants.CHAR -> input.readChar();
+                        case TagConstants.INT -> input.readInt();
+                        case TagConstants.FLOAT -> input.readFloat();
+                        case TagConstants.LONG -> input.readLong();
+                        case TagConstants.DOUBLE -> input.readDouble();
+                        case TagConstants.ARRAY, TagConstants.STRING, TagConstants.OBJECT ->
+                            context.getIds().fromId((int) input.readLong());
+                        default -> throw new RuntimeException("should not reach here: " + tag);
+                    };
+                    context.setArrayValue(array, i, value);
                 }
             }
         }
@@ -3073,24 +3042,18 @@ public final class JDWP {
         }
     }
 
-    private static void writeMethodResult(PacketStream reply, JDWPContext context, ThreadJob<?>.JobResult<?> result, Object thread, DebuggerController controller) {
+    private static void writeMethodResult(PacketStream reply, JDWPContext context, InvokeJob<?>.JobResult<?> result) {
         if (result.getException() != null) {
             reply.writeByte(TagConstants.OBJECT);
             reply.writeLong(0);
             reply.writeByte(TagConstants.OBJECT);
             Object guestException = context.getGuestException(result.getException());
             reply.writeLong(context.getIds().getIdAsLong(guestException));
-            if (controller.getThreadSuspension().getSuspensionCount(thread) > 0) {
-                controller.getGCPrevention().setActiveWhileSuspended(thread, guestException);
-            }
         } else {
-            Object value = context.toGuest(result.getResult());
+            Object value = result.getResult();
             if (value != null) {
                 byte tag = context.getTag(value);
                 writeValue(tag, value, reply, true, context);
-                if (controller.getThreadSuspension().getSuspensionCount(thread) > 0) {
-                    controller.getGCPrevention().setActiveWhileSuspended(thread, value);
-                }
             } else { // return value is null
                 reply.writeByte(TagConstants.OBJECT);
                 reply.writeLong(0);
@@ -3278,6 +3241,10 @@ public final class JDWP {
 
     private static Object verifyString(long objectId, PacketStream reply, JDWPContext context) {
         Object string = context.getIds().fromId((int) objectId);
+        if (string == null) {
+            reply.errorCode(ErrorCodes.INVALID_OBJECT);
+            return null;
+        }
 
         if (!context.isString(string)) {
             reply.errorCode(ErrorCodes.INVALID_STRING);

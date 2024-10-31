@@ -252,18 +252,6 @@ public class GraalCompiler {
     }
 
     /**
-     * Substituted by {@code com.oracle.svm.graal.hotspot.libgraal.
-     * Target_jdk_graal_compiler_core_GraalCompiler} to optionally test routing fatal error handling
-     * from libgraal to HotSpot.
-     *
-     * @return true if the caller should proceed to throw an exception
-     */
-    @SuppressWarnings("unused")
-    private static boolean notifyCrash(String crashMessage) {
-        return true;
-    }
-
-    /**
      * Builds the graph, optimizes it.
      */
     @SuppressWarnings("try")

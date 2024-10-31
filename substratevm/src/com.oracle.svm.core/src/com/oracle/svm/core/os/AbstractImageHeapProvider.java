@@ -50,13 +50,14 @@ public abstract class AbstractImageHeapProvider implements ImageHeapProvider {
         return size;
     }
 
+    @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected UnsignedWord getImageHeapAddressSpaceSize() {
+    public UnsignedWord getImageHeapAddressSpaceSize() {
         UnsignedWord pageSize = VirtualMemoryProvider.get().getGranularity();
         int imageHeapOffset = Heap.getHeap().getImageHeapOffsetInAddressSpace();
         assert imageHeapOffset >= 0;
         UnsignedWord size = WordFactory.unsigned(imageHeapOffset);
-        size = size.add(getImageHeapSizeInFile(IMAGE_HEAP_BEGIN.get(), IMAGE_HEAP_END.get()));
+        size = size.add(getImageHeapSizeInFile());
         size = UnsignedUtils.roundUp(size, pageSize);
         return size;
     }

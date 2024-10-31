@@ -257,5 +257,13 @@
   {
     "name": "com.oracle.truffle.api.test.polyglot.GuestFunctionToHostInterfaceProxyTest$HostCallee",
     "allPublicMethods": true
+  },
+  {
+    "name": "java.nio.HeapByteBuffer",
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.hamcrest.core.StringContains",
+    "allPublicMethods": true
   }
 ]

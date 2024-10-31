@@ -37,8 +37,8 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.heap.dump.HeapDumping;
 import com.oracle.svm.core.jdk.management.ManagementAgentModule;
 import com.oracle.svm.core.option.APIOption;
-import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
@@ -63,6 +63,7 @@ public final class VMInspectionOptions {
 
     private static final List<String> MONITORING_ALL_VALUES = List.of(MONITORING_HEAPDUMP_NAME, MONITORING_JFR_NAME, MONITORING_JVMSTAT_NAME, MONITORING_JMXCLIENT_NAME, MONITORING_JMXSERVER_NAME,
                     MONITORING_THREADDUMP_NAME, MONITORING_NMT_NAME, MONITORING_ALL_NAME, MONITORING_DEFAULT_NAME);
+    private static final List<String> NOT_SUPPORTED_ON_WINDOWS = List.of(MONITORING_HEAPDUMP_NAME, MONITORING_JFR_NAME, MONITORING_JVMSTAT_NAME, MONITORING_JMXCLIENT_NAME, MONITORING_JMXSERVER_NAME);
     private static final String MONITORING_ALLOWED_VALUES_TEXT = "'" + MONITORING_HEAPDUMP_NAME + "', '" + MONITORING_JFR_NAME + "', '" + MONITORING_JVMSTAT_NAME + "', '" + MONITORING_JMXSERVER_NAME +
                     "' (experimental), '" + MONITORING_JMXCLIENT_NAME + "' (experimental), '" + MONITORING_THREADDUMP_NAME + "', '" + MONITORING_NMT_NAME + "' (experimental), or '" +
                     MONITORING_ALL_NAME + "' (deprecated behavior: defaults to '" + MONITORING_ALL_NAME + "' if no argument is provided)";
@@ -93,10 +94,21 @@ public final class VMInspectionOptions {
                             getDefaultMonitoringCommandArgument(),
                             SubstrateOptionsParser.commandArgument(EnableMonitoringFeatures, String.join(",", List.of(MONITORING_HEAPDUMP_NAME, MONITORING_JFR_NAME))));
         }
+
         enabledFeatures.removeAll(MONITORING_ALL_VALUES);
         if (!enabledFeatures.isEmpty()) {
             throw UserError.abort("The '%s' option contains invalid value(s): %s. It can only contain %s.", getDefaultMonitoringCommandArgument(), String.join(", ", enabledFeatures),
                             MONITORING_ALLOWED_VALUES_TEXT);
+        }
+
+        if (Platform.includedIn(WINDOWS.class)) {
+            Set<String> notSupported = getEnabledMonitoringFeatures();
+            notSupported.retainAll(NOT_SUPPORTED_ON_WINDOWS);
+            if (!notSupported.isEmpty()) {
+                String warning = String.format("the option '%s' contains value(s) that are not supported on Windows: %s. Those values will be ignored.", getDefaultMonitoringCommandArgument(),
+                                String.join(", ", notSupported));
+                LogUtils.warning(warning);
+            }
         }
     }
 

@@ -35,6 +35,7 @@ import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -79,8 +80,24 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
         return klassEncoding;
     }
 
+    public boolean useSerialGC() {
+        return gc == HotSpotGraalRuntime.HotSpotGC.Serial;
+    }
+
     public boolean useG1GC() {
         return gc == HotSpotGraalRuntime.HotSpotGC.G1;
+    }
+
+    /*
+     * There's no direct way to test for the presence of the boolean flag ZGenerational since there
+     * aren't any notPresent values which are distinct from the possible values. Instead use true
+     * and false as the notPresent value and check if it returns different answers.
+     */
+    public final boolean isZGenerationalDefault = JavaVersionUtil.JAVA_SPEC > 21 &&
+                    (!access.getFlag("ZGenerational", Boolean.class, false).equals(access.getFlag("ZGenerational", Boolean.class, true)));
+
+    public boolean useXGC() {
+        return gc == HotSpotGraalRuntime.HotSpotGC.X;
     }
 
     public final HotSpotGraalRuntime.HotSpotGC gc = getSelectedGC();
@@ -221,6 +238,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int klassSuperKlassOffset = getFieldOffset("Klass::_super", Integer.class, "Klass*");
     public final int klassModifierFlagsOffset = getFieldOffset("Klass::_modifier_flags", Integer.class, "jint");
     public final int klassAccessFlagsOffset = getFieldOffset("Klass::_access_flags", Integer.class, "AccessFlags");
+    public final int klassMiscFlagsOffset = getFieldOffset("Klass::_misc_flags._flags", Integer.class, "u1", 0, JDK >= 24);
     public final int klassLayoutHelperOffset = getFieldOffset("Klass::_layout_helper", Integer.class, "jint");
 
     public final int klassLayoutHelperNeutralValue = getConstant("Klass::_lh_neutral_value", Integer.class);
@@ -239,7 +257,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     /**
      * The offset of the array length word in an array object's header.
-     *
+     * <p>
      * See {@code arrayOopDesc::length_offset_in_bytes()}.
      */
     public final int arrayOopDescLengthOffset() {
@@ -251,10 +269,10 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     public final int arrayClassElementOffset = getFieldOffset("ObjArrayKlass::_element_klass", Integer.class, "Klass*");
 
-    public final int jvmAccHasFinalizer = getConstant("JVM_ACC_HAS_FINALIZER", Integer.class);
     public final int jvmAccWrittenFlags = getConstant("JVM_ACC_WRITTEN_FLAGS", Integer.class);
-    public final int jvmAccIsHiddenClass = getConstant("JVM_ACC_IS_HIDDEN_CLASS", Integer.class); // JDK-8219607
-    public final int jvmAccIsValueBasedClass = verifyConstant("JVM_ACC_IS_VALUE_BASED_CLASS", Integer.class, 0x08000000);
+    public final int jvmAccIsHiddenClass = JDK >= 24 ? getConstant("KlassFlags::_misc_is_hidden_class", Integer.class) : getConstant("JVM_ACC_IS_HIDDEN_CLASS", Integer.class);
+    public final int jvmAccIsValueBasedClass = JDK >= 24 ? getConstant("KlassFlags::_misc_is_value_based_class", Integer.class) : getConstant("JVM_ACC_IS_VALUE_BASED_CLASS", Integer.class);
+    public final int jvmAccHasFinalizer = JDK >= 24 ? getConstant("KlassFlags::_misc_has_finalizer", Integer.class) : getConstant("JVM_ACC_HAS_FINALIZER", Integer.class);
 
     public final int jvmciCompileStateCanPostOnExceptionsOffset = getFieldOffset("JVMCICompileState::_jvmti_can_post_on_exceptions", Integer.class, "jbyte");
     public final int jvmciCompileStateCanPopFrameOffset = getFieldOffset("JVMCICompileState::_jvmti_can_pop_frame", Integer.class, "jbyte");
@@ -370,6 +388,9 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
      */
     public final int identityHashCodeShift = getConstant("markWord::hash_shift", Integer.class);
 
+    public final int contEntry = getFieldOffset("JavaThread::_cont_entry", Integer.class, "ContinuationEntry*", -1, JDK >= 24);
+    public final int pinCount = getFieldOffset("ContinuationEntry::_pin_count", Integer.class, "uint32_t", -1, JDK >= 24);
+
     /**
      * Identity hash code value when uninitialized.
      */
@@ -427,10 +448,10 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final boolean useObjectMonitorTable = getFlag("UseObjectMonitorTable", Boolean.class, false, JDK >= 24);
 
     // JDK-8253180 & JDK-8265932
-    public final int threadPollingPageOffset = getFieldOffset("JavaThread::_poll_data", Integer.class, "SafepointMechanism::ThreadData") +
-                    getFieldOffset("SafepointMechanism::ThreadData::_polling_page", Integer.class, "volatile uintptr_t");
-    public final int threadPollingWordOffset = getFieldOffset("JavaThread::_poll_data", Integer.class, "SafepointMechanism::ThreadData") +
-                    getFieldOffset("SafepointMechanism::ThreadData::_polling_word", Integer.class, "volatile uintptr_t");
+    public final int threadPollDataOffset = JDK >= 24 ? getFieldOffset("Thread::_poll_data", Integer.class, "SafepointMechanism::ThreadData")
+                    : getFieldOffset("JavaThread::_poll_data", Integer.class, "SafepointMechanism::ThreadData");
+    public final int threadPollingPageOffset = threadPollDataOffset + getFieldOffset("SafepointMechanism::ThreadData::_polling_page", Integer.class, "volatile uintptr_t");
+    public final int threadPollingWordOffset = threadPollDataOffset + getFieldOffset("SafepointMechanism::ThreadData::_polling_word", Integer.class, "volatile uintptr_t");
     public final int savedExceptionPCOffset = getFieldOffset("JavaThread::_saved_exception_pc", Integer.class, "address");
 
     private final int threadLocalAllocBufferEndOffset = getFieldOffset("ThreadLocalAllocBuffer::_end", Integer.class, "HeapWord*");
@@ -581,6 +602,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
                     "ZBarrierSetRuntime::no_keepalive_load_barrier_on_weak_oop_field_preloaded");
     public final long zBarrierSetRuntimeNoKeepaliveLoadBarrierOnPhantomOopFieldPreloaded = getZGCAddressField(
                     "ZBarrierSetRuntime::no_keepalive_load_barrier_on_phantom_oop_field_preloaded");
+    public final long zBarrierSetRuntimeNoKeepaliveStoreBarrierOnOopFieldWithoutHealing = getZGCAddressField(
+                    "ZBarrierSetRuntime::no_keepalive_store_barrier_on_oop_field_without_healing");
     public final long zBarrierSetRuntimeStoreBarrierOnNativeOopFieldWithoutHealing = getZGCAddressField("ZBarrierSetRuntime::store_barrier_on_native_oop_field_without_healing");
     public final long zBarrierSetRuntimeStoreBarrierOnOopFieldWithHealing = getZGCAddressField("ZBarrierSetRuntime::store_barrier_on_oop_field_with_healing");
     public final long zBarrierSetRuntimeStoreBarrierOnOopFieldWithoutHealing = getZGCAddressField("ZBarrierSetRuntime::store_barrier_on_oop_field_without_healing");
@@ -588,6 +611,13 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int zPointerLoadShift = getConstant("ZPointerLoadShift", Integer.class, -1, osArch.equals("aarch64") && zgcSupport);
 
     private long getXGCAddressField(String name) {
+        if (JavaVersionUtil.JAVA_SPEC == 21 || isZGenerationalDefault) {
+            /*
+             * Graal does not support single gen ZGC in JDK 21 and it's no longer supported in 24
+             * once the ZGenerational global flag has been removed.
+             */
+            return 0;
+        }
         String realName = name;
         long address = 0;
         if (zgcSupport) {
@@ -645,6 +675,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int lockStackTopOffset = getFieldOffset("LockStack::_top", Integer.class, "uint32_t", -1, JDK >= 22);
     public final int lockStackEndOffset = getConstant("LockStack::_end_offset", Integer.class, -1, JDK >= 22);
     public final int threadOmCacheOffset = getFieldOffset("JavaThread::_om_cache", Integer.class, "OMCache", -1, JDK >= 24);
+    public final int threadUnlockedInflatedMonitorOffset = getFieldOffset("JavaThread::_unlocked_inflated_monitor", Integer.class, "ObjectMonitor*", -1, JDK >= 24);
     public final int omCacheOopToOopDifference = getConstant("OMCache::oop_to_oop_difference", Integer.class, -1, JDK >= 24);
     public final int omCacheOopToMonitorDifference = getConstant("OMCache::oop_to_monitor_difference", Integer.class, -1, JDK >= 24);
 
@@ -672,6 +703,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long arithmeticSinAddress = getFieldValue("CompilerToVM::Data::dsin", Long.class, "address");
     public final long arithmeticCosAddress = getFieldValue("CompilerToVM::Data::dcos", Long.class, "address");
     public final long arithmeticTanAddress = getFieldValue("CompilerToVM::Data::dtan", Long.class, "address");
+    public final long arithmeticTanhAddress = getFieldValue("CompilerToVM::Data::dtanh", Long.class, "address", 0L, JDK >= 24);
     public final long arithmeticExpAddress = getFieldValue("CompilerToVM::Data::dexp", Long.class, "address");
     public final long arithmeticLogAddress = getFieldValue("CompilerToVM::Data::dlog", Long.class, "address");
     public final long arithmeticLog10Address = getFieldValue("CompilerToVM::Data::dlog10", Long.class, "address");

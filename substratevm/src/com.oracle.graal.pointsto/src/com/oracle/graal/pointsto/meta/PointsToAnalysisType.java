@@ -103,6 +103,7 @@ public class PointsToAnalysisType extends AnalysisType {
          */
         UnsafeStoreTypeFlow store = new UnsafeStoreTypeFlow(originalLocation, this, componentType, objectFlow, null);
         store.markAsContextInsensitive();
+        store.enableFlow(bb);
         return store;
     }
 
@@ -133,6 +134,7 @@ public class PointsToAnalysisType extends AnalysisType {
          */
         StoreIndexedTypeFlow store = new StoreIndexedTypeFlow(originalLocation, this, objectFlow, null);
         store.markAsContextInsensitive();
+        store.enableFlow(bb);
         return store;
     }
 

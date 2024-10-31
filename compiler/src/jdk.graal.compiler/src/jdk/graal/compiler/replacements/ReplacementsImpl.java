@@ -159,7 +159,7 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
     }
 
     @Override
-    public Stamp getInjectedStamp(Class<?> type, boolean nonNull) {
+    public Stamp getInjectedStamp(Class<?> type) {
         JavaKind kind = JavaKind.fromJavaClass(type);
         if (kind == JavaKind.Object) {
             WordTypes wordTypes = getProviders().getWordTypes();
@@ -167,7 +167,7 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
                 return wordTypes.getWordStamp(type);
             } else {
                 ResolvedJavaType returnType = providers.getMetaAccess().lookupJavaType(type);
-                return StampFactory.object(TypeReference.createWithoutAssumptions(returnType), nonNull);
+                return StampFactory.object(TypeReference.createWithoutAssumptions(returnType));
             }
         } else {
             return StampFactory.forKind(kind);

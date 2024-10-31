@@ -29,6 +29,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
 import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.meta.JavaKind;
 
 public class FormalReturnTypeFlow extends TypeFlow<BytecodePosition> {
     public FormalReturnTypeFlow(BytecodePosition source, AnalysisType declaredType) {
@@ -41,6 +42,15 @@ public class FormalReturnTypeFlow extends TypeFlow<BytecodePosition> {
 
     @Override
     public TypeState filter(PointsToAnalysis bb, TypeState newState) {
+        if (declaredType.getJavaKind() == JavaKind.Void) {
+            /*
+             * Void ReturnTypeFlow has a use edge from the latest predicate, which can propagate
+             * random values. We only use this edge to signal that the method can return, we don't
+             * care about the actual value. We sanitize it to AnyPrimitive to prevent from
+             * primitive/object collisions in addState.
+             */
+            return newState.isEmpty() ? TypeState.forEmpty() : TypeState.anyPrimitiveState();
+        }
         /*
          * Always filter the formal return state with the declared type, even if the type flow
          * constraints are not relaxed. This avoids imprecision caused by MethodHandle API methods
@@ -58,6 +68,6 @@ public class FormalReturnTypeFlow extends TypeFlow<BytecodePosition> {
     public String format(boolean withState, boolean withSource) {
         return "Formal return from " + method().format("%H.%n(%p)") +
                         (withSource ? " at " + formatSource() : "") +
-                        (withState ? " with state <" + getState() + ">" : "");
+                        (withState ? " with state <" + getStateDescription() + ">" : "");
     }
 }

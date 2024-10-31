@@ -66,6 +66,6 @@ public class TruffleJFRFeature implements InternalFeature {
     }
 
     private static boolean isEnabled() {
-        return ImageSingletons.contains(TruffleFeature.class) && ImageSingletons.contains(JfrFeature.class);
+        return ImageSingletons.contains(TruffleFeature.class) && JfrFeature.isInConfiguration(true);
     }
 }

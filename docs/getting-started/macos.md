@@ -80,6 +80,14 @@ curl https://download.oracle.com/java/<version>/archive/jdk-<version>_macos-<arc
 
 For other installation options, visit the [GraalVM Downloads page](https://www.graalvm.org/downloads/){:target="_blank"}.
 
+## Prerequisites for Native Image on macOS
+
+Native Image requires the Xcode command line tools.
+To install them, run:
+```shell
+xcode-select --install
+```
+
 ## Installation Notes
 
 ### On JAVA_HOME Command

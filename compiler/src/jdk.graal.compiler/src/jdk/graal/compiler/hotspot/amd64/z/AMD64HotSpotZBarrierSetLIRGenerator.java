@@ -137,7 +137,7 @@ public class AMD64HotSpotZBarrierSetLIRGenerator implements AMD64ReadBarrierSetL
      * slow path call to the runtime.
      */
     @SyncPort(from = "https://github.com/openjdk/jdk/blob/4acafb809c66589fbbfee9c9a4ba7820f848f0e4/src/hotspot/cpu/x86/gc/z/zBarrierSetAssembler_x86.cpp#L304-L321", sha1 = "9a628c1771df79ae8b4cee89d2863fbd4a4964bc")
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/4acafb809c66589fbbfee9c9a4ba7820f848f0e4/src/hotspot/cpu/x86/gc/z/zBarrierSetAssembler_x86.cpp#L370-L414", sha1 = "7688e7aeab5f1aa413690066355a17c18a4273fa")
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/d8430efb5e159b8e08d2cac66b46cb4ff1112927/src/hotspot/cpu/x86/gc/z/zBarrierSetAssembler_x86.cpp#L374-L418", sha1 = "7688e7aeab5f1aa413690066355a17c18a4273fa")
     public static void emitPreWriteBarrier(CompilationResultBuilder crb,
                     AMD64MacroAssembler masm,
                     LIRInstruction op,
@@ -213,7 +213,7 @@ public class AMD64HotSpotZBarrierSetLIRGenerator implements AMD64ReadBarrierSetL
     /**
      * Try to perform any local store barrier fixups or dispatch to the slow path.
      */
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/4acafb809c66589fbbfee9c9a4ba7820f848f0e4/src/hotspot/cpu/x86/gc/z/zBarrierSetAssembler_x86.cpp#L450-L505", sha1 = "4b729acf92e6a297229b7f1e957601708c315f4f")
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/d8430efb5e159b8e08d2cac66b46cb4ff1112927/src/hotspot/cpu/x86/gc/z/zBarrierSetAssembler_x86.cpp#L454-L509", sha1 = "4b729acf92e6a297229b7f1e957601708c315f4f")
     static void storeBarrierMedium(CompilationResultBuilder crb,
                     AMD64MacroAssembler masm,
                     AMD64Address address,
@@ -278,7 +278,7 @@ public class AMD64HotSpotZBarrierSetLIRGenerator implements AMD64ReadBarrierSetL
     /**
      * Add a value to the store buffer.
      */
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/4acafb809c66589fbbfee9c9a4ba7820f848f0e4/src/hotspot/cpu/x86/gc/z/zBarrierSetAssembler_x86.cpp#L416-L448", sha1 = "638b10c65bb14fa4b254efa4d5bbb1751fdbb6bf")
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/d8430efb5e159b8e08d2cac66b46cb4ff1112927/src/hotspot/cpu/x86/gc/z/zBarrierSetAssembler_x86.cpp#L420-L452", sha1 = "638b10c65bb14fa4b254efa4d5bbb1751fdbb6bf")
     static void storeBarrierBufferAdd(AMD64MacroAssembler masm,
                     AMD64Address address,
                     Register tmp1,

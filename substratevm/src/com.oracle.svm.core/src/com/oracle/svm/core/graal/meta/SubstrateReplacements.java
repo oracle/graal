@@ -394,14 +394,14 @@ public class SubstrateReplacements extends ReplacementsImpl {
     }
 
     @Override
-    public Stamp getInjectedStamp(Class<?> type, boolean nonNull) {
+    public Stamp getInjectedStamp(Class<?> type) {
         JavaKind kind = JavaKind.fromJavaClass(type);
         if (kind == JavaKind.Object) {
             ResolvedJavaType returnType = providers.getMetaAccess().lookupJavaType(type);
             if (providers.getWordTypes().isWord(returnType)) {
                 return providers.getWordTypes().getWordStamp(returnType);
             } else {
-                return StampFactory.object(TypeReference.createWithoutAssumptions(returnType), nonNull);
+                return StampFactory.object(TypeReference.createWithoutAssumptions(returnType));
             }
         } else {
             return StampFactory.forKind(kind);

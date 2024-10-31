@@ -124,8 +124,12 @@ public final class LeftShiftNode extends ShiftNode<Shl> {
     }
 
     private static ValueNode canonical(LeftShiftNode leftShiftNode, ArithmeticOpTable.ShiftOp<Shl> op, Stamp stamp, ValueNode forX, ValueNode forY) {
+        if (forY.isConstant() && op.isNeutral(forY.asConstant())) {
+            return forX;
+        }
+
         LeftShiftNode self = leftShiftNode;
-        if (forY.isConstant()) {
+        if (forY.isJavaConstant()) {
             int amount = forY.asJavaConstant().asInt();
             int originalAmount = amount;
             int mask = op.getShiftAmountMask(stamp);

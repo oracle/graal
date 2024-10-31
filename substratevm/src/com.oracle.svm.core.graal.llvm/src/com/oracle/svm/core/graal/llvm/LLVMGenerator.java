@@ -1148,6 +1148,11 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
     }
 
     @Override
+    public void emitExitMethodAddressResolution(Value ip) {
+        throw unimplemented("the LLVM backend doesn't support PLT/GOT"); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @Override
     public <I extends LIRInstruction> I append(I op) {
         throw unimplemented("the LLVM backend doesn't support LIR instructions"); // ExcludeFromJacocoGeneratedReport
     }

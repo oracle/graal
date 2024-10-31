@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,12 +31,15 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import jdk.graal.compiler.asm.amd64.AMD64Address;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexGeneralPurposeRMVOp;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexOp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRRIOp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVROp;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.asm.amd64.AVXKind;
 import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.ConstantValue;
 import jdk.graal.compiler.lir.LIRFrameState;
 import jdk.graal.compiler.lir.LIRInstructionClass;
@@ -51,7 +54,7 @@ public class AMD64VectorBinary {
     public static final class AVXBinaryOp extends AMD64VectorInstruction {
         public static final LIRInstructionClass<AVXBinaryOp> TYPE = LIRInstructionClass.create(AVXBinaryOp.class);
 
-        @Opcode private final VexRVMOp opcode;
+        @Opcode private final VexOp opcode;
 
         @Def({OperandFlag.REG}) protected AllocatableValue result;
         @Use({OperandFlag.REG}) protected AllocatableValue x;
@@ -65,13 +68,34 @@ public class AMD64VectorBinary {
             this.y = y;
         }
 
+        public AVXBinaryOp(VexGeneralPurposeRMVOp opcode, AVXKind.AVXSize size, AllocatableValue result, AllocatableValue x, AllocatableValue y) {
+            super(TYPE, size);
+            this.opcode = opcode;
+            this.result = result;
+            this.x = y;
+            this.y = x;
+        }
+
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            if (isRegister(y)) {
-                opcode.emit(masm, size, asRegister(result), asRegister(x), asRegister(y));
-            } else {
-                opcode.emit(masm, size, asRegister(result), asRegister(x), (AMD64Address) crb.asAddress(y));
+            switch (opcode) {
+                case VexRVMOp rvmOp -> {
+                    if (isRegister(y)) {
+                        rvmOp.emit(masm, size, asRegister(result), asRegister(x), asRegister(y));
+                    } else {
+                        rvmOp.emit(masm, size, asRegister(result), asRegister(x), (AMD64Address) crb.asAddress(y));
+                    }
+                }
+                case VexGeneralPurposeRMVOp rmvOp -> {
+                    if (isRegister(y)) {
+                        rmvOp.emit(masm, size, asRegister(result), asRegister(y), asRegister(x));
+                    } else {
+                        rmvOp.emit(masm, size, asRegister(result), (AMD64Address) crb.asAddress(y), asRegister(x));
+                    }
+                }
+                default -> throw GraalError.shouldNotReachHereUnexpectedValue(opcode);
             }
+
         }
     }
 
@@ -154,7 +178,7 @@ public class AMD64VectorBinary {
             if (state != null) {
                 crb.recordImplicitException(masm.position(), state);
             }
-            opcode.emit(masm, size, asRegister(result), asRegister(x), y.toAddress());
+            opcode.emit(masm, size, asRegister(result), asRegister(x), y.toAddress(masm));
         }
     }
 
@@ -167,8 +191,8 @@ public class AMD64VectorBinary {
         @Use({OperandFlag.REG}) protected AllocatableValue x;
         @Use({OperandFlag.REG}) protected AllocatableValue y;
 
-        public AVXOpMaskBinaryOp(AMD64Assembler.VexRVROp opcode, AVXKind.AVXSize size, AllocatableValue result, AllocatableValue x, AllocatableValue y) {
-            super(TYPE, size);
+        public AVXOpMaskBinaryOp(AMD64Assembler.VexRVROp opcode, AllocatableValue result, AllocatableValue x, AllocatableValue y) {
+            super(TYPE, AVXKind.AVXSize.XMM);
             this.opcode = opcode;
             this.result = result;
             this.x = x;
@@ -177,7 +201,7 @@ public class AMD64VectorBinary {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            opcode.emit(masm, size, asRegister(result), asRegister(x), asRegister(y));
+            opcode.emit(masm, asRegister(result), asRegister(x), asRegister(y));
         }
     }
 }

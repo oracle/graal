@@ -253,12 +253,13 @@ final class Target_java_security_Provider_Windows {
 final class ProviderUtil {
     private static volatile boolean initialized = false;
 
+    @SuppressWarnings("restricted")
     static void initialize(Target_java_security_Provider_Windows provider) {
         if (initialized) {
             return;
         }
 
-        if (provider.name.equals("SunMSCAPI")) {
+        if ("SunMSCAPI".equals(provider.name)) {
             try {
                 System.loadLibrary("sunmscapi");
             } catch (Throwable ignored) {

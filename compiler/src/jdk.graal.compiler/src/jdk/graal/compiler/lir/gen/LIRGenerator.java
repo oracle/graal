@@ -343,6 +343,8 @@ public abstract class LIRGenerator extends CoreProvidersDelegate implements LIRG
         assert verify(op);
         ArrayList<LIRInstruction> lirForBlock = lir.getLIRforBlock(getCurrentBlock());
         op.setPosition(currentPosition);
+
+        assert !lirForBlock.contains(op) : "added " + op + " twice";
         lirForBlock.add(op);
         return op;
     }

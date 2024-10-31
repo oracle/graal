@@ -67,7 +67,9 @@ public final class DynamicNewInstanceTypeFlow extends TypeFlow<BytecodePosition>
 
     @Override
     public void initFlow(PointsToAnalysis bb) {
-        this.newTypeFlow.addObserver(bb, this);
+        assert !bb.usePredicates() || newTypeFlow.getPredicate() != null || MethodFlowsGraph.nonMethodFlow(newTypeFlow) : "Missing predicate for the flow " + newTypeFlow + ", which is input for " +
+                        this;
+        newTypeFlow.addObserver(bb, this);
     }
 
     @Override
@@ -76,10 +78,20 @@ public final class DynamicNewInstanceTypeFlow extends TypeFlow<BytecodePosition>
     }
 
     @Override
+    protected void onFlowEnabled(PointsToAnalysis bb) {
+        if (newTypeFlow.isFlowEnabled()) {
+            bb.postTask(() -> onObservedUpdate(bb));
+        }
+    }
+
+    @Override
     public void onObservedUpdate(PointsToAnalysis bb) {
+        if (!isFlowEnabled()) {
+            return;
+        }
         /* The state of the new type provider has changed. */
         TypeState newTypeState = newTypeFlow.getState();
-        TypeState updateState = bb.analysisPolicy().dynamicNewInstanceState(bb, state, newTypeState, source, allocationContext);
+        TypeState updateState = bb.analysisPolicy().dynamicNewInstanceState(bb, getState(), newTypeState, source, allocationContext);
         addState(bb, updateState);
     }
 
@@ -94,18 +106,23 @@ public final class DynamicNewInstanceTypeFlow extends TypeFlow<BytecodePosition>
 
     @Override
     public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
-        /* When the new-type flow saturates start observing the flow of the declared type. */
-        replaceObservedWith(bb, declaredType);
+        if (bb.isClosed(declaredType)) {
+            /* When the new-type flow saturates start observing the flow of the declared type. */
+            replaceObservedWith(bb, declaredType);
+        } else {
+            /* Propagate the saturation stamp through the dynamic new instance flow. */
+            onSaturated(bb);
+        }
     }
 
     @Override
-    public boolean canSaturate() {
-        /* The dynamic new instance tracks all of its input types. */
-        return false;
+    public boolean canSaturate(PointsToAnalysis bb) {
+        /* Dynamic new instance of closed types doesn't saturate, it tracks all input types. */
+        return !bb.isClosed(declaredType);
     }
 
     @Override
     public String toString() {
-        return "DynamicNewInstanceFlow<" + getState() + ">";
+        return "DynamicNewInstanceFlow<" + getStateDescription() + ">";
     }
 }

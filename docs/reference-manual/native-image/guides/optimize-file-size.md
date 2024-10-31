@@ -96,7 +96,7 @@ Registering wrong or too many Java types for reflection can also increase the si
 Moreover, build-time initialization, if not used towards a specific goal, can cause large Java objects such as empty caches to be accidentally included in the image heap and, thus, cause bloat in a native executable.
 
 Generally, it is a good idea to check file size, number of embedded resources, or other metrics from time to time, for example, when adding or updating dependencies, or even monitor build metrics frequently.
-For this, you can use the [machine-readable version of the build output](../overview/BuildOutput.md#machine-readable-build-output) or the [build reports for GitHub Actions](https://medium.com/graalvm/native-image-build-reports-and-update-notifications-351aca964a55){:target="_blank"}.
+For this, you can use the [machine-readable version of the build output](../BuildOutput.md#machine-readable-build-output) or the [build reports for GitHub Actions](https://medium.com/graalvm/native-image-build-reports-and-update-notifications-351aca964a55){:target="_blank"}.
 
 There are other Native Image techniques that can positively affect the executable size, besides improving other metrics, for example, [Profile-Guided Optimizations (PGO)](optimize-native-executable-with-pgo.md). 
 

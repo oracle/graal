@@ -51,7 +51,7 @@ public final class GraalServices {
 
     /**
      * The set of services available in libgraal. This field is only non-null when
-     * {@link GraalServices} is loaded by the GuestGraal class loader.
+     * {@link GraalServices} is loaded by the LibGraalClassLoader.
      */
     private static Map<Class<?>, List<?>> libgraalServices;
 

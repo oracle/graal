@@ -335,8 +335,8 @@ def glob_match(path, pattern):
     """
     assert isinstance(path, PurePath), path
     if sys.version_info[:2] >= (3, 13):
-        # Since Python 3.13, PurePath.match already supports '**'.
-        return path.match(pattern)
+        # Python 3.13+: PurePath.full_match already supports '**'.
+        return path.full_match(pattern)
 
     pathType = type(path)
     patternParts = pathType(pattern).parts

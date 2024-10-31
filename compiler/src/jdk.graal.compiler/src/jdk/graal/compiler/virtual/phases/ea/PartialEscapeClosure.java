@@ -69,6 +69,7 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.ValueProxyNode;
 import jdk.graal.compiler.nodes.VirtualState;
+import jdk.graal.compiler.nodes.WithExceptionNode;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;
 import jdk.graal.compiler.nodes.java.AccessMonitorNode;
@@ -311,7 +312,11 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                         if (state.hasObjectState(id)) {
                             FixedNode materializeBefore = insertBefore;
                             if (insertBefore == node && tool.isDeleted()) {
-                                materializeBefore = ((FixedWithNextNode) insertBefore).next();
+                                if (insertBefore instanceof FixedWithNextNode withNextNode) {
+                                    materializeBefore = withNextNode.next();
+                                } else {
+                                    materializeBefore = ((WithExceptionNode) insertBefore).next();
+                                }
                             }
                             ensureMaterialized(state, id, materializeBefore, effects, COUNTER_MATERIALIZATIONS);
                         }

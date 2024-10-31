@@ -116,7 +116,7 @@ public class FrequencyEncoder<T> {
             return 0;
         }
         Entry<T> entry = map.get(object);
-        assert entry != null && entry.index >= 0 : Assertions.errorMessageContext("entry", entry);
+        assert entry != null && entry.index >= 0 : Assertions.errorMessageContext("object", object, "entry", entry);
         return entry.index;
     }
 

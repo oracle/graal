@@ -38,7 +38,9 @@ import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
@@ -93,18 +95,21 @@ public class SubstrateUtil {
         return arch;
     }
 
+    private static final boolean libGraalContext = Services.IS_BUILDING_NATIVE_IMAGE;
+
     /**
      * @return true if the standalone libgraal is being built instead of a normal SVM image.
      */
+    @Platforms(HOSTED_ONLY.class)
     public static boolean isBuildingLibgraal() {
-        return Services.IS_BUILDING_NATIVE_IMAGE;
+        return libGraalContext;
     }
 
     /**
      * @return true if running in the standalone libgraal image.
      */
     public static boolean isInLibgraal() {
-        return Services.IS_IN_NATIVE_IMAGE;
+        return libGraalContext && ImageInfo.inImageRuntimeCode();
     }
 
     private static final Method IS_TERMINAL_METHOD = ReflectionUtil.lookupMethod(true, Console.class, "isTerminal");

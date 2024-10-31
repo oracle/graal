@@ -58,10 +58,10 @@ import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle.ClassHierarchyAccessor;
 import com.oracle.truffle.espresso.analysis.hierarchy.SingleImplementor;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
-import com.oracle.truffle.espresso.bytecode.BytecodeStream;
-import com.oracle.truffle.espresso.bytecode.Bytecodes;
+import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
+import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
+import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.attributes.ConstantValueAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.InnerClassesAttribute;
@@ -72,22 +72,25 @@ import com.oracle.truffle.espresso.classfile.attributes.RecordAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.SignatureAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.SourceDebugExtensionAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.SourceFileAttribute;
-import com.oracle.truffle.espresso.descriptors.Names;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.descriptors.Names;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
 import com.oracle.truffle.espresso.impl.PackageTable.PackageEntry;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.classfile.ParserField;
+import com.oracle.truffle.espresso.classfile.ParserKlass;
+import com.oracle.truffle.espresso.classfile.ParserMethod;
 import com.oracle.truffle.espresso.redefinition.ChangePacket;
 import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.redefinition.DetectedChange;
-import com.oracle.truffle.espresso.runtime.Attribute;
+import com.oracle.truffle.espresso.classfile.attributes.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
@@ -174,7 +177,7 @@ public final class ObjectKlass extends Klass {
     }
 
     public ObjectKlass(EspressoContext context, LinkedKlass linkedKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces, StaticObject classLoader, ClassRegistry.ClassDefinitionInfo info) {
-        super(context, linkedKlass.getName(), linkedKlass.getType(), linkedKlass.getFlags(), info.klassID);
+        super(context, linkedKlass.getName(), linkedKlass.getType(), linkedKlass.getFlags(), linkedKlass.getParserKlass().getHiddenKlassId());
 
         this.nest = info.dynamicNest;
         this.hostKlass = info.hostKlass;
@@ -894,7 +897,7 @@ public final class ObjectKlass extends Klass {
                     host = thisPool.resolvedKlassAt(this, nestHost.hostClassIndex);
                 } catch (AbstractTruffleException e) {
                     if (getJavaVersion().java15OrLater()) {
-                        getContext().getLogger().log(Level.FINE, "Exception while loading nest host class for " + this.getExternalName(), e);
+                        getContext().getLogger().log(Level.FINE, e, () -> "Exception while loading nest host class for " + this.getExternalName());
                         // JVMS sect. 5.4.4: Any exception thrown as a result of failure of class or
                         // interface resolution is not rethrown.
                         host = this;
@@ -904,7 +907,7 @@ public final class ObjectKlass extends Klass {
                 }
                 if (host != this && !host.nestMembersCheck(this)) {
                     if (getJavaVersion().java15OrLater()) {
-                        getContext().getLogger().log(Level.FINE, "Failed nest host class checks for " + this.getExternalName());
+                        getContext().getLogger().log(Level.FINE, () -> "Failed nest host class checks for " + this.getExternalName());
                         host = this;
                     } else {
                         Meta meta = getMeta();
@@ -930,9 +933,7 @@ public final class ObjectKlass extends Klass {
         RuntimeConstantPool pool = getConstantPool();
         for (int index : nestMembers.getClasses()) {
             if (k.getName().equals(pool.classAt(index).getName(pool))) {
-                if (k == pool.resolvedKlassAt(this, index)) {
-                    return true;
-                }
+                return true;
             }
         }
         return false;
@@ -983,22 +984,31 @@ public final class ObjectKlass extends Klass {
         klasses.add(nest());
         for (int i = 0; i < nestMembers.getClasses().length; i++) {
             int index = nestMembers.getClasses()[i];
+            Klass k;
             try {
-                klasses.add(pool.resolvedKlassAt(this, index));
-            } catch (EspressoException e) {
+                k = pool.resolvedKlassAt(this, index);
+            } catch (AbstractTruffleException e) {
                 /*
                  * Don't allow badly constructed nest members to break execution here, only report
                  * well-constructed entries.
                  */
+                getContext().getLogger().log(Level.FINE, e, () -> "Exception while loading nest host class for " + this.getExternalName());
+                continue;
             }
+            if (k.nest() != this) {
+                getContext().getLogger().log(Level.FINE, () -> "Skipping nest member with a different nest host class for " + this.getExternalName() + " member " + k + " with host " + k.nest());
+                continue;
+            }
+            klasses.add(k);
         }
         return klasses.toArray(Klass.EMPTY_ARRAY);
     }
 
     Field lookupFieldTableImpl(int slot) {
         if (slot >= 0) {
-            assert slot < fieldTable.length && !fieldTable[slot].isHidden();
-            return fieldTable[slot];
+            Field field = fieldTable[slot];
+            assert !field.isHidden();
+            return field;
         } else { // negative values used for extension fields
             ObjectKlass objectKlass = this;
             while (objectKlass != null) {
@@ -1016,7 +1026,6 @@ public final class ObjectKlass extends Klass {
 
     Field lookupStaticFieldTableImpl(int slot) {
         if (slot >= 0) {
-            assert slot < staticFieldTable.length;
             return staticFieldTable[slot];
         } else { // negative values used for extension fields
             return extensionFieldsMetadata.getStaticFieldAtSlot(slot);

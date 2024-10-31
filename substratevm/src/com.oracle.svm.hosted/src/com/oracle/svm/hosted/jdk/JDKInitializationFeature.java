@@ -58,6 +58,7 @@ public class JDKInitializationFeature implements InternalFeature {
         rci.initializeAtBuildTime("java.nio", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("java.text", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("java.time", JDK_CLASS_REASON);
+        rci.initializeAtRunTime("java.time.chrono.HijrahChronology", "Reads java.home in class initializer.");
         rci.initializeAtBuildTime("java.util", JDK_CLASS_REASON);
         rci.initializeAtRunTime("java.util.concurrent.SubmissionPublisher", "Executor service must be recomputed");
 
@@ -187,6 +188,7 @@ public class JDKInitializationFeature implements InternalFeature {
         rci.initializeAtRunTime("java.lang.StrictMath$RandomNumberGeneratorHolder", "Contains random seeds");
 
         rci.initializeAtRunTime("jdk.internal.misc.InnocuousThread", "Contains a thread group INNOCUOUSTHREADGROUP.");
+        rci.initializeAtRunTime("jdk.internal.util.StaticProperty", "Contains run time specific values.");
 
         rci.initializeAtRunTime("sun.nio.ch.Poller", "Contains an InnocuousThread.");
         rci.initializeAtRunTime("jdk.internal.jimage", "Pulls in direct byte buffers");

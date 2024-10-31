@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package com.oracle.svm.core;
 
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.Immutable;
+import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.IsolateCreationOnly;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
 import static jdk.graal.compiler.core.common.SpectrePHTMitigations.None;
 import static jdk.graal.compiler.core.common.SpectrePHTMitigations.Options.SpectrePHTBarriers;
@@ -52,6 +53,7 @@ import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.APIOptionGroup;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.BundleMember;
+import com.oracle.svm.core.option.BundleMember.Role;
 import com.oracle.svm.core.option.GCOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
@@ -134,7 +136,11 @@ public class SubstrateOptions {
 
     // @APIOption(name = "layer-use")//
     @Option(help = "Experimental: Build an image based on a Native Image layer.")//
-    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> LayerUse = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
+    @BundleMember(role = Role.Input) //
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Paths> LayerUse = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Paths.build());
+
+    @Option(help = "Mark singleton as application layer only")//
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> ApplicationLayerOnlySingletons = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
     @APIOption(name = "libc")//
     @Option(help = "Selects the libc implementation to use. Available implementations: glibc, musl, bionic")//
@@ -533,9 +539,6 @@ public class SubstrateOptions {
         };
     }
 
-    @Option(help = "Physical memory size (in bytes). By default, the value is queried from the OS/container during VM startup.", type = OptionType.Expert)//
-    public static final RuntimeOptionKey<Long> MaxRAM = new RuntimeOptionKey<>(0L, Immutable);
-
     @Option(help = "Enable detection and runtime container configuration support.")//
     public static final HostedOptionKey<Boolean> UseContainerSupport = new HostedOptionKey<>(true);
 
@@ -567,6 +570,12 @@ public class SubstrateOptions {
 
     @Option(help = "Verify naming conventions during image construction.")//
     public static final HostedOptionKey<Boolean> VerifyNamingConventions = new HostedOptionKey<>(false);
+
+    @Option(help = "Disable the substitutions matched by the option value. " +
+                    "A value can be a fully qualified method name with parameter list, a fully qualified method name without parameter list, or a fully qualified type name. " +
+                    "When multiple methods match a value, then all matching substitutions are disabled.")//
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> DisableSubstitution = new HostedOptionKey<>(
+                    AccumulatingLocatableMultiOptionValue.Strings.build());
 
     @Option(help = "Deprecated, has no effect.", deprecated = true) //
     public static final HostedOptionKey<Boolean> MultiThreaded = new HostedOptionKey<>(true);
@@ -630,6 +639,17 @@ public class SubstrateOptions {
 
     @Option(help = "JNI functions will return more specific error codes.", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> JNIEnhancedErrorCodes = new HostedOptionKey<>(false);
+
+    @Option(help = "Enable JVM Tool Interface (JVMTI) support.", type = OptionType.User)//
+    public static final HostedOptionKey<Boolean> JVMTI = new HostedOptionKey<>(false);
+
+    @Option(help = "Loads the specified native agent library. " +
+                    "After the library name, a comma-separated list of options specific to the library can be used.", type = OptionType.User)//
+    public static final RuntimeOptionKey<String> JVMTIAgentLib = new RuntimeOptionKey<>(null);
+
+    @Option(help = "Loads the specified native agent library specified by the absolute path name. " +
+                    "After the library path, a comma-separated list of options specific to the library can be used.", type = OptionType.User)//
+    public static final RuntimeOptionKey<String> JVMTIAgentPath = new RuntimeOptionKey<>(null);
 
     @Option(help = "Alignment of AOT and JIT compiled code in bytes.")//
     public static final HostedOptionKey<Integer> CodeAlignment = new HostedOptionKey<>(16);
@@ -709,8 +729,18 @@ public class SubstrateOptions {
     @Option(help = "Number of cache lines to load after the object address using prefetch instructions.")//
     public static final HostedOptionKey<Integer> AllocateInstancePrefetchLines = new HostedOptionKey<>(1);
 
-    @Option(help = "Generated code style for prefetch instructions: for 0 or less no prefetch instructions are generated and for 1 or more prefetch instructions are introduced after each allocation.")//
-    public static final HostedOptionKey<Integer> AllocatePrefetchStyle = new HostedOptionKey<>(1);
+    @Fold
+    public static int getAllocatePrefetchStyle() {
+        Integer style = ConcealedOptions.AllocatePrefetchStyle.getValue();
+        if (style != null) {
+            return style;
+        }
+        /*
+         * Prefetches do not lead to measurable performance improvements on SerialGC, so disable
+         * them by default if SerialGC is selected.
+         */
+        return SubstrateOptions.useSerialGC() ? 0 : 1;
+    }
 
     @Option(help = "Sets the prefetch instruction to prefetch ahead of the allocation pointer. Possible values are from 0 to 3. The actual instructions behind the values depend on the platform.")//
     public static final HostedOptionKey<Integer> AllocatePrefetchInstr = new HostedOptionKey<>(0);
@@ -926,12 +956,8 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Integer> GenerateDebugInfo = new HostedOptionKey<>(0, SubstrateOptions::validateGenerateDebugInfo) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Integer oldValue, Integer newValue) {
-            if (!OS.DARWIN.isCurrent()) {
-                /*
-                 * Keep the symbol table, as it may be used by debugging or profiling tools (e.g.,
-                 * perf). On Windows, the symbol table is included in the pdb-file, while on Linux,
-                 * it is part of the .debug file.
-                 */
+            if (OS.WINDOWS.isCurrent()) {
+                /* Keep symbols on Windows. The symbol table is part of the pdb-file. */
                 DeleteLocalSymbols.update(values, newValue == 0);
             }
         }
@@ -1037,11 +1063,11 @@ public class SubstrateOptions {
 
         /** Use {@link ReferenceHandler#isExecutedManually()} instead. */
         @Option(help = "Determines if the reference handling is executed automatically or manually.", type = OptionType.Expert) //
-        public static final RuntimeOptionKey<Boolean> AutomaticReferenceHandling = new RuntimeOptionKey<>(true, Immutable);
+        public static final RuntimeOptionKey<Boolean> AutomaticReferenceHandling = new RuntimeOptionKey<>(true, IsolateCreationOnly);
 
         /** Use {@link com.oracle.svm.core.jvmstat.PerfManager#usePerfData()} instead. */
         @Option(help = "Flag to disable jvmstat instrumentation for performance testing.")//
-        public static final RuntimeOptionKey<Boolean> UsePerfData = new RuntimeOptionKey<>(true, Immutable);
+        public static final RuntimeOptionKey<Boolean> UsePerfData = new RuntimeOptionKey<>(true, IsolateCreationOnly);
 
         /** Use {@link SubstrateOptions#maxJavaStackTraceDepth()} instead. */
         @Option(help = "The maximum number of lines in the stack trace for Java exceptions (0 means all)", type = OptionType.User)//
@@ -1061,15 +1087,24 @@ public class SubstrateOptions {
         @APIOption(name = "install-exit-handlers")//
         @Option(help = "Provide java.lang.Terminator exit handlers", type = User)//
         protected static final HostedOptionKey<Boolean> InstallExitHandlers = new HostedOptionKey<>(false);
+
+        @Option(help = "Physical memory size (in bytes). By default, the value is queried from the OS/container during VM startup.", type = OptionType.Expert)//
+        public static final RuntimeOptionKey<Long> MaxRAM = new RuntimeOptionKey<>(0L, IsolateCreationOnly);
+
+        /**
+         * Use {@link SubstrateOptions#getAllocatePrefetchStyle()} instead.
+         */
+        @Option(help = "Generated code style for prefetch instructions: for 0 or less no prefetch instructions are generated and for 1 or more prefetch instructions are introduced after each allocation.")//
+        public static final HostedOptionKey<Integer> AllocatePrefetchStyle = new HostedOptionKey<>(null);
     }
 
     @Fold
-    public static final boolean needsExitHandlers() {
+    public static boolean needsExitHandlers() {
         return ConcealedOptions.InstallExitHandlers.getValue() || VMInspectionOptions.hasJfrSupport() || VMInspectionOptions.hasNativeMemoryTrackingSupport();
     }
 
     @Option(help = "Overwrites the available number of processors provided by the OS. Any value <= 0 means using the processor count from the OS.")//
-    public static final RuntimeOptionKey<Integer> ActiveProcessorCount = new RuntimeOptionKey<>(-1, Immutable, RelevantForCompilationIsolates);
+    public static final RuntimeOptionKey<Integer> ActiveProcessorCount = new RuntimeOptionKey<>(-1, IsolateCreationOnly, RelevantForCompilationIsolates);
 
     @Option(help = "For internal purposes only. Disables type id result verification even when running with assertions enabled.", stability = OptionStability.EXPERIMENTAL, type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> DisableTypeIdResultVerification = new HostedOptionKey<>(true);
@@ -1230,6 +1265,9 @@ public class SubstrateOptions {
     public static final RuntimeOptionKey<ReportingMode> MissingRegistrationReportingMode = new RuntimeOptionKey<>(
                     ReportingMode.Throw);
 
+    @Option(help = "Number of context lines printed for each missing registration error in Warn mode")//
+    public static final RuntimeOptionKey<Integer> MissingRegistrationWarnContextLines = new RuntimeOptionKey<>(8);
+
     @Option(help = "Instead of warning, throw IOExceptions for link-at-build-time resources at build time")//
     public static final HostedOptionKey<Boolean> ThrowLinkAtBuildTimeIOExceptions = new HostedOptionKey<>(false);
 
@@ -1255,17 +1293,33 @@ public class SubstrateOptions {
         return IncludeAllFromModule.hasBeenSet() || IncludeAllFromPath.hasBeenSet() || IncludeAllFromClassPath.hasBeenSet();
     }
 
-    @Option(help = "Run layered image base layer open-world analysis. Includes all public types and methods that can be reached using normal Java access rules.")//
-    public static final HostedOptionKey<Boolean> LayeredBaseImageAnalysis = new HostedOptionKey<>(false);
+    @Option(help = "Force include include all public types and methods that can be reached using normal Java access rules.")//
+    public static final HostedOptionKey<Boolean> UseBaseLayerInclusionPolicy = new HostedOptionKey<>(false);
 
     @Option(help = "Support for calls via the Java Foreign Function and Memory API", type = Expert) //
     public static final HostedOptionKey<Boolean> ForeignAPISupport = new HostedOptionKey<>(false);
 
+    @Option(help = "Support for intrinsics from the Java Vector API", type = Expert) //
+    public static final HostedOptionKey<Boolean> VectorAPISupport = new HostedOptionKey<>(false);
+
     @Option(help = "Assume new types cannot be added after analysis", type = OptionType.Expert) //
-    public static final HostedOptionKey<Boolean> ClosedTypeWorld = new HostedOptionKey<>(true);
+    public static final HostedOptionKey<Boolean> ClosedTypeWorld = new HostedOptionKey<>(true) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+            ClosedTypeWorldHubLayout.update(values, newValue);
+        }
+    };
+
+    @Option(help = "Use the closed type world dynamic hub representation. This is only allowed when the option ClosedTypeWorld is also set to true.", type = OptionType.Expert) //
+    public static final HostedOptionKey<Boolean> ClosedTypeWorldHubLayout = new HostedOptionKey<>(true);
 
     @Fold
-    public static boolean closedTypeWorld() {
+    public static boolean useClosedTypeWorldHubLayout() {
+        return ClosedTypeWorldHubLayout.getValue();
+    }
+
+    @Fold
+    public static boolean useClosedTypeWorld() {
         return ClosedTypeWorld.getValue();
     }
 
@@ -1290,4 +1344,11 @@ public class SubstrateOptions {
     @Option(help = "Allow all instantiated types to be allocated via Unsafe.allocateInstance().", type = OptionType.Expert, //
                     deprecated = true, deprecationMessage = "ThrowMissingRegistrationErrors is the preferred way of configuring this on a per-type level.") //
     public static final HostedOptionKey<Boolean> AllowUnsafeAllocationOfAllInstantiatedTypes = new HostedOptionKey<>(null);
+
+    @Option(help = "Enable fallback to mremap for initializing the image heap.")//
+    public static final HostedOptionKey<Boolean> MremapImageHeap = new HostedOptionKey<>(true, key -> {
+        if (!Platform.includedIn(Platform.LINUX.class)) {
+            throw UserError.invalidOptionValue(key, key.getValue(), "Mapping the image heap with mremap() is only supported on Linux.");
+        }
+    });
 }

@@ -80,6 +80,8 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.NEXT_TYPE_ID
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.NOT_MATERIALIZED_CONSTANT;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.NULL_POINTER_CONSTANT;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.OBJECT_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.PARENT_CONSTANT_ID_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.PARENT_CONSTANT_INDEX_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.POSITION_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.PRIMITIVE_ARRAY_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.RETURN_TYPE_TAG;
@@ -89,21 +91,28 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.STRENGTHENED
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.SUPER_CLASS_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.TID_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.TYPES_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.UNDEFINED_CONSTANT_ID;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.UNDEFINED_FIELD_INDEX;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.VALUE_TAG;
-import static jdk.graal.compiler.java.LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.charset.Charset;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
+import java.util.EnumSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.IntStream;
 
 import org.graalvm.collections.EconomicMap;
@@ -121,6 +130,7 @@ import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.svm.util.FileDumpingUtil;
 
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.nodes.EncodedGraph;
 import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
 import jdk.graal.compiler.util.ObjectCopier;
@@ -132,7 +142,9 @@ import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 public class ImageLayerWriter {
-    protected final ImageLayerSnapshotUtil imageLayerSnapshotUtil;
+    static final Charset GRAPHS_CHARSET = Charset.defaultCharset();
+
+    protected ImageLayerSnapshotUtil imageLayerSnapshotUtil;
     private ImageLayerWriterHelper imageLayerWriterHelper;
     private ImageHeap imageHeap;
     protected AnalysisUniverse aUniverse;
@@ -141,33 +153,78 @@ public class ImageLayerWriter {
     protected final EconomicMap<String, Object> jsonMap;
     protected final List<Integer> constantsToRelink;
     private final Set<Integer> persistedTypeIds;
+    private final Set<Integer> persistedMethodIds;
     protected final Map<String, EconomicMap<String, Object>> typesMap;
     protected final Map<String, EconomicMap<String, Object>> methodsMap;
     protected final Map<String, Map<String, Object>> fieldsMap;
     private final Map<String, EconomicMap<String, Object>> constantsMap;
-    FileInfo fileInfo;
+    private FileInfo fileInfo;
+    private GraphsOutput graphsOutput;
     private final boolean useSharedLayerGraphs;
 
     protected final Set<AnalysisFuture<Void>> elementsToPersist = ConcurrentHashMap.newKeySet();
 
-    private record FileInfo(Path layerSnapshotPath, String fileName, String suffix) {
+    private record FileInfo(Path layerFilePath, String fileName, String suffix) {
+    }
+
+    private static class GraphsOutput {
+        private final Path path;
+        private final Path tempPath;
+        private final FileChannel tempChannel;
+
+        private final AtomicLong currentOffset = new AtomicLong(0);
+
+        GraphsOutput(Path path, String fileName, String suffix) {
+            this.path = path;
+            this.tempPath = FileDumpingUtil.createTempFile(path.getParent(), fileName, suffix);
+            try {
+                this.tempChannel = FileChannel.open(this.tempPath, EnumSet.of(StandardOpenOption.WRITE));
+            } catch (IOException e) {
+                throw GraalError.shouldNotReachHere(e, "Error opening temporary graphs file.");
+            }
+        }
+
+        String add(String encodedGraph) {
+            ByteBuffer encoded = GRAPHS_CHARSET.encode(encodedGraph);
+            int size = encoded.limit();
+            long offset = currentOffset.getAndAdd(size);
+            try {
+                tempChannel.write(encoded, offset);
+            } catch (Exception e) {
+                throw GraalError.shouldNotReachHere(e, "Error during graphs file dumping.");
+            }
+            return new StringBuilder("@").append(offset).append("[").append(size).append("]").toString();
+        }
+
+        void finish() {
+            try {
+                tempChannel.close();
+                FileDumpingUtil.moveTryAtomically(tempPath, path);
+            } catch (Exception e) {
+                throw GraalError.shouldNotReachHere(e, "Error during graphs file dumping.");
+            }
+        }
     }
 
     public ImageLayerWriter() {
-        this(true, new ImageLayerSnapshotUtil());
+        this(true);
     }
 
     @SuppressWarnings({"this-escape", "unused"})
-    public ImageLayerWriter(boolean useSharedLayerGraphs, ImageLayerSnapshotUtil imageLayerSnapshotUtil) {
+    public ImageLayerWriter(boolean useSharedLayerGraphs) {
         this.useSharedLayerGraphs = useSharedLayerGraphs;
-        this.imageLayerSnapshotUtil = imageLayerSnapshotUtil;
         this.jsonMap = EconomicMap.create();
         this.constantsToRelink = new ArrayList<>();
-        this.persistedTypeIds = new HashSet<>();
+        this.persistedTypeIds = ConcurrentHashMap.newKeySet();
+        this.persistedMethodIds = ConcurrentHashMap.newKeySet();
         this.typesMap = new ConcurrentHashMap<>();
         this.methodsMap = new ConcurrentHashMap<>();
         this.fieldsMap = new ConcurrentHashMap<>();
         this.constantsMap = new ConcurrentHashMap<>();
+    }
+
+    public void setImageLayerSnapshotUtil(ImageLayerSnapshotUtil imageLayerSnapshotUtil) {
+        this.imageLayerSnapshotUtil = imageLayerSnapshotUtil;
     }
 
     public void setInternedStringsIdentityMap(IdentityHashMap<String, String> map) {
@@ -182,17 +239,24 @@ public class ImageLayerWriter {
         this.imageLayerWriterHelper = imageLayerWriterHelper;
     }
 
-    public void setFileInfo(Path layerSnapshotPath, String fileName, String suffix) {
+    public void setSnapshotFileInfo(Path layerSnapshotPath, String fileName, String suffix) {
         fileInfo = new FileInfo(layerSnapshotPath, fileName, suffix);
+    }
+
+    public void openGraphsOutput(Path layerGraphsPath, String fileName, String suffix) {
+        AnalysisError.guarantee(graphsOutput == null, "Graphs file has already been opened");
+        graphsOutput = new GraphsOutput(layerGraphsPath, fileName, suffix);
     }
 
     public void setAnalysisUniverse(AnalysisUniverse aUniverse) {
         this.aUniverse = aUniverse;
     }
 
-    public void dumpFile() {
-        FileDumpingUtil.dumpFile(fileInfo.layerSnapshotPath, fileInfo.fileName, fileInfo.suffix, writer -> {
-            try (JsonWriter jw = new JsonWriter(writer)) {
+    public void dumpFiles() {
+        graphsOutput.finish();
+
+        FileDumpingUtil.dumpFile(fileInfo.layerFilePath, fileInfo.fileName, fileInfo.suffix, outputStream -> {
+            try (JsonWriter jw = new JsonWriter(new PrintWriter(outputStream))) {
                 jw.print(jsonMap);
             } catch (IOException e) {
                 throw new RuntimeException(e);
@@ -200,12 +264,12 @@ public class ImageLayerWriter {
         });
     }
 
-    public void persistImageHeapSize(long imageHeapSize) {
-        jsonMap.put(IMAGE_HEAP_SIZE_TAG, String.valueOf(imageHeapSize));
+    public void initializeExternalValues() {
+        imageLayerSnapshotUtil.initializeExternalValues();
     }
 
-    protected boolean shouldPersistMethod(AnalysisMethod method) {
-        return method.isReachable();
+    public void persistImageHeapSize(long imageHeapSize) {
+        jsonMap.put(IMAGE_HEAP_SIZE_TAG, String.valueOf(imageHeapSize));
     }
 
     public void persistAnalysisInfo() {
@@ -221,25 +285,25 @@ public class ImageLayerWriter {
          * removed after a mechanism for determining which types have to be persisted is added, or
          * if a stable name is implemented for them.
          */
-        for (AnalysisType type : aUniverse.getTypes().stream().filter(AnalysisType::isReachable).toList()) {
+        for (AnalysisType type : aUniverse.getTypes().stream().filter(AnalysisType::isTrackedAcrossLayers).toList()) {
             checkTypeStability(type);
             persistType(type);
         }
         jsonMap.put(TYPES_TAG, typesMap);
 
-        for (AnalysisMethod method : aUniverse.getMethods().stream().filter(this::shouldPersistMethod).toList()) {
+        for (AnalysisMethod method : aUniverse.getMethods().stream().filter(AnalysisMethod::isTrackedAcrossLayers).toList()) {
             persistMethod(method);
         }
         jsonMap.put(METHODS_TAG, methodsMap);
 
-        for (AnalysisField field : aUniverse.getFields().stream().filter(AnalysisField::isReachable).toList()) {
+        for (AnalysisField field : aUniverse.getFields().stream().filter(AnalysisField::isTrackedAcrossLayers).toList()) {
             persistField(field);
         }
         jsonMap.put(FIELDS_TAG, fieldsMap);
 
         for (Map.Entry<AnalysisType, Set<ImageHeapConstant>> entry : imageHeap.getReachableObjects().entrySet()) {
             for (ImageHeapConstant imageHeapConstant : entry.getValue()) {
-                persistConstant(imageHeapConstant);
+                persistConstant(UNDEFINED_CONSTANT_ID, UNDEFINED_FIELD_INDEX, imageHeapConstant);
             }
         }
         for (AnalysisFuture<Void> task : elementsToPersist) {
@@ -269,9 +333,7 @@ public class ImageLayerWriter {
              * Some persisted types are not reachable. In this case, the super class has to be
              * persisted manually as well.
              */
-            if (!superclass.isReachable()) {
-                persistType(superclass);
-            }
+            persistType(superclass);
         }
         EconomicMap<String, Object> typeMap = EconomicMap.create();
 
@@ -328,7 +390,14 @@ public class ImageLayerWriter {
     }
 
     public void persistMethod(AnalysisMethod method) {
+        if (!persistedMethodIds.add(method.getId())) {
+            return;
+        }
         EconomicMap<String, Object> methodMap = getMethodMap(method);
+        persistMethod(method, methodMap);
+    }
+
+    protected void persistMethod(AnalysisMethod method, EconomicMap<String, Object> methodMap) {
         Executable executable = method.getJavaMethod();
 
         if (methodMap.containsKey(ID_TAG)) {
@@ -375,7 +444,7 @@ public class ImageLayerWriter {
 
     public void persistMethodGraphs() {
         for (AnalysisMethod method : aUniverse.getMethods()) {
-            if (method.isReachable()) {
+            if (method.isTrackedAcrossLayers()) {
                 persistAnalysisParsedGraph(method);
             }
         }
@@ -386,34 +455,34 @@ public class ImageLayerWriter {
 
         Object analyzedGraph = method.getGraph();
         if (analyzedGraph instanceof AnalysisParsedGraph analysisParsedGraph) {
-            if (!persistGraph(analysisParsedGraph.getEncodedGraph(), methodMap, ANALYSIS_PARSED_GRAPH_TAG)) {
-                return;
+            if (!methodMap.containsKey(INTRINSIC_TAG)) {
+                if (!persistGraph(method, analysisParsedGraph.getEncodedGraph(), methodMap, ANALYSIS_PARSED_GRAPH_TAG)) {
+                    return;
+                }
+                methodMap.put(INTRINSIC_TAG, analysisParsedGraph.isIntrinsic());
             }
-            methodMap.put(INTRINSIC_TAG, analysisParsedGraph.isIntrinsic());
         }
     }
 
     public void persistMethodStrengthenedGraph(AnalysisMethod method) {
         EconomicMap<String, Object> methodMap = getMethodMap(method);
 
-        EncodedGraph analyzedGraph = method.getAnalyzedGraph();
-        persistGraph(analyzedGraph, methodMap, STRENGTHENED_GRAPH_TAG);
+        if (!methodMap.containsKey(STRENGTHENED_GRAPH_TAG)) {
+            EncodedGraph analyzedGraph = method.getAnalyzedGraph();
+            persistGraph(method, analyzedGraph, methodMap, STRENGTHENED_GRAPH_TAG);
+        }
     }
 
-    private boolean persistGraph(EncodedGraph analyzedGraph, EconomicMap<String, Object> methodMap, String graphTag) {
+    private boolean persistGraph(AnalysisMethod method, EncodedGraph analyzedGraph, EconomicMap<String, Object> methodMap, String graphTag) {
         if (!useSharedLayerGraphs) {
             return false;
         }
         String encodedGraph = ObjectCopier.encode(imageLayerSnapshotUtil.getGraphEncoder(this), analyzedGraph);
-        /*
-         * The ObjectCopier cannot look up Lambda types by reflection, so it cannot decode a graph
-         * that contains a reference to a Lambda. Since the original Class is needed, the analysis
-         * id cannot be used either.
-         */
-        if (encodedGraph.contains(LAMBDA_CLASS_NAME_SUBSTRING)) {
-            return false;
+        if (encodedGraph.contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING)) {
+            throw AnalysisError.shouldNotReachHere("The graph for the method %s contains a reference to a lambda type, which cannot be decoded: %s".formatted(method, encodedGraph));
         }
-        methodMap.put(graphTag, encodedGraph);
+        String location = graphsOutput.add(encodedGraph);
+        methodMap.put(graphTag, location);
         return true;
     }
 
@@ -454,15 +523,16 @@ public class ImageLayerWriter {
         fieldMap.put(FIELD_FOLDED_TAG, field.getFoldedReason() != null);
     }
 
-    protected void persistConstant(ImageHeapConstant imageHeapConstant) {
+    protected void persistConstant(int parentId, int index, ImageHeapConstant imageHeapConstant) {
         if (!constantsMap.containsKey(Integer.toString(getConstantId(imageHeapConstant)))) {
             EconomicMap<String, Object> constantMap = EconomicMap.create();
-            persistConstant(imageHeapConstant, constantMap);
+            persistConstant(parentId, index, imageHeapConstant, constantMap);
         }
     }
 
-    protected void persistConstant(ImageHeapConstant imageHeapConstant, EconomicMap<String, Object> constantMap) {
-        constantsMap.put(Integer.toString(getConstantId(imageHeapConstant)), constantMap);
+    protected void persistConstant(int parentId, int index, ImageHeapConstant imageHeapConstant, EconomicMap<String, Object> constantMap) {
+        int id = getConstantId(imageHeapConstant);
+        constantsMap.put(Integer.toString(id), constantMap);
         constantMap.put(TID_TAG, imageHeapConstant.getType().getId());
 
         IdentityHashCodeProvider identityHashCodeProvider = (IdentityHashCodeProvider) aUniverse.getBigbang().getConstantReflectionProvider();
@@ -472,16 +542,22 @@ public class ImageLayerWriter {
         switch (imageHeapConstant) {
             case ImageHeapInstance imageHeapInstance -> {
                 Object[] fieldValues = imageHeapInstance.isReaderInstalled() ? imageHeapInstance.getFieldValues() : null;
-                persistConstant(constantMap, INSTANCE_TAG, fieldValues);
+                persistConstant(id, imageHeapConstant.getType(), constantMap, INSTANCE_TAG, fieldValues);
                 persistConstantRelinkingInfo(constantMap, imageHeapConstant, aUniverse.getBigbang());
             }
             case ImageHeapObjectArray imageHeapObjectArray ->
-                persistConstant(constantMap, ARRAY_TAG, imageHeapObjectArray.getElementValues());
+                persistConstant(id, imageHeapConstant.getType(), constantMap, ARRAY_TAG, imageHeapObjectArray.getElementValues());
             case ImageHeapPrimitiveArray imageHeapPrimitiveArray -> {
                 constantMap.put(CONSTANT_TYPE_TAG, PRIMITIVE_ARRAY_TAG);
                 constantMap.put(DATA_TAG, getString(imageHeapPrimitiveArray.getType().getComponentType().getJavaKind(), imageHeapPrimitiveArray.getArray()));
             }
             default -> throw AnalysisError.shouldNotReachHere("Unexpected constant type " + imageHeapConstant);
+        }
+
+        if (!constantsToRelink.contains(id) && parentId != UNDEFINED_CONSTANT_ID) {
+            constantMap.put(PARENT_CONSTANT_ID_TAG, parentId);
+            assert index != UNDEFINED_FIELD_INDEX : "Tried to persist child constant %s from parent constant %d, but got index %d".formatted(imageHeapConstant, parentId, index);
+            constantMap.put(PARENT_CONSTANT_INDEX_TAG, index);
         }
     }
 
@@ -533,11 +609,12 @@ public class ImageLayerWriter {
         };
     }
 
-    protected void persistConstant(EconomicMap<String, Object> constantMap, String constantType, Object[] values) {
+    protected void persistConstant(int id, AnalysisType type, EconomicMap<String, Object> constantMap, String constantType, Object[] values) {
         constantMap.put(CONSTANT_TYPE_TAG, constantType);
         if (values != null) {
             List<List<Object>> data = new ArrayList<>();
-            for (Object object : values) {
+            for (int i = 0; i < values.length; ++i) {
+                Object object = values[i];
                 if (delegateProcessing(data, object)) {
                     /* The object was already persisted */
                 } else if (object instanceof ImageHeapConstant imageHeapConstant) {
@@ -547,7 +624,7 @@ public class ImageLayerWriter {
                      * in reachable constants. They can be created in the extension image, but
                      * should not be used.
                      */
-                    persistConstant(imageHeapConstant);
+                    persistConstant(imageLayerSnapshotUtil.getRelinkedFields(type, aUniverse.getBigbang().getMetaAccess()).contains(i) ? id : UNDEFINED_CONSTANT_ID, i, imageHeapConstant);
                 } else if (object == JavaConstant.NULL_POINTER) {
                     data.add(List.of(OBJECT_TAG, NULL_POINTER_CONSTANT));
                 } else if (object instanceof PrimitiveConstant primitiveConstant) {
@@ -579,15 +656,6 @@ public class ImageLayerWriter {
      */
     @SuppressWarnings("unused")
     protected boolean delegateProcessing(List<List<Object>> data, Object constant) {
-        return false;
-    }
-
-    public boolean persistedMethodGraph(AnalysisMethod method) {
-        String name = imageLayerSnapshotUtil.getMethodIdentifier(method);
-        if (methodsMap.containsKey(name)) {
-            EconomicMap<String, Object> methodMap = methodsMap.get(name);
-            return methodMap.get(ANALYSIS_PARSED_GRAPH_TAG) != null || methodMap.get(STRENGTHENED_GRAPH_TAG) != null;
-        }
         return false;
     }
 }

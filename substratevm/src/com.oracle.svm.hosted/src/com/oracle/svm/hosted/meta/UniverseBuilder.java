@@ -84,6 +84,7 @@ import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
 import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
@@ -100,7 +101,6 @@ import com.oracle.svm.hosted.heap.PodSupport;
 import com.oracle.svm.hosted.imagelayer.HostedDynamicLayerInfo;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
-import com.oracle.svm.hosted.substitute.ComputedValueField;
 import com.oracle.svm.hosted.substitute.DeletedMethod;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -139,11 +139,6 @@ public class UniverseBuilder {
      */
     @SuppressWarnings("try")
     public void build(DebugContext debug) {
-        for (AnalysisField aField : aUniverse.getFields()) {
-            if (aField.wrapped instanceof ComputedValueField) {
-                ((ComputedValueField) aField.wrapped).processAnalysis(aMetaAccess);
-            }
-        }
         aUniverse.seal();
 
         try (Indent indent = debug.logAndIndent("build universe")) {
@@ -525,7 +520,7 @@ public class UniverseBuilder {
             assert fieldBytes >= intSize;
             reserve(usedBytes, minimumFirstFieldOffset, fieldBytes);
 
-            if (SubstrateOptions.closedTypeWorld()) {
+            if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
                 /* Each type check id slot is 2 bytes. */
                 assert numTypeCheckSlots != TypeCheckBuilder.UNINITIALIZED_TYPECHECK_SLOTS : "numTypeCheckSlots is uninitialized";
                 int slotsSize = numTypeCheckSlots * 2;
@@ -916,7 +911,7 @@ public class UniverseBuilder {
             DynamicHub hub = type.getHub();
             hub.setSharedData(layoutHelper, monitorOffset, identityHashOffset, referenceMapIndex, type.isInstantiated());
 
-            if (SubstrateOptions.closedTypeWorld()) {
+            if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
                 CFunctionPointer[] vtable = new CFunctionPointer[type.closedTypeWorldVTable.length];
                 for (int idx = 0; idx < type.closedTypeWorldVTable.length; idx++) {
                     /*
@@ -1005,9 +1000,6 @@ public class UniverseBuilder {
         var fieldValueInterceptionSupport = FieldValueInterceptionSupport.singleton();
         for (HostedField hField : hUniverse.fields.values()) {
             AnalysisField aField = hField.wrapped;
-            if (aField.wrapped instanceof ComputedValueField) {
-                ((ComputedValueField) aField.wrapped).processSubstrate(hMetaAccess);
-            }
 
             if (hField.isReachable() && !hField.hasLocation() && Modifier.isStatic(hField.getModifiers()) && !aField.isWritten() && fieldValueInterceptionSupport.isValueAvailable(aField)) {
                 hField.setUnmaterializedStaticConstant();
@@ -1022,6 +1014,8 @@ final class InvalidVTableEntryFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
-        access.registerAsRoot(InvalidMethodPointerHandler.INVALID_VTABLE_ENTRY_HANDLER_METHOD, true, "Registered in " + InvalidVTableEntryFeature.class);
+        if (ImageLayerBuildingSupport.lastImageBuild()) {
+            access.registerAsRoot(InvalidMethodPointerHandler.INVALID_VTABLE_ENTRY_HANDLER_METHOD, true, "Registered in " + InvalidVTableEntryFeature.class);
+        }
     }
 }

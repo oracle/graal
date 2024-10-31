@@ -24,7 +24,7 @@
 package com.oracle.truffle.espresso.meta;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -61,6 +61,11 @@ public final class ExceptionDispatch extends ContextAccessImpl {
         StaticObject ex = allocateException(klass);
         // TODO: Remove this when truffle exceptions are reworked.
         InterpreterToVM.fillInStackTrace(ex, meta);
+
+        // Support extended NPE messages
+        if (meta.java_lang_NullPointerException == klass && meta.java_lang_NullPointerException_extendedMessageState != null) {
+            meta.java_lang_NullPointerException_extendedMessageState.setInt(ex, 1);
+        }
 
         if (message != null) {
             meta.java_lang_Throwable_detailMessage.setObject(ex, message);

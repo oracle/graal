@@ -30,14 +30,13 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Semaphore;
 
-public final class SocketConnection implements Runnable {
+public final class SocketConnection {
     private final Socket socket;
     private final OutputStream socketOutput;
     private final InputStream socketInput;
     private final Object receiveLock = new Object();
     private final Object sendLock = new Object();
     private final Semaphore isOpen = new Semaphore(1);
-
     private final BlockingQueue<PacketStream> queue = new ArrayBlockingQueue<>(4096);
 
     SocketConnection(Socket socket) throws IOException {
@@ -74,22 +73,17 @@ public final class SocketConnection implements Runnable {
         return isOpen.availablePermits() > 0;
     }
 
-    @Override
-    public void run() {
-        while (!Thread.currentThread().isInterrupted()) {
-            try {
-                PacketStream take = queue.take();
-                byte[] shipment = take.prepareForShipment();
-                writePacket(shipment);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            } catch (IOException ex) {
-                if (isOpen()) {
-                    throw new RuntimeException("Failed sending packet to debugger instance", ex);
-                } else {
-                    Thread.currentThread().interrupt();
-                }
-            } catch (ConnectionClosedException e) {
+    public void awaitSendPacket() {
+        try {
+            PacketStream stream = queue.take();
+            byte[] shipment = stream.prepareForShipment();
+            writePacket(shipment);
+        } catch (InterruptedException | ConnectionClosedException e) {
+            Thread.currentThread().interrupt();
+        } catch (IOException ex) {
+            if (isOpen()) {
+                throw new RuntimeException("Failed sending packet to debugger instance", ex);
+            } else {
                 Thread.currentThread().interrupt();
             }
         }

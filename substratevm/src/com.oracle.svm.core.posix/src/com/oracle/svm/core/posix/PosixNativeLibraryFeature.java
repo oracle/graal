@@ -133,6 +133,7 @@ final class PosixNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
         Target_java_io_UnixFileSystem_JNI.initIDs();
     }
 
+    @SuppressWarnings("restricted")
     private static void loadNetLibrary() {
         if (Isolates.isCurrentFirst()) {
             /*

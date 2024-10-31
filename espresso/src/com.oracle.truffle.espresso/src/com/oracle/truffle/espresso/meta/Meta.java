@@ -23,14 +23,14 @@
 package com.oracle.truffle.espresso.meta;
 
 import static com.oracle.truffle.espresso.EspressoOptions.SpecComplianceMode.HOTSPOT;
-import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.ALL;
-import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_16_OR_HIGHER;
-import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_17_OR_HIGHER;
-import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_19_OR_HIGHER;
-import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_8_OR_LOWER;
-import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_9_OR_HIGHER;
-import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.higher;
-import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.lower;
+import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.ALL;
+import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_16_OR_HIGHER;
+import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_17_OR_HIGHER;
+import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_19_OR_HIGHER;
+import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_8_OR_LOWER;
+import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_9_OR_HIGHER;
+import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.higher;
+import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.lower;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -45,11 +45,11 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.HostCompilerDirectives;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.EspressoOptions.SpecComplianceMode;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.impl.EspressoClassLoadingException;
@@ -59,6 +59,7 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ModuleTable;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.impl.PrimitiveKlass;
+import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
@@ -274,6 +275,11 @@ public final class Meta extends ContextAccessImpl {
         java_lang_IllegalArgumentException = knownKlass(Type.java_lang_IllegalArgumentException);
         java_lang_IllegalStateException = knownKlass(Type.java_lang_IllegalStateException);
         java_lang_NullPointerException = knownKlass(Type.java_lang_NullPointerException);
+        if (getJavaVersion().java14OrLater()) {
+            java_lang_NullPointerException_extendedMessageState = java_lang_NullPointerException.requireDeclaredField(Name.extendedMessageState, Type._int);
+        } else {
+            java_lang_NullPointerException_extendedMessageState = null;
+        }
         java_lang_ClassNotFoundException = knownKlass(Type.java_lang_ClassNotFoundException);
         java_lang_NoClassDefFoundError = knownKlass(Type.java_lang_NoClassDefFoundError);
         java_lang_InterruptedException = knownKlass(Type.java_lang_InterruptedException);
@@ -836,6 +842,10 @@ public final class Meta extends ContextAccessImpl {
         } else {
             java_lang_invoke_MethodHandleNatives_linkDynamicConstant = null;
         }
+
+        ObjectKlass lambdaMetafactory = knownKlass(Type.java_lang_invoke_LambdaMetafactory);
+        java_lang_invoke_LambdaMetafactory_metafactory = lambdaMetafactory.requireDeclaredMethod(Name.metafactory, Signature.CallSite_Lookup_String_MethodType_MethodType_MethodHandle_MethodType);
+        java_lang_invoke_LambdaMetafactory_altMetafactory = lambdaMetafactory.requireDeclaredMethod(Name.altMetafactory, Signature.CallSite_Lookup_String_MethodType_Object_array);
 
         // Interop
         java_time_Duration = knownKlass(Type.java_time_Duration);
@@ -1466,6 +1476,7 @@ public final class Meta extends ContextAccessImpl {
     public final ObjectKlass java_lang_IllegalMonitorStateException;
     public final ObjectKlass java_lang_IllegalStateException;
     public final ObjectKlass java_lang_NullPointerException;
+    public final Field java_lang_NullPointerException_extendedMessageState;
     public final ObjectKlass java_lang_ClassNotFoundException;
     public final ObjectKlass java_lang_NoClassDefFoundError;
     public final ObjectKlass java_lang_InterruptedException;
@@ -1701,6 +1712,9 @@ public final class Meta extends ContextAccessImpl {
     public final Method java_lang_invoke_MethodHandleNatives_findMethodHandleType;
     public final Method java_lang_invoke_MethodHandleNatives_linkCallSite;
     public final Method java_lang_invoke_MethodHandleNatives_linkDynamicConstant;
+
+    public final Method java_lang_invoke_LambdaMetafactory_metafactory;
+    public final Method java_lang_invoke_LambdaMetafactory_altMetafactory;
 
     public final Method java_lang_Object_wait;
     public final Method java_lang_Object_toString;

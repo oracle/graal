@@ -26,24 +26,6 @@ package com.oracle.svm.core.genscavenge.graal;
 
 import java.util.Map;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.api.replacements.Snippet;
-import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.nodes.GraphState;
-import jdk.graal.compiler.nodes.NamedLocationIdentity;
-import jdk.graal.compiler.nodes.PiNode;
-import jdk.graal.compiler.nodes.SnippetAnchorNode;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.spi.LoweringTool;
-import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.phases.util.Providers;
-import jdk.graal.compiler.replacements.AllocationSnippets;
-import jdk.graal.compiler.replacements.SnippetTemplate;
-import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
-import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
-import jdk.graal.compiler.replacements.Snippets;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.UnsignedWord;
 
@@ -60,6 +42,23 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.thread.ContinuationSupport;
 
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.Snippet;
+import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.NamedLocationIdentity;
+import jdk.graal.compiler.nodes.PiNode;
+import jdk.graal.compiler.nodes.SnippetAnchorNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.spi.LoweringTool;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.AllocationSnippets;
+import jdk.graal.compiler.replacements.SnippetTemplate;
+import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
+import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
+import jdk.graal.compiler.replacements.Snippets;
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.JavaKind;
 
 public final class GenScavengeAllocationSnippets implements Snippets {
@@ -152,7 +151,7 @@ public final class GenScavengeAllocationSnippets implements Snippets {
             @Override
             public void lower(FormatObjectNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
-                if (graph.getGuardsStage() != GraphState.GuardsStage.AFTER_FSA) {
+                if (graph.getGuardsStage().areFrameStatesAtSideEffects()) {
                     return;
                 }
                 Arguments args = new Arguments(formatObject, graph.getGuardsStage(), tool.getLoweringStage());
@@ -170,7 +169,7 @@ public final class GenScavengeAllocationSnippets implements Snippets {
             @Override
             public void lower(FormatArrayNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
-                if (graph.getGuardsStage() != GraphState.GuardsStage.AFTER_FSA) {
+                if (graph.getGuardsStage().areFrameStatesAtSideEffects()) {
                     return;
                 }
                 Arguments args = new Arguments(formatArray, graph.getGuardsStage(), tool.getLoweringStage());
@@ -181,7 +180,7 @@ public final class GenScavengeAllocationSnippets implements Snippets {
                 args.add("unaligned", node.getUnaligned());
                 args.add("fillContents", node.getFillContents());
                 args.add("emitMemoryBarrier", node.getEmitMemoryBarrier());
-                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
+                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
                 args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
                 args.addConst("snippetCounters", baseTemplates.getSnippetCounters());
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
@@ -192,7 +191,7 @@ public final class GenScavengeAllocationSnippets implements Snippets {
             @Override
             public void lower(FormatStoredContinuationNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
-                if (graph.getGuardsStage() != GraphState.GuardsStage.AFTER_FSA) {
+                if (graph.getGuardsStage().areFrameStatesAtSideEffects()) {
                     return;
                 }
                 Arguments args = new Arguments(formatStoredContinuation, graph.getGuardsStage(), tool.getLoweringStage());
@@ -212,7 +211,7 @@ public final class GenScavengeAllocationSnippets implements Snippets {
             @Override
             public void lower(FormatPodNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
-                if (graph.getGuardsStage() != GraphState.GuardsStage.AFTER_FSA) {
+                if (graph.getGuardsStage().areFrameStatesAtSideEffects()) {
                     return;
                 }
                 Arguments args = new Arguments(formatPod, graph.getGuardsStage(), tool.getLoweringStage());
@@ -224,7 +223,7 @@ public final class GenScavengeAllocationSnippets implements Snippets {
                 args.add("unaligned", node.getUnaligned());
                 args.add("fillContents", node.getFillContents());
                 args.addConst("emitMemoryBarrier", node.getEmitMemoryBarrier());
-                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
+                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
                 args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
                 args.addConst("snippetCounters", baseTemplates.getSnippetCounters());
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);

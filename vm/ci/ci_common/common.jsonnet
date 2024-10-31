@@ -88,6 +88,9 @@ local devkits = graal_common.devkits;
   # GRAALPYTHON
   graalpy: self.sulong + graal_common.deps.graalpy,
 
+  # WASM
+  wasm: graal_common.deps.wasm,
+
   vm_linux_amd64_common: graal_common.deps.svm {
     capabilities+: ['manycores', 'ram16gb', 'fast'],
   },

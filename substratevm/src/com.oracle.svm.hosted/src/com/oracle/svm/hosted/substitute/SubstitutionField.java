@@ -27,16 +27,14 @@ package com.oracle.svm.hosted.substitute;
 import java.lang.reflect.AnnotatedElement;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
-import com.oracle.svm.hosted.ameta.ReadableJavaField;
 import com.oracle.svm.hosted.annotation.AnnotationWrapper;
-import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class SubstitutionField implements ReadableJavaField, OriginalFieldProvider, AnnotationWrapper {
+public class SubstitutionField implements ResolvedJavaField, OriginalFieldProvider, AnnotationWrapper {
 
     private final ResolvedJavaField original;
     private final ResolvedJavaField annotated;
@@ -51,30 +49,6 @@ public class SubstitutionField implements ReadableJavaField, OriginalFieldProvid
         this.original = original;
         this.annotated = annotated;
         this.isUserSubstitution = isUserSubstitution;
-    }
-
-    @Override
-    public boolean isValueAvailable() {
-        return true;
-    }
-
-    @Override
-    public boolean injectFinalForRuntimeCompilation() {
-        return false;
-    }
-
-    @Override
-    public JavaConstant readValue(ClassInitializationSupport classInitializationSupport, JavaConstant receiver) {
-        /* First try reading the value using the original field. */
-        JavaConstant value = ReadableJavaField.readFieldValue(classInitializationSupport, original, receiver);
-        if (value == null) {
-            /*
-             * If the original field didn't yield a value, try reading using the annotated field.
-             * The value can be null only if the receiver doesn't contain the field.
-             */
-            value = ReadableJavaField.readFieldValue(classInitializationSupport, annotated, receiver);
-        }
-        return value;
     }
 
     public boolean isUserSubstitution() {

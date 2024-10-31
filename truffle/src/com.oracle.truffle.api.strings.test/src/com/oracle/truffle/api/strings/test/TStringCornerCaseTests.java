@@ -47,6 +47,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.strings.MutableTruffleString;
@@ -132,6 +133,10 @@ public class TStringCornerCaseTests extends TStringTestBase {
         Assert.assertEquals(t1, t2);
     }
 
+    /**
+     * Turned off by default because we don't have enough heap space on all CI jobs.
+     */
+    @Ignore
     @Test
     public void testInflateOverAllocation() {
         TruffleStringBuilder sb = TruffleStringBuilder.createUTF16(MAX_ARRAY_SIZE >> 1);

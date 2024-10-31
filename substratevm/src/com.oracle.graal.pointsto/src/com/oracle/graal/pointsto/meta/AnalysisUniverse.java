@@ -98,7 +98,7 @@ public class AnalysisUniverse implements Universe {
     private boolean sealed;
 
     private volatile AnalysisType[] typesById = new AnalysisType[ESTIMATED_NUMBER_OF_TYPES];
-    final AtomicInteger nextTypeId = new AtomicInteger();
+    final AtomicInteger nextTypeId = new AtomicInteger(1);
     final AtomicInteger nextMethodId = new AtomicInteger(1);
     final AtomicInteger nextFieldId = new AtomicInteger(1);
 
@@ -563,6 +563,29 @@ public class AnalysisUniverse implements Universe {
         return methods.get(resolvedJavaMethod);
     }
 
+    /**
+     * Returns the root {@link AnalysisMethod}s. Accessing the roots is useful when traversing the
+     * call graph.
+     *
+     * @param universe the universe from which the roots are derived from.
+     * @return the call tree roots.
+     */
+    public static List<AnalysisMethod> getCallTreeRoots(AnalysisUniverse universe) {
+        List<AnalysisMethod> roots = new ArrayList<>();
+        for (AnalysisMethod m : universe.getMethods()) {
+            if (m.isDirectRootMethod() && m.isSimplyImplementationInvoked()) {
+                roots.add(m);
+            }
+            if (m.isVirtualRootMethod()) {
+                for (AnalysisMethod impl : m.collectMethodImplementations(false)) {
+                    AnalysisError.guarantee(impl.isImplementationInvoked());
+                    roots.add(impl);
+                }
+            }
+        }
+        return roots;
+    }
+
     public Map<Constant, Object> getEmbeddedRoots() {
         return embeddedRoots;
     }
@@ -622,6 +645,10 @@ public class AnalysisUniverse implements Universe {
     }
 
     public JavaConstant replaceObjectWithConstant(Object source) {
+        return replaceObjectWithConstant(source, getHostedValuesProvider()::forObject);
+    }
+
+    public JavaConstant replaceObjectWithConstant(Object source, Function<Object, JavaConstant> converter) {
         assert !(source instanceof ImageHeapConstant) : source;
 
         var replacedObject = replaceObject0(source, true);
@@ -629,7 +656,7 @@ public class AnalysisUniverse implements Universe {
             return constant;
         }
 
-        return getHostedValuesProvider().forObject(replacedObject);
+        return converter.apply(replacedObject);
     }
 
     /**
@@ -808,7 +835,7 @@ public class AnalysisUniverse implements Universe {
         /* No type was created yet, so the array can be overwritten without any concurrency issue */
         typesById = new AnalysisType[startTid];
 
-        setStartId(nextTypeId, startTid, 0);
+        setStartId(nextTypeId, startTid, 1);
     }
 
     public void setStartMethodId(int startMid) {
