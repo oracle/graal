@@ -46,10 +46,10 @@ import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueI
 import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueInfo.LocalKind.REGISTER;
 import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueInfo.LocalKind.STACKSLOT;
 
-import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R8;
 import static com.oracle.objectfile.pecoff.cv.CVSymbolSubrecord.CVSymbolFrameProcRecord.FRAME_LOCAL_BP;
 import static com.oracle.objectfile.pecoff.cv.CVSymbolSubrecord.CVSymbolFrameProcRecord.FRAME_PARAM_BP;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.MAX_PRIMITIVE;
+import static com.oracle.objectfile.pecoff.cv.CvRegisterUtil.CV_AMD64_R8;
 
 final class CVSymbolSubsectionBuilder {
 
@@ -227,15 +227,19 @@ final class CVSymbolSubsectionBuilder {
                 currentHigh = subrange.getHi();
                 registerOrSlot = infoTypeToInt(value);
                 if (value.localKind() == REGISTER) {
-                    short cvreg = CVUtil.getCVRegister(value.regIndex(), typeEntry);
-                    currentRecord = new CVSymbolSubrecord.CVSymbolDefRangeRegisterRecord(cvDebugInfo, procName, subrange.getLo() - range.getLo(), (short) (subrange.getHi() - subrange.getLo()), cvreg);
-                    addSymbolRecord(currentRecord);
+                    short cvreg = CvRegisterUtil.getCVRegister(value.regIndex(), typeEntry);
+                    /* It could be that Graal has allocated a register that we don't know how to represent in CodeView. */
+                    /* In that case, getCVRegister() will return a negative number and no local variable record is issued. */
+                    if (cvreg >= 0) {
+                        currentRecord = new CVSymbolSubrecord.CVSymbolDefRangeRegisterRecord(cvDebugInfo, procName, subrange.getLo() - range.getLo(), (short) (subrange.getHi() - subrange.getLo()), cvreg);
+                        addSymbolRecord(currentRecord);
+                    }
                 } else if (value.localKind() == STACKSLOT) {
                     currentRecord = new CVSymbolSubrecord.CVSymbolDefRangeFramepointerRel(cvDebugInfo, procName, subrange.getLo() - range.getLo(), (short) (subrange.getHi() - subrange.getLo()),
                                     value.stackSlot());
                     addSymbolRecord(currentRecord);
                 } else if (value.localKind() == CONSTANT) {
-                    /* For now, silently ignore constant definitions an parameters. */
+                    /* For now, silently ignore constant definitions as parameters. */
                     /* JavaConstant constant = value.constantValue(); */
                 } else {
                     /* Unimplemented - this is a surprise. */
