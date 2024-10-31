@@ -43,6 +43,7 @@ suite = {
   "name" : "wasm",
   "groupId" : "org.graalvm.wasm",
   "version" : "24.2.0",
+  "release" : False,
   "versionConflictResolution" : "latest",
   "url" : "http://graalvm.org/",
   "developer" : {
