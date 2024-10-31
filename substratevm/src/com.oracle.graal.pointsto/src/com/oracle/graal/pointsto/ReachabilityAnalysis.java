@@ -91,8 +91,8 @@ public interface ReachabilityAnalysis {
 
     /**
      * In addition to register the method as a root, saturate all the parameters. Meant to be used
-     * under the {@code LayeredBaseImageAnalysis} option to ensure the invocation is replaced by the
-     * context-insensitive invoke.
+     * under the {@code UseBaseLayerInclusionPolicy} option to ensure the invocation is replaced by
+     * the context-insensitive invoke.
      *
      * @see ReachabilityAnalysis#addRootMethod(AnalysisMethod, boolean, Object,
      *      MultiMethod.MultiMethodKey...)

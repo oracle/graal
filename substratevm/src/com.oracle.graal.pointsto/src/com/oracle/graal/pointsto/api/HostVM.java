@@ -168,6 +168,10 @@ public abstract class HostVM {
     public void onTypeInstantiated(BigBang bb, AnalysisType type) {
     }
 
+    public boolean isCoreType(@SuppressWarnings("unused") AnalysisType type) {
+        return false;
+    }
+
     public boolean useBaseLayer() {
         return false;
     }
