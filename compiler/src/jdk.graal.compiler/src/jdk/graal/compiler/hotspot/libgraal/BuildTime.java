@@ -39,14 +39,14 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-import jdk.graal.compiler.core.ArchitectureSpecific;
-import jdk.graal.compiler.hotspot.CompilerConfigurationFactory;
 import org.graalvm.collections.EconomicMap;
 
+import jdk.graal.compiler.core.ArchitectureSpecific;
 import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.hotspot.CompilerConfigurationFactory;
 import jdk.graal.compiler.hotspot.EncodedSnippets;
 import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage;
 import jdk.graal.compiler.hotspot.HotSpotReplacementsImpl;
@@ -148,7 +148,7 @@ public class BuildTime {
                     Consumer<Class<?>> registerAsInHeap,
                     Consumer<List<Class<?>>> hostedGraalSetFoldNodePluginClasses,
                     String nativeImageLocationQualifier,
-                    String encodedGuestObjects) {
+                    byte[] encodedGuestObjects) {
         GraalError.guarantee(VALID_LOADER_NAME.equals(LOADER.getName()),
                         "Only call this method from classloader " + VALID_LOADER_NAME);
 

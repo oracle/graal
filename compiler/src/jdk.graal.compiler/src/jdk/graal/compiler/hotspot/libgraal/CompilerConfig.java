@@ -93,9 +93,9 @@ public class CompilerConfig {
                 return ci;
             }
         };
-        String encoded = ObjectCopier.encode(encoder, encodedObjects);
+        byte[] encoded = ObjectCopier.encode(encoder, encodedObjects);
 
-        Files.writeString(Path.of(args[0]), encoded);
+        Files.write(Path.of(args[0]), encoded);
     }
 
     private static EncodedSnippets getEncodedSnippets(HotSpotReplacementsImpl replacements, OptionValues options) {
