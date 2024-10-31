@@ -37,6 +37,7 @@ import org.graalvm.collections.EconomicMap;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
@@ -443,11 +444,20 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
     }
 
     /**
-     * Saturates all the formal parameters of the graph. This is expected to be used by layered base
-     * image analysis.
+     * For open world analysis saturate all the formal parameters and the returns from virtual
+     * invokes for all methods that can be directly accessible from the open world. This doesn't
+     * include methods in core VM classes.
      */
-    public void saturateAllParameters(PointsToAnalysis bb) {
-        AnalysisError.guarantee(bb.isBaseLayerAnalysisEnabled());
+    void saturateForOpenTypeWorld(PointsToAnalysis bb) {
+        /*
+         * Skip methods declared in core VM types. The core is not extensible from the open world,
+         * and it should not be invoked directly.
+         */
+        AnalysisType declaringClass = method.getDeclaringClass();
+        if (bb.getHostVM().isCoreType(declaringClass)) {
+            return;
+        }
+
         for (TypeFlow<?> parameter : getParameters()) {
             if (parameter != null && parameter.canSaturate(bb)) {
                 parameter.enableFlow(bb);
@@ -456,19 +466,15 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
         }
 
         /*
-         * Even if saturating only parameters already ensures that all code from the base layer is
-         * reached, it is still necessary to saturate flows from miscEntryFlows, as the extension
-         * image can introduce new types and methods. For example, an ActualReturnTypeFlow returning
-         * from an AbstractVirtualInvokeTypeFlow would not be saturated only by saturating
-         * parameters, as there is no direct use/observer link between the two flows. While all the
-         * types returned by the implementations from the base image will be in the TypeState, a
-         * different type might be returned by an implementation introduced by the extension image.
+         * Saturate the return of virtual invokes that could return new types from the open world.
+         * Returns from methods that cannot be overwritten, i.e., the receiver type is closed, are
+         * not saturated.
          */
-        if (miscEntryFlows != null) {
-            for (TypeFlow<?> miscEntryFlow : miscEntryFlows) {
-                if (miscEntryFlow != null && miscEntryFlow.canSaturate(bb)) {
-                    miscEntryFlow.enableFlow(bb);
-                    miscEntryFlow.onSaturated(bb);
+        for (InvokeTypeFlow invokeTypeFlow : getInvokes()) {
+            if (!invokeTypeFlow.isDirectInvoke() && !bb.isClosed(invokeTypeFlow.getReceiverType())) {
+                if (invokeTypeFlow.actualReturn != null) {
+                    invokeTypeFlow.actualReturn.enableFlow(bb);
+                    invokeTypeFlow.actualReturn.onSaturated(bb);
                 }
             }
         }
