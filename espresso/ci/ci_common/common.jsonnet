@@ -66,22 +66,24 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
     },
   },
 
-  predicates(with_compiler, with_native_image, with_vm): {
+  predicates(with_compiler, with_native_image, with_vm, with_espresso=true): {
     assert !with_native_image || with_compiler,
     guard+: {
       includes: [
         "<graal>/.git/**",  # This ensure the .git directory is preserved in apply-predicates
-        "<graal>/sdk/**",
-        "<graal>/truffle/**",
-        "<graal>/espresso/**",
-        "<graal>/tools/**",
-        "<graal>/regex/**",
-        "<graal>/sulong/**",
         "<graal>/pyproject.toml",
         "<graal>/common.json",
         "<graal>/ci.jsonnet",
         "<graal>/ci/**",
-      ] + base.basic_guard_includes + (if with_compiler then [
+        "<graal>/sdk/**",
+        "<graal>/truffle/**",
+        "<graal>/espresso-shared/**",
+      ] + base.basic_guard_includes + (if with_espresso then [
+        "<graal>/espresso/**",
+        "<graal>/tools/**",
+        "<graal>/regex/**",
+        "<graal>/sulong/**",
+      ] else []) + (if with_compiler then [
         "<graal>/compiler/**",
       ] + base.compiler_guard_includes else []) + (if with_native_image then [
         "<graal>/substratevm/**",
@@ -115,10 +117,13 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   darwin_aarch64_21: self.espresso_jdk_21 + graal_common.labsjdkLatest                             + self.darwin_aarch64,
   windows_21:        self.espresso_jdk_21 + graal_common.labsjdkLatest                             + self.windows + devkits["windows-jdk-latest"],
 
+  linux_amd64_latest: graal_common.labsjdkLatest + self.linux_amd64,
+
 
   linux_amd64_graalvm21: self.espresso_jdk_21 + graal_common.graalvmee21 + self.espresso_jdk_21_llvm + self.linux_amd64,
 
   // precise targets and capabilities
+  jdkLatest_gate_linux_amd64    : self.gate          + self.linux_amd64_latest,
   jdk21_gate_linux_amd64        : self.gate          + self.linux_amd64_21,
   jdk21_gate_linux_aarch64      : self.gate          + self.linux_aarch64_21,
   jdk21_gate_darwin_amd64       : self.gate          + self.darwin_amd64_21,

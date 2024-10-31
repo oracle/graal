@@ -436,7 +436,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     license_files=['LICENSE_JAVAONTRUFFLE'],
     third_party_license_files=[],
     dependencies=['Truffle', 'nfi-libffi', 'ejvm'],
-    truffle_jars=['espresso:ESPRESSO'],
+    truffle_jars=['espresso:ESPRESSO', 'espresso-shared:ESPRESSO_SHARED'],
     support_distributions=['espresso:ESPRESSO_GRAALVM_SUPPORT'],
     library_configs=[espresso_library_config],
     polyglot_lib_jar_dependencies=['espresso:LIB_JAVAVM'],
