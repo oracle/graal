@@ -123,7 +123,6 @@ public abstract class ClassRegistry {
         public final boolean isHidden;
         public final boolean isStrongHidden;
         public final boolean forceAllowVMAnnotations;
-        public long klassID = -1;
 
         public boolean addedToRegistry() {
             return !isAnonymousClass() && !isHidden();
