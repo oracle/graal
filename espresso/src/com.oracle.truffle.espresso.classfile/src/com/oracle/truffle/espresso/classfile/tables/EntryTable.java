@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.impl.shared;
+package com.oracle.truffle.espresso.classfile.tables;
 
 import java.util.HashMap;
 import java.util.Objects;

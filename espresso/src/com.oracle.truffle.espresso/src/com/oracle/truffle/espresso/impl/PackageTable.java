@@ -29,7 +29,7 @@ import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
-public final class PackageTable extends com.oracle.truffle.espresso.impl.shared.PackageTable<StaticObject, PackageTable.PackageEntry, ModuleEntry> {
+public final class PackageTable extends com.oracle.truffle.espresso.classfile.tables.PackageTable<StaticObject, PackageTable.PackageEntry, ModuleEntry> {
     public PackageTable(ReadWriteLock lock) {
         super(lock);
     }
@@ -39,7 +39,7 @@ public final class PackageTable extends com.oracle.truffle.espresso.impl.shared.
         return new PackageEntry(name, data);
     }
 
-    public static final class PackageEntry extends com.oracle.truffle.espresso.impl.shared.PackageTable.PackageEntry<StaticObject, ModuleEntry> {
+    public static final class PackageEntry extends com.oracle.truffle.espresso.classfile.tables.PackageTable.PackageEntry<StaticObject, ModuleEntry> {
         public PackageEntry(Symbol<Name> name, ModuleEntry module) {
             super(name, module);
         }
