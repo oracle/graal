@@ -245,13 +245,6 @@ public final class Target_java_lang_VirtualThread {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDKLatest.class)
-    @SuppressWarnings("unused")
-    private static void notifyJvmtiHideFrames(boolean hide) {
-        // unimplemented (GR-45392)
-    }
-
-    @Substitute
     @TargetElement(name = "notifyJvmtiHideFrames", onlyWith = JDK21OrEarlier.class)
     @SuppressWarnings({"static-method", "unused"})
     private void notifyJvmtiHideFramesJDK22(boolean hide) {

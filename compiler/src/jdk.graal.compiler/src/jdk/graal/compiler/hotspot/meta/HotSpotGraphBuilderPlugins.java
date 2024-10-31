@@ -870,26 +870,25 @@ public class HotSpotGraphBuilderPlugins {
                 }
             });
         }
-        Type[] notifyJvmtiHideFramesArgTypes = JavaVersionUtil.JAVA_SPEC >= 23 ? new Type[]{boolean.class} : new Type[]{Receiver.class, boolean.class};
-        r.register(new InvocationPlugin("notifyJvmtiHideFrames", notifyJvmtiHideFramesArgTypes) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode hide) {
-                if (config.doJVMTIVirtualThreadTransitions) {
-                    try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
-                        if (JavaVersionUtil.JAVA_SPEC < 23) {
+        if (JavaVersionUtil.JAVA_SPEC == 21) {
+            r.register(new InvocationPlugin("notifyJvmtiHideFrames", Receiver.class, boolean.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode hide) {
+                    if (config.doJVMTIVirtualThreadTransitions) {
+                        try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
                             receiver.get(true);
+                            // unconditionally update the temporary VTMS transition bit in current
+                            // JavaThread
+                            GraalError.guarantee(config.threadIsInTmpVTMSTransitionOffset != -1, "JavaThread::_is_in_tmp_VTMS_transition is not exported");
+                            CurrentJavaThreadNode javaThread = b.add(new CurrentJavaThreadNode(helper.getWordKind()));
+                            OffsetAddressNode address = b.add(new OffsetAddressNode(javaThread, helper.asWord(config.threadIsInTmpVTMSTransitionOffset)));
+                            b.add(new JavaWriteNode(JavaKind.Boolean, address, HotSpotReplacementsUtil.HOTSPOT_JAVA_THREAD_IS_IN_TMP_VTMS_TRANSITION, hide, BarrierType.NONE, false));
                         }
-                        // unconditionally update the temporary VTMS transition bit in current
-                        // JavaThread
-                        GraalError.guarantee(config.threadIsInTmpVTMSTransitionOffset != -1, "JavaThread::_is_in_tmp_VTMS_transition is not exported");
-                        CurrentJavaThreadNode javaThread = b.add(new CurrentJavaThreadNode(helper.getWordKind()));
-                        OffsetAddressNode address = b.add(new OffsetAddressNode(javaThread, helper.asWord(config.threadIsInTmpVTMSTransitionOffset)));
-                        b.add(new JavaWriteNode(JavaKind.Boolean, address, HotSpotReplacementsUtil.HOTSPOT_JAVA_THREAD_IS_IN_TMP_VTMS_TRANSITION, hide, BarrierType.NONE, false));
                     }
+                    return true;
                 }
-                return true;
-            }
-        });
+            });
+        }
 
         if (JavaVersionUtil.JAVA_SPEC >= 22) {
             Type[] notifyJvmtiDisableSuspendArgTypes = JavaVersionUtil.JAVA_SPEC >= 23 ? new Type[]{boolean.class} : new Type[]{Receiver.class, boolean.class};
