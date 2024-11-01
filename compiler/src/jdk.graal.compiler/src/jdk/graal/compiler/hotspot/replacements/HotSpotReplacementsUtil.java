@@ -625,6 +625,16 @@ public class HotSpotReplacementsUtil {
     public static final LocationIdentity KLASS_SUPER_CHECK_OFFSET_LOCATION = NamedLocationIdentity.immutable("Klass::_super_check_offset");
 
     @Fold
+    public static boolean useSecondarySupersCache(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.useSecondarySupersCache;
+    }
+
+    @Fold
+    public static boolean useSecondarySupersTable(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.useSecondarySupersTable;
+    }
+
+    @Fold
     public static int superCheckOffsetOffset(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.superCheckOffsetOffset;
     }
@@ -1037,6 +1047,8 @@ public class HotSpotReplacementsUtil {
         return config.javaLangThreadTIDOffset;
     }
 
+    public static final LocationIdentity PRIMARY_SUPERS_LOCATION = NamedLocationIdentity.immutable("PrimarySupers");
+
     /**
      * This location identity is intended for accesses to {@code Klass::_primary_supers}, which is
      * immutable. However, in {@link TypeCheckSnippetUtils#checkUnknownSubType}, it is possible to
@@ -1046,7 +1058,7 @@ public class HotSpotReplacementsUtil {
      * corresponding reads when the displacement is not
      * {@link GraalHotSpotVMConfig#secondarySuperCacheOffset}.
      */
-    public static final LocationIdentity PRIMARY_SUPERS_LOCATION = new HotSpotOptimizingLocationIdentity("PrimarySupers", false) {
+    public static final LocationIdentity OPTIMIZING_PRIMARY_SUPERS_LOCATION = new HotSpotOptimizingLocationIdentity("PrimarySupersOrSecondarySuperCache", false) {
         @Override
         public ValueNode canonicalizeRead(ValueNode read, ValueNode object, ValueNode offset, NodeView view, CoreProviders tool) {
             int secondarySuperCacheOffset = ((HotSpotLoweringProvider) tool.getLowerer()).getVMConfig().secondarySuperCacheOffset;
