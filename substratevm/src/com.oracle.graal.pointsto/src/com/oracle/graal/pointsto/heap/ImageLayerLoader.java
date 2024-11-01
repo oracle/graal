@@ -133,9 +133,6 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.BaseLayerField;
 import com.oracle.graal.pointsto.meta.BaseLayerMethod;
 import com.oracle.graal.pointsto.meta.BaseLayerType;
-import com.oracle.graal.pointsto.meta.PointsToAnalysisField;
-import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
-import com.oracle.graal.pointsto.meta.PointsToAnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.svm.util.ReflectionUtil;
@@ -817,17 +814,17 @@ public class ImageLayerLoader {
 
     public AnalysisParsedGraph getAnalysisParsedGraph(AnalysisMethod analysisMethod) {
         EconomicMap<String, Object> methodData = getMethodData(analysisMethod);
-        String encodedAnalyzedGraph = readEncodedGraph(methodData, ANALYSIS_PARSED_GRAPH_TAG);
+        byte[] encodedAnalyzedGraph = readEncodedGraph(methodData, ANALYSIS_PARSED_GRAPH_TAG);
         Boolean intrinsic = get(methodData, INTRINSIC_TAG);
         EncodedGraph analyzedGraph = (EncodedGraph) ObjectCopier.decode(imageLayerSnapshotUtil.getGraphDecoder(this, analysisMethod, universe.getSnippetReflection()), encodedAnalyzedGraph);
         if (hasStrengthenedGraph(analysisMethod)) {
-            loadAllAnalysisElements(readEncodedGraph(methodData, STRENGTHENED_GRAPH_TAG));
+            throw AnalysisError.shouldNotReachHere("Strengthened graphs are not supported until late loading is implemented.");
         }
         afterGraphDecodeHook(analyzedGraph);
         return new AnalysisParsedGraph(analyzedGraph, intrinsic);
     }
 
-    private String readEncodedGraph(EconomicMap<String, Object> methodData, String elementIdentifier) {
+    private byte[] readEncodedGraph(EconomicMap<String, Object> methodData, String elementIdentifier) {
         String location = get(methodData, elementIdentifier);
         int closingBracketAt = location.length() - 1;
         AnalysisError.guarantee(location.charAt(0) == '@' && location.charAt(closingBracketAt) == ']', "Location must start with '@' and end with ']': %s", location);
@@ -847,7 +844,7 @@ public class ImageLayerLoader {
         } catch (IOException e) {
             throw AnalysisError.shouldNotReachHere("Failed reading a graph from location: " + location, e);
         }
-        return new String(bb.array(), ImageLayerWriter.GRAPHS_CHARSET);
+        return bb.array();
     }
 
     public boolean hasStrengthenedGraph(AnalysisMethod analysisMethod) {
@@ -857,7 +854,7 @@ public class ImageLayerLoader {
 
     public void setStrengthenedGraph(AnalysisMethod analysisMethod) {
         EconomicMap<String, Object> methodData = getMethodData(analysisMethod);
-        String encodedAnalyzedGraph = readEncodedGraph(methodData, STRENGTHENED_GRAPH_TAG);
+        byte[] encodedAnalyzedGraph = readEncodedGraph(methodData, STRENGTHENED_GRAPH_TAG);
         EncodedGraph analyzedGraph = (EncodedGraph) ObjectCopier.decode(imageLayerSnapshotUtil.getGraphDecoder(this, analysisMethod, universe.getSnippetReflection()), encodedAnalyzedGraph);
         afterGraphDecodeHook(analyzedGraph);
         analysisMethod.setAnalyzedGraph(analyzedGraph);
@@ -866,22 +863,6 @@ public class ImageLayerLoader {
     @SuppressWarnings("unused")
     protected void afterGraphDecodeHook(EncodedGraph encodedGraph) {
 
-    }
-
-    private void loadAllAnalysisElements(String encoding) {
-        encoding.lines().forEach(this::loadEncodedGraphLineAnalysisElements);
-    }
-
-    protected void loadEncodedGraphLineAnalysisElements(String line) {
-        if (line.contains(PointsToAnalysisType.class.getName())) {
-            getAnalysisType(getId(line));
-        } else if (line.contains(PointsToAnalysisMethod.class.getName())) {
-            getAnalysisMethod(getId(line));
-        } else if (line.contains(PointsToAnalysisField.class.getName())) {
-            getAnalysisField(getId(line));
-        } else if (line.contains(ImageHeapInstance.class.getName()) || line.contains(ImageHeapObjectArray.class.getName()) || line.contains(ImageHeapPrimitiveArray.class.getName())) {
-            getOrCreateConstant(getId(line));
-        }
     }
 
     protected static int getId(String line) {

@@ -101,7 +101,7 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
@@ -142,8 +142,6 @@ import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 public class ImageLayerWriter {
-    static final Charset GRAPHS_CHARSET = Charset.defaultCharset();
-
     protected ImageLayerSnapshotUtil imageLayerSnapshotUtil;
     private ImageLayerWriterHelper imageLayerWriterHelper;
     private ImageHeap imageHeap;
@@ -161,6 +159,7 @@ public class ImageLayerWriter {
     private FileInfo fileInfo;
     private GraphsOutput graphsOutput;
     private final boolean useSharedLayerGraphs;
+    private final boolean useSharedLayerStrengthenedGraphs;
 
     protected final Set<AnalysisFuture<Void>> elementsToPersist = ConcurrentHashMap.newKeySet();
 
@@ -184,16 +183,14 @@ public class ImageLayerWriter {
             }
         }
 
-        String add(String encodedGraph) {
-            ByteBuffer encoded = GRAPHS_CHARSET.encode(encodedGraph);
-            int size = encoded.limit();
-            long offset = currentOffset.getAndAdd(size);
+        String add(byte[] encodedGraph) {
+            long offset = currentOffset.getAndAdd(encodedGraph.length);
             try {
-                tempChannel.write(encoded, offset);
+                tempChannel.write(ByteBuffer.wrap(encodedGraph), offset);
             } catch (Exception e) {
                 throw GraalError.shouldNotReachHere(e, "Error during graphs file dumping.");
             }
-            return new StringBuilder("@").append(offset).append("[").append(size).append("]").toString();
+            return new StringBuilder("@").append(offset).append("[").append(encodedGraph.length).append("]").toString();
         }
 
         void finish() {
@@ -213,6 +210,7 @@ public class ImageLayerWriter {
     @SuppressWarnings({"this-escape", "unused"})
     public ImageLayerWriter(boolean useSharedLayerGraphs) {
         this.useSharedLayerGraphs = useSharedLayerGraphs;
+        this.useSharedLayerStrengthenedGraphs = false;
         this.jsonMap = EconomicMap.create();
         this.constantsToRelink = new ArrayList<>();
         this.persistedTypeIds = ConcurrentHashMap.newKeySet();
@@ -465,6 +463,10 @@ public class ImageLayerWriter {
     }
 
     public void persistMethodStrengthenedGraph(AnalysisMethod method) {
+        if (!useSharedLayerStrengthenedGraphs) {
+            return;
+        }
+
         EconomicMap<String, Object> methodMap = getMethodMap(method);
 
         if (!methodMap.containsKey(STRENGTHENED_GRAPH_TAG)) {
@@ -477,13 +479,25 @@ public class ImageLayerWriter {
         if (!useSharedLayerGraphs) {
             return false;
         }
-        String encodedGraph = ObjectCopier.encode(imageLayerSnapshotUtil.getGraphEncoder(this), analyzedGraph);
-        if (encodedGraph.contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING)) {
+        byte[] encodedGraph = ObjectCopier.encode(imageLayerSnapshotUtil.getGraphEncoder(this), analyzedGraph);
+        if (contains(encodedGraph, LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING.getBytes(StandardCharsets.UTF_8))) {
             throw AnalysisError.shouldNotReachHere("The graph for the method %s contains a reference to a lambda type, which cannot be decoded: %s".formatted(method, encodedGraph));
         }
         String location = graphsOutput.add(encodedGraph);
         methodMap.put(graphTag, location);
         return true;
+    }
+
+    private static boolean contains(byte[] data, byte[] seq) {
+        outer: for (int i = 0; i <= data.length - seq.length; i++) {
+            for (int j = 0; j < seq.length; j++) {
+                if (data[i + j] != seq[j]) {
+                    continue outer;
+                }
+            }
+            return true;
+        }
+        return false;
     }
 
     private EconomicMap<String, Object> getMethodMap(AnalysisMethod method) {
