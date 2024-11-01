@@ -173,11 +173,13 @@ def _subst_get_jvm_args(dep):
 
 mx_subst.path_substitutions.register_with_arg('get_jvm_cmd_line', _subst_get_jvm_args)
 
-mx.add_argument('--jacoco-exec-file', help='the coverage result file of JaCoCo', default='jacoco.exec')
+mx.add_argument('--jacoco-exec-file', help='the coverage result file of JaCoCo. Deprecated: use --jacoco-dest-file', default=None)
 
 
 def mx_post_parse_cmd_line(opts):
-    mx_gate.JACOCO_EXEC = opts.jacoco_exec_file
+    if opts.jacoco_exec_file is not None:
+        mx.warn("--jacoco-exec-file is deprecated, please use --jacoco-dest-file instead")
+        mx_gate.JACOCO_EXEC = opts.jacoco_exec_file
 
 
 @mx.command(_suite.name, 'llvm-tool', 'Run a tool from the LLVM_TOOLCHAIN distribution')

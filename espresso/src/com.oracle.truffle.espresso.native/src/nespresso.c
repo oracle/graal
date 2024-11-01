@@ -458,6 +458,10 @@ jint GetJavaVM(JNIEnv *env, JavaVM **vmPtr) {
   if (vmPtr == NULL) {
     return JNI_ERR;
   }
+  if (env == NULL) {
+    fprintf(stderr, "GetJavaVM: Passed JNIEnv* is NULL" OS_NEWLINE_STR);
+    return JNI_ERR;
+  }
 
   moka_env = (MokapotEnv*) (*env)->reserved1;
   if (moka_env == NULL) {
@@ -494,15 +498,16 @@ JNIEXPORT JNIEnv* JNICALL initializeNativeContext(void* (*fetch_by_name)(const c
   struct JNINativeInterface_* jni_impl = malloc(sizeof(*jni_impl));
   struct NespressoEnv* nespresso_env = (struct NespressoEnv*) malloc(sizeof(*nespresso_env));
 
+  jni_impl->reserved0 = nespresso_env;
+  jni_impl->reserved1 = NULL;
+  jni_impl->reserved2 = NULL;
+  jni_impl->reserved3 = NULL;
   int fnCount = sizeof(*jni_impl) / sizeof(void*);
-  int i;
-  for (i = 0; i < fnCount; ++i) {
+  for (int i = 4; i < fnCount; ++i) {
     ((void**)jni_impl)[i] = &unset_function_error;
   }
 
   *env = jni_impl;
-
-  jni_impl->reserved0 = nespresso_env;
 
   // Fetch Java ... varargs methods.
   #define INIT_VARARGS_METHOD__(fn_name) \
