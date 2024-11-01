@@ -47,7 +47,7 @@ import static jdk.graal.compiler.nodes.ConstantNode.forBoolean;
 import static jdk.graal.compiler.nodes.ProfileData.BranchProbabilityData.injected;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
 import static jdk.vm.ci.meta.DeoptimizationReason.TypeCheckedInliningViolated;
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
+import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
 
 import java.lang.annotation.Annotation;
 import java.lang.invoke.ConstantCallSite;
@@ -190,7 +190,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 import jdk.vm.ci.meta.UnresolvedJavaType;
-import jdk.vm.ci.services.Services;
+import org.graalvm.nativeimage.ImageInfo;
 
 /**
  * Defines the {@link Plugins} used when running on HotSpot.
@@ -222,7 +222,7 @@ public class HotSpotGraphBuilderPlugins {
         Plugins plugins = new Plugins(invocationPlugins);
         plugins.appendNodePlugin(new HotSpotExceptionDispatchPlugin(config, wordTypes.getWordKind()));
         StandardGraphBuilderPlugins.registerConstantFieldLoadPlugin(plugins);
-        if (!IS_IN_NATIVE_IMAGE) {
+        if (!inImageRuntimeCode()) {
             // In libgraal all word related operations have been fully processed so this is unneeded
             HotSpotWordOperationPlugin wordOperationPlugin = new HotSpotWordOperationPlugin(snippetReflection, constantReflection, wordTypes, barrierSet);
             HotSpotNodePlugin nodePlugin = new HotSpotNodePlugin(wordOperationPlugin);
@@ -277,7 +277,7 @@ public class HotSpotGraphBuilderPlugins {
             }
 
         });
-        if (!IS_IN_NATIVE_IMAGE) {
+        if (!inImageRuntimeCode()) {
             // In libgraal, all NodeIntrinsics have been converted into special nodes so the plugins
             // aren't needed.
             NodeIntrinsificationProvider nodeIntrinsificationProvider = new NodeIntrinsificationProvider(metaAccess, snippetReflection, foreignCalls, wordTypes, target);
@@ -691,7 +691,7 @@ public class HotSpotGraphBuilderPlugins {
         r.register(new InlineOnlyInvocationPlugin("setCurrentThread", Receiver.class, Thread.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode thread) {
-                GraalError.guarantee(Services.IS_IN_NATIVE_IMAGE || isAnnotatedByChangesCurrentThread(b.getMethod()), "method changes current Thread but is not annotated ChangesCurrentThread");
+                GraalError.guarantee(ImageInfo.inImageRuntimeCode() || isAnnotatedByChangesCurrentThread(b.getMethod()), "method changes current Thread but is not annotated ChangesCurrentThread");
                 try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
                     receiver.get(true);
                     helper.setCurrentThread(thread);

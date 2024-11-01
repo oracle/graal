@@ -164,6 +164,7 @@ suite = {
       "dependencies" : [
         "sdk:WORD",
         "sdk:COLLECTIONS",
+        "sdk:NATIVEIMAGE",
         "truffle:TRUFFLE_COMPILER",
       ],
       "requires" : [
@@ -582,6 +583,7 @@ suite = {
       "distDependencies" : [
         "sdk:COLLECTIONS",
         "sdk:WORD",
+        "sdk:NATIVEIMAGE",
         "truffle:TRUFFLE_COMPILER",
       ],
       "allowsJavadocWarnings": True,

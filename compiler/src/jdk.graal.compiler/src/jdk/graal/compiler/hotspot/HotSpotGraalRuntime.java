@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 
@@ -75,7 +76,6 @@ import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.runtime.JVMCIBackend;
-import jdk.vm.ci.services.Services;
 
 //JaCoCo Exclude
 
@@ -449,7 +449,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
         outputDirectory.close();
 
-        if (Services.IS_IN_NATIVE_IMAGE) {
+        if (ImageInfo.inImageRuntimeCode()) {
             String callback = HotSpotGraalCompiler.Options.OnShutdownCallback.getValue(options);
             if (callback != null) {
                 int lastDot = callback.lastIndexOf('.');

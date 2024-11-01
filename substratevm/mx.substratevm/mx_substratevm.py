@@ -1535,10 +1535,12 @@ libgraal_build_args = [
 ] if mx.is_interactive() else []) + svm_experimental_options([
     '-H:-UseServiceLoaderFeature',
     '-H:+AllowFoldMethods',
-    '-Djdk.vm.ci.services.aot=true',
     '-Dtruffle.TruffleRuntime=',
     '-H:+JNIEnhancedErrorCodes',
     '-H:InitialCollectionPolicy=LibGraal',
+
+    # Needed for initializing jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE.
+    '-Djdk.vm.ci.services.aot=true',
 
     # These 2 arguments provide walkable call stacks for a crash in libgraal.
     # In the context of hs_err logs:

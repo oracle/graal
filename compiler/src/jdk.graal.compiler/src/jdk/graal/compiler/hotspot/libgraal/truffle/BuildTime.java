@@ -26,7 +26,7 @@ package jdk.graal.compiler.hotspot.libgraal.truffle;
 
 import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id;
 import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
-import jdk.vm.ci.services.Services;
+import org.graalvm.nativeimage.ImageInfo;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -92,7 +92,7 @@ public class BuildTime {
     }
 
     static MethodHandle getHostMethodHandleOrFail(String name) {
-        if (Services.IS_BUILDING_NATIVE_IMAGE) {
+        if (ImageInfo.inImageBuildtimeCode()) {
             /*
              * Native-image initializes BuildTime also in the platform classloader. In this case we
              * return null.
@@ -110,7 +110,7 @@ public class BuildTime {
             } else {
                 throw new NoSuchElementException(name);
             }
-        } else if (Services.IS_IN_NATIVE_IMAGE) {
+        } else if (ImageInfo.inImageRuntimeCode()) {
             /*
              * The getHostMethodHandleOrFail should never be called in the native-image execution
              * time.

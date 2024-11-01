@@ -143,7 +143,7 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
  * {@link SymbolicJVMCIReference}.
  * <p>
  * An instance of this class only exist when
- * {@link jdk.vm.ci.services.Services#IS_BUILDING_NATIVE_IMAGE} is true.
+ * {@link org.graalvm.nativeimage.ImageInfo#inImageBuildtimeCode()} is true.
  */
 public class SymbolicSnippetEncoder {
 
@@ -475,13 +475,9 @@ public class SymbolicSnippetEncoder {
                     }
                 }
             }
-            pendingSnippetGraphs.put(key, new BiFunction<>() {
-                @Override
-                public StructuredGraph apply(OptionValues cmopileOptions, HotSpotSnippetReplacementsImpl snippetReplacements) {
-                    return buildGraph(method, original, receiver, SnippetParameterInfo.getNonNullParameters(info), trackNodeSourcePosition,
-                                    cmopileOptions, snippetReplacements);
-                }
-            });
+            pendingSnippetGraphs.put(key, (compileOptions, snippetReplacements) -> buildGraph(method, original, receiver,
+                            SnippetParameterInfo.getNonNullParameters(info), trackNodeSourcePosition,
+                            compileOptions, snippetReplacements));
         }
     }
 
