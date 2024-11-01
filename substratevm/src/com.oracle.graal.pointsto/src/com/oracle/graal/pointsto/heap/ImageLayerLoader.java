@@ -91,6 +91,7 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.PERSISTED;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.POSITION_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.PRIMITIVE_ARRAY_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.RETURN_TYPE_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.RELOCATED_CONSTANT_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.SIMULATED_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.SOURCE_FILE_NAME_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.STATIC_OBJECT_FIELDS_TAG;
@@ -1078,6 +1079,10 @@ public class ImageLayerLoader {
                 List<Object> primitiveData = get(baseLayerConstant, DATA_TAG);
                 Object array = getArray(type.getComponentType().getJavaKind(), primitiveData);
                 addBaseLayerObject(id, objectOffset, () -> new ImageHeapPrimitiveArray(type, null, array, primitiveData.size(), identityHashCode));
+            }
+            case RELOCATED_CONSTANT_TAG -> {
+                String key = get(baseLayerConstant, DATA_TAG);
+                addBaseLayerObject(id, objectOffset, () -> ImageHeapRelocatableConstant.create(type, key));
             }
             default -> throw GraalError.shouldNotReachHere("Unknown constant type: " + constantType);
         }

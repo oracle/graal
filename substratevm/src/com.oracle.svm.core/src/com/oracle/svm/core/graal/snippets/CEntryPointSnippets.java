@@ -27,6 +27,7 @@ package com.oracle.svm.core.graal.snippets;
 import static com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode.writeCurrentVMThread;
 import static com.oracle.svm.core.graal.nodes.WriteHeapBaseNode.writeCurrentVMHeapBase;
 import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
+import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.HEAP_BEGIN;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
 
@@ -68,6 +69,7 @@ import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointNativeFunctions;
 import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.container.Container;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
@@ -78,6 +80,8 @@ import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.heap.ReferenceHandlerThread;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.imagelayer.ImageLayerSection;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
@@ -107,6 +111,7 @@ import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
 import jdk.graal.compiler.graph.Node.NodeIntrinsic;
+import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.PauseNode;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.nodes.spi.LoweringTool;
@@ -116,6 +121,7 @@ import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.Snippets;
+import jdk.graal.compiler.word.Word;
 import jdk.internal.misc.Unsafe;
 
 /**
@@ -210,6 +216,57 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         return runtimeCallInitializeIsolate(INITIALIZE_ISOLATE, parameters);
     }
 
+    private static final CGlobalData<Word> IMAGE_HEAP_PATCHING_STATE = CGlobalDataFactory.createWord();
+
+    private static final class ImageHeapPatchingState {
+        static final Word UNINITIALIZED = WordFactory.zero();
+        static final Word IN_PROGRESS = WordFactory.unsigned(1);
+        static final Word SUCCESSFUL = WordFactory.unsigned(2);
+    }
+
+    @Uninterruptible(reason = "Thread state not yet set up.")
+    private static void layeredPatchHeapRelativeRelocations() {
+        Word heapPatchStateAddr = IMAGE_HEAP_PATCHING_STATE.get();
+        boolean firstIsolate = heapPatchStateAddr.logicCompareAndSwapWord(0, ImageHeapPatchingState.UNINITIALIZED, ImageHeapPatchingState.IN_PROGRESS, NamedLocationIdentity.OFF_HEAP_LOCATION);
+
+        if (!firstIsolate) {
+            // spin-wait for first isolate
+            Word state = heapPatchStateAddr.readWordVolatile(0, LocationIdentity.ANY_LOCATION);
+            while (state.equal(ImageHeapPatchingState.IN_PROGRESS)) {
+                PauseNode.pause();
+                state = heapPatchStateAddr.readWordVolatile(0, LocationIdentity.ANY_LOCATION);
+            }
+
+            /*
+             * Patching has already been successfully completed, nothing needs to be done.
+             */
+            return;
+        }
+
+        Pointer currentSection = ImageLayerSection.getInitialLayerSection().get();
+        Word heapBegin = currentSection.readWord(ImageLayerSection.getEntryOffset(HEAP_BEGIN));
+
+        Word patches = ImageLayerSection.getHeapRelativeRelocationsStart().get();
+        int endOffset = Integer.BYTES + (patches.readInt(0) * Integer.BYTES);
+
+        int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
+        int offset = Integer.BYTES;
+        while (offset < endOffset) {
+            int heapOffset = patches.readInt(offset);
+            int referenceEncoding = patches.readInt(offset + Integer.BYTES);
+
+            if (referenceSize == 4) {
+                heapBegin.writeInt(heapOffset, referenceEncoding);
+            } else {
+                heapBegin.writeLong(heapOffset, referenceEncoding);
+            }
+
+            offset += 2 * Integer.BYTES;
+        }
+
+        heapPatchStateAddr.writeWordVolatile(0, ImageHeapPatchingState.SUCCESSFUL);
+    }
+
     /**
      * After parsing the isolate arguments in
      * {@link IsolateArgumentParser#parse(CEntryPointCreateIsolateParameters, IsolateArguments)} the
@@ -230,6 +287,11 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         if (!validPageSize) {
             return CEntryPointErrors.PAGE_SIZE_CHECK_FAILED;
         }
+
+        if (ImageLayerBuildingSupport.buildingImageLayer()) {
+            layeredPatchHeapRelativeRelocations();
+        }
+
         CEntryPointCreateIsolateParameters parameters = providedParameters;
         if (parameters.isNull() || parameters.version() < 1) {
             parameters = StackValue.get(CEntryPointCreateIsolateParameters.class);

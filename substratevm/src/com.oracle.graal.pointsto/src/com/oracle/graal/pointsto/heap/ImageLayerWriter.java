@@ -85,6 +85,7 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.PARENT_CONST
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.POSITION_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.PRIMITIVE_ARRAY_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.RETURN_TYPE_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.RELOCATED_CONSTANT_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.SIMULATED_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.SOURCE_FILE_NAME_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.STRENGTHENED_GRAPH_TAG;
@@ -564,6 +565,10 @@ public class ImageLayerWriter {
             case ImageHeapPrimitiveArray imageHeapPrimitiveArray -> {
                 constantMap.put(CONSTANT_TYPE_TAG, PRIMITIVE_ARRAY_TAG);
                 constantMap.put(DATA_TAG, getString(imageHeapPrimitiveArray.getType().getComponentType().getJavaKind(), imageHeapPrimitiveArray.getArray()));
+            }
+            case ImageHeapRelocatableConstant relocatableConstant -> {
+                constantMap.put(CONSTANT_TYPE_TAG, RELOCATED_CONSTANT_TAG);
+                constantMap.put(DATA_TAG, relocatableConstant.getConstantData().key);
             }
             default -> throw AnalysisError.shouldNotReachHere("Unexpected constant type " + imageHeapConstant);
         }

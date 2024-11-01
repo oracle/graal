@@ -43,6 +43,7 @@ import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
+import com.oracle.graal.pointsto.heap.ImageHeapRelocatableConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -129,7 +130,14 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
     }
 
     @Override
-    public ConstantTypeState constantTypeState(PointsToAnalysis bb, JavaConstant constant, AnalysisType exactType) {
+    public TypeState constantTypeState(PointsToAnalysis bb, JavaConstant constant, AnalysisType exactType) {
+        if (constant instanceof ImageHeapRelocatableConstant relocatableConstant) {
+            /*
+             * ImageHeapRelocatableConstants are placeholder values which will be later replaced
+             * with an unknown non-null object.
+             */
+            return TypeState.forType(bb, relocatableConstant.getType(), false);
+        }
         return new ConstantTypeState(bb, exactType, constant);
     }
 
