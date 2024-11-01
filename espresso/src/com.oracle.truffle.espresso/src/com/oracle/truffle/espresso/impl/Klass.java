@@ -107,7 +107,7 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
 
 @ExportLibrary(InteropLibrary.class)
-public abstract class Klass extends ContextAccessImpl implements ModifiersProvider, KlassRef, TruffleObject {
+public abstract class Klass extends ContextAccessImpl implements ModifiersProvider, KlassRef, TruffleObject, EspressoType {
 
     // region Interop
 
@@ -537,7 +537,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     @ExportMessage
     public Object getMetaQualifiedName() {
         assert isMetaObject();
-        return getTypeName();
+        return getGuestTypeName();
     }
 
     @ExportMessage
@@ -571,9 +571,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
                 ObjectKlass[] superInterfaces = getSuperInterfaces();
                 result = new Klass[superInterfaces.length];
 
-                for (int i = 0; i < superInterfaces.length; i++) {
-                    result[i] = superInterfaces[i];
-                }
+                System.arraycopy(superInterfaces, 0, result, 0, superInterfaces.length);
             } else {
                 Klass superKlass = getSuperKlass();
                 Klass[] superInterfaces = getSuperInterfaces();
@@ -581,9 +579,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
                 // put the super class first in array
                 result[0] = superKlass;
 
-                for (int i = 0; i < superInterfaces.length; i++) {
-                    result[i + 1] = superInterfaces[i];
-                }
+                System.arraycopy(superInterfaces, 0, result, 1, superInterfaces.length);
             }
             return new KeysArray<>(result);
         }
@@ -711,6 +707,28 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
 
     // Raw modifiers provided by the VM.
     private final int modifiers;
+
+    @CompilationFinal //
+    private StaticObject guestTypeLiteral;
+
+    @Override
+    public StaticObject getGuestTypeLiteral() {
+        if (guestTypeLiteral == null) {
+            if (CompilerDirectives.isPartialEvaluationConstant(this)) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+            }
+            guestTypeLiteral = createGuestTypeLiteral();
+        }
+        return guestTypeLiteral;
+    }
+
+    @TruffleBoundary
+    public StaticObject createGuestTypeLiteral() {
+        StaticObject result = getContext().getAllocator().createNew(getMeta().polyglot.TypeLiteral$InternalTypeLiteral);
+        getMeta().polyglot.HIDDEN_TypeLiteral_internalType.setHiddenObject(result, this);
+        getMeta().polyglot.TypeLiteral_rawType.setObject(result, this.mirror());
+        return result;
+    }
 
     protected static boolean hasFinalInstanceField(Class<?> clazz) {
         for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
@@ -919,13 +937,18 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         return getMeta().toGuestString(result);
     }
 
-    public final @JavaType(String.class) StaticObject getTypeName() {
+    public final @JavaType(String.class) StaticObject getGuestTypeName() {
         if (typeName == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             typeName = computeTypeName();
         }
         assert checkTypeName(typeName);
         return typeName;
+    }
+
+    public final String getTypeName() {
+        StaticObject guestTypeName = getGuestTypeName();
+        return getMeta().toHostString(guestTypeName);
     }
 
     @TruffleBoundary
@@ -1635,7 +1658,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         return ctx.getAllocator().createNew((ObjectKlass) this);
     }
 
-    @CompilationFinal private Symbol<Name> runtimePackage;
+    @CompilationFinal private final Symbol<Name> runtimePackage;
 
     private Symbol<Name> initRuntimePackage() {
         ByteSequence hostPkgName = Types.getRuntimePackage(type);
@@ -1701,12 +1724,12 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         }
     }
 
-    public final boolean isTypeMapped() {
+    public byte getTypeConversionState() {
         if (typeConversionState == UN_INITIALIZED) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             computeTypeConversionState();
         }
-        return typeConversionState == TYPE_MAPPED;
+        return typeConversionState;
     }
 
     private void computeTypeConversionState() {
@@ -1723,20 +1746,9 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         }
     }
 
-    public final boolean isInternalTypeMapped() {
-        if (typeConversionState == UN_INITIALIZED) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            computeTypeConversionState();
-        }
-        return typeConversionState == INTERNAL_MAPPED;
-    }
-
-    public final boolean isInternalCollectionTypeMapped() {
-        if (typeConversionState == UN_INITIALIZED) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            computeTypeConversionState();
-        }
-        return typeConversionState == INTERNAL_COLLECTION_MAPPED;
+    @Override
+    public Klass getRawType() {
+        return this;
     }
 
     // region jdwp-specific

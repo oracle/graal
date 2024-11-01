@@ -109,9 +109,10 @@ public class MapInterop extends EspressoInterop {
     @ExportMessage
     public static Object readHashValue(StaticObject receiver, Object key,
                     @Cached.Exclusive @Cached InvokeEspressoNode invoke,
-                    @Cached.Shared("contains") @Cached InvokeEspressoNode contains) throws UnsupportedMessageException, UnknownKeyException {
-        if (!isHashEntryReadable(receiver, key, contains)) {
-            throw UnsupportedMessageException.create();
+                    @Cached.Shared("contains") @Cached InvokeEspressoNode contains) throws UnknownKeyException {
+        boolean isReadable = isHashEntryReadable(receiver, key, contains);
+        if (!isReadable) {
+            throw UnknownKeyException.create(key);
         }
         Meta meta = receiver.getKlass().getMeta();
         Method get = getInteropKlass(receiver).itableLookup(meta.java_util_Map, meta.java_util_Map_get.getITableIndex());
@@ -143,9 +144,9 @@ public class MapInterop extends EspressoInterop {
     @ExportMessage
     public static void removeHashEntry(StaticObject receiver, Object key,
                     @Cached.Exclusive @Cached InvokeEspressoNode invoke,
-                    @Cached.Shared("contains") @Cached InvokeEspressoNode contains) throws UnsupportedMessageException, UnknownKeyException {
+                    @Cached.Shared("contains") @Cached InvokeEspressoNode contains) throws UnknownKeyException {
         if (!isHashEntryReadable(receiver, key, contains)) {
-            throw UnsupportedMessageException.create();
+            throw UnknownKeyException.create(key);
         }
         Meta meta = receiver.getKlass().getMeta();
         Method remove = getInteropKlass(receiver).itableLookup(meta.java_util_Map, meta.java_util_Map_remove.getITableIndex());

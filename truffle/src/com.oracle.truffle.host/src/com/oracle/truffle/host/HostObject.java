@@ -3312,13 +3312,22 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    @TruffleBoundary
     Object getMetaQualifiedName() throws UnsupportedMessageException {
         if (isClass()) {
-            return asClass().getTypeName();
+            Class<?> theClass = asClass();
+            if (theClass.isArray()) {
+                return getArrayName(theClass);
+            } else {
+                return theClass.getName();
+            }
         } else {
             throw UnsupportedMessageException.create();
         }
+    }
+
+    @TruffleBoundary
+    private static Object getArrayName(Class<?> theClass) {
+        return theClass.getTypeName();
     }
 
     @ExportMessage

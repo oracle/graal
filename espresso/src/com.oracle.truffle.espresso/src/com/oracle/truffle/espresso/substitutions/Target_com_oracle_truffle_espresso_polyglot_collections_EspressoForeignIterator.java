@@ -28,6 +28,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.impl.EspressoType;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
@@ -38,19 +39,36 @@ public final class Target_com_oracle_truffle_espresso_polyglot_collections_Espre
     abstract static class Create extends SubstitutionNode {
         static final int LIMIT = 4;
 
-        abstract @JavaType(Iterator.class) StaticObject execute(@JavaType(Object.class) StaticObject receiver, @Inject Meta meta);
+        abstract @JavaType(Iterator.class) StaticObject execute(@JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/TypeLiteral;") StaticObject typeArgument,
+                        @JavaType(Object.class) StaticObject receiver, @Inject Meta meta);
 
         @Specialization
         @JavaType(Iterator.class)
         StaticObject doCached(
+                        @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/TypeLiteral;") StaticObject typeArgument,
                         @JavaType(Object.class) StaticObject foreignIterator,
                         @Inject Meta meta,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+            assert typeArgument != null;
             assert foreignIterator != null;
-            assert foreignIterator.isForeignObject();
-            EspressoLanguage language = meta.getLanguage();
-            Object rawForeign = foreignIterator.rawForeignObject(language);
-            return StaticObject.createForeign(language, meta.polyglot.EspressoForeignIterator, rawForeign, interop);
+
+            if (StaticObject.isNull(typeArgument)) {
+                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "null TypeLiteral is not allowed");
+            }
+            if (!foreignIterator.isForeignObject()) {
+                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "only foreign iterator objects are allowed");
+            }
+            EspressoLanguage language = getLanguage();
+            // apply type argument from type literal
+            EspressoType[] types = new EspressoType[1];
+            EspressoType type = (EspressoType) meta.polyglot.HIDDEN_TypeLiteral_internalType.getHiddenObject(typeArgument);
+            if (type != null) {
+                types[0] = type;
+            }
+            // create the foreign iterator instance
+            StaticObject foreign = StaticObject.createForeign(language, meta.polyglot.EspressoForeignIterator, foreignIterator.rawForeignObject(language), interop);
+            getLanguage().getTypeArgumentProperty().setObject(foreign, types);
+            return foreign;
         }
     }
 }
