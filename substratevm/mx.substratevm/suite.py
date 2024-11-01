@@ -1,6 +1,6 @@
 # pylint: disable=line-too-long
 suite = {
-    "mxversion": "7.33.0",
+    "mxversion": "7.33.1",
     "name": "substratevm",
     "version" : "24.2.0",
     "release" : False,
@@ -1825,14 +1825,6 @@ suite = {
                     "org.graalvm.collections",
                     "org.graalvm.polyglot",
                     "org.graalvm.truffle.compiler",
-                ],
-                "uses" : [
-                    "com.oracle.truffle.api.TruffleLanguage.Provider",
-                    "com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider",
-                    "com.oracle.truffle.api.provider.TruffleLanguageProvider",
-                    "com.oracle.truffle.api.instrumentation.provider.TruffleInstrumentProvider",
-                    "com.oracle.truffle.api.TruffleLanguage.Provider",                   # Deprecated
-                    "com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider", # Deprecated
                 ],
                 "requiresConcealed": {
                     "jdk.internal.vm.ci": [

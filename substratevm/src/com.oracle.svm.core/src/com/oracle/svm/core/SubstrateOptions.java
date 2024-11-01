@@ -700,7 +700,7 @@ public class SubstrateOptions {
     @Option(help = "Report progress in build output (default is adaptive)", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> BuildOutputProgress = new HostedOptionKey<>(false);
 
-    @Option(help = "Show code and heap breakdowns as part of the build output", type = OptionType.User)//
+    @Option(help = "Show code and heap breakdowns as part of the build output", type = OptionType.User, deprecated = true, deprecationMessage = "Deprecated without replacement")//
     public static final HostedOptionKey<Boolean> BuildOutputBreakdowns = new HostedOptionKey<>(true);
 
     @Option(help = "Show recommendations as part of the build output", type = OptionType.User)//

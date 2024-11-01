@@ -49,7 +49,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeSet;
@@ -57,7 +56,6 @@ import java.util.function.Supplier;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import com.oracle.truffle.api.InternalResource;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
@@ -77,7 +75,7 @@ final class InstrumentCache {
     private final String website;
     private final boolean internal;
     private final Set<String> services;
-    private final ProviderAdapter providerAdapter;
+    private final TruffleInstrumentProvider provider;
     private final SandboxPolicy sandboxPolicy;
     private final Map<String, InternalResourceCache> internalResources;
 
@@ -120,7 +118,7 @@ final class InstrumentCache {
     }
 
     private InstrumentCache(String id, String name, String version, String className, boolean internal, Set<String> services,
-                    ProviderAdapter providerAdapter, String website, SandboxPolicy sandboxPolicy, Map<String, InternalResourceCache> internalResources) {
+                    TruffleInstrumentProvider provider, String website, SandboxPolicy sandboxPolicy, Map<String, InternalResourceCache> internalResources) {
         this.id = id;
         this.name = name;
         this.version = version;
@@ -128,7 +126,7 @@ final class InstrumentCache {
         this.className = className;
         this.internal = internal;
         this.services = services;
-        this.providerAdapter = providerAdapter;
+        this.provider = provider;
         this.sandboxPolicy = sandboxPolicy;
         this.internalResources = internalResources;
     }
@@ -174,10 +172,7 @@ final class InstrumentCache {
                 continue;
             }
             usesTruffleClassLoader |= truffleClassLoader == loader;
-            loadProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed, optionalResources));
-            if (supplier.supportsLegacyProviders()) {
-                loadLegacyProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed, optionalResources));
-            }
+            loadProviders(loader).filter((p) -> supplier.accepts(p.getClass())).forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed, optionalResources));
         }
         /*
          * Resolves a missing debugger instrument when the GuestLangToolsClassLoader does not define
@@ -188,26 +183,20 @@ final class InstrumentCache {
         if (!usesTruffleClassLoader) {
             Module truffleModule = InstrumentCache.class.getModule();
             loadProviders(truffleClassLoader).//
-                            filter((p) -> p.getProviderClass().getModule().equals(truffleModule)).//
+                            filter((p) -> p.getClass().getModule().equals(truffleModule)).//
                             forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed, optionalResources));
         }
         list.sort(Comparator.comparing(InstrumentCache::getId));
         return list;
     }
 
-    @SuppressWarnings("deprecation")
-    private static Stream<? extends ProviderAdapter> loadLegacyProviders(ClassLoader loader) {
-        JDKSupport.exportToUnnamedModuleOf(loader);
-        return StreamSupport.stream(ServiceLoader.load(TruffleInstrument.Provider.class, loader).spliterator(), false).map(LegacyProvider::new);
+    private static Stream<? extends TruffleInstrumentProvider> loadProviders(ClassLoader loader) {
+        return StreamSupport.stream(ServiceLoader.load(TruffleInstrumentProvider.class, loader).spliterator(), false);
     }
 
-    private static Stream<? extends ProviderAdapter> loadProviders(ClassLoader loader) {
-        return StreamSupport.stream(ServiceLoader.load(TruffleInstrumentProvider.class, loader).spliterator(), false).map(ModuleAwareProvider::new);
-    }
-
-    private static void loadInstrumentImpl(ProviderAdapter providerAdapter, List<? super InstrumentCache> list, Set<? super String> classNamesUsed,
+    private static void loadInstrumentImpl(TruffleInstrumentProvider provider, List<? super InstrumentCache> list, Set<? super String> classNamesUsed,
                     Map<String, Map<String, Supplier<InternalResourceCache>>> optionalResources) {
-        Class<?> providerClass = providerAdapter.getProviderClass();
+        Class<?> providerClass = provider.getClass();
         Module providerModule = providerClass.getModule();
         JDKSupport.exportTransitivelyTo(providerModule);
         /*
@@ -219,7 +208,7 @@ final class InstrumentCache {
             emitWarning("Warning Truffle instrument ignored: Provider %s is missing @Registration annotation.", providerClass);
             return;
         }
-        String className = providerAdapter.getInstrumentClassName();
+        String className = EngineAccessor.INSTRUMENT_PROVIDER.getInstrumentClassName(provider);
         String name = reg.name();
         String id = reg.id();
         if (id == null || id.isEmpty()) {
@@ -234,10 +223,10 @@ final class InstrumentCache {
         String website = reg.website();
         SandboxPolicy sandboxPolicy = reg.sandbox();
         boolean internal = reg.internal();
-        Set<String> servicesClassNames = new TreeSet<>(providerAdapter.getServicesClassNames());
+        Set<String> servicesClassNames = new TreeSet<>(EngineAccessor.INSTRUMENT_PROVIDER.getServicesClassNames(provider));
         Map<String, InternalResourceCache> resources = new HashMap<>();
-        for (String resourceId : providerAdapter.getInternalResourceIds()) {
-            resources.put(resourceId, new InternalResourceCache(id, resourceId, () -> providerAdapter.createInternalResource(resourceId)));
+        for (String resourceId : EngineAccessor.INSTRUMENT_PROVIDER.getInternalResourceIds(provider)) {
+            resources.put(resourceId, new InternalResourceCache(id, resourceId, () -> EngineAccessor.INSTRUMENT_PROVIDER.createInternalResource(provider, resourceId)));
         }
         for (Map.Entry<String, Supplier<InternalResourceCache>> resourceSupplier : optionalResources.getOrDefault(id, Map.of()).entrySet()) {
             InternalResourceCache resource = resourceSupplier.getValue().get();
@@ -249,7 +238,7 @@ final class InstrumentCache {
         // we don't want multiple instruments with the same class name
         if (!classNamesUsed.contains(className)) {
             classNamesUsed.add(className);
-            list.add(new InstrumentCache(id, name, version, className, internal, servicesClassNames, providerAdapter, website, sandboxPolicy, Collections.unmodifiableMap(resources)));
+            list.add(new InstrumentCache(id, name, version, className, internal, servicesClassNames, provider, website, sandboxPolicy, Collections.unmodifiableMap(resources)));
         }
     }
 
@@ -270,7 +259,7 @@ final class InstrumentCache {
     }
 
     TruffleInstrument loadInstrument() {
-        return providerAdapter.create();
+        return (TruffleInstrument) EngineAccessor.INSTRUMENT_PROVIDER.create(provider);
     }
 
     boolean supportsService(Class<?> clazz) {
@@ -304,109 +293,5 @@ final class InstrumentCache {
     private static void emitWarning(String message, Object... args) {
         PrintStream out = System.err;
         out.printf(message + "%n", args);
-    }
-
-    private interface ProviderAdapter {
-        Class<?> getProviderClass();
-
-        TruffleInstrument create();
-
-        String getInstrumentClassName();
-
-        Collection<String> getServicesClassNames();
-
-        List<String> getInternalResourceIds();
-
-        InternalResource createInternalResource(String resourceId);
-    }
-
-    /**
-     * Provider adapter for deprecated {@code TruffleInstrument.Provider}. GR-46292 Remove the
-     * deprecated {@code TruffleInstrument.Provider} and this adapter. When removed, the
-     * {@link ModuleAwareProvider} should also be removed.
-     */
-    @SuppressWarnings("deprecation")
-    private static final class LegacyProvider implements ProviderAdapter {
-
-        private final TruffleInstrument.Provider provider;
-
-        LegacyProvider(TruffleInstrument.Provider provider) {
-            Objects.requireNonNull(provider, "Provider must be non null");
-            this.provider = provider;
-        }
-
-        @Override
-        public Class<?> getProviderClass() {
-            return provider.getClass();
-        }
-
-        @Override
-        public TruffleInstrument create() {
-            return provider.create();
-        }
-
-        @Override
-        public String getInstrumentClassName() {
-            return provider.getInstrumentClassName();
-        }
-
-        @Override
-        public Collection<String> getServicesClassNames() {
-            return provider.getServicesClassNames();
-        }
-
-        @Override
-        public List<String> getInternalResourceIds() {
-            return List.of();
-        }
-
-        @Override
-        public InternalResource createInternalResource(String resourceId) {
-            throw new UnsupportedOperationException();
-        }
-    }
-
-    /**
-     * Provider adapter for {@link TruffleInstrumentProvider}. When the {@link LegacyProvider} is
-     * removed, this class should also be removed.
-     */
-    private static final class ModuleAwareProvider implements ProviderAdapter {
-
-        private final TruffleInstrumentProvider provider;
-
-        ModuleAwareProvider(TruffleInstrumentProvider provider) {
-            Objects.requireNonNull(provider, "Provider must be non null");
-            this.provider = provider;
-        }
-
-        @Override
-        public Class<?> getProviderClass() {
-            return provider.getClass();
-        }
-
-        @Override
-        public TruffleInstrument create() {
-            return (TruffleInstrument) EngineAccessor.INSTRUMENT_PROVIDER.create(provider);
-        }
-
-        @Override
-        public String getInstrumentClassName() {
-            return EngineAccessor.INSTRUMENT_PROVIDER.getInstrumentClassName(provider);
-        }
-
-        @Override
-        public Collection<String> getServicesClassNames() {
-            return EngineAccessor.INSTRUMENT_PROVIDER.getServicesClassNames(provider);
-        }
-
-        @Override
-        public List<String> getInternalResourceIds() {
-            return EngineAccessor.INSTRUMENT_PROVIDER.getInternalResourceIds(provider);
-        }
-
-        @Override
-        public InternalResource createInternalResource(String resourceId) {
-            return EngineAccessor.INSTRUMENT_PROVIDER.createInternalResource(provider, resourceId);
-        }
     }
 }

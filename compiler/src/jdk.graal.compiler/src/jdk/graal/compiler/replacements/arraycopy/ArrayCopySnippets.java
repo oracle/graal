@@ -29,7 +29,6 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.FREQUENT_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
-import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
 
 import java.util.EnumMap;
 import java.util.function.Supplier;
@@ -357,9 +356,7 @@ public abstract class ArrayCopySnippets implements Snippets {
     protected abstract void doGenericArraycopySnippet(Object src, int srcPos, Object dest, int destPos, int length, JavaKind elementKind, LocationIdentity arrayLocation, Counters counters);
 
     private static void incrementLengthCounter(int length, Counters counters) {
-        if (!IS_BUILDING_NATIVE_IMAGE) {
-            counters.lengthHistogram.inc(length);
-        }
+        counters.lengthHistogram.inc(length);
     }
 
     private static final int SRC_IDX = 0;

@@ -51,6 +51,8 @@ public class Isolates {
     public static final String IMAGE_HEAP_A_RELOCATABLE_POINTER_SYMBOL_NAME = "__svm_a_relocatable_pointer";
     public static final String IMAGE_HEAP_WRITABLE_BEGIN_SYMBOL_NAME = "__svm_heap_writable_begin";
     public static final String IMAGE_HEAP_WRITABLE_END_SYMBOL_NAME = "__svm_heap_writable_end";
+    public static final String IMAGE_HEAP_WRITABLE_PATCHED_BEGIN_SYMBOL_NAME = "__svm_heap_writable_patched_begin";
+    public static final String IMAGE_HEAP_WRITABLE_PATCHED_END_SYMBOL_NAME = "__svm_heap_writable_patched_end";
 
     public static final CGlobalData<Word> IMAGE_HEAP_BEGIN = CGlobalDataFactory.forSymbol(IMAGE_HEAP_BEGIN_SYMBOL_NAME);
     public static final CGlobalData<Word> IMAGE_HEAP_END = CGlobalDataFactory.forSymbol(IMAGE_HEAP_END_SYMBOL_NAME);
@@ -59,6 +61,8 @@ public class Isolates {
     public static final CGlobalData<Word> IMAGE_HEAP_A_RELOCATABLE_POINTER = CGlobalDataFactory.forSymbol(IMAGE_HEAP_A_RELOCATABLE_POINTER_SYMBOL_NAME);
     public static final CGlobalData<Word> IMAGE_HEAP_WRITABLE_BEGIN = CGlobalDataFactory.forSymbol(IMAGE_HEAP_WRITABLE_BEGIN_SYMBOL_NAME);
     public static final CGlobalData<Word> IMAGE_HEAP_WRITABLE_END = CGlobalDataFactory.forSymbol(IMAGE_HEAP_WRITABLE_END_SYMBOL_NAME);
+    public static final CGlobalData<Word> IMAGE_HEAP_WRITABLE_PATCHED_BEGIN = CGlobalDataFactory.forSymbol(IMAGE_HEAP_WRITABLE_PATCHED_BEGIN_SYMBOL_NAME);
+    public static final CGlobalData<Word> IMAGE_HEAP_WRITABLE_PATCHED_END = CGlobalDataFactory.forSymbol(IMAGE_HEAP_WRITABLE_PATCHED_END_SYMBOL_NAME);
     public static final CGlobalData<Pointer> ISOLATE_COUNTER = CGlobalDataFactory.createWord((WordBase) WordFactory.unsigned(1));
 
     /* Only used if SpawnIsolates is disabled. */

@@ -241,7 +241,7 @@ public abstract class ConfigurationParser {
                 var condition = parseTypeContents(object);
                 if (condition.isPresent()) {
                     String className = ((NamedConfigurationTypeDescriptor) condition.get()).name();
-                    return UnresolvedConfigurationCondition.create(className, true);
+                    return UnresolvedConfigurationCondition.create(className);
                 }
             } else if (conditionObject.containsKey(TYPE_REACHABLE_KEY)) {
                 if (runtimeCondition && !TreatAllTypeReachableConditionsAsTypeReached.getValue()) {

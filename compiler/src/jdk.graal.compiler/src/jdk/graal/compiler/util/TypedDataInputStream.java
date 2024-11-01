@@ -45,42 +45,28 @@ public class TypedDataInputStream extends DataInputStream {
      * @exception IOException in case of an I/O error.
      */
     public Object readTypedValue() throws IOException {
-        Object value;
-        final byte type = readByte();
-        switch (type) {
-            case 'Z':
-                value = readBoolean();
-                break;
-            case 'B':
-                value = readByte();
-                break;
-            case 'S':
-                value = readShort();
-                break;
-            case 'C':
-                value = readChar();
-                break;
-            case 'I':
-                value = readInt();
-                break;
-            case 'J':
-                value = readLong();
-                break;
-            case 'F':
-                value = readFloat();
-                break;
-            case 'D':
-                value = readDouble();
-                break;
-            case 'U':
-                int len = readInt();
-                byte[] bytes = new byte[len];
-                readFully(bytes);
-                value = new String(bytes, StandardCharsets.UTF_8);
-                break;
-            default:
-                throw new IOException("Unsupported type: " + Integer.toHexString(type));
-        }
-        return value;
+        return readUntypedValue(readUnsignedByte());
+    }
+
+    protected Object readUntypedValue(int type) throws IOException {
+        return switch (type) {
+            case 'Z' -> readBoolean();
+            case 'B' -> readByte();
+            case 'S' -> readShort();
+            case 'C' -> readChar();
+            case 'I' -> readInt();
+            case 'J' -> readLong();
+            case 'F' -> readFloat();
+            case 'D' -> readDouble();
+            case 'U' -> readStringValue();
+            default -> throw new IOException("Unsupported type: " + Integer.toHexString(type));
+        };
+    }
+
+    protected String readStringValue() throws IOException {
+        int len = readInt();
+        byte[] bytes = new byte[len];
+        readFully(bytes);
+        return new String(bytes, StandardCharsets.UTF_8);
     }
 }

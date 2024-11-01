@@ -24,26 +24,35 @@
  */
 package com.oracle.svm.core.genscavenge.graal;
 
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
+
 import java.util.Map;
 
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
 import com.oracle.svm.core.genscavenge.SerialGCOptions;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
+import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.StoredContinuation;
+import com.oracle.svm.core.snippets.SnippetRuntime;
+import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
+import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.BreakpointNode;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
 import jdk.graal.compiler.nodes.extended.FixedValueAnchorNode;
+import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.nodes.gc.SerialArrayRangeWriteBarrierNode;
 import jdk.graal.compiler.nodes.gc.SerialWriteBarrierNode;
 import jdk.graal.compiler.nodes.gc.WriteBarrierNode;
@@ -63,6 +72,10 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
     /** A LocationIdentity to distinguish card locations from other locations. */
     public static final LocationIdentity CARD_REMEMBERED_SET_LOCATION = NamedLocationIdentity.mutable("CardRememberedSet");
 
+    private static final SnippetRuntime.SubstrateForeignCallDescriptor POST_WRITE_BARRIER = SnippetRuntime.findForeignCall(BarrierSnippets.class, "postWriteBarrierStub",
+                    NO_SIDE_EFFECT,
+                    CARD_REMEMBERED_SET_LOCATION);
+
     private final SnippetInfo postWriteBarrierSnippet;
 
     BarrierSnippets(OptionValues options, Providers providers) {
@@ -78,8 +91,26 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
         lowerings.put(SerialArrayRangeWriteBarrierNode.class, lowering);
     }
 
+    public static void registerForeignCalls(SubstrateForeignCallsProvider provider) {
+        provider.register(POST_WRITE_BARRIER);
+    }
+
+    @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void postWriteBarrierStub(Object object) {
+        UnsignedWord objectHeader = ObjectHeader.readHeaderFromObject(object);
+        if (ObjectHeaderImpl.isUnalignedHeader(objectHeader)) {
+            RememberedSet.get().dirtyCardForUnalignedObject(object, false);
+        } else {
+            RememberedSet.get().dirtyCardForAlignedObject(object, false);
+        }
+    }
+
+    @Node.NodeIntrinsic(ForeignCallNode.class)
+    private static native void callPostWriteBarrierStub(@Node.ConstantNodeParameter ForeignCallDescriptor descriptor, Object object);
+
     @Snippet
-    public static void postWriteBarrierSnippet(Object object, @ConstantParameter boolean alwaysAlignedChunk, @ConstantParameter boolean verifyOnly) {
+    public static void postWriteBarrierSnippet(Object object, @ConstantParameter boolean shouldOutline, @ConstantParameter boolean alwaysAlignedChunk, @ConstantParameter boolean verifyOnly) {
         Object fixedObject = FixedValueAnchorNode.getObject(object);
         UnsignedWord objectHeader = ObjectHeader.readHeaderFromObject(fixedObject);
 
@@ -94,16 +125,21 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
             if (BranchProbabilityNode.probability(BranchProbabilityNode.SLOW_PATH_PROBABILITY, ObjectHeaderImpl.isUnalignedHeader(objectHeader))) {
                 BreakpointNode.breakpoint();
             }
-            if (BranchProbabilityNode.probability(BranchProbabilityNode.SLOW_PATH_PROBABILITY, object == null)) {
+            if (BranchProbabilityNode.probability(BranchProbabilityNode.SLOW_PATH_PROBABILITY, fixedObject == null)) {
                 BreakpointNode.breakpoint();
             }
-            if (BranchProbabilityNode.probability(BranchProbabilityNode.SLOW_PATH_PROBABILITY, object.getClass().isArray())) {
+            if (BranchProbabilityNode.probability(BranchProbabilityNode.SLOW_PATH_PROBABILITY, fixedObject.getClass().isArray())) {
                 BreakpointNode.breakpoint();
             }
         }
 
         boolean needsBarrier = RememberedSet.get().hasRememberedSet(objectHeader);
         if (BranchProbabilityNode.probability(BranchProbabilityNode.FREQUENT_PROBABILITY, !needsBarrier)) {
+            return;
+        }
+
+        if (shouldOutline && !verifyOnly) {
+            callPostWriteBarrierStub(POST_WRITE_BARRIER, fixedObject);
             return;
         }
 
@@ -143,10 +179,18 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
             boolean alwaysAlignedChunk = baseType != null && !baseType.isArray() && !baseType.isJavaLangObject() && !baseType.isInterface();
 
             args.add("object", address.getBase());
+            args.addConst("shouldOutline", shouldOutline(barrier));
             args.addConst("alwaysAlignedChunk", alwaysAlignedChunk);
             args.addConst("verifyOnly", getVerifyOnly(barrier));
 
             template(tool, barrier, args).instantiate(tool.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
+        }
+
+        private static boolean shouldOutline(WriteBarrierNode barrier) {
+            if (SerialGCOptions.OutlineWriteBarriers.getValue() != null) {
+                return SerialGCOptions.OutlineWriteBarriers.getValue();
+            }
+            return GraalOptions.ReduceCodeSize.getValue(barrier.getOptions());
         }
 
         private static boolean getVerifyOnly(WriteBarrierNode barrier) {

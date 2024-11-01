@@ -7,13 +7,14 @@
   local hw = bc.bench_hw,
 
   # GR-49532 TODO add 'throughput' metric and 'top-tier-throughput' secondary_metrics
-  local PR_bench_libgraal = {unicorn_pull_request_benchmarking:: {name: 'libgraal', metrics: ['time', 'throughput'], secondary_metrics: ['max-rss', 'top-tier-throughput']}},
+  local PR_bench_libgraal = {unicorn_pull_request_benchmarking:: {name: 'libgraal', metrics: ['time', 'throughput'], secondary_metrics: ['binary-size', 'max-rss', 'top-tier-throughput']}},
 
   local main_builds = std.flattenArrays([
     [
     c.daily + c.opt_post_merge + hw.e3 + jdk + cc.libgraal + bench.dacapo + PR_bench_libgraal,
     c.daily + c.opt_post_merge + hw.e3 + jdk + cc.libgraal + bench.scala_dacapo + PR_bench_libgraal,
     c.daily + c.opt_post_merge + hw.e3 + jdk + cc.libgraal + bench.renaissance + PR_bench_libgraal,
+    c.daily + c.opt_post_merge + hw.e3 + jdk + cc.libgraal + bench.barista,
     c.daily + c.opt_post_merge + hw.e3 + jdk + cc.libgraal + bench.specjvm2008 + PR_bench_libgraal,
     c.on_demand                + hw.e3 + jdk + cc.libgraal + bench.dacapo_size_variants,
     c.on_demand                + hw.e3 + jdk + cc.libgraal + bench.scala_dacapo_size_variants,

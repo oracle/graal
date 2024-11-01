@@ -35,7 +35,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import jdk.graal.compiler.util.ObjectCopier;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.collections.UnmodifiableMapCursor;
 
@@ -45,9 +44,11 @@ import com.oracle.svm.core.option.RuntimeOptionKey;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.HotSpotGraalOptionValues;
+import jdk.graal.compiler.hotspot.libgraal.CompilerConfig;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.hotspot.libgraal.CompilerConfig;
+import jdk.graal.compiler.util.ObjectCopier;
+import org.graalvm.nativeimage.ImageInfo;
 
 /**
  * Gets the map created in a JVM subprocess by running {@link CompilerConfig}.
@@ -64,7 +65,7 @@ public class GetCompilerConfig {
      *            {@link ObjectCopier}. These packages need to be opened when decoding the returned
      *            string back to an object.
      */
-    public record Result(String encodedConfig, Map<String, Set<String>> opens) {
+    public record Result(byte[] encodedConfig, Map<String, Set<String>> opens) {
     }
 
     /**
@@ -114,8 +115,9 @@ public class GetCompilerConfig {
 
         // Only modules in the boot layer can be the target of --add-exports
         String addExports = "--add-exports=java.base/jdk.internal.misc=jdk.graal.compiler";
-        if (isInBootLayer(javaExe, "com.oracle.graal.graal_enterprise")) {
-            addExports += ",com.oracle.graal.graal_enterprise";
+        String ee = "com.oracle.graal.graal_enterprise";
+        if (isInBootLayer(javaExe, ee)) {
+            addExports += "," + ee;
         }
 
         List<String> command = new ArrayList<>(List.of(
@@ -124,7 +126,8 @@ public class GetCompilerConfig {
                         "-XX:+EnableJVMCI",
                         "-XX:-UseJVMCICompiler", // avoid deadlock with jargraal
                         addExports,
-                        "-Djdk.vm.ci.services.aot=true"));
+                        "-Djdk.vm.ci.services.aot=true",
+                        "-D%s=%s".formatted(ImageInfo.PROPERTY_IMAGE_CODE_KEY, ImageInfo.PROPERTY_IMAGE_CODE_VALUE_BUILDTIME)));
 
         Module module = ObjectCopier.class.getModule();
         String target = module.isNamed() ? module.getName() : "ALL-UNNAMED";
@@ -165,13 +168,13 @@ public class GetCompilerConfig {
         try {
             int exitValue = p.waitFor();
             if (exitValue != 0) {
-                throw new GraalError("Command finished with exit value %d: %s", exitValue, quotedCommand);
+                throw new GraalError("Command finished with exit value %d (look for stdout and stderr above): %s", exitValue, quotedCommand);
             }
         } catch (InterruptedException e) {
             throw new GraalError("Interrupted waiting for command: %s", quotedCommand);
         }
         try {
-            String encodedConfig = Files.readString(encodedConfigPath);
+            byte[] encodedConfig = Files.readAllBytes(encodedConfigPath);
             if (DEBUG) {
                 System.out.printf("[%d] Executed: %s%n", p.pid(), quotedCommand);
                 System.out.printf("[%d] Output saved in %s%n", p.pid(), encodedConfigPath);

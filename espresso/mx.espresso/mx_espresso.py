@@ -34,6 +34,7 @@ import mx_jardistribution
 import mx_pomdistribution
 import mx_subst
 import mx_util
+import mx_gate
 import mx_espresso_benchmarks  # pylint: disable=unused-import
 import mx_sdk_vm
 import mx_sdk_vm_impl
@@ -59,7 +60,8 @@ def _espresso_command(launcher, args):
 
 def _espresso_launcher_command(args):
     """Espresso launcher embedded in GraalVM + arguments"""
-    return _espresso_command('espresso', args)
+    jacoco_args = ['--vm.' + arg for arg in mx_gate.get_jacoco_agent_args() or []]
+    return _espresso_command('espresso', jacoco_args + args)
 
 
 def _java_truffle_command(args):
@@ -67,15 +69,20 @@ def _java_truffle_command(args):
     return _espresso_command('java', ['-truffle'] + args)
 
 
-def _espresso_standalone_command(args, use_optimized_runtime=False, with_sulong=False):
+def _espresso_standalone_command(args, use_optimized_runtime=False, with_sulong=False, allow_jacoco=True):
     """Espresso standalone command from distribution jars + arguments"""
     vm_args, args = mx.extract_VM_args(args, useDoubleDash=True, defaultAllVMArgs=False)
     distributions = ['ESPRESSO', 'ESPRESSO_LAUNCHER', 'ESPRESSO_LIBS_RESOURCES', 'ESPRESSO_RUNTIME_RESOURCES', 'TRUFFLE_NFI_LIBFFI']
     if with_sulong:
         distributions += ['SULONG_NFI', 'SULONG_NATIVE']
+    if allow_jacoco:
+        jacoco_args = ['--vm.' + arg for arg in mx_gate.get_jacoco_agent_args() or []]
+    else:
+        jacoco_args = []
     return (
         vm_args
         + mx.get_runtime_jvm_args(distributions, jdk=mx.get_jdk())
+        + jacoco_args
         # We are not adding the truffle runtime
         + ['-Dpolyglot.engine.WarnInterpreterOnly=false']
         + [mx.distribution('ESPRESSO_LAUNCHER').mainClass] + args
@@ -124,7 +131,7 @@ def _run_espresso_meta(args, nonZeroIsFatal=True, timeout=None):
     """Run Espresso (standalone) on Espresso (launcher)"""
     return _run_espresso_launcher([
         '--vm.Xss4m',
-    ] + _espresso_standalone_command(args), nonZeroIsFatal=nonZeroIsFatal, timeout=timeout)
+    ] + _espresso_standalone_command(args, allow_jacoco=False), nonZeroIsFatal=nonZeroIsFatal, timeout=timeout)
 
 
 class EspressoTags:

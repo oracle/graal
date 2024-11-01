@@ -39,14 +39,14 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-import jdk.graal.compiler.core.ArchitectureSpecific;
-import jdk.graal.compiler.hotspot.CompilerConfigurationFactory;
 import org.graalvm.collections.EconomicMap;
 
+import jdk.graal.compiler.core.ArchitectureSpecific;
 import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.hotspot.CompilerConfigurationFactory;
 import jdk.graal.compiler.hotspot.EncodedSnippets;
 import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage;
 import jdk.graal.compiler.hotspot.HotSpotReplacementsImpl;
@@ -59,6 +59,8 @@ import jdk.graal.compiler.util.ObjectCopier;
 import jdk.vm.ci.hotspot.HotSpotJVMCIBackendFactory;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.services.JVMCIServiceLocator;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 /**
  * This class is used at image build-time when a libgraal image gets built. Its static methods are
@@ -66,6 +68,7 @@ import jdk.vm.ci.services.JVMCIServiceLocator;
  * These methods ensure the static field state of Graal and JVMCI classes loaded by the
  * LibGraalClassLoader is set up correctly for getting built into libgraal.
  */
+@Platforms(Platform.HOSTED_ONLY.class)
 public class BuildTime {
 
     private static final String VALID_LOADER_NAME = "LibGraalClassLoader";
@@ -148,7 +151,7 @@ public class BuildTime {
                     Consumer<Class<?>> registerAsInHeap,
                     Consumer<List<Class<?>>> hostedGraalSetFoldNodePluginClasses,
                     String nativeImageLocationQualifier,
-                    String encodedGuestObjects) {
+                    byte[] encodedGuestObjects) {
         GraalError.guarantee(VALID_LOADER_NAME.equals(LOADER.getName()),
                         "Only call this method from classloader " + VALID_LOADER_NAME);
 

@@ -20,7 +20,7 @@
       ["zip", "-r", "javadoc.zip", "javadoc"],
       ["cd", "../compiler"],
       ["mx", "build"],
-      ["mx", "javadoc", "--projects", "jdk.graal.compiler", "--packages", "jdk.graal.compiler.graphio,org.graalvm.word,org.graalvm.collections,com.oracle.truffle.compiler"],
+      ["mx", "javadoc", "--projects", "jdk.graal.compiler", "--packages", "jdk.graal.compiler.graphio,org.graalvm.word,org.graalvm.collections,com.oracle.truffle.compiler,org.graalvm.nativeimage,com.oracle.svm.core.annotate"],
       ["cd", "src/jdk.graal.compiler/"],
       ["zip", "-r", "../../graphio-javadoc.zip", "javadoc"],
       ["cd", "../../.."],

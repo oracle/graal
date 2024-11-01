@@ -48,6 +48,7 @@
 
 #include "internal.h"
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <ffi.h>
@@ -131,6 +132,9 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext
     ret->RetPatches_objects = (*env)->GetFieldID(env, LibFFIClosure_RetPatches, "objects", "[Ljava/lang/Object;");
 
     NFIState = (*env)->FindClass(env, "com/oracle/truffle/nfi/backend/spi/NFIState");
+    // required for the allocation in Java to match the size of the C int type
+    assert(sizeof(int) == 4);
+    ret->NFIState_nfiErrnoAddress = (*env)->GetFieldID(env, NFIState, "nfiErrnoAddress", "J");
     ret->NFIState_hasPendingException = (*env)->GetFieldID(env, NFIState, "hasPendingException", "Z");
 
     initializeSimpleType =
@@ -215,6 +219,7 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext
     ret->context = ctx;
     ret->jniEnv = env;
     ret->nfiState = (*env)->NewGlobalRef(env, nfiState);
+    ret->nfiErrnoAddress = (int *) (*env)->GetLongField(env, nfiState, ctx->NFIState_nfiErrnoAddress);
 
     return (jlong) (intptr_t) ret;
 }

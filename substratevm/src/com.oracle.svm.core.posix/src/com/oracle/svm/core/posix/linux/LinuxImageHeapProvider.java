@@ -31,6 +31,8 @@ import static com.oracle.svm.core.Isolates.IMAGE_HEAP_RELOCATABLE_BEGIN;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_RELOCATABLE_END;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_BEGIN;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_END;
+import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_PATCHED_BEGIN;
+import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_PATCHED_END;
 import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.HEAP_ANY_RELOCATABLE_POINTER;
 import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.HEAP_BEGIN;
 import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.HEAP_END;
@@ -38,6 +40,8 @@ import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.HE
 import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.HEAP_RELOCATABLE_END;
 import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.HEAP_WRITEABLE_BEGIN;
 import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.HEAP_WRITEABLE_END;
+import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.HEAP_WRITEABLE_PATCHED_BEGIN;
+import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.HEAP_WRITEABLE_PATCHED_END;
 import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.NEXT_SECTION;
 import static com.oracle.svm.core.posix.linux.ProcFSSupport.findMapping;
 import static com.oracle.svm.core.util.PointerUtils.roundDown;
@@ -187,12 +191,14 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
             Word heapAnyRelocPointer = currentSection.readWord(ImageLayerSection.getEntryOffset(HEAP_ANY_RELOCATABLE_POINTER));
             Word heapWritableBegin = currentSection.readWord(ImageLayerSection.getEntryOffset(HEAP_WRITEABLE_BEGIN));
             Word heapWritableEnd = currentSection.readWord(ImageLayerSection.getEntryOffset(HEAP_WRITEABLE_END));
+            Word heapWritablePatchedBegin = currentSection.readWord(ImageLayerSection.getEntryOffset(HEAP_WRITEABLE_PATCHED_BEGIN));
+            Word heapWritablePatchedEnd = currentSection.readWord(ImageLayerSection.getEntryOffset(HEAP_WRITEABLE_PATCHED_END));
 
             result = initializeImageHeap(currentHeapStart, remainingSize, curEndPointer,
                             cachedFDPointer, cachedOffsetsPointer, cachedImageHeapRelocationsPtr, MAGIC.get(),
                             heapBegin, heapEnd,
                             heapRelocBegin, heapAnyRelocPointer, heapRelocEnd,
-                            heapWritableBegin, heapWritableEnd);
+                            heapWritablePatchedBegin, heapWritablePatchedEnd, heapWritableBegin, heapWritableEnd);
             if (result != CEntryPointErrors.NO_ERROR) {
                 freeImageHeap(selfReservedHeapBase);
                 return result;
@@ -262,7 +268,7 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
                             CACHED_IMAGE_FD.get(), CACHED_IMAGE_HEAP_OFFSET.get(), CACHED_IMAGE_HEAP_RELOCATIONS.get(), MAGIC.get(),
                             IMAGE_HEAP_BEGIN.get(), IMAGE_HEAP_END.get(),
                             IMAGE_HEAP_RELOCATABLE_BEGIN.get(), IMAGE_HEAP_A_RELOCATABLE_POINTER.get(), IMAGE_HEAP_RELOCATABLE_END.get(),
-                            IMAGE_HEAP_WRITABLE_BEGIN.get(), IMAGE_HEAP_WRITABLE_END.get());
+                            IMAGE_HEAP_WRITABLE_PATCHED_BEGIN.get(), IMAGE_HEAP_WRITABLE_PATCHED_END.get(), IMAGE_HEAP_WRITABLE_BEGIN.get(), IMAGE_HEAP_WRITABLE_END.get());
             if (result != CEntryPointErrors.NO_ERROR) {
                 freeImageHeap(selfReservedHeapBase);
             }
@@ -275,10 +281,12 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
     @Uninterruptible(reason = "Called during isolate initialization.")
     private static int initializeImageHeap(Pointer imageHeap, UnsignedWord reservedSize, WordPointer endPointer, WordPointer cachedFd, WordPointer cachedOffsetInFile,
                     WordPointer cachedImageHeapRelocationsPtr,
-                    Pointer magicAddress, Word heapBeginSym, Word heapEndSym, Word heapRelocsSym, Pointer heapAnyRelocPointer, Word heapRelocsEndSym, Word heapWritableSym, Word heapWritableEndSym) {
+                    Pointer magicAddress, Word heapBeginSym, Word heapEndSym, Word heapRelocsSym, Pointer heapAnyRelocPointer, Word heapRelocsEndSym, Word heapWritablePatchedSym,
+                    Word heapWritablePatchedEndSym, Word heapWritableSym, Word heapWritableEndSym) {
         assert heapBeginSym.belowOrEqual(heapWritableSym) && heapWritableSym.belowOrEqual(heapWritableEndSym) && heapWritableEndSym.belowOrEqual(heapEndSym);
         assert heapBeginSym.belowOrEqual(heapRelocsSym) && heapRelocsSym.belowOrEqual(heapRelocsEndSym) && heapRelocsEndSym.belowOrEqual(heapEndSym);
-        assert heapAnyRelocPointer.isNull() || (heapRelocsSym.belowOrEqual(heapAnyRelocPointer) && heapAnyRelocPointer.belowThan(heapRelocsEndSym));
+        assert heapRelocsSym.belowOrEqual(heapAnyRelocPointer) && heapAnyRelocPointer.belowThan(heapRelocsEndSym);
+        assert heapRelocsSym.belowOrEqual(heapRelocsEndSym) && heapRelocsEndSym.belowOrEqual(heapWritablePatchedSym) && heapWritablePatchedSym.belowOrEqual(heapWritableEndSym);
 
         SignedWord fd = cachedFd.read();
 
@@ -313,7 +321,7 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
          */
         if (fd.equal(CANNOT_OPEN_FD)) {
             int result = initializeImageHeapWithMremap(imageHeap, imageHeapSize, pageSize, cachedImageHeapRelocationsPtr, heapBeginSym, heapRelocsSym, heapAnyRelocPointer, heapRelocsEndSym,
-                            heapWritableSym, heapWritableEndSym);
+                            heapWritablePatchedSym, heapWritablePatchedEndSym, heapWritableSym, heapWritableEndSym);
             if (result == CEntryPointErrors.MREMAP_NOT_SUPPORTED) {
                 /*
                  * MREMAP_DONTUNMAP is not supported, fall back to copying it from memory (the image
@@ -331,7 +339,8 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
             return CEntryPointErrors.MAP_HEAP_FAILED;
         }
 
-        int result = copyRelocations(imageHeap, pageSize, heapBeginSym, heapRelocsSym, heapAnyRelocPointer, heapRelocsEndSym, WordFactory.nullPointer());
+        int result = copyRelocations(imageHeap, pageSize, heapBeginSym, heapRelocsSym, heapAnyRelocPointer, heapRelocsEndSym, heapWritablePatchedSym, heapWritablePatchedEndSym,
+                        WordFactory.nullPointer());
         if (result != CEntryPointErrors.NO_ERROR) {
             return result;
         }
@@ -341,12 +350,14 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
 
     @Uninterruptible(reason = "Called during isolate initialization.")
     private static int initializeImageHeapWithMremap(Pointer imageHeap, UnsignedWord imageHeapSizeInFile, UnsignedWord pageSize, WordPointer cachedImageHeapRelocationsPtr, Word heapBeginSym,
-                    Word heapRelocsSym, Pointer heapAnyRelocPointer, Word heapRelocsEndSym, Word heapWritableSym, Word heapWritableEndSym) {
+                    Word heapRelocsSym, Pointer heapAnyRelocPointer, Word heapRelocsEndSym, Word heapWritablePatchedSym, Word heapWritablePatchedEndSym, Word heapWritableSym,
+                    Word heapWritableEndSym) {
         if (!SubstrateOptions.MremapImageHeap.getValue()) {
             return CEntryPointErrors.MREMAP_NOT_SUPPORTED;
         }
 
-        Pointer cachedImageHeapRelocations = getCachedImageHeapRelocations((Pointer) cachedImageHeapRelocationsPtr, pageSize, heapRelocsSym, heapRelocsEndSym);
+        Pointer cachedImageHeapRelocations = getCachedImageHeapRelocations((Pointer) cachedImageHeapRelocationsPtr, pageSize, heapRelocsSym,
+                        heapWritablePatchedEndSym);
         assert cachedImageHeapRelocations.notEqual(0);
         if (cachedImageHeapRelocations.rawValue() < 0) {
             return (int) -cachedImageHeapRelocations.rawValue(); // value is a negated error code
@@ -359,7 +370,8 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
             return CEntryPointErrors.MAP_HEAP_FAILED;
         }
 
-        int result = copyRelocations(imageHeap, pageSize, heapBeginSym, heapRelocsSym, heapAnyRelocPointer, heapRelocsEndSym, cachedImageHeapRelocations);
+        int result = copyRelocations(imageHeap, pageSize, heapBeginSym, heapRelocsSym, heapAnyRelocPointer, heapRelocsEndSym, heapWritablePatchedSym, heapWritablePatchedEndSym,
+                        cachedImageHeapRelocations);
         if (result != CEntryPointErrors.NO_ERROR) {
             return result;
         }
@@ -374,9 +386,13 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
     /**
      * Returns a valid pointer if successful; otherwise, returns a negated
      * {@linkplain CEntryPointErrors error code}.
+     *
+     * It is necessary to cache the image heap relocations because when we remap a file-backed
+     * memory region, we observe that the "old" virtual address space is reinitialized to its
+     * original state w/o relocations.
      */
     @Uninterruptible(reason = "Called during isolate initialization.")
-    private static Pointer getCachedImageHeapRelocations(Pointer cachedImageHeapRelocationsPtr, UnsignedWord pageSize, Word heapRelocsSym, Word heapRelocsEndSym) {
+    private static Pointer getCachedImageHeapRelocations(Pointer cachedImageHeapRelocationsPtr, UnsignedWord pageSize, Word heapRelocsSym, Word heapWritablePatchedEndSym) {
         Pointer imageHeapRelocations = cachedImageHeapRelocationsPtr.readWord(0, LocationIdentity.ANY_LOCATION);
         if (imageHeapRelocations.isNull() || imageHeapRelocations.equal(COPY_RELOCATIONS_IN_PROGRESS)) {
             if (!cachedImageHeapRelocationsPtr.logicCompareAndSwapWord(0, WordFactory.nullPointer(), COPY_RELOCATIONS_IN_PROGRESS, LocationIdentity.ANY_LOCATION)) {
@@ -391,7 +407,7 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
                  */
 
                 Pointer linkedRelocsBoundary = roundDown(heapRelocsSym, pageSize);
-                UnsignedWord heapRelocsLength = roundUp(heapRelocsEndSym.subtract(linkedRelocsBoundary), pageSize);
+                UnsignedWord heapRelocsLength = roundUp(heapWritablePatchedEndSym.subtract(linkedRelocsBoundary), pageSize);
                 int mremapFlags = LinuxLibCHelper.MREMAP_MAYMOVE() | LinuxLibCHelper.MREMAP_DONTUNMAP();
                 imageHeapRelocations = LinuxLibCHelper.NoTransitions.mremapP(linkedRelocsBoundary, heapRelocsLength, heapRelocsLength, mremapFlags, WordFactory.nullPointer());
 
@@ -424,33 +440,56 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
 
     @Uninterruptible(reason = "Called during isolate initialization.")
     private static int copyRelocations(Pointer imageHeap, UnsignedWord pageSize, Word heapBeginSym, Word heapRelocsSym, Pointer heapAnyRelocPointer, Word heapRelocsEndSym,
-                    Pointer cachedRelocsBoundary) {
-        if (heapAnyRelocPointer.isNonNull()) {
-            Pointer linkedRelocsBoundary = roundDown(heapRelocsSym, pageSize);
-            Pointer sourceRelocsBoundary = cachedRelocsBoundary;
-            if (sourceRelocsBoundary.isNull()) {
-                sourceRelocsBoundary = linkedRelocsBoundary;
-            }
-            ComparableWord relocatedValue = sourceRelocsBoundary.readWord(heapAnyRelocPointer.subtract(heapRelocsSym));
+                    Word heapWritablePatchedSym, Word heapWritablePatchedEndSym, Pointer cachedRelocsBoundary) {
+        Pointer linkedRelocsBoundary = roundDown(heapRelocsSym, pageSize);
+        Pointer sourceRelocsBoundary = cachedRelocsBoundary.isNonNull() ? cachedRelocsBoundary : linkedRelocsBoundary;
+        Pointer linkedCopyStart = WordFactory.nullPointer();
+        if (heapRelocsEndSym.subtract(heapRelocsSym).isNonNull()) {
+            /*
+             * Use a representative pointer to determine whether it is necessary to copy over the
+             * relocations from the original image, or if it has already been performed during
+             * build-link time.
+             */
+            ComparableWord relocatedValue = sourceRelocsBoundary.readWord(heapAnyRelocPointer.subtract(linkedRelocsBoundary));
             ComparableWord mappedValue = imageHeap.readWord(heapAnyRelocPointer.subtract(heapBeginSym));
             if (relocatedValue.notEqual(mappedValue)) {
+                linkedCopyStart = heapRelocsSym;
+            }
+        }
+        if (linkedCopyStart.isNull() && heapWritablePatchedEndSym.subtract(heapWritablePatchedSym).isNonNull()) {
+            /*
+             * When they exist, patched entries always need to be copied over from the original
+             * image.
+             */
+            linkedCopyStart = heapWritablePatchedSym;
+        }
+        if (linkedCopyStart.isNonNull()) {
+            /*
+             * A portion of the image heap has relocations either resolved by the dynamic linker or
+             * (for layered images) manually during our runtime initialization code. To preserve the
+             * relocations, we must copy this code directly from the original image heap and not
+             * reload it from disk.
+             *
+             * We need to round to page boundaries, so we may copy some extra data which could be
+             * copy-on-write. Also, we must first remap the pages to avoid loading them from disk
+             * (only to then overwrite them).
+             */
+            Pointer linkedCopyStartBoundary = roundDown(linkedCopyStart, pageSize);
+            UnsignedWord copyAlignedSize = roundUp(heapWritablePatchedEndSym.subtract(linkedCopyStartBoundary), pageSize);
+            Pointer destCopyStartBoundary = imageHeap.add(linkedCopyStartBoundary.subtract(heapBeginSym));
+
+            Pointer committedCopyBegin = VirtualMemoryProvider.get().commit(destCopyStartBoundary, copyAlignedSize, Access.READ | Access.WRITE);
+            if (committedCopyBegin.isNull() || committedCopyBegin != destCopyStartBoundary) {
+                return CEntryPointErrors.PROTECT_HEAP_FAILED;
+            }
+
+            Pointer sourceCopyStartBoundary = sourceRelocsBoundary.add(linkedCopyStartBoundary.subtract(linkedRelocsBoundary));
+            LibC.memcpy(destCopyStartBoundary, sourceCopyStartBoundary, copyAlignedSize);
+
+            // make the relocations read-only again
+            if (linkedRelocsBoundary.belowOrEqual(heapRelocsEndSym) && heapRelocsEndSym.subtract(heapRelocsSym).isNonNull()) {
                 UnsignedWord relocsAlignedSize = roundUp(heapRelocsEndSym.subtract(linkedRelocsBoundary), pageSize);
-                Pointer relocsBoundary = imageHeap.add(linkedRelocsBoundary.subtract(heapBeginSym));
-                /*
-                 * Addresses were relocated by the dynamic linker, so copy them, but first remap the
-                 * pages to avoid swapping them in from disk. We need to round to page boundaries,
-                 * and so we copy some extra data.
-                 *
-                 * NOTE: while objects with relocations are considered read-only, some of them might
-                 * be part of a chunk with writable objects, in which case the chunk header must
-                 * also be writable, and all the chunk's pages will be unprotected below.
-                 */
-                Pointer committedRelocsBegin = VirtualMemoryProvider.get().commit(relocsBoundary, relocsAlignedSize, Access.READ | Access.WRITE);
-                if (committedRelocsBegin.isNull() || committedRelocsBegin != relocsBoundary) {
-                    return CEntryPointErrors.PROTECT_HEAP_FAILED;
-                }
-                LibC.memcpy(relocsBoundary, sourceRelocsBoundary, relocsAlignedSize);
-                if (VirtualMemoryProvider.get().protect(relocsBoundary, relocsAlignedSize, Access.READ) != 0) {
+                if (VirtualMemoryProvider.get().protect(destCopyStartBoundary, relocsAlignedSize, Access.READ) != 0) {
                     return CEntryPointErrors.PROTECT_HEAP_FAILED;
                 }
             }

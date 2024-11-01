@@ -8,7 +8,6 @@ innr protected abstract interface static ContextLocalFactory
 innr protected abstract interface static ContextThreadLocalFactory
 innr protected final static ContextLocalProvider
 innr public abstract interface static !annotation Registration
-innr public abstract interface static Provider
 innr public abstract static ContextReference
 innr public abstract static LanguageReference
 innr public final static !enum ContextPolicy

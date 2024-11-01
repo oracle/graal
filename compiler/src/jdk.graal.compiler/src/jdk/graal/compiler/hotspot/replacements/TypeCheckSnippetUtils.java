@@ -29,17 +29,21 @@ import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.KL
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_HASH_SLOT_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_SUPER_CHECK_OFFSET_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.METASPACE_ARRAY_LENGTH_LOCATION;
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.PRIMARY_SUPERS_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.OPTIMIZING_PRIMARY_SUPERS_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.SECONDARY_SUPERS_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.SECONDARY_SUPER_CACHE_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.klassBitmapOffset;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.klassHashSlotOffset;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.metaspaceArrayLengthOffset;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.secondarySuperCacheOffset;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.secondarySupersOffset;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.superCheckOffsetOffset;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.useSecondarySupersCache;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.useSecondarySupersTable;
 import static jdk.graal.compiler.hotspot.stubs.LookUpSecondarySupersTableStub.SECONDARY_SUPERS_TABLE_MASK;
 import static jdk.graal.compiler.hotspot.stubs.LookUpSecondarySupersTableStub.loadSecondarySupersElement;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.FREQUENT_PROBABILITY;
+import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.LIKELY_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.NOT_LIKELY_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 
@@ -67,23 +71,13 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  */
 public class TypeCheckSnippetUtils {
 
-    static boolean checkSecondarySubType(KlassPointer t, KlassPointer sNonNull, Counters counters) {
-        // if (S.cache == T) return true
-        if (JavaVersionUtil.JAVA_SPEC == 21 && sNonNull.readKlassPointer(secondarySuperCacheOffset(INJECTED_VMCONFIG), SECONDARY_SUPER_CACHE_LOCATION).equal(t)) {
-            counters.cacheHit.inc();
-            return true;
-        }
-
-        return checkSelfAndSupers(t, sNonNull, counters);
-    }
-
     static boolean checkUnknownSubType(KlassPointer t, KlassPointer sNonNull, Counters counters) {
         // int off = T.offset
         int superCheckOffset = t.readInt(superCheckOffsetOffset(INJECTED_VMCONFIG), KLASS_SUPER_CHECK_OFFSET_LOCATION);
         boolean primary = superCheckOffset != secondarySuperCacheOffset(INJECTED_VMCONFIG);
 
-        if (primary) {
-            if (sNonNull.readKlassPointer(superCheckOffset, PRIMARY_SUPERS_LOCATION).equal(t)) {
+        if (probability(LIKELY_PROBABILITY, primary)) {
+            if (probability(LIKELY_PROBABILITY, sNonNull.readKlassPointer(superCheckOffset, OPTIMIZING_PRIMARY_SUPERS_LOCATION).equal(t))) {
                 // if (T = S[off]) return true
                 counters.displayHit.inc();
                 return true;
@@ -92,7 +86,7 @@ public class TypeCheckSnippetUtils {
                 return false;
             }
         } else {
-            return checkSecondarySubType(t, sNonNull, counters);
+            return checkSecondarySubType(t, sNonNull, false, counters);
         }
     }
 
@@ -100,16 +94,22 @@ public class TypeCheckSnippetUtils {
     @SyncPort(from = "https://github.com/openjdk/jdk/blob/7131f053b0d26b62cbf0d8376ec117d6e8d79f9e/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L4802-L4897",
               sha1 = "c0e2fdd973dc975757d58080ba94efe628d6a380")
     // @formatter:on
-    static boolean checkSelfAndSupers(KlassPointer t, KlassPointer s, Counters counters) {
+    static boolean checkSecondarySubType(KlassPointer t, KlassPointer s, boolean isTAlwaysAbstract, Counters counters) {
+        // if (S.cache == T) return true
+        if ((JavaVersionUtil.JAVA_SPEC == 21 || (JavaVersionUtil.JAVA_SPEC >= 23 && useSecondarySupersCache(INJECTED_VMCONFIG))) &&
+                        probability(FREQUENT_PROBABILITY, s.readKlassPointer(secondarySuperCacheOffset(INJECTED_VMCONFIG), SECONDARY_SUPER_CACHE_LOCATION).equal(t))) {
+            counters.cacheHit.inc();
+            return true;
+        }
+
         // if (T == S) return true
-        if (s.equal(t)) {
+        if (!isTAlwaysAbstract && probability(LIKELY_PROBABILITY, s.equal(t))) {
             counters.equalsSecondary.inc();
             return true;
         }
 
-        Word secondarySupers = s.readWord(HotSpotReplacementsUtil.secondarySupersOffset(INJECTED_VMCONFIG), SECONDARY_SUPERS_LOCATION);
-
-        if (JavaVersionUtil.JAVA_SPEC == 21) {
+        if (JavaVersionUtil.JAVA_SPEC == 21 || (JavaVersionUtil.JAVA_SPEC >= 23 && !useSecondarySupersTable(INJECTED_VMCONFIG))) {
+            Word secondarySupers = s.readWord(secondarySupersOffset(INJECTED_VMCONFIG), SECONDARY_SUPERS_LOCATION);
             int length = secondarySupers.readInt(metaspaceArrayLengthOffset(INJECTED_VMCONFIG), METASPACE_ARRAY_LENGTH_LOCATION);
             for (int i = 0; i < length; i++) {
                 if (probability(NOT_LIKELY_PROBABILITY, t.equal(loadSecondarySupersElement(secondarySupers, i)))) {
@@ -165,6 +165,7 @@ public class TypeCheckSnippetUtils {
         // We instead rely on the compiler for constant folding.
         // Use long to avoid unnecessary zero extension.
         long index = Long.bitCount(bitmapShifted) - 1L;
+        Word secondarySupers = s.readWord(secondarySupersOffset(INJECTED_VMCONFIG), SECONDARY_SUPERS_LOCATION);
         KlassPointer hashed = loadSecondarySupersElement(secondarySupers, index);
 
         if (probability(FREQUENT_PROBABILITY, t.equal(hashed))) {

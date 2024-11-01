@@ -59,7 +59,8 @@ public class TimerCollection implements ImageBuildStatistics.TimerCollectionPrin
         LAYOUT("layout"),
         DEBUG_INFO("dbginfo"),
         IMAGE("image"),
-        WRITE("write");
+        WRITE("write"),
+        ARCHIVE_LAYER("archive-layer");
 
         public final String name;
 

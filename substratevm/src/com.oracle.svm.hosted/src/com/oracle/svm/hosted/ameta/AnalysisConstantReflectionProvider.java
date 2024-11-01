@@ -36,6 +36,7 @@ import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.heap.ImageHeapArray;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapInstance;
+import com.oracle.graal.pointsto.heap.ImageHeapRelocatableConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -204,7 +205,7 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
 
     @Override
     public JavaConstant readFieldValue(ResolvedJavaField field, JavaConstant receiver) {
-        return readValue((AnalysisField) field, receiver, false);
+        return readValue((AnalysisField) field, receiver, false, false);
     }
 
     @Override
@@ -212,7 +213,7 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
         throw VMError.intentionallyUnimplemented();
     }
 
-    public JavaConstant readValue(AnalysisField field, JavaConstant receiver, boolean returnSimulatedValues) {
+    public JavaConstant readValue(AnalysisField field, JavaConstant receiver, boolean returnSimulatedValues, boolean readRelocatableValues) {
         if (!field.isStatic()) {
             if (!(receiver instanceof ImageHeapInstance imageHeapInstance) || !field.getDeclaringClass().isAssignableFrom(imageHeapInstance.getType())) {
                 /*
@@ -264,6 +265,14 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
             ImageHeapScanner heapScanner = universe.getHeapScanner();
             HostedValuesProvider hostedValuesProvider = universe.getHostedValuesProvider();
             value = heapScanner.createImageHeapConstant(hostedValuesProvider.readFieldValueWithReplacement(field, receiver), ObjectScanner.OtherReason.UNKNOWN);
+        }
+
+        if (!readRelocatableValues && value instanceof ImageHeapRelocatableConstant) {
+            /*
+             * During compilation we do not want to fold relocatable constants. However, they must
+             * be seen during the heap scanning process.
+             */
+            return null;
         }
         return value;
     }

@@ -297,7 +297,6 @@ final class ObjectSizeCalculator {
         }
         if (obj instanceof PolyglotContextConfig ||
                         obj instanceof TruffleLanguageProvider ||
-                        obj instanceof TruffleLanguage.Provider ||
                         obj instanceof ExecutionEventListener ||
                         obj instanceof ClassValue ||
                         obj instanceof PolyglotWrapper ||
