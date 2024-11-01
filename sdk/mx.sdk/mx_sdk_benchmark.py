@@ -1185,7 +1185,21 @@ mx_benchmark.add_bm_suite(SpecJbb2015BenchmarkSuite())
 
 
 _baristaConfig = {
-    "benchmarks": ["micronaut-hello-world", "micronaut-shopcart", "micronaut-similarity", "quarkus-hello-world", "quarkus-tika", "spring-hello-world", "spring-petclinic"],
+    "benchmarks": {
+        "micronaut-hello-world": {},
+        "micronaut-shopcart": {},
+        "micronaut-similarity": {},
+        "quarkus-hello-world": {},
+        "quarkus-tika-odt": {
+            "barista-bench-name": "quarkus-tika",
+        },
+        "quarkus-tika-pdf": {
+            "barista-bench-name": "quarkus-tika",
+            "workload": "pdf-workload.barista.json",
+        },
+        "spring-hello-world": {},
+        "spring-petclinic": {},
+    },
     "latency_percentiles": [50.0, 75.0, 90.0, 99.0, 99.9, 99.99, 99.999, 100.0],
     "rss_percentiles": [100, 99, 98, 97, 96, 95, 90, 75, 50, 25],
     "disable_trackers": [mx_benchmark.RssTracker, mx_benchmark.PsrecordTracker, mx_benchmark.PsrecordMaxrssTracker, mx_benchmark.RssPercentilesTracker, mx_benchmark.RssPercentilesAndMaxTracker],
@@ -1213,16 +1227,27 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
     def context(self, value):
         self._context = value
 
+    def readBaristaVersionFromPyproject(self):
+        # tomllib was included in python standard library with version 3.11
+        try:
+            import tomllib
+            with open(self.baristaProjectConfigurationPath(), mode="rb") as pyproject:
+                return tomllib.load(pyproject)["project"]["version"]
+        except ImportError:
+            pass
+
+        # fallback to 'toml' library if tomllib is not present
+        try:
+            import toml
+            with open(self.baristaProjectConfigurationPath(), mode="rt") as pyproject:
+                return toml.loads(pyproject.read())["project"]["version"]
+        except ImportError:
+            mx.warn("Could not read the Barista version from the project's `pyproject.toml` file because there is no toml parser installed. Use python3.11+ or install `toml` with pip.")
+        return self.defaultSuiteVersion()
+
     def version(self):
         if self._version is None:
-            # tomllib was included in python standard library with version 3.11
-            try:
-                import tomllib
-                with open(self.baristaProjectConfigurationPath(), mode="rb") as pyproject:
-                    self._version = tomllib.load(pyproject)["project"]["version"]
-            except ImportError:
-                mx.warn("Could not read the Barista version from the project's `pyproject.toml` file because the `tomllib` python module is not installed. Use python3.11+ or install `tomllib` with pip.")
-                self._version = self.defaultSuiteVersion()
+            self._version = self.readBaristaVersionFromPyproject()
         return self._version
 
     def name(self):
@@ -1238,7 +1263,7 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
         return self.completeBenchmarkList(bmSuiteArgs)
 
     def completeBenchmarkList(self, bmSuiteArgs):
-        return _baristaConfig["benchmarks"]
+        return _baristaConfig["benchmarks"].keys()
 
     def baristaDirectoryPath(self):
         barista_home = mx.get_env("BARISTA_HOME")
@@ -1264,6 +1289,12 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
     def baristaHarnessPath(self):
         return self.baristaFilePath("barista")
 
+    def baristaHarnessBenchmarkName(self):
+        return _baristaConfig["benchmarks"][self.context.benchmark].get("barista-bench-name", self.context.benchmark)
+
+    def baristaHarnessBenchmarkWorkload(self):
+        return _baristaConfig["benchmarks"][self.context.benchmark].get("workload")
+
     def validateEnvironment(self):
         self.baristaProjectConfigurationPath()
         self.baristaHarnessPath()
@@ -1288,7 +1319,7 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
 
         # Startup
         all_rules.append(mx_benchmark.JsonArrayStdOutFileRule(json_file_pattern, json_file_group_name, {
-            "benchmark": ("<benchmark>", str),
+            "benchmark": self.context.benchmark,
             "metric.name": "request-time",
             "metric.type": "numeric",
             "metric.unit": "ms",
@@ -1297,11 +1328,11 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
             "metric.iteration": ("<startup.measurements.iteration>", int),
             "load-tester.id": ("<startup.id>", str),
             "load-tester.method-type": "requests"
-        }, ["benchmark", "startup.id", "startup.measurements.iteration", "startup.measurements.response_time"]))
+        }, ["startup.id", "startup.measurements.iteration", "startup.measurements.response_time"]))
 
         # Warmup
         all_rules.append(mx_benchmark.JsonArrayStdOutFileRule(json_file_pattern, json_file_group_name, {
-            "benchmark": ("<benchmark>", str),
+            "benchmark": self.context.benchmark,
             "metric.name": "warmup",
             "metric.type": "numeric",
             "metric.unit": "op/s",
@@ -1310,11 +1341,11 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
             "metric.iteration": ("<warmup.measurements.iteration>", int),
             "load-tester.id": ("<warmup.id>", str),
             "load-tester.command": ("<warmup.measurements.command>", str)
-        }, ["benchmark", "warmup.id", "warmup.measurements.iteration", "warmup.measurements.throughput", "warmup.measurements.command"]))
+        }, ["warmup.id", "warmup.measurements.iteration", "warmup.measurements.throughput", "warmup.measurements.command"]))
 
         # Throughput
         all_rules.append(mx_benchmark.JsonArrayStdOutFileRule(json_file_pattern, json_file_group_name, {
-            "benchmark": ("<benchmark>", str),
+            "benchmark": self.context.benchmark,
             "metric.name": "throughput",
             "metric.type": "numeric",
             "metric.unit": "op/s",
@@ -1323,11 +1354,11 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
             "metric.iteration": ("<throughput.measurements.iteration>", int),
             "load-tester.id": ("<throughput.id>", str),
             "load-tester.command": ("<throughput.measurements.command>", str)
-        }, ["benchmark", "throughput.id", "throughput.measurements.iteration", "throughput.measurements.throughput", "throughput.measurements.command"]))
+        }, ["throughput.id", "throughput.measurements.iteration", "throughput.measurements.throughput", "throughput.measurements.command"]))
 
         # Latency
         all_rules += [mx_benchmark.JsonArrayStdOutFileRule(json_file_pattern, json_file_group_name, {
-            "benchmark": ("<benchmark>", str),
+            "benchmark": self.context.benchmark,
             "metric.name": "latency",
             "metric.type": "numeric",
             "metric.unit": "ms",
@@ -1338,7 +1369,6 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
             "load-tester.id": ("<latency__id>", str),
             "load-tester.command": ("<latency__measurements__final_measurements__command>", str)
         }, [
-            "benchmark",
             "latency__id",
             "latency__measurements__final_measurements__iteration",
             f"latency__measurements__final_measurements__p_values__{float(percentile)}",
@@ -1347,7 +1377,7 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
 
         # Resource Usage
         all_rules += [mx_benchmark.JsonArrayStdOutFileRule(json_file_pattern, json_file_group_name, {
-            "benchmark": ("<benchmark>", str),
+            "benchmark": self.context.benchmark,
             "metric.name": "rss",
             "metric.type": "numeric",
             "metric.unit": "MB",
@@ -1355,16 +1385,18 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
             "metric.percentile": float(percentile),
             "metric.better": "lower",
         }, [
-            "benchmark", f"resource_usage__rss__p{float(percentile)}"
+            f"resource_usage__rss__p{float(percentile)}"
         ], indexer_str="__") for percentile in _baristaConfig["rss_percentiles"]]
+        # Ensure we are reporting the analogous numbers across suites (p99 at the time of writing this comment)
+        percentile_to_copy_into_max_rss = float(mx_benchmark.RssPercentilesTracker.MaxRssCopyRule.percentile_to_copy_into_max_rss)
         all_rules.append(mx_benchmark.JsonArrayStdOutFileRule(json_file_pattern, json_file_group_name, {
-            "benchmark": ("<benchmark>", str),
+            "benchmark": self.context.benchmark,
             "metric.name": "max-rss",
             "metric.type": "numeric",
             "metric.unit": "MB",
-            "metric.value": ("<resource_usage__rss__p100.0>", float),
+            "metric.value": (f"<resource_usage__rss__p{percentile_to_copy_into_max_rss}>", float),
             "metric.better": "lower",
-        }, ["benchmark", f"resource_usage__rss__p100.0"], indexer_str="__"))
+        }, [f"resource_usage__rss__p{percentile_to_copy_into_max_rss}"], indexer_str="__"))
 
         return all_rules
 
@@ -1465,16 +1497,22 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
             if mode_match:
                 raise ValueError(f"You should not set the Barista '--mode' option manually! Found '{mode_match.group(0)}' in the run arguments!")
 
+            # Get bench name and workload to use in the barista harness - we might have custom named benchmarks that need to be mapped
+            barista_bench_name = suite.baristaHarnessBenchmarkName()
+            barista_workload = suite.baristaHarnessBenchmarkWorkload()
+
             # Construct the Barista command
             barista_cmd = [suite.baristaHarnessPath()]
             barista_cmd.append(f"--java-home={java_exe_match.group(1)}")
+            if barista_workload is not None:
+                barista_cmd.append(f"--config={barista_workload}")
             barista_cmd += run_args
             if jvm_vm_options:
                 self._updateCommandOption(barista_cmd, "--vm-options", "-v", " ".join(jvm_vm_options))
             if jvm_cmd_prefix:
                 self._updateCommandOption(barista_cmd, "--cmd-app-prefix", "-p", " ".join(jvm_cmd_prefix))
             barista_cmd += ["--mode", "jvm"]
-            barista_cmd.append(suite.context.benchmark)
+            barista_cmd.append(barista_bench_name)
             return barista_cmd
 
     class RuntimeContext():
