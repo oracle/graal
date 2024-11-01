@@ -1,0 +1,6 @@
+[
+  {
+	  "name": "org.graalvm.nativebridge.benchmark.ProcessIsolate",
+          "allDeclaredMethods": true
+  }
+]

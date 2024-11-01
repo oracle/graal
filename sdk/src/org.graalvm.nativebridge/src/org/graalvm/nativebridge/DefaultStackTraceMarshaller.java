@@ -48,11 +48,11 @@ final class DefaultStackTraceMarshaller implements BinaryMarshaller<StackTraceEl
     }
 
     @Override
-    public StackTraceElement[] read(BinaryInput in) {
+    public StackTraceElement[] read(Isolate<?> isolate, BinaryInput in) {
         int len = in.readInt();
         StackTraceElement[] res = new StackTraceElement[len];
         for (int i = 0; i < len; i++) {
-            res[i] = StackTraceElementMarshaller.INSTANCE.read(in);
+            res[i] = StackTraceElementMarshaller.INSTANCE.read(isolate, in);
         }
         return res;
     }

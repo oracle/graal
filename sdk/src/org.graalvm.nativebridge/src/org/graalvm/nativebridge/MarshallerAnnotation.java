@@ -47,8 +47,8 @@ import java.lang.annotation.Target;
 
 /**
  * Meta-annotation that marks an annotation to be used for marshaller lookup. An annotation intended
- * for {@link JNIConfig#lookupMarshaller(Class, Class[]) marshaller lookup} must be annotated by
- * this annotation.
+ * for {@link MarshallerConfig#lookupMarshaller(Class, Class[]) marshaller lookup} must be annotated
+ * by this annotation.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)

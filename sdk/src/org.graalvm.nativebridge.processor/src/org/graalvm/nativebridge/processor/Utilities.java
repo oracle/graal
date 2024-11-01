@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,10 +62,15 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.ExecutableType;
+import javax.lang.model.type.IntersectionType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.type.UnionType;
+import javax.lang.model.util.ElementFilter;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
+
+import org.graalvm.nativebridge.processor.AbstractNativeServiceParser.NativeTypeCache;
 
 public final class Utilities {
 
@@ -170,7 +175,9 @@ public final class Utilities {
             res.append(parameter.getValue());
             res.append(", ");
         }
-        res.delete(res.length() - 2, res.length());
+        if (res.charAt(res.length() - 1) != '(') {
+            res.delete(res.length() - 2, res.length());
+        }
         res.append(")");
         return res;
     }
@@ -275,11 +282,15 @@ public final class Utilities {
         return ((DeclaredType) type).asElement().getSimpleName().toString();
     }
 
+    public static String getGenClassName(DeclaredType type) {
+        return Utilities.getSimpleName(type) + "Gen";
+    }
+
     public static String cSymbol(String name) {
         return name.replace("_", "_1").replace("$", "_00024").replace('.', '_');
     }
 
-    static TypeMirror jniTypeForJavaType(TypeMirror javaType, Types types, AbstractBridgeParser.AbstractTypeCache cache) {
+    static TypeMirror jniTypeForJavaType(TypeMirror javaType, Types types, NativeTypeCache cache) {
         if (javaType.getKind().isPrimitive() || javaType.getKind() == TypeKind.VOID) {
             return javaType;
         }
@@ -358,7 +369,13 @@ public final class Utilities {
         StringBuilder result = new StringBuilder();
         for (CharSequence component : nameComponents) {
             if (result.isEmpty()) {
-                result.append(component);
+                if (Character.isUpperCase(component.charAt(0))) {
+                    String strComponent = component.toString();
+                    result.append(Character.toLowerCase(strComponent.charAt(0)));
+                    result.append(strComponent.substring(1));
+                } else {
+                    result.append(component);
+                }
             } else {
                 String strComponent = component.toString();
                 result.append(Character.toUpperCase(strComponent.charAt(0)));
@@ -370,6 +387,51 @@ public final class Utilities {
 
     public static Comparator<ExecutableElement> executableElementComparator(Elements elements, Types types) {
         return new ExecutableElementComparator(elements, types);
+    }
+
+    static ExecutableElement findCustomObjectFactory(DeclaredType customObject) {
+        TypeElement clazz = (TypeElement) customObject.asElement();
+        for (ExecutableElement method : ElementFilter.methodsIn(clazz.getEnclosedElements())) {
+            Set<Modifier> modifiers = method.getModifiers();
+            if ("getInstance".contentEquals(method.getSimpleName()) && modifiers.contains(Modifier.STATIC) && !modifiers.contains(Modifier.PRIVATE) && method.getParameters().isEmpty()) {
+                return method;
+            }
+        }
+        for (ExecutableElement constructor : ElementFilter.constructorsIn(clazz.getEnclosedElements())) {
+            Set<Modifier> modifiers = constructor.getModifiers();
+            if (!modifiers.contains(Modifier.PRIVATE) && constructor.getParameters().isEmpty()) {
+                return constructor;
+            }
+        }
+        return null;
+    }
+
+    static boolean isParameterizedType(TypeMirror type) {
+        switch (type.getKind()) {
+            case DECLARED:
+                return !((DeclaredType) type).getTypeArguments().isEmpty();
+            case ARRAY:
+                return isParameterizedType(((ArrayType) type).getComponentType());
+            case INTERSECTION: {
+                boolean res = false;
+                for (TypeMirror t : ((IntersectionType) type).getBounds()) {
+                    res |= isParameterizedType(t);
+                }
+                return res;
+            }
+            case TYPEVAR:
+            case WILDCARD:
+                return true;
+            case UNION: {
+                boolean res = false;
+                for (TypeMirror t : ((UnionType) type).getAlternatives()) {
+                    res |= isParameterizedType(t);
+                }
+                return res;
+            }
+            default:
+                return false;
+        }
     }
 
     private static final class ExecutableElementComparator implements Comparator<ExecutableElement> {

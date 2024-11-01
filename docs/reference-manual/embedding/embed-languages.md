@@ -745,6 +745,17 @@ public class PolyglotIsolate {
 }
 ```
 
+Starting from GraalVM 25.0, a polyglot isolate can be launched in a separate external sub-process by setting the `--engine.IsolateMode=external` option.
+This allows the isolate to run in a fully separate OS process, providing an additional level of isolation. The default mode remains `internal`, which uses a Native Image isolate embedded in the same process.
+
+```java
+Context context = Context.newBuilder("js")
+			  .allowHostAccess(HostAccess.SCOPED)
+			  .option("engine.SpawnIsolate", "true")
+			  .option("engine.IsolateMode", "external")
+			  .build()
+```
+
 Currently, the following languages are available as polyglot isolates:
 
 | Language                      | Available from |

@@ -48,7 +48,7 @@ final class StringMarshaller implements BinaryMarshaller<String> {
     private static final int STRING_SIZE_ESTIMATE = 32;
 
     @Override
-    public String read(BinaryInput in) {
+    public String read(Isolate<?> isolate, BinaryInput in) {
         return in.readUTF();
     }
 

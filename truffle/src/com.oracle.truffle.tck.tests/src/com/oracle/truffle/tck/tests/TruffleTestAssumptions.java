@@ -47,6 +47,7 @@ import java.util.regex.Pattern;
 
 public class TruffleTestAssumptions {
     private static final boolean spawnIsolate = Boolean.getBoolean("polyglot.engine.SpawnIsolate");
+    private static final boolean externalIsolate = "external".equals(System.getProperty("polyglot.engine.IsolateMode"));
     private static final boolean aot = Boolean.getBoolean("com.oracle.graalvm.isaot");
 
     public static void assumeWeakEncapsulation() {
@@ -112,6 +113,10 @@ public class TruffleTestAssumptions {
 
     public static boolean isIsolateEncapsulation() {
         return spawnIsolate;
+    }
+
+    public static boolean isExternalIsolate() {
+        return externalIsolate;
     }
 
     public static void assumeAOT() {

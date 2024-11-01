@@ -11,6 +11,7 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 * GR-61448 Compilation id (`CompId`) was added to the `opt done` truffle compilation logs. This id matches the compilation id in the output of deoptimization, compilation and code cache logs on HotSpot and SubstrateVM.
 * GR-31495 Added the ability to specify language and instrument specific options using `Source.Builder.option(String, String)`. See the language and or tool specific documentation for available options. Available source options may also be reflected using `Instrument.getSourceOptions()` and `Language.getSourceOptions()`.
 * GR-55223 The option sandbox.MaxStackFrames is no longer mandatory for the UNTRUSTED polyglot sandbox policy thanks to improved deoptimization handling of compiled code.
+* GR-22699(EE-only) Added the ability to spawn `Engine` or `Context` isolated in a separate process by setting `Context.Builder.option("engine.IsolateMode", "external").`.
 
 ## Version 24.2.0
 * GR-54905 When using Truffle NFI with the Panama backend, native access must now be granted to the Truffle module instead of the NFI Panama module. Use the `--enable-native-access=org.graalvm.truffle` Java command line option to enable the native access for the NFI Panama backend.

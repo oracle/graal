@@ -46,10 +46,10 @@ final class DefaultThrowableMarshaller implements BinaryMarshaller<Throwable> {
     private final DefaultStackTraceMarshaller stackTraceMarshaller = DefaultStackTraceMarshaller.INSTANCE;
 
     @Override
-    public Throwable read(BinaryInput in) {
+    public Throwable read(Isolate<?> isolate, BinaryInput in) {
         String foreignExceptionClassName = in.readUTF();
         String foreignExceptionMessage = (String) in.readTypedValue();
-        StackTraceElement[] foreignExceptionStack = stackTraceMarshaller.read(in);
+        StackTraceElement[] foreignExceptionStack = stackTraceMarshaller.read(isolate, in);
         return new MarshalledException(foreignExceptionClassName, foreignExceptionMessage, ForeignException.mergeStackTrace(foreignExceptionStack));
     }
 
