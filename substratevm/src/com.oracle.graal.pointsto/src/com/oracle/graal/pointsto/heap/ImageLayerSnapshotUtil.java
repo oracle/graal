@@ -143,6 +143,7 @@ public class ImageLayerSnapshotUtil {
     public static final String INSTANCE_TAG = "instance";
     public static final String ARRAY_TAG = "array";
     public static final String PRIMITIVE_ARRAY_TAG = "primitive array";
+    public static final String RELOCATED_CONSTANT_TAG = "relocation constant";
     public static final String FIELD_ACCESSED_TAG = "accessed";
     public static final String FIELD_READ_TAG = "read";
     public static final String FIELD_WRITTEN_TAG = "written";

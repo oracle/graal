@@ -754,6 +754,9 @@ public final class HeapImpl extends Heap {
             } else if (info.isInReadOnlyRelocatablePartition(ptr)) {
                 log.string("points into the image heap (read-only relocatables)");
                 return true;
+            } else if (info.isInWritablePatchedPartition(ptr)) {
+                log.string("points into the image heap (writable patched)");
+                return true;
             } else if (info.isInWritableRegularPartition(ptr)) {
                 log.string("points into the image heap (writable)");
                 return true;

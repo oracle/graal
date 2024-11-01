@@ -59,8 +59,13 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
      * A relocated reference is read-only once relocated, e.g., at runtime.
      */
     private static final int READ_ONLY_RELOCATABLE = READ_ONLY_REGULAR + 1;
+    /**
+     * A partition holding objects which must be patched at execution startup by our initialization
+     * code. This is currently only used within layered images.
+     */
+    private static final int WRITABLE_PATCHED = READ_ONLY_RELOCATABLE + 1;
     /** A partition holding writable objects. */
-    private static final int WRITABLE_REGULAR = READ_ONLY_RELOCATABLE + 1;
+    private static final int WRITABLE_REGULAR = WRITABLE_PATCHED + 1;
     /** A partition holding very large writable objects with or without references. */
     private static final int WRITABLE_HUGE = WRITABLE_REGULAR + 1;
     /**
@@ -83,6 +88,7 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
         this.partitions = new ChunkedImageHeapPartition[PARTITION_COUNT];
         this.partitions[READ_ONLY_REGULAR] = new ChunkedImageHeapPartition("readOnly", false, false, alignment, alignment);
         this.partitions[READ_ONLY_RELOCATABLE] = new ChunkedImageHeapPartition("readOnlyRelocatable", false, false, alignment, alignment);
+        this.partitions[WRITABLE_PATCHED] = new ChunkedImageHeapPartition("writablePatched", true, false, alignment, alignment);
         this.partitions[WRITABLE_REGULAR] = new ChunkedImageHeapPartition("writable", true, false, alignment, alignment);
         this.partitions[WRITABLE_HUGE] = new ChunkedImageHeapPartition("writableHuge", true, true, alignment, alignment);
         this.partitions[READ_ONLY_HUGE] = new ChunkedImageHeapPartition("readOnlyHuge", false, true, alignment, SubstrateOptions.getPageSize());
@@ -104,14 +110,16 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
     }
 
     @Override
-    public void assignObjectToPartition(ImageHeapObject info, boolean immutable, boolean references, boolean relocatable) {
-        ChunkedImageHeapPartition partition = choosePartition(info, immutable, relocatable);
+    public void assignObjectToPartition(ImageHeapObject info, boolean immutable, boolean references, boolean relocatable, boolean patched) {
+        ChunkedImageHeapPartition partition = choosePartition(info, immutable, relocatable, patched);
         info.setHeapPartition(partition);
         partition.assign(info);
     }
 
-    private ChunkedImageHeapPartition choosePartition(ImageHeapObject info, boolean immutable, boolean hasRelocatables) {
-        if (immutable) {
+    private ChunkedImageHeapPartition choosePartition(ImageHeapObject info, boolean immutable, boolean hasRelocatables, boolean patched) {
+        if (patched) {
+            return getWritablePatched();
+        } else if (immutable) {
             if (hasRelocatables) {
                 VMError.guarantee(info.getSize() < hugeObjectThreshold, "Objects with relocatable pointers cannot be huge objects");
                 return getReadOnlyRelocatable();
@@ -177,6 +185,7 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
         }
 
         heapInfo.initialize(getReadOnlyRegular().firstObject, getReadOnlyRegular().lastObject, getReadOnlyRelocatable().firstObject, getReadOnlyRelocatable().lastObject,
+                        getWritablePatched().firstObject, getWritablePatched().lastObject,
                         getWritableRegular().firstObject, getWritableRegular().lastObject, getWritableHuge().firstObject, getWritableHuge().lastObject,
                         getReadOnlyHuge().firstObject, getReadOnlyHuge().lastObject, offsetOfFirstWritableAlignedChunk, offsetOfFirstWritableUnalignedChunk, offsetOfLastWritableUnalignedChunk,
                         dynamicHubCount);
@@ -184,7 +193,8 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
         long writableEnd = getWritableHuge().getStartOffset() + getWritableHuge().getSize();
         long writableSize = writableEnd - offsetOfFirstWritableAlignedChunk;
         long imageHeapSize = getReadOnlyHuge().getStartOffset() + getReadOnlyHuge().getSize() - startOffset;
-        return new ImageHeapLayoutInfo(startOffset, offsetOfFirstWritableAlignedChunk, writableSize, getReadOnlyRelocatable().getStartOffset(), getReadOnlyRelocatable().getSize(), imageHeapSize);
+        return new ImageHeapLayoutInfo(startOffset, imageHeapSize, offsetOfFirstWritableAlignedChunk, writableSize, getReadOnlyRelocatable().getStartOffset(), getReadOnlyRelocatable().getSize(),
+                        getWritablePatched().getStartOffset(), getWritablePatched().getSize());
     }
 
     @Override
@@ -229,6 +239,10 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
 
     private ChunkedImageHeapPartition getReadOnlyRelocatable() {
         return partitions[READ_ONLY_RELOCATABLE];
+    }
+
+    private ChunkedImageHeapPartition getWritablePatched() {
+        return partitions[WRITABLE_PATCHED];
     }
 
     private ChunkedImageHeapPartition getWritableRegular() {

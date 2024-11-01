@@ -499,7 +499,26 @@ public abstract class NativeImage extends AbstractImage {
             objectFile.createDefinedSymbol(heapSection.getName(), heapSection, 0, 0, false, false);
 
             long sectionOffsetOfARelocatablePointer = writer.writeHeap(debug, heapSectionBuffer);
-            assert !SpawnIsolates.getValue() || heapSectionBuffer.getByteBuffer().getLong((int) sectionOffsetOfARelocatablePointer) == 0L;
+            if (SpawnIsolates.getValue()) {
+                if (heapLayout.getReadOnlyRelocatableSize() == 0) {
+                    /*
+                     * When there isn't a read only relocation section, the value of the relocatable
+                     * pointer does not matter. We place it at the beginning of the empty
+                     * relocatable section.
+                     */
+                    assert sectionOffsetOfARelocatablePointer == -1 : sectionOffsetOfARelocatablePointer;
+                    sectionOffsetOfARelocatablePointer = heapLayout.getReadOnlyRelocatableOffset() - heapLayout.getStartOffset();
+
+                } else {
+                    /*
+                     * During isolate startup this value is read to see if the relocation has
+                     * already been performed; hence, this startup process is contingent on the heap
+                     * value initially being set to 0.
+                     */
+                    assert heapSectionBuffer.getByteBuffer().getLong((int) sectionOffsetOfARelocatablePointer) == 0L;
+                }
+            }
+            assert ImageLayerBuildingSupport.buildingSharedLayer() || heapLayout.getWritablePatchedSize() == 0 : "The writable patched section is used only in shared layers";
 
             defineDataSymbol(Isolates.IMAGE_HEAP_BEGIN_SYMBOL_NAME, heapSection, 0);
             defineDataSymbol(Isolates.IMAGE_HEAP_END_SYMBOL_NAME, heapSection, imageHeapSize);
@@ -509,6 +528,9 @@ public abstract class NativeImage extends AbstractImage {
             defineDataSymbol(Isolates.IMAGE_HEAP_A_RELOCATABLE_POINTER_SYMBOL_NAME, heapSection, sectionOffsetOfARelocatablePointer);
             defineDataSymbol(Isolates.IMAGE_HEAP_WRITABLE_BEGIN_SYMBOL_NAME, heapSection, heapLayout.getWritableOffset() - heapLayout.getStartOffset());
             defineDataSymbol(Isolates.IMAGE_HEAP_WRITABLE_END_SYMBOL_NAME, heapSection, heapLayout.getWritableOffset() + heapLayout.getWritableSize() - heapLayout.getStartOffset());
+            defineDataSymbol(Isolates.IMAGE_HEAP_WRITABLE_PATCHED_BEGIN_SYMBOL_NAME, heapSection, heapLayout.getWritablePatchedOffset() - heapLayout.getStartOffset());
+            defineDataSymbol(Isolates.IMAGE_HEAP_WRITABLE_PATCHED_END_SYMBOL_NAME, heapSection,
+                            heapLayout.getWritablePatchedOffset() + heapLayout.getWritablePatchedSize() - heapLayout.getStartOffset());
 
             if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
                 HostedDynamicLayerInfo.singleton().defineSymbolsForPriorLayerMethods(objectFile);
