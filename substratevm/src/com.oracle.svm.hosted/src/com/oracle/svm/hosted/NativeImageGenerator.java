@@ -31,12 +31,9 @@ import static jdk.graal.compiler.hotspot.JVMCIVersionCheck.OPEN_LABSJDK_RELEASE_
 import static jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.registerInvocationPlugins;
 
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.lang.reflect.Type;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -44,8 +41,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
-import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.ListIterator;
@@ -54,15 +49,11 @@ import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 
-import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.Pair;
-import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -111,7 +102,6 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisFactory;
 import com.oracle.graal.pointsto.reports.AnalysisReporter;
-import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.typestate.DefaultAnalysisPolicy;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.GraalAccess;
@@ -171,7 +161,6 @@ import com.oracle.svm.core.heap.BarrierSetProvider;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.ServiceCatalogSupport;
@@ -186,6 +175,7 @@ import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.ObservableImageHeapMapProvider;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.BuildArtifactsExporter.BuildArtifactsImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterCompilationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterHeapLayoutAccessImpl;
@@ -244,12 +234,9 @@ import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.imagelayer.LoadImageSingletonFeature;
 import com.oracle.svm.hosted.jdk.localization.LocalizationFeature;
 import com.oracle.svm.hosted.meta.HostedConstantReflectionProvider;
-import com.oracle.svm.hosted.meta.HostedField;
-import com.oracle.svm.hosted.meta.HostedInterface;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedSnippetReflectionProvider;
-import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.UniverseBuilder;
 import com.oracle.svm.hosted.option.HostedOptionProvider;
@@ -265,6 +252,7 @@ import com.oracle.svm.hosted.reflect.proxy.ProxyRenamingSubstitutionProcessor;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.DeletedFieldsPlugin;
+import com.oracle.svm.hosted.substitute.SubstitutionInvocationPlugins;
 import com.oracle.svm.hosted.util.CPUTypeAArch64;
 import com.oracle.svm.hosted.util.CPUTypeAMD64;
 import com.oracle.svm.hosted.util.CPUTypeRISCV64;
@@ -300,8 +288,6 @@ import jdk.graal.compiler.nodes.gc.BarrierSet;
 import jdk.graal.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedPluginFactory;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.LoweringProvider;
 import jdk.graal.compiler.nodes.spi.StampProvider;
@@ -632,7 +618,7 @@ public class NativeImageGenerator {
                                 ConfigurationValues.getTarget(), this.isStubBasedPluginsSupported());
 
                 if (NativeImageOptions.PrintUniverse.getValue()) {
-                    printTypes();
+                    hUniverse.printTypes();
                 }
 
                 /* Find the entry point methods in the hosted world. */
@@ -1369,86 +1355,6 @@ public class NativeImageGenerator {
         return !SubstrateOptions.useLLVMBackend();
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    static class SubstitutionInvocationPlugins extends InvocationPlugins {
-
-        private final AnnotationSubstitutionProcessor annotationSubstitutionProcessor;
-        private EconomicMap<String, Integer> missingIntrinsicMetrics;
-
-        SubstitutionInvocationPlugins(AnnotationSubstitutionProcessor annotationSubstitutionProcessor) {
-            this.annotationSubstitutionProcessor = annotationSubstitutionProcessor;
-            this.missingIntrinsicMetrics = null;
-        }
-
-        @Override
-        protected void register(Type declaringClass, InvocationPlugin plugin, boolean allowOverwrite) {
-            Type targetClass;
-            if (declaringClass instanceof Class<?> annotatedClass) {
-                targetClass = annotationSubstitutionProcessor.getTargetClass(annotatedClass);
-                if (targetClass != declaringClass) {
-                    /* Found a target class. Check if it is included. */
-                    Executable annotatedMethod = plugin.name.equals("<init>") ? resolveConstructor(annotatedClass, plugin) : resolveMethod(annotatedClass, plugin);
-                    String originalName = annotationSubstitutionProcessor.findOriginalElementName(annotatedMethod, (Class<?>) targetClass);
-                    if (originalName == null) {
-                        /*
-                         * If the name is null, the element should not be substituted. Thus, we
-                         * should also not register the invocation plugin.
-                         */
-                        return;
-                    }
-                    if (!originalName.equals(plugin.name)) {
-                        throw VMError.unimplemented(String.format("""
-                                        InvocationPlugins cannot yet deal with substitution methods that set the target name via the @TargetElement(name = ...) property.
-                                        Annotated method "%s" vs target method "%s".""", plugin.name, originalName));
-                    }
-                }
-            } else {
-                targetClass = declaringClass;
-            }
-            super.register(targetClass, plugin, allowOverwrite);
-        }
-
-        @Override
-        public void notifyNoPlugin(ResolvedJavaMethod targetMethod, OptionValues options) {
-            if (Options.WarnMissingIntrinsic.getValue(options)) {
-                for (Class<?> annotationType : AnnotationAccess.getAnnotationTypes(targetMethod)) {
-                    if (ClassUtil.getUnqualifiedName(annotationType).contains("IntrinsicCandidate")) {
-                        String method = String.format("%s.%s%s", targetMethod.getDeclaringClass().toJavaName().replace('.', '/'), targetMethod.getName(),
-                                        targetMethod.getSignature().toMethodDescriptor());
-                        synchronized (this) {
-                            if (missingIntrinsicMetrics == null) {
-                                missingIntrinsicMetrics = EconomicMap.create();
-                                try {
-                                    Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                                        if (missingIntrinsicMetrics.size() > 0) {
-                                            System.out.format("[Warning] Missing intrinsics found: %d%n", missingIntrinsicMetrics.size());
-                                            List<Pair<String, Integer>> data = new ArrayList<>();
-                                            final MapCursor<String, Integer> cursor = missingIntrinsicMetrics.getEntries();
-                                            while (cursor.advance()) {
-                                                data.add(Pair.create(cursor.getKey(), cursor.getValue()));
-                                            }
-                                            data.stream().sorted(Comparator.comparing(Pair::getRight, Comparator.reverseOrder())).forEach(
-                                                            pair -> System.out.format("        - %d occurrences during parsing: %s%n", pair.getRight(), pair.getLeft()));
-                                        }
-                                    }));
-                                } catch (IllegalStateException e) {
-                                    // shutdown in progress, no need to register the hook
-                                }
-                            }
-                            if (missingIntrinsicMetrics.containsKey(method)) {
-                                missingIntrinsicMetrics.put(method, missingIntrinsicMetrics.get(method) + 1);
-                            } else {
-                                System.out.format("[Warning] Missing intrinsic %s found during parsing.%n", method);
-                                missingIntrinsicMetrics.put(method, 1);
-                            }
-                        }
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
     public static void registerGraphBuilderPlugins(FeatureHandler featureHandler, RuntimeConfiguration runtimeConfig, HostedProviders providers, AnalysisMetaAccess aMetaAccess,
                     AnalysisUniverse aUniverse, NativeLibraries nativeLibs, ImageClassLoader loader, ParsingReason reason,
                     AnnotationSubstitutionProcessor annotationSubstitutionProcessor, ClassInitializationPlugin classInitializationPlugin,
@@ -1910,134 +1816,6 @@ public class NativeImageGenerator {
         return bb;
     }
 
-    private void printTypes() {
-        String reportsPath = SubstrateOptions.reportsPath();
-        ReportUtils.report("hosted universe", reportsPath, "universe_analysis", "txt",
-                        writer -> printTypes(writer));
-    }
-
-    private void printTypes(PrintWriter writer) {
-
-        for (HostedType type : hUniverse.getTypes()) {
-            writer.format("%8d %s  ", type.getTypeID(), type.toJavaName(true));
-            if (type.getSuperclass() != null) {
-                writer.format("extends %d %s  ", type.getSuperclass().getTypeID(), type.getSuperclass().toJavaName(false));
-            }
-            if (type.getInterfaces().length > 0) {
-                writer.print("implements ");
-                String sep = "";
-                for (HostedInterface interf : type.getInterfaces()) {
-                    writer.format("%s%d %s", sep, interf.getTypeID(), interf.toJavaName(false));
-                    sep = ", ";
-                }
-                writer.print("  ");
-            }
-
-            if (type.getWrapped().isInstantiated()) {
-                writer.print("instantiated  ");
-            }
-            if (type.getWrapped().isReachable()) {
-                writer.print("reachable  ");
-            }
-
-            if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
-                writer.format("type check start %d range %d slot # %d ", type.getTypeCheckStart(), type.getTypeCheckRange(), type.getTypeCheckSlot());
-                writer.format("type check slots %s  ", slotsToString(type.getClosedTypeWorldTypeCheckSlots()));
-            } else {
-                writer.format("type id %s depth %s num class types %s num interface types %s ", type.getTypeID(), type.getTypeIDDepth(), type.getNumClassTypes(), type.getNumInterfaceTypes());
-                writer.format("type check slots %s  ", String.join(" ", Arrays.stream(type.getOpenTypeWorldTypeCheckSlots()).mapToObj(Integer::toString).toArray(String[]::new)));
-            }
-            // if (type.findLeafConcreteSubtype() != null) {
-            // writer.format("unique %d %s ", type.findLeafConcreteSubtype().getTypeID(),
-            // type.findLeafConcreteSubtype().toJavaName(false));
-            // }
-
-            int le = type.getHub().getLayoutEncoding();
-            if (LayoutEncoding.isPrimitive(le)) {
-                writer.print("primitive  ");
-            } else if (LayoutEncoding.isInterface(le)) {
-                writer.print("interface  ");
-            } else if (LayoutEncoding.isAbstract(le)) {
-                writer.print("abstract  ");
-            } else if (LayoutEncoding.isPureInstance(le)) {
-                writer.format("instance size %d  ", LayoutEncoding.getPureInstanceAllocationSize(le).rawValue());
-            } else if (LayoutEncoding.isArrayLike(le)) {
-                String arrayType = LayoutEncoding.isHybrid(le) ? "hybrid" : "array";
-                String elements = LayoutEncoding.isArrayLikeWithPrimitiveElements(le) ? "primitives" : "objects";
-                writer.format("%s containing %s, base %d shift %d scale %d  ", arrayType, elements, LayoutEncoding.getArrayBaseOffset(le).rawValue(), LayoutEncoding.getArrayIndexShift(le),
-                                LayoutEncoding.getArrayIndexScale(le));
-
-            } else {
-                throw VMError.shouldNotReachHereUnexpectedInput(le); // ExcludeFromJacocoGeneratedReport
-            }
-
-            writer.println();
-
-            for (HostedType sub : type.getSubTypes()) {
-                writer.format("               s %d %s%n", sub.getTypeID(), sub.toJavaName(false));
-            }
-            if (type.isInterface()) {
-                for (HostedMethod method : hUniverse.getMethods()) {
-                    if (method.getDeclaringClass().equals(type)) {
-                        printMethod(writer, method, -1);
-                    }
-                }
-
-            } else if (type.isInstanceClass()) {
-
-                HostedField[] fields = type.getInstanceFields(false);
-                fields = Arrays.copyOf(fields, fields.length);
-                Arrays.sort(fields, Comparator.comparing(HostedField::toString));
-                for (HostedField field : fields) {
-                    writer.println("               f " + field.getLocation() + ": " + field.format("%T %n"));
-                }
-                HostedMethod[] vtable = type.getVTable();
-                for (int i = 0; i < vtable.length; i++) {
-                    if (vtable[i] != null) {
-                        printMethod(writer, vtable[i], i);
-                    }
-                }
-                for (HostedMethod method : hUniverse.getMethods()) {
-                    if (method.getDeclaringClass().equals(type) && !method.hasVTableIndex()) {
-                        printMethod(writer, method, -1);
-                    }
-                }
-            }
-        }
-
-    }
-
-    private static void printMethod(PrintWriter writer, HostedMethod method, int vtableIndex) {
-        if (vtableIndex != -1) {
-            writer.print("               v " + vtableIndex + " ");
-        } else {
-            writer.print("               m ");
-        }
-        if (method.hasVTableIndex()) {
-            writer.print(method.getVTableIndex() + " ");
-        }
-        writer.print(method.format("%r %n(%p)") + ": " + method.getImplementations().length + " [");
-        if (method.getImplementations().length <= 10) {
-            String sep = "";
-            for (HostedMethod impl : method.getImplementations()) {
-                writer.print(sep + impl.getDeclaringClass().toJavaName(false));
-                sep = ", ";
-            }
-        }
-        writer.println("]");
-    }
-
-    private static String slotsToString(short[] slots) {
-        if (slots == null) {
-            return "null";
-        }
-        StringBuilder result = new StringBuilder();
-        for (short slot : slots) {
-            result.append(Short.toUnsignedInt(slot)).append(" ");
-        }
-        return result.toString();
-    }
-
     public static Path getOutputDirectory() {
         return NativeImageGenerator.generatedFiles(HostedOptionValues.singleton());
     }
@@ -2068,30 +1846,5 @@ public class NativeImageGenerator {
             }
         }
         return result;
-    }
-
-    private static class BuildArtifactsImpl implements BuildArtifacts {
-        private final Map<ArtifactType, List<Path>> buildArtifacts = new EnumMap<>(ArtifactType.class);
-
-        @Override
-        public void add(ArtifactType type, Path artifact) {
-            buildArtifacts.computeIfAbsent(type, t -> new ArrayList<>()).add(artifact);
-        }
-
-        @Override
-        public List<Path> get(ArtifactType type) {
-            VMError.guarantee(buildArtifacts.containsKey(type), "Artifact type is missing: %s", type);
-            return buildArtifacts.get(type);
-        }
-
-        @Override
-        public void forEach(BiConsumer<ArtifactType, List<Path>> action) {
-            buildArtifacts.forEach(action);
-        }
-
-        @Override
-        public boolean isEmpty() {
-            return buildArtifacts.isEmpty();
-        }
     }
 }
