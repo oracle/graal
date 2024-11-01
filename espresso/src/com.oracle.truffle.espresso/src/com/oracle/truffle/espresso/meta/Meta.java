@@ -378,6 +378,18 @@ public final class Meta extends ContextAccessImpl {
         java_nio_file_Paths = knownKlass(Type.java_nio_file_Paths);
         java_nio_file_Paths_get = java_nio_file_Paths.requireDeclaredMethod(Name.get, Signature.Path_String_String_array);
 
+        ObjectKlass nioNativeThreadKlass = knownKlass(Type.sun_nio_ch_NativeThread);
+        sun_nio_ch_NativeThread_init = nioNativeThreadKlass.lookupDeclaredMethod(Name.init, Signature._void);
+        if (getJavaVersion().java21OrLater()) {
+            sun_nio_ch_NativeThread_isNativeThread = nioNativeThreadKlass.requireDeclaredMethod(Name.isNativeThread, Signature._boolean_long);
+            sun_nio_ch_NativeThread_current0 = nioNativeThreadKlass.requireDeclaredMethod(Name.current0, Signature._long);
+            sun_nio_ch_NativeThread_signal = null;
+        } else {
+            sun_nio_ch_NativeThread_isNativeThread = null;
+            sun_nio_ch_NativeThread_current0 = null;
+            sun_nio_ch_NativeThread_signal = nioNativeThreadKlass.requireDeclaredMethod(Name.signal, Signature._void_long);
+        }
+
         sun_launcher_LauncherHelper = knownKlass(Type.sun_launcher_LauncherHelper);
         sun_launcher_LauncherHelper_printHelpMessage = sun_launcher_LauncherHelper.requireDeclaredMethod(Name.printHelpMessage, Signature._void_boolean);
         sun_launcher_LauncherHelper_ostream = sun_launcher_LauncherHelper.requireDeclaredField(Name.ostream, Type.java_io_PrintStream);
@@ -1553,6 +1565,11 @@ public final class Meta extends ContextAccessImpl {
     public final ObjectKlass java_nio_file_Path;
     public final ObjectKlass java_nio_file_Paths;
     public final Method java_nio_file_Paths_get;
+
+    public final Method sun_nio_ch_NativeThread_isNativeThread;
+    public final Method sun_nio_ch_NativeThread_current0;
+    public final Method sun_nio_ch_NativeThread_signal;
+    public final Method sun_nio_ch_NativeThread_init;
 
     // Array support.
     public final ObjectKlass java_lang_Cloneable;

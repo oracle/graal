@@ -22,15 +22,82 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
-/**
- * This substitution is only needed when using the Sulong backend, since installing signal handlers
- * is not supported. See GR-29359.
- */
+import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso.ffi.nfi.NFISulongNativeAccess;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.substitutions.VersionFilter.Java17OrEarlier;
+import com.oracle.truffle.espresso.substitutions.VersionFilter.Java21OrLater;
+
 @EspressoSubstitutions
 public final class Target_sun_nio_ch_NativeThread {
-
+    /*
+     * This doesn't exist on Windows, it just won't match
+     */
     @Substitution
-    public static void init() {
-        // nop
+    abstract static class Init extends SubstitutionNode {
+        abstract void execute();
+
+        @Specialization
+        static void doDefault(@Bind("getContext()") EspressoContext context,
+                        @Cached("create(context.getMeta().sun_nio_ch_NativeThread_init.getCallTargetNoSubstitution())") DirectCallNode original) {
+            // avoid the installation of a signal handler except on SVM and not with llvm
+            if (EspressoOptions.RUNNING_ON_SVM && !(context.getNativeAccess() instanceof NFISulongNativeAccess)) {
+                original.call();
+            }
+        }
+    }
+
+    @Substitution(versionFilter = Java21OrLater.class)
+    abstract static class IsNativeThread extends SubstitutionNode {
+        abstract boolean execute(long tid);
+
+        @Specialization
+        static boolean doDefault(long tid,
+                        @Bind("getContext()") EspressoContext context,
+                        @Cached("create(context.getMeta().sun_nio_ch_NativeThread_isNativeThread.getCallTargetNoSubstitution())") DirectCallNode original) {
+            if (context.getNativeAccess() instanceof NFISulongNativeAccess) {
+                // sulong virtualizes pthread_self but not ptrhead_kill
+                // signal to the JDK that we don't support signaling
+                return false;
+            } else {
+                return (boolean) original.call(tid);
+            }
+        }
+    }
+
+    @Substitution(versionFilter = Java21OrLater.class)
+    abstract static class Current0 extends SubstitutionNode {
+        abstract long execute();
+
+        @Specialization
+        static long doDefault(@Bind("getContext()") EspressoContext context,
+                        @Cached("create(context.getMeta().sun_nio_ch_NativeThread_current0.getCallTargetNoSubstitution())") DirectCallNode original) {
+            if (context.getNativeAccess() instanceof NFISulongNativeAccess) {
+                // sulong virtualizes pthread_self but not ptrhead_kill
+                // signal to the JDK that we don't support signaling
+                return 0;
+            } else {
+                return (long) original.call();
+            }
+        }
+    }
+
+    @Substitution(versionFilter = Java17OrEarlier.class)
+    abstract static class Signal extends SubstitutionNode {
+        abstract void execute(long nt);
+
+        @Specialization
+        static void doDefault(long nt,
+                        @Bind("getContext()") EspressoContext context,
+                        @Cached("create(context.getMeta().sun_nio_ch_NativeThread_signal.getCallTargetNoSubstitution())") DirectCallNode original) {
+            // sulong virtualizes pthread_self but not ptrhead_kill
+            if (!(context.getNativeAccess() instanceof NFISulongNativeAccess)) {
+                original.call(nt);
+            }
+        }
     }
 }
