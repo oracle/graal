@@ -389,7 +389,19 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         v.hasMetaObject = true;
         v.getMetaObject = () -> testMeta;
         testMeta.isMetaObject = true;
-        testMeta.isMetaInstance = (o) -> o == v;
+        testMeta.isMetaInstance = (o) -> {
+            // It is fair to use hasMetaObject/isMetaObject/getMetaObject here to e.g. get a foreign
+            // subclass of the instance, test that to ensure there is no infinite recursion.
+            InteropLibrary.getUncached().isMetaObject(o);
+            if (InteropLibrary.getUncached().hasMetaObject(o)) {
+                try {
+                    InteropLibrary.getUncached().getMetaObject(o);
+                } catch (UnsupportedMessageException e) {
+                    throw new AssertionError(e);
+                }
+            }
+            return o == v;
+        };
         testMeta.getMetaQualifiedName = () -> "testQualifiedName";
         testMeta.getMetaSimpleName = () -> "testSimpleName";
         assertTrue(wrapperLibrary.hasMetaObject(wrapper));
