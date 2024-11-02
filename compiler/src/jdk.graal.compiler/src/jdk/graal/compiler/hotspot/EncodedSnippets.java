@@ -26,7 +26,7 @@ package jdk.graal.compiler.hotspot;
 
 import static jdk.graal.compiler.hotspot.HotSpotReplacementsImpl.isGraalClass;
 import static jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
+import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
@@ -204,7 +204,7 @@ public class EncodedSnippets {
             data = graphDatas.get(methodKey(method));
         }
         if (data == null) {
-            if (IS_IN_NATIVE_IMAGE) {
+            if (inImageRuntimeCode()) {
                 throw GraalError.shouldNotReachHere("snippet not found: " + method.format("%H.%n(%p)")); // ExcludeFromJacocoGeneratedReport
             } else {
                 return null;
@@ -222,7 +222,7 @@ public class EncodedSnippets {
             declaringClass = replacements.getProviders().getMetaAccess().lookupJavaType(Object.class);
         }
         SymbolicEncodedGraph encodedGraph = new SymbolicEncodedGraph(snippetEncoding, startOffset, snippetObjects, snippetNodeClasses, data.originalMethod, declaringClass);
-        return decodeSnippetGraph(encodedGraph, method, original, replacements, args, allowAssumptions, options, IS_IN_NATIVE_IMAGE);
+        return decodeSnippetGraph(encodedGraph, method, original, replacements, args, allowAssumptions, options, inImageRuntimeCode());
     }
 
     public SnippetParameterInfo getSnippetParameterInfo(ResolvedJavaMethod method) {
@@ -298,7 +298,7 @@ public class EncodedSnippets {
         if (args != null) {
             MetaAccessProvider meta = HotSpotReplacementsImpl.noticeTypes(providers.getMetaAccess());
             SnippetReflectionProvider snippetReflection = replacements.getProviders().getSnippetReflection();
-            if (IS_IN_NATIVE_IMAGE) {
+            if (inImageRuntimeCode()) {
                 snippetReflection = new LibGraalSnippetReflectionProvider(snippetReflection);
             }
             parameterPlugin = new ConstantBindingParameterPlugin(args, meta, snippetReflection);

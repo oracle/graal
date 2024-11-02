@@ -42,7 +42,7 @@ import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.serviceprovider.IsolateUtil;
 
 import jdk.vm.ci.common.NativeImageReinitialize;
-import jdk.vm.ci.services.Services;
+import org.graalvm.nativeimage.ImageInfo;
 
 /**
  * A watch dog for {@linkplain #watch watching} and reporting on long running compilations.
@@ -335,7 +335,7 @@ public final class CompilationWatchDog implements Runnable, AutoCloseable {
      */
     public static CompilationWatchDog watch(CompilationIdentifier compilation, OptionValues options, boolean singleShotExecutor, EventHandler eventHandler) {
         int delay = Options.CompilationWatchDogStartDelay.getValue(options);
-        if (Services.IS_BUILDING_NATIVE_IMAGE && !Options.CompilationWatchDogStartDelay.hasBeenSet(options)) {
+        if (ImageInfo.inImageBuildtimeCode() && !Options.CompilationWatchDogStartDelay.hasBeenSet(options)) {
             // Disable watch dog by default when building a native image
             delay = 0;
         }

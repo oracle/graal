@@ -33,8 +33,8 @@ import jdk.graal.compiler.nodeinfo.NodeCycles;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodeinfo.Verbosity;
-import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedPluginInjectionProvider;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.spi.Replacements;
 
 @NodeInfo(nameTemplate = "PluginReplacement/{p#pluginName}", cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED)
 public final class PluginReplacementNode extends FixedWithNextNode implements PluginReplacementInterface {
@@ -52,12 +52,12 @@ public final class PluginReplacementNode extends FixedWithNextNode implements Pl
     }
 
     @Override
-    public boolean replace(GraphBuilderContext b, GeneratedPluginInjectionProvider injection) {
+    public boolean replace(GraphBuilderContext b, Replacements injection) {
         return function.replace(b, injection, stamp, args);
     }
 
     public interface ReplacementFunction {
-        boolean replace(GraphBuilderContext b, GeneratedPluginInjectionProvider injection, Stamp stamp, NodeInputList<ValueNode> args);
+        boolean replace(GraphBuilderContext b, Replacements injection, Stamp stamp, NodeInputList<ValueNode> args);
     }
 
     @Override

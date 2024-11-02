@@ -98,8 +98,8 @@ import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.Unary
 import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.TAN;
 import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.TANH;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.NativeCall;
-import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
+import static org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode;
+import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
 import static org.graalvm.word.LocationIdentity.any;
 
 import java.util.EnumMap;
@@ -381,7 +381,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         }
         registerForeignCall(INVOKE_STATIC_METHOD_ONE_ARG, invokeJavaMethodAddress, NativeCall);
 
-        if (!IS_IN_NATIVE_IMAGE) {
+        if (!inImageRuntimeCode()) {
             /*
              * These functions are only used for testing purposes but their registration also
              * ensures that libgraal has support for InvokeJavaMethodStub built into the image,
@@ -568,7 +568,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
 
         if (c.nmethodEntryBarrier != 0) {
             registerForeignCall(NMETHOD_ENTRY_BARRIER, c.nmethodEntryBarrier, NativeCall);
-        } else if (IS_BUILDING_NATIVE_IMAGE) {
+        } else if (inImageBuildtimeCode()) {
             // Ensure this is known to libgraal
             register(NMETHOD_ENTRY_BARRIER.getSignature());
         }

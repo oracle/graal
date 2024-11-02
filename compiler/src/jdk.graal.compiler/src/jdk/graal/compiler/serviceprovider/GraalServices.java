@@ -25,8 +25,8 @@
 package jdk.graal.compiler.serviceprovider;
 
 import static java.lang.Thread.currentThread;
-import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
+import static org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode;
+import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -43,6 +43,9 @@ import jdk.vm.ci.meta.EncodedSpeculationReason;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 import jdk.vm.ci.runtime.JVMCI;
 import jdk.vm.ci.services.Services;
+import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 /**
  * Interface to functionality that abstracts over which JDK version Graal is running on.
@@ -50,14 +53,32 @@ import jdk.vm.ci.services.Services;
 public final class GraalServices {
 
     /**
+     * Returns true if code is executing in the context of building libgraal. Note that this is more
+     * specific than {@link ImageInfo#inImageBuildtimeCode()}. The latter will return true when
+     * building any native image, not just libgraal.
+     */
+    public static boolean isBuildingLibgraal() {
+        return Services.IS_BUILDING_NATIVE_IMAGE;
+    }
+
+    /**
+     * Returns true if code is executing in the context of executing libgraal. Note that this is
+     * more specific than {@link ImageInfo#inImageRuntimeCode()}. The latter will return true when
+     * executing any native image, not just libgraal.
+     */
+    public static boolean isInLibgraal() {
+        return Services.IS_IN_NATIVE_IMAGE;
+    }
+
+    /**
      * The set of services available in libgraal. This field is only non-null when
      * {@link GraalServices} is loaded by the LibGraalClassLoader.
      */
     private static Map<Class<?>, List<?>> libgraalServices;
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     @ExcludeFromJacocoGeneratedReport("only called when building libgraal")
     public static void setLibgraalServices(Map<Class<?>, List<?>> services) {
-        GraalError.guarantee(IS_BUILDING_NATIVE_IMAGE, "Can only set libgraal services when building libgraal");
         GraalError.guarantee(libgraalServices == null, "Libgraal services must be set exactly once");
         GraalServices.libgraalServices = services;
     }
@@ -71,7 +92,7 @@ public final class GraalServices {
      */
     @SuppressWarnings("unchecked")
     public static <S> Iterable<S> load(Class<S> service) {
-        if (IS_IN_NATIVE_IMAGE || libgraalServices != null) {
+        if (inImageRuntimeCode() || libgraalServices != null) {
             List<?> list = libgraalServices.get(service);
             if (list == null) {
                 throw new InternalError(String.format("No %s providers found in libgraal (missing %s annotation on %s?)",
@@ -90,7 +111,9 @@ public final class GraalServices {
      * @see VM#getSavedProperties
      */
     public static Map<String, String> getSavedProperties() {
-        if (IS_BUILDING_NATIVE_IMAGE && !IS_IN_NATIVE_IMAGE) {
+        if (inImageBuildtimeCode()) {
+            // Avoid calling down to JVMCI native methods as they will fail to
+            // link in a copy of JVMCI loaded by the LibGraalClassLoader.
             return jdk.internal.misc.VM.getSavedProperties();
         }
         return Services.getSavedProperties();
@@ -100,20 +123,14 @@ public final class GraalServices {
      * Helper method equivalent to {@link #getSavedProperties()}{@code .getOrDefault(name, def)}.
      */
     public static String getSavedProperty(String name, String def) {
-        if (IS_BUILDING_NATIVE_IMAGE && !IS_IN_NATIVE_IMAGE) {
-            return jdk.internal.misc.VM.getSavedProperties().getOrDefault(name, def);
-        }
-        return Services.getSavedProperties().getOrDefault(name, def);
+        return getSavedProperties().getOrDefault(name, def);
     }
 
     /**
      * Helper method equivalent to {@link #getSavedProperties()}{@code .get(name)}.
      */
     public static String getSavedProperty(String name) {
-        if (IS_BUILDING_NATIVE_IMAGE && !IS_IN_NATIVE_IMAGE) {
-            return jdk.internal.misc.VM.getSavedProperty(name);
-        }
-        return Services.getSavedProperty(name);
+        return getSavedProperties().get(name);
     }
 
     private static <S> Iterable<S> load0(Class<S> service) {
@@ -156,7 +173,7 @@ public final class GraalServices {
      * @param other all JVMCI packages will be opened to the module defining this class
      */
     static void openJVMCITo(Class<?> other) {
-        if (IS_IN_NATIVE_IMAGE) {
+        if (inImageRuntimeCode()) {
             return;
         }
 
@@ -232,7 +249,7 @@ public final class GraalServices {
      * trusted code.
      */
     public static boolean isToStringTrusted(Class<?> c) {
-        if (IS_IN_NATIVE_IMAGE) {
+        if (inImageRuntimeCode()) {
             return true;
         }
 
