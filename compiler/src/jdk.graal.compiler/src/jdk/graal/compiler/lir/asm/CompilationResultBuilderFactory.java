@@ -45,7 +45,7 @@ import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.services.Services;
+import org.graalvm.nativeimage.ImageInfo;
 
 /**
  * Factory class for creating {@link CompilationResultBuilder}s.
@@ -104,7 +104,7 @@ public interface CompilationResultBuilderFactory {
                         CompilationResult compilationResult,
                         Register uncompressedNullRegister,
                         LIR lir) {
-            if (Services.IS_IN_NATIVE_IMAGE) {
+            if (ImageInfo.inImageRuntimeCode()) {
                 // LIR instruction verifier uses URLClassLoader which is excluded from
                 // libgraal due to the image size increase it causes.
             } else if (!isVerifierInitialized) {

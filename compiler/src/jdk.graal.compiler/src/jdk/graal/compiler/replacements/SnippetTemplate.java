@@ -31,7 +31,7 @@ import static jdk.graal.compiler.graph.iterators.NodePredicates.isNotA;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
 import static jdk.graal.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Required;
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
+import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
 import static org.graalvm.word.LocationIdentity.any;
 
 import java.lang.reflect.Array;
@@ -977,7 +977,7 @@ public class SnippetTemplate {
             }
             providers.getReplacements().registerSnippet(javaMethod, original, receiver, GraalOptions.TrackNodeSourcePosition.getValue(options), options);
             LocationIdentity[] privateLocations = GraalOptions.SnippetCounters.getValue(options) ? SnippetCounterNode.addSnippetCounters(initialPrivateLocations) : initialPrivateLocations;
-            if (IS_IN_NATIVE_IMAGE || GraalOptions.EagerSnippets.getValue(options)) {
+            if (inImageRuntimeCode() || GraalOptions.EagerSnippets.getValue(options)) {
                 SnippetParameterInfo snippetParameterInfo = providers.getReplacements().getSnippetParameterInfo(javaMethod);
                 return new EagerSnippetInfo(javaMethod, original, privateLocations, receiver, snippetParameterInfo, type);
             } else {
@@ -1543,7 +1543,7 @@ public class SnippetTemplate {
     }
 
     private static boolean verifyIntrinsicsProcessed(StructuredGraph snippetCopy) {
-        if (IS_IN_NATIVE_IMAGE) {
+        if (inImageRuntimeCode()) {
             return true;
         }
         for (MethodCallTargetNode target : snippetCopy.getNodes(MethodCallTargetNode.TYPE)) {
@@ -2929,12 +2929,12 @@ public class SnippetTemplate {
         for (int i = offset; i < args.info.getParameterCount(); i++) {
             if (args.info.isConstantParameter(i)) {
                 JavaKind kind = signature.getParameterKind(i - offset);
-                assert IS_IN_NATIVE_IMAGE || checkConstantArgument(metaAccess, method, signature, i - offset, args.info.getParameterName(i), args.values[i], kind);
+                assert inImageRuntimeCode() || checkConstantArgument(metaAccess, method, signature, i - offset, args.info.getParameterName(i), args.values[i], kind);
 
             } else if (args.info.isVarargsParameter(i)) {
                 assert args.values[i] instanceof Varargs : Assertions.errorMessage(args.values[i], args, method);
                 Varargs varargs = (Varargs) args.values[i];
-                assert IS_IN_NATIVE_IMAGE || checkVarargs(metaAccess, method, signature, i - offset, args.info.getParameterName(i), varargs);
+                assert inImageRuntimeCode() || checkVarargs(metaAccess, method, signature, i - offset, args.info.getParameterName(i), varargs);
 
             } else if (args.info.isNonNullParameter(i)) {
                 assert checkNonNull(method, args.info.getParameterName(i), args.values[i]);

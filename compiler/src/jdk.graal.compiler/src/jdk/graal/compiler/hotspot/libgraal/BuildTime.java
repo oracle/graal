@@ -59,6 +59,8 @@ import jdk.graal.compiler.util.ObjectCopier;
 import jdk.vm.ci.hotspot.HotSpotJVMCIBackendFactory;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.services.JVMCIServiceLocator;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 /**
  * This class is used at image build-time when a libgraal image gets built. Its static methods are
@@ -66,6 +68,7 @@ import jdk.vm.ci.services.JVMCIServiceLocator;
  * These methods ensure the static field state of Graal and JVMCI classes loaded by the
  * LibGraalClassLoader is set up correctly for getting built into libgraal.
  */
+@Platforms(Platform.HOSTED_ONLY.class)
 public class BuildTime {
 
     private static final String VALID_LOADER_NAME = "LibGraalClassLoader";

@@ -67,6 +67,15 @@ class LibGraalJVMCISubstitutions {
 
     @TargetClass(className = "jdk.vm.ci.services.Services", classLoader = LibGraalClassLoaderSupplier.class, onlyWith = LibGraalFeature.IsEnabled.class)
     static final class Target_jdk_vm_ci_services_Services {
+        /**
+         * Ensures field returns false if seen by the analysis.
+         */
+        // Checkstyle: stop
+        @Alias //
+        @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true)//
+        public static boolean IS_BUILDING_NATIVE_IMAGE = false;
+        // Checkstyle: resume
+
         /*
          * Static final boolean field Services.IS_IN_NATIVE_IMAGE is used in many places in the
          * JVMCI codebase to switch between the different implementations needed for regular use (a

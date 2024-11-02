@@ -25,12 +25,13 @@
 package jdk.graal.compiler.hotspot;
 
 import static jdk.vm.ci.common.InitTimer.timer;
-import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
+import static org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode;
+import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
 
 import java.io.PrintStream;
 
 import jdk.graal.compiler.api.runtime.GraalRuntime;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.MethodFilter;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.options.Option;
@@ -47,6 +48,7 @@ import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.runtime.JVMCICompilerFactory;
 import jdk.vm.ci.runtime.JVMCIRuntime;
 import jdk.vm.ci.services.Services;
+import org.graalvm.nativeimage.ImageInfo;
 
 public final class HotSpotGraalCompilerFactory implements JVMCICompilerFactory {
 
@@ -94,11 +96,11 @@ public final class HotSpotGraalCompilerFactory implements JVMCICompilerFactory {
 
     @Override
     public void onSelection() {
-        if (Services.IS_IN_NATIVE_IMAGE) {
+        if (ImageInfo.inImageRuntimeCode()) {
             // When instantiating a JVMCI runtime in the libgraal heap there's no
             // point in delaying HotSpotGraalRuntime initialization as it
             // is very fast (it's compiled and does no class loading) and will
-            // usually be done immediately after this call anyway (i.e. in a
+            // usually happen immediately after this call anyway (i.e. in a
             // Graal-as-JIT configuration).
             initialize();
             initialized = true;
@@ -122,14 +124,10 @@ public final class HotSpotGraalCompilerFactory implements JVMCICompilerFactory {
         }
         initializeGraalCompilePolicyFields(options);
         isGraalPredicate = compileGraalWithC1Only ? new IsGraalPredicate() : null;
-        if (IS_BUILDING_NATIVE_IMAGE) {
-            // Triggers initialization of all option descriptors
-            Options.CompileGraalWithC1Only.getName();
-        }
     }
 
     private static void initializeGraalCompilePolicyFields(OptionValues options) {
-        compileGraalWithC1Only = Options.CompileGraalWithC1Only.getValue(options) && !IS_IN_NATIVE_IMAGE;
+        compileGraalWithC1Only = Options.CompileGraalWithC1Only.getValue(options) && !inImageRuntimeCode();
         String optionValue = Options.GraalCompileOnly.getValue(options);
         if (optionValue != null) {
             MethodFilter filter = MethodFilter.parse(optionValue);
@@ -169,6 +167,15 @@ public final class HotSpotGraalCompilerFactory implements JVMCICompilerFactory {
 
     @Override
     public HotSpotGraalCompiler createCompiler(JVMCIRuntime runtime) {
+        if (inImageBuildtimeCode() && inImageRuntimeCode()) {
+            // A bunch of code assumes that at most one of these conditions
+            // is true so verify that here.
+            throw new GraalError("Invariant violation: inImageBuildtimeCode && inImageRuntimeCode must not both be true");
+        }
+        if (Services.IS_BUILDING_NATIVE_IMAGE && Services.IS_IN_NATIVE_IMAGE) {
+            // Same check as above but for the JVMCI equivalent properties.
+            throw new GraalError("Invariant violation: IS_BUILDING_NATIVE_IMAGE && IS_IN_NATIVE_IMAGE must not both be true");
+        }
         HotSpotJVMCIRuntime hsRuntime = (HotSpotJVMCIRuntime) runtime;
         checkUnsafeAccess(hsRuntime);
         ensureInitialized();
@@ -200,7 +207,7 @@ public final class HotSpotGraalCompilerFactory implements JVMCICompilerFactory {
      * Exit the VM now if {@code jdk.internal.misc.Unsafe} is not accessible.
      */
     private void checkUnsafeAccess(HotSpotJVMCIRuntime hsRuntime) {
-        if (Services.IS_IN_NATIVE_IMAGE) {
+        if (ImageInfo.inImageRuntimeCode()) {
             // Access checks were performed when building libgraal.
             return;
         }

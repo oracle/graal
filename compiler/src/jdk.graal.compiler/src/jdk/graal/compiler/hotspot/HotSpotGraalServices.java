@@ -38,7 +38,7 @@ import jdk.vm.ci.hotspot.VMIntrinsicMethod;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
-import jdk.vm.ci.services.Services;
+import org.graalvm.nativeimage.ImageInfo;
 
 /**
  * Interface to HotSpot specific functionality that abstracts over which JDK version Graal is
@@ -121,7 +121,7 @@ public class HotSpotGraalServices {
      * This exists so that the HotSpot VM can be exited from within libgraal.
      */
     public static void exit(int status, HotSpotJVMCIRuntime runtime) {
-        if (Services.IS_IN_NATIVE_IMAGE) {
+        if (ImageInfo.inImageRuntimeCode()) {
             runtime.exitHotSpot(status);
         } else {
             System.exit(status);

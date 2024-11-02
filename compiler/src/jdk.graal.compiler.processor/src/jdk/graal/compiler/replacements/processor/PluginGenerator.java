@@ -177,6 +177,7 @@ public class PluginGenerator {
             if (plugin.needsReplacement(processor)) {
                 extra.add("jdk.graal.compiler.options.ExcludeFromJacocoGeneratedReport");
                 extra.add("jdk.graal.compiler.graph.NodeInputList");
+                extra.add("jdk.graal.compiler.nodes.spi.Replacements");
                 if (plugin.isWithExceptionReplacement(processor)) {
                     extra.add("jdk.graal.compiler.nodes.PluginReplacementWithExceptionNode");
                 } else {

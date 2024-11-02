@@ -256,8 +256,8 @@ import static jdk.vm.ci.meta.DeoptimizationReason.RuntimeConstraint;
 import static jdk.vm.ci.meta.DeoptimizationReason.UnreachedCode;
 import static jdk.vm.ci.meta.DeoptimizationReason.Unresolved;
 import static jdk.vm.ci.runtime.JVMCICompiler.INVOCATION_ENTRY_BCI;
-import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
+import static org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode;
+import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -2712,8 +2712,8 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
      * intrinsic) can be inlined.
      */
     protected boolean canInlinePartialIntrinsicExit() {
-        assert !IS_IN_NATIVE_IMAGE;
-        return InlinePartialIntrinsicExitDuringParsing.getValue(options) && !IS_BUILDING_NATIVE_IMAGE && method.getAnnotation(Snippet.class) == null;
+        assert !inImageRuntimeCode();
+        return InlinePartialIntrinsicExitDuringParsing.getValue(options) && !inImageBuildtimeCode() && method.getAnnotation(Snippet.class) == null;
     }
 
     private void printInlining(ResolvedJavaMethod targetMethod, ResolvedJavaMethod inlinedMethod, boolean success, String msg) {
@@ -2909,7 +2909,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                             // without a return value on the top of stack.
                             assert stateSplit instanceof Invoke : Assertions.errorMessage(stateSplit);
                             ResolvedJavaMethod targetMethod = ((Invoke) stateSplit).getTargetMethod();
-                            if (!IS_IN_NATIVE_IMAGE) {
+                            if (!inImageRuntimeCode()) {
                                 assert targetMethod != null;
                                 assert (targetMethod.getAnnotation(Fold.class) != null || targetMethod.getAnnotation(Node.NodeIntrinsic.class) != null) : "Target should be fold or intrinsic " +
                                                 targetMethod;
