@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.core;
 
+import java.util.concurrent.TimeUnit;
+
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.common.PermanentBailoutException;
 import jdk.graal.compiler.core.common.RetryableBailoutException;
@@ -215,14 +217,14 @@ public class GraalCompiler {
      * @param graph a graph currently being compiled
      */
     private static void checkForRequestedDelay(StructuredGraph graph) {
-        long delay = Math.max(0, GraalCompilerOptions.InjectedCompilationDelay.getValue(graph.getOptions())) * 1000;
-        if (delay != 0) {
+        long delayNS = Math.max(0, TimeUnit.SECONDS.toNanos(GraalCompilerOptions.InjectedCompilationDelay.getValue(graph.getOptions())));
+        if (delayNS != 0) {
             String methodPattern = DebugOptions.MethodFilter.getValue(graph.getOptions());
             String matchedLabel = match(graph, methodPattern);
             if (matchedLabel != null) {
-                long start = System.currentTimeMillis();
-                TTY.printf("[%s] delaying compilation of %s for %d ms%n", Thread.currentThread().getName(), matchedLabel, delay);
-                while (System.currentTimeMillis() - start < delay) {
+                long startNS = System.nanoTime();
+                TTY.printf("[%s] delaying compilation of %s for %d ms%n", Thread.currentThread().getName(), matchedLabel, TimeUnit.NANOSECONDS.toMillis(delayNS));
+                while (System.nanoTime() - startNS < delayNS) {
                     try {
                         Thread.sleep(100);
                     } catch (InterruptedException e) {

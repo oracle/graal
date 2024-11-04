@@ -47,7 +47,7 @@ final class WallClockTimerKey extends BaseTimerKey {
 
         @Override
         long getCounterValue() {
-            return System.currentTimeMillis();
+            return System.nanoTime();
         }
     }
 
@@ -58,7 +58,7 @@ final class WallClockTimerKey extends BaseTimerKey {
 
     @Override
     public TimeUnit getTimeUnit() {
-        return TimeUnit.MILLISECONDS;
+        return TimeUnit.NANOSECONDS;
     }
 
     @Override

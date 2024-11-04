@@ -36,6 +36,10 @@ import java.util.Map;
 import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 
+import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.options.ExcludeFromJacocoGeneratedReport;
 import jdk.internal.misc.VM;
@@ -43,9 +47,6 @@ import jdk.vm.ci.meta.EncodedSpeculationReason;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 import jdk.vm.ci.runtime.JVMCI;
 import jdk.vm.ci.services.Services;
-import org.graalvm.nativeimage.ImageInfo;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 /**
  * Interface to functionality that abstracts over which JDK version Graal is running on.
@@ -291,9 +292,18 @@ public final class GraalServices {
      */
     public static long getGlobalTimeStamp() {
         if (globalTimeStamp.get() == 0L) {
-            globalTimeStamp.compareAndSet(0L, System.currentTimeMillis());
+            globalTimeStamp.compareAndSet(0L, milliTimeStamp());
         }
         return globalTimeStamp.get();
+    }
+
+    /**
+     * Returns the current time in milliseconds. This is to guard against the incorrect use of
+     * {@link System#currentTimeMillis()} for measuring elapsed time since it is affected by changes
+     * to the system clock.
+     */
+    public static long milliTimeStamp() {
+        return System.currentTimeMillis();
     }
 
     /**
