@@ -121,7 +121,6 @@ import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
-import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
@@ -2150,8 +2149,6 @@ final class Target_jdk_internal_reflect_ReflectionFactory {
 
 /**
  * Ensure that we are not accidentally using the method handle based constructor accessor.
- *
- * @see Target_jdk_internal_reflect_ReflectionFactory#useOldSerializableConstructor()
  */
 @Delete
 @TargetClass(className = "jdk.internal.reflect.DirectConstructorHandleAccessor")
