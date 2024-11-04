@@ -37,7 +37,7 @@ import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.serviceprovider.GraalServices;
-import jdk.vm.ci.services.Services;
+import org.graalvm.nativeimage.ImageInfo;
 
 /**
  * Utility class that allows the compiler to monitor compilations that take a very long time.
@@ -61,7 +61,7 @@ public final class CompilationAlarm implements AutoCloseable {
         // @formatter:on
     }
 
-    public static final boolean LOG_PROGRESS_DETECTION = !Services.IS_IN_NATIVE_IMAGE &&
+    public static final boolean LOG_PROGRESS_DETECTION = !ImageInfo.inImageRuntimeCode() &&
                     Boolean.parseBoolean(GraalServices.getSavedProperty("debug." + CompilationAlarm.class.getName() + ".logProgressDetection"));
 
     /**

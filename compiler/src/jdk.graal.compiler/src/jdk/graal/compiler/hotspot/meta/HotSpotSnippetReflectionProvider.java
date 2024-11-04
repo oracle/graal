@@ -47,7 +47,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.services.Services;
+import org.graalvm.nativeimage.ImageInfo;
 
 public class HotSpotSnippetReflectionProvider implements SnippetReflectionProvider {
 
@@ -63,7 +63,7 @@ public class HotSpotSnippetReflectionProvider implements SnippetReflectionProvid
 
     @Override
     public JavaConstant forObject(Object object) {
-        if (Services.IS_IN_NATIVE_IMAGE) {
+        if (ImageInfo.inImageRuntimeCode()) {
             HotSpotReplacementsImpl.getEncodedSnippets().lookupSnippetType(object.getClass());
             // This can only be a compiler object when in libgraal.
             return new SnippetObjectConstant(object);

@@ -225,6 +225,11 @@ public class PointstoOptions {
                 default:
                     throw shouldNotReachHere("Unknown context sensitivity setting:" + newValue);
             }
+            if (!newValue.toLowerCase(Locale.ROOT).equals("insens")) {
+                /* GR-58495: WP-SCCP is not yet compatible with context-sensitive analysis. */
+                TrackPrimitiveValues.update(values, false);
+                UsePredicates.update(values, false);
+            }
         }
     };
 

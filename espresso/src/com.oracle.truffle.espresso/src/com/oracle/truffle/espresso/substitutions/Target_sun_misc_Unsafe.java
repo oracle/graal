@@ -45,8 +45,8 @@ import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
 import com.oracle.truffle.espresso.blocking.GuestInterruptedException;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.ffi.Buffer;
 import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
@@ -55,16 +55,15 @@ import com.oracle.truffle.espresso.impl.EspressoClassLoadingException;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.nodes.EspressoInlineNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.GuestAllocator;
-import com.oracle.truffle.espresso.runtime.JavaVersion;
+import com.oracle.truffle.espresso.classfile.JavaVersion;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.threads.State;
 import com.oracle.truffle.espresso.threads.Transition;
@@ -439,9 +438,8 @@ public final class Target_sun_misc_Unsafe {
     @TruffleBoundary
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     public static long allocateMemory(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long length, @Inject Meta meta) {
-        JniEnv jni = meta.getContext().getJNI();
-        if (length < 0 || length > jni.sizeMax()) {
-            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "requested size doesn't fit in the size_t native type");
+        if (length < 0) {
+            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "requested size is negative");
         }
         @Buffer
         TruffleObject buffer = meta.getNativeAccess().allocateMemory(length);
@@ -449,7 +447,7 @@ public final class Target_sun_misc_Unsafe {
             // malloc may return anything for 0-sized allocations.
             throw meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, "malloc returned NULL");
         }
-        long ptr = 0;
+        long ptr;
         try {
             ptr = InteropLibrary.getUncached().asPointer(buffer);
         } catch (UnsupportedMessageException e) {
@@ -477,16 +475,15 @@ public final class Target_sun_misc_Unsafe {
     @TruffleBoundary
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     public static long reallocateMemory(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, long newSize, @Inject Meta meta) {
-        JniEnv jni = meta.getContext().getJNI();
-        if (newSize < 0 || newSize > jni.sizeMax()) {
-            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "requested size doesn't fit in the size_t native type");
+        if (newSize < 0) {
+            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "requested size is negative");
         }
         @Buffer
         TruffleObject result = meta.getNativeAccess().reallocateMemory(RawPointer.create(address), newSize);
         if (result == null) {
             throw meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, "realloc couldn't reallocate " + newSize + " bytes");
         }
-        long newAddress = 0L;
+        long newAddress;
         try {
             newAddress = InteropLibrary.getUncached().asPointer(result);
         } catch (UnsupportedMessageException e) {

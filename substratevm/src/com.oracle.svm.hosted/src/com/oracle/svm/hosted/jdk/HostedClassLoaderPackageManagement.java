@@ -41,6 +41,7 @@ import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.imagelayer.PriorLayerMarker;
 import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
@@ -218,6 +219,8 @@ public class HostedClassLoaderPackageManagement implements LayeredImageSingleton
                  * We must register this package so that it can be relinked in subsequent layers.
                  */
                 registry.registerHeapConstant(generateKeyName(packageValue.getName()), packageValue);
+
+                VMError.guarantee(packageValue.getName().equals(packageName), "Package name is different from package value's name: %s %s", packageName, packageValue);
             }
         }
     }
@@ -249,6 +252,49 @@ public class HostedClassLoaderPackageManagement implements LayeredImageSingleton
         VMError.guarantee(ImageLayerBuildingSupport.firstImageBuild(), "All classloaders should be transformed in the first layer %s", classLoader);
 
         return registeredPackages.get(classLoader);
+    }
+
+    /**
+     * Returns a map containing all packages installed by prior layers, as well as the entries
+     * installed in this layer.
+     */
+    public ConcurrentHashMap<String, Object> getAppClassLoaderPackages() {
+        VMError.guarantee(BuildPhaseProvider.isAnalysisFinished(), "Packages are stable only after analysis.");
+        VMError.guarantee(ImageLayerBuildingSupport.lastImageBuild(), "AppClassLoader's Packages are only fully available in the application layer");
+
+        var finalAppMap = getPriorAppClassLoaderPackages();
+        var currentPackages = registeredPackages.get(appClassLoader);
+        if (currentPackages != null) {
+            for (var entry : currentPackages.entrySet()) {
+                var previous = finalAppMap.put(entry.getKey(), entry.getValue());
+                assert previous == null : Assertions.errorMessage(entry.getKey(), previous);
+            }
+        }
+
+        return finalAppMap;
+    }
+
+    /**
+     * Returns a concurrent hashmap containing the package map produced via the prior layer. Note at
+     * runtime this map's keys will all be of type {@link Package}. We use a
+     * {@link PriorLayerMarker} to perform this transformation.
+     */
+    public ConcurrentHashMap<String, Object> getPriorAppClassLoaderPackages() {
+        ConcurrentHashMap<String, Object> finalAppMap = new ConcurrentHashMap<>();
+        for (String name : priorAppPackageNames) {
+            var previous = finalAppMap.put(name, new PriorLayerPackageReference(generateKeyName(name)));
+            assert previous == null : Assertions.errorMessage(name, previous);
+        }
+        return finalAppMap;
+    }
+
+    private record PriorLayerPackageReference(String key) implements PriorLayerMarker {
+
+        @Override
+        public String getKey() {
+            return key;
+        }
+
     }
 
     public void initialize(ClassLoader newAppClassLoader, CrossLayerConstantRegistry newRegistry) {

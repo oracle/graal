@@ -23,6 +23,8 @@
 package com.oracle.truffle.espresso.jdwp.api;
 
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableRef;
+import com.oracle.truffle.espresso.classfile.attributes.LocalVariableTableRef;
 
 /**
  * A representation of a method.
@@ -154,7 +156,17 @@ public interface MethodRef {
      * @param args guest-language arguments used when calling the method
      * @return the guest-language return value
      */
-    Object invokeInterfaceMethod(Object... args);
+    Object invokeMethodInterface(Object... args);
+
+    /**
+     * Invokes an instance method in a non-virtual fashion with input arguments. Overridden methods
+     * that would normally be called when invoking from Java source code using the self object is
+     * not invoked. The first argument must be the self object.
+     *
+     * @param args guest-language arguments used when calling the method
+     * @return the guest-language return value
+     */
+    Object invokeMethodNonVirtual(Object... args);
 
     /**
      * Determines if the declaring class has a source file attribute.

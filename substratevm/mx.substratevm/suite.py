@@ -1,6 +1,6 @@
 # pylint: disable=line-too-long
 suite = {
-    "mxversion": "7.33.0",
+    "mxversion": "7.33.1",
     "name": "substratevm",
     "version" : "24.2.0",
     "release" : False,
@@ -480,7 +480,7 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "com.oracle.svm.core.graal.amd64",
+                "com.oracle.svm.hosted",
                 "com.oracle.svm.core.graal.aarch64",
                 "com.oracle.svm.core.graal.riscv64",
             ],
@@ -511,7 +511,7 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "com.oracle.svm.core.graal.amd64",
+                "com.oracle.svm.hosted",
             ],
             "requiresConcealed" : {
                 "jdk.internal.vm.ci" : [
@@ -639,8 +639,8 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.objectfile",
-                "com.oracle.svm.core",
-                "com.oracle.graal.reachability"
+                "com.oracle.graal.reachability",
+                "com.oracle.svm.core.graal.amd64",
             ],
             "requires" : [
                 "jdk.jfr",

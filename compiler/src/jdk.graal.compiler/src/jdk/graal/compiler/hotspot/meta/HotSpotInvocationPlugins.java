@@ -136,17 +136,15 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
 
     @Override
     public boolean canBeIntrinsified(ResolvedJavaType declaringClass) {
-        boolean ok = false;
         for (Predicate<ResolvedJavaType> p : intrinsificationPredicates) {
-            ok |= p.test(declaringClass);
-        }
-        if (!ok) {
-            if (graalRuntime.isBootstrapping()) {
-                throw GraalError.shouldNotReachHere("Class declaring a method for which a Graal intrinsic is available should be trusted for intrinsification: " + declaringClass.toJavaName()); // ExcludeFromJacocoGeneratedReport
+            if (p.test(declaringClass)) {
+                return true;
             }
-            return false;
         }
-        return true;
+        if (graalRuntime.isBootstrapping()) {
+            throw GraalError.shouldNotReachHere("Class declaring a method for which a Graal intrinsic is available should be trusted for intrinsification: " + declaringClass.toJavaName()); // ExcludeFromJacocoGeneratedReport
+        }
+        return false;
     }
 
     @Override

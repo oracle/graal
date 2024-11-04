@@ -47,7 +47,6 @@ import jdk.graal.compiler.nodes.EndNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.FullInfopointNode;
-import jdk.graal.compiler.nodes.GraphState.GuardsStage;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.GuardNode;
 import jdk.graal.compiler.nodes.GuardPhiNode;
@@ -220,8 +219,8 @@ public final class GraphOrder {
 
     public static boolean assertSchedulableGraph(StructuredGraph g) {
         assert GraphOrder.assertNonCyclicGraph(g);
-        assert g.getGuardsStage() == GuardsStage.AFTER_FSA || GraphOrder.assertScheduleableBeforeFSA(g);
-        if (g.getGuardsStage() == GuardsStage.AFTER_FSA && Assertions.detailedAssertionsEnabled(g.getOptions())) {
+        assert g.getGuardsStage().areFrameStatesAtDeopts() || GraphOrder.assertScheduleableBeforeFSA(g);
+        if (g.getGuardsStage().areFrameStatesAtDeopts() && Assertions.detailedAssertionsEnabled(g.getOptions())) {
             // we still want to do a memory verification of the schedule even if we can
             // no longer use assertSchedulableGraph after the floating reads phase
             SchedulePhase.runWithoutContextOptimizations(g, SchedulePhase.SchedulingStrategy.LATEST_OUT_OF_LOOPS, true);
@@ -241,7 +240,7 @@ public final class GraphOrder {
      */
     @SuppressWarnings("try")
     private static boolean assertScheduleableBeforeFSA(final StructuredGraph graph) {
-        assert graph.getGuardsStage() != GuardsStage.AFTER_FSA : "Cannot use the BlockIteratorClosure after FrameState Assignment, HIR Loop Data Structures are no longer valid.";
+        assert !graph.getGuardsStage().areFrameStatesAtDeopts() : "Cannot use the BlockIteratorClosure after FrameState Assignment, HIR Loop Data Structures are no longer valid.";
 
         try (DebugContext.Scope s = graph.getDebug().scope("AssertSchedulableGraph")) {
             SchedulePhase.runWithoutContextOptimizations(graph, getSchedulingPolicy(graph), true);

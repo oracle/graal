@@ -29,6 +29,7 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.ARGUMENTS_TA
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.ARGUMENT_IDS_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.ARRAY_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CAN_BE_STATICALLY_BOUND_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CLASS_INIT_NAME;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CLASS_JAVA_NAME_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CLASS_NAME_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CODE_SIZE_TAG;
@@ -90,6 +91,7 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.PERSISTED;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.POSITION_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.PRIMITIVE_ARRAY_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.RETURN_TYPE_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.RELOCATED_CONSTANT_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.SIMULATED_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.SOURCE_FILE_NAME_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.STATIC_OBJECT_FIELDS_TAG;
@@ -132,9 +134,6 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.BaseLayerField;
 import com.oracle.graal.pointsto.meta.BaseLayerMethod;
 import com.oracle.graal.pointsto.meta.BaseLayerType;
-import com.oracle.graal.pointsto.meta.PointsToAnalysisField;
-import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
-import com.oracle.graal.pointsto.meta.PointsToAnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.svm.util.ReflectionUtil;
@@ -700,6 +699,8 @@ public class ImageLayerLoader {
 
         if (name.equals(CONSTRUCTOR_NAME)) {
             type.findConstructor(signature);
+        } else if (name.equals(CLASS_INIT_NAME)) {
+            type.getClassInitializer();
         } else {
             type.findMethod(name, signature);
         }
@@ -814,17 +815,17 @@ public class ImageLayerLoader {
 
     public AnalysisParsedGraph getAnalysisParsedGraph(AnalysisMethod analysisMethod) {
         EconomicMap<String, Object> methodData = getMethodData(analysisMethod);
-        String encodedAnalyzedGraph = readEncodedGraph(methodData, ANALYSIS_PARSED_GRAPH_TAG);
+        byte[] encodedAnalyzedGraph = readEncodedGraph(methodData, ANALYSIS_PARSED_GRAPH_TAG);
         Boolean intrinsic = get(methodData, INTRINSIC_TAG);
         EncodedGraph analyzedGraph = (EncodedGraph) ObjectCopier.decode(imageLayerSnapshotUtil.getGraphDecoder(this, analysisMethod, universe.getSnippetReflection()), encodedAnalyzedGraph);
         if (hasStrengthenedGraph(analysisMethod)) {
-            loadAllAnalysisElements(readEncodedGraph(methodData, STRENGTHENED_GRAPH_TAG));
+            throw AnalysisError.shouldNotReachHere("Strengthened graphs are not supported until late loading is implemented.");
         }
         afterGraphDecodeHook(analyzedGraph);
         return new AnalysisParsedGraph(analyzedGraph, intrinsic);
     }
 
-    private String readEncodedGraph(EconomicMap<String, Object> methodData, String elementIdentifier) {
+    private byte[] readEncodedGraph(EconomicMap<String, Object> methodData, String elementIdentifier) {
         String location = get(methodData, elementIdentifier);
         int closingBracketAt = location.length() - 1;
         AnalysisError.guarantee(location.charAt(0) == '@' && location.charAt(closingBracketAt) == ']', "Location must start with '@' and end with ']': %s", location);
@@ -844,7 +845,7 @@ public class ImageLayerLoader {
         } catch (IOException e) {
             throw AnalysisError.shouldNotReachHere("Failed reading a graph from location: " + location, e);
         }
-        return new String(bb.array(), ImageLayerWriter.GRAPHS_CHARSET);
+        return bb.array();
     }
 
     public boolean hasStrengthenedGraph(AnalysisMethod analysisMethod) {
@@ -854,7 +855,7 @@ public class ImageLayerLoader {
 
     public void setStrengthenedGraph(AnalysisMethod analysisMethod) {
         EconomicMap<String, Object> methodData = getMethodData(analysisMethod);
-        String encodedAnalyzedGraph = readEncodedGraph(methodData, STRENGTHENED_GRAPH_TAG);
+        byte[] encodedAnalyzedGraph = readEncodedGraph(methodData, STRENGTHENED_GRAPH_TAG);
         EncodedGraph analyzedGraph = (EncodedGraph) ObjectCopier.decode(imageLayerSnapshotUtil.getGraphDecoder(this, analysisMethod, universe.getSnippetReflection()), encodedAnalyzedGraph);
         afterGraphDecodeHook(analyzedGraph);
         analysisMethod.setAnalyzedGraph(analyzedGraph);
@@ -863,22 +864,6 @@ public class ImageLayerLoader {
     @SuppressWarnings("unused")
     protected void afterGraphDecodeHook(EncodedGraph encodedGraph) {
 
-    }
-
-    private void loadAllAnalysisElements(String encoding) {
-        encoding.lines().forEach(this::loadEncodedGraphLineAnalysisElements);
-    }
-
-    protected void loadEncodedGraphLineAnalysisElements(String line) {
-        if (line.contains(PointsToAnalysisType.class.getName())) {
-            getAnalysisType(getId(line));
-        } else if (line.contains(PointsToAnalysisMethod.class.getName())) {
-            getAnalysisMethod(getId(line));
-        } else if (line.contains(PointsToAnalysisField.class.getName())) {
-            getAnalysisField(getId(line));
-        } else if (line.contains(ImageHeapInstance.class.getName()) || line.contains(ImageHeapObjectArray.class.getName()) || line.contains(ImageHeapPrimitiveArray.class.getName())) {
-            getOrCreateConstant(getId(line));
-        }
     }
 
     protected static int getId(String line) {
@@ -905,7 +890,13 @@ public class ImageLayerLoader {
             clazz = declaringClass.getJavaClass();
         }
 
-        Field field = ReflectionUtil.lookupField(true, clazz, fieldIdentifier.name);
+        Field field;
+        try {
+            field = ReflectionUtil.lookupField(true, clazz, fieldIdentifier.name);
+        } catch (Throwable e) {
+            field = null;
+        }
+
         if (field == null) {
             AnalysisType type = getAnalysisType(get(fieldData, FIELD_TYPE_TAG));
             BaseLayerField baseLayerField = new BaseLayerField(get(fieldData, ID_TAG), fieldIdentifier.name, declaringClass, type, get(fieldData, IS_INTERNAL_TAG), get(fieldData, MODIFIERS_TAG),
@@ -1088,6 +1079,10 @@ public class ImageLayerLoader {
                 List<Object> primitiveData = get(baseLayerConstant, DATA_TAG);
                 Object array = getArray(type.getComponentType().getJavaKind(), primitiveData);
                 addBaseLayerObject(id, objectOffset, () -> new ImageHeapPrimitiveArray(type, null, array, primitiveData.size(), identityHashCode));
+            }
+            case RELOCATED_CONSTANT_TAG -> {
+                String key = get(baseLayerConstant, DATA_TAG);
+                addBaseLayerObject(id, objectOffset, () -> ImageHeapRelocatableConstant.create(type, key));
             }
             default -> throw GraalError.shouldNotReachHere("Unknown constant type: " + constantType);
         }

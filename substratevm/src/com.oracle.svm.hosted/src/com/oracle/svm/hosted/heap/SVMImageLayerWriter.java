@@ -92,6 +92,7 @@ import com.oracle.svm.hosted.reflect.proxy.ProxyRenamingSubstitutionProcessor;
 import com.oracle.svm.hosted.reflect.proxy.ProxySubstitutionType;
 import com.oracle.svm.util.LogUtils;
 
+import jdk.graal.compiler.debug.Assertions;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -258,10 +259,12 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     }
 
     private static int getMethodId(AnalysisMethod analysisMethod) {
-        if (!analysisMethod.isReachable()) {
+        if (!analysisMethod.isTrackedAcrossLayers()) {
             /*
-             * At the moment, only reachable methods are persisted, so the method will not be loaded
-             * in the extension image.
+             * Only tracked methods are persisted, so the method will not be loaded in the extension
+             * image.
+             *
+             * GR-59009 will ensure all methods referred to are tracked.
              */
             return -1;
         } else {
@@ -323,24 +326,24 @@ class ImageSingletonWriterImpl implements ImageSingletonWriter {
     @Override
     public void writeIntList(String keyName, List<Integer> value) {
         var previous = keyValueStore.put(keyName, List.of("I(", value));
-        assert previous == null : previous;
+        assert previous == null : Assertions.errorMessage(keyName, previous);
     }
 
     @Override
     public void writeLong(String keyName, long value) {
         var previous = keyValueStore.put(keyName, List.of("L", value));
-        assert previous == null : previous;
+        assert previous == null : Assertions.errorMessage(keyName, previous);
     }
 
     @Override
     public void writeString(String keyName, String value) {
         var previous = keyValueStore.put(keyName, List.of("S", value));
-        assert previous == null : previous;
+        assert previous == null : Assertions.errorMessage(keyName, previous);
     }
 
     @Override
     public void writeStringList(String keyName, List<String> value) {
         var previous = keyValueStore.put(keyName, List.of("S(", value));
-        assert previous == null : previous;
+        assert previous == null : Assertions.errorMessage(keyName, previous);
     }
 }

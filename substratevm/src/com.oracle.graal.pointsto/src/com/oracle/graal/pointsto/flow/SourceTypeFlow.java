@@ -93,7 +93,7 @@ public final class SourceTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
-    public boolean canSaturate() {
+    public boolean canSaturate(PointsToAnalysis bb) {
         return false;
     }
 

@@ -101,7 +101,6 @@ public class SeparatedClassLoadersTest {
 
         Class<?> engineClass = sdkLoader.loadClass(Engine.class.getName());
         Object engine = engineClass.getMethod("create").invoke(null);
-
         assertNotNull("Engine has been created", engine);
     }
 

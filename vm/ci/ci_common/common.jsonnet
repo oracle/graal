@@ -608,7 +608,6 @@ local devkits = graal_common.devkits;
      name: 'gate-vm-style-jdk21-linux-amd64',
     },
 
-    vm.vm_java_21 + sulong_vm_tests,
     vm.vm_java_Latest + sulong_vm_tests,
   ] + (import 'libgraal.jsonnet').builds,
 

@@ -85,6 +85,7 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.PARENT_CONST
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.POSITION_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.PRIMITIVE_ARRAY_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.RETURN_TYPE_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.RELOCATED_CONSTANT_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.SIMULATED_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.SOURCE_FILE_NAME_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.STRENGTHENED_GRAPH_TAG;
@@ -101,7 +102,7 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
@@ -142,8 +143,6 @@ import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 public class ImageLayerWriter {
-    static final Charset GRAPHS_CHARSET = Charset.defaultCharset();
-
     protected ImageLayerSnapshotUtil imageLayerSnapshotUtil;
     private ImageLayerWriterHelper imageLayerWriterHelper;
     private ImageHeap imageHeap;
@@ -161,6 +160,7 @@ public class ImageLayerWriter {
     private FileInfo fileInfo;
     private GraphsOutput graphsOutput;
     private final boolean useSharedLayerGraphs;
+    private final boolean useSharedLayerStrengthenedGraphs;
 
     protected final Set<AnalysisFuture<Void>> elementsToPersist = ConcurrentHashMap.newKeySet();
 
@@ -184,16 +184,14 @@ public class ImageLayerWriter {
             }
         }
 
-        String add(String encodedGraph) {
-            ByteBuffer encoded = GRAPHS_CHARSET.encode(encodedGraph);
-            int size = encoded.limit();
-            long offset = currentOffset.getAndAdd(size);
+        String add(byte[] encodedGraph) {
+            long offset = currentOffset.getAndAdd(encodedGraph.length);
             try {
-                tempChannel.write(encoded, offset);
+                tempChannel.write(ByteBuffer.wrap(encodedGraph), offset);
             } catch (Exception e) {
                 throw GraalError.shouldNotReachHere(e, "Error during graphs file dumping.");
             }
-            return new StringBuilder("@").append(offset).append("[").append(size).append("]").toString();
+            return new StringBuilder("@").append(offset).append("[").append(encodedGraph.length).append("]").toString();
         }
 
         void finish() {
@@ -213,6 +211,7 @@ public class ImageLayerWriter {
     @SuppressWarnings({"this-escape", "unused"})
     public ImageLayerWriter(boolean useSharedLayerGraphs) {
         this.useSharedLayerGraphs = useSharedLayerGraphs;
+        this.useSharedLayerStrengthenedGraphs = false;
         this.jsonMap = EconomicMap.create();
         this.constantsToRelink = new ArrayList<>();
         this.persistedTypeIds = ConcurrentHashMap.newKeySet();
@@ -272,10 +271,6 @@ public class ImageLayerWriter {
         jsonMap.put(IMAGE_HEAP_SIZE_TAG, String.valueOf(imageHeapSize));
     }
 
-    protected boolean shouldPersistMethod(AnalysisMethod method) {
-        return method.isReachable();
-    }
-
     public void persistAnalysisInfo() {
         persistHook();
 
@@ -289,18 +284,18 @@ public class ImageLayerWriter {
          * removed after a mechanism for determining which types have to be persisted is added, or
          * if a stable name is implemented for them.
          */
-        for (AnalysisType type : aUniverse.getTypes().stream().filter(AnalysisType::isReachable).toList()) {
+        for (AnalysisType type : aUniverse.getTypes().stream().filter(AnalysisType::isTrackedAcrossLayers).toList()) {
             checkTypeStability(type);
             persistType(type);
         }
         jsonMap.put(TYPES_TAG, typesMap);
 
-        for (AnalysisMethod method : aUniverse.getMethods().stream().filter(this::shouldPersistMethod).toList()) {
+        for (AnalysisMethod method : aUniverse.getMethods().stream().filter(AnalysisMethod::isTrackedAcrossLayers).toList()) {
             persistMethod(method);
         }
         jsonMap.put(METHODS_TAG, methodsMap);
 
-        for (AnalysisField field : aUniverse.getFields().stream().filter(AnalysisField::isReachable).toList()) {
+        for (AnalysisField field : aUniverse.getFields().stream().filter(AnalysisField::isTrackedAcrossLayers).toList()) {
             persistField(field);
         }
         jsonMap.put(FIELDS_TAG, fieldsMap);
@@ -448,7 +443,7 @@ public class ImageLayerWriter {
 
     public void persistMethodGraphs() {
         for (AnalysisMethod method : aUniverse.getMethods()) {
-            if (method.isReachable()) {
+            if (method.isTrackedAcrossLayers()) {
                 persistAnalysisParsedGraph(method);
             }
         }
@@ -469,6 +464,10 @@ public class ImageLayerWriter {
     }
 
     public void persistMethodStrengthenedGraph(AnalysisMethod method) {
+        if (!useSharedLayerStrengthenedGraphs) {
+            return;
+        }
+
         EconomicMap<String, Object> methodMap = getMethodMap(method);
 
         if (!methodMap.containsKey(STRENGTHENED_GRAPH_TAG)) {
@@ -481,13 +480,25 @@ public class ImageLayerWriter {
         if (!useSharedLayerGraphs) {
             return false;
         }
-        String encodedGraph = ObjectCopier.encode(imageLayerSnapshotUtil.getGraphEncoder(this), analyzedGraph);
-        if (encodedGraph.contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING)) {
+        byte[] encodedGraph = ObjectCopier.encode(imageLayerSnapshotUtil.getGraphEncoder(this), analyzedGraph);
+        if (contains(encodedGraph, LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING.getBytes(StandardCharsets.UTF_8))) {
             throw AnalysisError.shouldNotReachHere("The graph for the method %s contains a reference to a lambda type, which cannot be decoded: %s".formatted(method, encodedGraph));
         }
         String location = graphsOutput.add(encodedGraph);
         methodMap.put(graphTag, location);
         return true;
+    }
+
+    private static boolean contains(byte[] data, byte[] seq) {
+        outer: for (int i = 0; i <= data.length - seq.length; i++) {
+            for (int j = 0; j < seq.length; j++) {
+                if (data[i + j] != seq[j]) {
+                    continue outer;
+                }
+            }
+            return true;
+        }
+        return false;
     }
 
     private EconomicMap<String, Object> getMethodMap(AnalysisMethod method) {
@@ -554,6 +565,10 @@ public class ImageLayerWriter {
             case ImageHeapPrimitiveArray imageHeapPrimitiveArray -> {
                 constantMap.put(CONSTANT_TYPE_TAG, PRIMITIVE_ARRAY_TAG);
                 constantMap.put(DATA_TAG, getString(imageHeapPrimitiveArray.getType().getComponentType().getJavaKind(), imageHeapPrimitiveArray.getArray()));
+            }
+            case ImageHeapRelocatableConstant relocatableConstant -> {
+                constantMap.put(CONSTANT_TYPE_TAG, RELOCATED_CONSTANT_TAG);
+                constantMap.put(DATA_TAG, relocatableConstant.getConstantData().key);
             }
             default -> throw AnalysisError.shouldNotReachHere("Unexpected constant type " + imageHeapConstant);
         }

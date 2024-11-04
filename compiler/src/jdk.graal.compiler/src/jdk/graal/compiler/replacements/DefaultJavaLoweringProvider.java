@@ -25,6 +25,7 @@
 package jdk.graal.compiler.replacements;
 
 import static jdk.graal.compiler.core.common.GraalOptions.EmitStringSubstitutions;
+import static jdk.graal.compiler.core.common.GraalOptions.InlineGraalStubs;
 import static jdk.graal.compiler.core.common.SpectrePHTMitigations.Options.SpectrePHTIndexMasking;
 import static jdk.graal.compiler.nodes.NamedLocationIdentity.ARRAY_LENGTH_LOCATION;
 import static jdk.graal.compiler.nodes.calc.BinaryArithmeticNode.branchlessMax;
@@ -410,6 +411,9 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 // implementation.
                 return;
             }
+            if (InlineGraalStubs.getValue(math.graph().getOptions())) {
+                return;
+            }
         }
         StructuredGraph graph = math.graph();
         ForeignCallNode call = graph.add(new ForeignCallNode(foreignCalls, math.getOperation().foreignCallSignature, math.getX(), math.getY()));
@@ -426,6 +430,9 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             if (method.getName().equalsIgnoreCase(math.getOperation().name()) && tool.getMetaAccess().lookupJavaType(Math.class).equals(method.getDeclaringClass())) {
                 // A root compilation of the intrinsic method should emit the full assembly
                 // implementation.
+                return;
+            }
+            if (InlineGraalStubs.getValue(math.graph().getOptions())) {
                 return;
             }
         }
@@ -910,7 +917,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     @SuppressWarnings("try")
     protected void lowerCommitAllocationNode(CommitAllocationNode commit, LoweringTool tool) {
         StructuredGraph graph = commit.graph();
-        if (graph.getGuardsStage() != GraphState.GuardsStage.FIXED_DEOPTS) {
+        if (graph.getGuardsStage().allowsFloatingGuards()) {
             return;
         }
 

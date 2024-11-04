@@ -165,7 +165,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
                     @ConstantParameter boolean supportsOptimizedFilling,
                     @ConstantParameter HotSpotAllocationProfilingData profilingData,
                     @ConstantParameter boolean withException) {
-        Object result = allocateArrayImpl(hub.asWord(), length, arrayBaseOffset, log2ElementSize, fillContents, fillStartOffset, emitMemoryBarrier, maybeUnroll, supportsBulkZeroing,
+        Object result = allocateArrayImpl(hub.asWord(), length, false, arrayBaseOffset, log2ElementSize, fillContents, fillStartOffset, emitMemoryBarrier, maybeUnroll, supportsBulkZeroing,
                         supportsOptimizedFilling, profilingData, withException);
         return piArrayCastToSnippetReplaceeStamp(result, length);
     }
@@ -272,7 +272,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
         int arrayBaseOffset = (layoutHelper >> layoutHelperHeaderSizeShift(INJECTED_VMCONFIG)) & layoutHelperHeaderSizeMask(INJECTED_VMCONFIG);
         int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift(INJECTED_VMCONFIG)) & layoutHelperLog2ElementSizeMask(INJECTED_VMCONFIG);
         Object result;
-        result = allocateArrayImpl(nonNullKlass.asWord(), length, arrayBaseOffset, log2ElementSize, fillContents, arrayBaseOffset, emitMemoryBarrier, false,
+        result = allocateArrayImpl(nonNullKlass.asWord(), length, false, arrayBaseOffset, log2ElementSize, fillContents, arrayBaseOffset, emitMemoryBarrier, false,
                         supportsBulkZeroing, supportsOptimizedFilling, profilingData, withException);
         return piArrayCastToSnippetReplaceeStamp(result, length);
     }
@@ -320,6 +320,9 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
 
     @Override
     protected final int getPrefetchStyle() {
+        if (HotSpotReplacementsUtil.useSerialGC(INJECTED_VMCONFIG)) {
+            return 0;
+        }
         return HotSpotReplacementsUtil.allocatePrefetchStyle(INJECTED_VMCONFIG);
     }
 
@@ -725,7 +728,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             args.addConst("fillStartOffset", arrayBaseOffset);
             args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
             args.addConst("maybeUnroll", length.isConstant());
-            args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
+            args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
             args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(localOptions));
             args.addConst("profilingData", getProfilingData(localOptions, "array", arrayType));
             args.addConst("withException", false);
@@ -755,7 +758,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             args.addConst("fillStartOffset", arrayBaseOffset);
             args.addConst("emitMemoryBarrier", true); // node.emitMemoryBarrier());
             args.addConst("maybeUnroll", length.isConstant());
-            args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
+            args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
             args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(localOptions));
             args.addConst("profilingData", getProfilingData(localOptions, "array", arrayType));
             args.addConst("withException", true);
@@ -861,7 +864,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             } else {
                 args.addConst("knownLayoutHelper", 0);
             }
-            args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
+            args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
             args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(localOptions));
             args.addConst("withException", false);
             args.addConst("profilingData", getProfilingData(localOptions, "dynamic type", null));
@@ -889,7 +892,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             args.addConst("knownElementKind", JavaKind.Illegal);
             args.addConst("knownLayoutHelper", 0);
 
-            args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
+            args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
             args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(localOptions));
             args.addConst("withException", true);
             args.addConst("profilingData", getProfilingData(localOptions, "dynamic type", null));

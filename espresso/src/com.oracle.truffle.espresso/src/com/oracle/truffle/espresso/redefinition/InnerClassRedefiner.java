@@ -22,6 +22,21 @@
  */
 package com.oracle.truffle.espresso.redefinition;
 
+import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.impl.ClassRegistry;
+import com.oracle.truffle.espresso.impl.ConstantPoolPatcher;
+import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
+import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
+import com.oracle.truffle.espresso.classfile.ParserException;
+import com.oracle.truffle.espresso.preinit.ParserKlassProvider;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -35,20 +50,6 @@ import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import com.oracle.truffle.api.TruffleLogger;
-import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.classfile.ClassfileParser;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.impl.ClassRegistry;
-import com.oracle.truffle.espresso.impl.ConstantPoolPatcher;
-import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
-import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 public final class InnerClassRedefiner {
     private static final TruffleLogger LOGGER = TruffleLogger.getLogger(EspressoLanguage.ID, InnerClassRedefiner.class);
@@ -91,7 +92,7 @@ public final class InnerClassRedefiner {
             Iterator<RedefineInfo> it = unhandled.iterator();
             while (it.hasNext()) {
                 RedefineInfo redefineInfo = it.next();
-                Symbol<Name> klassName = ClassfileParser.getClassName(context.getClassLoadingEnv(), redefineInfo.getClassBytes());
+                Symbol<Name> klassName = ParserKlassProvider.getClassName(context.getMeta(), context.getClassLoadingEnv().getParsingContext(), redefineInfo.getClassBytes());
                 if (handled.containsKey(klassName)) {
                     LOGGER.warning(() -> "Ignoring duplicate redefinition requests for name " + klassName);
                     it.remove();
@@ -143,7 +144,7 @@ public final class InnerClassRedefiner {
                 if (rules != null && !rules.isEmpty()) {
                     try {
                         classInfo.patchBytes(ConstantPoolPatcher.patchConstantPool(classInfo.getBytes(), rules, context));
-                    } catch (ClassFormatError ex) {
+                    } catch (ParserException.ClassFormatError ex) {
                         throw new RedefinitionNotSupportedException(ErrorCodes.INVALID_CLASS_FORMAT);
                     }
                 }
@@ -167,7 +168,7 @@ public final class InnerClassRedefiner {
         Set<Symbol<Name>> innerNames = new HashSet<>(1);
         try {
             searchConstantPoolForDirectInnerAnonymousClassNames(hotswapInfo, innerNames);
-        } catch (ClassFormatError ex) {
+        } catch (ParserException.ClassFormatError ex) {
             throw new RedefinitionNotSupportedException(ErrorCodes.INVALID_CLASS_FORMAT);
         }
 
@@ -215,7 +216,7 @@ public final class InnerClassRedefiner {
         }
     }
 
-    private void searchConstantPoolForDirectInnerAnonymousClassNames(ClassInfo classInfo, Set<Symbol<Name>> innerNames) throws ClassFormatError {
+    private void searchConstantPoolForDirectInnerAnonymousClassNames(ClassInfo classInfo, Set<Symbol<Name>> innerNames) throws ParserException.ClassFormatError {
         byte[] bytes = classInfo.getBytes();
         assert bytes != null;
 

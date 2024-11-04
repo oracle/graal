@@ -197,7 +197,7 @@ final class InstrumentCache {
 
     @SuppressWarnings("deprecation")
     private static Stream<? extends ProviderAdapter> loadLegacyProviders(ClassLoader loader) {
-        ModuleUtils.exportToUnnamedModuleOf(loader);
+        JDKSupport.exportToUnnamedModuleOf(loader);
         return StreamSupport.stream(ServiceLoader.load(TruffleInstrument.Provider.class, loader).spliterator(), false).map(LegacyProvider::new);
     }
 
@@ -209,7 +209,11 @@ final class InstrumentCache {
                     Map<String, Map<String, Supplier<InternalResourceCache>>> optionalResources) {
         Class<?> providerClass = providerAdapter.getProviderClass();
         Module providerModule = providerClass.getModule();
-        ModuleUtils.exportTransitivelyTo(providerModule);
+        JDKSupport.exportTransitivelyTo(providerModule);
+        /*
+         * Forward the native access capability to all loaded tools.
+         */
+        JDKSupport.enableNativeAccess(providerModule);
         Registration reg = providerClass.getAnnotation(Registration.class);
         if (reg == null) {
             emitWarning("Warning Truffle instrument ignored: Provider %s is missing @Registration annotation.", providerClass);

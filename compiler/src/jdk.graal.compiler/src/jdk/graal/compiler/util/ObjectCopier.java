@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.util;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -40,17 +41,15 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.graalvm.collections.EconomicMap;
@@ -61,40 +60,20 @@ import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.FieldIntrospection;
+import jdk.graal.compiler.core.common.util.FrequencyEncoder;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.internal.misc.Unsafe;
 
 /**
- * Support for deep copying an object across processes by {@linkplain #encode encoding} it to a
- * String in the first process and {@linkplain #decode decoding} it back into an object in the
- * second process. This copying requires that the classes of the copied objects are the same in both
+ * Support for deep copying an object across processes by {@linkplain #encode encoding} it to bytes
+ * in the first process and {@linkplain #decode decoding} it back into an object in the second
+ * process. This copying requires that the classes of the copied objects are the same in both
  * processes with respect to fields.
  *
- * Encoded format in EBNF:
- *
- * <pre>
- *  enc = line "\n" { line "\n" }
- *  line = header | objectField
- *  header = id ":" ( builtin | object | array | fieldRef )
- *  object = "{" className ":" fieldCount "}"
- *  objectField = "  " fieldName ":" id " = " fieldValue
- *  fieldValue = ( primitive | id )
- *  id = int
- *  array = "[" className "] = " elements
- *  elements = [ fieldValue { " " fieldValue } ]
- *  fieldRef = "@" className "." fieldName
- *  builtin = "<"  className [ ":" encodingName ] "> = " builtinValue
- * </pre>
- *
- * See the {@link Builtin} subclasses for the EBNF of builtinValue.
+ * See the {@link Builtin} subclasses for encoding of specific types.
  */
 public class ObjectCopier {
-
-    private static final Pattern BUILTIN_LINE = Pattern.compile("<(?<class>[^:}]+)(?::(?<encodingName>\\w+))?> = (?<value>.*)");
-    private static final Pattern OBJECT_LINE = Pattern.compile("\\{(?<class>[\\w.$]+):(?<fieldCount>\\d+)}");
-    private static final Pattern ARRAY_LINE = Pattern.compile("\\[(?<componentType>[^]]+)] = (?<elements>.*)");
-    private static final Pattern FIELD_LINE = Pattern.compile("\\s*(?<desc>[^:]+):(?<typeId>[^ ]+) = (?<value>.*)");
 
     /**
      * A builtin is specialized support for encoded and decoding values of specific types.
@@ -134,36 +113,23 @@ public class ObjectCopier {
         }
 
         /**
-         * Gets the name of a non-default encoded used by this builtin for {@code obj}.
-         *
-         * @return null if the default encoded is used for {@code obj}
-         */
-        @SuppressWarnings("unused")
-        String encodingName(Object obj) {
-            return null;
-        }
-
-        /**
-         * Ensures object ids have are created for the values referenced by {@code obj} that will be
+         * Ensures object ids are created for the values referenced by {@code obj} that will be
          * handled by this builtin when {@code obj} is encoded. For example, the values in a map.
          */
         @SuppressWarnings("unused")
-        void makeChildIds(Encoder encoder, Object obj, ObjectPath objectPath) {
+        protected void makeChildIds(Encoder encoder, Object obj, ObjectPath objectPath) {
         }
 
         /**
          * Encodes the value of {@code obj} to a String that does not contain {@code '\n'} or
          * {@code '\r'}.
          */
-        protected abstract String encode(Encoder encoder, Object obj);
+        protected abstract void encode(Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException;
 
         /**
          * Decodes {@code encoded} to an object of a type handled by this builtin.
-         *
-         * @param encoding the non-default encoded used when encoded the object or null if the
-         *            default encoded was used
          */
-        protected abstract Object decode(Decoder decoder, Class<?> concreteType, String encoding, String encoded);
+        protected abstract Object decode(Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException;
 
         @Override
         public String toString() {
@@ -172,15 +138,8 @@ public class ObjectCopier {
     }
 
     /**
-     * Builtin for handling {@link Class} values.
-     *
-     * EBNF:
-     *
-     * <pre>
-     * builtinValue = className
-     * </pre>
-     *
-     * The className is in {@link Class#getName()} format.
+     * Builtin for handling {@link Class} values. The className is in {@link Class#getName()}
+     * format.
      */
     static final class ClassBuiltin extends Builtin {
 
@@ -188,13 +147,24 @@ public class ObjectCopier {
             super(Class.class);
         }
 
-        @Override
-        protected String encode(Encoder encoder, Object obj) {
+        private static String getName(Object obj) {
             return ((Class<?>) obj).getName();
         }
 
         @Override
-        protected Object decode(Decoder decoder, Class<?> concreteType, String encoding, String encoded) {
+        protected void makeChildIds(Encoder encoder, Object obj, ObjectPath objectPath) {
+            encoder.makeStringId(getName(obj), objectPath);
+        }
+
+        @Override
+        protected void encode(Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
+            String name = getName(obj);
+            encoder.writeString(stream, name);
+        }
+
+        @Override
+        protected Object decode(Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
+            String encoded = decoder.readString(stream);
             return switch (encoded) {
                 case "boolean" -> boolean.class;
                 case "byte" -> byte.class;
@@ -212,14 +182,6 @@ public class ObjectCopier {
 
     /**
      * Builtin for handling {@link String} values.
-     *
-     * EBNF:
-     *
-     * <pre>
-     * builtinValue = string
-     * </pre>
-     *
-     * The string has no embedded \r or \n characters.
      */
     static final class StringBuiltin extends Builtin {
 
@@ -227,31 +189,23 @@ public class ObjectCopier {
             super(String.class, char[].class);
         }
 
-        @Override
-        String encodingName(Object obj) {
-            String s = obj instanceof String ? (String) obj : new String((char[]) obj);
-            if (s.indexOf('\n') != -1 || s.indexOf('\r') != -1) {
-                return "escaped";
-            }
-            return super.encodingName(obj);
+        private static String asString(Object obj) {
+            return obj instanceof String ? (String) obj : new String((char[]) obj);
         }
 
         @Override
-        protected String encode(Encoder encoder, Object obj) {
-            String s = obj instanceof String ? (String) obj : new String((char[]) obj);
-            if ("escaped".equals(encodingName(s))) {
-                return s.replace("\\", "\\\\").replace("\n", "\\n").replace("\r", "\\r");
-            }
-            return s;
+        protected void makeChildIds(Encoder encoder, Object obj, ObjectPath objectPath) {
+            encoder.makeStringId(asString(obj), objectPath);
         }
 
         @Override
-        protected Object decode(Decoder decoder, Class<?> concreteType, String encoding, String encoded) {
-            String s = encoded;
-            if (encoding != null) {
-                GraalError.guarantee(encoding.equals("escaped"), "Unknown encoded: %s", encoding);
-                s = encoded.replace("\\r", "\r").replace("\\n", "\n").replace("\\\\", "\\");
-            }
+        protected void encode(Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
+            encoder.writeString(stream, asString(obj));
+        }
+
+        @Override
+        protected Object decode(Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
+            String s = decoder.readString(stream);
             if (concreteType == char[].class) {
                 return s.toCharArray();
             }
@@ -260,15 +214,8 @@ public class ObjectCopier {
     }
 
     /**
-     * Builtin for handling {@link Enum} values.
-     *
-     * EBNF:
-     *
-     * <pre>
-     * builtinValue = enumName
-     * </pre>
-     *
-     * The enumName is given by {@link Enum#name()}.
+     * Builtin for handling {@link Enum} values. The value is described by its
+     * {@link Enum#ordinal()}.
      */
     static final class EnumBuiltin extends Builtin {
 
@@ -277,28 +224,27 @@ public class ObjectCopier {
         }
 
         @Override
-        protected String encode(Encoder encoder, Object obj) {
-            return ((Enum<?>) obj).name();
+        protected void encode(Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
+            Enum<?> con = (Enum<?>) obj;
+            stream.writePackedUnsignedInt(con.ordinal());
+            stream.writeShort(fingerprint(con));
         }
 
-        @SuppressWarnings({"unchecked", "rawtypes"})
+        private static short fingerprint(Enum<?> con) {
+            int h = con.name().hashCode();
+            return hashIntToShort(h);
+        }
+
         @Override
-        protected Object decode(Decoder decoder, Class<?> concreteType, String encoding, String encoded) {
-            return Enum.valueOf((Class) concreteType, encoded);
+        protected Object decode(Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
+            int ord = stream.readPackedUnsignedInt();
+            int fingerprint = stream.readShort();
+            Enum<?> con = (Enum<?>) concreteType.getEnumConstants()[ord];
+            GraalError.guarantee(fingerprint(con) == fingerprint, "Enum constant type mismatch: %s ordinal %d not expected to be %s", concreteType.getName(), ord, con);
+            return con;
         }
     }
 
-    /**
-     * Builtin for handling {@link HashMap} or {@link IdentityHashMap} values.
-     *
-     * EBNF:
-     *
-     * <pre>
-     *  builtinValue = [ key ":" value { " " } key ":" value ]
-     *  key = fieldValue
-     *  value = fieldValue
-     * </pre>
-     */
     static final class HashMapBuiltin extends Builtin {
 
         final Map<Class<?>, Supplier<?>> factories;
@@ -314,44 +260,33 @@ public class ObjectCopier {
         }
 
         @Override
-        void makeChildIds(Encoder encoder, Object obj, ObjectPath objectPath) {
+        protected void makeChildIds(Encoder encoder, Object obj, ObjectPath objectPath) {
             Map<?, ?> map = (Map<?, ?>) obj;
             encoder.makeMapChildIds(new EconomicMapWrap<>(map), objectPath);
         }
 
         @Override
-        protected String encode(Encoder encoder, Object obj) {
+        protected void encode(Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
             Map<?, ?> map = (Map<?, ?>) obj;
-            return encoder.encodeMap(new EconomicMapWrap<>(map));
+            encoder.encodeMap(stream, new EconomicMapWrap<>(map));
         }
 
         @SuppressWarnings("unchecked")
         @Override
-        protected Object decode(Decoder decoder, Class<?> concreteType, String encoding, String encoded) {
+        protected Object decode(Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
             Map<Object, Object> map = (Map<Object, Object>) factories.get(concreteType).get();
-            decoder.decodeMap(encoded, map::put);
+            decoder.decodeMap(stream, map::put);
             return map;
         }
     }
 
-    /**
-     * Builtin for handling {@link EconomicMap} values.
-     *
-     * EBNF:
-     *
-     * <pre>
-     *  builtinValue = [ key ":" value { " " } key ":" value ]
-     *  key = fieldValue
-     *  value = fieldValue
-     * </pre>
-     */
     static final class EconomicMapBuiltin extends Builtin {
         EconomicMapBuiltin() {
             super(EconomicMap.class, EconomicMap.create().getClass());
         }
 
         @Override
-        void makeChildIds(Encoder encoder, Object obj, ObjectPath objectPath) {
+        protected void makeChildIds(Encoder encoder, Object obj, ObjectPath objectPath) {
             EconomicMap<?, ?> map = (EconomicMap<?, ?>) obj;
             GraalError.guarantee(map.getEquivalenceStrategy() == Equivalence.DEFAULT,
                             "Only DEFAULT strategy supported: %s", map.getEquivalenceStrategy());
@@ -359,15 +294,15 @@ public class ObjectCopier {
         }
 
         @Override
-        protected String encode(Encoder encoder, Object obj) {
-            return encoder.encodeMap((UnmodifiableEconomicMap<?, ?>) obj);
+        protected void encode(Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
+            encoder.encodeMap(stream, (UnmodifiableEconomicMap<?, ?>) obj);
         }
 
         @Override
-        protected Object decode(Decoder decoder, Class<?> concreteType, String encoding, String encoded) {
+        protected Object decode(Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
             if (EconomicMap.class.isAssignableFrom(concreteType)) {
                 EconomicMap<Object, Object> map = EconomicMap.create();
-                decoder.decodeMap(encoded, map::put);
+                decoder.decodeMap(stream, map::put);
                 return map;
             } else {
                 throw new GraalError("Unexpected concrete Map type: ", concreteType);
@@ -383,9 +318,9 @@ public class ObjectCopier {
      *            have the same name in which case the descriptor includes the qualified name of the
      *            class declaring the field as a prefix.
      */
-    public record ClassInfo(Class<?> clazz, Map<String, Field> fields) {
+    public record ClassInfo(Class<?> clazz, SortedMap<String, Field> fields, short fingerprint) {
         public static ClassInfo of(Class<?> declaringClass) {
-            Map<String, Field> fields = new HashMap<>();
+            SortedMap<String, Field> fields = new TreeMap<>();
             for (Class<?> c = declaringClass; !c.equals(Object.class); c = c.getSuperclass()) {
                 for (Field f : c.getDeclaredFields()) {
                     if (!Modifier.isStatic(f.getModifiers())) {
@@ -399,8 +334,17 @@ public class ObjectCopier {
                     }
                 }
             }
-            return new ClassInfo(declaringClass, fields);
+            int h = fields.size();
+            for (var entry : fields.entrySet()) {
+                h = h * 31 + entry.getKey().hashCode();
+                h = h * 31 + entry.getValue().getType().getName().hashCode();
+            }
+            return new ClassInfo(declaringClass, fields, hashIntToShort(h));
         }
+    }
+
+    private static short hashIntToShort(int h) {
+        return (short) (h ^ (h >>> 16));
     }
 
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
@@ -437,32 +381,26 @@ public class ObjectCopier {
         addBuiltin(stringBuiltin, char[].class);
     }
 
-    static String[] splitSpaceSeparatedElements(String elements) {
-        if (elements.isEmpty()) {
-            return new String[0];
-        }
-        return elements.split(" ");
-    }
-
     /**
      * Encodes {@code root} to a String using {@code encoder}.
      */
-    public static String encode(Encoder encoder, Object root) {
-        int rootId = encoder.makeId(root, ObjectPath.of("[root:" + root.getClass().getName() + "]")).id();
-        GraalError.guarantee(rootId == 1, "The root object should have id of 1, not %d", rootId);
+    public static byte[] encode(Encoder encoder, Object root) {
+        encoder.makeId(root, ObjectPath.of("[root:" + root.getClass().getName() + "]"));
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        try (PrintStream ps = new PrintStream(baos)) {
-            encoder.encode(ps);
+        try (ObjectCopierOutputStream cos = new ObjectCopierOutputStream(baos, encoder.debugOutput)) {
+            encoder.encode(cos, root);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
-        return baos.toString();
+        return baos.toByteArray();
     }
 
-    public static Object decode(String encoded, ClassLoader loader) {
+    public static Object decode(byte[] encoded, ClassLoader loader) {
         Decoder decoder = new Decoder(loader);
         return decode(decoder, encoded);
     }
 
-    public static Object decode(Decoder decoder, String encoded) {
+    public static Object decode(Decoder decoder, byte[] encoded) {
         return decoder.decode(encoded);
     }
 
@@ -489,11 +427,12 @@ public class ObjectCopier {
             return obj;
         }
 
-        void decodeMap(String encoded, BiConsumer<Object, Object> putMethod) {
-            for (String e : splitSpaceSeparatedElements(encoded)) {
-                String[] keyValue = e.split(":");
-                GraalError.guarantee(keyValue.length == 2, "Invalid encoded key:value: %s", e);
-                resolveId(keyValue[0], k -> resolveId(keyValue[1], v -> putMethod.accept(k, v)));
+        void decodeMap(ObjectCopierInputStream stream, BiConsumer<Object, Object> putMethod) throws IOException {
+            int size = stream.readPackedUnsignedInt();
+            for (int i = 0; i < size; i++) {
+                int keyId = readId(stream);
+                int valueId = readId(stream);
+                resolveId(keyId, k -> resolveId(valueId, v -> putMethod.accept(k, v)));
             }
         }
 
@@ -513,221 +452,117 @@ public class ObjectCopier {
         /**
          * Action deferred due to unresolved object id.
          */
-        record Deferred(Runnable runnable, int lineNum) {
+        record Deferred(Runnable runnable, int recordNum, int fieldNum) {
         }
 
         List<Deferred> deferred;
-        int lineNum = -1;
+        int recordNum = -1;
+        int fieldNum = -1;
+        String[] strings;
 
-        private Object decode(String encoded) {
+        private Object decode(byte[] encoded) {
+            int rootId;
             deferred = new ArrayList<>();
-            lineNum = 0;
+            recordNum = 0;
 
-            Iterator<String> iter = encoded.lines().iterator();
-            try {
-                while (iter.hasNext()) {
-                    String line = iter.next();
-                    lineNum++;
-                    int colon = line.indexOf(':');
-                    GraalError.guarantee(colon != -1, "Missing ':' in line: %s", line);
-                    int id = Integer.parseInt(line.substring(0, colon));
-                    switch (line.charAt(colon + 1)) {
+            try (ObjectCopierInputStream stream = new ObjectCopierInputStream(new ByteArrayInputStream(encoded))) {
+                int nstrings = stream.readPackedUnsignedInt();
+                strings = new String[nstrings];
+                for (int i = 0; i < nstrings; i++) {
+                    strings[i] = stream.readStringValue();
+                }
+                rootId = readId(stream);
+                for (int id = 1;; id++) {
+                    recordNum = id;
+                    fieldNum = -1;
+                    int c = stream.read();
+                    if (c == -1) {
+                        break;
+                    }
+                    switch (c) {
                         case '<': {
-                            Matcher matcher = BUILTIN_LINE.matcher(line.substring(colon + 1));
-                            GraalError.guarantee(matcher.matches(), "Invalid builtin line: %s", line);
-                            String className = matcher.group("class");
-                            String encodingName = matcher.group("encodingName");
-                            String value = matcher.group("value");
+                            String className = readString(stream);
                             Class<?> clazz = loadClass(className);
                             Builtin builtin = getBuiltin(clazz);
-                            GraalError.guarantee(builtin != null, "No builtin for %s: %s", className, line);
+                            GraalError.guarantee(builtin != null, "No builtin for %s in record %d", className, recordNum);
                             builtin.checkClass(clazz);
-                            addDecodedObject(id, builtin.decode(this, clazz, encodingName, value));
+                            addDecodedObject(id, builtin.decode(this, clazz, stream));
                             break;
                         }
-                        case '[': {
-                            Matcher matcher = ARRAY_LINE.matcher(line.substring(colon + 1));
-                            GraalError.guarantee(matcher.matches(), "Invalid array line: %s", line);
-                            String componentTypeName = matcher.group("componentType");
-                            String[] elements = splitSpaceSeparatedElements(matcher.group("elements"));
-                            switch (componentTypeName) {
-                                case "boolean": {
-                                    boolean[] arr = new boolean[elements.length];
-                                    for (int i = 0; i < elements.length; i++) {
-                                        arr[i] = Boolean.parseBoolean(elements[i]);
-                                    }
-                                    addDecodedObject(id, arr);
-                                    break;
-                                }
-                                case "byte": {
-                                    byte[] arr = new byte[elements.length];
-                                    for (int i = 0; i < elements.length; i++) {
-                                        arr[i] = Byte.parseByte(elements[i]);
-                                    }
-                                    addDecodedObject(id, arr);
-                                    break;
-                                }
-                                case "char": {
-                                    throw GraalError.shouldNotReachHere("char[] should be handled by " + StringBuiltin.class);
-                                }
-                                case "short": {
-                                    short[] arr = new short[elements.length];
-                                    for (int i = 0; i < elements.length; i++) {
-                                        arr[i] = Short.parseShort(elements[i]);
-                                    }
-                                    addDecodedObject(id, arr);
-                                    break;
-                                }
-                                case "int": {
-                                    int[] arr = new int[elements.length];
-                                    for (int i = 0; i < elements.length; i++) {
-                                        arr[i] = Integer.parseInt(elements[i]);
-                                    }
-                                    addDecodedObject(id, arr);
-                                    break;
-                                }
-                                case "float": {
-                                    float[] arr = new float[elements.length];
-                                    for (int i = 0; i < elements.length; i++) {
-                                        arr[i] = Float.parseFloat(elements[i]);
-                                    }
-                                    addDecodedObject(id, arr);
-                                    break;
-                                }
-                                case "long": {
-                                    long[] arr = new long[elements.length];
-                                    for (int i = 0; i < elements.length; i++) {
-                                        arr[i] = Long.parseLong(elements[i]);
-                                    }
-                                    addDecodedObject(id, arr);
-                                    break;
-                                }
-                                case "double": {
-                                    double[] arr = new double[elements.length];
-                                    for (int i = 0; i < elements.length; i++) {
-                                        arr[i] = Double.parseDouble(elements[i]);
-                                    }
-                                    addDecodedObject(id, arr);
-                                    break;
-                                }
-                                default: {
-                                    Class<?> componentType = loadClass(componentTypeName);
-                                    Object[] arr = (Object[]) Array.newInstance(componentType, elements.length);
-                                    addDecodedObject(id, arr);
-                                    for (int i = 0; i < elements.length; i++) {
-                                        int elementId = Integer.parseInt(elements[i]);
-                                        int index = i;
-                                        resolveId(elementId, o -> arr[index] = o);
-                                    }
-                                    break;
-                                }
+                        case '[': { // primitive array
+                            Object arr = stream.readTypedPrimitiveArray();
+                            addDecodedObject(id, arr);
+                            break;
+                        }
+                        case ']': { // object array
+                            String componentTypeName = readString(stream);
+                            Class<?> componentType = loadClass(componentTypeName);
+                            int length = stream.readPackedUnsignedInt();
+                            int[] elements = new int[length];
+                            for (int i = 0; i < length; i++) {
+                                elements[i] = readId(stream);
+                            }
+                            Object[] arr = (Object[]) Array.newInstance(componentType, elements.length);
+                            addDecodedObject(id, arr);
+                            for (int i = 0; i < elements.length; i++) {
+                                int index = i;
+                                resolveId(elements[i], o -> arr[index] = o);
                             }
                             break;
                         }
                         case '@': {
-                            String fieldDesc = line.substring(colon + 2);
-                            int lastDot = fieldDesc.lastIndexOf('.');
-                            GraalError.guarantee(lastDot != -1, "Invalid field name: %s", fieldDesc);
-                            String className = fieldDesc.substring(0, lastDot);
-                            String fieldName = fieldDesc.substring(lastDot + 1);
+                            String className = readString(stream);
+                            String fieldName = readString(stream);
                             Class<?> declaringClass = loadClass(className);
                             Field field = getField(declaringClass, fieldName);
                             addDecodedObject(id, readField(field, null));
                             break;
                         }
                         case '{': {
-                            Matcher matcher = OBJECT_LINE.matcher(line.substring(colon + 1));
-                            GraalError.guarantee(matcher.matches(), "Invalid object line: %s", line);
-                            String className = matcher.group("class");
-                            int fieldCount = Integer.parseInt(matcher.group("fieldCount"));
+                            String className = readString(stream);
                             Class<?> clazz = loadClass(className);
                             Object obj = allocateInstance(clazz);
                             addDecodedObject(id, obj);
                             ClassInfo classInfo = classInfos.computeIfAbsent(clazz, ClassInfo::of);
-                            for (int i = 0; i < fieldCount; i++) {
-                                GraalError.guarantee(iter.hasNext(), "Truncated input");
-                                String fieldLine = iter.next();
-                                lineNum++;
-                                Matcher fieldMatcher = FIELD_LINE.matcher(fieldLine);
-                                GraalError.guarantee(fieldMatcher.matches(), "Invalid field line: %s", fieldLine);
-                                String fieldDesc = fieldMatcher.group("desc");
-                                String value = fieldMatcher.group("value");
-                                Field field = classInfo.fields().get(fieldDesc);
-                                GraalError.guarantee(field != null, "Unknown field: %s", fieldDesc);
+                            short fingerprint = stream.readShort();
+                            GraalError.guarantee(fingerprint == classInfo.fingerprint, "Type mismatch on %s", clazz);
+                            fieldNum = 0;
+                            for (Field field : classInfo.fields.values()) {
                                 Class<?> type = field.getType();
-
-                                int expectTypeId = Integer.parseInt(fieldMatcher.group("typeId"));
-                                resolveId(expectTypeId, o -> checkFieldType(expectTypeId, field));
-
                                 if (type.isPrimitive()) {
-                                    switch (type.getName()) {
-                                        case "boolean": {
-                                            writeField(field, obj, Boolean.parseBoolean(value));
-                                            break;
-                                        }
-                                        case "byte": {
-                                            writeField(field, obj, Byte.parseByte(value));
-                                            break;
-                                        }
-                                        case "char": {
-                                            writeField(field, obj, (char) Integer.parseInt(value));
-                                            break;
-                                        }
-                                        case "short": {
-                                            writeField(field, obj, Short.parseShort(value));
-                                            break;
-                                        }
-                                        case "int": {
-                                            writeField(field, obj, Integer.parseInt(value));
-                                            break;
-                                        }
-                                        case "float": {
-                                            writeField(field, obj, Float.parseFloat(value));
-                                            break;
-                                        }
-                                        case "long": {
-                                            writeField(field, obj, Long.parseLong(value));
-                                            break;
-                                        }
-                                        case "double": {
-                                            writeField(field, obj, Double.parseDouble(value));
-                                            break;
-                                        }
-                                        default: {
-                                            throw new GraalError("Unexpected primitive type: %s", type.getName());
-                                        }
-                                    }
+                                    char typeCh = type.descriptorString().charAt(0);
+                                    Object value = stream.readUntypedValue(typeCh);
+                                    writeField(field, obj, value);
                                 } else {
+                                    int value = readId(stream);
                                     resolveId(value, o -> writeField(field, obj, o));
                                 }
+                                fieldNum++;
                             }
                             break;
                         }
                         default: {
-                            throw new GraalError("Invalid char after ':' in line: %s", line);
+                            throw new GraalError("Invalid char '%c' for kind in record %d", c, recordNum);
                         }
                     }
                 }
                 for (Deferred d : deferred) {
-                    lineNum = d.lineNum();
+                    recordNum = d.recordNum();
+                    fieldNum = d.fieldNum;
                     d.runnable().run();
                 }
             } catch (Throwable e) {
-                String line = encoded.lines().skip(lineNum - 1).findFirst().get();
-                throw new GraalError(e, "Error on line %d: %s", lineNum, line);
+                throw new GraalError(e, "Error in record %d (field %d)", recordNum, fieldNum);
             } finally {
                 deferred = null;
-                lineNum = -1;
+                recordNum = -1;
+                fieldNum = -1;
             }
-            return getObject(1, true);
+            return getObject(rootId, true);
         }
 
-        void resolveId(String id, Consumer<Object> c) {
-            try {
-                resolveId(Integer.parseInt(id), c);
-            } catch (NumberFormatException e) {
-                throw new GraalError(e, "Invalid object id: %s", id);
-            }
+        private static int readId(ObjectCopierInputStream stream) throws IOException {
+            return stream.readPackedUnsignedInt();
         }
 
         void resolveId(int id, Consumer<Object> c) {
@@ -736,17 +571,16 @@ public class ObjectCopier {
                 if (objValue != null) {
                     c.accept(objValue);
                 } else {
-                    deferred.add(new Deferred(() -> c.accept(getObject(id, true)), lineNum));
+                    deferred.add(new Deferred(() -> c.accept(getObject(id, true)), recordNum, fieldNum));
                 }
             } else {
                 c.accept(null);
             }
         }
 
-        private void checkFieldType(int expectTypeId, Field field) {
-            Class<?> actualType = field.getType();
-            Class<?> expectType = (Class<?>) idToObject.get(expectTypeId);
-            GraalError.guarantee(actualType.equals(expectType), "Type of %s has changed: %s != %s", field, expectType, actualType);
+        public String readString(ObjectCopierInputStream stream) throws IOException {
+            int id = stream.readPackedUnsignedInt();
+            return strings[id];
         }
 
         private static Object allocateInstance(Class<?> clazz) {
@@ -787,8 +621,14 @@ public class ObjectCopier {
 
     public static class Encoder extends ObjectCopier {
 
-        final Map<Object, ObjectID> objectToId = new IdentityHashMap<>();
-        final List<Object> objects = new ArrayList<>();
+        final FrequencyEncoder<Object> objects = FrequencyEncoder.createIdentityEncoder();
+
+        /**
+         * We use a separate string table to deduplicate strings and to make sure they are available
+         * upfront during decoding so that deferred processing with transitive dependencies is not
+         * needed.
+         */
+        final FrequencyEncoder<String> strings = FrequencyEncoder.createEqualityEncoder();
 
         /**
          * Map from values to static final fields. In a serialized object graph, references to such
@@ -797,17 +637,27 @@ public class ObjectCopier {
          */
         final Map<Object, Field> externalValues;
 
+        private final PrintStream debugOutput;
+
         public Encoder(List<Field> externalValueFields) {
-            this(gatherExternalValues(externalValueFields));
+            this(externalValueFields, null);
+        }
+
+        public Encoder(List<Field> externalValueFields, PrintStream debugOutput) {
+            this(gatherExternalValues(externalValueFields), debugOutput);
         }
 
         /**
          * Use precomputed {@code externalValues} to avoid recomputing them.
          */
         public Encoder(Map<Object, Field> externalValues) {
-            objects.add(null);
-            objectToId.put(null, new ObjectID(0, null));
+            this(externalValues, null);
+        }
+
+        public Encoder(Map<Object, Field> externalValues, PrintStream debugOutput) {
+            objects.addObject(null);
             this.externalValues = externalValues;
+            this.debugOutput = debugOutput;
         }
 
         public static Map<Object, Field> gatherExternalValues(List<Field> externalValueFields) {
@@ -849,16 +699,16 @@ public class ObjectCopier {
             return Collections.unmodifiableMap(externalValues);
         }
 
-        private String encodeMap(UnmodifiableEconomicMap<?, ?> map) {
+        private void encodeMap(ObjectCopierOutputStream stream, UnmodifiableEconomicMap<?, ?> map) throws IOException {
+            stream.internalWritePackedUnsignedInt(map.size());
+
             UnmodifiableMapCursor<?, ?> cursor = map.getEntries();
-            StringBuilder value = new StringBuilder();
             while (cursor.advance()) {
-                if (!value.isEmpty()) {
-                    value.append(" ");
-                }
-                value.append(makeId(cursor.getKey(), null).id()).append(":").append(makeId(cursor.getValue(), null).id());
+                debugf("%n ");
+                writeId(stream, getId(cursor.getKey()));
+                debugf(" :");
+                writeId(stream, getId(cursor.getValue()));
             }
-            return value.toString();
         }
 
         void makeMapChildIds(EconomicMap<?, ?> map, ObjectPath objectPath) {
@@ -869,6 +719,19 @@ public class ObjectCopier {
                 makeId(key, objectPath.add("{key:" + keyString + "}"));
                 makeId(cursor.getValue(), objectPath.add("{" + keyString + "}"));
             }
+        }
+
+        public void writeString(ObjectCopierOutputStream stream, String s) throws IOException {
+            int id = strings.getIndex(s);
+            stream.internalWritePackedUnsignedInt(id);
+            if (debugOutput != null) {
+                debugf(" %s", escapeDebugStringValue(s));
+            }
+        }
+
+        public void makeStringId(String s, ObjectPath objectPath) {
+            GraalError.guarantee(s != null, "Illegal null string: Path %s", objectPath);
+            strings.addObject(s);
         }
 
         /**
@@ -883,58 +746,57 @@ public class ObjectCopier {
             }
         }
 
-        ObjectID makeId(Object obj, ObjectPath objectPath) {
-            if (!objectToId.containsKey(obj)) {
-                ObjectID id = new ObjectID(objects.size(), objectPath);
-                Field field = externalValues.get(obj);
-                if (field != null) {
-                    objects.add(field);
-                    objectToId.put(obj, id);
-                    objectToId.put(field, id);
-                    return id;
+        void makeId(Object obj, ObjectPath objectPath) {
+            Field field = externalValues.get(obj);
+            if (field != null) {
+                if (objects.addObject(field)) {
+                    makeStringId(field.getDeclaringClass().getName(), objectPath);
+                    makeStringId(field.getName(), objectPath);
                 }
-
-                objects.add(obj);
-                objectToId.put(obj, id);
-
-                Class<?> clazz = obj.getClass();
-                Builtin builtin = getBuiltin(clazz);
-                if (builtin != null) {
-                    builtin.checkObject(obj);
-                    builtin.makeChildIds(this, obj, objectPath);
-                    return id;
-                }
-
-                checkIllegalValue(Field.class, obj, objectPath, "Field type is used in object copying implementation");
-                checkIllegalValue(FieldIntrospection.class, obj, objectPath, "Graal metadata type cannot be copied");
-
-                if (clazz.isArray()) {
-                    Class<?> componentType = clazz.getComponentType();
-                    if (!componentType.isPrimitive()) {
-                        Object[] objArray = (Object[]) obj;
-                        int index = 0;
-                        for (Object element : objArray) {
-                            makeId(element, objectPath.add(index));
-                            index++;
-                        }
-                    }
-                } else {
-                    checkIllegalValue(LocationIdentity.class, obj, objectPath, "must come from a static field");
-                    checkIllegalValue(HashSet.class, obj, objectPath, "hashes are typically not stable across VM executions");
-
-                    ClassInfo classInfo = makeClassInfo(clazz, objectPath);
-                    for (Field f : classInfo.fields().values()) {
-                        String fieldName = f.getDeclaringClass().getSimpleName() + "#" + f.getName();
-                        makeId(f.getType(), objectPath.add(fieldName + ":type"));
-                        if (!f.getType().isPrimitive()) {
-                            Object fieldValue = readField(f, obj);
-                            makeId(fieldValue, objectPath.add(fieldName));
-                        }
-                    }
-                }
-
+                return;
             }
-            return objectToId.get(obj);
+
+            if (!objects.addObject(obj)) {
+                return; // already known
+            }
+
+            Class<?> clazz = obj.getClass();
+            Builtin builtin = getBuiltin(clazz);
+            if (builtin != null) {
+                builtin.checkObject(obj);
+                makeStringId(clazz.getName(), objectPath);
+                builtin.makeChildIds(this, obj, objectPath);
+                return;
+            }
+
+            checkIllegalValue(Field.class, obj, objectPath, "Field type is used in object copying implementation");
+            checkIllegalValue(FieldIntrospection.class, obj, objectPath, "Graal metadata type cannot be copied");
+
+            if (clazz.isArray()) {
+                Class<?> componentType = clazz.getComponentType();
+                if (!componentType.isPrimitive()) {
+                    strings.addObject(componentType.getName());
+                    Object[] objArray = (Object[]) obj;
+                    int index = 0;
+                    for (Object element : objArray) {
+                        makeId(element, objectPath.add(index));
+                        index++;
+                    }
+                }
+            } else {
+                checkIllegalValue(LocationIdentity.class, obj, objectPath, "must come from a static field");
+                checkIllegalValue(HashSet.class, obj, objectPath, "hashes are typically not stable across VM executions");
+
+                makeStringId(clazz.getName(), objectPath);
+                ClassInfo classInfo = makeClassInfo(clazz, objectPath);
+                classInfo.fields().forEach((fieldDesc, f) -> {
+                    String fieldName = f.getDeclaringClass().getSimpleName() + "#" + f.getName();
+                    if (!f.getType().isPrimitive()) {
+                        Object fieldValue = readField(f, obj);
+                        makeId(fieldValue, objectPath.add(fieldName));
+                    }
+                });
+            }
         }
 
         private ClassInfo makeClassInfo(Class<?> clazz, ObjectPath objectPath) {
@@ -945,55 +807,100 @@ public class ObjectCopier {
             }
         }
 
-        private void encode(PrintStream out) {
-            for (int id = 1; id < objects.size(); id++) {
-                Object obj = objects.get(id);
+        private void encode(ObjectCopierOutputStream out, Object root) throws IOException {
+            String[] encodedStrings = strings.encodeAll(new String[strings.getLength()]);
+            out.internalWritePackedUnsignedInt(encodedStrings.length);
+            for (String s : encodedStrings) {
+                out.writeStringValue(s);
+            }
+            Object[] encodedObjects = objects.encodeAll(new Object[objects.getLength()]);
+            debugf("root:");
+            writeId(out, getId(root));
+            debugf("%n");
+            for (int id = 1; id < encodedObjects.length; id++) {
+                Object obj = encodedObjects[id];
                 Class<?> clazz = obj.getClass();
                 Builtin builtin = getBuiltin(clazz);
                 if (builtin != null) {
-                    String encodingName = builtin.encodingName(obj);
-                    String encoding = encodingName == null ? "" : ":" + encodingName;
-                    out.printf("%d:<%s%s> = %s%n", id, clazz.getName(), encoding, builtin.encode(this, obj));
+                    out.internalWriteByte('<');
+                    debugf("%d:<", id);
+                    writeString(out, clazz.getName());
+                    debugf(" > =");
+                    try {
+                        builtin.encode(this, out, obj);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
                 } else if (clazz.isArray()) {
                     Class<?> componentType = clazz.getComponentType();
                     if (!componentType.isPrimitive()) {
-                        String elements = Stream.of((Object[]) obj).map(this::getIdString).collect(Collectors.joining(" "));
-                        out.printf("%d:[%s] = %s%n", id, componentType.getName(), elements);
-                    } else {
-                        int length = Array.getLength(obj);
-                        StringBuilder elements = new StringBuilder(length * 5);
-                        for (int i = 0; i < length; i++) {
-                            elements.append(' ').append(Array.get(obj, i));
+                        out.internalWriteByte(']');
+                        debugf("%d:[", id);
+                        writeString(out, componentType.getName());
+                        debugf(" ] =");
+                        Object[] objs = (Object[]) obj;
+                        out.internalWritePackedUnsignedInt(objs.length);
+                        for (Object o : objs) {
+                            writeId(out, getId(o));
                         }
-                        out.printf("%d:[%s] =%s%n", id, componentType.getName(), elements);
-                    }
-                } else {
-                    if (clazz == Field.class) {
-                        Field field = (Field) obj;
-                        out.printf("%d:@%s.%s%n", id, field.getDeclaringClass().getName(), field.getName());
                     } else {
-                        ClassInfo classInfo = classInfos.get(clazz);
-                        out.printf("%d:{%s:%d}%n", id, clazz.getName(), classInfo.fields().size());
-                        for (var e : classInfo.fields().entrySet()) {
-                            Field f = e.getValue();
-                            Object fValue = readField(f, obj);
-                            Class<?> fieldType = f.getType();
-                            int fieldTypeId = makeId(fieldType, null).id();
-                            if (!fieldType.isPrimitive()) {
-                                fValue = getIdString(fValue);
-                            } else if (fieldType == char.class) {
-                                fValue = (int) (Character) fValue;
-                            }
-                            out.printf("  %s:%d = %s%n", e.getKey(), fieldTypeId, fValue);
+                        out.internalWriteByte('[');
+                        debugf("%d:[ %s ] =", id, componentType.getName());
+                        out.writeTypedPrimitiveArray(obj);
+                    }
+                } else if (clazz == Field.class) {
+                    Field field = (Field) obj;
+                    out.internalWriteByte('@');
+                    debugf("%d:@", id);
+                    writeString(out, field.getDeclaringClass().getName());
+                    writeString(out, field.getName());
+                } else {
+                    ClassInfo classInfo = classInfos.get(clazz);
+                    out.internalWriteByte('{');
+                    debugf("%d:{", id);
+                    writeString(out, clazz.getName());
+                    debugf(" }");
+                    out.writeShort(classInfo.fingerprint);
+                    for (var e : classInfo.fields().entrySet()) {
+                        Field f = e.getValue();
+                        debugf("%n ");
+                        Class<?> fieldType = f.getType();
+                        Object fValue = readField(f, obj);
+                        if (fieldType.isPrimitive()) {
+                            out.writeUntypedValue(fValue);
+                        } else {
+                            writeId(out, getId(fValue));
+                        }
+                        debugf("\t # %s", f.getName());
+                        if (!fieldType.isPrimitive()) {
+                            debugf(" (object)");
                         }
                     }
                 }
+                debugf("%n");
             }
         }
 
-        private String getIdString(Object o) {
-            GraalError.guarantee(objectToId.containsKey(o), "Unknown object: %s", o);
-            return String.valueOf(objectToId.get(o).id());
+        private static void writeId(ObjectCopierOutputStream out, int id) throws IOException {
+            out.writePackedUnsignedInt(id);
+        }
+
+        private int getId(Object o) {
+            Field field = externalValues.get(o);
+            if (field != null) {
+                return objects.getIndex(field);
+            }
+            return objects.getIndex(o);
+        }
+
+        private void debugf(String format, Object... args) {
+            if (debugOutput != null) {
+                debugOutput.printf(format, args);
+            }
+        }
+
+        static String escapeDebugStringValue(String s) {
+            return s.replace("\\", "\\\\").replace("\n", "\\n").replace("\r", "\\r");
         }
     }
 
@@ -1101,14 +1008,14 @@ public class ObjectCopier {
      * @param prefix the prefix path
      * @param name the last field or array index read in the path
      */
-    record ObjectPath(ObjectPath prefix, Object name) {
+    public record ObjectPath(ObjectPath prefix, Object name) {
         /**
          * Creates an object path for a root object.
          *
          * @param rootName names a reference to the root object (e.g. "[root]" or the qualified name
          *            of a static field)
          */
-        public static ObjectPath of(String rootName) {
+        static ObjectPath of(String rootName) {
             return new ObjectPath(null, rootName);
         }
 
@@ -1152,11 +1059,5 @@ public class ObjectCopier {
             }
             return String.join(".", components.reversed());
         }
-    }
-
-    /**
-     * A unique int id for an object as well as the path by which it was (first) reached.
-     */
-    record ObjectID(int id, ObjectPath path) {
     }
 }

@@ -27,9 +27,10 @@ package jdk.graal.compiler.hotspot.meta;
 import static jdk.graal.compiler.core.common.GraalOptions.AlwaysInlineVTableStubs;
 import static jdk.graal.compiler.core.common.GraalOptions.InlineVTableStubs;
 import static jdk.graal.compiler.core.common.GraalOptions.OmitHotExceptionStacktrace;
+import static jdk.graal.compiler.hotspot.HotSpotGraalRuntime.HotSpotGC;
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.OSR_MIGRATION_END;
 import static jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider.GENERIC_ARRAYCOPY;
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
+import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
 import static org.graalvm.word.LocationIdentity.any;
 
 import java.util.Arrays;
@@ -113,7 +114,6 @@ import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.GetObjectAddressNode;
-import jdk.graal.compiler.nodes.GraphState.GuardsStage;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.LogicConstantNode;
 import jdk.graal.compiler.nodes.LogicNode;
@@ -355,6 +355,18 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     }
 
     @Override
+    public boolean supportsBulkClearArray(JavaKind elementKind) {
+        if (!supportsBulkZeroingOfEden()) {
+            return false;
+        }
+        /*
+         * In the case of ZGC, ZeroMemoryNode ZeroMemoryNode can't be used with Object[] unless it's
+         * known to be in eden.
+         */
+        return getVMConfig().gc != HotSpotGC.Z || !elementKind.isObject();
+    }
+
+    @Override
     protected IdentityHashCodeSnippets.Templates createIdentityHashCodeSnippets(OptionValues options, Providers providers) {
         return new IdentityHashCodeSnippets.Templates(new HotSpotHashCodeSnippets(), options, providers, HotSpotReplacementsUtil.MARK_WORD_LOCATION);
     }
@@ -543,27 +555,27 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         } else if (n instanceof HubGetClassNode) {
             lowerHubGetClassNode((HubGetClassNode) n, tool);
         } else if (n instanceof KlassLayoutHelperNode) {
-            if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
+            if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
                 lowerKlassLayoutHelperNode((KlassLayoutHelperNode) n, tool);
             }
         } else if (n instanceof KlassBeingInitializedCheckNode) {
-            if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
+            if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
                 getAllocationSnippets().lower((KlassBeingInitializedCheckNode) n, tool);
             }
         } else if (n instanceof KlassFullyInitializedCheckNode) {
-            if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
+            if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
                 getAllocationSnippets().lower((KlassFullyInitializedCheckNode) n, tool);
             }
         } else if (n instanceof FastNotifyNode) {
-            if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
+            if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
                 objectSnippets.lower(n, tool);
             }
         } else if (n instanceof UnsafeCopyMemoryNode) {
-            if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
+            if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
                 unsafeSnippets.lower((UnsafeCopyMemoryNode) n, tool);
             }
         } else if (n instanceof UnsafeSetMemoryNode) {
-            if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
+            if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
                 unsafeSnippets.lower((UnsafeSetMemoryNode) n, tool);
             }
         } else if (n instanceof RegisterFinalizerNode) {
@@ -575,7 +587,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
                 lowerIntegerDivRem((IntegerDivRemNode) n, tool);
             }
         } else if (n instanceof VirtualThreadUpdateJFRNode) {
-            if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
+            if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
                 virtualThreadUpdateJFRSnippets.lower((VirtualThreadUpdateJFRNode) n, registers, tool);
             }
         } else {
@@ -907,7 +919,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
 
     private void lowerOSRStartNode(OSRStartNode osrStart) {
         StructuredGraph graph = osrStart.graph();
-        if (graph.getGuardsStage() == GuardsStage.FIXED_DEOPTS) {
+        if (graph.getGuardsStage().areDeoptsFixed()) {
             StartNode newStart = graph.add(new StartNode());
             ParameterNode buffer = graph.addWithoutUnique(new ParameterNode(0, StampPair.createSingle(StampFactory.forKind(runtime.getTarget().wordJavaKind))));
             ForeignCallNode migrationEnd = graph.add(new ForeignCallNode(OSR_MIGRATION_END, buffer));
@@ -1015,7 +1027,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     }
 
     private void throwCachedException(BytecodeExceptionNode node) {
-        if (IS_IN_NATIVE_IMAGE) {
+        if (inImageRuntimeCode()) {
             throw new InternalError("Can't throw exception from SVM object");
         }
         Throwable exception = Exceptions.cachedExceptions.get(node.getExceptionKind());

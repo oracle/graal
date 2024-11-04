@@ -26,20 +26,26 @@ package com.oracle.truffle.espresso.impl;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.espresso.classfile.Constants;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.constantpool.Resolution;
+import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.perf.DebugCloseable;
-import com.oracle.truffle.espresso.perf.DebugTimer;
+import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.Constants;
+import com.oracle.truffle.espresso.classfile.ParserKlass;
+import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
+import com.oracle.truffle.espresso.classfile.perf.DebugCloseable;
+import com.oracle.truffle.espresso.classfile.perf.DebugTimer;
 import com.oracle.truffle.espresso.redefinition.DefineKlassListener;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
@@ -145,10 +151,6 @@ public abstract class ClassRegistry {
                 flags |= Constants.ACC_IS_HIDDEN_CLASS;
             }
             return flags;
-        }
-
-        public void initKlassID(long futureKlassID) {
-            this.klassID = futureKlassID;
         }
     }
 
@@ -380,12 +382,37 @@ public abstract class ClassRegistry {
         Symbol<Type> superKlassType = parserKlass.getSuperKlass();
 
         ObjectKlass klass = createKlass(context, parserKlass, type, superKlassType, info);
+
+        if (info.isAnonymousClass() && info.patches != null) {
+            patchAnonymousClass(klass.getConstantPool(), info.patches);
+        }
+
         if (info.addedToRegistry()) {
             registerKlass(klass, type);
         } else if (info.isStrongHidden()) {
             registerStrongHiddenClass(klass);
         }
         return klass;
+    }
+
+    private static void patchAnonymousClass(RuntimeConstantPool constantPool, StaticObject[] patches) {
+        int maxCPIndex = Math.min(patches.length, constantPool.length());
+        for (int i = 1; i < maxCPIndex; i++) {
+            if (patches[i] != null && StaticObject.notNull(patches[i])) {
+                PoolConstant poolConstant = constantPool.at(i);
+                ConstantPool.Tag tag = poolConstant.tag();
+                if (Objects.requireNonNull(tag) == ConstantPool.Tag.STRING) {
+                    /*
+                     * The runtime CP entry tag may be different from the actual constant that is
+                     * pre-resolved. Pre-resolved/patched entries may contain arbitrary guest
+                     * objects, like classes.
+                     */
+                    constantPool.patchAt(i, Resolution.preResolvedConstant(patches[i], tag));
+                } else {
+                    throw EspressoError.unimplemented("Patching anonymous class CP entry with: " + tag);
+                }
+            }
+        }
     }
 
     private ParserKlass parseKlass(ClassLoadingEnv env, byte[] bytes, Symbol<Type> typeOrNull, ClassDefinitionInfo info) throws EspressoClassLoadingException.SecurityException {

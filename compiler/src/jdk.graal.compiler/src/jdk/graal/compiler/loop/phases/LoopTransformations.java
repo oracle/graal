@@ -54,7 +54,6 @@ import jdk.graal.compiler.nodes.FixedGuardNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.FrameState;
-import jdk.graal.compiler.nodes.GraphState.GuardsStage;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.GuardPhiNode;
 import jdk.graal.compiler.nodes.IfNode;
@@ -250,7 +249,7 @@ public abstract class LoopTransformations {
      * for the exit that can later be duplicated cleanly.
      */
     public static void ensureExitsHaveUniqueStates(Loop loop) {
-        if (loop.loopBegin().graph().getGuardsStage() == GuardsStage.AFTER_FSA) {
+        if (loop.loopBegin().graph().getGuardsStage().areFrameStatesAtDeopts()) {
             return;
         }
         for (LoopExitNode lex : loop.loopBegin().loopExits()) {

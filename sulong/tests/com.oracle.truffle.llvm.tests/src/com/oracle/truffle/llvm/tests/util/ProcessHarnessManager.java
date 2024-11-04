@@ -259,8 +259,15 @@ public class ProcessHarnessManager {
         }
         Collections.addAll(commandArgs, "-Xss56m", "-Xms4g", "-Xmx4g", "-esa", "-ea", "-Djava.awt.headless=true",
                         "-cp", classpath, "-p", modulepath, "--add-modules", "org.graalvm.polyglot");
-        if (Runtime.version().feature() > 21) {
-            commandArgs.add("--illegal-native-access=allow");
+
+        if (ModuleLayer.boot().findModule("org.graalvm.truffle").isPresent()) {
+            /*
+             * ALL-UNNAMED for native methods in
+             * com.oracle.truffle.llvm.tests.pipe.CaptureNativeOutput
+             */
+            commandArgs.add("--enable-native-access=org.graalvm.truffle,ALL-UNNAMED");
+        } else {
+            commandArgs.add("--enable-native-access=ALL-UNNAMED");
         }
 
         copyProperty(commandArgs, "polyglot.engine.WarnInterpreterOnly");

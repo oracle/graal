@@ -29,10 +29,10 @@ import java.util.Locale;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.espresso.classfile.constantpool.MemberRefConstant;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.constantpool.Resolution;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
@@ -104,7 +104,7 @@ final class LinkResolverImpl {
             throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError, symbolicHolder.getNameAsString() + "." + name + signature);
         }
         if (accessCheck) {
-            MemberRefConstant.doAccessCheck(accessingKlass, symbolicHolder, resolved, meta);
+            Resolution.memberDoAccessCheck(accessingKlass, symbolicHolder, resolved, meta);
         }
         if (loadingConstraints && !resolved.isPolySignatureIntrinsic()) {
             resolved.checkLoadingConstraints(accessingKlass.getDefiningClassLoader(), resolved.getDeclaringKlass().getDefiningClassLoader());

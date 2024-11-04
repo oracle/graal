@@ -179,6 +179,11 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
                 assert flowsGraph != null;
 
                 initFlowsGraph(bb, builder.postInitFlows);
+
+                if (!bb.getHostVM().isClosedTypeWorld()) {
+                    flowsGraph.saturateForOpenTypeWorld(bb);
+                }
+
             } catch (Throwable t) {
                 /* Wrap all errors as parsing errors. */
                 throw AnalysisError.parsingError(method, t);

@@ -41,6 +41,7 @@ import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapPrimitiveArray;
+import com.oracle.graal.pointsto.heap.ImageHeapRelocatableConstant;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.StaticFieldsSupport;
@@ -53,10 +54,12 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.CEntryPointLiteralFeature;
 import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
+import com.oracle.svm.hosted.imagelayer.CrossLayerConstantRegistryFeature;
 import com.oracle.svm.hosted.imagelayer.LayeredDispatchTableSupport;
 import com.oracle.svm.hosted.meta.HostedClass;
 import com.oracle.svm.hosted.meta.HostedField;
@@ -159,15 +162,30 @@ public final class NativeImageHeapWriter {
         int index = getIndexInBuffer(fields, field.getLocation());
         JavaConstant value;
         try {
-            value = heap.hConstantReflection.readFieldValue(field, receiver);
+            value = heap.hConstantReflection.readFieldValue(field, receiver, true);
         } catch (AnalysisError.TypeNotFoundError ex) {
             throw NativeImageHeap.reportIllegalType(ex.getType(), info);
         }
 
-        if (value instanceof RelocatableConstant) {
+        if (value instanceof ImageHeapRelocatableConstant constant) {
+            int heapOffset = NumUtil.safeToInt(fields.getOffset() + field.getLocation());
+            CrossLayerConstantRegistryFeature.singleton().markFutureHeapConstantPatchSite(constant, heapOffset);
+            fillReferenceWithGarbage(buffer, index);
+        } else if (value instanceof RelocatableConstant) {
             addNonDataRelocation(buffer, index, prepareRelocatable(info, value));
         } else {
             write(buffer, index, value, info != null ? info : field);
+        }
+    }
+
+    private void fillReferenceWithGarbage(RelocatableBuffer buffer, int index) {
+        long garbageValue = 0xefefefefefefefefL;
+        if (referenceSize() == Long.BYTES) {
+            buffer.getByteBuffer().putLong(index, garbageValue);
+        } else if (referenceSize() == Integer.BYTES) {
+            buffer.getByteBuffer().putInt(index, (int) garbageValue);
+        } else {
+            throw shouldNotReachHere("Unsupported reference size: " + referenceSize());
         }
     }
 
@@ -338,6 +356,7 @@ public final class NativeImageHeapWriter {
     }
 
     private void writeObject(ObjectInfo info, RelocatableBuffer buffer) {
+        VMError.guarantee(!(info.getConstant() instanceof ImageHeapRelocatableConstant), "ImageHeapRelocationConstants cannot be written to the heap %s", info.getConstant());
         /*
          * Write a reference from the object to its hub. This lives at layout.getHubOffset() from
          * the object base.

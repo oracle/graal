@@ -200,6 +200,10 @@ public class SVMHost extends HostVM {
 
     private final Boolean optionAllowUnsafeAllocationOfAllInstantiatedTypes = SubstrateOptions.AllowUnsafeAllocationOfAllInstantiatedTypes.getValue();
     private final boolean isClosedTypeWorld = SubstrateOptions.useClosedTypeWorld();
+    private final boolean enableTrackAcrossLayers;
+
+    /** Modules containing all {@code svm.core} and {@code svm.hosted} classes. */
+    private final Set<Module> builderModules;
 
     @SuppressWarnings("this-escape")
     public SVMHost(OptionValues options, ImageClassLoader loader, ClassInitializationSupport classInitializationSupport, AnnotationSubstitutionProcessor annotationSubstitutions,
@@ -232,6 +236,25 @@ public class SVMHost extends HostVM {
         if (SubstrateOptions.includeAll()) {
             initializeExcludedFields();
         }
+
+        enableTrackAcrossLayers = ImageLayerBuildingSupport.buildingSharedLayer();
+        builderModules = getBuilderModules();
+    }
+
+    private static Set<Module> getBuilderModules() {
+        Module m0 = ImageSingletons.lookup(VMFeature.class).getClass().getModule();
+        Module m1 = SVMHost.class.getModule();
+        return m0.equals(m1) ? Set.of(m0) : Set.of(m0, m1);
+    }
+
+    /**
+     * Returns true if the type is part of the {@code svm.core} module. Note that builderModules
+     * also encloses the {@code svm.hosted} classes, but since those classes are not allowed at run
+     * time then they cannot be an {@link AnalysisType}.
+     */
+    @Override
+    public boolean isCoreType(AnalysisType type) {
+        return builderModules.contains(type.getJavaClass().getModule());
     }
 
     @Override
@@ -936,6 +959,11 @@ public class SVMHost extends HostVM {
     @Override
     public boolean isClosedTypeWorld() {
         return isClosedTypeWorld;
+    }
+
+    @Override
+    public boolean enableTrackAcrossLayers() {
+        return enableTrackAcrossLayers;
     }
 
     private final List<BiPredicate<AnalysisMethod, AnalysisMethod>> neverInlineTrivialHandlers = new CopyOnWriteArrayList<>();

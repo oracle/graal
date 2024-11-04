@@ -25,6 +25,7 @@
 package jdk.graal.compiler.hotspot;
 
 import static jdk.graal.compiler.core.common.GraalOptions.HotSpotPrintInlining;
+import static jdk.graal.compiler.serviceprovider.JavaVersionUtil.JAVA_SPEC;
 import static jdk.vm.ci.common.InitTimer.timer;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 
@@ -35,7 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
-import jdk.vm.ci.services.Services;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 
@@ -206,8 +207,8 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         Parallel("UseParallelGC"),
         G1("UseG1GC"),
         // non-generational ZGC
-        X(flagIsSet("UseZGC").and(flagIsNotSet("ZGenerational"))),
-        Z(flagIsSet("UseZGC").and(flagIsSet("ZGenerational"))),
+        X(JAVA_SPEC >= 24, true, flagIsSet("UseZGC").and(isZGenerational().negate())),
+        Z(JAVA_SPEC >= 24, true, flagIsSet("UseZGC").and(isZGenerational())),
         Epsilon(true, true, flagIsSet("UseEpsilonGC")),
 
         // Unsupported GCs
@@ -229,11 +230,20 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
         private static Predicate<GraalHotSpotVMConfig> flagIsSet(String flag) {
             final boolean notPresent = false;
-            return config1 -> config1.getFlag(flag, Boolean.class, notPresent, true);
+            return config -> config.getFlag(flag, Boolean.class, notPresent, true);
         }
 
-        private static Predicate<GraalHotSpotVMConfig> flagIsNotSet(String flag) {
-            return flagIsSet(flag).negate();
+        private static Predicate<GraalHotSpotVMConfig> isZGenerational() {
+            return config -> {
+                if (JAVA_SPEC == 21) {
+                    return false;
+                }
+                if (config.isZGenerationalDefault) {
+                    return true;
+                } else {
+                    return config.getFlag("ZGenerational", Boolean.class);
+                }
+            };
         }
 
         /**
@@ -267,7 +277,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
                     // CollectedHeap::X is not defined in HotSpot. Query CollectedHeap::Z instead
                     // and the ZGenerational flag.
                     if (config.getConstant("CollectedHeap::Z", Integer.class, -1, gc.expectNamePresent) == name) {
-                        if (config.getFlag("ZGenerational", Boolean.class, false, true)) {
+                        if (isZGenerational().test(config)) {
                             return Z;
                         } else {
                             return X;
@@ -439,7 +449,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
         outputDirectory.close();
 
-        if (Services.IS_IN_NATIVE_IMAGE) {
+        if (ImageInfo.inImageRuntimeCode()) {
             String callback = HotSpotGraalCompiler.Options.OnShutdownCallback.getValue(options);
             if (callback != null) {
                 int lastDot = callback.lastIndexOf('.');

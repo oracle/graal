@@ -29,16 +29,16 @@ import java.lang.invoke.VarHandle;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-import jdk.graal.compiler.truffle.test.nodes.AbstractTestNode;
-import jdk.graal.compiler.truffle.test.nodes.RootTestNode;
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
+
+import jdk.graal.compiler.truffle.test.nodes.AbstractTestNode;
+import jdk.graal.compiler.truffle.test.nodes.RootTestNode;
 
 public class VarHandlePartialEvaluationTest extends PartialEvaluationTest {
 
@@ -68,7 +68,6 @@ public class VarHandlePartialEvaluationTest extends PartialEvaluationTest {
      */
     @Test
     public void byteBufferHandleGet() {
-        Assume.assumeTrue(isByteBufferPartialEvaluationSupported());
         ByteBuffer byteBuffer = ByteBuffer.allocate(42).order(ByteOrder.nativeOrder()).putInt(0, 42);
         testCommon(new VarHandleTestNode(false, false), "byteBufferHandleGetInt", byteBuffer, 0);
     }
@@ -78,7 +77,6 @@ public class VarHandlePartialEvaluationTest extends PartialEvaluationTest {
      */
     @Test
     public void byteBufferHandleSet() {
-        Assume.assumeTrue(isByteBufferPartialEvaluationSupported());
         ByteBuffer byteBuffer = ByteBuffer.allocate(42).order(ByteOrder.nativeOrder()).putInt(0, 42);
         testCommon(new VarHandleTestNode(false, true), "byteArrayHandleSetInt", byteBuffer, 0, 42);
     }

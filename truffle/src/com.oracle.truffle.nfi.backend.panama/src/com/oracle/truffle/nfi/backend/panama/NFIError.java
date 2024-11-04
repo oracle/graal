@@ -40,8 +40,8 @@
  */
 package com.oracle.truffle.nfi.backend.panama;
 
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
-import com.oracle.truffle.api.impl.Accessor.ForeignSupport;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -65,7 +65,7 @@ final class NFIError extends AbstractTruffleException {
     }
 
     static NFIError illegalNativeAccess(Node location) {
-        Module truffleModule = ForeignSupport.class.getModule();
+        Module truffleModule = Truffle.class.getModule();
         String targetModule;
         String error;
         if (truffleModule.isNamed()) {

@@ -51,7 +51,6 @@ import java.util.function.Supplier;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-import jdk.graal.compiler.test.SubprocessUtil;
 import org.graalvm.word.LocationIdentity;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -103,6 +102,7 @@ import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.runtime.RuntimeProvider;
 import jdk.graal.compiler.test.AddExports;
+import jdk.graal.compiler.test.SubprocessUtil;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.Register;
@@ -325,6 +325,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         verifiers.add(new VerifyDebugUsage());
         verifiers.add(new VerifyVirtualizableUsage());
         verifiers.add(new VerifyUpdateUsages());
+        verifiers.add(new VerifyLibGraalContextChecks());
         verifiers.add(new VerifyBailoutUsage());
         verifiers.add(new VerifySystemPropertyUsage());
         verifiers.add(new VerifyInstanceOfUsage());
@@ -344,6 +345,8 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         verifiers.add(new VerifyStringCaseUsage());
         verifiers.add(new VerifyMathAbs());
         verifiers.add(new VerifyLoopInfo());
+        verifiers.add(new VerifyRuntimeVersionFeature());
+        verifiers.add(new VerifyGuardsStageUsages());
         VerifyAssertionUsage assertionUsages = null;
         boolean checkAssertions = tool.checkAssertions();
 

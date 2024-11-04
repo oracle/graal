@@ -170,18 +170,26 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   // LD_DEBUG=unused is a workaround for: symbol lookup error: jre/lib/amd64/libnio.so: undefined symbol: fstatat64
   maybe_set_ld_debug_flag(env): if std.startsWith(env, 'jvm') then [['set-export', 'LD_DEBUG', 'unused']] else [],
 
-  espresso_gate(allow_warnings, tags, ld_debug=false, mx_args=[], imports=null, gate_args=[], timelimit='15:00', name=null): {
+  espresso_gate(allow_warnings, tags, ld_debug=false, mx_args=[], imports=null, gate_args=[], timelimit='15:00', name=null, coverage=false): {
     local mx_cmd =
       ['mx']
       + mx_args
       + (if imports != null then ['--dynamicimports=' + imports] else []),
     run+: [
       if ld_debug then ['set-export', 'LD_DEBUG', 'unused'] else ['unset', 'LD_DEBUG'],
-      mx_cmd + ['--strict-compliance', 'gate', '--strict-mode', '--tags', tags] + ( if allow_warnings then ['--no-warning-as-error'] else []) + gate_args,
+      mx_cmd + ['--strict-compliance', 'gate', '--strict-mode', '--tags', tags]
+             + (if allow_warnings then ['--no-warning-as-error'] else [])
+             + (if coverage then ['--jacoco-omit-excluded', '--jacoco-relativize-paths', '--jacoco-omit-src-gen', '--jacocout=coverage', '--jacoco-format=lcov'] else [])
+             + gate_args,
     ],
   }
   + (if timelimit != null then {timelimit: timelimit} else {})
-  + (if name != null then {name: name} else {}),
+  + (if name != null then {name: name} else {})
+  + (if coverage then {
+    teardown+: [
+      ['mx', 'sversions', '--print-repositories', '--json', '|', 'coverage-uploader.py', '--associated-repos', '-'],
+    ],
+  } else {}),
 
   host_jvm(env, java_version): 'graalvm-espresso-' + _base_env(env),
   host_jvm_config(env): if std.startsWith(env, 'jvm') then 'jvm' else 'native',

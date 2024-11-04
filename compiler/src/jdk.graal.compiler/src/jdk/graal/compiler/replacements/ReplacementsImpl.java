@@ -30,14 +30,15 @@ import static jdk.graal.compiler.debug.DebugOptions.DumpOnError;
 import static jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createIntrinsicInlineInfo;
 import static jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 import static jdk.graal.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Required;
-import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
+import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
+import static org.graalvm.nativeimage.ImageInfo.inImageCode;
 
 import java.util.BitSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import jdk.graal.compiler.serviceprovider.GraalServices;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.Pair;
@@ -176,7 +177,7 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
 
     @Override
     public Class<? extends GraphBuilderPlugin> getIntrinsifyingPlugin(ResolvedJavaMethod method) {
-        if (!IS_IN_NATIVE_IMAGE) {
+        if (!inImageRuntimeCode()) {
             if (method.getAnnotation(Node.NodeIntrinsic.class) != null || method.getAnnotation(Fold.class) != null) {
                 return GeneratedInvocationPlugin.class;
             }
@@ -204,7 +205,7 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
             // Force inlining when parsing replacements
             return createIntrinsicInlineInfo(method, defaultBytecodeProvider);
         } else {
-            assert IS_BUILDING_NATIVE_IMAGE || method.getAnnotation(NodeIntrinsic.class) == null : String.format("@%s method %s must only be called from within a replacement%n%s",
+            assert inImageCode() || method.getAnnotation(NodeIntrinsic.class) == null : String.format("@%s method %s must only be called from within a replacement%n%s",
                             NodeIntrinsic.class.getSimpleName(),
                             method.format("%h.%n"), b);
         }
@@ -478,11 +479,10 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
 
             @Override
             public boolean isDeferredInvoke(StateSplit stateSplit) {
-                if (IS_IN_NATIVE_IMAGE) {
+                if (GraalServices.isInLibgraal()) {
                     throw GraalError.shouldNotReachHere("unused in libgraal"); // ExcludeFromJacocoGeneratedReport
                 }
-                if (stateSplit instanceof Invoke) {
-                    Invoke invoke = (Invoke) stateSplit;
+                if (stateSplit instanceof Invoke invoke) {
                     ResolvedJavaMethod method = invoke.callTarget().targetMethod();
                     if (method == null) {
                         return false;
@@ -540,7 +540,7 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
 
                 IntrinsicContext initialIntrinsicContext = null;
                 Snippet snippetAnnotation = null;
-                if (!IS_IN_NATIVE_IMAGE) {
+                if (!inImageRuntimeCode()) {
                     snippetAnnotation = method.getAnnotation(Snippet.class);
                 }
                 if (snippetAnnotation == null) {

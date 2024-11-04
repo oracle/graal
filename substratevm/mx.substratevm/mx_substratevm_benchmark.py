@@ -290,7 +290,7 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
         if self.benchmarkName() not in self._application_nibs:
             # Run subprocess retrieving the application nib from the Barista 'build' script
             out = mx.OutputCapture()
-            mx.run([self.baristaBuilderPath(), "--get-nib", self.benchmarkName()], out=out)
+            mx.run([self.baristaBuilderPath(), "--get-nib", self.baristaHarnessBenchmarkName()], out=out)
             # Capture the application nib from the Barista 'build' script output
             nib_pattern = r"application nib file path is: ([^\n]+)\n"
             nib_match = re.search(nib_pattern, out.data)
@@ -430,8 +430,14 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
             nivm_cmd_prefix = cmd[:index_of_app_image]
             nivm_app_options = cmd[index_of_app_image + 1:]
 
+            # Get bench name and workload to use in the barista harness - we might have custom named benchmarks that need to be mapped
+            barista_bench_name = suite.baristaHarnessBenchmarkName()
+            barista_workload = suite.baristaHarnessBenchmarkWorkload()
+
             # Provide image built in the previous stage to the Barista harnesss using the `--app-executable` option
             ni_barista_cmd = [suite.baristaHarnessPath(), "--mode", "native", "--app-executable", app_image]
+            if barista_workload is not None:
+                ni_barista_cmd.append(f"--config={barista_workload}")
             ni_barista_cmd += suite.runArgs(suite.context.bmSuiteArgs)
             ni_barista_cmd += mx_sdk_benchmark.parse_prefixed_args("-Dnative-image.benchmark.extra-jvm-arg=", suite.context.bmSuiteArgs)
             if stage == mx_sdk_benchmark.Stage.INSTRUMENT_RUN:
@@ -446,7 +452,7 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
                 self._updateCommandOption(ni_barista_cmd, "--cmd-app-prefix", "-p", " ".join(nivm_cmd_prefix))
             if nivm_app_options:
                 self._updateCommandOption(ni_barista_cmd, "--app-args", "-a", " ".join(nivm_app_options))
-            ni_barista_cmd += [suite.benchmarkName()]
+            ni_barista_cmd += [barista_bench_name]
             return ni_barista_cmd
 
 

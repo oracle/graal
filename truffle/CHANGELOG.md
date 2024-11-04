@@ -9,6 +9,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-57322 Added `TruffleLanguage.Env.getHostLanguage()` returning the host language info. This allows languages to lookup the top scope of the host language using `Env.getScopeInternal(LanguageInfo)`.
 * GR-57550 Added support for long-width dispatch targets to Bytecode OSR.
 * PR-8266  Allow control of `throwDeniedThreadAccess` via `TruffleContext.threadAccessDeniedHandler`
+* GR-57817 Java Native access for [JEP-472](https://openjdk.org/jeps/472) is now automatically provided for all languages and tools by Truffle. For more information, refer to the [GraalVM SDK Changelog](https://github.com/oracle/graal/blob/master/sdk/CHANGELOG.md).
 
 
 ## Version 24.1.0

@@ -918,7 +918,7 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
         public void simdPrefix(Register reg, Register nds, AMD64Address rm, int sizePrefix, int opcodeEscapePrefix, boolean isRexW) {
             assert reg.encoding < 16 : "encoding out of range: " + reg.encoding;
             assert nds.encoding < 16 : "encoding out of range: " + nds.encoding;
-            emitVEX(L128, sizePrefixToPP(sizePrefix), opcodeEscapePrefixToMMMMM(opcodeEscapePrefix), isRexW ? W1 : W0, getRXB(reg, rm), nds.isValid() ? nds.encoding : 0, true);
+            emitVEX(L128, sizePrefixToPP(sizePrefix), opcodeEscapePrefixToMMMMM(opcodeEscapePrefix), isRexW ? W1 : W0, getRXB(reg, rm), nds.isValid() ? nds.encoding : 0);
         }
 
         @Override
@@ -926,7 +926,7 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
             assert dst.encoding < 16 : "encoding out of range: " + dst.encoding;
             assert src.encoding < 16 : "encoding out of range: " + src.encoding;
             assert nds.encoding < 16 : "encoding out of range: " + nds.encoding;
-            emitVEX(L128, sizePrefixToPP(sizePrefix), opcodeEscapePrefixToMMMMM(opcodeEscapePrefix), isRexW ? W1 : W0, getRXB(dst, src), nds.isValid() ? nds.encoding : 0, true);
+            emitVEX(L128, sizePrefixToPP(sizePrefix), opcodeEscapePrefixToMMMMM(opcodeEscapePrefix), isRexW ? W1 : W0, getRXB(dst, src), nds.isValid() ? nds.encoding : 0);
         }
     }
 
@@ -1010,9 +1010,7 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
      * This function automatically chooses the 2 or 3 byte encoding, based on the XBW flags and the
      * m-mmmm field.
      */
-    protected final void emitVEX(int l, int pp, int mmmmm, int w, int rxb, int vvvv, boolean checkAVX) {
-        assert !checkAVX || getFeatures().contains(CPUFeature.AVX) : "emitting VEX prefix on a CPU without AVX support";
-
+    protected final void emitVEX(int l, int pp, int mmmmm, int w, int rxb, int vvvv) {
         assert l == L128 || l == L256 : "invalid value for VEX.L";
         assert pp == P_ || pp == P_66 || pp == P_F3 || pp == P_F2 : "invalid value for VEX.pp";
         assert mmmmm == M_0F || mmmmm == M_0F38 || mmmmm == M_0F3A : "invalid value for VEX.m-mmmm";

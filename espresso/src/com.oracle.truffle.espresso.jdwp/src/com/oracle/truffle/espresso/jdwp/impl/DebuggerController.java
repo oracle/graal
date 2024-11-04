@@ -75,7 +75,7 @@ public final class DebuggerController implements ContextsListener {
     private final Map<Object, SimpleLock> suspendLocks = Collections.synchronizedMap(new HashMap<>());
     private final Map<Object, SuspendedInfo> suspendedInfos = Collections.synchronizedMap(new HashMap<>());
     private final Map<Object, SteppingInfo> commandRequestIds = new HashMap<>();
-    private final Map<Object, ThreadJob<?>> threadJobs = new HashMap<>();
+    private final Map<Object, InvokeJob<?>> invokeJobs = new HashMap<>();
     private final Map<Object, FieldBreakpointEvent> fieldBreakpointExpected = new HashMap<>();
     private final Map<Object, MethodBreakpointEvent> methodBreakpointExpected = new HashMap<>();
     private final Map<Breakpoint, BreakpointInfo> breakpointInfos = new HashMap<>();
@@ -174,6 +174,10 @@ public final class DebuggerController implements ContextsListener {
 
     public JDWPContext getContext() {
         return context;
+    }
+
+    public Ids<Object> getIds() {
+        return ids;
     }
 
     public SuspendedInfo getSuspendedInfo(Object thread) {
@@ -386,6 +390,7 @@ public final class DebuggerController implements ContextsListener {
     }
 
     void forceResumeAll() {
+        ids.unpinAll();
         for (Object thread : getVisibleGuestThreads()) {
             boolean resumed = false;
             SimpleLock suspendLock = getSuspendLock(thread);
@@ -398,6 +403,7 @@ public final class DebuggerController implements ContextsListener {
     }
 
     public void resumeAll() {
+        ids.unpinAll();
         for (Object thread : getVisibleGuestThreads()) {
             SimpleLock suspendLock = getSuspendLock(thread);
             synchronized (suspendLock) {
@@ -453,6 +459,9 @@ public final class DebuggerController implements ContextsListener {
                         suspend(thread);
                     }
                 }
+                // pin all objects when VM in suspended state
+                ids.pinAll();
+
                 // immediately suspend the event thread
                 suspend(eventThread, SuspendStrategy.EVENT_THREAD, Collections.singletonList(callBack), true);
                 break;
@@ -469,6 +478,8 @@ public final class DebuggerController implements ContextsListener {
         for (Object thread : getVisibleGuestThreads()) {
             suspend(thread);
         }
+        // pin all objects
+        ids.pinAll();
     }
 
     private synchronized SimpleLock getSuspendLock(Object thread) {
@@ -480,7 +491,7 @@ public final class DebuggerController implements ContextsListener {
         return lock;
     }
 
-    private String getThreadName(Object thread) {
+    String getThreadName(Object thread) {
         return getContext().getThreadName(thread);
     }
 
@@ -631,19 +642,18 @@ public final class DebuggerController implements ContextsListener {
             case SuspendStrategy.ALL:
                 fine(() -> "Suspend ALL");
 
-                Thread suspendThread = new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        // suspend other threads
-                        for (Object activeThread : getVisibleGuestThreads()) {
-                            if (activeThread != thread) {
-                                fine(() -> "Request thread suspend for other thread: " + getThreadName(activeThread));
-                                DebuggerController.this.suspend(activeThread);
-                            }
+                Thread suspendThread = new Thread(() -> {
+                    // suspend other threads
+                    for (Object activeThread : getVisibleGuestThreads()) {
+                        if (activeThread != thread) {
+                            fine(() -> "Request thread suspend for other thread: " + getThreadName(activeThread));
+                            DebuggerController.this.suspend(activeThread);
                         }
                     }
                 });
                 suspendThread.start();
+                // pin all objects
+                ids.pinAll();
                 suspendEventThread(thread, forceSuspend, jobs);
                 break;
         }
@@ -661,83 +671,60 @@ public final class DebuggerController implements ContextsListener {
 
     private void suspendEventThread(Object thread, boolean forceSuspend, List<Callable<Void>> jobs) {
         fine(() -> "Suspending event thread: " + getThreadName(thread) + " with new suspension count: " + threadSuspension.getSuspensionCount(thread));
-        lockThread(thread, forceSuspend, true, jobs);
+        lockThread(thread, forceSuspend, jobs);
     }
 
-    private void lockThread(Object thread, boolean forceSuspend, boolean isFirstCall, List<Callable<Void>> jobs) {
+    private void lockThread(Object thread, boolean forceSuspend, List<Callable<Void>> jobs) {
         SimpleLock lock = getSuspendLock(thread);
-        // in case a thread job is already posted on this thread
-        checkThreadJobsAndRun(thread, forceSuspend);
         synchronized (lock) {
             if (!forceSuspend && !threadSuspension.isHardSuspended(thread)) {
                 // thread was resumed from other command, so don't suspend now
                 return;
             }
+
+            if (lock.isLocked()) {
+                threadSuspension.suspendThread(thread);
+                runJobs(jobs);
+            }
+        }
+        while (!Thread.currentThread().isInterrupted()) {
             try {
-                if (lock.isLocked() && isFirstCall) {
-                    threadSuspension.suspendThread(thread);
-                    runJobs(jobs);
-                }
-                while (lock.isLocked()) {
-                    fine(() -> "lock.wait() for thread: " + getThreadName(thread));
+                synchronized (lock) {
+                    if (!lock.isLocked()) {
+                        // released from other thread, so break loop
+                        break;
+                    }
                     // no reason to hold a hard suspension status, since now
                     // we have the actual suspension status and suspended information
                     threadSuspension.removeHardSuspendedThread(thread);
-                    lock.wait();
+                    fine(() -> "lock.wait() for thread: " + getThreadName(thread));
+                    // Having the thread lock, we can check if an invoke job was posted outside of
+                    // locking, and if so, we postpone blocking the thread until next time around.
+                    if (!invokeJobs.containsKey(thread)) {
+                        lock.wait();
+                    }
                 }
             } catch (InterruptedException e) {
                 // the thread was interrupted, so let it run dry
                 // make sure the interrupted flag is set though
                 Thread.currentThread().interrupt();
             }
+            checkInvokeJobsAndRun(thread);
         }
-
-        checkThreadJobsAndRun(thread, forceSuspend);
-        getGCPrevention().releaseActiveWhileSuspended(thread);
         fine(() -> "lock wakeup for thread: " + getThreadName(thread));
     }
 
-    private void checkThreadJobsAndRun(Object thread, boolean forceSuspend) {
-        if (threadJobs.containsKey(thread)) {
-            // re-acquire the thread lock after completing
-            // the job, to avoid the thread resuming.
-            SimpleLock suspendLock = getSuspendLock(thread);
-            synchronized (suspendLock) {
-                suspendLock.acquire();
-            }
-            // a thread job was posted on this thread
-            // only wake up to perform the job a go back to sleep
-            ThreadJob<?> job = threadJobs.remove(thread);
-            byte suspensionStrategy = job.getSuspensionStrategy();
-
-            if (suspensionStrategy == SuspendStrategy.ALL) {
-                Object[] allThreads = getVisibleGuestThreads();
-                // resume all threads during invocation of method to avoid potential deadlocks
-                for (Object activeThread : allThreads) {
-                    if (activeThread != thread) {
-                        resume(activeThread);
-                    }
-                }
-                // perform the job on this thread
-                job.runJob();
-                // suspend all other threads after the invocation
-                for (Object activeThread : allThreads) {
-                    if (activeThread != thread) {
-                        suspend(activeThread);
-                    }
-                }
-            } else {
-                job.runJob();
-            }
-            lockThread(thread, forceSuspend, false, Collections.emptyList());
+    private void checkInvokeJobsAndRun(Object thread) {
+        if (invokeJobs.containsKey(thread)) {
+            InvokeJob<?> job = invokeJobs.remove(thread);
+            job.runJob(this);
         }
     }
 
-    public void postJobForThread(ThreadJob<?> job) {
+    public void postInvokeJobForThread(InvokeJob<?> job) {
         SimpleLock lock = getSuspendLock(job.getThread());
         synchronized (lock) {
-            threadJobs.put(job.getThread(), job);
-            lock.release();
+            invokeJobs.put(job.getThread(), job);
             lock.notifyAll();
         }
     }

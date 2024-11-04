@@ -385,8 +385,8 @@ public class SubstrateGraphBuilderPlugins {
     }
 
     private static void registerImageInfoPlugins(InvocationPlugins plugins) {
-        Registration proxyRegistration = new Registration(plugins, ImageInfo.class);
-        proxyRegistration.register(new RequiredInvocationPlugin("inImageCode") {
+        Registration registration = new Registration(plugins, ImageInfo.class);
+        registration.register(new RequiredInvocationPlugin("inImageCode") {
             /** See {@link ImageInfo#inImageCode()}. */
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
@@ -394,7 +394,7 @@ public class SubstrateGraphBuilderPlugins {
                 return true;
             }
         });
-        proxyRegistration.register(new RequiredInvocationPlugin("inImageBuildtimeCode") {
+        registration.register(new RequiredInvocationPlugin("inImageBuildtimeCode") {
             /** See {@link ImageInfo#inImageBuildtimeCode()}. */
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
@@ -402,7 +402,7 @@ public class SubstrateGraphBuilderPlugins {
                 return true;
             }
         });
-        proxyRegistration.register(new RequiredInvocationPlugin("inImageRuntimeCode") {
+        registration.register(new RequiredInvocationPlugin("inImageRuntimeCode") {
             /** See {@link ImageInfo#inImageRuntimeCode()}. */
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
@@ -1131,7 +1131,7 @@ public class SubstrateGraphBuilderPlugins {
                 Class<?> key = constantObjectParameter(b, targetMethod, 0, Class.class, classNode);
                 boolean result = ImageSingletons.contains(key);
                 if (!result && ImageLayerBuildingSupport.buildingImageLayer()) {
-                    if (ApplicationLayerOnlyImageSingleton.class.isAssignableFrom(key) || MultiLayeredImageSingleton.class.isAssignableFrom(key)) {
+                    if (ApplicationLayerOnlyImageSingleton.isAssignableFrom(key) || MultiLayeredImageSingleton.class.isAssignableFrom(key)) {
                         /*
                          * ApplicationLayerOnlyImageSingletons and the array representation of a
                          * MultiLayeredImageSingleton will only be created in the final layer.
@@ -1151,7 +1151,8 @@ public class SubstrateGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode classNode) {
                 Class<?> key = constantObjectParameter(b, targetMethod, 0, Class.class, classNode);
 
-                if (ApplicationLayerOnlyImageSingleton.class.isAssignableFrom(key) && ImageLayerBuildingSupport.buildingSharedLayer()) {
+                if (ApplicationLayerOnlyImageSingleton.isAssignableFrom(key) &&
+                                ImageLayerBuildingSupport.buildingSharedLayer()) {
                     /*
                      * This singleton is only installed in the application layer heap. All other
                      * layers looks refer to this singleton.

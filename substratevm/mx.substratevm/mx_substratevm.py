@@ -1265,6 +1265,9 @@ def _native_image_launcher_extra_jvm_args():
     res = [f'-XX:{max_heap_size_flag}']
     if not mx_sdk_vm.jdk_enables_jvmci_by_default(get_jdk()):
         res.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'])
+    # Graal should not be used as the JIT compiler since SVM specific compiler extensions
+    # are put on the module path which can cause problems when running Graal as a HotSpot JIT.
+    res.append('-XX:-UseJVMCICompiler')
     return res
 
 driver_build_args = [
@@ -1532,18 +1535,29 @@ libgraal_build_args = [
 ] if mx.is_interactive() else []) + svm_experimental_options([
     '-H:-UseServiceLoaderFeature',
     '-H:+AllowFoldMethods',
-    '-Djdk.vm.ci.services.aot=true',
     '-Dtruffle.TruffleRuntime=',
     '-H:+JNIEnhancedErrorCodes',
     '-H:InitialCollectionPolicy=LibGraal',
 
-    # These 2 arguments provide walkable call stacks for a crash in libgraal
+    # Needed for initializing jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE.
+    '-Djdk.vm.ci.services.aot=true',
+
+    # These 2 arguments provide walkable call stacks for a crash in libgraal.
+    # In the context of hs_err logs:
+    # - On Linux and Mac, stack walking relies on -H:+PreserveFramePointer, and symbol
+    #   resolution relies on the presence of local symbols in the symbol table
+    #   (-H:-DeleteLocalSymbols), so no debug info is needed.
+    # - On Windows, stack walking relies on unwind info (GR-49517), while symbol
+    #   resolution relies on PDBs, so debug info is needed for usable stack traces.
     '-H:+PreserveFramePointer',
     '-H:-DeleteLocalSymbols',
 
     # Configure -Djdk.graal.internal.HeapDumpOnOutOfMemoryError=true
     '--enable-monitoring=heapdump',
     '-H:HeapDumpDefaultFilenamePrefix=libgraal_pid',
+
+    # Generate a .bgv dump upon compilation failure
+    '-H:+DumpOnError',
 
     # No VM-internal threads may be spawned for libgraal and the reference handling is executed manually.
     '-H:-AllowVMInternalThreads',

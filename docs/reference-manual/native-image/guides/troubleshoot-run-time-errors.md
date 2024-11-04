@@ -12,7 +12,7 @@ In this guide, some reasons for that are shown, along with the strategies to dia
 
 Note that sometimes upgrading to the latest version of GraalVM can already resolve an issue.
 
-## 1. Diagnose Missing Metadata Registration
+### 1. Diagnose Missing Metadata Registration
 
 Start by diagnosing if there is any metadata configuration missing.
 Native Image requires all utilized classes to be known during the build.
@@ -31,39 +31,39 @@ This can be avoided by eagerly checking for missing metadata.
 
 4. Then restart the native executable with `-XX:MissingRegistrationReportingMode=Exit` to detect places where the application accidentally ignores a missing registration error (with `catch (Throwable t)` blocks). The application will then unconditionally print the error message with the stack trace and exit immediately. This behavior is ideal for running application tests to guarantee all metadata is included.
 
-### Shared Libraries
+#### Shared Libraries
 
 For diagnosing shared libraries built with Native Image, you can either:
 * specify `-R:MissingRegistrationReportingMode=Exit` when building a native shared library;
 * or specify `-XX:MissingRegistrationReportingMode=Exit` when the isolate is created. `graal_create_isolate_params_t` has `argc (_reserved_1)` and `argv (_reserved_2)` fields that can be used to pass C-style command-line options at run time. However, note that both fields are currently not public APIs.
 
-## 2. Set java.home Explicitly
+### 2. Set java.home Explicitly
 
 If your application code uses the `java.home` property, set it explicitly with `-Djava.home=<path>` when running a native executable.
 Otherwise, the `System.getProperty("java.home")` call will return a `null` value.
 
-## 3. Enable URL Protocols
+### 3. Enable URL Protocols
 
 Try enabling all URL protocols on-demand at build time: `--enable-url-protocols=<protocols>`.
 To enable the HTTPS support only, pass `--enable-https`. 
 
-## 4. Enable Signal Handling
+### 4. Enable Signal Handling
 
 If your application is using signal handling or the `java.lang.Terminator` exit handlers, provide the option `--install-exit-handlers` option at build time.
 
-## 5. Include All Charsets and Locales
+### 5. Include All Charsets and Locales
 
 Other handy options are `-H:+AddAllCharsets` to add charsets support, and `-H:+IncludeAllLocales` to pre-initialize support for locale-sensitive behavior in the `java.util` and `java.text` packages. 
 Pass those options at build time.
 This might increase the size of the resulting binary.
 
-## 6. Add Missing Security Providers
+### 6. Add Missing Security Providers
 
 If your application is using Security Providers, try to pre-initialize security providers by passing the option `-H:AdditionalSecurityProviders=<list-of-providers>` at build time. 
 Here is a list of all JDK security providers to choose from:
 `sun.security.provider.Sun,sun.security.rsa.SunRsaSign,sun.security.ec.SunEC,sun.security.ssl.SunJSSE,com.sun.crypto.provider.SunJCE,sun.security.jgss.SunProvider,com.sun.security.sasl.Provider,org.jcp.xml.dsig.internal.dom.XMLDSigRI,sun.security.smartcardio.SunPCSC,sun.security.provider.certpath.ldap.JdkLDAP,com.sun.security.sasl.gsskerb.JdkSASL`.
 
-## 7. File a Native Image Run-Time Issue
+### 7. File a Native Image Run-Time Issue
 
 Only if you tried all the above suggestions, file a [Native Image Run-Time Issue Report](https://github.com/oracle/graal/issues/new?assignees=&labels=native-image%2Cbug%2Crun-time&projects=&template=1_1_native_image_run_time_bug_report.yml&title=%5BNative+Image%5D+) at GitHub, filling out the necessary information. 
 

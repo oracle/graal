@@ -22,48 +22,6 @@
  */
 package com.oracle.truffle.espresso.vm;
 
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_ABSTRACT;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_LAMBDA_FORM_COMPILED;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_PUBLIC;
-import static com.oracle.truffle.espresso.jni.JniEnv.JNI_EDETACHED;
-import static com.oracle.truffle.espresso.jni.JniEnv.JNI_ERR;
-import static com.oracle.truffle.espresso.jni.JniEnv.JNI_EVERSION;
-import static com.oracle.truffle.espresso.jni.JniEnv.JNI_OK;
-import static com.oracle.truffle.espresso.meta.EspressoError.cat;
-import static com.oracle.truffle.espresso.runtime.Classpath.JAVA_BASE;
-import static com.oracle.truffle.espresso.runtime.EspressoContext.DEFAULT_STACK_SIZE;
-import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.ACCESS_VM_ANNOTATIONS;
-import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.HIDDEN_CLASS;
-import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.NESTMATE_CLASS;
-import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.STRONG_LOADER_LINK;
-
-import java.io.File;
-import java.lang.ref.Reference;
-import java.lang.reflect.Array;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Parameter;
-import java.nio.ByteBuffer;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
-import java.util.StringJoiner;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicLongFieldUpdater;
-import java.util.function.IntFunction;
-import java.util.logging.Level;
-
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.options.OptionValues;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
@@ -85,23 +43,14 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.blocking.GuestInterruptedException;
-import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.classfile.Constants;
-import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
-import com.oracle.truffle.espresso.classfile.attributes.EnclosingMethodAttribute;
-import com.oracle.truffle.espresso.classfile.attributes.InnerClassesAttribute;
-import com.oracle.truffle.espresso.classfile.attributes.MethodParametersAttribute;
-import com.oracle.truffle.espresso.classfile.attributes.PermittedSubclassesAttribute;
-import com.oracle.truffle.espresso.classfile.attributes.RecordAttribute;
-import com.oracle.truffle.espresso.classfile.attributes.SignatureAttribute;
-import com.oracle.truffle.espresso.classfile.constantpool.NameAndTypeConstant;
-import com.oracle.truffle.espresso.descriptors.ByteSequence;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.descriptors.Types;
-import com.oracle.truffle.espresso.descriptors.Validation;
+import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
+import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.descriptors.Validation;
 import com.oracle.truffle.espresso.ffi.NativeSignature;
 import com.oracle.truffle.espresso.ffi.NativeType;
 import com.oracle.truffle.espresso.ffi.Pointer;
@@ -125,16 +74,26 @@ import com.oracle.truffle.espresso.jni.JniVersion;
 import com.oracle.truffle.espresso.jni.NativeEnv;
 import com.oracle.truffle.espresso.jni.NoSafepoint;
 import com.oracle.truffle.espresso.jvmti.JVMTI;
-import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNodeFactory;
+import com.oracle.truffle.espresso.classfile.ClasspathEntry;
+import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.Constants;
+import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.classfile.JavaKind;
+import com.oracle.truffle.espresso.classfile.attributes.Attribute;
+import com.oracle.truffle.espresso.classfile.attributes.EnclosingMethodAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.InnerClassesAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.MethodParametersAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.PermittedSubclassesAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.RecordAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.SignatureAttribute;
+import com.oracle.truffle.espresso.classfile.constantpool.NameAndTypeConstant;
 import com.oracle.truffle.espresso.ref.EspressoReference;
-import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.Classpath;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
@@ -159,6 +118,47 @@ import com.oracle.truffle.espresso.vm.npe.ExtendedNPEMessage;
 import com.oracle.truffle.espresso.vm.structs.JavaVMAttachArgs;
 import com.oracle.truffle.espresso.vm.structs.Structs;
 import com.oracle.truffle.espresso.vm.structs.StructsAccess;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.options.OptionValues;
+
+import java.io.File;
+import java.lang.ref.Reference;
+import java.lang.reflect.Array;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Parameter;
+import java.nio.ByteBuffer;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
+import java.util.StringJoiner;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
+import java.util.function.IntFunction;
+import java.util.logging.Level;
+
+import static com.oracle.truffle.espresso.jni.JniEnv.JNI_EDETACHED;
+import static com.oracle.truffle.espresso.jni.JniEnv.JNI_ERR;
+import static com.oracle.truffle.espresso.jni.JniEnv.JNI_EVERSION;
+import static com.oracle.truffle.espresso.jni.JniEnv.JNI_OK;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_ABSTRACT;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_LAMBDA_FORM_COMPILED;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_PUBLIC;
+import static com.oracle.truffle.espresso.meta.EspressoError.cat;
+import static com.oracle.truffle.espresso.runtime.Classpath.JAVA_BASE;
+import static com.oracle.truffle.espresso.runtime.EspressoContext.DEFAULT_STACK_SIZE;
+import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.ACCESS_VM_ANNOTATIONS;
+import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.HIDDEN_CLASS;
+import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.NESTMATE_CLASS;
+import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.STRONG_LOADER_LINK;
 
 /**
  * Espresso implementation of the VM interface (libjvm).
@@ -257,7 +257,8 @@ public final class VM extends NativeEnv {
              * we have to check for JNI_OnLoad as well.
              */
             EspressoError.guarantee(getVM() != null, "The VM must be initialized before libjava's JNI_OnLoad");
-            TruffleObject jniOnLoad = getNativeAccess().lookupAndBindSymbol(this.javaLibrary, "JNI_OnLoad", NativeSignature.create(NativeType.INT, NativeType.POINTER, NativeType.POINTER));
+            NativeSignature jniOnLoadSignature = NativeSignature.create(NativeType.INT, NativeType.POINTER, NativeType.POINTER);
+            TruffleObject jniOnLoad = getNativeAccess().lookupAndBindSymbol(this.javaLibrary, "JNI_OnLoad", jniOnLoadSignature, false, true);
             if (jniOnLoad != null) {
                 try {
                     getUncached().execute(jniOnLoad, mokapotEnvPtr, RawPointer.nullInstance());
@@ -293,7 +294,7 @@ public final class VM extends NativeEnv {
             disposeMokapotContext = getNativeAccess().lookupAndBindSymbol(mokapotLibrary, "disposeMokapotContext",
                             NativeSignature.create(NativeType.VOID, NativeType.POINTER, NativeType.POINTER));
 
-            if (jniEnv.getContext().getEspressoEnv().EnableManagement) {
+            if (getContext().getEspressoEnv().EnableManagement) {
                 management = new Management(getContext(), mokapotLibrary);
             } else {
                 management = null;
@@ -374,7 +375,7 @@ public final class VM extends NativeEnv {
     /**
      * Maps native function pointers to node factories for VM methods.
      */
-    private EconomicMap<Long, CallableFromNative.Factory> knownVmMethods = EconomicMap.create();
+    private final EconomicMap<Long, CallableFromNative.Factory> knownVmMethods = EconomicMap.create();
 
     @Override
     protected List<CallableFromNative.Factory> getCollector() {
@@ -405,7 +406,7 @@ public final class VM extends NativeEnv {
     @Override
     @TruffleBoundary
     protected void processCallBackResult(String name, CallableFromNative.Factory factory, Object... args) {
-        assert args.length == lookupCallBackArgsCount();
+        super.processCallBackResult(name, factory, args);
         try {
             InteropLibrary uncached = InteropLibrary.getUncached();
             Object ptr = args[1];
@@ -1230,6 +1231,39 @@ public final class VM extends NativeEnv {
         return StaticObject.NULL;
     }
 
+    public static StaticObject toGuestComponent(RecordAttribute.RecordComponentInfo recordInfo, Meta meta, ObjectKlass klass) {
+        assert meta.getJavaVersion().java16OrLater();
+        RuntimeConstantPool pool = klass.getConstantPool();
+        StaticObject component = meta.java_lang_reflect_RecordComponent.allocateInstance(meta.getContext());
+        Symbol<Name> nameSymbol = pool.symbolAt(recordInfo.getNameIndex());
+        Symbol<Type> typeSymbol = pool.symbolAt(recordInfo.getDescriptorIndex());
+        Symbol<Signature> signature = meta.getSignatures().makeRaw(typeSymbol);
+        meta.java_lang_reflect_RecordComponent_clazz.setObject(component, klass.mirror());
+        meta.java_lang_reflect_RecordComponent_name.setObject(component, meta.toGuestString(nameSymbol));
+        meta.java_lang_reflect_RecordComponent_type.setObject(component, meta.resolveSymbolAndAccessCheck(typeSymbol, klass).mirror());
+
+        // Find and set accessor
+        Method m = klass.lookupMethod(nameSymbol, signature);
+        boolean validMethod = m != null && !m.isStatic() && !m.isConstructor();
+        meta.java_lang_reflect_RecordComponent_accessor.setObject(component, validMethod ? m.makeMirror(meta) : StaticObject.NULL);
+
+        // Find and set generic signature
+        SignatureAttribute genericSignatureAttribute = (SignatureAttribute) recordInfo.getAttribute(SignatureAttribute.NAME);
+        meta.java_lang_reflect_RecordComponent_signature.setObject(component,
+                        genericSignatureAttribute != null ? meta.toGuestString(pool.symbolAt(genericSignatureAttribute.getSignatureIndex())) : StaticObject.NULL);
+
+        // Find and set annotations
+        doAnnotation(recordInfo, component, Name.RuntimeVisibleAnnotations, meta.java_lang_reflect_RecordComponent_annotations, meta);
+        doAnnotation(recordInfo, component, Name.RuntimeVisibleTypeAnnotations, meta.java_lang_reflect_RecordComponent_typeAnnotations, meta);
+
+        return component;
+    }
+
+    private static void doAnnotation(RecordAttribute.RecordComponentInfo recordInfo, StaticObject component, Symbol<Name> attrName, Field f, Meta meta) {
+        Attribute attr = recordInfo.getAttribute(attrName);
+        f.setObject(component, attr == null ? StaticObject.NULL : StaticObject.wrap(attr.getData(), meta));
+    }
+
     @VmImpl(isJni = true)
     @TruffleBoundary
     public @JavaType(internalName = "[Ljava/lang/reflect/RecordComponent;") StaticObject JVM_GetRecordComponents(@JavaType(Class.class) StaticObject self) {
@@ -1243,7 +1277,7 @@ public final class VM extends NativeEnv {
             return StaticObject.NULL;
         }
         RecordAttribute.RecordComponentInfo[] components = record.getComponents();
-        return getMeta().java_lang_reflect_RecordComponent.allocateReferenceArray(components.length, (i) -> components[i].toGuestComponent(getMeta(), klass));
+        return getMeta().java_lang_reflect_RecordComponent.allocateReferenceArray(components.length, (i) -> toGuestComponent(components[i], getMeta(), klass));
     }
 
     @VmImpl(isJni = true)
@@ -1387,7 +1421,7 @@ public final class VM extends NativeEnv {
         if (InteropLibrary.getUncached().isNull(argsPtr)) {
             getLogger().fine("AttachCurrentThread with null args");
         } else {
-            JavaVMAttachArgs.JavaVMAttachArgsWrapper attachArgs = getStructs().javaVMAttachArgs.wrap(jni(), argsPtr);
+            JavaVMAttachArgs.JavaVMAttachArgsWrapper attachArgs = getStructs().javaVMAttachArgs.wrap(getHandles(), argsPtr);
             if (JVM_IsSupportedJNIVersion(attachArgs.version())) {
                 group = attachArgs.group();
                 name = NativeUtils.fromUTF8Ptr(attachArgs.name());
@@ -1405,7 +1439,7 @@ public final class VM extends NativeEnv {
 
     @VmImpl
     @TruffleBoundary
-    public int DetachCurrentThread(@Inject EspressoContext context) {
+    public int DetachCurrentThread(@Inject EspressoContext context, @Inject EspressoLanguage language) {
         StaticObject currentThread = context.getCurrentPlatformThread();
         if (currentThread == null) {
             return JNI_OK;
@@ -1436,8 +1470,8 @@ public final class VM extends NativeEnv {
             });
             return JNI_ERR;
         }
-        StaticObject pendingException = jniEnv.getPendingException();
-        jniEnv.clearPendingException();
+        StaticObject pendingException = language.getPendingException();
+        language.clearPendingException();
 
         Meta meta = context.getMeta();
         try {
@@ -3531,7 +3565,7 @@ public final class VM extends NativeEnv {
 
     void prependModuleClasspath(String moduleName) {
         Path path = getContext().getVmProperties().javaHome().resolve(MODULES).resolve(moduleName);
-        Classpath.Entry newEntry = Classpath.createEntry(path.toString());
+        ClasspathEntry newEntry = Classpath.createEntry(path.toString());
         if (newEntry.isDirectory()) {
             getContext().getBootClasspath().prepend(newEntry);
             // TODO: prepend path to VM properties' bootClasspath

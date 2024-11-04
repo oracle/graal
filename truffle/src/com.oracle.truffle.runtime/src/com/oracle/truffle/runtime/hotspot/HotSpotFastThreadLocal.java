@@ -137,4 +137,6 @@ final class HotSpotFastThreadLocal extends OptimizedFastThreadLocal {
         RUNTIME.setThreadLocalObject(0, threadLocals);
     }
 
+    static void ensureLoaded() {
+    }
 }

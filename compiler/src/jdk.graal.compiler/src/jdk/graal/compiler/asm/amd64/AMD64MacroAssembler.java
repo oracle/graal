@@ -832,7 +832,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         if (strideSrc.value < strideDst.value) {
             GraalError.guarantee(strideDst.log2 - strideSrc.log2 == 1, "unsupported stride pair %s %s", strideSrc, strideDst);
             if (isAVX()) {
-                VexMoveOp.VMOVD.emit(this, AVXKind.AVXSize.DWORD, dst, address);
+                VexMoveOp.VMOVD.emit(this, AVXKind.AVXSize.XMM, dst, address);
                 loadAndExtendAVX(AVXKind.AVXSize.QWORD, extendMode, dst, strideDst, dst, strideSrc);
             } else {
                 movdl(dst, address);
@@ -841,7 +841,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         } else {
             GraalError.guarantee(strideSrc.value == strideDst.value, "source stride must be smaller or equal to target stride");
             if (isAVX()) {
-                VexMoveOp.VMOVQ.emit(this, AVXKind.AVXSize.QWORD, dst, address);
+                VexMoveOp.VMOVQ.emit(this, AVXKind.AVXSize.XMM, dst, address);
             } else {
                 movdq(dst, address);
             }

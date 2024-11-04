@@ -23,14 +23,14 @@
 package com.oracle.truffle.espresso.meta;
 
 import static com.oracle.truffle.espresso.EspressoOptions.SpecComplianceMode.HOTSPOT;
-import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.ALL;
-import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_16_OR_HIGHER;
-import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_17_OR_HIGHER;
-import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_19_OR_HIGHER;
-import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_8_OR_LOWER;
-import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_9_OR_HIGHER;
-import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.higher;
-import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.lower;
+import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.ALL;
+import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_16_OR_HIGHER;
+import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_17_OR_HIGHER;
+import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_19_OR_HIGHER;
+import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_8_OR_LOWER;
+import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_9_OR_HIGHER;
+import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.higher;
+import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.lower;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -45,11 +45,11 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.HostCompilerDirectives;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.EspressoOptions.SpecComplianceMode;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.impl.EspressoClassLoadingException;
@@ -59,6 +59,7 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ModuleTable;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.impl.PrimitiveKlass;
+import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
@@ -376,6 +377,18 @@ public final class Meta extends ContextAccessImpl {
         java_nio_file_Path = knownKlass(Type.java_nio_file_Path);
         java_nio_file_Paths = knownKlass(Type.java_nio_file_Paths);
         java_nio_file_Paths_get = java_nio_file_Paths.requireDeclaredMethod(Name.get, Signature.Path_String_String_array);
+
+        ObjectKlass nioNativeThreadKlass = knownKlass(Type.sun_nio_ch_NativeThread);
+        sun_nio_ch_NativeThread_init = nioNativeThreadKlass.lookupDeclaredMethod(Name.init, Signature._void);
+        if (getJavaVersion().java21OrLater()) {
+            sun_nio_ch_NativeThread_isNativeThread = nioNativeThreadKlass.requireDeclaredMethod(Name.isNativeThread, Signature._boolean_long);
+            sun_nio_ch_NativeThread_current0 = nioNativeThreadKlass.requireDeclaredMethod(Name.current0, Signature._long);
+            sun_nio_ch_NativeThread_signal = null;
+        } else {
+            sun_nio_ch_NativeThread_isNativeThread = null;
+            sun_nio_ch_NativeThread_current0 = null;
+            sun_nio_ch_NativeThread_signal = nioNativeThreadKlass.requireDeclaredMethod(Name.signal, Signature._void_long);
+        }
 
         sun_launcher_LauncherHelper = knownKlass(Type.sun_launcher_LauncherHelper);
         sun_launcher_LauncherHelper_printHelpMessage = sun_launcher_LauncherHelper.requireDeclaredMethod(Name.printHelpMessage, Signature._void_boolean);
@@ -1552,6 +1565,11 @@ public final class Meta extends ContextAccessImpl {
     public final ObjectKlass java_nio_file_Path;
     public final ObjectKlass java_nio_file_Paths;
     public final Method java_nio_file_Paths_get;
+
+    public final Method sun_nio_ch_NativeThread_isNativeThread;
+    public final Method sun_nio_ch_NativeThread_current0;
+    public final Method sun_nio_ch_NativeThread_signal;
+    public final Method sun_nio_ch_NativeThread_init;
 
     // Array support.
     public final ObjectKlass java_lang_Cloneable;

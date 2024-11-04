@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -184,7 +184,13 @@ public class OptimizeDivPhase extends BasePhase<CoreProviders> {
     protected static void optimizeSignedDiv(Canonicalizable.Binary<ValueNode> div) {
         ValueNode forX = div.getX();
         long c = div.getY().asJavaConstant().asLong();
-        assert c != 1 && c != -1 && c != 0 : Assertions.errorMessageContext("div", div, "c", c);
+        if (c == 1 || c == -1 || c == 0) {
+            /*
+             * Leave to canonicalization. The constant may have been produced by optimizing another
+             * div, without a chance to canonicalize this div yet.
+             */
+            return;
+        }
 
         IntegerStamp dividendStamp = (IntegerStamp) forX.stamp(NodeView.DEFAULT);
         int bitSize = dividendStamp.getBits();

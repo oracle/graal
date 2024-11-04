@@ -360,7 +360,7 @@ public class RuntimeCompiledMethodSupport {
              * We cannot fold simulated values during initial before-analysis graph creation;
              * however, this runs after analysis has completed.
              */
-            return readValue((AnalysisField) field, receiver, true);
+            return readValue((AnalysisField) field, receiver, true, false);
         }
     }
 
