@@ -1715,10 +1715,6 @@ suite = {
           "com.oracle.truffle.api.library.provider.EagerExportProvider",
           "com.oracle.truffle.api.instrumentation.provider.TruffleInstrumentProvider",
           "com.oracle.truffle.api.strings.provider.JCodingsProvider",
-          "com.oracle.truffle.api.library.DefaultExportProvider", # Deprecated
-          "com.oracle.truffle.api.library.EagerExportProvider", # Deprecated
-          "com.oracle.truffle.api.TruffleLanguage.Provider", # Deprecated
-          "com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider", # Deprecated
         ],
       },
 
