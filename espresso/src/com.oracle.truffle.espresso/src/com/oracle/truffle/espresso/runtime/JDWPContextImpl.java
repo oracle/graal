@@ -82,6 +82,7 @@ import com.oracle.truffle.espresso.redefinition.RedefinitionNotSupportedExceptio
 import com.oracle.truffle.espresso.redefinition.plugins.impl.RedefinitionPluginHandler;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.threads.State;
+import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 public final class JDWPContextImpl implements JDWPContext {
     private static final InteropLibrary UNCACHED = InteropLibrary.getUncached();
@@ -245,7 +246,7 @@ public final class JDWPContextImpl implements JDWPContext {
     @Override
     public boolean isValidClassLoader(Object object) {
         if (object instanceof StaticObject loader) {
-            return context.getRegistries().isClassLoader(loader);
+            return InterpreterToVM.instanceOf(loader, context.getMeta().java_lang_ClassLoader);
         }
         return false;
     }
