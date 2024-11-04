@@ -91,13 +91,15 @@
     ]
     + if self.should_mx_build then collect_libgraal_profile + [
       ["mx", "hsdis", "||", "true"],
-      ["mx"] + use_libgraal_profile + ["build"]
-    ] else [],
+      ["mx"] + use_libgraal_profile + ["build"],
+      self.plain_benchmark_cmd + ["file-size:*", "--"] + self.extra_vm_args,
+    ] + self._maybe_bench_upload() else [],
     should_upload_results:: true,
     _bench_upload(filename="${BENCH_RESULTS_FILE_PATH}"):: ["bench-uploader.py", filename],
-    teardown+: if self.should_upload_results then [
-      self._bench_upload()
-    ] else []
+    _maybe_bench_upload(filename="${BENCH_RESULTS_FILE_PATH}"):: if self.should_upload_results then [
+      self._bench_upload(filename)
+    ] else [],
+    teardown+: self._maybe_bench_upload()
   },
 
   // JVM configurations
