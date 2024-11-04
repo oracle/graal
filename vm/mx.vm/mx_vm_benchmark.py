@@ -585,6 +585,7 @@ class NativeImageVM(GraalVm):
         if self.pgo_sampler_only is True:
             config += ["pgo-sampler"]
             is_pgo_set = True
+        # pylint: disable=too-many-boolean-expressions
         if not is_pgo_set and self.pgo_instrumentation is True \
                 and self.jdk_profiles_collect is False \
                 and self.adopted_jdk_pgo is False \
