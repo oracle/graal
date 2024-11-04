@@ -163,11 +163,15 @@ public abstract class OptionValue<T> {
 
     static final String INDENT = "  ";
 
-    static void printIndented(PrintWriter writer, String string, int indentLevel) {
+    private static void printIndentedLine(PrintWriter writer, String line, int indentLevel) {
         for (int i = 0; i <= indentLevel; ++i) {
             writer.append(INDENT);
         }
-        writer.println(string);
+        writer.println(line);
+    }
+
+    static void printIndented(PrintWriter writer, String string, int indentLevel) {
+        string.lines().forEach(line -> printIndentedLine(writer, line, indentLevel));
     }
 
     public void printHelp(PrintWriter writer, int indentLevel) {
