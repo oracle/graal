@@ -545,7 +545,9 @@ class NativeImageVM(GraalVm):
         self.no_inlining_before_analysis = False
         self.optimization_level = None
         self._configure_comma_separated_configs(config_name)
-        if ',' not in config_name:
+        if ',' in config_name:
+            self._canonical_configuration = False
+        else:
             # we validate that programmatic configuration of the VM matches reliably re-generates the original config name
             # since this feature is relied upon for syntactic sugar for vm configs
             assert config_name == self.config_name(), f"Config name mismatch: '{config_name}' is generated as '{self.config_name()}' !"
