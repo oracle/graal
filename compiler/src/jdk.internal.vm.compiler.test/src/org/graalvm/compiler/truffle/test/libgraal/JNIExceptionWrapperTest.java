@@ -30,6 +30,7 @@ import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -125,6 +126,14 @@ public class JNIExceptionWrapperTest extends TestWithPolyglotOptions {
 
         @Override
         public void onGraalTierFinished(TruffleCompilable compilable, GraphInfo graph) {
+        }
+
+        /**
+         * Override to prevent infinite recursion caused by default implementations that recursively
+         * delegate to each other.
+         */
+        @Override
+        public void onFailure(TruffleCompilable compilable, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> lazyStackTrace) {
         }
     }
 

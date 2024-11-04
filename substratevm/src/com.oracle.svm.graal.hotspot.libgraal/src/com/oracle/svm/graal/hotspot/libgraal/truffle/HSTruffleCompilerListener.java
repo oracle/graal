@@ -34,22 +34,31 @@ import static com.oracle.svm.graal.hotspot.libgraal.truffle.HSTruffleCompilerLis
 import static com.oracle.svm.graal.hotspot.libgraal.truffle.HSTruffleCompilerListenerGen.callOnGraalTierFinished;
 import static com.oracle.svm.graal.hotspot.libgraal.truffle.HSTruffleCompilerListenerGen.callOnSuccess;
 import static com.oracle.svm.graal.hotspot.libgraal.truffle.HSTruffleCompilerListenerGen.callOnTruffleTierFinished;
+import static org.graalvm.jniutils.JNIUtil.ExceptionClear;
+import static org.graalvm.jniutils.JNIUtil.GetStaticMethodID;
 import static org.graalvm.jniutils.JNIUtil.createHSString;
+import static org.graalvm.nativeimage.c.type.CTypeConversion.toCString;
 
 import java.io.Closeable;
 import java.util.function.Supplier;
 
+import com.oracle.truffle.compiler.hotspot.libgraal.FromLibGraalId;
 import org.graalvm.jniutils.HSObject;
+import org.graalvm.jniutils.JNI.JMethodID;
 import org.graalvm.jniutils.JNI.JNIEnv;
 import org.graalvm.jniutils.JNI.JObject;
 import org.graalvm.jniutils.JNI.JString;
+import org.graalvm.jniutils.JNI.JValue;
 
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilationTask;
 import com.oracle.truffle.compiler.TruffleCompilerListener;
 import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal;
 
+import org.graalvm.jniutils.JNICalls.JNIMethod;
 import org.graalvm.jniutils.JNIMethodScope;
+import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
 
 /**
  * Proxy for a {@link TruffleCompilerListener} object in the HotSpot heap.
@@ -104,7 +113,62 @@ final class HSTruffleCompilerListener extends HSObject implements TruffleCompile
             JObject hsCompilable = ((HSTruffleCompilable) compilable).getHandle();
             JNIEnv env = JNIMethodScope.env();
             JString hsReason = createHSString(env, reason);
-            callOnFailure(calls, env, getHandle(), hsCompilable, hsReason, bailout, permanentBailout, tier, lazyStackTraceScope != null ? lazyStackTraceScope.getHandle() : 0L);
+            JNIMethod onFailureNew = findOnFailureNewMethod(env);
+            if (onFailureNew != null) {
+                callOnFailureNew(calls, onFailureNew, env, getHandle(), hsCompilable, hsReason, bailout, permanentBailout, tier, lazyStackTraceScope != null ? lazyStackTraceScope.getHandle() : 0L);
+            } else {
+                callOnFailure(calls, env, getHandle(), hsCompilable, hsReason, bailout, permanentBailout, tier);
+            }
+        }
+    }
+
+    private static volatile JNIMethod onFailureNewMethod;
+
+    private JNIMethod findOnFailureNewMethod(JNIEnv env) {
+        JNIMethod res = onFailureNewMethod;
+        if (res == null) {
+            res = findJNIMethod(env, "onFailure", void.class, Object.class, Object.class, String.class,
+                            boolean.class, boolean.class, int.class, long.class);
+            onFailureNewMethod = res;
+        }
+        return res.getJMethodID().isNonNull() ? res : null;
+    }
+
+    private static void callOnFailureNew(TruffleFromLibGraalCalls calls, JNIMethod onFailureMethod, JNIEnv env,
+                    JObject p0, JObject p1, JObject p2, boolean p3, boolean p4, int p5, long p6) {
+        JValue args = StackValue.get(7, JValue.class);
+        args.addressOf(0).setJObject(p0);
+        args.addressOf(1).setJObject(p1);
+        args.addressOf(2).setJObject(p2);
+        args.addressOf(3).setBoolean(p3);
+        args.addressOf(4).setBoolean(p4);
+        args.addressOf(5).setInt(p5);
+        args.addressOf(6).setLong(p6);
+        calls.getJNICalls().callStaticVoid(env, calls.getPeer(), onFailureMethod, args);
+    }
+
+    private JNIMethod findJNIMethod(JNIEnv env, String methodName, Class<?> returnType, Class<?>... parameterTypes) {
+        try (CTypeConversion.CCharPointerHolder cname = toCString(methodName);
+                        CTypeConversion.CCharPointerHolder csig = toCString(FromLibGraalId.encodeMethodSignature(returnType, parameterTypes))) {
+            JMethodID jniId = GetStaticMethodID(env, calls.getPeer(), cname.get(), csig.get());
+            if (jniId.isNull()) {
+                /*
+                 * The `onFailure` method with 7 arguments is not available in Truffle runtime 24.0,
+                 * clear pending NoSuchMethodError.
+                 */
+                ExceptionClear(env);
+            }
+            return new JNIMethod() {
+                @Override
+                public JMethodID getJMethodID() {
+                    return jniId;
+                }
+
+                @Override
+                public String getDisplayName() {
+                    return methodName;
+                }
+            };
         }
     }
 
