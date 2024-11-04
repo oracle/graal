@@ -33,6 +33,7 @@ import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.function.Function;
 
+import jdk.graal.compiler.hotspot.libgraal.BuildTime;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -105,8 +106,8 @@ public final class LibGraalFieldsOffsetsFeature implements InternalFeature {
     }
 
     static class FieldsOffsetsReplacements {
-        protected final Map<long[], FieldsOffsetsReplacement> replacements = new IdentityHashMap<>();
-        protected boolean sealed;
+        private final Map<long[], FieldsOffsetsReplacement> replacements = new IdentityHashMap<>();
+        private boolean sealed;
     }
 
     private static Map<long[], FieldsOffsetsReplacement> getReplacements() {
@@ -165,7 +166,7 @@ public final class LibGraalFieldsOffsetsFeature implements InternalFeature {
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         MethodHandle getInputEdgesOffsets;
         MethodHandle getSuccessorEdgesOffsets;
-        var buildTimeClass = libGraalFeature.loadClassOrFail("jdk.graal.compiler.hotspot.libgraal.BuildTime");
+        var buildTimeClass = libGraalFeature.loadClassOrFail(BuildTime.class);
         try {
             MethodType offsetAccessorSignature = MethodType.methodType(long[].class, Object.class);
             getInputEdgesOffsets = mhl.findStatic(buildTimeClass, "getInputEdgesOffsets", offsetAccessorSignature);

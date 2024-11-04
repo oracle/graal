@@ -30,7 +30,7 @@ import java.lang.ref.ReferenceQueue;
 import java.util.Map;
 import java.util.function.Supplier;
 
-import jdk.graal.compiler.word.Word;
+import jdk.graal.compiler.libgraal.LibGraalFeature;
 import org.graalvm.jniutils.JNI;
 import org.graalvm.jniutils.JNIExceptionWrapper;
 import org.graalvm.jniutils.JNIMethodScope;
@@ -62,6 +62,9 @@ import com.oracle.svm.core.jdk.JDKLatest;
 import com.oracle.svm.core.log.FunctionPointerLogHandler;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.hotspot.LibGraalJNIMethodScope;
+
+import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
+import jdk.graal.compiler.word.Word;
 
 class LibGraalJVMCISubstitutions {
 
@@ -168,20 +171,16 @@ public class LibGraalSubstitutions {
 
         @Delete private long address;
 
-        /*
-         * Graal class GlobalAtomicLong uses a java.lang.ref.Cleaner in static field
-         * GlobalAtomicLong.cleaner to ensure all native memory allocated by GlobalAtomicLong
-         * instances get freed when the instances are garbage collected.
-         *
-         * Native image does not support java.lang.ref.Cleaner. Instead, we can use a
-         * CGlobalData<Pointer> per GlobalAtomicLong instance if we can guarantee that no instances
-         * are created at libgraal-runtime. I.e. all GlobalAtomicLongs in the libgraal-image are
-         * image-heap objects.
+        /**
+         * {@link GlobalAtomicLong} in jargraal uses a {@link Cleaner} to ensure all native memory
+         * allocated by {@link GlobalAtomicLong} instances is freed when the instances are garbage
+         * collected. In libgraal, no {@link GlobalAtomicLong} instances are created at runtime so
+         * no cleaner is needed.
          */
         @Delete private static Cleaner cleaner;
 
         /**
-         * Delete the constructor to ensure instances of {@code GlobalAtomicLong} cannot be created
+         * Delete the constructor to ensure instances of {@link GlobalAtomicLong} cannot be created
          * at runtime.
          */
         @Substitute
@@ -197,10 +196,9 @@ public class LibGraalSubstitutions {
         }
     }
 
-    /*
-     * The challenge with using CGlobalData<Pointer> for GlobalAtomicLongs is that we do have to
-     * make sure they get initialized with the correct initialValue for a given GlobalAtomicLong
-     * instance at image build-time. This FieldValueTransformer ensures that.
+    /**
+     * A field value transformer for the {@code addressSupplier} field injected into a
+     * {@link GlobalAtomicLong} that copies the build-time {@code initialValue}.
      */
     @Platforms(HOSTED_ONLY.class)
     private static class GlobalAtomicLongAddressProvider implements FieldValueTransformer {
@@ -208,7 +206,7 @@ public class LibGraalSubstitutions {
         public Object transform(Object receiver, Object originalValue) {
             long initialValue;
             try {
-                initialValue = (long) ImageSingletons.lookup(LibGraalFeature.class).handleGlobalAtomicLongGetInitialValue.invoke(receiver);
+                initialValue = (long) ImageSingletons.lookup(LibGraalFeature.class).globalAtomicLongGetInitialValue.invoke(receiver);
             } catch (Throwable e) {
                 throw VMError.shouldNotReachHere(e);
             }

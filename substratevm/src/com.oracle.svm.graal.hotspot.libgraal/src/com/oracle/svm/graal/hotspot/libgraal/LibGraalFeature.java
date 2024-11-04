@@ -43,6 +43,10 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
+import jdk.graal.compiler.lir.phases.LIRPhase;
+import jdk.graal.compiler.phases.BasePhase;
+import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
+import jdk.vm.ci.hotspot.HotSpotModifiers;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.jniutils.NativeBridgeSupport;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -135,12 +139,20 @@ public final class LibGraalFeature implements Feature {
 
     private Function<Class<?>, Object> newLIRPhaseStatistics;
 
-    MethodHandle handleGlobalAtomicLongGetInitialValue;
+    /**
+     * Handle to {@link GlobalAtomicLong#getInitialValue()} in the guest.
+     */
+    MethodHandle globalAtomicLongGetInitialValue;
 
     public ClassLoader getLoader() {
         return loader;
     }
 
+    /**
+     * Loads the class {@code c} in the libgraal class loader.
+     *
+     * @throws Error if loading fails
+     */
     public Class<?> loadClassOrFail(Class<?> c) {
         if (c.getClassLoader() == loader) {
             return c;
@@ -151,6 +163,13 @@ public final class LibGraalFeature implements Feature {
         return loadClassOrFail(c.getName());
     }
 
+    /**
+     * Loads the class named {@code name} in the libgraal class loader. The
+     * {@link #loadClassOrFail(Class)} method should be used instead if the relevant class literal
+     * is accessible.
+     *
+     * @throws Error if loading fails
+     */
     public Class<?> loadClassOrFail(String name) {
         try {
             return loader.loadClass(name);
@@ -189,18 +208,14 @@ public final class LibGraalFeature implements Feature {
         loader = libGraalClassLoader.getClassLoader();
         ImageSingletons.lookup(ClassForNameSupport.class).setLibGraalLoader(loader);
 
-        buildTimeClass = loadClassOrFail("jdk.graal.compiler.hotspot.libgraal.BuildTime");
+        buildTimeClass = loadClassOrFail(BuildTime.class);
 
         // Guest JVMCI and Graal need access to some JDK internal packages
         String[] basePackages = {"jdk.internal.misc", "jdk.internal.util", "jdk.internal.vm"};
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, null, false, "java.base", basePackages);
 
         try {
-            /*
-             * Get GlobalAtomicLong.getInitialValue() method from LibGraalClassLoader for
-             * LibGraalGraalSubstitutions.GlobalAtomicLongAddressProvider FieldValueTransformer
-             */
-            handleGlobalAtomicLongGetInitialValue = mhl.findVirtual(loadClassOrFail("jdk.graal.compiler.serviceprovider.GlobalAtomicLong"),
+            globalAtomicLongGetInitialValue = mhl.findVirtual(loadClassOrFail(GlobalAtomicLong.class),
                             "getInitialValue", methodType(long.class));
 
         } catch (Throwable e) {
@@ -238,16 +253,16 @@ public final class LibGraalFeature implements Feature {
         access.registerObjectReplacer(obj -> obj == loader ? customRuntimeLoader : obj);
 
         try {
-            var basePhaseStatisticsClass = loadClassOrFail("jdk.graal.compiler.phases.BasePhase$BasePhaseStatistics");
-            var lirPhaseStatisticsClass = loadClassOrFail("jdk.graal.compiler.lir.phases.LIRPhase$LIRPhaseStatistics");
+            var basePhaseStatisticsClass = loadClassOrFail(BasePhase.BasePhaseStatistics.class);
+            var lirPhaseStatisticsClass = loadClassOrFail(LIRPhase.LIRPhaseStatistics.class);
             MethodType statisticsCTorType = methodType(void.class, Class.class);
             var basePhaseStatisticsCTor = mhl.findConstructor(basePhaseStatisticsClass, statisticsCTorType);
             var lirPhaseStatisticsCTor = mhl.findConstructor(lirPhaseStatisticsClass, statisticsCTorType);
             newBasePhaseStatistics = new StatisticsCreator(basePhaseStatisticsCTor)::create;
             newLIRPhaseStatistics = new StatisticsCreator(lirPhaseStatisticsCTor)::create;
 
-            basePhaseClass = loadClassOrFail("jdk.graal.compiler.phases.BasePhase");
-            lirPhaseClass = loadClassOrFail("jdk.graal.compiler.lir.phases.LIRPhase");
+            basePhaseClass = loadClassOrFail(BasePhase.class);
+            lirPhaseClass = loadClassOrFail(LIRPhase.class);
 
             ImageSingletons.add(LibGraalCompilerSupport.class, new LibGraalCompilerSupport());
         } catch (Throwable e) {
@@ -258,7 +273,7 @@ public final class LibGraalFeature implements Feature {
         accessImpl.registerClassReachabilityListener(this::registerPhaseStatistics);
         optionCollector = new OptionCollector(LibGraalEntryPoints.vmOptionDescriptors);
         access.registerObjectReachabilityHandler(optionCollector::accept, OptionKey.class);
-        access.registerObjectReachabilityHandler(optionCollector::accept, loadClassOrFail(OptionKey.class.getName()));
+        access.registerObjectReachabilityHandler(optionCollector::accept, loadClassOrFail(OptionKey.class));
         GetJNIConfig.register(loader);
     }
 
@@ -376,11 +391,11 @@ public final class LibGraalFeature implements Feature {
         var bb = impl.getBigBang();
 
         /* Contains static fields that depend on HotSpotJVMCIRuntime */
-        RuntimeClassInitialization.initializeAtRunTime(loadClassOrFail("jdk.vm.ci.hotspot.HotSpotModifiers"));
+        RuntimeClassInitialization.initializeAtRunTime(loadClassOrFail(HotSpotModifiers.class));
         RuntimeClassInitialization.initializeAtRunTime(loadClassOrFail("jdk.vm.ci.hotspot.HotSpotCompiledCodeStream"));
         RuntimeClassInitialization.initializeAtRunTime(loadClassOrFail("jdk.vm.ci.hotspot.HotSpotCompiledCodeStream$Tag"));
         /* ThreadLocal in static field jdk.graal.compiler.debug.DebugContext.activated */
-        RuntimeClassInitialization.initializeAtRunTime(loadClassOrFail("jdk.graal.compiler.debug.DebugContext"));
+        RuntimeClassInitialization.initializeAtRunTime(loadClassOrFail(DebugContext.class));
 
         /* Needed for runtime calls to BoxingSnippets.Templates.getCacheClass(JavaKind) */
         RuntimeReflection.registerAllDeclaredClasses(Character.class);
@@ -406,7 +421,7 @@ public final class LibGraalFeature implements Feature {
 
             List<Class<?>> guestServiceClasses = new ArrayList<>();
             List<Class<?>> serviceClasses = impl.getImageClassLoader().findAnnotatedClasses(LibGraalService.class, false);
-            serviceClasses.stream().map(c -> loadClassOrFail(c.getName())).forEach(guestServiceClasses::add);
+            serviceClasses.stream().map(this::loadClassOrFail).forEach(guestServiceClasses::add);
 
             // Transfer libgraal qualifier (e.g. "PGO optimized") from host to guest.
             String nativeImageLocationQualifier = CompilerConfigurationFactory.getNativeImageLocationQualifier();
