@@ -31,6 +31,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,6 +39,8 @@ import java.util.ServiceLoader;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
+import jdk.graal.compiler.core.common.Fields;
+import jdk.graal.nativeimage.LibGraalFeatureComponent;
 import org.graalvm.collections.EconomicMap;
 
 import jdk.graal.compiler.core.ArchitectureSpecific;
@@ -147,6 +150,7 @@ public class BuildTime {
     @SuppressWarnings({"try", "unused", "unchecked"})
     public static void configureGraalForLibGraal(
                     String arch,
+                    Collection<LibGraalFeatureComponent> libGraalFeatureComponents,
                     List<Class<?>> guestServiceClasses,
                     Consumer<Class<?>> registerAsInHeap,
                     Consumer<List<Class<?>>> hostedGraalSetFoldNodePluginClasses,
@@ -155,6 +159,7 @@ public class BuildTime {
         GraalError.guarantee(VALID_LOADER_NAME.equals(LOADER.getName()),
                         "Only call this method from classloader " + VALID_LOADER_NAME);
 
+        Fields.setLibGraalFeatureComponents(libGraalFeatureComponents);
         Map<Class<?>, List<?>> services = new HashMap<>();
         guestServiceClasses.forEach(c -> addProviders(services, arch, c));
         GraalServices.setLibgraalServices(services);

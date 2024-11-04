@@ -30,12 +30,10 @@ import java.lang.ref.ReferenceQueue;
 import java.util.Map;
 import java.util.function.Supplier;
 
-import jdk.graal.compiler.libgraal.LibGraalFeature;
 import org.graalvm.jniutils.JNI;
 import org.graalvm.jniutils.JNIExceptionWrapper;
 import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.jniutils.JNIUtil;
-import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
@@ -43,10 +41,8 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
-import org.graalvm.nativeimage.impl.IsolateSupport;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Inject;
@@ -56,13 +52,12 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
-import com.oracle.svm.core.heap.GCCause;
-import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.JDKLatest;
 import com.oracle.svm.core.log.FunctionPointerLogHandler;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.hotspot.LibGraalJNIMethodScope;
 
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.libgraal.LibGraalFeature;
 import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
 import jdk.graal.compiler.word.Word;
 
@@ -159,6 +154,14 @@ class LibGraalJVMCISubstitutions {
 }
 
 public class LibGraalSubstitutions {
+    /**
+     * Used to avoid complaints by javac about casts that appear to violate the Java type system
+     * rules but are safe in the context of SVM substitutions.
+     */
+    @SuppressWarnings({"unused", "unchecked"})
+    public static <T> T cast(Object obj, Class<T> toType) {
+        return (T) obj;
+    }
 
     private static final String GLOBAL_ATOMIC_LONG = "jdk.graal.compiler.serviceprovider.GlobalAtomicLong";
 
@@ -187,7 +190,7 @@ public class LibGraalSubstitutions {
         @TargetElement(name = TargetElement.CONSTRUCTOR_NAME)
         @SuppressWarnings({"unused", "static-method"})
         public void constructor(long initialValue) {
-            throw VMError.unsupportedFeature("Cannot create " + GLOBAL_ATOMIC_LONG + " objects in native image runtime");
+            throw GraalError.shouldNotReachHere("Cannot create " + GLOBAL_ATOMIC_LONG + " objects in native image runtime");
         }
 
         @Substitute
@@ -208,7 +211,7 @@ public class LibGraalSubstitutions {
             try {
                 initialValue = (long) ImageSingletons.lookup(LibGraalFeature.class).globalAtomicLongGetInitialValue.invoke(receiver);
             } catch (Throwable e) {
-                throw VMError.shouldNotReachHere(e);
+                throw GraalError.shouldNotReachHere(e);
             }
             return CGlobalDataFactory.createWord(Word.unsigned(initialValue), null, true);
         }
@@ -216,16 +219,6 @@ public class LibGraalSubstitutions {
 
     @TargetClass(className = "jdk.graal.compiler.serviceprovider.VMSupport", classLoader = LibGraalClassLoaderSupplier.class, onlyWith = LibGraalFeature.IsEnabled.class)
     static final class Target_jdk_graal_compiler_serviceprovider_VMSupport {
-
-        @Substitute
-        public static long getIsolateAddress() {
-            return CurrentIsolate.getIsolate().rawValue();
-        }
-
-        @Substitute
-        public static long getIsolateID() {
-            return ImageSingletons.lookup(IsolateSupport.class).getIsolateID();
-        }
 
         /**
          * Performs the following actions around a libgraal compilation:
@@ -280,7 +273,7 @@ public class LibGraalSubstitutions {
                 } catch (InterruptedException e) {
                     // ignore
                 }
-                VMError.shouldNotReachHere(message);
+                GraalError.shouldNotReachHere(message);
             }
         }
 
@@ -303,73 +296,6 @@ public class LibGraalSubstitutions {
             env.getFunctions().getCallStaticVoidMethodA().call(env, cbClass, cbMethod, StackValue.get(0));
             JNIExceptionWrapper.wrapAndThrowPendingJNIException(env);
         }
-
-        @Substitute
-        public static void notifyLowMemoryPoint(boolean hintFullGC, boolean forceFullGC) {
-            if (forceFullGC) {
-                Heap.getHeap().getGC().collectCompletely(GCCause.JavaLangSystemGC);
-            } else {
-                Heap.getHeap().getGC().collectionHint(hintFullGC);
-            }
-            LibGraalEntryPoints.doReferenceHandling();
-        }
-    }
-
-    @TargetClass(className = "jdk.graal.compiler.phases.BasePhase", classLoader = LibGraalClassLoaderSupplier.class, onlyWith = LibGraalFeature.IsEnabled.class)
-    static final class Target_jdk_graal_compiler_phases_BasePhase {
-
-        /*
-         * Redirect method to image build-time pre-computed statistics in LibGraalCompilerSupport.
-         */
-        @Substitute
-        static Target_jdk_graal_compiler_phases_BasePhase_BasePhaseStatistics getBasePhaseStatistics(Class<?> clazz) {
-            Object result = LibGraalCompilerSupport.get().getBasePhaseStatistics().get(clazz);
-            if (result == null) {
-                throw VMError.shouldNotReachHere(String.format("Missing statistics for phase class: %s%n", clazz.getName()));
-            }
-            return SubstrateUtil.cast(result, Target_jdk_graal_compiler_phases_BasePhase_BasePhaseStatistics.class);
-        }
-    }
-
-    @TargetClass(className = "jdk.graal.compiler.phases.BasePhase", innerClass = "BasePhaseStatistics", classLoader = LibGraalClassLoaderSupplier.class, onlyWith = LibGraalFeature.IsEnabled.class)
-    static final class Target_jdk_graal_compiler_phases_BasePhase_BasePhaseStatistics {
-    }
-
-    @TargetClass(className = "jdk.graal.compiler.lir.phases.LIRPhase", classLoader = LibGraalClassLoaderSupplier.class, onlyWith = LibGraalFeature.IsEnabled.class)
-    static final class Target_jdk_graal_compiler_lir_phases_LIRPhase {
-
-        /*
-         * Redirect method to image build-time pre-computed statistics in LibGraalCompilerSupport.
-         */
-        @Substitute
-        static Target_jdk_graal_compiler_lir_phases_LIRPhase_LIRPhaseStatistics getLIRPhaseStatistics(Class<?> clazz) {
-            Object result = LibGraalCompilerSupport.get().getLirPhaseStatistics().get(clazz);
-            if (result == null) {
-                throw VMError.shouldNotReachHere(String.format("Missing statistics for phase class: %s%n", clazz.getName()));
-            }
-            return SubstrateUtil.cast(result, Target_jdk_graal_compiler_lir_phases_LIRPhase_LIRPhaseStatistics.class);
-        }
-    }
-
-    @TargetClass(className = "jdk.graal.compiler.lir.phases.LIRPhase", innerClass = "LIRPhaseStatistics", classLoader = LibGraalClassLoaderSupplier.class, onlyWith = LibGraalFeature.IsEnabled.class)
-    static final class Target_jdk_graal_compiler_lir_phases_LIRPhase_LIRPhaseStatistics {
-    }
-
-    @TargetClass(className = "jdk.graal.compiler.graph.NodeClass", classLoader = LibGraalClassLoaderSupplier.class, onlyWith = LibGraalFeature.IsEnabled.class)
-    static final class Target_jdk_graal_compiler_graph_NodeClass {
-
-        @Alias //
-        private String shortName;
-
-        /*
-         * All node-classes in libgraal are in the image-heap and were already fully initialized at
-         * build-time. The shortName accessor method can be reduced to a simple field access.
-         */
-        @Substitute
-        public String shortName() {
-            assert shortName != null;
-            return shortName;
-        }
     }
 
     @TargetClass(className = "jdk.graal.compiler.hotspot.HotSpotGraalOptionValues", classLoader = LibGraalClassLoaderSupplier.class, onlyWith = LibGraalFeature.IsEnabled.class)
@@ -390,7 +316,7 @@ public class LibGraalSubstitutions {
     static final class Target_jdk_graal_compiler_core_GraalServiceThread {
         @Substitute()
         void beforeRun() {
-            Thread thread = SubstrateUtil.cast(this, Thread.class);
+            Thread thread = cast(this, Thread.class);
             if (!LibGraalEntryPoints.attachCurrentThread(thread.isDaemon(), null)) {
                 throw new InternalError("Couldn't attach to HotSpot runtime");
             }
@@ -413,7 +339,7 @@ class LibGraalClassLoaderSupplier implements Supplier<ClassLoader> {
     @Override
     public ClassLoader get() {
         ClassLoader loader = ImageSingletons.lookup(LibGraalFeature.class).loader;
-        VMError.guarantee(loader != null);
+        GraalError.guarantee(loader != null, "NPE");
         return loader;
     }
 }

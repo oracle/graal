@@ -42,7 +42,7 @@ import jdk.vm.ci.meta.JavaKind;
 
 /**
  * This feature is used to contain functionality needed when a Graal compiler is included in a
- * native-image. This is used by RuntimeCompilation and LibGraal.
+ * native-image. This is used by RuntimeCompilation but not LibGraalFeature.
  */
 public class GraalCompilerFeature implements InternalFeature {
 

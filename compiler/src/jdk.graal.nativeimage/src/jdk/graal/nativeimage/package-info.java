@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,32 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.fieldvaluetransformer;
-
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.FieldValueTransformer;
-
-import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.spi.CoreProviders;
-import jdk.vm.ci.meta.JavaConstant;
-
-@Platforms(Platform.HOSTED_ONLY.class)
-public interface FieldValueTransformerWithAvailability extends FieldValueTransformer {
-
-    /**
-     * Returns true when the value for this custom computation is available.
-     */
-    @Override
-    boolean isAvailable();
-
-    /**
-     * Optionally provide a Graal IR node to intrinsify the field access before the static analysis.
-     * This allows the compiler to optimize field values that are not available yet, as long as
-     * there is a dedicated high-level node available.
-     */
-    @SuppressWarnings("unused")
-    default ValueNode intrinsify(CoreProviders providers, JavaConstant receiver) {
-        return null;
-    }
-}
+/*
+ @ApiInfo(
+ group="Native Image LibGraal extensions"
+ )
+ */
+/**
+ * Extensions to the GraalVM SDK Native Image API to customize building libgraal.
+ *
+ * @since 24.2
+ */
+package jdk.graal.nativeimage;

@@ -1483,6 +1483,7 @@ def _jvmci_jars():
     return [
         'compiler:GRAAL',
         'compiler:GRAAL_MANAGEMENT',
+        'compiler:GRAAL_NATIVEIMAGE',
     ]
 
 # The community compiler component

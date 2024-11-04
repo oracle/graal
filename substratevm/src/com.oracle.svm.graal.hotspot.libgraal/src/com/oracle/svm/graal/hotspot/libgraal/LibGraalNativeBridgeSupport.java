@@ -26,11 +26,9 @@ package com.oracle.svm.graal.hotspot.libgraal;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
+import jdk.graal.compiler.serviceprovider.IsolateUtil;
 import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.jniutils.NativeBridgeSupport;
-
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.impl.IsolateSupport;
 
 public final class LibGraalNativeBridgeSupport implements NativeBridgeSupport {
 
@@ -63,7 +61,7 @@ public final class LibGraalNativeBridgeSupport implements NativeBridgeSupport {
             inTrace.set(true);
             try {
                 StringBuilder sb = new StringBuilder();
-                long isolateID = ImageSingletons.lookup(IsolateSupport.class).getIsolateID();
+                long isolateID = IsolateUtil.getIsolateID();
                 sb.append('[').append(isolateID).append(':').append(Thread.currentThread().getName()).append(']');
                 JNIMethodScope scope = JNIMethodScope.scopeOrNull();
                 if (scope != null) {

@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import jdk.graal.compiler.word.Word;
+import jdk.graal.compiler.graph.Edges;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
@@ -79,7 +80,6 @@ import jdk.graal.compiler.debug.MetricKey;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.debug.TimeSource;
 import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import jdk.graal.compiler.lir.phases.LIRPhase;
 import jdk.graal.compiler.nodes.Invoke;
@@ -348,25 +348,11 @@ final class Target_jdk_graal_compiler_lir_phases_LIRPhase {
     }
 }
 
-@TargetClass(value = NodeClass.class, onlyWith = GraalCompilerFeature.IsEnabled.class)
-final class Target_jdk_graal_compiler_graph_NodeClass {
-
+@TargetClass(value = Edges.class, onlyWith = GraalCompilerFeature.IsEnabled.class)
+final class Target_jdk_graal_compiler_graph_Edges {
     @Alias//
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = FieldsOffsetsFeature.InputsIterationMaskRecomputation.class)//
-    private long inputsIteration;
-
-    @Alias//
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = FieldsOffsetsFeature.SuccessorsIterationMaskRecomputation.class)//
-    private long successorIteration;
-
-    @Alias //
-    private String shortName;
-
-    @Substitute
-    public String shortName() {
-        assert shortName != null;
-        return shortName;
-    }
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = FieldsOffsetsFeature.IterationMaskRecomputation.class)//
+    private long iterationMask;
 }
 
 @TargetClass(value = NoDeadCodeVerifyHandler.class)

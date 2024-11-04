@@ -24,18 +24,24 @@
  */
 package jdk.graal.compiler.core.common;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.options.ExcludeFromJacocoGeneratedReport;
+import jdk.graal.nativeimage.LibGraalFeatureComponent;
 import jdk.internal.misc.Unsafe;
+import org.graalvm.nativeimage.hosted.Feature;
 
 /**
  * Describes fields in a class, primarily for access via {@link Unsafe}.
  */
-public class Fields {
+public class Fields implements LibGraalFeatureComponent {
 
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
     private static final Fields EMPTY_FIELDS = new Fields(Collections.emptyList());
@@ -57,6 +63,25 @@ public class Fields {
 
     private final Class<?>[] declaringClasses;
 
+    @ExcludeFromJacocoGeneratedReport("only called when building libgraal")
+    public static void setLibGraalFeatureComponents(Collection<LibGraalFeatureComponent> components) {
+        GraalError.guarantee(libGraalFeatureComponents == null, "already initialized");
+        Fields.libGraalFeatureComponents = components;
+    }
+
+    /**
+     * Registers {@code c} if in a context where a registry
+     * {@linkplain #setLibGraalFeatureComponents exists}.
+     */
+    public static void addLibGraalFeatureComponents(LibGraalFeatureComponent c) {
+        if (libGraalFeatureComponents != null) {
+            libGraalFeatureComponents.add(c);
+        }
+    }
+
+    private static Collection<LibGraalFeatureComponent> libGraalFeatureComponents;
+
+    @SuppressWarnings("this-escape")
     protected Fields(List<? extends FieldsScanner.FieldInfo> fields) {
         Collections.sort(fields);
         this.offsets = new long[fields.size()];
@@ -71,10 +96,39 @@ public class Fields {
             declaringClasses[index] = f.declaringClass;
             index++;
         }
+        if (libGraalFeatureComponents != null) {
+            libGraalFeatureComponents.add(this);
+        }
+    }
+
+    private Field getField(int i) {
+        try {
+            return getDeclaringClass(i).getDeclaredField(getName(i));
+        } catch (NoSuchFieldException e) {
+            throw GraalError.shouldNotReachHere(e);
+        }
+    }
+
+    public Map.Entry<long[], Long> recomputeOffsetsAndIterationMask(Feature.BeforeCompilationAccess access) {
+        long[] newOffsets = new long[offsets.length];
+        for (int i = 0; i < offsets.length; i++) {
+            Field field = getField(i);
+            long newOffset = access.objectFieldOffset(field);
+            newOffsets[i] = newOffset;
+        }
+        return Map.entry(newOffsets, 0L);
+    }
+
+    @Override
+    public void duringAnalysis(Feature.DuringAnalysisAccess access) {
+        for (int i = 0; i < offsets.length; i++) {
+            Field field = getField(i);
+            access.registerAsUnsafeAccessed(field);
+        }
     }
 
     public static Fields create(ArrayList<? extends FieldsScanner.FieldInfo> fields) {
-        if (fields.size() == 0) {
+        if (fields.isEmpty()) {
             return EMPTY_FIELDS;
         }
         return new Fields(fields);
@@ -94,33 +148,12 @@ public class Fields {
     }
 
     /**
-     * Function enabling an object field value to be replaced with another value when being copied
-     * within {@link Fields#copy(Object, Object, ObjectTransformer)}.
-     */
-    @FunctionalInterface
-    public interface ObjectTransformer {
-        Object apply(int index, Object from);
-    }
-
-    /**
      * Copies fields from {@code from} to {@code to}, both of which must be of the same type.
      *
      * @param from the object from which the fields should be copied
      * @param to the object to which the fields should be copied
      */
     public void copy(Object from, Object to) {
-        copy(from, to, null);
-    }
-
-    /**
-     * Copies fields from {@code from} to {@code to}, both of which must be of the same type.
-     *
-     * @param from the object from which the fields should be copied
-     * @param to the object to which the fields should be copied
-     * @param trans function to applied to object field values as they are copied. If {@code null},
-     *            the value is copied unchanged.
-     */
-    public void copy(Object from, Object to, ObjectTransformer trans) {
         assert from.getClass() == to.getClass() : from + " " + to;
         for (int index = 0; index < offsets.length; index++) {
             long offset = offsets[index];
@@ -154,7 +187,7 @@ public class Fields {
                         obj = ((Object[]) obj).clone();
                     }
                 }
-                UNSAFE.putReference(to, offset, trans == null ? obj : trans.apply(index, obj));
+                UNSAFE.putReference(to, offset, obj);
             }
         }
     }

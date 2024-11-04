@@ -22,48 +22,43 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.serviceprovider;
+package jdk.graal.nativeimage;
+
+import java.util.Map;
+import java.util.Set;
 
 /**
- * Interface between the compiler and its Native Image based runtime (i.e. libgraal).
- *
- * The methods of this class are substituted by the libgraal implementation.
+ * The class loader used to load the Graal and JVMCI classes compiled into libgraal implements this
+ * interface to provide extra information about the libgraal classes.
  */
-public final class VMSupport {
+public interface LibGraalLoader {
+    /**
+     * @return ClassLoader that implements this interface.
+     */
+    ClassLoader getClassLoader();
 
     /**
-     * Gets a scope that performs setup/cleanup actions around a libgraal compilation.
+     * @return loader that should be seen at image-runtime if a class was loaded at image-buildtime
+     *         by {@link #getClassLoader()}
      */
-    public static AutoCloseable getCompilationRequestScope() {
-        return null;
-    }
+    ClassLoader getRuntimeClassLoader();
 
     /**
-     * Notifies that a fatal error has occurred.
-     *
-     * @param message description of the error
-     * @param delayMS milliseconds to sleep before exiting the VM
+     * Gets an unmodifiable map from the {@linkplain Class#forName(String) name} of a class to the
+     * name of its enclosing module.
      */
-    public static void fatalError(String message, int delayMS) {
-
-    }
+    Map<String, String> getModuleMap();
 
     /**
-     * Notifies libgraal when a Graal runtime is being started.
+     * Gets the names of the modules containing classes that can be annotated by
+     * {@code LibGraalService}.
      */
-    public static void startupLibGraal() {
-    }
+    Set<String> getServicesModules();
 
     /**
-     * Notifies libgraal when a Graal runtime is being shutdown.
+     * Get unmodifiable set of fully qualified names of all classes this loader can load.
      */
-    public static void shutdownLibGraal() {
-    }
-
-    /**
-     * @param cbClassName name of class declaring the call back method
-     * @param cbMethodName name of the call back method
-     */
-    public static void invokeShutdownCallback(String cbClassName, String cbMethodName) {
+    default Set<String> getAllClassNames() {
+        return getModuleMap().keySet();
     }
 }

@@ -22,33 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package jdk.graal.compiler.libgraal.loader;
 
-package jdk.graal.compiler.hotspot.libgraal;
+public final class LibGraalClassLoader extends ClassLoader {
 
-import java.util.Map;
-import java.util.Set;
+    static final String LOADER_NAME = "LibGraalClassLoader";
+    static final LibGraalClassLoader singleton = new LibGraalClassLoader();
 
-public interface LibGraalClassLoaderBase {
-
-    /**
-     * @return instance of ClassLoader that implements this interface.
-     */
-    ClassLoader getClassLoader();
-
-    /**
-     * @return instance of ClassLoader that should be seen at image-runtime if a class was loaded at
-     *         image-buildtime by this classloader.
-     */
-    ClassLoader getRuntimeClassLoader();
-
-    /**
-     * Gets an unmodifiable map from the {@linkplain Class#forName(String) name} of a class to the
-     * name of its enclosing module.
-     */
-    Map<String, String> getModules();
-
-    /**
-     * Get unmodifiable set of fully qualified names of all classes this loader can load.
-     */
-    Set<String> getAllClassNames();
+    private LibGraalClassLoader() {
+        super(LOADER_NAME, null);
+    }
 }

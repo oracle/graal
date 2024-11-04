@@ -1,0 +1,33 @@
+#Signature file v4.1
+#Version 
+
+CLSS public abstract interface jdk.graal.nativeimage.LibGraalFeatureComponent
+meth public abstract void duringAnalysis(org.graalvm.nativeimage.hosted.Feature$DuringAnalysisAccess)
+
+CLSS public abstract interface jdk.graal.nativeimage.LibGraalLoader
+meth public abstract java.util.Set getServicesModules()
+meth public abstract java.lang.ClassLoader getRuntimeClassLoader()
+meth public abstract java.util.Map getModuleMap()
+meth public abstract java.lang.ClassLoader getClassLoader()
+meth public java.util.Set getAllClassNames()
+
+CLSS public final jdk.graal.nativeimage.LibGraalRuntime
+meth public static long getIsolateID()
+meth public static void notifyLowMemoryPoint(boolean)
+meth public static void processReferences()
+supr java.lang.Object
+
+CLSS public java.lang.Object
+cons public init()
+meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
+meth protected void finalize() throws java.lang.Throwable
+ anno 0 java.lang.Deprecated(boolean forRemoval=true, java.lang.String since="9")
+meth public boolean equals(java.lang.Object)
+meth public final java.lang.Class<?> getClass()
+meth public final void notify()
+meth public final void notifyAll()
+meth public final void wait() throws java.lang.InterruptedException
+meth public final void wait(long) throws java.lang.InterruptedException
+meth public final void wait(long,int) throws java.lang.InterruptedException
+meth public int hashCode()
+meth public java.lang.String toString()

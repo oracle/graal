@@ -35,18 +35,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.graalvm.collections.UnmodifiableEconomicMap;
-import org.graalvm.collections.UnmodifiableMapCursor;
-
-import com.oracle.graal.pointsto.api.PointstoOptions;
-import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.RuntimeOptionKey;
-
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.hotspot.HotSpotGraalOptionValues;
 import jdk.graal.compiler.hotspot.libgraal.CompilerConfig;
-import jdk.graal.compiler.options.OptionKey;
-import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.util.ObjectCopier;
 import org.graalvm.nativeimage.ImageInfo;
 
@@ -102,12 +92,9 @@ public class GetCompilerConfig {
      *
      * @param javaHome the value of the {@code java.home} system property reported by a Java
      *            installation directory that includes the Graal classes in its runtime image
-     * @param options the options passed to native-image
      */
-    public static Result from(Path javaHome, OptionValues options) {
+    public static Result from(Path javaHome) {
         Path javaExe = GetJNIConfig.getJavaExe(javaHome);
-        UnmodifiableEconomicMap<OptionKey<?>, Object> optionsMap = options.getMap();
-        UnmodifiableMapCursor<OptionKey<?>, Object> entries = optionsMap.getEntries();
         Map<String, Set<String>> opens = Map.of(
                         // Needed to reflect fields like
                         // java.util.ImmutableCollections.EMPTY
@@ -135,20 +122,6 @@ public class GetCompilerConfig {
             for (String source : e.getValue()) {
                 command.add("--add-opens=%s/%s=%s".formatted(e.getKey(), source, target));
             }
-        }
-
-        // Propagate compiler options
-        while (entries.advance()) {
-            OptionKey<?> key = entries.getKey();
-            if (key instanceof RuntimeOptionKey || key instanceof HostedOptionKey) {
-                // Ignore Native Image options
-                continue;
-            }
-            if (key.getDescriptor().getDeclaringClass().getModule().equals(PointstoOptions.class.getModule())) {
-                // Ignore points-to analysis options
-                continue;
-            }
-            command.add("-D%s%s=%s".formatted(HotSpotGraalOptionValues.GRAAL_OPTION_PROPERTY_PREFIX, key.getName(), entries.getValue()));
         }
 
         command.add(CompilerConfig.class.getName());

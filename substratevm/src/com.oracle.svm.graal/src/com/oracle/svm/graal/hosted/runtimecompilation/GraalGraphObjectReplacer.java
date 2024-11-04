@@ -76,7 +76,6 @@ import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.api.runtime.GraalRuntime;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.debug.MetricKey;
-import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.HotSpotBackendFactory;
 import jdk.graal.compiler.hotspot.SnippetResolvedJavaMethod;
@@ -190,9 +189,6 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
         } else if (source instanceof MetricKey) {
             /* Ensure lazily initialized name fields are computed. */
             ((MetricKey) source).getName();
-        } else if (source instanceof NodeClass) {
-            /* Ensure lazily initialized shortName field is computed. */
-            ((NodeClass<?>) source).shortName();
 
         } else if (source instanceof ResolvedJavaMethod) {
             if (source instanceof OriginalMethodProvider) {

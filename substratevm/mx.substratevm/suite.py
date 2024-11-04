@@ -1736,6 +1736,7 @@ suite = {
                     "transitive org.graalvm.nativeimage.pointsto",
                     "org.graalvm.collections",
                     "org.graalvm.truffle.compiler",
+                    "jdk.graal.nativeimage"
                 ],
                 "uses" : [
                     "org.graalvm.nativeimage.Platform",

@@ -28,10 +28,13 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
+import com.oracle.svm.core.heap.Heap;
+import jdk.graal.nativeimage.impl.LibGraalRuntimeSupport;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.VMRuntime;
+import org.graalvm.nativeimage.impl.IsolateSupport;
 import org.graalvm.nativeimage.impl.VMRuntimeSupport;
 
 import com.oracle.svm.core.IsolateArgumentParser;
@@ -42,8 +45,24 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
-@AutomaticallyRegisteredImageSingleton({VMRuntimeSupport.class, RuntimeSupport.class})
-public final class RuntimeSupport implements VMRuntimeSupport {
+@AutomaticallyRegisteredImageSingleton({VMRuntimeSupport.class, RuntimeSupport.class, LibGraalRuntimeSupport.class})
+public final class RuntimeSupport implements VMRuntimeSupport, LibGraalRuntimeSupport {
+
+    @Override
+    public void processReferences() {
+        Heap.getHeap().doReferenceHandling();
+    }
+
+    @Override
+    public void notifyLowMemoryPoint(boolean suggestFullGC) {
+        Heap.getHeap().getGC().collectionHint(suggestFullGC);
+    }
+
+    @Override
+    public long getIsolateID() {
+        return ImageSingletons.lookup(IsolateSupport.class).getIsolateID();
+    }
+
     @FunctionalInterface
     public interface Hook {
         void execute(boolean isFirstIsolate);

@@ -58,7 +58,9 @@ import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.options.OptionsParser;
 import jdk.graal.compiler.word.Word;
+import jdk.graal.compiler.serviceprovider.IsolateUtil;
 import org.graalvm.collections.EconomicMap;
+import jdk.graal.nativeimage.LibGraalRuntime;
 import org.graalvm.jniutils.HSObject;
 import org.graalvm.jniutils.JNI;
 import org.graalvm.jniutils.JNI.JByteArray;
@@ -83,10 +85,7 @@ import org.graalvm.nativeimage.c.function.CEntryPoint.IsolateContext;
 import org.graalvm.nativeimage.c.function.CEntryPoint.IsolateThreadContext;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.nativeimage.impl.IsolateSupport;
 import org.graalvm.word.PointerBase;
-
-import com.oracle.svm.core.heap.Heap;
 
 import jdk.internal.misc.Unsafe;
 
@@ -306,7 +305,7 @@ final class LibGraalEntryPoints {
      * any code which is expecting to process a reference queue to let it clean up.
      */
     static void doReferenceHandling() {
-        Heap.getHeap().doReferenceHandling();
+        LibGraalRuntime.processReferences();
         synchronized (LibGraalJVMCISubstitutions.Target_jdk_vm_ci_hotspot_Cleaner.class) {
             LibGraalJVMCISubstitutions.Target_jdk_vm_ci_hotspot_Cleaner.clean();
         }
@@ -368,7 +367,7 @@ final class LibGraalScopeEntryPoints {
     @CEntryPoint(name = "Java_com_oracle_truffle_runtime_hotspot_libgraal_LibGraalScope_getIsolateId")
     @SuppressWarnings("unused")
     public static long getIsolateId(PointerBase env, PointerBase jclass, @IsolateThreadContext long isolateThreadId) {
-        return ImageSingletons.lookup(IsolateSupport.class).getIsolateID();
+        return IsolateUtil.getIsolateID();
     }
 }
 
@@ -588,8 +587,8 @@ final class LibGraalTruffleToLibGraalEntryPoints {
             try {
                 singleton().doCompile.invoke(compiler, taskHsHandle, compilableHsHandle, listenerHsHandle);
             } finally {
-                Heap.getHeap().doReferenceHandling();
-                Heap.getHeap().getGC().collectionHint(true);
+                LibGraalRuntime.processReferences();
+                LibGraalRuntime.notifyLowMemoryPoint(true);
             }
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
