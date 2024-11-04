@@ -321,6 +321,33 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
     }
 
     @Test
+    public void testDisconnectedObject() {
+        context.leave();
+        try {
+            Value r = Value.asValue(new JavaRecord());
+            // disconnected members cannot be accessed
+            String[] publicKeys = new String[]{};
+
+            assertEquals(new HashSet<>(Arrays.asList(publicKeys)), r.getMemberKeys());
+
+            assertFalse(r.hasMember("hashCode"));
+            assertFalse(r.hasMember("equals"));
+            assertFalse(r.hasMember("toString"));
+            assertFalse(r.hasMember("getClass"));
+            assertFalse(r.hasMember("clone"));
+            assertFalse(r.hasMember("notify"));
+            assertFalse(r.hasMember("wait"));
+            assertFalse(r.hasMember("notifyAll"));
+
+            // no traits expected for disconnected values
+            assertValue(r, Trait.HOST_OBJECT);
+            assertValue(r.getMetaObject(), Trait.HOST_OBJECT);
+        } finally {
+            context.enter();
+        }
+    }
+
+    @Test
     public void testStringInstantiaion() {
         Value stringClass = context.asValue(String.class);
         assertEquals("", stringClass.newInstance().asString());
