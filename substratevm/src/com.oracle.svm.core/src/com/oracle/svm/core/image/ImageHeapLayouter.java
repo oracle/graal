@@ -40,7 +40,7 @@ public interface ImageHeapLayouter {
     /**
      * Assign an object to the most suitable partition.
      */
-    void assignObjectToPartition(ImageHeapObject info, boolean immutable, boolean references, boolean relocatable);
+    void assignObjectToPartition(ImageHeapObject info, boolean immutable, boolean references, boolean relocatable, boolean patched);
 
     /**
      * Places all heap partitions and assigns objects their final offsets.

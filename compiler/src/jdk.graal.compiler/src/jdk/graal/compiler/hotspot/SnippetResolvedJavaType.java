@@ -24,7 +24,7 @@
  */
 package jdk.graal.compiler.hotspot;
 
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
+import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
 
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
@@ -69,7 +69,7 @@ public final class SnippetResolvedJavaType implements ResolvedJavaType {
     }
 
     synchronized SnippetResolvedJavaMethod add(SnippetResolvedJavaMethod method) {
-        if (IS_IN_NATIVE_IMAGE) {
+        if (inImageRuntimeCode()) {
             throw new InternalError("immutable");
         }
         if (methods == null) {

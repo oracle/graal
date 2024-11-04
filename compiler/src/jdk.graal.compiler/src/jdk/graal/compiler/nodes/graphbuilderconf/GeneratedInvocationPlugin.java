@@ -24,8 +24,8 @@
  */
 package jdk.graal.compiler.nodes.graphbuilderconf;
 
-import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
+import static org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode;
+import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
@@ -88,7 +88,7 @@ public abstract class GeneratedInvocationPlugin extends RequiredInlineOnlyInvoca
             return true;
         }
 
-        if (IS_IN_NATIVE_IMAGE) {
+        if (inImageRuntimeCode()) {
             // The reflection here is problematic for SVM.
             return true;
         }
@@ -97,7 +97,7 @@ public abstract class GeneratedInvocationPlugin extends RequiredInlineOnlyInvoca
             return false;
         }
 
-        if (IS_BUILDING_NATIVE_IMAGE) {
+        if (inImageBuildtimeCode()) {
             // The use of this plugin in the plugin itself shouldn't be folded since that defeats
             // the purpose of the fold.
             for (Class<?> foldNodePluginClass : foldNodePluginClasses) {

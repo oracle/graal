@@ -31,6 +31,7 @@ import java.util.Objects;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
+import com.oracle.graal.pointsto.heap.ImageHeapRelocatableConstant;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
@@ -49,6 +50,7 @@ public class ConstantTypeState extends SingleTypeState {
     public ConstantTypeState(PointsToAnalysis bb, AnalysisType type, JavaConstant constant) {
         super(bb, false, type);
         assert !bb.analysisPolicy().isContextSensitiveAnalysis() : "The ConstantTypeState is indented to be used with a context insensitive analysis.";
+        assert !(constant instanceof ImageHeapRelocatableConstant) : "relocatable constants have an unknown state and should not be represented by a constant type state: " + constant;
         this.constant = constant;
     }
 
