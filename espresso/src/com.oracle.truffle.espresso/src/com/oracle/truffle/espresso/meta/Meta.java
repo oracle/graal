@@ -382,7 +382,7 @@ public final class Meta extends ContextAccessImpl {
         sun_nio_ch_NativeThread_init = nioNativeThreadKlass.lookupDeclaredMethod(Name.init, Signature._void);
         if (getJavaVersion().java21OrLater()) {
             sun_nio_ch_NativeThread_isNativeThread = nioNativeThreadKlass.requireDeclaredMethod(Name.isNativeThread, Signature._boolean_long);
-            sun_nio_ch_NativeThread_current0 = nioNativeThreadKlass.requireDeclaredMethod(Name.current0, Signature._long);
+            sun_nio_ch_NativeThread_current0 = nioNativeThreadKlass.lookupDeclaredMethod(Name.current0, Signature._long);
             sun_nio_ch_NativeThread_signal = null;
         } else {
             sun_nio_ch_NativeThread_isNativeThread = null;
