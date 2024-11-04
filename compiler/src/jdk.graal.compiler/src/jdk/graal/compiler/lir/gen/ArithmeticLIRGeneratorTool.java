@@ -127,6 +127,11 @@ public interface ArithmeticLIRGeneratorTool {
 
     Variable emitLoad(LIRKind kind, Value address, LIRFrameState state, MemoryOrderMode memoryOrder, MemoryExtendKind extendKind);
 
+    @SuppressWarnings("unused")
+    default Variable emitMaskedLoad(LIRKind kind, Value address, Value mask, LIRFrameState state, MemoryOrderMode memoryOrder) {
+        throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
+    }
+
     void emitStore(ValueKind<?> kind, Value address, Value input, LIRFrameState state, MemoryOrderMode memoryOrder);
 
     /**
