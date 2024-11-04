@@ -4047,19 +4047,14 @@ public abstract class TruffleLanguage<C> {
          * node should be provided as parameter if available, otherwise <code>null</code> may be
          * provided. This method is designed to be called safely from compiled code paths. In order
          * to maximize efficiency in compiled code paths, a partial evaluation constant and adopted
-         * node should be passed as parameter. If this is the case then the return context will get
-         * constant folded in compiled code paths if there is a only single context instance for the
-         * enclosing engine or lookup location/node.
+         * node should be passed as parameter. If this is the case then the return language will get
+         * constant folded in compiled code paths.
          * <p>
-         * The current language will not change for {@link RootNode#execute(VirtualFrame)
-         * executions} of {@link RootNode roots} of the current language. For roots of other
-         * languages, e.g. if invoked through the interoperability protocol, the language might
-         * change between consecutive executions. It is recommended to *not* cache values of the
-         * language in the AST to reduce footprint. Getting it through a language reference will
-         * either constant fold or be very efficient in compiled code paths.
+         * The current language is fixed per {@link RootNode}. It is recommended to *not* cache
+         * values of the language in the AST to reduce footprint. Getting it through a language
+         * reference will either constant fold or be very efficient in compiled code paths.
          * <p>
-         * If a context is accessed during {@link TruffleLanguage#createContext(Env) context
-         * creation}, on an unknown Thread, or in the language class constructor an
+         * If a language is accessed on an unknown Thread, or in the language class constructor an
          * {@link IllegalStateException} is thrown.
          *
          * @see ContextReference for a full usage example
@@ -4166,8 +4161,8 @@ public abstract class TruffleLanguage<C> {
          * provided. This method is designed to be called safely from compiled code paths. In order
          * to maximize efficiency in compiled code paths, a partial evaluation constant and adopted
          * node should be passed as parameter. If this is the case then the return context will get
-         * constant folded in compiled code paths if there is a only single language instance for
-         * the enclosing engine or lookup location/node.
+         * constant folded in compiled code paths if there is only a single context instance for the
+         * enclosing engine or lookup location/node.
          * <p>
          * The current context might vary between {@link RootNode#execute(VirtualFrame) executions}
          * if resources or code is {@link ContextPolicy#SHARED shared} between multiple contexts or

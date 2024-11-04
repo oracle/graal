@@ -71,7 +71,8 @@ void initialize_intrinsics(struct __TruffleContextInternal *context) {
 }
 
 static int *__errno_mirror_location() {
-    return &errnoMirror;
+    // cachedTruffleEnv is set in executeHelper() by the errno_location downcall
+    return cachedTruffleEnv->nfiErrnoAddress;
 }
 
 void *check_intrinsify(struct __TruffleContextInternal *context, void *orig) {
