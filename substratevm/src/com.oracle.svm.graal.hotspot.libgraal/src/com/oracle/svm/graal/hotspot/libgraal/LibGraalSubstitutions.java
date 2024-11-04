@@ -25,7 +25,6 @@
 package com.oracle.svm.graal.hotspot.libgraal;
 
 import java.io.PrintStream;
-import java.lang.ref.Cleaner;
 import java.lang.ref.ReferenceQueue;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -41,25 +40,17 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
-import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.Delete;
-import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.c.CGlobalData;
-import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.jdk.JDKLatest;
 import com.oracle.svm.core.log.FunctionPointerLogHandler;
 import com.oracle.svm.graal.hotspot.LibGraalJNIMethodScope;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.libgraal.LibGraalFeature;
-import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
-import jdk.graal.compiler.word.Word;
 
 class LibGraalJVMCISubstitutions {
 
@@ -161,60 +152,6 @@ public class LibGraalSubstitutions {
     @SuppressWarnings({"unused", "unchecked"})
     public static <T> T cast(Object obj, Class<T> toType) {
         return (T) obj;
-    }
-
-    private static final String GLOBAL_ATOMIC_LONG = "jdk.graal.compiler.serviceprovider.GlobalAtomicLong";
-
-    @TargetClass(className = GLOBAL_ATOMIC_LONG, classLoader = LibGraalClassLoaderSupplier.class, onlyWith = LibGraalFeature.IsEnabled.class)
-    static final class Target_jdk_graal_compiler_serviceprovider_GlobalAtomicLong {
-
-        @Inject//
-        @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = GlobalAtomicLongAddressProvider.class) //
-        private CGlobalData<Pointer> addressSupplier;
-
-        @Delete private long address;
-
-        /**
-         * {@link GlobalAtomicLong} in jargraal uses a {@link Cleaner} to ensure all native memory
-         * allocated by {@link GlobalAtomicLong} instances is freed when the instances are garbage
-         * collected. In libgraal, no {@link GlobalAtomicLong} instances are created at runtime so
-         * no cleaner is needed.
-         */
-        @Delete private static Cleaner cleaner;
-
-        /**
-         * Delete the constructor to ensure instances of {@link GlobalAtomicLong} cannot be created
-         * at runtime.
-         */
-        @Substitute
-        @TargetElement(name = TargetElement.CONSTRUCTOR_NAME)
-        @SuppressWarnings({"unused", "static-method"})
-        public void constructor(long initialValue) {
-            throw GraalError.shouldNotReachHere("Cannot create " + GLOBAL_ATOMIC_LONG + " objects in native image runtime");
-        }
-
-        @Substitute
-        private long getAddress() {
-            return addressSupplier.get().rawValue();
-        }
-    }
-
-    /**
-     * A field value transformer for the {@code addressSupplier} field injected into a
-     * {@link GlobalAtomicLong} that copies the build-time {@code initialValue}.
-     */
-    @Platforms(HOSTED_ONLY.class)
-    private static class GlobalAtomicLongAddressProvider implements FieldValueTransformer {
-        @Override
-        public Object transform(Object receiver, Object originalValue) {
-            long initialValue;
-            try {
-                initialValue = (long) ImageSingletons.lookup(LibGraalFeature.class).globalAtomicLongGetInitialValue.invoke(receiver);
-            } catch (Throwable e) {
-                throw GraalError.shouldNotReachHere(e);
-            }
-            return CGlobalDataFactory.createWord(Word.unsigned(initialValue), null, true);
-        }
     }
 
     @TargetClass(className = "jdk.graal.compiler.serviceprovider.VMSupport", classLoader = LibGraalClassLoaderSupplier.class, onlyWith = LibGraalFeature.IsEnabled.class)

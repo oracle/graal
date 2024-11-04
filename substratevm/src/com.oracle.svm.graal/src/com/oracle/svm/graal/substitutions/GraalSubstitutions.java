@@ -28,13 +28,11 @@ import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Custom;
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.FromAlias;
 
 import java.io.PrintStream;
-import java.lang.ref.Cleaner;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import jdk.graal.compiler.word.Word;
 import jdk.graal.compiler.graph.Edges;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
@@ -43,20 +41,15 @@ import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.impl.IsolateSupport;
-import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.c.CGlobalData;
-import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionValues;
@@ -96,7 +89,6 @@ import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.printer.NoDeadCodeVerifyHandler;
 import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
-import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -227,42 +219,6 @@ final class Target_jdk_graal_compiler_serviceprovider_IsolateUtil {
     @Substitute
     public static long getIsolateID() {
         return ImageSingletons.lookup(IsolateSupport.class).getIsolateID();
-    }
-}
-
-class GlobalAtomicLongAddressProvider implements FieldValueTransformer {
-    @Override
-    public Object transform(Object receiver, Object originalValue) {
-        long initialValue = ((GlobalAtomicLong) receiver).getInitialValue();
-        return CGlobalDataFactory.createWord(Word.unsigned(initialValue), null, true);
-    }
-}
-
-@TargetClass(className = "jdk.graal.compiler.serviceprovider.GlobalAtomicLong", onlyWith = GraalCompilerFeature.IsEnabled.class)
-final class Target_jdk_graal_compiler_serviceprovider_GlobalAtomicLong {
-
-    @Inject//
-    @RecomputeFieldValue(kind = Kind.Custom, declClass = GlobalAtomicLongAddressProvider.class) //
-    private CGlobalData<Pointer> addressSupplier;
-
-    @Delete private long address;
-
-    @Delete private static Cleaner cleaner;
-
-    /**
-     * Delete the constructor to ensure instances of {@link GlobalAtomicLong} cannot be created at
-     * runtime.
-     */
-    @Substitute
-    @TargetElement(name = TargetElement.CONSTRUCTOR_NAME)
-    @SuppressWarnings({"unused", "static-method"})
-    public void constructor(long initialValue) {
-        throw VMError.unsupportedFeature("Cannot create " + GlobalAtomicLong.class.getName() + " objects in native image runtime");
-    }
-
-    @Substitute
-    private long getAddress() {
-        return addressSupplier.get().rawValue();
     }
 }
 

@@ -284,7 +284,7 @@ public final class GraalServices {
         return Long.toString(ProcessHandle.current().pid());
     }
 
-    private static final GlobalAtomicLong globalTimeStamp = new GlobalAtomicLong(0L);
+    private static final GlobalAtomicLong globalTimeStamp = new GlobalAtomicLong("GLOBAL_TIME_STAMP", 0L);
 
     /**
      * Gets a time stamp for the current process. This method will always return the same value for

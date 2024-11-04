@@ -578,7 +578,8 @@ suite = {
         ],
         "exports" : [
           "jdk.graal.nativeimage",
-          """jdk.graal.nativeimage.impl to org.graalvm.nativeimage.builder""",
+          "jdk.graal.nativeimage.hosted",
+          "jdk.graal.nativeimage.impl to org.graalvm.nativeimage.builder",
         ],
         "uses" : [],
         "opens" : [],

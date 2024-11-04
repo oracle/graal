@@ -977,7 +977,7 @@ public class InvocationPlugins {
     /**
      * The id of the single isolate to emit output for {@link Options#PrintIntrinsics}.
      */
-    private static final GlobalAtomicLong PRINTING_ISOLATE = new GlobalAtomicLong(0L);
+    private static final GlobalAtomicLong PRINTING_ISOLATE = new GlobalAtomicLong("PRINTING_ISOLATE", 0L);
 
     /**
      * The intrinsic methods (in {@link Options#DisableIntrinsics} format) that have been printed by

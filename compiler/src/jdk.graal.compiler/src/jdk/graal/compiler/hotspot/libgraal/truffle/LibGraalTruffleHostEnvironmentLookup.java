@@ -47,7 +47,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public final class LibGraalTruffleHostEnvironmentLookup implements TruffleHostEnvironment.Lookup {
 
     private static final int NO_TRUFFLE_REGISTERED = 0;
-    private static final GlobalAtomicLong WEAK_TRUFFLE_RUNTIME_INSTANCE = new GlobalAtomicLong(NO_TRUFFLE_REGISTERED);
+    private static final GlobalAtomicLong WEAK_TRUFFLE_RUNTIME_INSTANCE = new GlobalAtomicLong("WEAK_TRUFFLE_RUNTIME_INSTANCE", NO_TRUFFLE_REGISTERED);
 
     @NativeImageReinitialize private TruffleHostEnvironment previousRuntime;
 

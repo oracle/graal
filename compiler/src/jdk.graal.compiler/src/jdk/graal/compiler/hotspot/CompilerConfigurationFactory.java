@@ -203,7 +203,7 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
     }
 
     // Ensures ShowConfiguration output is printed once per VM process.
-    private static final GlobalAtomicLong shownConfiguration = new GlobalAtomicLong(0L);
+    private static final GlobalAtomicLong shownConfiguration = new GlobalAtomicLong("SHOWN_CONFIGURATION", 0L);
 
     /**
      * Selects and instantiates a {@link CompilerConfigurationFactory}. The selection algorithm is

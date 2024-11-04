@@ -368,7 +368,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
     }
 
     // Support for CrashAtThrowsOOME
-    private static final GlobalAtomicLong OOME_CRASH_DONE = new GlobalAtomicLong(0);
+    private static final GlobalAtomicLong OOME_CRASH_DONE = new GlobalAtomicLong("OOME_CRASH_DONE", 0);
 
     @Override
     public boolean notifyCrash(OptionValues options, String crashMessage) {

@@ -74,7 +74,7 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
     /**
      * Gets a pointer to a global word initialized to 0.
      */
-    private static final GlobalAtomicLong BARRIER = new GlobalAtomicLong(0L);
+    private static final GlobalAtomicLong BARRIER = new GlobalAtomicLong("BARRIER", 0L);
 
     /**
      * Executes {@code action}. {@link #BARRIER} is used to ensure the action is executed exactly

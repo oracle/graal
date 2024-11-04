@@ -73,7 +73,7 @@ public class HotSpotGraalOptionValues {
     /**
      * Guard for issuing warning about deprecated Graal option prefix at most once.
      */
-    private static final GlobalAtomicLong LEGACY_OPTION_DEPRECATION_WARNED = new GlobalAtomicLong(0L);
+    private static final GlobalAtomicLong LEGACY_OPTION_DEPRECATION_WARNED = new GlobalAtomicLong("LEGACY_OPTION_DEPRECATION_WARNED", 0L);
 
     /**
      * Gets the system property assignment that would set the current value for a given option.

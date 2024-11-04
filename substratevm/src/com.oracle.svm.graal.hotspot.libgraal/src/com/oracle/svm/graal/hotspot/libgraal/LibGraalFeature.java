@@ -79,6 +79,7 @@ import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
 import jdk.graal.compiler.serviceprovider.LibGraalService;
 import jdk.graal.nativeimage.LibGraalFeatureComponent;
 import jdk.graal.nativeimage.LibGraalLoader;
+import jdk.graal.nativeimage.hosted.GlobalData;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotModifiers;
@@ -118,15 +119,6 @@ public final class LibGraalFeature implements Feature {
      * Set of {@link LibGraalFeatureComponent}s created during analysis.
      */
     private final Set<LibGraalFeatureComponent> libGraalFeatureComponents = ConcurrentHashMap.newKeySet();
-
-    /**
-     * Handle to {@link GlobalAtomicLong#getInitialValue()} in the guest.
-     */
-    MethodHandle globalAtomicLongGetInitialValue;
-
-    public ClassLoader getLoader() {
-        return loader;
-    }
 
     /**
      * Loads the class {@code c} in the libgraal class loader.
@@ -197,13 +189,6 @@ public final class LibGraalFeature implements Feature {
         // Guest JVMCI and Graal need access to some JDK internal packages
         String[] basePackages = {"jdk.internal.misc", "jdk.internal.util", "jdk.internal.vm"};
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, null, false, "java.base", basePackages);
-
-        try {
-            globalAtomicLongGetInitialValue = mhl.findVirtual(loadClassOrFail(GlobalAtomicLong.class),
-                            "getInitialValue", methodType(long.class));
-        } catch (Throwable e) {
-            GraalError.shouldNotReachHere(e);
-        }
     }
 
     @SuppressWarnings("unchecked")
@@ -396,10 +381,41 @@ public final class LibGraalFeature implements Feature {
         }
     }
 
+    /**
+     * Transforms {@code GlobalAtomicLong.addressSupplier} by replacing it with a {@link GlobalData}
+     * backed address supplier.
+     */
+    class GlobalAtomicLongTransformer implements FieldValueTransformer {
+        private MethodHandle globalAtomicLongGetInitialValue;
+
+        void register(BeforeAnalysisAccess access) {
+            Class<?> globalAtomicLongClass = loadClassOrFail(GlobalAtomicLong.class.getName());
+            Field addressSupplierField = LibGraalReflectionUtil.lookupField(globalAtomicLongClass, "addressSupplier");
+            access.registerFieldValueTransformer(addressSupplierField, this);
+            try {
+                globalAtomicLongGetInitialValue = mhl.findVirtual(globalAtomicLongClass, "getInitialValue", methodType(long.class));
+            } catch (Throwable e) {
+                GraalError.shouldNotReachHere(e);
+            }
+        }
+
+        @Override
+        public Object transform(Object receiver, Object originalValue) {
+            long initialValue;
+            try {
+                initialValue = (long) globalAtomicLongGetInitialValue.invoke(receiver);
+            } catch (Throwable e) {
+                throw GraalError.shouldNotReachHere(e);
+            }
+            return GlobalData.createGlobal(initialValue);
+        }
+    }
+
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
 
         new FieldOffsetsTransformer().register(access);
+        new GlobalAtomicLongTransformer().register(access);
 
         /* Contains static fields that depend on HotSpotJVMCIRuntime */
         RuntimeClassInitialization.initializeAtRunTime(loadClassOrFail(HotSpotModifiers.class));
