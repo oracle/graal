@@ -424,7 +424,7 @@ public final class OracleDBRegexLexer extends RegexLexer {
         } else {
             // outside character classes, all escaped characters are simply treated as literals,
             // there are no escape sequences in oracleDB
-            return c;
+            return Character.isHighSurrogate(c) ? finishSurrogatePair(c) : c;
         }
     }
 
