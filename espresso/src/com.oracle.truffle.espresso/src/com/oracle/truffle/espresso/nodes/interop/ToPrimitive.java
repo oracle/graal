@@ -83,10 +83,6 @@ public abstract class ToPrimitive extends ToEspressoNode {
             throw UnsupportedTypeException.create(new Object[]{value}, "boolean");
         }
 
-        static boolean isStaticObject(Object value) {
-            return value instanceof StaticObject;
-        }
-
         static boolean isHostBoolean(Object value) {
             return value instanceof Boolean;
         }
@@ -131,10 +127,6 @@ public abstract class ToPrimitive extends ToEspressoNode {
         @Fallback
         StaticObject doUnsupportedType(Object value) throws UnsupportedTypeException {
             throw UnsupportedTypeException.create(new Object[]{value}, "int");
-        }
-
-        static boolean isStaticObject(Object value) {
-            return value instanceof StaticObject;
         }
 
         static boolean isHostInteger(Object value) {
@@ -183,10 +175,6 @@ public abstract class ToPrimitive extends ToEspressoNode {
             throw UnsupportedTypeException.create(new Object[]{value}, "byte");
         }
 
-        static boolean isStaticObject(Object value) {
-            return value instanceof StaticObject;
-        }
-
         static boolean isHostByte(Object value) {
             return value instanceof Byte;
         }
@@ -231,10 +219,6 @@ public abstract class ToPrimitive extends ToEspressoNode {
         @Fallback
         StaticObject doUnsupportedType(Object value) throws UnsupportedTypeException {
             throw UnsupportedTypeException.create(new Object[]{value}, "short");
-        }
-
-        static boolean isStaticObject(Object value) {
-            return value instanceof StaticObject;
         }
 
         static boolean isHostShort(Object value) {
@@ -289,10 +273,6 @@ public abstract class ToPrimitive extends ToEspressoNode {
             throw UnsupportedTypeException.create(new Object[]{value}, "char");
         }
 
-        static boolean isStaticObject(Object value) {
-            return value instanceof StaticObject;
-        }
-
         static boolean isHostCharacter(Object value) {
             return value instanceof Character;
         }
@@ -342,10 +322,6 @@ public abstract class ToPrimitive extends ToEspressoNode {
         static boolean isHostLong(Object value) {
             return value instanceof Long;
         }
-
-        static boolean isStaticObject(Object value) {
-            return value instanceof StaticObject;
-        }
     }
 
     @NodeInfo(shortName = "To float")
@@ -387,10 +363,6 @@ public abstract class ToPrimitive extends ToEspressoNode {
         @Fallback
         StaticObject doUnsupportedType(Object value) throws UnsupportedTypeException {
             throw UnsupportedTypeException.create(new Object[]{value}, "float");
-        }
-
-        static boolean isStaticObject(Object value) {
-            return value instanceof StaticObject;
         }
 
         static boolean isHostFloat(Object value) {
@@ -437,10 +409,6 @@ public abstract class ToPrimitive extends ToEspressoNode {
         @Fallback
         StaticObject doUnsupportedType(Object value) throws UnsupportedTypeException {
             throw UnsupportedTypeException.create(new Object[]{value}, "double");
-        }
-
-        static boolean isStaticObject(Object value) {
-            return value instanceof StaticObject;
         }
 
         static boolean isHostDouble(Object value) {

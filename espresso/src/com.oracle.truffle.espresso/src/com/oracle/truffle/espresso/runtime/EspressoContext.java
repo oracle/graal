@@ -66,6 +66,7 @@ import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
 import com.oracle.truffle.espresso.blocking.BlockingSupport;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
+import com.oracle.truffle.espresso.classfile.JavaVersion;
 import com.oracle.truffle.espresso.classfile.descriptors.Names;
 import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
@@ -73,6 +74,9 @@ import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.classfile.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.perf.DebugCloseable;
+import com.oracle.truffle.espresso.classfile.perf.DebugTimer;
+import com.oracle.truffle.espresso.classfile.perf.TimerCollection;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.ffi.NativeAccessCollector;
 import com.oracle.truffle.espresso.ffi.nfi.NFIIsolatedNativeAccess;
@@ -92,10 +96,6 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.interop.EspressoForeignProxyGenerator;
 import com.oracle.truffle.espresso.nodes.interop.PolyglotTypeMappings;
-import com.oracle.truffle.espresso.classfile.JavaVersion;
-import com.oracle.truffle.espresso.classfile.perf.DebugCloseable;
-import com.oracle.truffle.espresso.classfile.perf.DebugTimer;
-import com.oracle.truffle.espresso.classfile.perf.TimerCollection;
 import com.oracle.truffle.espresso.preinit.ContextPatchingException;
 import com.oracle.truffle.espresso.preinit.EspressoLanguageCache;
 import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
@@ -1204,6 +1204,10 @@ public final class EspressoContext {
 
     public PolyglotTypeMappings getPolyglotTypeMappings() {
         return getEspressoEnv().getPolyglotTypeMappings();
+    }
+
+    public boolean isGenericTypeHintsEnabled() {
+        return getEspressoEnv().isGenericTypeHintsEnabled();
     }
 
     public EspressoForeignProxyGenerator.GeneratedProxyBytes getProxyBytesOrNull(String metaName) {

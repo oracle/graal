@@ -26,6 +26,7 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
@@ -41,6 +42,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
+import com.oracle.truffle.espresso.impl.EspressoType;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.impl.PrimitiveKlass;
@@ -109,6 +111,83 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                 return value;
             }
             return castImpl.execute(getContext(), targetClass.getMirrorKlass(meta), value);
+        }
+    }
+
+    @Substitution
+    abstract static class CastWithGenerics extends SubstitutionNode {
+
+        static EspressoType getEspressoType(StaticObject targetType, Meta meta) {
+            if (StaticObject.isNull(targetType)) {
+                throw meta.throwException(meta.java_lang_NullPointerException);
+            }
+            return (EspressoType) meta.polyglot.HIDDEN_TypeLiteral_internalType.getHiddenObject(targetType);
+        }
+
+        static ToReference createToEspressoNode(EspressoType type, Meta meta) {
+            return ToReference.createToReference(type, meta);
+        }
+
+        protected static InstanceOf createInstanceOf(EspressoType superType) {
+            return InstanceOf.create(superType.getRawType(), true);
+        }
+
+        abstract @JavaType(Object.class) StaticObject execute(
+                        @JavaType(Object.class) StaticObject value,
+                        @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/TypeLiteral;") StaticObject targetType);
+
+        @Specialization(guards = "getEspressoType(targetType, meta) == cachedTargetType", limit = "1")
+        @JavaType(Object.class)
+        StaticObject doCached(
+                        @JavaType(Object.class) StaticObject value,
+                        @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/TypeLiteral;") StaticObject targetType,
+                        @Bind("getMeta()") Meta meta,
+                        @SuppressWarnings("unused") @Cached("getEspressoType(targetType, meta)") EspressoType cachedTargetType,
+                        @Cached("createInstanceOf(cachedTargetType.getRawType())") InstanceOf instanceOfTarget,
+                        @Cached("createToEspressoNode(cachedTargetType, meta)") ToReference toEspressoNode) {
+            assert !StaticObject.isNull(targetType);
+            if (StaticObject.isNull(value) || (!value.isForeignObject() && instanceOfTarget.execute(value.getKlass()))) {
+                return value;
+            }
+            try {
+                if (value.isForeignObject()) {
+                    return toEspressoNode.execute(value.rawForeignObject(getLanguage()));
+                } else {
+                    // we know it's not instance of the target type, so throw CCE
+                    throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "%s cannot be cast to %s", value, targetType);
+                }
+            } catch (UnsupportedTypeException e) {
+                throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "%s cannot be cast to %s", value, targetType);
+            }
+        }
+
+        @ReportPolymorphism.Megamorphic
+        @Specialization(replaces = "doCached")
+        @JavaType(Object.class)
+        StaticObject doGeneric(
+                        @JavaType(Object.class) StaticObject value,
+                        @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/TypeLiteral;") StaticObject targetType,
+                        @Cached InstanceOf.Dynamic instanceOfDynamic,
+                        @Cached ToReference.DynamicToReference toEspressoNode) {
+            Meta meta = getMeta();
+            if (StaticObject.isNull(targetType)) {
+                throw meta.throwException(meta.java_lang_NullPointerException);
+            }
+            if (StaticObject.isNull(value)) {
+                return value;
+            }
+            EspressoType type = getEspressoType(targetType, meta);
+            if (value.isForeignObject()) {
+                try {
+                    return toEspressoNode.execute(value.rawForeignObject(getLanguage()), type);
+                } catch (UnsupportedTypeException e) {
+                    throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "%s cannot be cast to %s", value, type);
+                }
+            } else if (instanceOfDynamic.execute(value.getKlass(), type.getRawType())) {
+                return value;
+            } else {
+                throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "%s cannot be cast to %s", value, type);
+            }
         }
     }
 
@@ -351,7 +430,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
         }
     }
 
-    protected static StaticObject createForeignObject(Object object, Meta meta, InteropLibrary interopLibrary) {
+    private static StaticObject createForeignObject(Object object, Meta meta, InteropLibrary interopLibrary) {
         return StaticObject.createForeign(meta.getLanguage(), meta.java_lang_Object, object, interopLibrary);
     }
 }

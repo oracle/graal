@@ -415,6 +415,8 @@ public final class Meta extends ContextAccessImpl {
         java_lang_reflect_Method_parameterTypes = java_lang_reflect_Method.requireDeclaredField(Name.parameterTypes, Type.java_lang_Class_array);
 
         java_lang_reflect_Parameter = knownKlass(Type.java_lang_reflect_Parameter);
+        java_lang_reflect_ParameterizedType = knownKlass(Type.java_lang_reflect_ParameterizedType);
+        java_lang_reflect_ParameterizedType_getRawType = java_lang_reflect_ParameterizedType.requireDeclaredMethod(Name.getRawType, Signature.Java_lang_reflect_Type);
 
         java_lang_reflect_Field = knownKlass(Type.java_lang_reflect_Field);
         HIDDEN_FIELD_KEY = java_lang_reflect_Field.requireHiddenField(Name.HIDDEN_FIELD_KEY);
@@ -1468,6 +1470,8 @@ public final class Meta extends ContextAccessImpl {
     public final ObjectKlass sun_reflect_ConstructorAccessorImpl;
 
     public final ObjectKlass java_lang_reflect_Parameter;
+    public final ObjectKlass java_lang_reflect_ParameterizedType;
+    public final Method java_lang_reflect_ParameterizedType_getRawType;
 
     public final ObjectKlass java_lang_reflect_Field;
     public final Method java_lang_reflect_Field_init;
@@ -2057,6 +2061,10 @@ public final class Meta extends ContextAccessImpl {
         public final ObjectKlass VMHelper;
         public final Method VMHelper_getDynamicModuleDescriptor;
 
+        public final ObjectKlass TypeLiteral;
+        public final Field TypeLiteral_rawType;
+        public final Field HIDDEN_TypeLiteral_internalType;
+        public final ObjectKlass TypeLiteral$InternalTypeLiteral;
         public final ObjectKlass EspressoForeignList;
         public final ObjectKlass EspressoForeignCollection;
         public final ObjectKlass EspressoForeignIterable;
@@ -2123,6 +2131,11 @@ public final class Meta extends ContextAccessImpl {
                             Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
             ExceptionType_PARSE_ERROR = ExceptionType.requireDeclaredField(Name.PARSE_ERROR,
                             Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
+
+            TypeLiteral = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_TypeLiteral);
+            TypeLiteral_rawType = TypeLiteral.requireDeclaredField(Name.rawType, Type.java_lang_Class);
+            HIDDEN_TypeLiteral_internalType = TypeLiteral.requireHiddenField(Name.HIDDEN_INTERNAL_TYPE);
+            TypeLiteral$InternalTypeLiteral = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_TypeLiteral$InternalTypeLiteral);
 
             VMHelper = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_VMHelper);
             VMHelper_getDynamicModuleDescriptor = VMHelper.requireDeclaredMethod(Name.getDynamicModuleDescriptor, Signature.ModuleDescriptor_String_String);
