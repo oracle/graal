@@ -48,15 +48,6 @@ public abstract class AbstractDomain<T extends AbstractDomain<T>> {
     /**
      * Checks if the domain is equal to the other domain
      *
-     * @param obj domain to compare with
-     * @return true if the domain is equal to the other domain
-     */
-    @Override
-    public abstract boolean equals(Object obj);
-
-    /**
-     * Checks if the domain is equal to the other domain
-     *
      * @param other domain to compare with
      * @return true if the domain is equal to the other domain
      */
