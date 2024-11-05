@@ -53,9 +53,9 @@ public class ProgressReporterFeature implements InternalFeature {
     protected final ProgressReporter reporter = ProgressReporter.singleton();
 
     @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
+    public void duringSetup(DuringSetupAccess access) {
         if (SubstrateOptions.BuildOutputBreakdowns.getValue()) {
-            ImageSingletons.add(HeapBreakdownProvider.class, new HeapBreakdownProvider());
+            ImageSingletons.add(HeapBreakdownProvider.class, HostedConfiguration.instance().createHeapBreakdownProvider());
         }
     }
 
