@@ -8,7 +8,7 @@ permalink: /reference-manual/native-image/guides/use-reachability-metadata-repos
 # Include Reachability Metadata Using the Native Image Maven Plugin
 
 You can build a native executable from a Java application with **Maven**. 
-For that, use the GraalVM Native Image Maven plugin provided as part of the [Native Build Tools](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html).
+For that, use the GraalVM Native Image Maven plugin provided as part of the [Native Build Tools project](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html).
 
 A "real-world" Java application likely requires some Java reflection objects, or it calls some native code, or accesses resources on the class path - dynamic features that the `native-image` tool must be aware of at build time, and provided in the form of [metadata](../ReachabilityMetadata.md). 
 (Native Image loads classes dynamically at build time, and not at run time.)
@@ -54,7 +54,6 @@ For other installation options, visit the [Downloads section](https://www.graalv
         public static final String JDBC_CONNECTION_URL = "jdbc:h2:./data/test";
 
         public static void main(String[] args) throws Exception {
-            // Cleanup
             withConnection(JDBC_CONNECTION_URL, connection -> {
                 connection.prepareStatement("DROP TABLE IF EXISTS customers").execute();
                 connection.commit();
@@ -65,7 +64,6 @@ For other installation options, visit the [Downloads section](https://www.graalv
             System.out.println("=== Inserting the following customers in the database: ");
             printCustomers(customers);
 
-            // Insert data
             withConnection(JDBC_CONNECTION_URL, connection -> {
                 connection.prepareStatement("CREATE TABLE customers(id INTEGER AUTO_INCREMENT, name VARCHAR)").execute();
                 PreparedStatement statement = connection.prepareStatement("INSERT INTO customers(name) VALUES (?)");
@@ -81,7 +79,6 @@ For other installation options, visit the [Downloads section](https://www.graalv
             System.out.println("");
 
             Set<String> savedCustomers = new HashSet<>();
-            // Read data
             withConnection(JDBC_CONNECTION_URL, connection -> {
                 try (ResultSet resultSet = connection.prepareStatement("SELECT * FROM customers").executeQuery()) {
                     while (resultSet.next()) {
@@ -136,14 +133,14 @@ For other installation options, visit the [Downloads section](https://www.graalv
         </properties>
 
         <dependencies>
-            <!-- 1 -->
+            <!-- 1. H2 Database dependency -->
             <dependency>
                 <groupId>com.h2database</groupId>
                 <artifactId>h2</artifactId>
                 <version>${h2.version}</version>
             </dependency>
         </dependencies>
-        <!-- 2 -->
+        <!-- 2. Native Image Maven plugin within a Maven profile -->
         <profiles>
             <profile>
                 <id>native</id>
@@ -165,7 +162,7 @@ For other installation options, visit the [Downloads section](https://www.graalv
                             </executions>
                             <configuration>
                                 <buildArgs>
-                                    <!-- 3 -->
+                                    <!-- 3. Quick build mode -->
                                     <buildArg>-Ob</buildArg>
                                 </buildArgs>
                             </configuration>
@@ -242,7 +239,7 @@ For other installation options, visit the [Downloads section](https://www.graalv
 
     **2** Enable the [Native Image Maven plugin](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html) within a Maven profile, attached to the `package` phase. You are going to build a native executable using a Maven profile. A Maven profile allows you to decide whether to just build a JAR file, or a native executable. The plugin discovers which JAR files it needs to pass to `native-image` and what the executable main class should be.
 
-    **3** You can pass parameters to the underlying `native-image` build tool using the `<buildArgs>` section. In individual `<buildArg>` tags you can pass parameters exactly the same way as you do from a command line. The `-Ob` option to enable quick build mode (recommended during development only) is used as an example. Learn about other configuration options from the [plugin's documentation](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html#configuration-options).
+    **3** You can pass parameters to the underlying `native-image` build tool using the `<buildArgs>` section. In individual `<buildArg>` tags you can pass parameters exactly the same way as you do on the command line. The `-Ob` option to enable the quick build mode (recommended during development only) is used as an example. Learn about other configuration options from the [plugin's documentation](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html#configuration-options).
 
 4. (Optional) Build the application:
     ```
@@ -252,7 +249,7 @@ For other installation options, visit the [Downloads section](https://www.graalv
 
 ## Build a Native Executable Using the GraalVM Reachability Metadata Repository
 
-[GraalVM Reachability Metadata repository](https://github.com/oracle/graalvm-reachability-metadata) provides GraalVM configuration for libraries which do not support GraalVM Native Image by default. 
+[GraalVM Reachability Metadata repository](https://github.com/oracle/graalvm-reachability-metadata) provides GraalVM configuration for libraries which do not support GraalVM Native Image by default.
 One of these is the [H2 Database](https://www.h2database.com/html/main.html) this application depends on.
 
 The Native Image Maven plugin **automatically downloads the metadata from the repository at build time**.
@@ -350,6 +347,7 @@ In the `native` Maven profile section, add the `exec-maven-plugin` plugin:
 ### Summary
 
 This guide demonstrated how to build a native executable using the [GraalVM Reachability Metadata Repository](https://github.com/oracle/graalvm-reachability-metadata) and with the Tracing Agent. The goal was to show the difference, and prove how using the reachability metadata can simplify the work.
+Using the GraalVM Reachability Metadata Repository enhances the usability of Native Image for Java applications depending on 3rd party libraries.
 
 ### Related Documentation
 
