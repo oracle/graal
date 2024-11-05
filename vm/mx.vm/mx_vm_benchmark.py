@@ -544,26 +544,101 @@ class NativeImageVM(GraalVm):
         self.analysis_context_sensitivity = None
         self.no_inlining_before_analysis = False
         self.optimization_level = None
-        self._configure_from_name(config_name)
+        self._configure_comma_separated_configs(config_name)
+        if ',' in config_name:
+            self._canonical_configuration = False
+        else:
+            # we validate that programmatic configuration of the VM matches reliably re-generates the original config name
+            # since this feature is relied upon for syntactic sugar for vm configs
+            assert config_name == self.config_name(), f"Config name mismatch: '{config_name}' is generated as '{self.config_name()}' !"
+
+    @staticmethod
+    def canonical_config_name(config_name):
+        # NativeImageVM allows syntactic sugar for its VM configs such that 'otw-ee,pgo,g1gc' is mapped to 'otw-g1gc-pgo-ee'
+        # this canonicalization will take the former and return the latter
+        return NativeImageVM('native-image', config_name).config_name()
+
+    def config_name(self):
+        # Generates the unique vm config name based on how the VM is actually configured.
+        # It concatenates the config options in the correct order to match the expected format.
+        config = []
+        if self.native_architecture is True:
+            config += ["native-architecture"]
+        if self.use_string_inlining is True:
+            config += ["string-inlining"]
+        if self.use_open_type_world is True:
+            config += ["otw"]
+        if self.is_gate is True:
+            config += ["gate"]
+        if self.use_upx is True:
+            config += ["upx"]
+        if self.is_quickbuild is True:
+            config += ["quickbuild"]
+        if self.gc == "G1":
+            config += ["g1gc"]
+        if self.is_llvm is True:
+            config += ["llvm"]
+        is_pgo_set = False
+        if self.pgo_context_sensitive is False:
+            config += ["pgo-ctx-insens"]
+            is_pgo_set = True
+        if self.pgo_sampler_only is True:
+            config += ["pgo-sampler"]
+            is_pgo_set = True
+        # pylint: disable=too-many-boolean-expressions
+        if not is_pgo_set and self.pgo_instrumentation is True \
+                and self.jdk_profiles_collect is False \
+                and self.adopted_jdk_pgo is False \
+                and self.safepoint_sampler is False \
+                and self.async_sampler is False \
+                and self.force_profile_inference is False \
+                and self.profile_inference_feature_extraction is False:
+            config += ["pgo"]
+        if self.analysis_context_sensitivity is not None:
+            sensitivity = self.analysis_context_sensitivity
+            if sensitivity.startswith("_"):
+                sensitivity = sensitivity[1:]
+            config += [sensitivity]
+        if self.no_inlining_before_analysis is True:
+            config += ["no-inline"]
+        if self.jdk_profiles_collect is True:
+            config += ["jdk-profiles-collect"]
+        if self.adopted_jdk_pgo is True:
+            config += ["adopted-jdk-pgo"]
+        if self.profile_inference_feature_extraction is True:
+            config += ["profile-inference-feature-extraction"]
+        if self.pgo_instrumentation is True and self.force_profile_inference is True:
+            if self.pgo_exclude_conditional is True:
+                config += ["profile-inference-pgo"]
+            if self.profile_inference_debug is True:
+                config += ["profile-inference-debug"]
+        if self.safepoint_sampler is True:
+            config += ["safepoint-sampler"]
+        if self.async_sampler is True:
+            config += ["async-sampler"]
+        if self.optimization_level is not None:
+            config += [self.optimization_level]
+        if not config:
+            config += ["default"]
+        if self.graalvm_edition is not None:
+            config += [self.graalvm_edition]
+        return "-".join(config)
+
+    def _configure_comma_separated_configs(self, config_string):
+        # Due to the complexity of the VM config and how hard it is to get the ordering right, it has been relaxed
+        # to allow comma-separated configs. So 'pgo,g1gc-ee,native-architecture' is syntactic sugar for 'native-architecture-g1gc-pgo-ee'
+        for config_part in config_string.split(','):
+            if config_part:
+                self._configure_from_name(config_part)
 
     def _configure_from_name(self, config_name):
         if not config_name:
             mx.abort(f"config_name must be set. Use 'default' for the default {self.__class__.__name__} configuration.")
 
-        # special case for the 'default' configuration, other configurations are handled by the regex to ensure consistent ordering
-        if config_name == "default":
-            return
-        if config_name == "default-ce":
-            self.graalvm_edition = "ce"
-            return
-        if config_name == "default-ee":
-            self.graalvm_edition = "ee"
-            return
-
         # This defines the allowed config names for NativeImageVM. The ones registered will be available via --jvm-config
         rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<otw>otw-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-ctx-insens-|pgo-sampler-)?(?P<inliner>inline-)?' \
                r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-|2obj1h-|3obj2h-|4obj3h-)?(?P<no_inlining_before_analysis>no-inline-)?(?P<jdk_profiles>jdk-profiles-collect-|adopted-jdk-pgo-)?' \
-               r'(?P<profile_inference>profile-inference-feature-extraction-|profile-inference-pgo-|profile-inference-debug-)?(?P<sampler>safepoint-sampler-|async-sampler-)?(?P<optimization_level>O0-|O1-|O2-|O3-|Os-)?(?P<edition>ce-|ee-)?$'
+               r'(?P<profile_inference>profile-inference-feature-extraction-|profile-inference-pgo-|profile-inference-debug-)?(?P<sampler>safepoint-sampler-|async-sampler-)?(?P<optimization_level>O0-|O1-|O2-|O3-|Os-)?(default-)?(?P<edition>ce-|ee-)?$'
 
         mx.logv(f"== Registering configuration: {config_name}")
         match_name = f"{config_name}-"  # adding trailing dash to simplify the regex
