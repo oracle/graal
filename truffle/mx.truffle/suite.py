@@ -145,22 +145,22 @@ suite = {
 
     "ICU4J" : {
       "moduleName" : "com.ibm.icu",
-      "digest" : "sha512:08720318b2d175ad8379306caacea7da181e51ce9e7410318dae11008ab4a8d6d7b1723136a1fd17b02b11efd24ce87cbe24413c1d5f8d7cb0d00c9d32c1b267",
-      "sourceDigest" : "sha512:0cc7bda1e4396249ff33cb692fe102a20c499fce53c79035a26ed3815760554246e5fd9bd5bf6f154cf2c823c0502fc573ce2987924c263cd371aaf3dadc7a8b",
+      "digest" : "sha512:5f4126df9bf28c2ea82b63b3c0d0f08a1e371b3fac0c7acab34a37f087927b1876535f4e0b889d28f20fcf42e816af00b3f302d48bc01c8dc13b49e40dd3927d",
+      "sourceDigest" : "sha512:25a05e8ceb88420e3fd77447fbf3687c6bec5ff17dc1a34a571a3b28aee1d7a2699fa8edce43e09f175ddbf35a58c8fa50a0b04631b47858e711308c55fbdfb2",
       "maven" : {
         "groupId" : "com.ibm.icu",
         "artifactId" : "icu4j",
-        "version" : "74.1",
+        "version" : "76.1",
       },
     },
     "ICU4J-CHARSET" : {
       "moduleName" : "com.ibm.icu.charset",
-      "digest" : "sha512:15457b170448676d299b20d6bb26909735645f6e3fe28efb6036ad4b94a91ee58bfbeb427adc9264fe6bfa23972b3dbd2df9c85f8285290ed2b035da6e51326b",
-      "sourceDigest" : "sha512:0f90efa00cb7c98af87f9fbe6a63f5d465d4cd9da9666d2cd04d7b3e588b1b9c3835403f5c9f2863d5cd93122ad004e888fb06da3bdd2b5f37e830ae699d2576",
+      "digest" : "sha512:61fa695e522babd5da17f1d4696f7f6b67eb25fa0adfd62704dc00c2f3289f099ace819607f782eae9b7042257c654b36de14278808e3bdfd1c46038141c8066",
+      "sourceDigest" : "sha512:8e8fc31c1afc42277fd54bd008de408f900589012d8544275250dde93642e123b776c12bc1b7cfa2803c0e11ec714d4758efab3690e65dd2bf052a51ada0f5f5",
       "maven" : {
         "groupId" : "com.ibm.icu",
         "artifactId" : "icu4j-charset",
-        "version" : "74.1",
+        "version" : "76.1",
       },
     },
 
@@ -1248,6 +1248,7 @@ suite = {
       },
       "description" : "ICU4J shaded library.",
       "allowsJavadocWarnings": True,
+      "forceJavac": True,
       "javac.lint.overrides" : 'none',
       "jacoco" : "exclude",
       "graalCompilerSourceEdition": "ignore",
