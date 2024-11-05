@@ -61,6 +61,7 @@ import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.nfi.backend.panama.FunctionExecuteNodeGen.SignatureExecuteNodeGen;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendSignatureBuilderLibrary;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendSignatureLibrary;
+import com.oracle.truffle.nfi.backend.spi.NFIState;
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder;
 import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder.ArrayBuilderFactory;
@@ -373,20 +374,19 @@ final class PanamaSignature {
             return retType;
         }
 
-        Object execute(PanamaSignature signature, Object[] args, @SuppressWarnings("preview") MemorySegment segment) {
+        Object execute(PanamaSignature signature, Object[] args, @SuppressWarnings("preview") MemorySegment segment, Node node) {
             assert signature.signatureInfo == this;
             CompilerAsserts.partialEvaluationConstant(retType);
 
-            ErrorContext ctx = PanamaNFILanguage.get(null).errorContext.get();
+            PanamaNFILanguage language = PanamaNFILanguage.get(node);
+            NFIState nfiState = language.getNFIState();
+            ErrorContext ctx = language.errorContext.get();
             try {
-                int errnoMirror = ctx.getErrno();
-                if (ctx.nativeErrnoSet()) {
-                    ctx.setErrno(ctx.getNativeErrno());
-                }
+                // We need to set and capture native errno as close as possible to the native call
+                // to avoid the JVM clobbering it
+                ctx.setNativeErrno(nfiState.getNFIErrno());
                 Object result = (Object) downcallHandle.invokeExact(segment, args);
-
-                ctx.setNativeErrno(ctx.getErrno());
-                ctx.setErrno(errnoMirror);
+                nfiState.setNFIErrno(ctx.getNativeErrno());
 
                 if (result == null) {
                     return NativePointer.NULL;

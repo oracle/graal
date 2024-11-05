@@ -61,20 +61,7 @@ public class ErrorContext {
     }
 
     @SuppressWarnings("preview") private MemorySegment errnoLocation;
-    private Integer nativeErrno = null;
     final PanamaNFIContext ctx;
-
-    public boolean nativeErrnoSet() {
-        return (nativeErrno != null);
-    }
-
-    public int getNativeErrno() {
-        return nativeErrno;
-    }
-
-    public void setNativeErrno(int nativeErrno) {
-        this.nativeErrno = nativeErrno;
-    }
 
     @SuppressWarnings({"preview", "restricted"})
     MemorySegment lookupErrnoLocation() {
@@ -118,12 +105,12 @@ public class ErrorContext {
     }
 
     @SuppressWarnings("preview")
-    int getErrno() {
+    int getNativeErrno() {
         return getErrnoLocation().get(ValueLayout.JAVA_INT, 0);
     }
 
     @SuppressWarnings("preview")
-    void setErrno(int newErrno) {
+    void setNativeErrno(int newErrno) {
         getErrnoLocation().set(ValueLayout.JAVA_INT, 0, newErrno);
     }
 

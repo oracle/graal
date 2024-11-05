@@ -102,6 +102,7 @@ struct __TruffleContextInternal {
     jfieldID RetPatches_patches;
     jfieldID RetPatches_objects;
 
+    jfieldID NFIState_nfiErrnoAddress;
     jfieldID NFIState_hasPendingException;
 
     jclass NativeArgumentBuffer_Pointer;
@@ -122,12 +123,11 @@ struct __TruffleEnvInternal {
     struct __TruffleContextInternal *context;
     JNIEnv *jniEnv;
     jobject nfiState;
+    int *nfiErrnoAddress;
 };
 
 extern const struct __TruffleNativeAPI truffleNativeAPI;
 extern const struct __TruffleThreadAPI truffleThreadAPI;
-
-extern __thread int errnoMirror;
 
 // contains the "current" env from the most recent downcall, for faster lookup
 extern __thread struct __TruffleEnvInternal *cachedTruffleEnv;
