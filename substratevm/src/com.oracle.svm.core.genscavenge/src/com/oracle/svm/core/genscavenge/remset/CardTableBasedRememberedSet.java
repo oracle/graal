@@ -128,12 +128,14 @@ public class CardTableBasedRememberedSet implements RememberedSet {
 
     @Override
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void dirtyCardForAlignedObject(Object object, boolean verifyOnly) {
         AlignedChunkRememberedSet.dirtyCardForObject(object, verifyOnly);
     }
 
     @Override
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void dirtyCardForUnalignedObject(Object object, boolean verifyOnly) {
         UnalignedChunkRememberedSet.dirtyCardForObject(object, verifyOnly);
     }
