@@ -1568,6 +1568,10 @@ libgraal_build_args = [
 
     # No need for container support in libgraal as HotSpot already takes care of it
     '-H:-UseContainerSupport',
+
+    # Reduce image size by outlining all write barriers.
+    # Benchmarking showed no performance degradation.
+    '-H:+OutlineWriteBarriers',
 ] + ([
     # Force page size to support libgraal on AArch64 machines with a page size up to 64K.
     '-H:PageSize=64K'

@@ -113,6 +113,10 @@ public final class SerialGCOptions {
     @Option(help = "Ignore the maximum heap size while in VM-internal code.", type = OptionType.Expert)//
     public static final HostedOptionKey<Boolean> IgnoreMaxHeapSizeWhileInVMOperation = new HostedOptionKey<>(false, SerialGCOptions::serialGCOnly);
 
+    @Option(help = "Determines whether to always (if true) or never (if false) outline write barrier code to a separate function, " +
+                    "trading reduced image size for (potentially) worse performance. Serial GC only.", type = OptionType.Expert) //
+    public static final HostedOptionKey<Boolean> OutlineWriteBarriers = new HostedOptionKey<>(null, SerialGCOptions::serialGCOnly);
+
     /** Query these options only through an appropriate method. */
     public static class ConcealedOptions {
         @Option(help = "Collect old generation by compacting in-place instead of copying.", type = OptionType.Expert) //
