@@ -40,6 +40,8 @@ public interface ReflectionSubstitutionSupport {
 
     SubstrateAccessor getOrCreateAccessor(Executable member);
 
+    SubstrateAccessor getOrCreateConstructorAccessor(Class<?> targetClass, Executable member);
+
     /** Offset of the field or -1 if the field was not registered for unsafe access. */
     int getFieldOffset(Field field, boolean checkUnsafeAccessed);
 

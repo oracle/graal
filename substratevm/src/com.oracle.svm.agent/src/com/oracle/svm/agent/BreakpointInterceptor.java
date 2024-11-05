@@ -1300,7 +1300,8 @@ final class BreakpointInterceptor {
                 return;
             }
         }
-        if (jniFunctions().getIsInstanceOf().invoke(jni, loader, agent.handles().jdkInternalReflectDelegatingClassLoader)) {
+        JNIObjectHandle jdkInternalReflectDelegatingClassLoader = agent.handles().jdkInternalReflectDelegatingClassLoader;
+        if (!jdkInternalReflectDelegatingClassLoader.equal(nullHandle()) && jniFunctions().getIsInstanceOf().invoke(jni, loader, jdkInternalReflectDelegatingClassLoader)) {
             return;
         }
         byte[] data = new byte[classDataLen];
