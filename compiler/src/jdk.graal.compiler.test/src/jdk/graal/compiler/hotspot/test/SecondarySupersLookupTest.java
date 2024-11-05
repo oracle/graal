@@ -273,4 +273,29 @@ public class SecondarySupersLookupTest extends HotSpotGraalCompilerTest {
         test("instanceOfI34", obj60);
         test("instanceOfI60", obj08);
     }
+
+    public static boolean instanceOfI08Array(Object o) {
+        return o instanceof I08[];
+    }
+
+    public static boolean instanceOfI34Array(Object o) {
+        return o instanceof I08[];
+    }
+
+    public static boolean instanceOfI60Array(Object o) {
+        return o instanceof I08[];
+    }
+
+    @Test
+    public void testInterfaceArray() {
+        Object i08 = new I08[0];
+        test("instanceOfI08Array", i08);
+        test("instanceOfI34Array", i08);
+        test("instanceOfI60Array", i08);
+
+        Object i60 = new I60[0];
+        test("instanceOfI08Array", i60);
+        test("instanceOfI34Array", i60);
+        test("instanceOfI60Array", i60);
+    }
 }

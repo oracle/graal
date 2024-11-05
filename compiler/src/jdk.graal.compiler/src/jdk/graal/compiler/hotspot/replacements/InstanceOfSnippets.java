@@ -313,7 +313,7 @@ public class InstanceOfSnippets implements Snippets {
                     args.add("object", object);
                     args.addVarargs("hints", KlassPointer.class, KlassPointerStamp.klassNonNull(), hints.hubs);
                     args.addVarargs("hintIsPositive", boolean.class, StampFactory.forKind(JavaKind.Boolean), hints.isPositive);
-                    args.addConst("isHubAbstract", type.isAbstract() || type.isInterface());
+                    args.addConst("isHubAbstract", !type.isArray() && (type.isAbstract() || type.isInterface()));
                 }
                 args.add("trueValue", replacer.trueValue);
                 args.add("falseValue", replacer.falseValue);
