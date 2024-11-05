@@ -22,12 +22,6 @@
  */
 package com.oracle.truffle.espresso.impl;
 
-import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ALOAD_0;
-import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.GETFIELD;
-import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.GETSTATIC;
-import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.PUTFIELD;
-import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.PUTSTATIC;
-import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.RETURN;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_CALLER_SENSITIVE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_DONT_INLINE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
@@ -42,6 +36,12 @@ import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeInterfac
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeSpecial;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeStatic;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ALOAD_0;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.GETFIELD;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.GETSTATIC;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.PUTFIELD;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.PUTSTATIC;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.RETURN;
 
 import java.io.PrintStream;
 import java.lang.invoke.VarHandle;
@@ -71,35 +71,44 @@ import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyAssumption;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
 import com.oracle.truffle.espresso.analysis.liveness.LivenessAnalysis;
 import com.oracle.truffle.espresso.bytecode.BytecodePrinter;
-import com.oracle.truffle.espresso.classfile.ParserException;
-import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
-import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
-import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
+import com.oracle.truffle.espresso.classfile.ExceptionHandler;
+import com.oracle.truffle.espresso.classfile.JavaKind;
+import com.oracle.truffle.espresso.classfile.ParserException;
+import com.oracle.truffle.espresso.classfile.ParserKlass;
+import com.oracle.truffle.espresso.classfile.ParserMethod;
+import com.oracle.truffle.espresso.classfile.attributes.Attribute;
 import com.oracle.truffle.espresso.classfile.attributes.CodeAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.ExceptionsAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.LocalVariableTable;
 import com.oracle.truffle.espresso.classfile.attributes.SignatureAttribute;
+import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
+import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.ffi.NativeSignature;
 import com.oracle.truffle.espresso.ffi.NativeType;
 import com.oracle.truffle.espresso.ffi.Pointer;
+import com.oracle.truffle.espresso.impl.generics.factory.CoreReflectionFactory;
+import com.oracle.truffle.espresso.impl.generics.parser.SignatureParser;
+import com.oracle.truffle.espresso.impl.generics.tree.MethodTypeSignature;
+import com.oracle.truffle.espresso.impl.generics.tree.ReturnType;
+import com.oracle.truffle.espresso.impl.generics.tree.TypeSignature;
+import com.oracle.truffle.espresso.impl.generics.visitor.Reifier;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodHook;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jni.Mangle;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.classfile.ExceptionHandler;
-import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
@@ -107,9 +116,6 @@ import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.interop.AbstractLookupNode;
 import com.oracle.truffle.espresso.nodes.methodhandle.MHInvokeGenericNode.MethodHandleInvoker;
 import com.oracle.truffle.espresso.nodes.methodhandle.MethodHandleIntrinsicNode;
-import com.oracle.truffle.espresso.classfile.ParserKlass;
-import com.oracle.truffle.espresso.classfile.ParserMethod;
-import com.oracle.truffle.espresso.classfile.attributes.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
@@ -135,7 +141,9 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     private final Symbol<Type>[] parsedSignature;
 
     private final Method proxy;
-    private String genericSignature;
+    @CompilationFinal private String genericSignature;
+    @CompilationFinal(dimensions = 1) private EspressoType[] typeArguments;
+    @CompilationFinal private EspressoType returnType;
 
     private final Symbol<Signature> rawSignature;
     private final int rawFlags;
@@ -615,10 +623,59 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return paramsKlasses;
     }
 
+    public EspressoType[] getGenericParameterTypes() {
+        if (typeArguments == null) {
+            if (CompilerDirectives.isPartialEvaluationConstant(this)) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+            }
+            resolveMethodTypes();
+        }
+        return typeArguments;
+    }
+
+    public EspressoType getGenericReturnType() {
+        if (returnType == null) {
+            if (CompilerDirectives.isPartialEvaluationConstant(this)) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+            }
+            resolveMethodTypes();
+        }
+        return returnType;
+    }
+
+    private void resolveMethodTypes() {
+        EspressoType[] result = new EspressoType[getParameterCount()];
+        String sig = getGenericSignatureAsString();
+
+        if (sig.isEmpty() || !getContext().isGenericTypeHintsEnabled()) {
+            typeArguments = resolveParameterKlasses();
+            returnType = resolveReturnKlass();
+            return;
+        }
+        MethodTypeSignature typeSignature = SignatureParser.make().parseMethodSig(sig);
+        TypeSignature[] parameterTypes = typeSignature.getParameterTypes();
+        for (int i = 0; i < parameterTypes.length; i++) {
+            result[i] = getGenericEspressoType(parameterTypes[i]);
+        }
+        returnType = getGenericEspressoType(typeSignature.getReturnType());
+        typeArguments = result;
+    }
+
+    @TruffleBoundary
+    private EspressoType getGenericEspressoType(ReturnType type) {
+        CoreReflectionFactory factory = CoreReflectionFactory.make(methodVersion.getDeclaringKlass());
+        Reifier reifier = Reifier.make(factory);
+        type.accept(reifier);
+        EspressoType espressoType = reifier.getResult();
+        if (espressoType == null) {
+            return getMeta().java_lang_Object;
+        }
+        return espressoType;
+    }
+
     public Klass resolveReturnKlass() {
         // TODO(peterssen): Use resolved signature.
-        Symbol<Type> returnType = Signatures.returnType(getParsedSignature());
-        return getMeta().resolveSymbolOrFail(returnType,
+        return getMeta().resolveSymbolOrFail(Signatures.returnType(getParsedSignature()),
                         getDeclaringKlass().getDefiningClassLoader(),
                         getDeclaringKlass().protectionDomain());
     }
@@ -948,6 +1005,9 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     public String getGenericSignatureAsString() {
         if (genericSignature == null) {
+            if (CompilerDirectives.isPartialEvaluationConstant(this)) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+            }
             SignatureAttribute attr = (SignatureAttribute) getLinkedMethod().getAttribute(SignatureAttribute.NAME);
             if (attr == null) {
                 genericSignature = ""; // if no generics, the generic signature is empty

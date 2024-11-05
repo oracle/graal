@@ -46,6 +46,7 @@ import java.util.Iterator;
 
 import com.oracle.truffle.espresso.polyglot.Interop;
 import com.oracle.truffle.espresso.polyglot.InteropException;
+import com.oracle.truffle.espresso.polyglot.TypeLiteral;
 import com.oracle.truffle.espresso.polyglot.UnsupportedMessageException;
 
 public class EspressoForeignCollection<T> extends AbstractCollection<T> implements Collection<T> {
@@ -55,7 +56,8 @@ public class EspressoForeignCollection<T> extends AbstractCollection<T> implemen
     public Iterator<T> iterator() {
         assert Interop.hasIterator(this);
         try {
-            return EspressoForeignIterator.create(Interop.getIterator(this));
+            TypeLiteral<T> typeLiteral = TypeLiteral.getReifiedType(this, 0);
+            return EspressoForeignIterator.create(typeLiteral, Interop.getIterator(this));
         } catch (UnsupportedMessageException e) {
             return (Iterator<T>) EspressoForeignIterable.EMPTY_ITERATOR;
         }
