@@ -243,7 +243,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int secondarySuperCacheOffset = getFieldOffset("Klass::_secondary_super_cache", Integer.class, "Klass*");
     public final int secondarySupersOffset = getFieldOffset("Klass::_secondary_supers", Integer.class, "Array<Klass*>*");
     public final int klassHashSlotOffset = getFieldOffset("Klass::_hash_slot", Integer.class, "uint8_t", 0, JDK >= 23);
-    public final int klassBitmapOffset = getFieldOffset("Klass::_bitmap", Integer.class, "uintx", 0, JDK >= 23);
+    public final int klassBitmapOffset = getFieldOffset("Klass::_secondary_supers_bitmap", Integer.class, "uintx", 0, JDK >= 24);
 
     // JDK-8186777
     public final int classMirrorOffset = getFieldOffset("Klass::_java_mirror", Integer.class, "OopHandle");
