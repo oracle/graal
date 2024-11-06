@@ -28,7 +28,10 @@ package com.oracle.svm.test.javaagent;
 
 import com.oracle.svm.test.javaagent.agent1.TestJavaAgent1;
 import com.oracle.svm.test.javaagent.agent2.TestJavaAgent2;
+import org.graalvm.nativeimage.ImageInfo;
 import org.junit.Assert;
+
+import java.lang.reflect.Field;
 
 public class AgentTest {
 

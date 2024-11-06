@@ -1852,6 +1852,25 @@ suite = {
             "workingSets": "SVM",
             "jacoco": "exclude",
         },
+
+        "com.oracle.svm.agentproxy" : {
+            "subDir": "src",
+            "sourceDirs": [
+                "src"
+            ],
+            "requires" : [
+                "java.instrument",
+            ],
+            "requiresConcealed" : {
+                "java.base": [
+                    "jdk.internal.module",
+                ],
+            },
+            "checkstyle" : "com.oracle.svm.hosted",
+            "workingSets": "SVM",
+            "javaCompliance" : "24+",
+            "jacoco" : "exclude",
+        },
     },
 
     "distributions": {
@@ -2931,6 +2950,30 @@ suite = {
             ],
             "moduleInfo" : {
                 "name" : "com.oracle.svm.jdwp.server",
+            },
+            "maven" : False,
+        },
+
+        "SVM_AGENT_PROXY": {
+            "subDir" : "src",
+            "dependencies" : ["com.oracle.svm.agentproxy"],
+            "manifestEntries":{
+                "Manifest-Version": "1.0",
+                "Agent-Class": "com.oracle.svm.agentproxy.ProxyAgent",
+                "Can-Redefine-Classes": "true",
+                "Can-Retransform-Classes": "true",
+                "Premain-Class": "com.oracle.svm.agentproxy.ProxyAgent"
+            },
+            "moduleInfo" : {
+                "name" : "com.oracle.svm.agentproxy",
+                "exports" : [
+                    "com.oracle.svm.agentproxy",
+                ],
+                "requiresConcealed" : {
+                    "java.base": [
+                        "jdk.internal.module",
+                    ]
+                }
             },
             "maven" : False,
         },

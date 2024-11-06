@@ -27,7 +27,9 @@ package com.oracle.svm.driver;
 import static com.oracle.svm.core.util.EnvVariableUtils.EnvironmentVariable;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -1343,7 +1345,7 @@ public class NativeImage {
      * forbid than try to support.
      *
      * @param suffixVmArgs VM arguments that will be appended to the Native Image JVM launcher after
-     *            {@code vmArgs}
+     *                         {@code vmArgs}
      */
     private static void disableJarGraalJIT(List<String> vmArgs, HostFlags hostFlags, List<String> suffixVmArgs) {
         Boolean useJVMCINativeLibrary = getXXBoolArg(suffixVmArgs, "UseJVMCINativeLibrary");
@@ -1500,8 +1502,57 @@ public class NativeImage {
         }
 
         if (!javaAgentOpts.isEmpty()) {
+            Path proxyAgentPath = config.getJavaHome().resolve("lib/graalvm/svm-agent-proxy.jar");
+            if (Files.notExists(proxyAgentPath)) {
+                throw NativeImage.showError("Could not build with -javaagent option because the proxy agent " + proxyAgentPath + " that should be provided by GraalVM is not found.");
+            }
+            StringBuilder agentCmd = new StringBuilder();
             for (ArgumentEntry javaAgentOpt : javaAgentOpts) {
-                args.add("-javaagent:" + javaAgentOpt.value);
+                int firstPos = javaAgentOpt.value.indexOf('=');
+                String jarFile;
+                String agentOpt = null;
+                if (firstPos == -1) {
+                    jarFile = javaAgentOpt.value;
+                } else {
+                    jarFile = javaAgentOpt.value.substring(0, firstPos);
+                    agentOpt = javaAgentOpt.value.substring(firstPos + 1);
+                }
+                Path targetJarPath = Paths.get(jarFile);
+                addImageClasspath(targetJarPath);
+                imageBuilderJavaArgs.add("--add-exports=java.base/jdk.internal.module=ALL-UNNAMED");
+                /*
+                 * Each line in the option file has the format:
+                 * <Premain-Class>@<absoluteJarPath>[:<agentOptions>]
+                 *
+                 * The jar path is embedded directly in the option file line so that ProxyAgent can
+                 * build a per-agent URLClassLoader without placing the target jar on the builder
+                 * JVM's -cp. Keeping the jar off -cp prevents it from appearing in
+                 * builderURILocations (via getBuildClassPath()), which would otherwise trigger a
+                 * spurious "Class-path entry contains class that is part of the image builder"
+                 * warning when the same class also exists on the image classpath.
+                 */
+                final String absoluteJarPath = targetJarPath.toAbsolutePath().toString();
+                final String finalAgentOpt = agentOpt;
+                processJarManifestMainAttributes(targetJarPath, (file, attributes) -> {
+                    String premainClass = attributes.getValue("Premain-Class");
+                    agentCmd.append(premainClass).append("@").append(absoluteJarPath);
+                    if (finalAgentOpt != null) {
+                        agentCmd.append(":").append(finalAgentOpt);
+                    }
+                    agentCmd.append("\n");
+                });
+            }
+            try {
+                Path agentOptionFilePath = Files.createTempFile("svm-driver-", "");
+                try (
+                                BufferedWriter bw = new BufferedWriter(new FileWriter(agentOptionFilePath.toFile()))) {
+                    bw.write(agentCmd.toString());
+                } catch (IOException e) {
+                    throw NativeImage.showError("Could not start build with -javaagent, because failed to prepare agent option file.", e);
+                }
+                args.add("-javaagent:" + proxyAgentPath + "=@" + agentOptionFilePath);
+            } catch (IOException e) {
+                throw NativeImage.showError("Could not start build with -javaagent, because failed to prepare agent option file.", e);
             }
         }
 

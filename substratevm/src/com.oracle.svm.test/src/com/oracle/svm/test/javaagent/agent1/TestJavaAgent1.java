@@ -26,28 +26,37 @@
 package com.oracle.svm.test.javaagent.agent1;
 
 import com.oracle.svm.test.javaagent.AgentPremainHelper;
+import com.oracle.svm.test.javaagent.AgentTest;
 import com.oracle.svm.test.javaagent.AssertInAgent;
 import org.graalvm.nativeimage.ImageInfo;
 
 import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
+import java.lang.classfile.CodeModel;
 import java.lang.classfile.MethodModel;
+
+import java.lang.constant.ClassDesc;
+import java.lang.constant.MethodTypeDesc;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.Instrumentation;
+import java.lang.instrument.UnmodifiableClassException;
 import java.security.ProtectionDomain;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 
 public class TestJavaAgent1 {
 
     public static void premain(
-                    String agentArgs, Instrumentation inst) {
+                    String agentArgs, Instrumentation inst) throws UnmodifiableClassException {
         AgentPremainHelper.parseOptions(agentArgs);
         System.setProperty("instrument.enable", "true");
         AgentPremainHelper.load(TestJavaAgent1.class);
         if (!ImageInfo.inImageRuntimeCode()) {
             DemoTransformer dt = new DemoTransformer();
             inst.addTransformer(dt, true);
+            inst.retransformClasses(dt.getTargetClasses());
         } else {
             /**
              * Test {@code inst} is {@link NativeImageNoOpRuntimeInstrumentation} and behaves as
@@ -132,14 +141,35 @@ public class TestJavaAgent1 {
     }
 
     /**
-     * Change the return value of {@code AgentTest#getCounter()} from 10 to 11 in the agent.
+     * Change the return value of {@code AgentTest#getCounter()} from 10 to 11 in the agent. Also
+     * intercept {@code com.oracle.svm.hosted.InstrumentFeature#getRequiredFeatures()} to return an
+     * empty list.
+     *
+     * <p>
+     * Note: the interception of {@code InstrumentFeature#getRequiredFeatures()} is expected to be
+     * suppressed by {@code ClassFileTransformerProxy} during a Native Image build, because
+     * {@code InstrumentFeature} belongs to the {@code org.graalvm.nativeimage.builder} module which
+     * is in the protected {@code SYSTEM_MODULES} set. Therefore the build-time
+     * {@code getRequiredFeatures()} will still return its original value; only the shaded copy
+     * (loaded under the {@code shaded.*} namespace in DEBUG mode) will reflect the transformation.
      */
     static class DemoTransformer implements ClassFileTransformer {
 
-        private String internalClassName;
+        private static final String AGENT_TEST_CLASS = "com/oracle/svm/test/javaagent/AgentTest";
+        private static final String INSTRUMENT_FEATURE_CLASS = "com/oracle/svm/hosted/InstrumentFeature";
+
+        private final List<Class<?>> targetClasses = new ArrayList<>();
 
         DemoTransformer() {
-            internalClassName = "com/oracle/svm/test/javaagent/AgentTest";
+            try {
+                targetClasses.add(AgentTest.class);
+            } catch (NoClassDefFoundError e) {
+                // AgentTest may not be available at this point
+            }
+        }
+
+        public Class<?>[] getTargetClasses() {
+            return targetClasses.toArray(new Class[0]);
         }
 
         @Override
@@ -149,7 +179,8 @@ public class TestJavaAgent1 {
                         Class<?> classBeingRedefined,
                         ProtectionDomain protectionDomain,
                         byte[] classfileBuffer) {
-            if (internalClassName.equals(className)) {
+            if (AGENT_TEST_CLASS.equals(className)) {
+                // Change getCounter() return value from 10 to 11
                 ClassFile classFile = ClassFile.of();
                 ClassModel classModel = classFile.parse(classfileBuffer);
 
@@ -165,8 +196,45 @@ public class TestJavaAgent1 {
                         classbuilder.with(ce);
                     }
                 });
+            } else if (INSTRUMENT_FEATURE_CLASS.equals(className)) {
+                // Attempt to intercept InstrumentFeature#getRequiredFeatures() to return an empty
+                // list. This transformation targets a protected GraalVM system module and will be
+                // suppressed by ClassFileTransformerProxy during a Native Image build.
+                return transformInstrumentFeatureGetRequiredFeatures(classfileBuffer);
             }
             return null;
+        }
+
+        /**
+         * Transforms {@code InstrumentFeature#getRequiredFeatures()} so that it returns an empty
+         * list ({@code Collections.emptyList()}) instead of its actual value.
+         */
+        private static byte[] transformInstrumentFeatureGetRequiredFeatures(byte[] classfileBuffer) {
+            ClassFile classFile = ClassFile.of();
+            ClassModel classModel = classFile.parse(classfileBuffer);
+            ClassDesc collectionsDesc = ClassDesc.of("java.util.Collections");
+            ClassDesc listDesc = ClassDesc.of("java.util.List");
+            return classFile.transformClass(classModel, (cb, ce) -> {
+                if (ce instanceof MethodModel mm &&
+                                mm.methodName().equalsString("getRequiredFeatures") &&
+                                mm.methodType().equalsString("()Ljava/util/List;")) {
+                    cb.transformMethod(mm, (mb, me) -> {
+                        if (me instanceof CodeModel) {
+                            mb.withCode(codeBuilder -> {
+                                // return Collections.emptyList();
+                                codeBuilder.invokestatic(
+                                                collectionsDesc, "emptyList",
+                                                MethodTypeDesc.of(listDesc));
+                                codeBuilder.areturn();
+                            });
+                        } else {
+                            mb.with(me);
+                        }
+                    });
+                } else {
+                    cb.with(ce);
+                }
+            });
         }
     }
 }
