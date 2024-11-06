@@ -59,12 +59,27 @@ public class HotSpotCompressedKlassPointerTest extends HotSpotGraalCompilerTest 
         return o instanceof Comparable;
     }
 
+    // Array of non-abstract class
+    public static boolean instanceOfIntegerArray(Object o) {
+        return o instanceof Integer[];
+    }
+
+    // Array of abstract class
+    public static boolean instanceOfNumberArray(Object o) {
+        return o instanceof Number[];
+    }
+
+    // Array of interface
+    public static boolean instanceOfComparableArray(Object o) {
+        return o instanceof Comparable[];
+    }
+
     private void assertNoCompressedInterfaceOrAbstractClassConstant(String methodName) {
         StructuredGraph graph = getFinalGraph(methodName);
         for (ConstantNode constantNode : graph.getNodes().filter(ConstantNode.class)) {
             if (constantNode.asConstant() instanceof HotSpotMetaspaceConstant mc && mc.isCompressed()) {
                 ResolvedJavaType type = mc.asResolvedJavaType();
-                assertFalse(type.isInterface() || type.isAbstract(), "As of JDK-8338526, interface and abstract types are not compressible.");
+                assertFalse(!type.isArray() && (type.isInterface() || type.isAbstract()), "As of JDK-8338526, interface and abstract types are not compressible.");
             }
         }
     }
@@ -74,5 +89,8 @@ public class HotSpotCompressedKlassPointerTest extends HotSpotGraalCompilerTest 
         assertNoCompressedInterfaceOrAbstractClassConstant("instanceOfInteger");
         assertNoCompressedInterfaceOrAbstractClassConstant("instanceOfNumber");
         assertNoCompressedInterfaceOrAbstractClassConstant("instanceOfComparable");
+        assertNoCompressedInterfaceOrAbstractClassConstant("instanceOfIntegerArray");
+        assertNoCompressedInterfaceOrAbstractClassConstant("instanceOfNumberArray");
+        assertNoCompressedInterfaceOrAbstractClassConstant("instanceOfComparableArray");
     }
 }
