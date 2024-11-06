@@ -109,13 +109,13 @@ public final class HeapParameters {
 
     static int getMaximumYoungGenerationSizePercent() {
         int result = SerialAndEpsilonGCOptions.MaximumYoungGenerationSizePercent.getValue();
-        VMError.guarantee((result >= 0) && (result <= 100), "MaximumYoungGenerationSizePercent should be in [0 ..100]");
+        VMError.guarantee(result >= 0 && result <= 100, "MaximumYoungGenerationSizePercent should be in [0..100]");
         return result;
     }
 
     static int getMaximumHeapSizePercent() {
         int result = SerialAndEpsilonGCOptions.MaximumHeapSizePercent.getValue();
-        VMError.guarantee((result >= 0) && (result <= 100), "MaximumHeapSizePercent should be in [0 ..100]");
+        VMError.guarantee(result >= 0 && result <= 100, "MaximumHeapSizePercent should be in [0..100]");
         return result;
     }
 

@@ -47,7 +47,7 @@ public class SubstrateGCOptions {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
             if (!SubstrateUtil.HOSTED) {
-                HeapSizeVerifier.verifyMinHeapSizeAgainstAddressSpace(WordFactory.unsigned(newValue));
+                HeapSizeVerifier.verifyMinHeapSizeAgainstMaxAddressSpaceSize(WordFactory.unsigned(newValue));
             }
             super.onValueUpdate(values, oldValue, newValue);
         }
@@ -58,7 +58,7 @@ public class SubstrateGCOptions {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
             if (!SubstrateUtil.HOSTED) {
-                HeapSizeVerifier.verifyMaxHeapSizeAgainstAddressSpace(WordFactory.unsigned(newValue));
+                HeapSizeVerifier.verifyMaxHeapSizeAgainstMaxAddressSpaceSize(WordFactory.unsigned(newValue));
             }
             super.onValueUpdate(values, oldValue, newValue);
         }
@@ -69,7 +69,7 @@ public class SubstrateGCOptions {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
             if (!SubstrateUtil.HOSTED) {
-                HeapSizeVerifier.verifyMaxNewSizeAgainstAddressSpace(WordFactory.unsigned(newValue));
+                HeapSizeVerifier.verifyMaxNewSizeAgainstMaxAddressSpaceSize(WordFactory.unsigned(newValue));
             }
             super.onValueUpdate(values, oldValue, newValue);
         }

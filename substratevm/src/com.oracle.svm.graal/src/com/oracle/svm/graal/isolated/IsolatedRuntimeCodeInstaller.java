@@ -146,7 +146,7 @@ public final class IsolatedRuntimeCodeInstaller extends RuntimeCodeInstaller {
     protected Pointer allocateCodeMemory(long size) {
         PointerBase memory = allocateCodeMemory0(targetIsolate, WordFactory.unsigned(size));
         if (memory.isNull()) {
-            throw new OutOfMemoryError();
+            throw new OutOfMemoryError("Could not allocate memory for runtime-compiled code.");
         }
         return (Pointer) memory;
     }
