@@ -114,8 +114,6 @@ import com.oracle.truffle.api.instrumentation.ThreadsListener;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.provider.DefaultExportProvider;
-import com.oracle.truffle.api.library.provider.EagerExportProvider;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
@@ -328,12 +326,6 @@ final class EngineAccessor extends Accessor {
             Map<Class<?>, T> found = new LinkedHashMap<>();
             // 1) Add known Truffle DynamicObjectLibraryProvider service.
             DYNAMIC_OBJECT.lookupTruffleService(type).forEach((s) -> found.putIfAbsent(s.getClass(), s));
-            Class<? extends T> legacyInterface = null;
-            if (type == EagerExportProvider.class) {
-                legacyInterface = com.oracle.truffle.api.library.EagerExportProvider.class.asSubclass(type);
-            } else if (type == DefaultExportProvider.class) {
-                legacyInterface = com.oracle.truffle.api.library.DefaultExportProvider.class.asSubclass(type);
-            }
             for (AbstractClassLoaderSupplier loaderSupplier : EngineAccessor.locatorOrDefaultLoaders()) {
                 ClassLoader loader = loaderSupplier.get();
                 if (loader != null) {
@@ -342,16 +334,6 @@ final class EngineAccessor extends Accessor {
                         if (loaderSupplier.accepts(service.getClass())) {
                             JDKSupport.exportTransitivelyTo(service.getClass().getModule());
                             found.putIfAbsent(service.getClass(), service);
-                        }
-                    }
-                    // 3) Lookup implementations of a legacy interface
-                    // GR-46293 Remove the deprecated service interface lookup.
-                    if (legacyInterface != null && loaderSupplier.supportsLegacyProviders()) {
-                        JDKSupport.exportToUnnamedModuleOf(loader);
-                        for (T service : ServiceLoader.load(legacyInterface, loader)) {
-                            if (loaderSupplier.accepts(service.getClass())) {
-                                found.putIfAbsent(service.getClass(), service);
-                            }
                         }
                     }
                 }
@@ -2217,10 +2199,6 @@ final class EngineAccessor extends Accessor {
             this.hashCode = loader == null ? 0 : loader.hashCode();
         }
 
-        boolean supportsLegacyProviders() {
-            return true;
-        }
-
         boolean accepts(@SuppressWarnings("unused") Class<?> clazz) {
             return true;
         }
@@ -2265,11 +2243,6 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        boolean supportsLegacyProviders() {
-            return false;
-        }
-
-        @Override
         boolean accepts(Class<?> clazz) {
             return clazz.getModule().isNamed();
         }
@@ -2294,11 +2267,6 @@ final class EngineAccessor extends Accessor {
 
         WeakModulePathLoaderSupplier(ClassLoader loader) {
             super(loader);
-        }
-
-        @Override
-        boolean supportsLegacyProviders() {
-            return false;
         }
 
         @Override
