@@ -134,6 +134,11 @@ public interface ArithmeticLIRGeneratorTool {
 
     void emitStore(ValueKind<?> kind, Value address, Value input, LIRFrameState state, MemoryOrderMode memoryOrder);
 
+    @SuppressWarnings("unused")
+    default void emitMaskedStore(LIRKind kind, Value address, Value mask, Value input, LIRFrameState state, MemoryOrderMode memoryOrder) {
+        throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
+    }
+
     /**
      * Generate an fma instruction to calculate the value of a * b + c.
      */
