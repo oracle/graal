@@ -182,7 +182,7 @@ Use the code example in this section with your polyglot application to show how 
 {%
 include snippet-tabs
 tab1type="java" tab1id="Access_Java_from_JS" tab1name="JavaScript" tab1path="embed/access_java_from_js.java"
-tab4type="java" tab2id="Access_Java_from_Python" tab2name="Python" tab2path="embed/access_java_from_python.java"
+tab2type="java" tab2id="Access_Java_from_Python" tab2name="Python" tab2path="embed/access_java_from_python.java"
 tab3type="java" tab3id="Access_Java_from_Ruby" tab3name="Ruby" tab3path="embed/access_java_from_ruby.java"
 %}
 
