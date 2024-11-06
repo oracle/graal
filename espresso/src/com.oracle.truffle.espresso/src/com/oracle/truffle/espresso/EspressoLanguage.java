@@ -59,6 +59,8 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.staticobject.DefaultStaticProperty;
 import com.oracle.truffle.api.staticobject.StaticProperty;
 import com.oracle.truffle.api.staticobject.StaticShape;
+import com.oracle.truffle.espresso.classfile.JavaKind;
+import com.oracle.truffle.espresso.classfile.JavaVersion;
 import com.oracle.truffle.espresso.classfile.descriptors.Names;
 import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
 import com.oracle.truffle.espresso.classfile.descriptors.StaticSymbols;
@@ -70,7 +72,6 @@ import com.oracle.truffle.espresso.classfile.descriptors.Types;
 import com.oracle.truffle.espresso.classfile.descriptors.Utf8ConstantTable;
 import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.nodes.commands.ExitCodeNode;
 import com.oracle.truffle.espresso.nodes.commands.GetBindingsNode;
 import com.oracle.truffle.espresso.nodes.commands.ReferenceProcessRootNode;
@@ -80,7 +81,6 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
 import com.oracle.truffle.espresso.runtime.GuestAllocator;
-import com.oracle.truffle.espresso.classfile.JavaVersion;
 import com.oracle.truffle.espresso.runtime.OS;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject.StaticObjectFactory;
@@ -679,13 +679,17 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     public final class DisableSingleStepping implements AutoCloseable {
 
+        private final boolean steppingDisabled;
+
         private DisableSingleStepping() {
-            getThreadLocalState().disableSingleStepping();
+            steppingDisabled = getThreadLocalState().disableSingleStepping(false);
         }
 
         @Override
         public void close() {
-            getThreadLocalState().enableSingleStepping();
+            if (steppingDisabled) {
+                getThreadLocalState().enableSingleStepping();
+            }
         }
     }
 

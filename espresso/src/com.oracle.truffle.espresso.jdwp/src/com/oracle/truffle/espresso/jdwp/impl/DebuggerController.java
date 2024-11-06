@@ -204,6 +204,7 @@ public final class DebuggerController implements ContextsListener {
         fine(() -> "Adding step command request in thread " + getThreadName(thread) + " with ID: " + commandRequestId);
         SteppingInfo steppingInfo = new SteppingInfo(commandRequestId, suspendPolicy, isPopFrames, isForceEarlyReturn, stepKind);
         commandRequestIds.put(thread, steppingInfo);
+        context.steppingInProgress(getContext().asHostThread(thread), true);
     }
 
     /**
@@ -825,6 +826,7 @@ public final class DebuggerController implements ContextsListener {
             if (steppingInfo != null) {
                 if (steppingInfo.isForceEarlyReturn()) {
                     fine(() -> "not suspending here due to force early return: " + event.getSourceSection());
+                    context.steppingInProgress(hostThread, false);
                     return;
                 }
                 CallFrame[] callFrames = createCallFrames(ids.getIdAsLong(currentThread), event.getStackFrames(), 1, steppingInfo);
@@ -860,13 +862,20 @@ public final class DebuggerController implements ContextsListener {
                     });
                 } else {
                     fine(() -> "step not completed - check for breakpoints");
-                    continueStepping(event, steppingInfo, currentThread);
-                    commandRequestIds.put(currentThread, steppingInfo);
 
                     result = checkForBreakpoints(event, jobs, currentThread, callFrames);
+                    if (!result.breakpointHit) {
+                        // no breakpoint
+                        continueStepping(event, steppingInfo, currentThread);
+                        commandRequestIds.put(currentThread, steppingInfo);
+                    }
                 }
             } else {
                 result = checkForBreakpoints(event, jobs, currentThread, callFrames);
+            }
+            if (!commandRequestIds.containsKey(currentThread)) {
+                // we're done stepping then
+                context.steppingInProgress(hostThread, false);
             }
             if (result.skipSuspend) {
                 return;
