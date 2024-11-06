@@ -736,13 +736,9 @@ final class JDKSupport {
         }
 
         @Override
-        public String versionHash(Env env) {
-            try {
-                Path base = basePath(env);
-                return env.readResourceLines(base.resolve("sha256")).get(0);
-            } catch (IOException ioe) {
-                throw new InternalError(ioe);
-            }
+        public String versionHash(Env env) throws IOException {
+            Path base = basePath(env);
+            return env.readResourceLines(base.resolve("sha256")).get(0);
         }
 
         private static Path basePath(Env env) {

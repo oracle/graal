@@ -10,6 +10,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-57550 Added support for long-width dispatch targets to Bytecode OSR.
 * PR-8266  Allow control of `throwDeniedThreadAccess` via `TruffleContext.threadAccessDeniedHandler`
 * GR-57817 Java Native access for [JEP-472](https://openjdk.org/jeps/472) is now automatically provided for all languages and tools by Truffle. For more information, refer to the [GraalVM SDK Changelog](https://github.com/oracle/graal/blob/master/sdk/CHANGELOG.md).
+* GR-59640 `InternalResource.versionHash(Env)` may now throw an `IOException` to indicate problems when reading the version from disk.
 
 
 ## Version 24.1.0

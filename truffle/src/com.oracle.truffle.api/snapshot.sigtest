@@ -168,7 +168,7 @@ innr public abstract interface static !annotation Id
 innr public final static !enum CPUArchitecture
 innr public final static !enum OS
 innr public final static Env
-meth public abstract java.lang.String versionHash(com.oracle.truffle.api.InternalResource$Env)
+meth public abstract java.lang.String versionHash(com.oracle.truffle.api.InternalResource$Env) throws java.io.IOException
 meth public abstract void unpackFiles(com.oracle.truffle.api.InternalResource$Env,java.nio.file.Path) throws java.io.IOException
 
 CLSS public final static !enum com.oracle.truffle.api.InternalResource$CPUArchitecture
