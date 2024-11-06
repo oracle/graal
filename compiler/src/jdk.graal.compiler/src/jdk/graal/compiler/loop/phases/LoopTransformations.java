@@ -659,7 +659,7 @@ public abstract class LoopTransformations {
          */
         LoopBeginNode preLoopBegin = preLoop.loopBegin();
         StructuredGraph graph = preLoopBegin.graph();
-        for (PhiNode prePhiNode : preLoopBegin.phis()) {
+        for (PhiNode prePhiNode : preLoopBegin.phis().snapshot()) {
             PhiNode postPhiNode = postLoop.getDuplicatedNode(prePhiNode);
             PhiNode mainPhiNode = mainLoop.getDuplicatedNode(prePhiNode);
 
