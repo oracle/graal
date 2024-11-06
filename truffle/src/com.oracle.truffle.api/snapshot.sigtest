@@ -445,7 +445,6 @@ innr protected abstract interface static ContextLocalFactory
 innr protected abstract interface static ContextThreadLocalFactory
 innr protected final static ContextLocalProvider
 innr public abstract interface static !annotation Registration
-innr public abstract interface static Provider
 innr public abstract static ContextReference
 innr public abstract static LanguageReference
 innr public final static !enum ContextPolicy
@@ -646,14 +645,6 @@ meth public com.oracle.truffle.api.source.Source getSource()
 meth public java.util.List<java.lang.String> getArgumentNames()
 supr java.lang.Object
 hfds argumentNames,disposed,source
-
-CLSS public abstract interface static com.oracle.truffle.api.TruffleLanguage$Provider
- outer com.oracle.truffle.api.TruffleLanguage
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="23.1")
-meth public abstract com.oracle.truffle.api.TruffleLanguage<?> create()
-meth public abstract java.lang.String getLanguageClassName()
-meth public abstract java.util.Collection<java.lang.String> getServicesClassNames()
-meth public abstract java.util.List<com.oracle.truffle.api.TruffleFile$FileTypeDetector> createFileTypeDetectors()
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.TruffleLanguage$Registration
  outer com.oracle.truffle.api.TruffleLanguage
