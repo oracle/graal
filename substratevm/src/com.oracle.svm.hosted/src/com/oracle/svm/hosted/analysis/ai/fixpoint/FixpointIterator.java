@@ -1,5 +1,6 @@
 package com.oracle.svm.hosted.analysis.ai.fixpoint;
 
+import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.domain.LatticeDomain;
 import com.oracle.svm.hosted.analysis.ai.value.AbstractValue;
 import jdk.graal.compiler.graph.Node;
@@ -18,15 +19,17 @@ import java.util.LinkedList;
 
 // TODO start developing actual analyses and find better algorithms for fixpoint iteration
 // TODO will probably need to implement widening and join policy to avoid infinite loops and find fixpoint faster
+
 public class FixpointIterator<
         Value extends AbstractValue<Value>,
-        Domain extends LatticeDomain<Value, Domain>> {
-
+        Domain extends AbstractDomain<Domain>> {
+    private Domain domain;
     private final Environment<Value, Domain> environment;
     private final TransferFunction transferFunction;
 
-    public FixpointIterator(Environment<Value, Domain> environment, TransferFunction transferFunction) {
-        this.environment = environment;
+    public FixpointIterator(Domain domain, TransferFunction transferFunction) {
+        this.domain = domain;
+        this.environment = new Environment<>(Domain.createTop(domain.getClass()));
         this.transferFunction = transferFunction;
     }
 
