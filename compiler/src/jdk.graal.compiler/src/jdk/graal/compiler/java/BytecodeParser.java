@@ -334,6 +334,7 @@ import jdk.graal.compiler.nodes.FullInfopointNode;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.InliningLog;
 import jdk.graal.compiler.nodes.InliningLog.PlaceholderInvokable;
+import jdk.graal.compiler.nodes.LoopBeginNode.SafepointState;
 import jdk.graal.compiler.nodes.Invokable;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.InvokeNode;
@@ -3853,8 +3854,8 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
             EndNode preLoopEnd = graph.add(new EndNode());
             LoopBeginNode loopBegin = graph.add(new LoopBeginNode());
             if (disableLoopSafepoint()) {
-                loopBegin.disableSafepoint();
-                loopBegin.disableGuestSafepoint();
+                loopBegin.disableSafepoint(SafepointState.MUST_NEVER_SAFEPOINT);
+                loopBegin.disableGuestSafepoint(SafepointState.MUST_NEVER_SAFEPOINT);
             }
             fixedWithNext.setNext(preLoopEnd);
             // Add the single non-loop predecessor of the loop header.
