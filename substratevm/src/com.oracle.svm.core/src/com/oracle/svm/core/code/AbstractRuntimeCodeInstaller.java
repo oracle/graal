@@ -41,7 +41,7 @@ public class AbstractRuntimeCodeInstaller {
     protected Pointer allocateCodeMemory(long size) {
         PointerBase result = RuntimeCodeInfoAccess.allocateCodeMemory(WordFactory.unsigned(size));
         if (result.isNull()) {
-            throw new OutOfMemoryError();
+            throw new OutOfMemoryError("Could not allocate memory for runtime-compiled code.");
         }
         return (Pointer) result;
     }
