@@ -44,7 +44,8 @@ import com.oracle.svm.util.LogUtils;
 public class LayerArchiveSupport {
 
     protected static final String MODULE_OPTION = "module";
-    protected static final String PACKAGE_OPTION = "package";
+    public static final String PACKAGE_OPTION = "package";
+    protected static final String PATH_OPTION = "path";
 
     private static final int LAYER_FILE_FORMAT_VERSION_MAJOR = 0;
     private static final int LAYER_FILE_FORMAT_VERSION_MINOR = 1;
