@@ -121,14 +121,15 @@ import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
-import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.internal.access.JavaLangReflectAccess;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.reflect.CallerSensitive;
 import jdk.internal.reflect.CallerSensitiveAdapter;
+import jdk.internal.reflect.ConstructorAccessor;
 import jdk.internal.reflect.FieldAccessor;
 import jdk.internal.reflect.Reflection;
 import jdk.internal.reflect.ReflectionFactory;
@@ -2115,7 +2116,7 @@ final class Target_jdk_internal_reflect_ReflectionFactory {
     private static ReflectionFactory soleInstance;
 
     @Alias //
-    private JavaLangReflectAccess langReflectAccess;
+    JavaLangReflectAccess langReflectAccess;
 
     /**
      * This substitution eliminates the SecurityManager check in the original method, which would
@@ -2147,25 +2148,39 @@ final class Target_jdk_internal_reflect_ReflectionFactory {
         return UnsafeFieldAccessorFactory.newFieldAccessor(field, isReadOnly);
     }
 
-    /**
-     * Work around "JDK-8315810: Reimplement
-     * sun.reflect.ReflectionFactory::newConstructorForSerialization with method handles"
-     * [GR-48901].
-     *
-     * @see Target_jdk_internal_reflect_DirectConstructorHandleAccessor
-     */
     @Substitute
     @TargetElement(onlyWith = JDKLatest.class)
-    @Fold // cut off the alternative branch, already during analysis
-    static boolean useOldSerializableConstructor() {
-        return true;
+    private Constructor<?> generateConstructor(Class<?> cl, Constructor<?> constructorToCall) {
+        SerializationRegistry serializationRegistry = ImageSingletons.lookup(SerializationRegistry.class);
+        ConstructorAccessor acc = (ConstructorAccessor) serializationRegistry.getSerializationConstructorAccessor(cl, constructorToCall.getDeclaringClass());
+        /*
+         * Unlike other root constructors, this constructor is not copied for mutation but directly
+         * mutated, as it is not cached. To cache this constructor, setAccessible call must be done
+         * on a copy and return that copy instead.
+         */
+        Constructor<?> ctor = Helper_jdk_internal_reflect_ReflectionFactory.newConstructorWithAccessor(this, constructorToCall, acc);
+        ctor.setAccessible(true);
+        return ctor;
+    }
+
+}
+
+/**
+ * Reflectively access {@code JavaLangReflectAccess.newConstructorWithAccessor}. Once we drop JDK
+ * 21, this can be replaced by a direct call to the method. (GR-55515)
+ */
+final class Helper_jdk_internal_reflect_ReflectionFactory {
+    private static final Method NEW_CONSTRUCTOR_WITH_ACCESSOR = JavaVersionUtil.JAVA_SPEC > 21
+                    ? ReflectionUtil.lookupMethod(JavaLangReflectAccess.class, "newConstructorWithAccessor", Constructor.class, ConstructorAccessor.class)
+                    : null;
+
+    static Constructor<?> newConstructorWithAccessor(Target_jdk_internal_reflect_ReflectionFactory reflectionFactory, Constructor<?> constructorToCall, ConstructorAccessor acc) {
+        return ReflectionUtil.invokeMethod(NEW_CONSTRUCTOR_WITH_ACCESSOR, reflectionFactory.langReflectAccess, constructorToCall, acc);
     }
 }
 
 /**
  * Ensure that we are not accidentally using the method handle based constructor accessor.
- *
- * @see Target_jdk_internal_reflect_ReflectionFactory#useOldSerializableConstructor()
  */
 @Delete
 @TargetClass(className = "jdk.internal.reflect.DirectConstructorHandleAccessor")

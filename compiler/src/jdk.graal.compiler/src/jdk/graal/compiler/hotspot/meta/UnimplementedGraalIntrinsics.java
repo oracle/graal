@@ -110,6 +110,13 @@ public final class UnimplementedGraalIntrinsics {
                         "jdk/internal/vm/vector/VectorSupport.selectFromTwoVectorOp(Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$SelectFromTwoVector;)Ljdk/internal/vm/vector/VectorSupport$Vector;"
                         // @formatter:on
             );
+            if (arch instanceof AMD64) {
+                add(toBeInvestigated, // @formatter:off
+                        // "JDK-8341527: AVX-512 intrinsic for SHA3" https://github.com/openjdk/jdk/pull/21352
+                        "sun/security/provider/SHA3.implCompress0([BI)V"
+                        // @formatter:on
+                );
+            }
         }
         add(ignore,
                         // These are dead

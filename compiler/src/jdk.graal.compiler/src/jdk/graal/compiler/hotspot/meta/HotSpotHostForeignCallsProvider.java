@@ -64,7 +64,6 @@ import static jdk.graal.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32C;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.VM_ERROR;
 import static jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.COMPUTES_REGISTERS_KILLED;
 import static jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_ALL_CALLER_SAVE_REGISTERS;
-import static jdk.graal.compiler.hotspot.HotSpotGraalRuntime.HotSpotGC.X;
 import static jdk.graal.compiler.hotspot.HotSpotGraalRuntime.HotSpotGC.Z;
 import static jdk.graal.compiler.hotspot.HotSpotHostBackend.DEOPT_BLOB_UNCOMMON_TRAP;
 import static jdk.graal.compiler.hotspot.HotSpotHostBackend.DEOPT_BLOB_UNPACK;
@@ -185,23 +184,6 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
                     void.class, Object.class);
     public static final HotSpotForeignCallDescriptor G1WBPOSTCALL_STACK_ONLY = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NO_SIDE_EFFECT, NO_LOCATIONS, "write_barrier_post-stack-only",
                     void.class, Word.class);
-
-    /*
-     * Functions from XBarrierSetRuntime. The weak_ prefix refers to AS_NO_KEEPALIVE while the extra
-     * word before oop_field part refers to java.lang.Reference subclass and corresponds to
-     * ON_WEAK_OOP_REF/ON_PHANTOM_OOP_REF in HotSpot decorator terminology.
-     */
-    public static final HotSpotForeignCallDescriptor X_FIELD_BARRIER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, NO_LOCATIONS, "load_barrier_on_oop_field_preloaded",
-                    long.class, long.class, long.class);
-    public static final HotSpotForeignCallDescriptor X_REFERENCE_GET_BARRIER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, NO_LOCATIONS,
-                    "load_barrier_on_weak_oop_field_preloaded",
-                    long.class, long.class, long.class);
-    public static final HotSpotForeignCallDescriptor X_WEAK_REFERS_TO_BARRIER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, NO_LOCATIONS,
-                    "weak_load_barrier_on_weak_oop_field_preloaded", long.class, long.class, long.class);
-    public static final HotSpotForeignCallDescriptor X_PHANTOM_REFERS_TO_BARRIER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, NO_LOCATIONS,
-                    "weak_load_barrier_on_phantom_oop_field_preloaded", long.class, long.class, long.class);
-    public static final HotSpotForeignCallDescriptor X_ARRAY_BARRIER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, NO_LOCATIONS, "load_barrier_on_oop_array",
-                    void.class, long.class, long.class);
 
     /*
      * Functions from ZBarrierSetRuntime.
@@ -572,12 +554,6 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
             // Ensure this is known to libgraal
             register(NMETHOD_ENTRY_BARRIER.getSignature());
         }
-
-        linkStackOnlyForeignCall(c.gc == X, options, providers, X_FIELD_BARRIER, c.xBarrierSetRuntimeLoadBarrierOnOopFieldPreloaded, DONT_PREPEND_THREAD);
-        linkStackOnlyForeignCall(c.gc == X, options, providers, X_REFERENCE_GET_BARRIER, c.xBarrierSetRuntimeLoadBarrierOnWeakOopFieldPreloaded, DONT_PREPEND_THREAD);
-        linkStackOnlyForeignCall(c.gc == X, options, providers, X_WEAK_REFERS_TO_BARRIER, c.xBarrierSetRuntimeWeakLoadBarrierOnWeakOopFieldPreloaded, DONT_PREPEND_THREAD);
-        linkStackOnlyForeignCall(c.gc == X, options, providers, X_PHANTOM_REFERS_TO_BARRIER, c.xBarrierSetRuntimeWeakLoadBarrierOnPhantomOopFieldPreloaded, DONT_PREPEND_THREAD);
-        linkStackOnlyForeignCall(c.gc == X, options, providers, X_ARRAY_BARRIER, c.xBarrierSetRuntimeLoadBarrierOnOopArray, DONT_PREPEND_THREAD);
 
         linkStackOnlyForeignCall(c.gc == Z, options, providers, Z_LOAD_BARRIER, c.zBarrierSetRuntimeLoadBarrierOnOopFieldPreloaded, DONT_PREPEND_THREAD);
         linkStackOnlyForeignCall(c.gc == Z, options, providers, Z_STORE_BARRIER_WITHOUT_HEALING, c.zBarrierSetRuntimeStoreBarrierOnOopFieldWithoutHealing, DONT_PREPEND_THREAD);
