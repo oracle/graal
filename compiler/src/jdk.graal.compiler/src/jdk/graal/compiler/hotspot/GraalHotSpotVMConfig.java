@@ -35,7 +35,6 @@ import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -96,18 +95,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     public boolean useG1GC() {
         return gc == HotSpotGraalRuntime.HotSpotGC.G1;
-    }
-
-    /*
-     * There's no direct way to test for the presence of the boolean flag ZGenerational since there
-     * aren't any notPresent values which are distinct from the possible values. Instead use true
-     * and false as the notPresent value and check if it returns different answers.
-     */
-    public final boolean isZGenerationalDefault = JavaVersionUtil.JAVA_SPEC > 21 &&
-                    (!access.getFlag("ZGenerational", Boolean.class, false).equals(access.getFlag("ZGenerational", Boolean.class, true)));
-
-    public boolean useXGC() {
-        return gc == HotSpotGraalRuntime.HotSpotGC.X;
     }
 
     public final HotSpotGraalRuntime.HotSpotGC gc = getSelectedGC();
@@ -622,44 +609,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long zBarrierSetRuntimeStoreBarrierOnOopFieldWithoutHealing = getZGCAddressField("ZBarrierSetRuntime::store_barrier_on_oop_field_without_healing");
     public final long zBarrierSetRuntimeLoadBarrierOnOopArray = getZGCAddressField("ZBarrierSetRuntime::load_barrier_on_oop_array");
     public final int zPointerLoadShift = getConstant("ZPointerLoadShift", Integer.class, -1, osArch.equals("aarch64") && zgcSupport);
-
-    private long getXGCAddressField(String name) {
-        if (JavaVersionUtil.JAVA_SPEC == 21 || isZGenerationalDefault) {
-            /*
-             * Graal does not support single gen ZGC in JDK 21 and it's no longer supported in 24
-             * once the ZGenerational global flag has been removed.
-             */
-            return 0;
-        }
-        String realName = name;
-        long address = 0;
-        if (zgcSupport) {
-            /*
-             * Generational ZGC support exports the required functions as address using the new
-             * XBarrierSetRuntime names.
-             */
-            address = getAddress(name);
-        } else {
-            /*
-             * Use the old names which are exported as fields in CompilerToVM::Data. This logic can
-             * be deleted once the transition is complete.
-             */
-            realName = name.replace("XBarrierSetRuntime::", "CompilerToVM::Data::ZBarrierSetRuntime_");
-            address = getFieldValue(realName, Long.class, "address");
-        }
-        GraalError.guarantee(gc != HotSpotGraalRuntime.HotSpotGC.X || address != 0, "Unexpected null value for %s", realName);
-        return address;
-    }
-
-    /*
-     * Single generation ZGC support
-     */
-    public final int threadAddressBadMaskOffset = getFieldValue("CompilerToVM::Data::thread_address_bad_mask_offset", Integer.class, "int");
-    public final long xBarrierSetRuntimeLoadBarrierOnOopFieldPreloaded = getXGCAddressField("XBarrierSetRuntime::load_barrier_on_oop_field_preloaded");
-    public final long xBarrierSetRuntimeLoadBarrierOnWeakOopFieldPreloaded = getXGCAddressField("XBarrierSetRuntime::load_barrier_on_weak_oop_field_preloaded");
-    public final long xBarrierSetRuntimeWeakLoadBarrierOnWeakOopFieldPreloaded = getXGCAddressField("XBarrierSetRuntime::weak_load_barrier_on_weak_oop_field_preloaded");
-    public final long xBarrierSetRuntimeWeakLoadBarrierOnPhantomOopFieldPreloaded = getXGCAddressField("XBarrierSetRuntime::weak_load_barrier_on_phantom_oop_field_preloaded");
-    public final long xBarrierSetRuntimeLoadBarrierOnOopArray = getXGCAddressField("XBarrierSetRuntime::load_barrier_on_oop_array");
 
     // aarch64 specific nmethod entry barrier support
     // @formatter:off

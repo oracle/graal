@@ -127,7 +127,10 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
     private int loadedConfigurations;
     private UniverseMetaAccess metaAccess;
 
-    final Map<Executable, SubstrateAccessor> accessors = new ConcurrentHashMap<>();
+    private record AccessorKey(Executable member, Class<?> targetClass) {
+    }
+
+    final Map<AccessorKey, SubstrateAccessor> accessors = new ConcurrentHashMap<>();
     private final Map<SignatureKey, MethodPointer> expandSignatureMethods = new ConcurrentHashMap<>();
 
     private static final Method invokePrototype = ReflectionUtil.lookupMethod(ReflectionAccessorHolder.class, "invokePrototype",
@@ -143,7 +146,13 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
 
     @Override
     public SubstrateAccessor getOrCreateAccessor(Executable member) {
-        SubstrateAccessor existing = accessors.get(member);
+        return getOrCreateConstructorAccessor(member.getDeclaringClass(), member);
+    }
+
+    @Override
+    public SubstrateAccessor getOrCreateConstructorAccessor(Class<?> targetClass, Executable member) {
+        AccessorKey key = new AccessorKey(member, targetClass);
+        SubstrateAccessor existing = accessors.get(key);
         if (existing != null) {
             return existing;
         }
@@ -151,7 +160,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
         if (analysisAccess == null) {
             throw VMError.shouldNotReachHere("New Method or Constructor found as reachable after static analysis: " + member);
         }
-        return accessors.computeIfAbsent(member, this::createAccessor);
+        return accessors.computeIfAbsent(key, this::createAccessor);
     }
 
     /**
@@ -171,7 +180,9 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
      * {@link ConcurrentHashMap#computeIfAbsent} guarantees that this method is called only once per
      * member, so no further synchronization is necessary.
      */
-    private SubstrateAccessor createAccessor(Executable member) {
+    private SubstrateAccessor createAccessor(AccessorKey key) {
+        Executable member = key.member;
+        Class<?> targetClass = key.targetClass;
         MethodPointer expandSignature;
         MethodPointer directTarget = null;
         AnalysisMethod targetMethod = null;
@@ -219,7 +230,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
             return new SubstrateMethodAccessor(member, receiverType, expandSignature, directTarget, targetMethod, vtableOffset, initializeBeforeInvoke, callerSensitiveAdapter);
 
         } else {
-            Class<?> holder = member.getDeclaringClass();
+            Class<?> holder = targetClass;
             CFunctionPointer factoryMethodTarget = null;
             ResolvedJavaMethod factoryMethod = null;
             if (Modifier.isAbstract(holder.getModifiers()) || holder.isInterface() || holder.isPrimitive() || holder.isArray()) {
@@ -233,8 +244,9 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
             } else {
                 expandSignature = createExpandSignatureMethod(member, false);
                 targetMethod = analysisAccess.getMetaAccess().lookupJavaMethod(member);
+                var aTargetClass = analysisAccess.getMetaAccess().lookupJavaType(targetClass);
                 directTarget = asMethodPointer(targetMethod);
-                factoryMethod = FactoryMethodSupport.singleton().lookup(analysisAccess.getMetaAccess(), targetMethod, false);
+                factoryMethod = FactoryMethodSupport.singleton().lookup(analysisAccess.getMetaAccess(), targetMethod, aTargetClass, false);
                 factoryMethodTarget = asMethodPointer(factoryMethod);
                 if (!targetMethod.getDeclaringClass().isInitialized()) {
                     initializeBeforeInvoke = analysisAccess.getHostVM().dynamicHub(targetMethod.getDeclaringClass());

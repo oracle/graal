@@ -41,10 +41,8 @@ import jdk.graal.compiler.asm.Assembler;
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler;
-import jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64SIMDInstructionEncoding;
 import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
-import jdk.graal.compiler.asm.amd64.AVXKind;
 import jdk.graal.compiler.core.amd64.AMD64LIRGenerator;
 import jdk.graal.compiler.core.amd64.AMD64ReadBarrierSetLIRGenerator;
 import jdk.graal.compiler.core.common.LIRKind;
@@ -58,7 +56,6 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.HotSpotMarkId;
 import jdk.graal.compiler.hotspot.ZWriteBarrierSetLIRGeneratorTool;
-import jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import jdk.graal.compiler.lir.LIRFrameState;
 import jdk.graal.compiler.lir.LIRInstruction;
@@ -68,11 +65,9 @@ import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.amd64.AMD64AddressValue;
 import jdk.graal.compiler.lir.amd64.AMD64BinaryConsumer;
 import jdk.graal.compiler.lir.amd64.AMD64Call;
-import jdk.graal.compiler.lir.amd64.vector.AMD64VectorMove;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.phases.util.Providers;
-import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.MemoryBarriers;
@@ -376,20 +371,6 @@ public class AMD64HotSpotZBarrierSetLIRGenerator implements AMD64ReadBarrierSetL
             tool.getResult().getFrameMapBuilder().callsMethod(callTarget.getOutgoingCallingConvention());
             boolean isNotStrong = barrierType == BarrierType.REFERENCE_GET || barrierType == BarrierType.WEAK_REFERS_TO || barrierType == BarrierType.PHANTOM_REFERS_TO;
             tool.append(new AMD64HotSpotZReadBarrierOp(result, loadAddress, state, config, callTarget, isNotStrong));
-            return result;
-        }
-        if (kind.getPlatformKind().getVectorLength() > 1) {
-            // Emit a vector barrier
-            assert barrierType == BarrierType.READ : Assertions.errorMessage(barrierType);
-            ForeignCallLinkage callTarget = getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.Z_ARRAY_BARRIER);
-            AMD64AddressValue loadAddress = ((AMD64LIRGenerator) tool).asAddressValue(address);
-            Variable result = tool.newVariable(tool.toRegisterKind(kind));
-
-            AMD64Assembler.VexMoveOp op = AMD64VectorMove.getVectorMemMoveOp((AMD64Kind) kind.getPlatformKind(),
-                            AMD64SIMDInstructionEncoding.forFeatures(((AMD64) tool.target().arch).getFeatures()));
-            Variable temp = tool.newVariable(tool.toRegisterKind(kind));
-            tool.getResult().getFrameMapBuilder().callsMethod(callTarget.getOutgoingCallingConvention());
-            tool.append(new AMD64HotSpotZVectorReadBarrierOp(AVXKind.getRegisterSize((AMD64Kind) kind.getPlatformKind()), op, result, loadAddress, state, config, callTarget, temp));
             return result;
         }
         throw GraalError.shouldNotReachHere("unhandled barrier");
