@@ -70,6 +70,9 @@ import org.graalvm.nativeimage.c.struct.RawPointerTo;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.Feature.OnAnalysisExitAccess;
+import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import org.graalvm.nativeimage.hosted.RuntimeSerialization;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import org.graalvm.nativeimage.impl.CConstantValueSupport;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
@@ -1066,12 +1069,37 @@ public class NativeImageGenerator {
                                 new SubstrateClassInitializationPlugin((SVMHost) aUniverse.hostVM()), this.isStubBasedPluginsSupported(), aProviders);
 
                 loader.classLoaderSupport.getClassesToIncludeUnconditionally().forEach(cls -> bb.registerTypeForBaseImage(cls));
+                loader.classLoaderSupport.getClassesToIncludeMetadata().stream()
+                                .filter(ClassInclusionPolicy::isClassIncludedBase)
+                                .forEach(NativeImageGenerator::registerClassFullyForReflection);
+                for (String className : loader.classLoaderSupport.getClassNamesToIncludeMetadata()) {
+                    RuntimeReflection.registerClassLookup(className);
+                }
 
                 registerEntryPointStubs(entryPoints);
             }
 
             ProgressReporter.singleton().printInitializeEnd(featureHandler.getUserSpecificFeatures(), loader);
         }
+    }
+
+    private static void registerClassFullyForReflection(Class<?> cls) {
+        RuntimeReflection.register(cls);
+        RuntimeJNIAccess.register(cls);
+        for (Method declaredMethod : cls.getDeclaredMethods()) {
+            RuntimeReflection.register(declaredMethod);
+            RuntimeJNIAccess.register(declaredMethod);
+        }
+        RuntimeReflection.registerAllDeclaredFields(cls);
+        RuntimeReflection.registerAllFields(cls);
+        RuntimeReflection.registerAllMethods(cls);
+        RuntimeReflection.registerAllDeclaredMethods(cls);
+
+        for (var declaredField : cls.getDeclaredFields()) {
+            RuntimeReflection.register(declaredField);
+            RuntimeJNIAccess.register(declaredField);
+        }
+        RuntimeSerialization.register(cls);
     }
 
     protected void registerEntryPointStubs(Map<Method, CEntryPointData> entryPoints) {
