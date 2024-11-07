@@ -49,7 +49,7 @@ import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueI
 import static com.oracle.objectfile.pecoff.cv.CVSymbolSubrecord.CVSymbolFrameProcRecord.FRAME_LOCAL_BP;
 import static com.oracle.objectfile.pecoff.cv.CVSymbolSubrecord.CVSymbolFrameProcRecord.FRAME_PARAM_BP;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.MAX_PRIMITIVE;
-import static com.oracle.objectfile.pecoff.cv.CVxxRegisterUtil.CV_AMD64_R8;
+import static com.oracle.objectfile.pecoff.cv.CVRegisterUtil.CV_AMD64_R8;
 
 final class CVSymbolSubsectionBuilder {
 
@@ -227,7 +227,7 @@ final class CVSymbolSubsectionBuilder {
                 currentHigh = subrange.getHi();
                 registerOrSlot = infoTypeToInt(value);
                 if (value.localKind() == REGISTER) {
-                    short cvreg = CVxxRegisterUtil.getCVRegister(value.regIndex(), typeEntry);
+                    short cvreg = CVRegisterUtil.getCVRegister(value.regIndex(), typeEntry);
                     /* It could be that Graal has allocated a register that we don't know how to represent in CodeView. */
                     /* In that case, getCVRegister() will return a negative number and no local variable record is issued. */
                     if (cvreg >= 0) {

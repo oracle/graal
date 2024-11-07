@@ -4,7 +4,7 @@ import com.oracle.objectfile.debugentry.TypeEntry;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Register;
 
-public class CVxxRegisterUtil {
+public class CVRegisterUtil {
 
     private static final int MAX_JAVA_REGISTER_NUMBER = AMD64.xmm15.number;
 
