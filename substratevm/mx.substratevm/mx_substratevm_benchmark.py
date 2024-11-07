@@ -286,6 +286,9 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
     def benchmarkName(self):
         return self.context.benchmark
 
+    def benchmarkList(self, bmSuiteArgs):
+        return self.completeBenchmarkList(bmSuiteArgs)
+
     def application_nib(self):
         if self.benchmarkName() not in self._application_nibs:
             # Run subprocess retrieving the application nib from the Barista 'build' script
