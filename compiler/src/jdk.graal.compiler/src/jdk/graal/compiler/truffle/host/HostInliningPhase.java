@@ -1084,9 +1084,8 @@ public class HostInliningPhase extends AbstractInliningPhase {
         }
 
         if (targetMethod.isNative() && !(Intrinsify.getValue(context.options) &&
-                        context.highTierContext.getReplacements().getInlineSubstitution(targetMethod, call.invoke.bci(), call.invoke.getInlineControl(), context.graph.trackNodeSourcePosition(), null,
-                                        context.graph.allowAssumptions(),
-                                        context.options) != null)) {
+                        context.highTierContext.getReplacements().getInlineSubstitution(targetMethod, call.invoke.bci(), false, call.invoke.getInlineControl(), context.graph.trackNodeSourcePosition(),
+                                        null, context.graph.allowAssumptions(), context.options) != null)) {
             call.reason = "target method is a non-intrinsic native method";
             return false;
         }
@@ -1250,7 +1249,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
          * copy the intrinsic graph if it is frozen.
          */
         StructuredGraph graph = context.highTierContext.getReplacements().getInlineSubstitution(method,
-                        invoke.bci(), invoke.getInlineControl(), context.graph.trackNodeSourcePosition(), null,
+                        invoke.bci(), invoke.isInOOMETry(), invoke.getInlineControl(), context.graph.trackNodeSourcePosition(), null,
                         invoke.asNode().graph().allowAssumptions(), invoke.asNode().getOptions());
         if (graph == null) {
             graph = context.graphCache.get(method);

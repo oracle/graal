@@ -30,15 +30,14 @@ import static jdk.graal.compiler.debug.DebugOptions.DumpOnError;
 import static jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createIntrinsicInlineInfo;
 import static jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 import static jdk.graal.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Required;
-import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
 import static org.graalvm.nativeimage.ImageInfo.inImageCode;
+import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
 
 import java.util.BitSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import jdk.graal.compiler.serviceprovider.GraalServices;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.Pair;
@@ -89,6 +88,7 @@ import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.arraycopy.ArrayCopyForeignCalls;
+import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.word.Word;
 import jdk.graal.compiler.word.WordOperationPlugin;
 import jdk.graal.compiler.word.WordTypes;
@@ -337,8 +337,8 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
     }
 
     @Override
-    public StructuredGraph getInlineSubstitution(ResolvedJavaMethod method, int invokeBci, Invoke.InlineControl inlineControl, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition,
-                    AllowAssumptions allowAssumptions, OptionValues options) {
+    public StructuredGraph getInlineSubstitution(ResolvedJavaMethod method, int invokeBci, boolean isInOOMETry, Invoke.InlineControl inlineControl, boolean trackNodeSourcePosition,
+                    NodeSourcePosition replaceePosition, AllowAssumptions allowAssumptions, OptionValues options) {
         return null;
     }
 

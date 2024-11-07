@@ -102,17 +102,28 @@ public abstract class SubprocessTest extends GraalCompilerTest {
         return result;
     }
 
+    public boolean isRecursiveLaunch() {
+        return isRecursiveLaunch(getClass());
+    }
+
+    private static boolean isRecursiveLaunch(Class<? extends GraalCompilerTest> testClass) {
+        return Boolean.getBoolean(getRecursionPropName(testClass));
+    }
+
+    private static String getRecursionPropName(Class<? extends GraalCompilerTest> testClass) {
+        return "test." + testClass.getName() + ".subprocess";
+    }
+
     public static SubprocessUtil.Subprocess launchSubprocess(Predicate<List<String>> testPredicate, Predicate<String> vmArgsFilter, boolean expectNormalExit,
                     Class<? extends GraalCompilerTest> testClass, String testSelector, Runnable runnable, String... args)
                     throws InterruptedException, IOException {
-        String recursionPropName = "test." + testClass.getName() + ".subprocess";
-        if (Boolean.getBoolean(recursionPropName)) {
+        if (isRecursiveLaunch(testClass)) {
             runnable.run();
             return null;
         } else {
             List<String> vmArgs = withoutDebuggerArguments(getVMCommandLine());
             vmArgs.add(SubprocessUtil.PACKAGE_OPENING_OPTIONS);
-            vmArgs.add("-D" + recursionPropName + "=true");
+            vmArgs.add("-D" + getRecursionPropName(testClass) + "=true");
             vmArgs.addAll(Arrays.asList(args));
             if (vmArgsFilter != null) {
                 vmArgs = filter(vmArgs, vmArgsFilter);
@@ -147,4 +158,5 @@ public abstract class SubprocessTest extends GraalCompilerTest {
             return proc;
         }
     }
+
 }
