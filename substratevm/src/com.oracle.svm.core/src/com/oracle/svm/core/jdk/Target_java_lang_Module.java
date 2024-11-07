@@ -62,7 +62,7 @@ public final class Target_java_lang_Module {
     }
 
     @Substitute
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+10/src/hotspot/share/classfile/modules.cpp#L275-L479")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+22/src/hotspot/share/classfile/modules.cpp#L279-L478")
     private static void defineModule0(Module module, boolean isOpen, String version, String location, Object[] pns) {
         ModuleNative.defineModule(module, isOpen, pns);
     }

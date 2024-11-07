@@ -29,6 +29,7 @@ import java.lang.reflect.Executable;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.reflect.SubstrateAccessor;
 
 /**
  * Computes new values for the accessor fields of {@link Executable} subclasses, to be used instead
@@ -39,6 +40,14 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 public final class ExecutableAccessorComputer implements FieldValueTransformer {
     @Override
     public Object transform(Object receiver, Object originalValue) {
+        if (originalValue instanceof SubstrateAccessor) {
+            /*
+             * We do not want to replace existing SubstrateAccessors, since they might be more
+             * specialized (e.g., an explicit target class for a constructor accessor) than what
+             * would be created here.
+             */
+            return originalValue;
+        }
         return ReflectionSubstitutionSupport.singleton().getOrCreateAccessor((Executable) receiver);
     }
 }

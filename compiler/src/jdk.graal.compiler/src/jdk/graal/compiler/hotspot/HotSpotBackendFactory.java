@@ -252,9 +252,7 @@ public abstract class HotSpotBackendFactory implements ArchitectureSpecific {
         boolean useDeferredInitBarriers = config.useDeferredInitBarriers;
         ResolvedJavaType objectArrayType = metaAccess.lookupJavaType(Object[].class);
         ResolvedJavaField referentField = HotSpotReplacementsUtil.referentField(metaAccess);
-        if (config.gc == HotSpotGraalRuntime.HotSpotGC.X) {
-            return new HotSpotXBarrierSet(referentField);
-        } else if (config.gc == HotSpotGraalRuntime.HotSpotGC.Z) {
+        if (config.gc == HotSpotGraalRuntime.HotSpotGC.Z) {
             return new HotSpotZBarrierSet(objectArrayType, referentField);
         } else if (config.gc == HotSpotGraalRuntime.HotSpotGC.Epsilon) {
             return new NoBarrierSet();
