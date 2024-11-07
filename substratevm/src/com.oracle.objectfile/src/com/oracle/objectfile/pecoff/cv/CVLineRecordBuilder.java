@@ -101,7 +101,7 @@ public class CVLineRecordBuilder {
             lineRecord.addNewFile(fileId);
         }
 
-        /* Add line record.  Address is relative to start of function. */
+        /* Add line record. Address is relative to start of function. */
         int lineLoAddr = range.getLo() - compiledEntry.getPrimary().getLo();
         int line = Math.max(range.getLine(), 1);
         debug("  processRange:   addNewLine: 0x%05x-0x%05x %s", lineLoAddr, range.getHi() - compiledEntry.getPrimary().getLo(), line);

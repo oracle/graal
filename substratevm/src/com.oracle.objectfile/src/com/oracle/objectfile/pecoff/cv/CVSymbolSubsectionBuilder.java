@@ -228,10 +228,17 @@ final class CVSymbolSubsectionBuilder {
                 registerOrSlot = infoTypeToInt(value);
                 if (value.localKind() == REGISTER) {
                     short cvreg = CVRegisterUtil.getCVRegister(value.regIndex(), typeEntry);
-                    /* It could be that Graal has allocated a register that we don't know how to represent in CodeView. */
-                    /* In that case, getCVRegister() will return a negative number and no local variable record is issued. */
+                    /*
+                     * It could be that Graal has allocated a register that we don't know how to
+                     * represent in CodeView.
+                     */
+                    /*
+                     * In that case, getCVRegister() will return a negative number and no local
+                     * variable record is issued.
+                     */
                     if (cvreg >= 0) {
-                        currentRecord = new CVSymbolSubrecord.CVSymbolDefRangeRegisterRecord(cvDebugInfo, procName, subrange.getLo() - range.getLo(), (short) (subrange.getHi() - subrange.getLo()), cvreg);
+                        currentRecord = new CVSymbolSubrecord.CVSymbolDefRangeRegisterRecord(cvDebugInfo, procName, subrange.getLo() - range.getLo(), (short) (subrange.getHi() - subrange.getLo()),
+                                        cvreg);
                         addSymbolRecord(currentRecord);
                     }
                 } else if (value.localKind() == STACKSLOT) {
