@@ -88,24 +88,6 @@ public class CVRegisterUtil {
     private static final short CV_AMD64_R15 = 343;
 
     /* FP registers. */
-    private static final short CV_AMD64_XMM0 = 154;
-    private static final short CV_AMD64_XMM1 = 155;
-    private static final short CV_AMD64_XMM2 = 156;
-    private static final short CV_AMD64_XMM3 = 157;
-    private static final short CV_AMD64_XMM4 = 158;
-    private static final short CV_AMD64_XMM5 = 159;
-    private static final short CV_AMD64_XMM6 = 160;
-    private static final short CV_AMD64_XMM7 = 161;
-
-    private static final short CV_AMD64_XMM8 = 252;
-    private static final short CV_AMD64_XMM9 = 253;
-    private static final short CV_AMD64_XMM10 = 254;
-    private static final short CV_AMD64_XMM11 = 255;
-    private static final short CV_AMD64_XMM12 = 256;
-    private static final short CV_AMD64_XMM13 = 257;
-    private static final short CV_AMD64_XMM14 = 258;
-    private static final short CV_AMD64_XMM15 = 259;
-
     private static final short CV_AMD64_XMM0_0 = 162;
     private static final short CV_AMD64_XMM1_0 = 166;
     private static final short CV_AMD64_XMM2_0 = 170;
@@ -205,12 +187,12 @@ public class CVRegisterUtil {
             new CvRegDef(AMD64.xmm15, CV_AMD64_XMM15_0, CV_AMD64_XMM15L),
     };
 
-    private static final CvRegDef[] javaToCvRegisters = new CvRegDef[MAX_JAVA_REGISTER_NUMBER + 1];
+    private static final CvRegDef[] javaToCVRegisters = new CvRegDef[MAX_JAVA_REGISTER_NUMBER + 1];
 
     static {
         for (CvRegDef def : compactRegDefs) {
             assert 0 <= def.register.number && def.register.number <= MAX_JAVA_REGISTER_NUMBER;
-            javaToCvRegisters[def.register.number] = def;
+            javaToCVRegisters[def.register.number] = def;
         }
     }
 
@@ -221,7 +203,7 @@ public class CVRegisterUtil {
         if (javaReg > MAX_JAVA_REGISTER_NUMBER) {
             return -1;
         }
-        CvRegDef cvReg = javaToCvRegisters[javaReg];
+        CvRegDef cvReg = javaToCVRegisters[javaReg];
         assert cvReg != null;
         assert cvReg.register.number == javaReg;
         if (cvReg == null) {
