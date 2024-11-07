@@ -54,14 +54,6 @@ public final class TruffleLoopSafepointEliminationPhase extends LoopSafepointEli
     }
 
     @Override
-<<<<<<< HEAD
-    protected void onSafepointDisabledLoopBegin(LoopEx loop) {
-        for (Node node : loop.whole().nodes()) {
-            if (node instanceof CommitAllocationNode || node instanceof AbstractNewObjectNode) {
-                // we can disable truffle safepoints if there are no allocations
-                // allocations are no implicit safepoint for truffle
-                return;
-=======
     protected void run(StructuredGraph graph, MidTierContext context) {
         LoopSafepointEliminationPhase.Instance instance = new LoopSafepointEliminationPhase.Instance(graph, context) {
 
@@ -75,7 +67,6 @@ public final class TruffleLoopSafepointEliminationPhase extends LoopSafepointEli
                     }
                 }
                 loop.loopBegin().disableGuestSafepoint(loop.loopBegin().getLoopEndsSafepointState());
->>>>>>> c0405ac1a58 (safepoint elimination: refactorings)
             }
 
             @Override

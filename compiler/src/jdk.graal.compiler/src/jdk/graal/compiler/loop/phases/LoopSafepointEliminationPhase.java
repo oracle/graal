@@ -60,37 +60,7 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
 
     private static final long IntegerRangeDistance = Math.abs((long) Integer.MAX_VALUE - (long) Integer.MIN_VALUE);
 
-<<<<<<< HEAD
-    /**
-     * To be implemented by subclasses to perform additional checks. Returns <code>true</code> if
-     * the safepoint was also disabled in subclasses and we therefore don't need to continue
-     * traversing.
-     */
-    @SuppressWarnings("unused")
-    protected boolean onCallInLoop(LoopEndNode loopEnd, FixedNode currentCallNode) {
-        return true;
-    }
-
-    /**
-     * To be implemented by subclasses to compute additional fields.
-     */
-    @SuppressWarnings("unused")
-    protected void onSafepointDisabledLoopBegin(LoopEx loop) {
-    }
-
-    /**
-     * Determines whether guest safepoints should be allowed at all. To be implemented by
-     * subclasses. The default implementation returns <code>false</code>, leading to guest
-     * safepoints being disabled for all loops in the graph.
-     */
-    protected boolean allowGuestSafepoints() {
-        return false;
-    }
-
-    public static boolean loopIsIn32BitRange(LoopEx loop) {
-=======
-    public static boolean iterationRangeIsIn32Bit(Loop loop) {
->>>>>>> c0405ac1a58 (safepoint elimination: refactorings)
+    public static boolean iterationRangeIsIn32Bit(LoopEx loop) {
         if (loop.counted().getStamp().getBits() <= 32) {
             return true;
         }
@@ -198,12 +168,8 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
 
             LoopsData loops = context.getLoopsDataProvider().getLoopsData(graph);
             loops.detectCountedLoops();
-<<<<<<< HEAD
-            for (LoopEx loop : loops.countedLoops()) {
-                if (loop.loop().getChildren().isEmpty() && (loop.loopBegin().isPreLoop() || loop.loopBegin().isPostLoop() || loopIsIn32BitRange(loop) || loop.loopBegin().isStripMinedInner())) {
-=======
 
-            for (Loop loop : loops.loops()) {
+            for (LoopEx loop : loops.loops()) {
                 if (!allowGuestSafepoints()) {
                     loop.loopBegin().disableGuestSafepoint(SafepointState.MUST_NEVER_SAFEPOINT);
                 }
@@ -268,7 +234,6 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
                 if (loop.getCFGLoop().getChildren().isEmpty() &&
                                 (loop.loopBegin().isPreLoop() || loop.loopBegin().isPostLoop() || loopIsIn32BitRange(loop) ||
                                                 loop.loopBegin().isStripMinedInner())) {
->>>>>>> c0405ac1a58 (safepoint elimination: refactorings)
                     boolean hasSafepoint = false;
                     for (LoopEndNode loopEnd : loop.loopBegin().loopEnds()) {
                         hasSafepoint |= loopEnd.canSafepoint();
@@ -307,23 +272,6 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
             }
             return false;
         }
-<<<<<<< HEAD
-        for (LoopEx loop : loops.loops()) {
-            if (!allowGuestSafepoints()) {
-                loop.loopBegin().disableGuestSafepoint();
-            }
-            for (LoopEndNode loopEnd : loop.loopBegin().loopEnds()) {
-                HIRBlock b = loops.getCFG().blockFor(loopEnd);
-                blocks: while (b != loop.loop().getHeader()) {
-                    assert b != null;
-                    for (FixedNode node : b.getNodes()) {
-                        boolean canDisableSafepoint = canDisableSafepoint(node, context);
-                        boolean disabledInSubclass = onCallInLoop(loopEnd, node);
-                        if (canDisableSafepoint) {
-                            loopEnd.disableSafepoint();
-                            graph.getOptimizationLog().report(LoopSafepointEliminationPhase.class, "SafepointElimination", loop.loopBegin());
-=======
->>>>>>> c0405ac1a58 (safepoint elimination: refactorings)
 
         public boolean loopIsIn32BitRange(Loop loop) {
             return iterationRangeIsIn32Bit(loop);
