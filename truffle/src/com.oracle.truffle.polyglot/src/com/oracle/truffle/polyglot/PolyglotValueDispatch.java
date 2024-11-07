@@ -176,14 +176,6 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         this.languageInstance = languageInstance;
     }
 
-    @Override
-    public final Object getContext(Object context) {
-        if (context == null) {
-            return null;
-        }
-        return ((PolyglotLanguageContext) context).context.api;
-    }
-
     static <T extends Throwable> RuntimeException guestToHostException(PolyglotLanguageContext languageContext, T e, boolean entered) {
         throw PolyglotImpl.guestToHostException(languageContext, e, entered);
     }

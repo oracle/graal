@@ -54,6 +54,8 @@ import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.oracle.truffle.api.test.SubprocessTestUtils;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
@@ -231,57 +233,73 @@ public class SourceCacheTest {
     }
 
     @Test
-    public void testSourceCachesCleared() throws IOException {
+    public void testSourceCachesCleared() throws IOException, InterruptedException {
         TruffleTestAssumptions.assumeWeakEncapsulation(); // Can't control GC in the isolate.
-        try (ByteArrayOutputStream out = new ByteArrayOutputStream(); Engine engine = Engine.newBuilder().option("engine.TraceSourceCache", "true").out(out).err(out).build()) {
-            String sourceName1;
-            String sourceName2;
-            Source source1 = Source.newBuilder(SourceCacheTestLanguage.ID, "1", sourceName1 = "TestSource1").build();
-            Source source2 = Source.newBuilder(SourceCacheTestLanguage.ID, "2", sourceName2 = "TestSource2").build();
-            try (Context context1 = Context.newBuilder().engine(engine).option(SourceCacheTestLanguage.ID + ".SharingGroup", "one").build()) {
-                String sourceHash1 = String.format("0x%08x", context1.eval(source1).asInt());
-                String sourceHash2 = String.format("0x%08x", context1.eval(source2).asInt());
-                /*
-                 * context2 creates a separate sharing layer because of the option SharingGroup and
-                 * the implementation of the method SourceCacheTestLanguage#areOptionCompatible.
-                 */
-                try (Context context2 = Context.newBuilder().engine(engine).option(SourceCacheTestLanguage.ID + ".SharingGroup", "two").build()) {
-                    WeakReference<Source> souceRef2 = new WeakReference<>(source2);
-                    source2 = null;
-                    GCUtils.assertGc("Source 2 was not collected", souceRef2);
-                    /*
-                     * The following context2 eval is supposed to clear source2 from context1
-                     * layer's source cache.
-                     */
-                    context2.eval(source1);
-                    WeakReference<Source> souceRef1 = new WeakReference<>(source1);
-                    source1 = null;
-                    GCUtils.assertGc("Source 1 was not collected", souceRef1);
-                    /*
-                     * The following context2 close is supposed to clear source1 both from context1
-                     * layer's source cache and from context2 layer's source cache.
-                     */
-                }
-                List<String> logs = new ArrayList<>();
-                forEachLog(out.toByteArray(), (matcher) -> {
-                    String logType = matcher.group(1);
-                    String suffix;
-                    String loggedHash = matcher.group(2);
-                    String loggedName = matcher.group(3);
-                    if (sourceName1.equals(loggedName)) {
-                        Assert.assertEquals(sourceHash1, loggedHash);
-                        suffix = "1";
-                    } else if (sourceName2.equals(loggedName)) {
-                        Assert.assertEquals(sourceHash2, loggedHash);
-                        suffix = "2";
-                    } else {
-                        suffix = "Unknown";
+        Runnable runnable = () -> {
+            List<String> logs = new ArrayList<>();
+            String[] expectedSequence = new String[]{"miss1", "miss2", "evict2", "miss1", "evict1", "evict1"};
+            for (int attempt = 0; attempt < 5; attempt++) {
+                try (ByteArrayOutputStream out = new ByteArrayOutputStream(); Engine engine = Engine.newBuilder().option("engine.TraceSourceCache", "true").out(out).err(out).build()) {
+                    String sourceName1;
+                    String sourceName2;
+                    Source source1 = Source.newBuilder(SourceCacheTestLanguage.ID, "1", sourceName1 = "TestSource1").build();
+                    Source source2 = Source.newBuilder(SourceCacheTestLanguage.ID, "2", sourceName2 = "TestSource2").build();
+                    try (Context context1 = Context.newBuilder().engine(engine).option(SourceCacheTestLanguage.ID + ".SharingGroup", "one").build()) {
+                        String sourceHash1 = String.format("0x%08x", context1.eval(source1).asInt());
+                        String sourceHash2 = String.format("0x%08x", context1.eval(source2).asInt());
+                        /*
+                         * context2 creates a separate sharing layer because of the option
+                         * SharingGroup and the implementation of the method
+                         * SourceCacheTestLanguage#areOptionCompatible.
+                         */
+                        try (Context context2 = Context.newBuilder().engine(engine).option(SourceCacheTestLanguage.ID + ".SharingGroup", "two").build()) {
+                            WeakReference<Source> souceRef2 = new WeakReference<>(source2);
+                            source2 = null;
+                            GCUtils.assertGc("Source 2 was not collected", souceRef2);
+                            /*
+                             * The following context2 eval is supposed to clear source2 from
+                             * context1 layer's source cache.
+                             */
+                            context2.eval(source1);
+                            WeakReference<Source> souceRef1 = new WeakReference<>(source1);
+                            source1 = null;
+                            GCUtils.assertGc("Source 1 was not collected", souceRef1);
+                            /*
+                             * The following context2 close is supposed to clear source1 both from
+                             * context1 layer's source cache and from context2 layer's source cache.
+                             */
+                        }
+                        logs.clear();
+                        forEachLog(out.toByteArray(), (matcher) -> {
+                            String logType = matcher.group(1);
+                            String suffix;
+                            String loggedHash = matcher.group(2);
+                            String loggedName = matcher.group(3);
+                            if (sourceName1.equals(loggedName)) {
+                                Assert.assertEquals(sourceHash1, loggedHash);
+                                suffix = "1";
+                            } else if (sourceName2.equals(loggedName)) {
+                                Assert.assertEquals(sourceHash2, loggedHash);
+                                suffix = "2";
+                            } else {
+                                suffix = "Unknown";
+                            }
+                            logs.add(logType + suffix);
+                        });
+                        if (logs.size() == expectedSequence.length) {
+                            break;
+                        }
                     }
-                    logs.add(logType + suffix);
-                });
-                String[] expectedSequence = new String[]{"miss1", "miss2", "evict2", "miss1", "evict1", "evict1"};
-                Assert.assertArrayEquals(expectedSequence, logs.toArray());
+                } catch (IOException ioe) {
+                    throw new AssertionError(ioe);
+                }
             }
+            Assert.assertArrayEquals(expectedSequence, logs.toArray());
+        };
+        if (ImageInfo.inImageCode()) {
+            runnable.run();
+        } else {
+            SubprocessTestUtils.newBuilder(SourceCacheTest.class, runnable).run();
         }
     }
 }

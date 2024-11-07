@@ -43,6 +43,7 @@ package org.graalvm.wasm;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.api.TruffleContext;
 import org.graalvm.wasm.api.Sequence;
 import org.graalvm.wasm.constants.GlobalModifier;
 
@@ -62,18 +63,25 @@ import com.oracle.truffle.api.library.ExportMessage;
 @SuppressWarnings("static-method")
 public final class WasmInstance extends RuntimeState implements TruffleObject {
 
+    /**
+     * Prevents {@link TruffleContext} from being garbage collected and closed.
+     */
+    final TruffleContext truffleContext;
+
     private List<LinkAction> linkActions;
 
-    public WasmInstance(WasmContext context, WasmModule module) {
-        this(context, module, module.numFunctions(), module.droppedDataInstanceOffset());
+    public WasmInstance(WasmContext context, WasmModule module, TruffleContext currentTruffleContext) {
+        this(context, module, module.numFunctions(), module.droppedDataInstanceOffset(), currentTruffleContext);
     }
 
-    public WasmInstance(WasmContext context, WasmModule module, int numberOfFunctions) {
-        this(context, module, numberOfFunctions, 0);
+    public WasmInstance(WasmContext context, WasmModule module, int numberOfFunctions, TruffleContext currentTruffleContext) {
+        this(context, module, numberOfFunctions, 0, currentTruffleContext);
     }
 
-    private WasmInstance(WasmContext context, WasmModule module, int numberOfFunctions, int droppedDataInstanceAddress) {
+    private WasmInstance(WasmContext context, WasmModule module, int numberOfFunctions, int droppedDataInstanceAddress,
+                    TruffleContext currentTruffleContext) {
         super(context, module, numberOfFunctions, droppedDataInstanceAddress);
+        this.truffleContext = currentTruffleContext;
     }
 
     public String name() {

@@ -265,5 +265,11 @@
   {
     "name": "org.hamcrest.core.StringContains",
     "allPublicMethods": true
+  },
+  {
+    "name": "com.oracle.truffle.polyglot.enterprise.EnterprisePolyglotImpl",
+    "methods": [
+      { "name": "getIsolate", "parameterTypes": ["java.lang.Object"] }
+    ]
   }
 ]

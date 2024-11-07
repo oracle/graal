@@ -50,13 +50,15 @@ import java.util.Set;
  */
 final class PolyglotBindingsValue extends PolyglotValueDispatch {
 
-    final Object delegateBindings;
     final Map<String, Object> values;
+    final PolyglotLanguageContext languageContext;
+    final PolyglotBindings bindings;
 
     PolyglotBindingsValue(PolyglotLanguageContext context, PolyglotBindings bindings) {
         super(context.getImpl(), context.getLanguageInstance());
         this.values = context.context.polyglotBindings;
-        this.delegateBindings = context.asValue(bindings);
+        this.languageContext = context;
+        this.bindings = bindings;
     }
 
     @Override
@@ -97,21 +99,21 @@ final class PolyglotBindingsValue extends PolyglotValueDispatch {
      */
     @Override
     public <T> T asClass(Object context, Object receiver, Class<T> targetType) {
-        return impl.getAPIAccess().callValueAs(delegateBindings, targetType);
+        return impl.getAPIAccess().callValueAs(languageContext.asValue(bindings), targetType);
     }
 
     @Override
     public <T> T asTypeLiteral(Object context, Object receiver, Class<T> rawType, Type type) {
-        return impl.getAPIAccess().callValueAs(delegateBindings, rawType, type);
+        return impl.getAPIAccess().callValueAs(languageContext.asValue(bindings), rawType, type);
     }
 
     @Override
     public String toStringImpl(PolyglotLanguageContext context, Object receiver) {
-        return delegateBindings.toString();
+        return languageContext.asValue(bindings).toString();
     }
 
     @Override
     public Object getMetaObjectImpl(PolyglotLanguageContext context, Object receiver) {
-        return impl.getAPIAccess().callValueGetMetaObject(delegateBindings);
+        return impl.getAPIAccess().callValueGetMetaObject(languageContext.asValue(bindings));
     }
 }

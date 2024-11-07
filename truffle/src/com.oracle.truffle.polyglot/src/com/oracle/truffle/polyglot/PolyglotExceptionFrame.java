@@ -95,7 +95,11 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
 
     @Override
     public Object getLanguage() {
-        return this.language.api;
+        if (language != null) {
+            return language.engine.getAPIAccess().newLanguage(language.getImpl().languageDispatch, language, language.engine.getEngineAPI());
+        } else {
+            return null;
+        }
     }
 
     @Override

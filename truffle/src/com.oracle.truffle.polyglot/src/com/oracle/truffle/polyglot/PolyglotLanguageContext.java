@@ -339,14 +339,14 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                         if (scope == null) {
                             scope = new DefaultTopScope();
                         }
-                        this.hostBindings = this.asValue(scope);
+                        this.hostBindings = scope;
                     } finally {
                         language.engine.leaveIfNeeded(prev, context);
                     }
                 }
             }
         }
-        return this.hostBindings;
+        return asValue(hostBindings);
     }
 
     Object getPolyglotGuestBindings() {
@@ -412,7 +412,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                 }
             }
             if (eventsEnabled && notifyInstruments) {
-                EngineAccessor.INSTRUMENT.notifyLanguageContextFinalized(context.engine, context.creatorTruffleContext, language.info);
+                EngineAccessor.INSTRUMENT.notifyLanguageContextFinalized(context.engine, context.getCreatorTruffleContext(), language.info);
             }
             return true;
         }
@@ -518,7 +518,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
     void notifyDisposed(boolean notifyInstruments) {
         if (eventsEnabled && notifyInstruments) {
-            EngineAccessor.INSTRUMENT.notifyLanguageContextDisposed(context.engine, context.creatorTruffleContext, language.info);
+            EngineAccessor.INSTRUMENT.notifyLanguageContextDisposed(context.engine, context.getCreatorTruffleContext(), language.info);
         }
     }
 
@@ -626,7 +626,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                 synchronized (context) {
                     if (!created) {
                         if (eventsEnabled) {
-                            EngineAccessor.INSTRUMENT.notifyLanguageContextCreate(context.engine, context.creatorTruffleContext, language.info);
+                            EngineAccessor.INSTRUMENT.notifyLanguageContextCreate(context.engine, context.getCreatorTruffleContext(), language.info);
                         }
                         boolean wasCreated = false;
                         try {
@@ -672,7 +672,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                                 }
                                 wasCreated = true;
                                 if (eventsEnabled) {
-                                    EngineAccessor.INSTRUMENT.notifyLanguageContextCreated(context.engine, context.creatorTruffleContext, language.info);
+                                    EngineAccessor.INSTRUMENT.notifyLanguageContextCreated(context.engine, context.getCreatorTruffleContext(), language.info);
                                 }
                                 context.invokeContextLocalsFactory(context.contextLocals, languageInstance.contextLocalLocations);
                                 context.invokeContextThreadLocalFactory(languageInstance.contextThreadLocalLocations);
@@ -688,7 +688,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                             created = true;
                         } finally {
                             if (!wasCreated && eventsEnabled) {
-                                EngineAccessor.INSTRUMENT.notifyLanguageContextCreateFailed(context.engine, context.creatorTruffleContext, language.info);
+                                EngineAccessor.INSTRUMENT.notifyLanguageContextCreateFailed(context.engine, context.getCreatorTruffleContext(), language.info);
                             }
                         }
                     }
@@ -769,7 +769,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             assert !initialized;
             boolean threadInitialized = false;
             if (eventsEnabled) {
-                EngineAccessor.INSTRUMENT.notifyLanguageContextInitialize(context.engine, context.creatorTruffleContext, language.info);
+                EngineAccessor.INSTRUMENT.notifyLanguageContextInitialize(context.engine, context.getCreatorTruffleContext(), language.info);
             }
 
             initialized = true; // Allow language use during initialization
@@ -802,7 +802,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                 }
                 try {
                     if (eventsEnabled) {
-                        EngineAccessor.INSTRUMENT.notifyLanguageContextInitializeFailed(context.engine, context.creatorTruffleContext, language.info);
+                        EngineAccessor.INSTRUMENT.notifyLanguageContextInitializeFailed(context.engine, context.getCreatorTruffleContext(), language.info);
                     }
                 } catch (Throwable inner) {
                     e.addSuppressed(inner);
@@ -811,7 +811,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             }
 
             if (eventsEnabled) {
-                EngineAccessor.INSTRUMENT.notifyLanguageContextInitialized(context.engine, context.creatorTruffleContext, language.info);
+                EngineAccessor.INSTRUMENT.notifyLanguageContextInitialized(context.engine, context.getCreatorTruffleContext(), language.info);
             }
         } finally {
             synchronized (context) {
@@ -967,7 +967,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         assert !(api.isValue(guestValue));
         assert !(api.isProxy(guestValue));
         PolyglotValueDispatch cache = getLanguageInstance().lookupValueCache(context, guestValue);
-        return api.newValue(cache, this, guestValue);
+        return api.newValue(cache, this, guestValue, context.getContextAPI());
     }
 
     public Object toGuestValue(Node node, Object receiver) {
@@ -985,7 +985,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                         @Cached("value.getClass()") Class<?> cachedClass,
                         @Cached("lookupDispatch(languageContext, value)") PolyglotValueDispatch cachedValue) {
             Object receiver = CompilerDirectives.inInterpreter() ? value : CompilerDirectives.castExact(value, cachedClass);
-            return cachedValue.impl.getAPIAccess().newValue(cachedValue, languageContext, receiver);
+            return cachedValue.impl.getAPIAccess().newValue(cachedValue, languageContext, receiver, languageContext.context.getContextAPI());
         }
 
         @Specialization(replaces = "doCached")
