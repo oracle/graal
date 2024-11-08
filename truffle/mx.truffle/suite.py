@@ -394,6 +394,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "sdk:NATIVEBRIDGE",
         "TRUFFLE_TCK_TESTS",
         "TRUFFLE_API",
         "TRUFFLE_SL",
@@ -2195,6 +2196,7 @@ suite = {
          "GUAVA"
        ],
        "distDependencies" : [
+         "sdk:NATIVEBRIDGE",
          "TRUFFLE_API",
          "TRUFFLE_SL",
          "TRUFFLE_TCK_COMMON",

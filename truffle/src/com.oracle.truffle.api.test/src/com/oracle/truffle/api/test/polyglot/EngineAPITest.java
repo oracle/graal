@@ -157,7 +157,7 @@ public class EngineAPITest {
         assertEquals(EngineAPITestLanguage.IMPL_NAME, language.getImplementationName());
 
         if (TruffleTestAssumptions.isWeakEncapsulation()) {
-            assertSame(language, engine.getLanguages().get(EngineAPITestLanguage.ID));
+            assertEquals(language, engine.getLanguages().get(EngineAPITestLanguage.ID));
         }
 
         engine.close();

@@ -90,11 +90,25 @@ public final class PolyglotException extends RuntimeException {
 
     final AbstractExceptionDispatch dispatch;
     final Object impl;
+    /**
+     * Holds a polyglot object that threw a {@code PolyglotException}, ensuring that the garbage
+     * collector does not collect the polyglot object while the {@code PolyglotException} is still
+     * reachable.
+     * <ul>
+     * <li>If the exception is thrown by a {@link Context}, this field holds the creator
+     * {@link Context}.</li>
+     * <li>If the exception is thrown by an {@link Engine}, this field holds the
+     * {@link Engine}.</li>
+     * <li>If the exception is thrown by a polyglot, this field is {@code null}.</li>
+     * </ul>
+     */
+    final Object anchor;
 
-    PolyglotException(String message, AbstractExceptionDispatch dispatch, Object receiver) {
+    PolyglotException(String message, AbstractExceptionDispatch dispatch, Object receiver, Object anchor) {
         super(message);
         this.dispatch = dispatch;
         this.impl = receiver;
+        this.anchor = anchor;
         dispatch.onCreate(receiver, this);
         // we need to materialize the stack if this exception is printed as cause of another error.
         // unfortunately we cannot detect this easily

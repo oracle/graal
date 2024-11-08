@@ -60,6 +60,7 @@ import com.oracle.svm.core.graal.phases.DeadStoreRemovalPhase;
 import com.oracle.svm.core.graal.phases.OptimizeExceptionPathsPhase;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.util.InterruptImageBuilding;
@@ -69,6 +70,7 @@ import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.diagnostic.HostedHeapDumpFeature;
+import com.oracle.svm.hosted.imagelayer.LayeredDispatchTableSupport;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.phases.ImageBuildStatisticsCounterPhase;
@@ -183,6 +185,8 @@ public class CompileQueue {
     }
 
     private final ConcurrentMap<HostedMethod, UnpublishedTrivialMethods> unpublishedTrivialMethods = new ConcurrentHashMap<>();
+
+    private final LayeredDispatchTableSupport layeredDispatchTableSupport = ImageLayerBuildingSupport.buildingSharedLayer() ? LayeredDispatchTableSupport.singleton() : null;
 
     public abstract static class CompileReason {
         /**
@@ -392,7 +396,7 @@ public class CompileQueue {
                 parseAll();
             }
 
-            if (!PointstoOptions.UseExperimentalReachabilityAnalysis.getValue(universe.hostVM().options())) {
+            if (!ImageLayerBuildingSupport.buildingImageLayer() && !PointstoOptions.UseExperimentalReachabilityAnalysis.getValue(universe.hostVM().options())) {
                 /*
                  * Reachability Analysis creates call graphs with more edges compared to the
                  * Points-to Analysis, therefore the annotations would have to be added to a lot
@@ -950,14 +954,9 @@ public class CompileQueue {
         }
     }
 
-    private static boolean layeredForceCompilation(HostedMethod hMethod) {
-        /*
-         * If a method from a base layer interface is not compiled in a prior layer but is in the
-         * vtable of a type from a new layer, the method needs to be compiled as there would be a
-         * missing symbol otherwise.
-         */
-        return hMethod.wrapped.isInBaseLayer() && !hMethod.isCompiledInPriorLayer() && hMethod.getDeclaringClass().isInterface() &&
-                        Arrays.stream(hMethod.getDeclaringClass().getSubTypes()).anyMatch(t -> !t.getWrapped().isInBaseLayer() && hMethod.isInVirtualMethodTable(t));
+    private static boolean layeredForceCompilation(@SuppressWarnings("unused") HostedMethod hMethod) {
+        // GR-57021 force some methods to be compiled in initial layer
+        return false;
     }
 
     public void scheduleDeoptTargets() {
@@ -1345,6 +1344,9 @@ public class CompileQueue {
                 if (call.direct || isDynamicallyResolvedCall(result, call)) {
                     ensureCompiled(callTarget, new DirectCallReason(method, reason));
                 } else if (callTarget != null && callTarget.getImplementations() != null) {
+                    if (layeredDispatchTableSupport != null) {
+                        layeredDispatchTableSupport.recordVirtualCallTarget(method, callTarget);
+                    }
                     for (HostedMethod impl : callTarget.getImplementations()) {
                         ensureCompiled(impl, new VirtualCallReason(method, callTarget, reason));
                     }

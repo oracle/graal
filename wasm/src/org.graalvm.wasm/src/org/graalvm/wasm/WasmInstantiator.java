@@ -45,6 +45,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import com.oracle.truffle.api.TruffleContext;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.wasm.constants.BytecodeBitEncoding;
@@ -97,8 +98,8 @@ public class WasmInstantiator {
     }
 
     @TruffleBoundary
-    public WasmInstance createInstance(WasmContext context, WasmModule module) {
-        WasmInstance instance = new WasmInstance(context, module);
+    public WasmInstance createInstance(WasmContext context, WasmModule module, TruffleContext truffleContext) {
+        WasmInstance instance = new WasmInstance(context, module, truffleContext);
         instance.createLinkActions();
         int binarySize = instance.module().bytecodeLength();
         final int asyncParsingBinarySize = WasmOptions.AsyncParsingBinarySize.getValue(context.environment().getOptions());

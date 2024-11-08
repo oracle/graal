@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.polyglot;
 
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.io.ByteSequence;
 
 import com.oracle.truffle.api.CallTarget;
@@ -71,6 +72,11 @@ final class PolyglotByteSequence implements ByteSequence, PolyglotWrapper {
     final PolyglotLanguageContext languageContext;
 
     final Cache cache;
+    /**
+     * Strong reference to the creator {@link Context} to prevent it from being garbage collected
+     * and closed while this byte sequence is still reachable.
+     */
+    final Context contextAnchor;
 
     PolyglotByteSequence(Object buffer, PolyglotLanguageContext languageContext) {
         this(buffer, languageContext, 0, UNKNOWN_SEQUENCE_LENGTH);
@@ -82,6 +88,7 @@ final class PolyglotByteSequence implements ByteSequence, PolyglotWrapper {
         this.length = length;
         this.languageContext = languageContext;
         this.cache = Cache.lookup(languageContext, buffer.getClass());
+        this.contextAnchor = languageContext.context.getContextAPI();
     }
 
     @CompilerDirectives.TruffleBoundary

@@ -78,6 +78,7 @@ import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
@@ -128,6 +129,7 @@ import com.oracle.truffle.polyglot.PolyglotLocals.InstrumentContextLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.InstrumentContextThreadLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextThreadLocal;
+import com.oracle.truffle.polyglot.PolyglotThreadTask.PolyglotThread;
 import com.oracle.truffle.polyglot.PolyglotThreadTask.ThreadSpawnRootNode;
 import com.oracle.truffle.polyglot.SystemThread.InstrumentSystemThread;
 import com.oracle.truffle.polyglot.SystemThread.LanguageSystemThread;
@@ -376,7 +378,7 @@ final class EngineAccessor extends Accessor {
         @Override
         public TruffleContext getTruffleContext(Object polyglotLanguageContext) {
             PolyglotLanguageContext languageContext = (PolyglotLanguageContext) polyglotLanguageContext;
-            return languageContext.context.currentTruffleContext;
+            return languageContext.context.getCreatorTruffleContext();
         }
 
         @Override
@@ -414,7 +416,7 @@ final class EngineAccessor extends Accessor {
         @Override
         public TruffleContext getCurrentCreatorTruffleContext() {
             PolyglotContextImpl context = PolyglotFastThreadLocals.getContext(null);
-            return context != null ? context.creatorTruffleContext : null;
+            return context != null ? context.getCreatorTruffleContext() : null;
         }
 
         @Override
@@ -804,16 +806,6 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public TruffleContext getParentContext(Object polyglotContext) {
-            PolyglotContextImpl parent = ((PolyglotContextImpl) polyglotContext).parent;
-            if (parent != null) {
-                return parent.currentTruffleContext;
-            } else {
-                return null;
-            }
-        }
-
-        @Override
         public Object enterInternalContext(Node location, Object polyglotLanguageContext) {
             PolyglotContextImpl context = ((PolyglotContextImpl) polyglotLanguageContext);
             PolyglotEngineImpl engine = resolveEngine(location, context);
@@ -821,15 +813,28 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public Object[] enterContextAsPolyglotThread(Object polyglotContext) {
+        public Object[] enterContextAsPolyglotThread(Object polyglotContext, Context contextAPI) {
             PolyglotContextImpl context = ((PolyglotContextImpl) polyglotContext);
-            return context.enterThreadChanged(false, true, false, PolyglotThreadTask.ISOLATE_POLYGLOT_THREAD, false);
+            Object[] prev = context.enterThreadChanged(false, true, false, PolyglotThreadTask.ISOLATE_POLYGLOT_THREAD, false);
+            PolyglotThreadInfo current;
+            synchronized (context) {
+                current = context.getCurrentThreadInfo();
+            }
+            assert current.getThread() == Thread.currentThread();
+            current.explicitEnterAnchor = contextAPI;
+            return prev;
         }
 
         @Override
         public void leaveContextAsPolyglotThread(Object polyglotContext, Object[] prev) {
             PolyglotContextImpl context = ((PolyglotContextImpl) polyglotContext);
+            PolyglotThreadInfo current;
+            synchronized (context) {
+                current = context.getCurrentThreadInfo();
+            }
+            assert current.getThread() == Thread.currentThread();
             context.leaveThreadChanged(prev, true, true);
+            current.explicitEnterAnchor = null;
         }
 
         @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
@@ -1111,10 +1116,14 @@ final class EngineAccessor extends Accessor {
                             useTimeZone, creatorConfig.limits, creatorConfig.hostClassLoader, useAllowHostAccess,
                             creatorConfig.allowValueSharing, false,
                             config, onCancelledRunnable, onExitedRunnable, onClosedRunnable);
-
+            TruffleContext creatorContext;
             synchronized (creator.context) {
                 impl = new PolyglotContextImpl(creator, innerConfig);
-                impl.api = creator.getImpl().getAPIAccess().newContext(creator.getImpl().contextDispatch, impl, creator.context.engine.api);
+                Object contextApi = creator.getImpl().getAPIAccess().newInnerContext(creator.getImpl().contextDispatch, impl, creator.context.getContextAPI(),
+                                creator.context.engine.getEngineAPI());
+                assert contextApi == impl.getContextAPI();
+                creatorContext = EngineAccessor.LANGUAGE.createTruffleContext(impl, creator.context.getCreatorTruffleContext());
+                impl.setCreatorTruffleContextReference(new TruffleContextCleanableReference(creatorContext, impl));
                 creator.context.addChildContext(impl);
             }
 
@@ -1125,7 +1134,7 @@ final class EngineAccessor extends Accessor {
             if (initializeCreatorContext) {
                 impl.initializeInnerContextLanguage(creator.language.getId());
             }
-            return impl.creatorTruffleContext;
+            return creatorContext;
         }
 
         private static boolean inheritAccess(boolean inheritAccess, Boolean newPrivilege, boolean creatorPrivilege) {
@@ -1166,7 +1175,7 @@ final class EngineAccessor extends Accessor {
             if (virtual) {
                 newThread = JDKAccessor.newVirtualThread(name, task);
             } else {
-                newThread = new Thread(group, task, name, stackSize);
+                newThread = new PolyglotThread(group, task, name, stackSize, threadContext.context);
             }
             newThread.setUncaughtExceptionHandler(threadContext.getPolyglotExceptionHandler());
             for (;;) {
@@ -1884,16 +1893,6 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public Object getPolyglotExceptionContext(Object polyglotExceptionImpl) {
-            return ((PolyglotExceptionImpl) polyglotExceptionImpl).context;
-        }
-
-        @Override
-        public Object getPolyglotExceptionEngine(Object polyglotExceptionImpl) {
-            return ((PolyglotExceptionImpl) polyglotExceptionImpl).engine;
-        }
-
-        @Override
         public boolean isCancelExecution(Throwable throwable) {
             return throwable instanceof PolyglotEngineImpl.CancelExecution;
         }
@@ -2047,16 +2046,6 @@ final class EngineAccessor extends Accessor {
             } else {
                 return null;
             }
-        }
-
-        @Override
-        public Object getPolyglotEngineAPI(Object polyglotEngineImpl) {
-            return ((PolyglotEngineImpl) polyglotEngineImpl).api;
-        }
-
-        @Override
-        public Object getPolyglotContextAPI(Object polyglotContextImpl) {
-            return ((PolyglotContextImpl) polyglotContextImpl).api;
         }
 
         @Override

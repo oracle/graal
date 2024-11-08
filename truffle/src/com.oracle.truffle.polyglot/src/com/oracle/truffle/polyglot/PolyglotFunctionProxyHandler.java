@@ -57,10 +57,16 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.polyglot.PolyglotFunctionProxyHandlerFactory.FunctionProxyNodeGen;
 import com.oracle.truffle.polyglot.PolyglotObjectProxyHandler.ProxyInvokeNode;
+import org.graalvm.polyglot.Context;
 
 final class PolyglotFunctionProxyHandler implements InvocationHandler, PolyglotWrapper {
     final Object functionObj;
     final PolyglotLanguageContext languageContext;
+    /**
+     * Strong reference to the creator {@link Context} to prevent it from being garbage collected
+     * and closed while this function is still reachable.
+     */
+    final Context contextAnchor;
     private final Method functionMethod;
     private final CallTarget target;
 
@@ -69,6 +75,7 @@ final class PolyglotFunctionProxyHandler implements InvocationHandler, PolyglotW
         this.languageContext = languageContext;
         this.functionMethod = functionMethod;
         this.target = FunctionProxyNode.lookup(languageContext, obj.getClass(), functionMethod, genericType);
+        this.contextAnchor = languageContext.context.getContextAPI();
     }
 
     @CompilerDirectives.TruffleBoundary

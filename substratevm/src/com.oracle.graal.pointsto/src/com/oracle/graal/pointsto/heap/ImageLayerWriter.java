@@ -321,6 +321,10 @@ public class ImageLayerWriter {
 
     }
 
+    public boolean isTypePersisted(AnalysisType type) {
+        return persistedTypeIds.contains(type.getId());
+    }
+
     protected void persistType(AnalysisType type) {
         if (!persistedTypeIds.add(type.getId())) {
             return;

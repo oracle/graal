@@ -605,6 +605,25 @@ public class ContextPolicyTest {
         engine.close();
     }
 
+    @Test
+    public void testInnerContextCloseFreesSharingLayer() {
+        try (Engine engine = Engine.create()) {
+            try (Context context1 = Context.newBuilder().engine(engine).build()) {
+                context1.eval(REUSE0, "");
+                remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 1);
+                context1.eval(Source.newBuilder(REUSE0, "", RUN_INNER_CONTEXT).cached(false).buildLiteral());
+                remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 2);
+            }
+            try (Context context2 = Context.newBuilder().engine(engine).build()) {
+                context2.eval(REUSE0, "");
+                remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 2);
+                context2.eval(Source.newBuilder(REUSE0, "", RUN_INNER_CONTEXT).cached(false).buildLiteral());
+                // Both layers from context1 must be reused.
+                remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 2);
+            }
+        }
+    }
+
     /*
      * Tests invalid sharing detection for single engine multi layer case.
      */

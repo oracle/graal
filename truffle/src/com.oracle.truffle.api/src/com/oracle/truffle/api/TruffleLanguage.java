@@ -2882,7 +2882,7 @@ public abstract class TruffleLanguage<C> {
          */
         public TruffleContext getContext() {
             try {
-                return LanguageAccessor.engineAccess().getTruffleContext(polyglotLanguageContext);
+                return LanguageAccessor.engineAccess().getTruffleContext(polyglotLanguageContext).currentAPI;
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }
