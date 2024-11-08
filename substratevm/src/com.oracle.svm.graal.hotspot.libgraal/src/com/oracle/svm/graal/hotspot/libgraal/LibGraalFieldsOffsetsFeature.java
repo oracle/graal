@@ -62,7 +62,7 @@ import jdk.internal.misc.Unsafe;
 public final class LibGraalFieldsOffsetsFeature implements InternalFeature {
 
     private final MethodHandles.Lookup mhl = MethodHandles.lookup();
-    private LibGraalClassLoader loader;
+    private LibGraalFeature libGraalFeature;
 
     private Class<?> fieldsClass;
     private Class<?> edgesClass;
@@ -119,20 +119,20 @@ public final class LibGraalFieldsOffsetsFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess a) {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
-        loader = ImageSingletons.lookup(LibGraalFeature.class).loader;
+        libGraalFeature = ImageSingletons.lookup(LibGraalFeature.class);
 
-        fieldsClass = loader.loadClassOrFail("jdk.graal.compiler.core.common.Fields");
-        edgesClass = loader.loadClassOrFail("jdk.graal.compiler.graph.Edges");
-        edgesTypeClass = loader.loadClassOrFail("jdk.graal.compiler.graph.Edges$Type");
-        nodeClass = loader.loadClassOrFail("jdk.graal.compiler.graph.Node");
-        nodeClassClass = loader.loadClassOrFail("jdk.graal.compiler.graph.NodeClass");
-        lirInstructionClass = loader.loadClassOrFail("jdk.graal.compiler.lir.LIRInstruction");
-        lirInstructionClassClass = loader.loadClassOrFail("jdk.graal.compiler.lir.LIRInstructionClass");
-        compositeValueClass = loader.loadClassOrFail("jdk.graal.compiler.lir.CompositeValue");
-        compositeValueClassClass = loader.loadClassOrFail("jdk.graal.compiler.lir.CompositeValueClass");
-        fieldIntrospectionClass = loader.loadClassOrFail("jdk.graal.compiler.core.common.FieldIntrospection");
-        inputEdgesClass = loader.loadClassOrFail("jdk.graal.compiler.graph.InputEdges");
-        successorEdgesClass = loader.loadClassOrFail("jdk.graal.compiler.graph.SuccessorEdges");
+        fieldsClass = libGraalFeature.loadClassOrFail("jdk.graal.compiler.core.common.Fields");
+        edgesClass = libGraalFeature.loadClassOrFail("jdk.graal.compiler.graph.Edges");
+        edgesTypeClass = libGraalFeature.loadClassOrFail("jdk.graal.compiler.graph.Edges$Type");
+        nodeClass = libGraalFeature.loadClassOrFail("jdk.graal.compiler.graph.Node");
+        nodeClassClass = libGraalFeature.loadClassOrFail("jdk.graal.compiler.graph.NodeClass");
+        lirInstructionClass = libGraalFeature.loadClassOrFail("jdk.graal.compiler.lir.LIRInstruction");
+        lirInstructionClassClass = libGraalFeature.loadClassOrFail("jdk.graal.compiler.lir.LIRInstructionClass");
+        compositeValueClass = libGraalFeature.loadClassOrFail("jdk.graal.compiler.lir.CompositeValue");
+        compositeValueClassClass = libGraalFeature.loadClassOrFail("jdk.graal.compiler.lir.CompositeValueClass");
+        fieldIntrospectionClass = libGraalFeature.loadClassOrFail("jdk.graal.compiler.core.common.FieldIntrospection");
+        inputEdgesClass = libGraalFeature.loadClassOrFail("jdk.graal.compiler.graph.InputEdges");
+        successorEdgesClass = libGraalFeature.loadClassOrFail("jdk.graal.compiler.graph.SuccessorEdges");
 
         try {
             fieldsClassGetOffsetsMethod = mhl.findVirtual(fieldsClass, "getOffsets", MethodType.methodType(long[].class));
@@ -171,7 +171,7 @@ public final class LibGraalFieldsOffsetsFeature implements InternalFeature {
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         MethodHandle getInputEdgesOffsets;
         MethodHandle getSuccessorEdgesOffsets;
-        var buildTimeClass = loader.loadClassOrFail("jdk.graal.compiler.hotspot.libgraal.BuildTime");
+        var buildTimeClass = libGraalFeature.loadClassOrFail("jdk.graal.compiler.hotspot.libgraal.BuildTime");
         try {
             MethodType offsetAccessorSignature = MethodType.methodType(long[].class, Object.class);
             getInputEdgesOffsets = mhl.findStatic(buildTimeClass, "getInputEdgesOffsets", offsetAccessorSignature);

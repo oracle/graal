@@ -1468,6 +1468,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
 libgraal_jar_distributions = [
     'sdk:NATIVEBRIDGE',
     'sdk:JNIUTILS',
+    'compiler:LIBGRAAL_LOADER',
     'substratevm:LIBGRAAL_LIBRARY']
 
 def allow_build_path_in_libgraal():

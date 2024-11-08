@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted;
 
+import java.lang.reflect.Method;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
@@ -34,6 +35,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.imagelayer.CrossLayerConstantRegistry;
 import com.oracle.svm.hosted.imagelayer.ObjectToConstantFieldValueTransformer;
 import com.oracle.svm.hosted.jdk.HostedClassLoaderPackageManagement;
@@ -118,6 +120,17 @@ public class ClassLoaderFeature implements InternalFeature {
 
         var config = (FeatureImpl.DuringSetupAccessImpl) access;
         if (ImageLayerBuildingSupport.firstImageBuild()) {
+            ClassLoader customLoader = ((DuringSetupAccessImpl) access).imageClassLoader.classLoaderSupport.getCustomLoader();
+            if (customLoader != null) {
+                ClassLoader customRuntimeLoader = getCustomRuntimeClassLoader(customLoader);
+                if (customRuntimeLoader != null) {
+                    /*
+                     * CustomLoader provides runtime-replacement ClassLoader instance. Make sure
+                     * customLoader gets replaced by customRuntimeLoader instance in image.
+                     */
+                    access.registerObjectReplacer(obj -> obj == customLoader ? customRuntimeLoader : obj);
+                }
+            }
             access.registerObjectReplacer(this::runtimeClassLoaderObjectReplacer);
             if (ImageLayerBuildingSupport.buildingInitialLayer()) {
                 config.registerObjectReachableCallback(ClassLoader.class, (a1, classLoader, reason) -> {
@@ -131,6 +144,12 @@ public class ClassLoaderFeature implements InternalFeature {
             // relink packages defined in the prior layers
             config.registerObjectToConstantReplacer(packageManager::replaceWithPriorLayerPackage);
         }
+    }
+
+    public static ClassLoader getCustomRuntimeClassLoader(ClassLoader customLoader) {
+        Class<? extends ClassLoader> customLoaderClass = customLoader.getClass();
+        Method getRuntimeClassLoaderMethod = ReflectionUtil.lookupMethod(true, customLoaderClass, "getRuntimeClassLoader");
+        return getRuntimeClassLoaderMethod != null ? ReflectionUtil.invokeMethod(getRuntimeClassLoaderMethod, null) : null;
     }
 
     @Override
