@@ -1,5 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.domain;
 
+import java.util.function.Supplier;
+
 /**
  * Basic API for Abstract Domains
  * <p>
@@ -21,7 +23,7 @@ public abstract class AbstractDomain<T extends AbstractDomain<T>> {
      *
      * @return copy of the domain element
      */
-    protected abstract T copyOf();
+    public abstract T copyOf();
 
     /**
      * Checks if the domain is the bottom element
@@ -84,6 +86,12 @@ public abstract class AbstractDomain<T extends AbstractDomain<T>> {
      */
     public abstract void meetWith(T other);
 
+    /**
+     * String representation of the domain
+     * @return string representation of the domain
+     */
+    public abstract String toString();
+
     public T join(T other) {
         T copy = copyOf();
         copy.joinWith(other);
@@ -102,23 +110,15 @@ public abstract class AbstractDomain<T extends AbstractDomain<T>> {
         return copy;
     }
 
-    public static <T extends AbstractDomain<T>> T createTop(Class<T> clazz) {
-        try {
-            T instance = clazz.getDeclaredConstructor().newInstance();
-            instance.setToTop();
-            return instance;
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Error creating top instance of " + clazz.getName(), e);
-        }
+    public static <T extends AbstractDomain<T>> T createTop(Supplier<T> supplier) {
+        T instance = supplier.get();
+        instance.setToTop();
+        return instance;
     }
 
-    public static <T extends AbstractDomain<T>> T createBot(Class<T> clazz) {
-        try {
-            T instance = clazz.getDeclaredConstructor().newInstance();
-            instance.setToBot();
-            return instance;
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Error creating bottom instance of " + clazz.getName(), e);
-        }
+    public static <T extends AbstractDomain<T>> T createBot(Supplier<T> supplier) {
+        T instance = supplier.get();
+        instance.setToBot();
+        return instance;
     }
 }

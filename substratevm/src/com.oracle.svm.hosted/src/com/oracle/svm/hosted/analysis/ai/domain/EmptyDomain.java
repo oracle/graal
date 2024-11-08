@@ -10,7 +10,7 @@ package com.oracle.svm.hosted.analysis.ai.domain;
 
 public final class EmptyDomain extends AbstractDomain<EmptyDomain> {
     @Override
-    protected EmptyDomain copyOf() {
+    public EmptyDomain copyOf() {
         return new EmptyDomain();
     }
 
@@ -52,5 +52,10 @@ public final class EmptyDomain extends AbstractDomain<EmptyDomain> {
 
     @Override
     public void meetWith(EmptyDomain other) {
+    }
+
+    @Override
+    public String toString() {
+        return "EmptyDomain{}";
     }
 }

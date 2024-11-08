@@ -24,7 +24,7 @@ public final class SignDomain extends AbstractDomain<SignDomain> {
     }
 
     @Override
-    protected SignDomain copyOf() {
+    public SignDomain copyOf() {
         return new SignDomain(value.getSign());
     }
 
@@ -73,5 +73,12 @@ public final class SignDomain extends AbstractDomain<SignDomain> {
     public void meetWith(SignDomain other) {
         Sign newSign = value.meetWith(other.value) == AbstractValueKind.BOT ? Sign.BOT : value.getSign();
         value = new SignValue(newSign);
+    }
+
+    @Override
+    public String toString() {
+        return "SignDomain{" +
+                "sign=" + value +
+                '}';
     }
 }

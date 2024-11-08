@@ -49,8 +49,8 @@ public class LatticeDomain<
     }
 
     @Override
-    protected Domain copyOf() {
-        return null; // Placeholder, implement copyOf inside the actual domain
+    public Domain copyOf() {
+        return null; // Placeholder, implement copyOf inside the actual domain extending LatticeDomain
     }
 
     public boolean isBot() {
@@ -99,6 +99,14 @@ public class LatticeDomain<
 
     public void meetWith(Domain other) {
         performMeetOperation(other, () -> kind = value.meetWith(other.getValue()));
+    }
+
+    @Override
+    public String toString() {
+        return "ConstantDomain{" +
+                "kind=" + kind +
+                ", value=" + value +
+                '}';
     }
 
     private void performJoinOperation(Domain other, Runnable operation) {

@@ -37,7 +37,7 @@ public class ConstantDomain<
     }
 
     @Override
-    protected ConstantDomain<Value> copyOf() {
+    public ConstantDomain<Value> copyOf() {
         return null;
     }
 
@@ -129,6 +129,14 @@ public class ConstantDomain<
         }
 
         kind = value.getConstant() == other.value.getConstant() ? AbstractValueKind.VAL : AbstractValueKind.BOT;
+    }
+
+    @Override
+    public String toString() {
+        return "ConstantDomain{" +
+                "kind=" + kind +
+                ", value=" + value +
+                '}';
     }
 
     private boolean isVal() {
