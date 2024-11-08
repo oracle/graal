@@ -142,7 +142,7 @@ public interface InternalResource {
      *
      * @since 23.1
      */
-    String versionHash(Env env);
+    String versionHash(Env env) throws IOException;
 
     /**
      * Access to common utilities for unpacking resource files.
