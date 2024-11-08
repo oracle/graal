@@ -58,7 +58,7 @@ public final class TruffleLoopSafepointEliminationPhase extends LoopSafepointEli
         LoopSafepointEliminationPhase.Instance instance = new LoopSafepointEliminationPhase.Instance(graph, context) {
 
             @Override
-            protected void onSafepointDisabledLoopBegin(Loop loop) {
+            protected void onSafepointDisabledLoopBegin(LoopEx loop) {
                 for (Node node : loop.whole().nodes()) {
                     if (node instanceof CommitAllocationNode || node instanceof AbstractNewObjectNode) {
                         // we can disable truffle safepoints if there are no allocations
