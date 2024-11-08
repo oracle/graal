@@ -1833,6 +1833,17 @@ suite = {
       #}
     },
 
+    "TRUFFLE_ATTACH_GRAALVM_SUPPORT" : {
+      "native" : True,
+      "platformDependent" : True,
+      "description" : "Contains a library to provide access for Truffle to JDK internal classes.",
+      "layout" : {
+        "./" : ["dependency:com.oracle.truffle.attach"],
+      },
+      "maven" : False,
+      "graalCompilerSourceEdition": "ignore",
+    },
+
     "TRUFFLE_ATTACH_RESOURCES" : {
       "type" : "dir",
       "platformDependent" : True,

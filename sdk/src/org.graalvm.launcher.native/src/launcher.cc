@@ -380,8 +380,9 @@ static void parse_vm_options(int argc, char **argv, std::string exeDir, std::vec
     if (jvmMode) {
         /* this is only needed for jvm mode */
         vmArgs.push_back("-Dorg.graalvm.launcher.class=" LAUNCHER_CLASS_STR);
-        vmArgs.push_back("-Dorg.graalvm.version=" GRAALVM_VERSION_STR);
     }
+    vmArgs.push_back("-Dorg.graalvm.version=" GRAALVM_VERSION_STR);
+
     std::stringstream executablename;
     executablename << "-Dorg.graalvm.launcher.executablename=";
     char *executablenameEnv = getenv("GRAALVM_LAUNCHER_EXECUTABLE_NAME");
@@ -478,17 +479,15 @@ static void parse_vm_options(int argc, char **argv, std::string exeDir, std::vec
     #endif
 
     #if defined(LAUNCHER_LANG_HOME_NAMES) && defined(LAUNCHER_LANG_HOME_PATHS)
-    if (jvmMode) {
-        const char *launcherLangHomeNames[] = LAUNCHER_LANG_HOME_NAMES;
-        const char *launcherLangHomePaths[] = LAUNCHER_LANG_HOME_PATHS;
-        int launcherLangHomeNamesCnt = sizeof(launcherLangHomeNames) / sizeof(*launcherLangHomeNames);
-        for (int i = 0; i < launcherLangHomeNamesCnt; i++) {
-            std::stringstream ss;
-            std::stringstream relativeHome;
-            relativeHome << exeDir << DIR_SEP_STR << launcherLangHomePaths[i];
-            ss << "-Dorg.graalvm.language." << launcherLangHomeNames[i] << ".home=" << canonicalize(relativeHome.str());
-            vmArgs.push_back(ss.str());
-        }
+    const char *launcherLangHomeNames[] = LAUNCHER_LANG_HOME_NAMES;
+    const char *launcherLangHomePaths[] = LAUNCHER_LANG_HOME_PATHS;
+    int launcherLangHomeNamesCnt = sizeof(launcherLangHomeNames) / sizeof(*launcherLangHomeNames);
+    for (int i = 0; i < launcherLangHomeNamesCnt; i++) {
+        std::stringstream ss;
+        std::stringstream relativeHome;
+        relativeHome << exeDir << DIR_SEP_STR << launcherLangHomePaths[i];
+        ss << "-Dorg.graalvm.language." << launcherLangHomeNames[i] << ".home=" << canonicalize(relativeHome.str());
+        vmArgs.push_back(ss.str());
     }
     #endif
 
