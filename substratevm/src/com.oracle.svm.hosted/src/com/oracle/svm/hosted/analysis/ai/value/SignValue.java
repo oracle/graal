@@ -58,4 +58,11 @@ public final class SignValue extends AbstractValue<SignValue> {
         if (other.sign == Sign.TOP) return kind();
         return AbstractValueKind.BOT;
     }
+
+    @Override
+    public String toString() {
+        return "SignValue{" +
+                "sign=" + sign +
+                '}';
+    }
 }

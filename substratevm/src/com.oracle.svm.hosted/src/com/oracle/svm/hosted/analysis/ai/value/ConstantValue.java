@@ -62,4 +62,11 @@ public final class ConstantValue<Value> extends AbstractValue<ConstantValue<Valu
         }
         return AbstractValueKind.BOT;
     }
+
+    @Override
+    public String toString() {
+        return "ConstantValue{" +
+                "constant=" + constant +
+                '}';
+    }
 }

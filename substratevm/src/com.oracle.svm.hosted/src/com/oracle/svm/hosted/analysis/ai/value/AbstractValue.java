@@ -53,4 +53,11 @@ public abstract class AbstractValue<T extends AbstractValue<T>> {
      * @return the result of the meet operation
      */
     public abstract AbstractValueKind meetWith(T other);
+
+    /**
+     * Returns a string representation of this value.
+     *
+     * @return a string representation of this value
+     */
+    public abstract String toString();
 }
