@@ -675,7 +675,7 @@ public abstract class StrengthenGraphs {
                 /* Last resort, try to inject profiles optimistically. */
                 TypeState receiverTypeState = null;
                 if (invokeFlow.getTargetMethod().hasReceiver()) {
-                    if (invokeFlow.isSaturated()) {
+                    if (methodFlow.isSaturated((PointsToAnalysis) bb, invokeFlow)) {
                         /*
                          * For saturated invokes use all seen instantiated subtypes of target method
                          * declaring class. In an open world this is incomplete as new types may be
