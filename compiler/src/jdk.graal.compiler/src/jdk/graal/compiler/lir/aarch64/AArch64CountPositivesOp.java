@@ -69,9 +69,9 @@ import jdk.vm.ci.meta.Value;
  * Returns the number of positive bytes.
  */
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/d8430efb5e159b8e08d2cac66b46cb4ff1112927/src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp#L5467-L5536",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/1d117f65f06456ae571aecc146542c2f79d402cf/src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp#L5654-L5723",
           sha1 = "ce54a7cf2fcfe7ccb8f6604c038887fc1c4ebce1")
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/7131f053b0d26b62cbf0d8376ec117d6e8d79f9e/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L4975-L5141",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/1d117f65f06456ae571aecc146542c2f79d402cf/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L4992-L5158",
           sha1 = "3b4e6edb4372e8babb009763c2d05961348dd723")
 // @formatter:on
 @Opcode("AARCH64_COUNT_POSITIVES")

@@ -64,8 +64,8 @@ public class LookUpSecondarySupersTableStub extends SnippetStub {
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/7131f053b0d26b62cbf0d8376ec117d6e8d79f9e/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L4899-L5007",
-              sha1 = "64e666a1061a5188d6e9df14803aaa5e37be0b7b")
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/d3c042f9a0cd91e7cdf7f45cb0ea387f7ba9785b/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L5166-L5272",
+              sha1 = "573099757de85d90c3cf8cee8ff332e195fe68c7")
     // @formatter:on
     @Snippet
     private static boolean lookupSecondarySupersTableSlowPath(KlassPointer t, Word secondarySupers, long bitmap, long index) {

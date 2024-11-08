@@ -40,11 +40,10 @@
  */
 package com.oracle.truffle.nfi.backend.libffi;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.InternalResource;
-
 import java.io.IOException;
 import java.nio.file.Path;
+
+import com.oracle.truffle.api.InternalResource;
 
 @InternalResource.Id(LibNFIResource.ID)
 final class LibNFIResource implements InternalResource {
@@ -63,13 +62,9 @@ final class LibNFIResource implements InternalResource {
     }
 
     @Override
-    public String versionHash(Env env) {
-        try {
-            Path base = basePath(env);
-            return env.readResourceLines(base.resolve("sha256")).get(0);
-        } catch (IOException ioe) {
-            throw CompilerDirectives.shouldNotReachHere(ioe);
-        }
+    public String versionHash(Env env) throws IOException {
+        Path base = basePath(env);
+        return env.readResourceLines(base.resolve("sha256")).get(0);
     }
 
     private static Path basePath(Env env) {
