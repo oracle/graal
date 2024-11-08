@@ -30,6 +30,7 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.HeapImpl;
+import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.genscavenge.HeapParameters;
 import com.oracle.svm.core.genscavenge.ThreadLocalAllocation;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
@@ -99,7 +100,7 @@ public class GenScavengeAllocationSupport implements GCAllocationSupport {
 
     @Override
     public boolean useTLAB() {
-        return true;
+        return SubstrateGCOptions.TlabOptions.UseTLAB.getValue();
     }
 
     @Override
