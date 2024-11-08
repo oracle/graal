@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,17 +27,19 @@ package jdk.graal.compiler.nodes.loop;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Equivalence;
+
+import jdk.graal.compiler.core.common.cfg.CFGLoop;
+import jdk.graal.compiler.core.common.util.ReversedList;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.LoopBeginNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.EconomicSet;
-import org.graalvm.collections.Equivalence;
-import jdk.graal.compiler.core.common.cfg.CFGLoop;
-import jdk.graal.compiler.core.common.util.ReversedList;
-import jdk.graal.compiler.debug.DebugContext;
 
 /**
  * A data structure representing all the information about all loops in the given graph. Data about
@@ -86,7 +88,9 @@ public class LoopsData {
         DebugContext debug = graph.getDebug();
         if (preComputedCFG == null) {
             try (DebugContext.Scope s = debug.scope("ControlFlowGraph")) {
-                this.cfg = ControlFlowGraph.newBuilder(graph).connectBlocks(true).computeLoops(true).computeDominators(true).computePostdominators(true).computeFrequency(true).build();
+                boolean backendBlocks = graph.isAfterStage(GraphState.StageFlag.FINAL_SCHEDULE);
+                this.cfg = ControlFlowGraph.newBuilder(graph).connectBlocks(true).backendBlocks(backendBlocks).computeLoops(true).computeDominators(true).computePostdominators(true).computeFrequency(
+                                true).build();
             } catch (Throwable e) {
                 throw debug.handle(e);
             }
