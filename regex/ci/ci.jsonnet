@@ -41,15 +41,30 @@
     targets: ["gate"],
   },
 
+  local regex_coverage = regex_common + {
+    name: 'weekly-regex-coverage-' + self.jdk_name,
+    run: [
+      ['mx', 'gate', '--tags', 'build,coverage', '--jacoco-omit-excluded', '--jacoco-relativize-paths', '--jacoco-omit-src-gen', '--jacoco-format', 'lcov', '--jacocout', 'coverage']
+    ],
+    teardown+: [
+      ['mx', 'sversions', '--print-repositories', '--json', '|', 'coverage-uploader.py', '--associated-repos', '-'],
+    ],
+    targets: ["weekly"],
+    notify_emails: ["josef.haider@oracle.com"],
+  },
+
+
   local _builds = [utils.add_gate_predicate(b, ["sdk", "truffle", "regex", "compiler", "vm", "substratevm"]) for b in std.flattenArrays([
-    [
-      common.linux_amd64  + jdk + regex_gate,
-      common.linux_amd64  + jdk + regex_downstream_js,
-      common.darwin_aarch64 + jdk + regex_gate_lite,
-    ] for jdk in [
-      common.labsjdkLatest,
-    ]
-  ])],
+      [
+        common.linux_amd64    + jdk + regex_gate,
+        common.linux_amd64    + jdk + regex_downstream_js,
+        common.darwin_aarch64 + jdk + regex_gate_lite,
+      ] for jdk in [
+        common.labsjdkLatest,
+      ]
+    ]) +
+    [common.linux_amd64 + common.labsjdk21 + regex_coverage]
+  ],
 
   builds: utils.add_defined_in(_builds, std.thisFile),
 }
