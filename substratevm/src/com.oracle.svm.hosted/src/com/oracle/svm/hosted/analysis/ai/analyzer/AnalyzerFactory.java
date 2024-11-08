@@ -1,6 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.analyzer;
 
 import com.oracle.svm.hosted.analysis.ai.fixpoint.FixpointIterator;
+import jdk.graal.compiler.debug.DebugContext;
 
 /**
  * Factory for creating analyzers
@@ -8,11 +9,11 @@ import com.oracle.svm.hosted.analysis.ai.fixpoint.FixpointIterator;
 
 public class AnalyzerFactory {
 
-    public static InterproceduralAnalyzer createInterproceduralAnalyzer(FixpointIterator<?, ?> fixpointIterator) {
-        return new InterproceduralAnalyzer(fixpointIterator);
+    public static InterProceduralAnalyzer createInterproceduralAnalyzer(FixpointIterator<?, ?> fixpointIterator, DebugContext debug) {
+        return new InterProceduralAnalyzer(fixpointIterator, debug);
     }
 
-    public static IntraproceduralAnalyzer createIntraproceduralAnalyzer(FixpointIterator<?, ?> fixpointIterator) {
-        return new IntraproceduralAnalyzer(fixpointIterator);
+    public static IntraProceduralAnalyzer createIntraproceduralAnalyzer(FixpointIterator<?, ?> fixpointIterator, DebugContext debug) {
+        return new IntraProceduralAnalyzer(fixpointIterator, debug);
     }
 }
