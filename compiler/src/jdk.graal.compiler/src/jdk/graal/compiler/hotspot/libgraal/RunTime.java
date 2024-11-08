@@ -27,7 +27,6 @@ package jdk.graal.compiler.hotspot.libgraal;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.function.BiConsumer;
-import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
 
@@ -57,6 +56,9 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.runtime.JVMCIBackend;
 import jdk.vm.ci.runtime.JVMCICompiler;
+
+import static jdk.graal.compiler.serviceprovider.GraalServices.getCurrentThreadAllocatedBytes;
+import static jdk.graal.compiler.serviceprovider.GraalServices.isThreadAllocatedMemorySupported;
 
 /**
  * This class provides implementations for {@code @CEntryPoint}s that libgraal has to provide as a
@@ -103,16 +105,12 @@ public class RunTime {
      *
      * @param profileLoadPath value of the {@code Options#LoadProfiles} option or null
      * @param timeAndMemConsumer allows caller to get info about compile time and memory consumption
-     * @param currentThreadAllocatedBytes gives access to
-     *            {@code com.sun.management.ThreadMXBean#getCurrentThreadAllocatedBytes()} needed to
-     *            compute memory consumption during compilation
      */
     @SuppressWarnings("try")
     public static long compileMethod(long methodHandle, boolean useProfilingInfo,
                     boolean installAsDefault, boolean printMetrics, boolean eagerResolving,
                     long optionsAddress, int optionsSize, int optionsHash,
-                    String profileLoadPath, BiConsumer<Long, Long> timeAndMemConsumer,
-                    Supplier<Long> currentThreadAllocatedBytes) {
+                    String profileLoadPath, BiConsumer<Long, Long> timeAndMemConsumer) {
 
         HotSpotJVMCIRuntime runtime = HotSpotJVMCIRuntime.runtime();
         HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) runtime.getCompiler();
@@ -128,7 +126,7 @@ public class RunTime {
             long allocatedBytesBefore = 0;
             long timeBefore = 0;
             if (timeAndMemConsumer != null) {
-                allocatedBytesBefore = currentThreadAllocatedBytes.get();
+                allocatedBytesBefore = isThreadAllocatedMemorySupported() ? getCurrentThreadAllocatedBytes() : -1;
                 timeBefore = System.nanoTime();
             }
             OptionValues options = decodeOptions(optionsAddress, optionsSize, optionsHash);
@@ -137,7 +135,7 @@ public class RunTime {
             }
             task.runCompilation(options);
             if (timeAndMemConsumer != null) {
-                long allocatedBytesAfter = currentThreadAllocatedBytes.get();
+                long allocatedBytesAfter = allocatedBytesBefore == -1 ? -1 : getCurrentThreadAllocatedBytes();
                 long bytesAllocated = allocatedBytesAfter - allocatedBytesBefore;
                 long timeAfter = System.nanoTime();
                 long timeSpent = timeAfter - timeBefore;

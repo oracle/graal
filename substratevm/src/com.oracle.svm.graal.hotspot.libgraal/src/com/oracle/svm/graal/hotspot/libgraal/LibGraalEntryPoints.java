@@ -28,7 +28,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles.Lookup;
-import java.lang.management.ManagementFactory;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -39,7 +38,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import com.oracle.svm.core.heap.UnknownObjectField;
@@ -89,7 +87,6 @@ import org.graalvm.nativeimage.impl.IsolateSupport;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.heap.Heap;
-import com.sun.management.ThreadMXBean;
 
 import jdk.internal.misc.Unsafe;
 
@@ -255,23 +252,19 @@ final class LibGraalEntryPoints {
                 profileLoadPath = null;
             }
             BiConsumer<Long, Long> timeAndMemConsumer;
-            Supplier<Long> currentThreadAllocatedBytes;
             if (timeAndMemBufferAddress != 0) {
                 timeAndMemConsumer = (timeSpent, bytesAllocated) -> {
                     Unsafe.getUnsafe().putLong(timeAndMemBufferAddress, bytesAllocated);
                     Unsafe.getUnsafe().putLong(timeAndMemBufferAddress + 8, timeSpent);
                 };
-                ThreadMXBean threadMXBean = (ThreadMXBean) ManagementFactory.getThreadMXBean();
-                currentThreadAllocatedBytes = () -> threadMXBean.getCurrentThreadAllocatedBytes();
             } else {
                 timeAndMemConsumer = null;
-                currentThreadAllocatedBytes = null;
             }
 
             return (long) singleton().compileMethod.invoke(methodHandle, useProfilingInfo,
                             installAsDefault, printMetrics, eagerResolving,
                             optionsAddress, optionsSize, optionsHash,
-                            profileLoadPath, timeAndMemConsumer, currentThreadAllocatedBytes);
+                            profileLoadPath, timeAndMemConsumer);
         } catch (Throwable t) {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             t.printStackTrace(new PrintStream(baos));

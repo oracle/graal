@@ -46,13 +46,14 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+import jdk.graal.compiler.serviceprovider.LibGraalService;
+import jdk.internal.jimage.BasicImageReader;
+import jdk.internal.jimage.ImageLocation;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import jdk.graal.compiler.debug.GraalError;
-import jdk.internal.jimage.BasicImageReader;
-import jdk.internal.jimage.ImageLocation;
 import jdk.internal.module.Modules;
 
 /**
@@ -99,6 +100,14 @@ final class HostedLibGraalClassLoader extends ClassLoader implements LibGraalCla
                     "jdk.internal.vm.ci",
                     "org.graalvm.collections",
                     "org.graalvm.word",
+                    "jdk.graal.compiler",
+                    "org.graalvm.truffle.compiler",
+                    "com.oracle.graal.graal_enterprise");
+
+    /**
+     * Modules containing classes that can be annotated by {@link LibGraalService}.
+     */
+    private static final Set<String> LIBGRAAL_SERVICES_MODULES = Set.of(
                     "jdk.graal.compiler",
                     "org.graalvm.truffle.compiler",
                     "com.oracle.graal.graal_enterprise");

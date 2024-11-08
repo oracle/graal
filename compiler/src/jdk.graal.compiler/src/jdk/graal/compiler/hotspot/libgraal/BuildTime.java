@@ -37,7 +37,6 @@ import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
 
@@ -146,7 +145,8 @@ public class BuildTime {
      * @param arch a value compatible with {@link ArchitectureSpecific#getArchitecture()}
      */
     @SuppressWarnings({"try", "unused", "unchecked"})
-    public static void configureGraalForLibGraal(String arch,
+    public static void configureGraalForLibGraal(
+                    String arch,
                     List<Class<?>> guestServiceClasses,
                     Consumer<Class<?>> registerAsInHeap,
                     Consumer<List<Class<?>>> hostedGraalSetFoldNodePluginClasses,
@@ -211,7 +211,7 @@ public class BuildTime {
                             methodType(long.class, long.class,
                                             boolean.class, boolean.class, boolean.class, boolean.class,
                                             long.class, int.class, int.class,
-                                            String.class, BiConsumer.class, Supplier.class)),
+                                            String.class, BiConsumer.class)),
                             "hashConstantOopFields", MHL.findStatic(RunTime.class, "hashConstantOopFields",
                                             methodType(long.class, long.class, boolean.class, int.class, int.class,
                                                             boolean.class, Runnable.class)),

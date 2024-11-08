@@ -26,6 +26,7 @@ package com.oracle.svm.graal.hotspot.libgraal;
 
 import static java.lang.invoke.MethodType.methodType;
 
+import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodHandles.Lookup;
@@ -43,10 +44,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
-import jdk.graal.compiler.lir.phases.LIRPhase;
-import jdk.graal.compiler.phases.BasePhase;
-import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
-import jdk.vm.ci.hotspot.HotSpotModifiers;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.jniutils.NativeBridgeSupport;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -59,7 +56,6 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.reports.CallTreePrinter;
-import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.hotspot.GetCompilerConfig;
@@ -76,11 +72,16 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.hotspot.CompilerConfigurationFactory;
 import jdk.graal.compiler.hotspot.libgraal.BuildTime;
 import jdk.graal.compiler.hotspot.libgraal.LibGraalClassLoaderBase;
+import jdk.graal.compiler.lir.phases.LIRPhase;
 import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
 import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.phases.BasePhase;
+import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
 import jdk.graal.compiler.serviceprovider.LibGraalService;
-import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.hotspot.HotSpotModifiers;
 
 /**
  * This feature builds the libgraal shared library (e.g., libjvmcicompiler.so on linux).
@@ -175,6 +176,14 @@ public final class LibGraalFeature implements Feature {
             return loader.loadClass(name);
         } catch (ClassNotFoundException e) {
             throw new AssertionError("%s unable to load class '%s'".formatted(loader.getName(), name));
+        }
+    }
+
+    public Class<?> loadClassOrNull(String name) {
+        try {
+            return loader.loadClass(name);
+        } catch (Throwable e) {
+            return null;
         }
     }
 
@@ -385,6 +394,22 @@ public final class LibGraalFeature implements Feature {
         }
     }
 
+    @SuppressWarnings("unchecked")
+    public List<Class<?>> findLibGraalServices() {
+        Set<String> libgraalServicesModules = ReflectionUtil.invokeMethod(ReflectionUtil.lookupMethod(loader.getClass(), "getLibgraalServicesModules"), loader);
+        Map<String, String> modules = ReflectionUtil.invokeMethod(ReflectionUtil.lookupMethod(loader.getClass(), "getModules"), loader);
+
+        Class<? extends Annotation> service = (Class<? extends Annotation>) loadClassOrFail(LibGraalService.class);
+        List<Class<?>> libgraalServices = new ArrayList<>();
+        modules.entrySet().stream()//
+                        .filter(e -> libgraalServicesModules.contains(e.getValue()))
+                        .map(Map.Entry::getKey)//
+                        .map(this::loadClassOrNull)//
+                        .filter(c -> c != null && c.getAnnotation(service) != null)//
+                        .forEach(libgraalServices::add);
+        return libgraalServices;
+    }
+
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess baa) {
         BeforeAnalysisAccessImpl impl = (BeforeAnalysisAccessImpl) baa;
@@ -411,17 +436,11 @@ public final class LibGraalFeature implements Feature {
 
         /* Configure static state of Graal. */
         try {
-            TargetDescription targetDescription = ImageSingletons.lookup(SubstrateTargetDescription.class);
-            String arch = targetDescription.arch.getName();
-
-            Consumer<Class<?>> registerAsInHeap = nodeClass -> impl.getMetaAccess().lookupJavaType(nodeClass)
-                            .registerAsInstantiated("All NodeClass classes are marked as instantiated eagerly.");
+            Consumer<Class<?>> registerAsInHeap = baa::registerAsInHeap;
 
             Consumer<List<Class<?>>> hostedGraalSetFoldNodePluginClasses = GeneratedInvocationPlugin::setFoldNodePluginClasses;
 
-            List<Class<?>> guestServiceClasses = new ArrayList<>();
-            List<Class<?>> serviceClasses = impl.getImageClassLoader().findAnnotatedClasses(LibGraalService.class, false);
-            serviceClasses.stream().map(this::loadClassOrFail).forEach(guestServiceClasses::add);
+            List<Class<?>> guestServiceClasses = findLibGraalServices();
 
             // Transfer libgraal qualifier (e.g. "PGO optimized") from host to guest.
             String nativeImageLocationQualifier = CompilerConfigurationFactory.getNativeImageLocationQualifier();
@@ -444,9 +463,8 @@ public final class LibGraalFeature implements Feature {
                 }
             }
 
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, buildTimeClass, false, "org.graalvm.word", "org.graalvm.word.impl");
-
-            configureGraalForLibGraal.invoke(arch,
+            Architecture arch = HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getTarget().arch;
+            configureGraalForLibGraal.invoke(arch.getName(),
                             guestServiceClasses,
                             registerAsInHeap,
                             hostedGraalSetFoldNodePluginClasses,
