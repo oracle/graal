@@ -53,9 +53,7 @@ import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.ObjectReachableCallback;
 import com.oracle.graal.pointsto.reports.CallTreePrinter;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.hub.ClassForNameSupport;
@@ -256,8 +254,8 @@ public final class LibGraalFeature implements Feature {
         DuringSetupAccessImpl accessImpl = (DuringSetupAccessImpl) access;
         accessImpl.registerClassReachabilityListener(this::registerPhaseStatistics);
         optionCollector = new OptionCollector(LibGraalEntryPoints.vmOptionDescriptors);
-        accessImpl.registerObjectReachableCallback(OptionKey.class, optionCollector::doCallback);
-        accessImpl.registerObjectReachableCallback(loadClassOrFail(OptionKey.class.getName()), optionCollector::doCallback);
+        access.registerObjectReachabilityHandler(optionCollector::accept, OptionKey.class);
+        access.registerObjectReachabilityHandler(optionCollector::accept, loadClassOrFail(OptionKey.class.getName()));
         GetJNIConfig.register(loader);
     }
 
@@ -270,7 +268,7 @@ public final class LibGraalFeature implements Feature {
      * compiler options are instances of {@link OptionKey} loaded by the
      * {@code HostedLibGraalClassLoader}.
      */
-    private class OptionCollector implements ObjectReachableCallback<Object> {
+    private class OptionCollector implements Consumer<Object> {
         private final Set<Object> options = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
         /**
@@ -297,7 +295,7 @@ public final class LibGraalFeature implements Feature {
         }
 
         @Override
-        public void doCallback(DuringAnalysisAccess access, Object option, ObjectScanner.ScanReason reason) {
+        public void accept(Object option) {
             if (sealed) {
                 VMError.guarantee(options.contains(option), "All options must have been discovered during static analysis: %s", option);
             } else {
