@@ -54,7 +54,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/7131f053b0d26b62cbf0d8376ec117d6e8d79f9e/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L6543-L6701",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/1d117f65f06456ae571aecc146542c2f79d402cf/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L6806-L6964",
           sha1 = "90e15d79705bc87ffbefbcaa4bdfa55123c12aba")
 // @formatter:on
 @Opcode("AMD64_ENCODE_ARRAY")
